@@ -9,7 +9,8 @@ export default class extends Controller {
     static targets = [
         "modal", "form", "title", "submitButton", "methodInput",
         "nameInput", "roleTypeSelect", "locationSelect", "requiredCount",
-        "hourlyRate", "deleteButton"
+        "hourlyRate", "deleteButton",
+        "payType", "flatRate", "hourlyRateWrap", "flatRateWrap"
     ]
     static values = {
         createUrl: String,
@@ -40,6 +41,9 @@ export default class extends Controller {
         if (this.hasLocationSelectTarget) this.locationSelectTarget.value = btn.dataset.roleLocationId || ""
         if (this.hasRequiredCountTarget) this.requiredCountTarget.value = btn.dataset.roleRequiredCount || ""
         if (this.hasHourlyRateTarget)    this.hourlyRateTarget.value    = btn.dataset.roleHourlyRate || ""
+        if (this.hasPayTypeTarget)       this.payTypeTarget.value       = btn.dataset.rolePayType || "hourly"
+        if (this.hasFlatRateTarget)      this.flatRateTarget.value      = btn.dataset.roleFlatRate || ""
+        this.syncPayType()
 
         if (this.hasFormTarget && this.hasUpdateUrlTemplateValue) {
             // update (PATCH) and destroy (DELETE) share the same path
@@ -102,11 +106,27 @@ export default class extends Controller {
         if (this.hasLocationSelectTarget) this.locationSelectTarget.value = ""
         if (this.hasRequiredCountTarget) this.requiredCountTarget.value = "1"
         if (this.hasHourlyRateTarget)    this.hourlyRateTarget.value = ""
+        if (this.hasPayTypeTarget)       this.payTypeTarget.value = "hourly"
+        if (this.hasFlatRateTarget)      this.flatRateTarget.value = ""
+        this.syncPayType()
     }
 
     setSubmitText(text) {
         if (!this.hasSubmitButtonTarget) return
         const span = this.submitButtonTarget.querySelector("span")
         if (span) span.textContent = text
+    }
+
+    // Only the field that prices this role is shown — an hourly rate sitting
+    // next to a flat rate is an invitation to fill in the wrong one.
+    payTypeChanged() {
+        this.syncPayType()
+    }
+
+    syncPayType() {
+        if (!this.hasPayTypeTarget) return
+        const flat = this.payTypeTarget.value === "flat"
+        if (this.hasHourlyRateWrapTarget) this.hourlyRateWrapTarget.classList.toggle("hidden", flat)
+        if (this.hasFlatRateWrapTarget) this.flatRateWrapTarget.classList.toggle("hidden", !flat)
     }
 }

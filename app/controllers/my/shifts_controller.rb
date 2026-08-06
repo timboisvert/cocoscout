@@ -178,7 +178,7 @@ module My
       @approved_hours = @time_entries.select { |e| e.status == "approved" }.sum { |e| e.hours.to_f }
       @owed_estimate_cents = @time_entries.sum do |e|
         member = members_by_key[[ e.organization_id, e.person_id ]]
-        (e.hours.to_d * member&.rate_cents_for(e.effective_house_role).to_i).round
+        member ? member.amount_cents_for(e.effective_house_role, hours: e.hours) : 0
       end
 
       @staff_orgs = Organization.where(

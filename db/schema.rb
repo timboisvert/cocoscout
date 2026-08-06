@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -949,11 +949,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_120000) do
   create_table "house_roles", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
+    t.integer "default_flat_rate_cents"
     t.integer "default_hourly_rate_cents"
     t.integer "default_required_count", default: 1, null: false
     t.bigint "location_id"
     t.string "name", null: false
     t.bigint "organization_id", null: false
+    t.string "pay_type", default: "hourly", null: false
     t.integer "position", default: 0, null: false
     t.integer "role_type", default: 0, null: false
     t.datetime "updated_at", null: false
@@ -2649,6 +2651,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_120000) do
 
   create_table "staff_role_qualifications", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.integer "flat_rate_cents"
     t.integer "hourly_rate_cents"
     t.bigint "house_role_id", null: false
     t.bigint "organization_staff_member_id", null: false

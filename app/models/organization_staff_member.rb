@@ -104,8 +104,8 @@ class OrganizationStaffMember < ApplicationRecord
     parts << "<div>Position: #{esc.call(title)}</div>" if title.present?
     if roles.any?
       items = roles.map do |role|
-        cents = rate_cents_for(role).to_i
-        rate = cents.positive? ? " &mdash; $#{format('%.2f', cents / 100.0)}/hr" : ""
+        label = rate_label_for(role)
+        rate = label ? " &mdash; #{label}" : ""
         "<li>#{esc.call(role.name)}#{rate}</li>"
       end
       parts << "<div>Role(s):</div><ul>#{items.join}</ul>"
@@ -134,9 +134,43 @@ class OrganizationStaffMember < ApplicationRecord
   def rate_cents_for(house_role)
     return hourly_rate_cents if house_role.nil?
 
-    qualification = staff_role_qualifications.detect { |q| q.house_role_id == house_role.id } ||
-                    staff_role_qualifications.find_by(house_role_id: house_role.id)
-    qualification&.hourly_rate_cents || hourly_rate_cents
+    qualification_for(house_role)&.hourly_rate_cents || hourly_rate_cents
+  end
+
+  # A flat role's amount for one shift: this member's override, else the role's
+  # default. nil when the role isn't flat.
+  def flat_cents_for(house_role)
+    return nil unless house_role&.flat?
+
+    qualification_for(house_role)&.flat_rate_cents || house_role.default_flat_rate_cents
+  end
+
+  # THE pricing question: what is this person owed for this work?
+  #
+  # Every screen that shows money for staffing goes through here, so an hourly
+  # role and a flat one can't disagree between the timesheet, the pay grid and
+  # the payout run. A flat role ignores hours entirely — that's the point of it.
+  def amount_cents_for(house_role, hours:)
+    flat = flat_cents_for(house_role)
+    return flat.to_i if flat
+
+    (hours.to_d * rate_cents_for(house_role).to_i).round
+  end
+
+  # What this member's pay for a role reads as: "$20.00/hr" or "$50.00/night".
+  def rate_label_for(house_role)
+    if house_role&.flat?
+      cents = flat_cents_for(house_role)
+      cents ? "$#{format('%.2f', cents / 100.0)}/night" : nil
+    else
+      cents = rate_cents_for(house_role)
+      cents ? "$#{format('%.2f', cents / 100.0)}/hr" : nil
+    end
+  end
+
+  def qualification_for(house_role)
+    staff_role_qualifications.detect { |q| q.house_role_id == house_role.id } ||
+      staff_role_qualifications.find_by(house_role_id: house_role.id)
   end
 
   # Set which house roles this member can fill and each one's pay rate in one go.
@@ -154,6 +188,12 @@ class OrganizationStaffMember < ApplicationRecord
       # An explicit rate wins; otherwise fall back to the role's default pay.
       qualification.hourly_rate_cents =
         self.class.rate_cents_from(rates[role.id]) || role.default_hourly_rate_cents
+      # A flat role carries its own amount; the same explicit rate applies to
+      # whichever kind of pay the role actually uses.
+      if role.flat?
+        qualification.flat_rate_cents =
+          self.class.rate_cents_from(rates[role.id]) || role.default_flat_rate_cents
+      end
       qualification.save!
     end
   end

@@ -225,12 +225,12 @@ export default class extends Controller {
             if (!cb) return
             const h = parseFloat(cb.dataset.hours) || 0
             hours += h
-            cents += Math.round((parseFloat(cb.dataset.rateCents) || 0) * h)
+            cents += this.entryCents(cb, h)
         })
         adhocPairs.forEach(pair => {
             if (pair.hours <= 0) return
             hours += pair.hours
-            cents += Math.round(this.rateFor(modal, row, pair.roleId) * pair.hours)
+            cents += this.adhocCents(modal, row, pair.roleId, pair.hours)
         })
 
         row.dataset.workedCents = String(cents)
@@ -297,7 +297,7 @@ export default class extends Controller {
             if (!cb.checked) return
             const h = parseFloat(cb.dataset.hours) || 0
             hours += h
-            cents += Math.round((parseFloat(cb.dataset.rateCents) || 0) * h)
+            cents += this.entryCents(cb, h)
         })
         const adhoc = this.adhocState(modal)
         hours += adhoc.hours
@@ -320,7 +320,7 @@ export default class extends Controller {
             const fixed = rowEl.querySelector("[data-adhoc-fixed]")
             const roleId = select ? select.value : (fixed?.dataset.roleId || "")
             if (select && !select.value) { needsRole = true; return }
-            const lineCents = Math.round(this.rateFor(modal, row, roleId) * h)
+            const lineCents = this.adhocCents(modal, row, roleId, h)
             hours += h
             cents += lineCents
             lines.push({ hours: h, roleId })
@@ -335,6 +335,30 @@ export default class extends Controller {
 
     // Rate for one ad-hoc line: the chosen role's rate, the fixed single role's
     // rate, else the member default.
+    // The server prices work; the client only has to agree with it. A flat role
+    // pays a set amount for the shift, so hours must not be multiplied in.
+    entryCents(checkbox, hours) {
+        const amount = parseFloat(checkbox.dataset.amountCents)
+        if (!Number.isNaN(amount)) return Math.round(amount)
+        return Math.round((parseFloat(checkbox.dataset.rateCents) || 0) * hours)
+    }
+
+    adhocCents(modal, row, roleId, hours) {
+        const flat = this.flatFor(modal, row, roleId)
+        if (flat !== null) return Math.round(flat)
+        return Math.round(this.rateFor(modal, row, roleId) * hours)
+    }
+
+    // The flat amount for a role, or null when it's an hourly role.
+    flatFor(modal, row, roleId) {
+        const source = modal.querySelector(`option[value="${roleId}"][data-flat-cents]`) ||
+                       modal.querySelector(`[data-role-id="${roleId}"][data-flat-cents]`)
+        const raw = source?.dataset?.flatCents
+        if (raw === undefined || raw === "") return null
+        const value = parseFloat(raw)
+        return Number.isNaN(value) ? null : value
+    }
+
     rateFor(modal, row, roleId) {
         if (roleId) {
             const source = modal.querySelector(`[data-adhoc-role] option[value="${roleId}"], [data-adhoc-fixed][data-role-id="${roleId}"]`)

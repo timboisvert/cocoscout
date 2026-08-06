@@ -29,9 +29,12 @@
             </div>
             <div class="space-y-2">
               <% entries.each do |e| %>
+                <%# The server prices the entry — flat roles pay per shift, not
+                    per hour, so the client must never re-derive this. %>
                 <% entry_rate_cents = member.rate_cents_for(e.effective_house_role).to_i %>
+                <% entry_amount_cents = member.amount_cents_for(e.effective_house_role, hours: e.hours) %>
                 <label class="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300">
-                  <input type="checkbox" data-entry-id="<%= e.id %>" data-hours="<%= e.hours %>" data-rate-cents="<%= entry_rate_cents %>"
+                  <input type="checkbox" data-entry-id="<%= e.id %>" data-hours="<%= e.hours %>" data-rate-cents="<%= entry_rate_cents %>" data-amount-cents="<%= entry_amount_cents %>"
                          data-action="change->pay-hours#recalcModal"
                          class="h-4 w-4 rounded border-gray-300 accent-pink-500">
                   <div class="min-w-0 flex-1">

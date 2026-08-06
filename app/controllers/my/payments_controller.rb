@@ -36,8 +36,8 @@ module My
                               .chronological.to_a
       @pending_lines = pending.map do |e|
         member = members[e.organization_id]
-        rate = member ? member.rate_cents_for(e.shift&.house_role).to_i : 0
-        { label: pending_label(e), org: e.organization&.name, cents: (rate * e.hours.to_f).round, date: e.started_at }
+        cents = member ? member.amount_cents_for(e.effective_house_role, hours: e.hours) : 0
+        { label: pending_label(e), org: e.organization&.name, cents: cents, date: e.started_at }
       end
       @pending_total_cents = @pending_lines.sum { |l| l[:cents] }
 
@@ -73,10 +73,10 @@ module My
         @entry = StaffTimeEntry.where(person_id: @person.id).where.not(offline_paid_at: nil)
                                .includes(:organization, shift_assignment: { shift: :house_role }).find(params[:id])
         member = OrganizationStaffMember.find_by(person_id: @person.id, organization_id: @entry.organization_id)
-        rate = member ? member.rate_cents_for(@entry.effective_house_role).to_i : 0
         # Total received; when a reimbursement rode along, the receipt breaks
         # out wages vs reimbursement from the two components.
-        @entry_wage_cents = @entry.offline_amount_cents || (rate * @entry.hours.to_f).round
+        @entry_wage_cents = @entry.offline_amount_cents ||
+                            (member ? member.amount_cents_for(@entry.effective_house_role, hours: @entry.hours) : 0)
         @entry_reimbursement_cents = @entry.offline_reimbursement_cents.to_i
         @entry_amount_cents = @entry_wage_cents + @entry_reimbursement_cents
       else
@@ -157,7 +157,7 @@ module My
                     .includes(:organization, :house_role, shift_assignment: { shift: :house_role })
                     .find_each do |e|
         member = staff_members[e.organization_id]
-        rate = member ? member.rate_cents_for(e.effective_house_role).to_i : 0
+        entry_cents = member ? member.amount_cents_for(e.effective_house_role, hours: e.hours) : 0
         hrs = ActiveSupport::NumberHelper.number_to_rounded(e.hours, precision: 2, strip_insignificant_zeros: true)
         rows << { kind: "hours", id: e.id, org: e.organization&.name,
                   title: e.offline_reimbursement_only? ? "Reimbursement" : "Staffing hours · #{hrs}h",
@@ -166,7 +166,7 @@ module My
                   # hours settled outside CocoScout.
                   subtitle: [ e.started_at&.strftime("%B %-d, %Y"), e.offline_payment_note.presence ].compact.join(" · "),
                   # The full amount handed over — wages plus any reimbursement.
-                  cents: e.offline_total_cents || (rate * e.hours.to_f).round, paid_at: e.offline_paid_at,
+                  cents: e.offline_total_cents || entry_cents, paid_at: e.offline_paid_at,
                   method: nil }
       end
 

@@ -15,9 +15,33 @@ class HouseRole < ApplicationRecord
   #              event, e.g. tech who must be tied to a particular show.
   enum :role_type, { house: 0, show_specific: 1 }, default: :house
 
+  # How the work is priced. "hourly" is rate × hours; "flat" is a set amount for
+  # the shift however long it runs — security who comes in for the night and
+  # gets $50 whether that's three hours or five. Hours are still logged either
+  # way; for a flat role they just don't decide the money.
+  PAY_TYPES = %w[hourly flat].freeze
+
   validates :name, presence: true, length: { maximum: 100 }
   validates :default_required_count, numericality: { only_integer: true, greater_than: 0 }
   validates :default_hourly_rate_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :default_flat_rate_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :pay_type, inclusion: { in: PAY_TYPES }
+
+  def flat?
+    pay_type == "flat"
+  end
+
+  def hourly?
+    !flat?
+  end
+
+  # What this role's pay looks like on screen: "$20.00/hr" or "$50.00/night".
+  def rate_label
+    cents = flat? ? default_flat_rate_cents : default_hourly_rate_cents
+    return nil if cents.blank?
+
+    "$#{format('%.2f', cents / 100.0)}#{flat? ? '/night' : '/hr'}"
+  end
 
   # Dollar view of the role's standard pay, for forms. nil = no default set.
   def default_hourly_rate_dollars
@@ -25,12 +49,21 @@ class HouseRole < ApplicationRecord
   end
 
   def default_hourly_rate_dollars=(value)
-    self.default_hourly_rate_cents =
-      if value.blank?
-        nil
-      else
-        (value.to_s.gsub(/[^0-9.]/, "").to_f * 100).round
-      end
+    self.default_hourly_rate_cents = self.class.cents_from(value)
+  end
+
+  def default_flat_rate_dollars
+    default_flat_rate_cents ? default_flat_rate_cents / 100.0 : nil
+  end
+
+  def default_flat_rate_dollars=(value)
+    self.default_flat_rate_cents = self.class.cents_from(value)
+  end
+
+  def self.cents_from(value)
+    return nil if value.blank?
+
+    (value.to_s.gsub(/[^0-9.]/, "").to_f * 100).round
   end
 
   scope :active, -> { where(archived_at: nil) }

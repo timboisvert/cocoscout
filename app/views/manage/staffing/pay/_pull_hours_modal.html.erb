@@ -39,7 +39,7 @@
             <% members_with_hours.each do |member, entries| %>
               <%
                 total_hours = entries.sum { |e| e.hours.to_f }
-                total_cents = entries.sum { |e| (e.hours.to_d * member.rate_cents_for(e.effective_house_role).to_i).round }
+                total_cents = entries.sum { |e| member.amount_cents_for(e.effective_house_role, hours: e.hours) }
               %>
               <label class="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
                 <input type="checkbox" checked

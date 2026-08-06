@@ -80,8 +80,10 @@
                     <% role_label = e.shift&.role_label.presence || e.house_role&.name %>
                     <% if role_label.present? %> · <%= role_label %><% end %>
                     <%# What approving this entry costs, priced at the role it was worked as. %>
-                    <% rate_cents = @members_by_person_id[person.id]&.rate_cents_for(e.effective_house_role).to_i %>
-                    <% if rate_cents.positive? %> · <%= number_to_currency(rate_cents / 100.0) %>/hr → <span class="font-medium text-gray-700"><%= number_to_currency((e.hours.to_d * rate_cents / 100).round(2)) %></span><% end %>
+                    <% member_for_entry = @members_by_person_id[person.id] %>
+                    <% rate_cents = member_for_entry&.rate_cents_for(e.effective_house_role).to_i %>
+                    <% entry_cents = member_for_entry ? member_for_entry.amount_cents_for(e.effective_house_role, hours: e.hours) : 0 %>
+                    <% if entry_cents.positive? %> · <%= member_for_entry.rate_label_for(e.effective_house_role) %> → <span class="font-medium text-gray-700"><%= number_to_currency(entry_cents / 100.0) %></span><% end %>
                     <% if e.notes.present? %> · <span class="italic">“<%= e.notes %>”</span><% end %>
                   </div>
                 </div>

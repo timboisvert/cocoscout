@@ -28,15 +28,24 @@ class StaffPayRunService
   def self.worked_cents(organization:, member:, adhoc: nil, hours: 0, time_entry_ids: nil, house_role: nil)
     lines = Array(adhoc)
     lines = [ { hours: hours, house_role: house_role } ] if lines.empty? && hours.to_f.positive?
-    adhoc_cents = lines.sum { |l| (member.rate_cents_for(l[:house_role]).to_i * l[:hours].to_f).round }
+    adhoc_cents = lines.sum { |l| member.amount_cents_for(l[:house_role], hours: l[:hours].to_f) }
 
     ids = Array(time_entry_ids).map(&:to_i).reject(&:zero?)
     return adhoc_cents if ids.empty?
 
     entries = organization.staff_time_entries.for_person(member.person).where(id: ids)
                           .includes(:house_role, shift_assignment: { shift: :house_role })
-                          .sum { |entry| (member.rate_cents_for(entry.effective_house_role).to_i * entry.hours.to_f).round }
-    entries + adhoc_cents
+                          .to_a
+
+    # A flat role pays once per night, not once per entry — logging the same
+    # security shift as two stints is still $50. Keyed by the shift where there
+    # is one, and otherwise by the date, so two separate nights still pay twice.
+    flat, hourly = entries.partition { |e| e.effective_house_role&.flat? }
+    flat_cents = flat.uniq { |e| [ e.effective_house_role&.id, e.shift_assignment_id || e.started_at.to_date ] }
+                     .sum { |e| member.amount_cents_for(e.effective_house_role, hours: e.hours) }
+    hourly_cents = hourly.sum { |e| member.amount_cents_for(e.effective_house_role, hours: e.hours) }
+
+    flat_cents + hourly_cents + adhoc_cents
   end
 
   # amount actually routed through Stripe (cash tips excluded).

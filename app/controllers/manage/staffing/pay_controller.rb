@@ -29,7 +29,14 @@ module Manage
         # priced by the role they were worked as, not a single per-person rate.
         @role_rates_by_member = all_members.each_with_object({}) do |m, h|
           h[m.id] = m.staff_role_qualifications.filter_map do |q|
-            q.house_role && { role: q.house_role, rate_cents: m.rate_cents_for(q.house_role).to_i }
+            next unless q.house_role
+
+            { role: q.house_role,
+              rate_cents: m.rate_cents_for(q.house_role).to_i,
+              # A flat role is priced per shift, so the client must not multiply
+              # this by hours. nil for hourly roles.
+              flat_cents: m.flat_cents_for(q.house_role),
+              label: m.rate_label_for(q.house_role) }
           end
         end
         # Everyone with hours waiting, for the bulk "Pull in approved hours"

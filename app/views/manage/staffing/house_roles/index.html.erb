@@ -40,7 +40,9 @@
              data-role-type="<%= role.role_type %>"
              data-role-location-id="<%= role.location_id %>"
              data-role-required-count="<%= role.default_required_count %>"
-             data-role-hourly-rate="<%= role.default_hourly_rate_dollars %>">
+             data-role-hourly-rate="<%= role.default_hourly_rate_dollars %>"
+             data-role-pay-type="<%= role.pay_type %>"
+             data-role-flat-rate="<%= role.default_flat_rate_dollars %>">
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline gap-2 flex-wrap">
               <span class="font-medium text-gray-900"><%= role.name %></span>
@@ -56,7 +58,8 @@
             </div>
             <div class="text-xs text-gray-500 mt-1">
               Needs <%= pluralize(role.default_required_count, "person") %> by default ·
-              <%= role.show_specific? ? "One shift per show" : "One shift for the evening" %>
+              <%= role.show_specific? ? "One shift per show" : "One shift for the evening" %><% if role.rate_label %> ·
+              <span class="<%= "text-purple-700 font-medium" if role.flat? %>"><%= role.rate_label %></span><% end %>
             </div>
           </div>
           <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -136,6 +139,17 @@
                       class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
               </div>
               <div>
+                <%= form.label :pay_type, "How it's paid", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.select :pay_type,
+                      [ [ "By the hour", "hourly" ], [ "Flat rate for the shift", "flat" ] ],
+                      {},
+                      data: { "house-role-modal-target": "payType", action: "change->house-role-modal#payTypeChanged" },
+                      class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div data-house-role-modal-target="hourlyRateWrap">
                 <%= form.label :default_hourly_rate_dollars, "Default hourly pay", class: "block text-sm font-medium text-gray-700 mb-1" %>
                 <div class="relative">
                   <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
@@ -145,6 +159,19 @@
                   <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/hr</span>
                 </div>
                 <p class="text-xs text-gray-500 mt-1">Pre-fills each staff member's rate for this role.</p>
+              </div>
+
+              <%# Flat: one amount for the shift, whatever hours it runs. %>
+              <div data-house-role-modal-target="flatRateWrap" class="hidden">
+                <%= form.label :default_flat_rate_dollars, "Flat rate per shift", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <%= form.text_field :default_flat_rate_dollars, inputmode: "decimal", placeholder: "0.00",
+                        data: { "house-role-modal-target": "flatRate" },
+                        class: "block w-full shadow-sm rounded-lg border border-gray-300 pl-7 pr-16 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/night</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Paid once per shift however long it runs. Hours are still logged.</p>
               </div>
             </div>
 

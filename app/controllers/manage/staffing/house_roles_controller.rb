@@ -72,7 +72,9 @@ module Manage
       def house_role_params
         params.require(:house_role).permit(
           :name, :role_type, :location_id, :default_required_count,
-          :default_hourly_rate_dollars
+          :default_hourly_rate_dollars,
+          :pay_type,
+          :default_flat_rate_dollars
         )
       end
     end
