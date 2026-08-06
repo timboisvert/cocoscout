@@ -647,10 +647,19 @@
                         <% if coverage %>
                           <div class="pt-3 border-t border-gray-200">
                             <p class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1.5">Show coverage</p>
-                            <div class="space-y-1 mb-3">
+                            <%# Each role flips on its own — a show can skip the booth
+                                tech and still be checked for the door person. %>
+                            <div class="space-y-1.5">
                               <% coverage[:roles].each do |role| %>
                                 <div class="flex items-center gap-2 text-sm">
-                                  <% if role[:covered] %>
+                                  <% if role[:exempt] %>
+                                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+                                    <span class="text-gray-500"><%= role[:name] %></span>
+                                    <span class="text-xs text-gray-400">not needed for this show</span>
+                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "ml-auto" do %>
+                                      <button type="submit" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">Needs it again</button>
+                                    <% end %>
+                                  <% elsif role[:covered] %>
                                     <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
                                     <span class="text-gray-900"><%= role[:name] %></span>
                                     <span class="text-xs text-gray-400">covered</span>
@@ -658,20 +667,13 @@
                                     <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
                                     <span class="text-gray-900"><%= role[:name] %></span>
                                     <span class="text-xs text-amber-700 font-medium">not covered yet</span>
+                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch, class: "ml-auto" do %>
+                                      <button type="submit" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">Not needed here</button>
+                                    <% end %>
                                   <% end %>
                                 </div>
                               <% end %>
                             </div>
-                            <% if coverage[:exempt] %>
-                              <p class="text-xs text-gray-500 mb-2">Coverage checks are off for this show — it won't be flagged as missing these roles.</p>
-                              <%= form_with url: manage_staffing_show_coverage_exempt_path(show), method: :patch do %>
-                                <%= render "shared/button", text: "Turn coverage checks back on", variant: "primary", size: "small", type: :submit %>
-                              <% end %>
-                            <% else %>
-                              <%= form_with url: manage_staffing_show_coverage_exempt_path(show, exempt: "1"), method: :patch do %>
-                                <%= render "shared/button", text: "This show doesn't need these roles", variant: "primary", size: "small", type: :submit %>
-                              <% end %>
-                            <% end %>
                           </div>
                         <% end %>
                       </div>

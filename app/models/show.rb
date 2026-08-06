@@ -287,6 +287,13 @@ class Show < ApplicationRecord
     "#{start_str} – #{end_str}"
   end
 
+  # Show-specific staffing roles this show has opted out of (the coverage
+  # assistant won't flag them). Stored as a jsonb id list, toggled per role
+  # from the scheduling page's show panel.
+  def staffing_coverage_exempt_role_ids
+    Array(self[:staffing_coverage_exempt_role_ids]).map(&:to_i)
+  end
+
   # Display name for the show (secondary_name if set, otherwise production name + event type)
   # For third-party productions, we don't append the event type since they often have unique names
   def display_name

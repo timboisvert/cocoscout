@@ -142,7 +142,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
       expect(response.body).to include("Show coverage")
       expect(response.body).to include("not covered yet")
-      expect(response.body).to include("This show doesn&#39;t need these roles")
+      expect(response.body).to include("Not needed here")
     end
 
     context "with the setting on" do
@@ -181,32 +181,54 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
         expect(response.body).not_to include("needs Booth Tech")
       end
 
-      it "skips shows marked as not needing coverage, and offers to re-enable" do
-        [ early_show, late_show ].each { |s| s.update!(staffing_coverage_exempt: true) }
+      it "skips roles a show marked as not needed, and offers to re-enable each" do
+        [ early_show, late_show ].each { |s| s.update!(staffing_coverage_exempt_role_ids: [ tech.id ]) }
 
         get manage_staffing_scheduling_path(week_start: week_start.to_s)
         expect(response.body).not_to include("needs Booth Tech")
-        expect(response.body).to include("Coverage checks are off for this show")
-        expect(response.body).to include("Turn coverage checks back on")
+        expect(response.body).to include("not needed for this show")
+        expect(response.body).to include("Needs it again")
+      end
+
+      it "an exempt role stays exempt while other roles still flag" do
+        door = create(:house_role, organization: org, name: "Door Person", role_type: :show_specific)
+        [ early_show, late_show ].each { |s| s.update!(staffing_coverage_exempt_role_ids: [ tech.id ]) }
+
+        get manage_staffing_scheduling_path(week_start: week_start.to_s)
+        expect(response.body).not_to include("needs Booth Tech")
+        expect(response.body).to include("needs Door Person")
       end
     end
   end
 
-  describe "the per-show coverage opt-out" do
-    it "flips the exemption on and off, anchored back to the day" do
-      patch manage_staffing_show_coverage_exempt_path(early_show, exempt: "1")
-      expect(early_show.reload.staffing_coverage_exempt).to be(true)
+  describe "the per-role coverage opt-out" do
+    let!(:tech) { create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific) }
+    let!(:door) { create(:house_role, organization: org, name: "Door Person", role_type: :show_specific) }
+
+    it "flips one role at a time, anchored back to the day" do
+      patch manage_staffing_show_coverage_exempt_path(early_show, role_id: tech.id, exempt: "1")
+      expect(early_show.reload.staffing_coverage_exempt_role_ids).to eq([ tech.id ])
       expect(response.headers["Location"]).to end_with("#day-#{show_day.iso8601}")
 
-      patch manage_staffing_show_coverage_exempt_path(early_show)
-      expect(early_show.reload.staffing_coverage_exempt).to be(false)
+      patch manage_staffing_show_coverage_exempt_path(early_show, role_id: door.id, exempt: "1")
+      expect(early_show.reload.staffing_coverage_exempt_role_ids).to contain_exactly(tech.id, door.id)
+
+      patch manage_staffing_show_coverage_exempt_path(early_show, role_id: tech.id)
+      expect(early_show.reload.staffing_coverage_exempt_role_ids).to eq([ door.id ])
     end
 
     it "refuses a show belonging to another organization" do
       foreign_show = create(:show, production: create(:production, organization: create(:organization, owner: create(:user))))
 
-      patch manage_staffing_show_coverage_exempt_path(foreign_show, exempt: "1")
-      expect(foreign_show.reload.staffing_coverage_exempt).to be(false)
+      patch manage_staffing_show_coverage_exempt_path(foreign_show, role_id: tech.id, exempt: "1")
+      expect(foreign_show.reload.staffing_coverage_exempt_role_ids).to eq([])
+    end
+
+    it "refuses a role belonging to another organization" do
+      foreign_role = create(:house_role, organization: create(:organization, owner: create(:user)), role_type: :show_specific)
+
+      patch manage_staffing_show_coverage_exempt_path(early_show, role_id: foreign_role.id, exempt: "1")
+      expect(early_show.reload.staffing_coverage_exempt_role_ids).to eq([])
     end
   end
 
