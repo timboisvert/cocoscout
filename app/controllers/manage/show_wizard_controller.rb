@@ -294,7 +294,12 @@ module Manage
         wday = weekday.to_i
         ordinal = week_ordinal.to_i
         first = nth_weekday_of_month(start_datetime.year, start_datetime.month, wday, ordinal)
-        first = nth_weekday_of_month((start_datetime >> 1).year, (start_datetime >> 1).month, wday, ordinal) if first.to_date < start_datetime.to_date
+        if first.to_date < start_datetime.to_date
+          # next_month, not `>> 1`: that's a Date method, and start_datetime is a
+          # TimeWithZone, which raises NoMethodError on it.
+          nm = start_datetime.next_month
+          first = nth_weekday_of_month(nm.year, nm.month, wday, ordinal)
+        end
         start_datetime = first.in_time_zone.change(hour: start_datetime.hour, min: start_datetime.min)
       end
 
@@ -313,7 +318,7 @@ module Manage
           current + 1.month
         when "monthly_week"
           if week_ordinal.present? && weekday.present?
-            next_month = current >> 1
+            next_month = current.next_month
             nth_weekday_of_month(next_month.year, next_month.month, weekday.to_i, week_ordinal.to_i)
               .in_time_zone.change(hour: current.hour, min: current.min)
           else
