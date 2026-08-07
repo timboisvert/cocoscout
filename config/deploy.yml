@@ -78,8 +78,6 @@ env:
     - REDIS_URL
     - STRIPE_SECRET_KEY
     - STRIPE_WEBHOOK_SECRET
-    # Connect endpoint's own signing secret (payee events: account.updated,
-    # payout.failed). Stripe issues one secret per endpoint.
     - STRIPE_CONNECT_WEBHOOK_SECRET
     - STRIPE_PRICE_PRO_MONTHLY
     - STRIPE_PRICE_PRO_ANNUAL
