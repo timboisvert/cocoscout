@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -556,9 +556,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_150000) do
     t.bigint "created_by_id"
     t.jsonb "deal_snapshot", default: {}, null: false
     t.datetime "executed_at"
+    t.boolean "force_overlap", default: false, null: false
     t.boolean "requires_signature", default: true, null: false
     t.datetime "sent_for_signature_at"
     t.string "signing_token"
+    t.jsonb "staged_amendment"
     t.integer "template_version"
     t.datetime "updated_at", null: false
     t.integer "version_number", null: false

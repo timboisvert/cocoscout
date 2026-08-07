@@ -328,6 +328,13 @@ class Contract < ApplicationRecord
         template_version: contract_template&.version
       )
       version.update!(executed_at: Time.current)
+      # This is the moment a staged amendment becomes real. Until now the live
+      # contract described the deal actually in force; their signature is what
+      # changes it.
+      if version.staged_amendment.present?
+        apply_amendment!(version.staged_amendment, force_overlap: version.force_overlap?)
+        clear_amend_data
+      end
       # Keep the token alive after execution so the signer can return to their
       # link for the signed PDF; only revoke nulls it.
       update!(signing_state: :executed, executed_at: executed_at || Time.current)
@@ -731,6 +738,103 @@ class Contract < ApplicationRecord
       "draft_data" => draft_data.except("amend"),
       "appendixes" => contract_appendixes.ordered.map { |a| { "title" => a.title, "position" => a.position, "body_html" => a.body_html } }
     }
+  end
+
+  # --- Applying an amendment ---------------------------------------------------
+  # Extracted from the controller so it can run twice: once inside a rolled-back
+  # transaction to render the document the counterparty is being asked to sign,
+  # and once for real when they sign it.
+  #
+  # Every side effect on Show and SpaceRental is after_commit, so the preview
+  # pass leaves nothing behind — no calendar syncs, no sign-up form instances,
+  # no contract-payment syncs.
+  def apply_amendment!(amend = amend_data, force_overlap: false)
+    new_bookings = amend["new_bookings"] || []
+    removed_rental_ids = amend["removed_rental_ids"] || []
+    staged_name = amend["production_name"].to_s.strip
+
+    # The deal config first, so payments derive the right direction.
+    update_draft_step(:payment_structure, amend["payment_structure"]) if amend.key?("payment_structure")
+    update_draft_step(:payment_config, amend["payment_config"]) if amend.key?("payment_config")
+    update_draft_step(:ticketing, amend["ticketing"]) if amend.key?("ticketing")
+    reconcile_service_payments!(amend["services"]) if amend.key?("services")
+
+    if staged_name.present? && staged_name != production_name.to_s
+      update!(production_name: staged_name)
+      production&.update!(name: staged_name)
+    end
+
+    if removed_rental_ids.any?
+      Show.where(space_rental_id: removed_rental_ids).destroy_all
+      space_rentals.where(id: removed_rental_ids).destroy_all
+    end
+
+    event_type = (draft_data["production"] || {})["event_type"].presence || "show"
+    new_bookings.each { |booking| create_amended_booking!(booking, event_type, force_overlap) }
+
+    # After shows exist, so per-event payments can link to them.
+    reconcile_amended_payments!(amend["payments"]) if amend.key?("payments")
+
+    rentals = space_rentals.reload
+    if rentals.any?
+      update!(
+        contract_start_date: [ contract_start_date, rentals.minimum(:starts_at)&.to_date ].compact.min,
+        contract_end_date: [ contract_end_date, rentals.maximum(:ends_at)&.to_date ].compact.max
+      )
+    end
+    true
+  end
+
+  # What the amended contract WOULD look like, without leaving a trace. Applied
+  # inside a savepoint and rolled back, so the document we send for signature
+  # describes the proposed deal while the live records still describe the
+  # current one.
+  def preview_amendment(amend = amend_data, force_overlap: false)
+    document = nil
+    snapshot = nil
+    transaction(requires_new: true) do
+      apply_amendment!(amend, force_overlap: force_overlap)
+      document = render_signable_document.to_s
+      snapshot = version_deal_snapshot
+      raise ActiveRecord::Rollback
+    end
+    reload
+    [ document, snapshot ]
+  end
+
+  # An amendment is staged and waiting on a signature. Nothing about it has
+  # touched the live contract yet.
+  def amendment_pending?
+    v = current_version
+    v.present? && v.requires_signature? && v.executed_at.nil? && v.staged_amendment.present?
+  end
+
+  def create_amended_booking!(booking, event_type, force_overlap)
+    starts_at = Time.zone.parse(booking["starts_at"])
+    ends_at = starts_at + (booking["duration"] || 2).to_f.hours
+
+    rental = space_rentals.create!(
+      location_id: booking["location_id"],
+      location_space_id: booking["space_id"].presence,
+      starts_at: starts_at,
+      ends_at: ends_at,
+      event_starts_at: booking["event_starts_at"].present? ? Time.zone.parse(booking["event_starts_at"]) : nil,
+      event_ends_at: booking["event_ends_at"].present? ? Time.zone.parse(booking["event_ends_at"]) : nil,
+      notes: booking["notes"],
+      confirmed: true,
+      allow_overlap: force_overlap
+    )
+
+    return unless production
+
+    production.shows.create!(
+      date_and_time: rental.effective_event_starts_at,
+      duration_minutes: rental.effective_duration_minutes,
+      location: rental.location,
+      location_space: rental.location_space,
+      space_rental: rental,
+      event_type: event_type
+    )
   end
 
   # Re-derive the contract's span from the dates it actually holds. Called after

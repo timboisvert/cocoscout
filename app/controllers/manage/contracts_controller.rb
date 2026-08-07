@@ -588,132 +588,77 @@ module Manage
     end
 
     def apply_amendments
-      # An outstanding signature request has to be pulled back first — the
-      # counterparty may be mid-read, and silently swapping the document under
-      # them is worse than making the producer revoke it deliberately.
       if @contract.signing_out_for_signature?
         redirect_to manage_contract_path(@contract),
                     alert: "Revoke the outstanding signature request before amending this contract." and return
       end
+      if @contract.amendment_pending?
+        redirect_to manage_contract_path(@contract),
+                    alert: "There's already an amendment waiting to be signed. Withdraw it before starting another." and return
+      end
 
       @amend_data = @contract.amend_data
-      new_bookings = @amend_data["new_bookings"] || []
-      removed_rental_ids = @amend_data["removed_rental_ids"] || []
+      force_overlap = params[:force_overlap] == "1"
+      # E-sign contracts default to needing a signature; an offline one has no
+      # signing machinery, so it can only ever be an internal correction.
+      needs_signature = @contract.signing_mode_esign? &&
+                        @contract.contract_versions.any? &&
+                        params[:requires_signature] != "0"
 
-      staged_production_name = @amend_data["production_name"].to_s.strip
-
-      success = @contract.transaction do
-        # The deal config (who sells + settlement) — write it through before
-        # reconciling payments so their derived direction is correct.
-        @contract.update_draft_step(:payment_structure, @amend_data["payment_structure"]) if @amend_data.key?("payment_structure")
-        @contract.update_draft_step(:payment_config, @amend_data["payment_config"]) if @amend_data.key?("payment_config")
-
-        # Ticketing is plain config — write it straight through.
-        @contract.update_draft_step(:ticketing, @amend_data["ticketing"]) if @amend_data.key?("ticketing")
-
-        # Services are billable line items. Reconcile: drop the pending payments
-        # for the old set, save the new set, and bill the new set. Paid service
-        # payments are left alone.
-        if @amend_data.key?("services")
-          @contract.reconcile_service_payments!(@amend_data["services"])
-        end
-
-        # Rename the contract's production and propagate to the linked Production
-        # record(s) so the contract and the show stay in sync.
-        if staged_production_name.present? && staged_production_name != @contract.production_name.to_s
-          @contract.update!(production_name: staged_production_name)
-          @contract.production&.update!(name: staged_production_name)
-        end
-
-        # Remove rentals and their associated shows
-        if removed_rental_ids.any?
-          Show.where(space_rental_id: removed_rental_ids).destroy_all
-          @contract.space_rentals.where(id: removed_rental_ids).destroy_all
-        end
-
-        # Find the production for this contract (needed to create shows)
-        production = @contract.production
-        prod_data = @contract.draft_data["production"] || {}
-        event_type = prod_data["event_type"].presence || "show"
-
-        # Add new bookings as space_rentals AND create corresponding shows
-        new_bookings.each do |booking|
-          starts_at = Time.zone.parse(booking["starts_at"])
-          duration_hours = (booking["duration"] || 2).to_f
-          ends_at = starts_at + duration_hours.hours
-
-          rental = @contract.space_rentals.create!(
-            location_id: booking["location_id"],
-            location_space_id: booking["space_id"].presence,
-            starts_at: starts_at,
-            ends_at: ends_at,
-            # The actual event may run at a different time within the slot.
-            event_starts_at: booking["event_starts_at"].present? ? Time.zone.parse(booking["event_starts_at"]) : nil,
-            event_ends_at: booking["event_ends_at"].present? ? Time.zone.parse(booking["event_ends_at"]) : nil,
-            notes: booking["notes"],
-            confirmed: true,
-            allow_overlap: params[:force_overlap] == "1"
-          )
-
-          # Create a show for the new rental so it appears in Shows & Events. It
-          # runs at the event time, not necessarily the whole booked slot.
-          if production
-            production.shows.create!(
-              date_and_time: rental.effective_event_starts_at,
-              duration_minutes: rental.effective_duration_minutes,
-              location: rental.location,
-              location_space: rental.location_space,
-              space_rental: rental,
-              event_type: event_type
-            )
-          end
-        end
-
-        # Reconcile the payment list from the Financials editor. Runs after shows
-        # exist so per-event payments can re-link; paid payments are preserved.
-        @contract.reconcile_amended_payments!(@amend_data["payments"]) if @amend_data.key?("payments")
-
-        # Update contract dates if needed
-        all_rentals = @contract.space_rentals.reload
-        if all_rentals.any?
-          min_date = all_rentals.minimum(:starts_at)&.to_date
-          max_date = all_rentals.maximum(:ends_at)&.to_date
-          @contract.update!(
-            contract_start_date: [ @contract.contract_start_date, min_date ].compact.min,
-            contract_end_date: [ @contract.contract_end_date, max_date ].compact.max
-          )
-        end
-
-        true
-      end
-
-      # Clear amend data from contract
-      @contract.clear_amend_data
-
-      unless success
-        redirect_to amend_review_manage_contract_path(@contract), alert: "Could not apply amendments." and return
-      end
-
-      version = cut_amendment_version!
-      if version&.requires_signature?
-        # Back to unsent so the existing Prepare -> Sign -> Send wizard handles
-        # re-signature with no new signing UI. executed_at is left alone: it
-        # means "first executed", and signing_state alone already flips
-        # signing_executed?.
-        @contract.update!(signing_state: :unsent)
-        redirect_to manage_sign_contract_wizard_path(@contract),
-                    notice: "Amendment applied as #{version.label}. Sign it and send it to #{@contract.contractor_name}."
+      if needs_signature
+        stage_amendment_for_signature!(force_overlap)
       else
-        GenerateContractPdfJob.perform_later(@contract.id, version.id) if version
-        redirect_to manage_contract_path(@contract),
-                    notice: version ? "Contract amended — recorded as #{version.label}." : "Contract amended successfully."
+        apply_amendment_now!(force_overlap)
       end
     rescue ActiveRecord::RecordInvalid => e
-      # An overlap validation used to escape as a 500 from here.
       redirect_to amend_review_manage_contract_path(@contract), alert: "Could not apply amendments: #{e.message}"
     end
 
     private
+
+    # Needs a signature, so nothing goes live. The version carries the proposed
+    # document — rendered by applying inside a rolled-back savepoint — plus the
+    # amendment itself, which is applied for real when they sign.
+    def stage_amendment_for_signature!(force_overlap)
+      @contract.ensure_baseline_version!(created_by: Current.user)
+      document, snapshot = @contract.preview_amendment(@amend_data, force_overlap: force_overlap)
+
+      version = @contract.with_lock do
+        @contract.contract_versions.create!(
+          version_number: (@contract.contract_versions.maximum(:version_number) || 0) + 1,
+          content_snapshot: document,
+          deal_snapshot: snapshot,
+          contract_template: @contract.contract_template,
+          template_version: @contract.contract_template&.version,
+          requires_signature: true,
+          staged_amendment: @amend_data,
+          force_overlap: force_overlap,
+          change_summary: amendment_change_summary,
+          created_by: Current.user
+        )
+      end
+
+      # Back to unsent so the existing Prepare → Sign → Send wizard drives the
+      # re-signature. amend_data stays put — it's what gets applied on signing.
+      @contract.update!(signing_state: :unsent)
+      redirect_to manage_sign_contract_wizard_path(@contract),
+                  notice: "#{version.label} is ready. Sign it and send it to #{@contract.contractor_name} — " \
+                          "nothing changes on the contract until they sign."
+    end
+
+    # An internal correction: no signature, so it takes effect at once.
+    def apply_amendment_now!(force_overlap)
+      @contract.ensure_baseline_version!(created_by: Current.user)
+      @contract.transaction { @contract.apply_amendment!(@amend_data, force_overlap: force_overlap) }
+      @contract.clear_amend_data
+
+      version = @contract.cut_version!(requires_signature: false, created_by: Current.user,
+                                       change_summary: amendment_change_summary)
+      GenerateContractPdfJob.perform_later(@contract.id, version.id)
+      redirect_to manage_contract_path(@contract),
+                  notice: "Contract amended — recorded as #{version.label}."
+    end
+
 
     # Remove a contract's own shows, and delete its production only when no other
     # contract still uses it and it has no remaining shows (productions are shared).
