@@ -420,7 +420,9 @@ module Manage
     # for every show in the week with at least one applicable show-specific
     # role. exempt is the per-show, per-role opt-out toggled from the panel.
     def show_coverage_by_show(shifts)
-      show_roles = Current.organization.house_roles.active.select(&:show_specific?)
+      # Only roles the org has kept in Role Call — a role opted out on the roles
+      # page is invisible here, so it can neither flag a show nor be excused.
+      show_roles = Current.organization.house_roles.role_call.ordered.to_a
       return {} if show_roles.empty?
 
       covered = Hash.new { |h, k| h[k] = Set.new }

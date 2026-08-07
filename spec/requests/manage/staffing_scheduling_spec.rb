@@ -218,6 +218,26 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
         expect(response.body).to include("Needs it again")
       end
 
+      it "a role kept out of Role Call never flags a show" do
+        tech.update!(include_in_role_call: false)
+
+        get manage_staffing_scheduling_path(week_start: week_start.to_s)
+        expect(response.body).not_to include("needs Booth Tech")
+      end
+
+      it "a role kept out of Role Call isn't offered as excusable either" do
+        door = create(:house_role, organization: org, name: "Door Person", role_type: :show_specific)
+        tech.update!(include_in_role_call: false)
+
+        get manage_staffing_scheduling_path(week_start: week_start.to_s)
+        # The panel lists every checked role with its own excuse/re-enable form.
+        # An opted-out role is out of the feature entirely, not merely covered,
+        # so it gets no row — asserted on the form's role_id, since the role
+        # name also appears in the schedule grid.
+        expect(response.body).to include("role_id=#{door.id}")
+        expect(response.body).not_to include("role_id=#{tech.id}")
+      end
+
       it "an exempt role stays exempt while other roles still flag" do
         door = create(:house_role, organization: org, name: "Door Person", role_type: :show_specific)
         [ early_show, late_show ].each { |s| s.update!(staffing_coverage_exempt_role_ids: [ tech.id ]) }

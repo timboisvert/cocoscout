@@ -157,11 +157,12 @@ class OrganizationStaffMember < ApplicationRecord
     (hours.to_d * rate_cents_for(house_role).to_i).round
   end
 
-  # What this member's pay for a role reads as: "$20.00/hr" or "$50.00/night".
+  # What this member's pay for a role reads as: "$20.00/hr" or "$50.00/shift".
+  # "Shift", never "night" — a matinee or a rehearsal call is neither.
   def rate_label_for(house_role)
     if house_role&.flat?
       cents = flat_cents_for(house_role)
-      cents ? "$#{format('%.2f', cents / 100.0)}/night" : nil
+      cents ? "$#{format('%.2f', cents / 100.0)}/shift" : nil
     else
       cents = rate_cents_for(house_role)
       cents ? "$#{format('%.2f', cents / 100.0)}/hr" : nil

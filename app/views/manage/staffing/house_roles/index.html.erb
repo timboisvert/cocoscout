@@ -42,12 +42,18 @@
              data-role-required-count="<%= role.default_required_count %>"
              data-role-hourly-rate="<%= role.default_hourly_rate_dollars %>"
              data-role-pay-type="<%= role.pay_type %>"
-             data-role-flat-rate="<%= role.default_flat_rate_dollars %>">
+             data-role-flat-rate="<%= role.default_flat_rate_dollars %>"
+             data-role-role-call="<%= role.include_in_role_call? %>">
           <div class="flex-1 min-w-0">
             <div class="flex items-baseline gap-2 flex-wrap">
               <span class="font-medium text-gray-900"><%= role.name %></span>
               <% if role.show_specific? %>
                 <span class="text-xs px-2 py-0.5 rounded bg-purple-50 text-purple-700">Per-show</span>
+              <% end %>
+              <%# Only worth saying when it's the exception — and only when the
+                  org runs Role Call at all. %>
+              <% if @role_call_enabled && role.show_specific? && !role.include_in_role_call? %>
+                <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">Not in Role Call</span>
               <% end %>
               <% if role.archived? %>
                 <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">Archived</span>
@@ -113,7 +119,7 @@
                     [ [ "House role — one shift for the whole evening", "house" ],
                       [ "Show-specific — one shift per show/rehearsal", "show_specific" ] ],
                     {},
-                    data: { "house-role-modal-target": "roleTypeSelect" },
+                    data: { "house-role-modal-target": "roleTypeSelect", action: "change->house-role-modal#roleTypeChanged" },
                     class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
               <p class="text-xs text-gray-500 mt-1">
                 House roles (bartender, FOH) get one shift spanning all of a day's shows.
@@ -169,11 +175,34 @@
                   <%= form.text_field :default_flat_rate_dollars, inputmode: "decimal", placeholder: "0.00",
                         data: { "house-role-modal-target": "flatRate" },
                         class: "block w-full shadow-sm rounded-lg border border-gray-300 pl-7 pr-16 py-2 focus:ring-pink-500 focus:border-pink-500" %>
-                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/night</span>
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/shift</span>
                 </div>
                 <p class="text-xs text-gray-500 mt-1">Paid once per shift however long it runs. Hours are still logged.</p>
               </div>
             </div>
+
+            <% if @role_call_enabled %>
+              <%# Role Call only ever checks per-show roles, so the switch is
+                  revealed with the role type rather than sitting there greyed
+                  out on a house role it would never apply to. %>
+              <div data-house-role-modal-target="roleCallWrap" class="hidden">
+                <label class="flex items-start gap-2.5 p-3 rounded-lg border border-gray-200 cursor-pointer hover:border-pink-300">
+                  <%= form.check_box :include_in_role_call, {
+                        checked: true,
+                        data: { "house-role-modal-target": "roleCall" },
+                        class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+                      }, "1", "0" %>
+                  <span class="text-sm text-gray-700">
+                    <span class="block font-medium text-gray-900">Include this role in Role Call</span>
+                    <span class="block text-xs text-gray-500 mt-0.5">
+                      Shows without it get flagged on
+                      <%= link_to "Scheduling", manage_staffing_scheduling_path, class: "text-pink-600 hover:text-pink-700 underline" %>.
+                      Turn it off for a role you only staff occasionally — a videographer, say — so its absence isn't treated as a gap.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            <% end %>
 
           </div>
 

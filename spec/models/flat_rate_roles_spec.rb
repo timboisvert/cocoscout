@@ -39,10 +39,10 @@ RSpec.describe "Flat-rate house roles", type: :model do
       expect(member.reload.amount_cents_for(flat_role, hours: 4)).to eq(7_500)
     end
 
-    it "reads as per-night rather than per-hour" do
-      expect(member.rate_label_for(flat_role)).to eq("$50.00/night")
+    it "reads as per-shift rather than per-hour" do
+      expect(member.rate_label_for(flat_role)).to eq("$50.00/shift")
       expect(member.rate_label_for(hourly_role)).to eq("$20.00/hr")
-      expect(flat_role.rate_label).to eq("$50.00/night")
+      expect(flat_role.rate_label).to eq("$50.00/shift")
     end
   end
 
@@ -54,7 +54,7 @@ RSpec.describe "Flat-rate house roles", type: :model do
       expect(cents).to eq(5_000)
     end
 
-    it "pays a flat night once even when it was logged as two stints" do
+    it "pays a flat shift once even when it was logged as two stints" do
       # (The DB already allows only one entry per shift assignment, so the way
       # a night gets logged twice is two manual entries on the same date.)
       first = entry!(flat_role, hours: 2)
@@ -67,7 +67,7 @@ RSpec.describe "Flat-rate house roles", type: :model do
       expect(cents).to eq(5_000)
     end
 
-    it "pays two separate nights twice" do
+    it "pays two separate days twice" do
       first = entry!(flat_role, hours: 4)
       second = org.staff_time_entries.create!(person: person, house_role: flat_role, hours: 4,
                                               started_at: 5.days.ago, ended_at: 5.days.ago + 4.hours,
@@ -89,10 +89,10 @@ RSpec.describe "Flat-rate house roles", type: :model do
   end
 
   describe "the employee agreement" do
-    it "describes a flat role per night" do
+    it "describes a flat role per shift" do
       create(:staff_role_qualification, organization_staff_member: member, house_role: flat_role)
 
-      expect(member.reload.agreement_schedule_html).to include("Security &mdash; $50.00/night")
+      expect(member.reload.agreement_schedule_html).to include("Security &mdash; $50.00/shift")
     end
   end
 end

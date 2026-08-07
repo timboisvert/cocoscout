@@ -37,9 +37,9 @@ class StaffPayRunService
                           .includes(:house_role, shift_assignment: { shift: :house_role })
                           .to_a
 
-    # A flat role pays once per night, not once per entry — logging the same
+    # A flat role pays once per shift, not once per entry — logging the same
     # security shift as two stints is still $50. Keyed by the shift where there
-    # is one, and otherwise by the date, so two separate nights still pay twice.
+    # is one, and otherwise by the date, so two separate days still pay twice.
     flat, hourly = entries.partition { |e| e.effective_house_role&.flat? }
     flat_cents = flat.uniq { |e| [ e.effective_house_role&.id, e.shift_assignment_id || e.started_at.to_date ] }
                      .sum { |e| member.amount_cents_for(e.effective_house_role, hours: e.hours) }

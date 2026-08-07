@@ -8,6 +8,9 @@ module Manage
 
       def index
         @house_roles = Current.organization.house_roles.ordered
+        # The per-role Role Call opt-out is only offered when the org runs Role
+        # Call at all — otherwise it's a switch attached to nothing.
+        @role_call_enabled = Current.organization.alert_uncovered_show_roles?
       end
 
       # Turbo-frame role manager, embedded in a modal on the staff wizard / edit
@@ -74,7 +77,8 @@ module Manage
           :name, :role_type, :location_id, :default_required_count,
           :default_hourly_rate_dollars,
           :pay_type,
-          :default_flat_rate_dollars
+          :default_flat_rate_dollars,
+          :include_in_role_call
         )
       end
     end

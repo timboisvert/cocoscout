@@ -48,7 +48,9 @@
                       <%= e.started_at.strftime("%-l:%M %p") %>–<%= e.ended_at.strftime("%-l:%M %p") %>
                       <% role_label = e.shift&.role_label.presence || e.house_role&.name %>
                       <% if role_label.present? %> · <%= role_label %><% end %>
-                      <% if entry_rate_cents.positive? %> · <%= number_to_currency(entry_rate_cents / 100.0) %>/hr<% end %>
+                      <%# rate_label_for, not a hand-built "/hr" — a flat role is priced per shift. %>
+                      <% entry_rate_label = member.rate_label_for(e.effective_house_role) %>
+                      <% if entry_rate_label %> · <%= entry_rate_label %><% end %>
                     </div>
                   </div>
                 </label>

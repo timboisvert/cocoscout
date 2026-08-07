@@ -21,7 +21,7 @@
   <% elsif role_rates.size == 1 %>
     <span class="flex-1 min-w-0 text-sm text-gray-600 truncate" data-adhoc-fixed
           data-role-id="<%= role_rates.first[:role].id %>" data-rate-cents="<%= role_rates.first[:rate_cents] %>" data-flat-cents="<%= role_rates.first[:flat_cents] %>">
-      as <%= role_rates.first[:role].name %> · <%= number_to_currency(role_rates.first[:rate_cents] / 100.0) %>/hr
+      as <%= role_rates.first[:role].name %> · <%= role_rates.first[:label] || "#{number_to_currency(role_rates.first[:rate_cents] / 100.0)}/hr" %>
     </span>
   <% else %>
     <span class="flex-1 min-w-0 text-sm text-gray-500 truncate">

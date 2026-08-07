@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_08_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -752,7 +752,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_210000) do
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -995,6 +995,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_210000) do
     t.integer "default_flat_rate_cents"
     t.integer "default_hourly_rate_cents"
     t.integer "default_required_count", default: 1, null: false
+    t.boolean "include_in_role_call", default: true, null: false
     t.bigint "location_id"
     t.string "name", null: false
     t.bigint "organization_id", null: false

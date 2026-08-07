@@ -28,8 +28,9 @@
           <span class="block text-sm font-medium text-gray-900">Run Role Call on my shows</span>
           <span class="block text-xs text-gray-500 mt-0.5">
             Covers every role set to "one shift per show" on the
-            <%= link_to "roles page", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700 underline" %>.
-            Roles tied to a venue only count for shows at that venue.
+            <%= link_to "roles page", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700 underline" %>,
+            unless that role is set to sit Role Call out. Roles tied to a venue
+            only count for shows at that venue.
           </span>
         </span>
       </label>

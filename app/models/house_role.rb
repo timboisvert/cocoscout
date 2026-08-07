@@ -27,6 +27,15 @@ class HouseRole < ApplicationRecord
   validates :default_flat_rate_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :pay_type, inclusion: { in: PAY_TYPES }
 
+  # Role Call only ever looks at per-show roles, and only at the ones the org
+  # actually expects on every show. A role opted out is still staffed and paid
+  # like any other — it just never flags a show for being without it.
+  scope :role_call, -> { active.where(role_type: role_types[:show_specific], include_in_role_call: true) }
+
+  def role_called?
+    show_specific? && include_in_role_call?
+  end
+
   def flat?
     pay_type == "flat"
   end
@@ -35,12 +44,13 @@ class HouseRole < ApplicationRecord
     !flat?
   end
 
-  # What this role's pay looks like on screen: "$20.00/hr" or "$50.00/night".
+  # What this role's pay looks like on screen: "$20.00/hr" or "$50.00/shift".
+  # Never "/night" — plenty of shifts are matinees, load-ins or rehearsals.
   def rate_label
     cents = flat? ? default_flat_rate_cents : default_hourly_rate_cents
     return nil if cents.blank?
 
-    "$#{format('%.2f', cents / 100.0)}#{flat? ? '/night' : '/hr'}"
+    "$#{format('%.2f', cents / 100.0)}#{flat? ? '/shift' : '/hr'}"
   end
 
   # Dollar view of the role's standard pay, for forms. nil = no default set.

@@ -10,7 +10,8 @@ export default class extends Controller {
         "modal", "form", "title", "submitButton", "methodInput",
         "nameInput", "roleTypeSelect", "locationSelect", "requiredCount",
         "hourlyRate", "deleteButton",
-        "payType", "flatRate", "hourlyRateWrap", "flatRateWrap"
+        "payType", "flatRate", "hourlyRateWrap", "flatRateWrap",
+        "roleCall", "roleCallWrap"
     ]
     static values = {
         createUrl: String,
@@ -43,7 +44,10 @@ export default class extends Controller {
         if (this.hasHourlyRateTarget)    this.hourlyRateTarget.value    = btn.dataset.roleHourlyRate || ""
         if (this.hasPayTypeTarget)       this.payTypeTarget.value       = btn.dataset.rolePayType || "hourly"
         if (this.hasFlatRateTarget)      this.flatRateTarget.value      = btn.dataset.roleFlatRate || ""
+        // Absent attribute means an older row — treat it as in, matching the default.
+        if (this.hasRoleCallTarget) this.roleCallTarget.checked = btn.dataset.roleRoleCall !== "false"
         this.syncPayType()
+        this.syncRoleCall()
 
         if (this.hasFormTarget && this.hasUpdateUrlTemplateValue) {
             // update (PATCH) and destroy (DELETE) share the same path
@@ -108,7 +112,10 @@ export default class extends Controller {
         if (this.hasHourlyRateTarget)    this.hourlyRateTarget.value = ""
         if (this.hasPayTypeTarget)       this.payTypeTarget.value = "hourly"
         if (this.hasFlatRateTarget)      this.flatRateTarget.value = ""
+        // A new role is in Role Call unless its author says otherwise.
+        if (this.hasRoleCallTarget)      this.roleCallTarget.checked = true
         this.syncPayType()
+        this.syncRoleCall()
     }
 
     setSubmitText(text) {
@@ -128,5 +135,18 @@ export default class extends Controller {
         const flat = this.payTypeTarget.value === "flat"
         if (this.hasHourlyRateWrapTarget) this.hourlyRateWrapTarget.classList.toggle("hidden", flat)
         if (this.hasFlatRateWrapTarget) this.flatRateWrapTarget.classList.toggle("hidden", !flat)
+    }
+
+    roleTypeChanged() {
+        this.syncRoleCall()
+    }
+
+    // Role Call only checks per-show roles, so the switch appears only for one.
+    // It stays in the form either way — an inert value on a house role beats a
+    // field that vanishes and silently reverts what someone chose.
+    syncRoleCall() {
+        if (!this.hasRoleCallWrapTarget || !this.hasRoleTypeSelectTarget) return
+        const perShow = this.roleTypeSelectTarget.value === "show_specific"
+        this.roleCallWrapTarget.classList.toggle("hidden", !perShow)
     }
 }
