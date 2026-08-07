@@ -16,12 +16,39 @@ build on setup from earlier ones.
 kamal deploy
 ```
 
-**Then one manual step in Stripe** — this is the only thing a deploy can't do
-for you. In the Stripe dashboard, open your **live** Connect webhook endpoint
-and add the event **`payout.failed`**. Nothing in section 4 works without it,
-because that's the only signal Stripe gives when a payee's bank rejects a
-deposit. While you're there, confirm `account.updated` is still listed — section
-5's instant path uses it.
+**Then one manual step in Stripe** — the only thing a deploy can't do for you.
+Section 4 is completely inert without it, because `payout.failed` is the only
+signal Stripe gives when a payee's bank rejects a deposit.
+
+1. Dashboard in **Live** mode (check the toggle top-right), then
+   `https://dashboard.stripe.com/webhooks` — the nav calls it either
+   **Developers → Webhooks** or **Developers → Event destinations** depending on
+   which dashboard version you get.
+2. Find the endpoint for `https://cocoscout.com/webhooks/stripe`. **If it says
+   "All events" / `*`, you're done — nothing to add.**
+3. Otherwise: you may have two endpoints on that URL, one for events on *your*
+   account and one for events on *connected* accounts. You want the connected
+   one — identify it as the endpoint that already lists `account.updated`
+   (that's section 5's instant path, already working).
+4. Open it → **"..." → Update details** (or **Select events**), search
+   `payout.failed`, tick it, save. Confirm `account.updated` is still ticked
+   while you're in there.
+
+**The gotcha:** `payout.failed` exists for both your platform account and for
+connected accounts, and they're different events. Only the connected-account one
+matters — the handler bails unless the event carries an `account` field, which
+only connected-account events do. Added to the wrong endpoint it looks
+configured and does nothing.
+
+**Verify from the terminal instead:**
+
+```bash
+stripe webhook_endpoints list
+```
+
+Each entry shows `url`, `enabled_events` and `connect: true/false`. You want
+`payout.failed` in the one where `connect` is `true`. Don't use the CLI to
+*edit* — `update` replaces the whole event list rather than appending to it.
 
 **Optional, whenever you want the two new roles:**
 
