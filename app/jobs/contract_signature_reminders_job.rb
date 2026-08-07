@@ -17,8 +17,12 @@ class ContractSignatureRemindersJob < ApplicationJob
                    .includes(contract: :organization)
                    .find_each do |version|
       next unless version.contract&.signing_out_for_signature?
+      # No deadline means it predates them. Backfilled on deploy, but never
+      # guess one here: "no deadline" would otherwise read as "past every
+      # threshold" and fire the final warning immediately.
+      next if version.signature_due_at.blank?
 
-      if version.signature_due_at.present? && version.signature_due_at < now
+      if version.signature_due_at < now
         expire!(version)
       else
         nudge(version)

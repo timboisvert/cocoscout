@@ -56,6 +56,15 @@ RSpec.describe ContractSignatureRemindersJob, type: :job do
     end
   end
 
+  describe "a request sent before deadlines existed" do
+    it "is left alone rather than treated as past every threshold" do
+      version.update!(signature_due_at: nil, sent_for_signature_at: 20.days.ago)
+
+      expect { described_class.perform_now }.not_to change { version.reload.nudge_count }
+      expect(contract.reload.signing_state).to eq("out_for_signature")
+    end
+  end
+
   describe "expiry" do
     before { version.update!(signature_due_at: 1.day.ago) }
 
