@@ -5,7 +5,7 @@ module Manage
   # as a tab, so only the section you're looking at loads its data and a link
   # can point straight at it.
   class ContractSettingsController < Manage::ManageController
-    SECTIONS = %w[payments services templates notifications].freeze
+    SECTIONS = %w[payments services templates signing notifications].freeze
     DEFAULT_SECTION = "payments"
 
     before_action :set_section, only: %i[show]
@@ -20,6 +20,8 @@ module Manage
         @service = Current.organization.contract_service_options.new(unit: "hourly", default_direction: "incoming")
       when "templates"
         @contract_templates = Current.organization.contract_templates.order(:name)
+      when "signing"
+        @expiry_days = Current.organization.signature_expiry_days
       when "notifications"
         @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
         @notification_selected_ids = Current.organization.contract_notification_user_ids
@@ -41,6 +43,17 @@ module Manage
       selected = Array(params[:notification_user_ids]).map(&:to_i) & manager_ids
       Current.organization.update!(contract_notification_user_ids: selected)
       redirect_to section_path("notifications"), notice: "Notification recipients updated."
+    end
+
+    # How long a signature request stays valid before it expires.
+    def update_signing
+      days = params[:signature_expiry_days].to_i
+      unless Organization::SIGNATURE_EXPIRY_CHOICES.include?(days)
+        redirect_to section_path("signing"), alert: "Pick 7, 14 or 30 days." and return
+      end
+
+      Current.organization.update!(signature_expiry_days: days)
+      redirect_to section_path("signing"), notice: "Contracts now expire #{days} days after they're sent."
     end
 
     def create_service

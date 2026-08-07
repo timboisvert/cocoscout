@@ -282,14 +282,23 @@ class Contract < ApplicationRecord
   # Send (wizard "Send" step): the org has signed; now mint a fresh link and put it
   # out for the counterparty to sign. (Templated email + in-app message are enqueued
   # by the caller.)
-  def send_for_signature!
+  def send_for_signature!(expiry_days: nil)
     return false unless signing_awaiting_send?
 
     regenerate_signing_token!
     update!(signing_state: :out_for_signature, sent_for_signature_at: Time.current)
     # Record which token this version went out with, so a link the counterparty
-    # kept can be recognised as superseded rather than dying as "invalid".
-    current_version&.update!(signing_token: signing_token, sent_for_signature_at: Time.current)
+    # kept can be recognised as superseded rather than dying as "invalid" — and
+    # start its clock.
+    days = (expiry_days.presence || organization.signature_expiry_days).to_i
+    current_version&.update!(
+      signing_token: signing_token,
+      sent_for_signature_at: Time.current,
+      signature_due_at: days.days.from_now.end_of_day,
+      expired_at: nil,
+      last_nudged_at: nil,
+      nudge_count: 0
+    )
     true
   end
 
@@ -301,6 +310,19 @@ class Contract < ApplicationRecord
 
     update!(signing_state: :awaiting_send, signing_token: nil, sent_for_signature_at: nil)
     current_version&.update!(signing_token: nil, sent_for_signature_at: nil)
+    true
+  end
+
+  # The deadline passed. The link dies and the request drops back to
+  # ready-to-send — the org's signature, the locked document and any staged
+  # amendment all survive, so re-sending is one click rather than a rebuild.
+  def expire_signature_request!
+    return false unless signing_out_for_signature?
+
+    transaction do
+      update!(signing_state: :awaiting_send, signing_token: nil, sent_for_signature_at: nil)
+      current_version&.update!(expired_at: Time.current, signing_token: nil)
+    end
     true
   end
 

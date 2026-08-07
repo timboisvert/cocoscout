@@ -19,6 +19,9 @@ class ContractSigningController < ApplicationController
 
     @document = signable_document
     @signer_person = signed_in_signer_person
+    # An amendment: say what actually changed, so signing is agreeing rather
+    # than scrolling.
+    @change_lines = amendment_change_lines
   end
 
   # Record the counterparty's agreement.
@@ -69,6 +72,15 @@ class ContractSigningController < ApplicationController
   # The exact document the org sent — the snapshot the org signed, so both parties
   # agree to identical text. Falls back to a fresh render if somehow absent. The
   # snapshot is our own generated HTML, so render it as HTML (not escaped text).
+  # Plain-English diff for an amendment awaiting signature. Empty for a first
+  # signature — there's nothing to compare against.
+  def amendment_change_lines
+    version = @contract.current_version
+    return [] if version.blank? || version.staged_amendment.blank?
+
+    ContractAmendmentSummary.lines(@contract, version.staged_amendment)
+  end
+
   def signable_document
     # The version's snapshot, never a live re-render — amending the deal must
     # not silently rewrite the document somebody is about to sign.

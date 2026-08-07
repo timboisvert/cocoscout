@@ -37,8 +37,7 @@ class PayoutReturnedNotificationJob < ApplicationJob
       recipients: [ person ],
       organization: organization,
       message_type: :system,
-      system_generated: true,
-      skip_digest: true
+      system_generated: true
     )
   rescue StandardError => e
     Rails.logger.error("[PayoutReturnedNotificationJob] payee #{item.id}: #{e.class}: #{e.message}")

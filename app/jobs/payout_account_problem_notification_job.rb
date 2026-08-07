@@ -33,8 +33,7 @@ class PayoutAccountProblemNotificationJob < ApplicationJob
       recipients: [ person ],
       organization: organization,
       message_type: :system,
-      system_generated: true,
-      skip_digest: true
+      system_generated: true
     )
 
     Rails.logger.warn("[PayoutAccountProblemNotificationJob] #{payee_type} #{payee_id}: #{amount} returned — #{reason}")

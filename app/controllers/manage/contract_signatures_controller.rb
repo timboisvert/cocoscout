@@ -11,11 +11,27 @@ module Manage
     # Revoke an outstanding request — kills the link; keeps the org's signature so
     # it drops back to "ready to send".
     def destroy
-      if @contract.revoke_signing!
-        redirect_to manage_contract_path(@contract), notice: "Signature request revoked. You can edit and re-send it."
-      else
-        redirect_to manage_contract_path(@contract), alert: "This contract isn't out for signature."
+      unless @contract.revoke_signing!
+        redirect_to manage_contract_path(@contract), alert: "This contract isn't out for signature." and return
       end
+
+      # Withdrawing a request that carried an amendment: the changes are still
+      # staged and re-sending is one click, unless they explicitly discard —
+      # nobody should have to re-enter a whole amendment because a counterparty
+      # went quiet.
+      if params[:discard_amendment] == "1" && @contract.amendment_pending?
+        @contract.current_version.destroy!
+        @contract.clear_amend_data
+        redirect_to manage_contract_path(@contract),
+                    notice: "Request withdrawn and the amendment discarded. The contract is unchanged." and return
+      end
+
+      notice = if @contract.amendment_pending?
+                 "Request withdrawn. The amendment is still staged — sign and send it again when you're ready."
+               else
+                 "Signature request revoked. You can edit and re-send it."
+               end
+      redirect_to manage_contract_path(@contract), notice: notice
     end
 
     private

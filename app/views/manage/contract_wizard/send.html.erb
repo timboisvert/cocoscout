@@ -82,6 +82,18 @@
     <div class="mt-6 flex items-center justify-between">
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_sign_contract_wizard_path(@contract) %>
       <%= form_with url: manage_send_contract_wizard_path(@contract), method: :post, local: true do %>
+        <%# The deadline is real: when it passes the link stops working and this
+            comes back to you ready to re-send. Defaults to the org's setting. %>
+        <div class="mb-4 flex items-center justify-center gap-2 text-sm text-gray-600">
+          <label for="expiry_days">They have</label>
+          <select name="expiry_days" id="expiry_days"
+                  class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <% Organization::SIGNATURE_EXPIRY_CHOICES.each do |days| %>
+              <option value="<%= days %>" <%= "selected" if days == Current.organization.signature_expiry_days %>><%= days %> days</option>
+            <% end %>
+          </select>
+          <span>to sign it.</span>
+        </div>
         <%= render "shared/button", text: "Send to #{@signer_person.name}", variant: "primary", size: "large", icon: "paper-airplane", type: :submit %>
       <% end %>
     </div>

@@ -15,6 +15,26 @@
       </div>
     <% end %>
 
+    <%# An amendment: what's actually different, before the document itself.
+        Nobody re-reads six pages to find the three numbers that moved. %>
+    <% if @change_lines.present? %>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-5 mb-6">
+        <h2 class="text-sm font-semibold text-amber-900 mb-1">This is an updated contract</h2>
+        <p class="text-sm text-amber-800 mb-3">
+          You've signed a version of this before. Here's what changes — the full contract is below,
+          and nothing takes effect until you sign it.
+        </p>
+        <ul class="space-y-1">
+          <% @change_lines.each do |line| %>
+            <li class="text-sm text-amber-900 flex items-start gap-2">
+              <span class="text-amber-500 mt-0.5">&bull;</span>
+              <span><%= line %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
     <%# The contract document %>
     <div class="bg-white shadow rounded-lg overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">

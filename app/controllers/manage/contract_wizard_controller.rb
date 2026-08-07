@@ -451,7 +451,7 @@ module Manage
         return
       end
 
-      if @contract.send_for_signature!
+      if @contract.send_for_signature!(expiry_days: params[:expiry_days])
         # Link the contractor to their Person now (idempotent) so a member sees the
         # contract in My Contracts right away, not only once the async job runs.
         @contract.contractor&.ensure_person!

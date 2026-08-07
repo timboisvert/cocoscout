@@ -1405,6 +1405,8 @@ Rails.application.routes.draw do
                                                  as: "contract_settings_payment_methods"
     patch  "contracts/settings/notifications", to: "contract_settings#update_notifications",
                                                as: "contract_settings_notifications"
+    patch  "contracts/settings/signing",      to: "contract_settings#update_signing",
+                                              as: "contract_settings_signing"
     post   "contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
     patch  "contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
     delete "contracts/settings/services/:id", to: "contract_settings#destroy_service"

@@ -90,3 +90,8 @@ production:
   retry_parked_payouts:
     class: RetryParkedPayoutsJob
     schedule: at 6:15am every day
+
+  # Chases unsigned contracts and expires the ones past their deadline.
+  contract_signature_reminders:
+    class: ContractSignatureRemindersJob
+    schedule: at 9am every day

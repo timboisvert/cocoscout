@@ -147,6 +147,16 @@ class Organization < ApplicationRecord
     contract_notification_manager_users.where(id: ids)
   end
 
+  # --- Contract signature deadlines -------------------------------------------
+  # How long a signature request stays valid. Every request gets a deadline —
+  # a promise that a contract expires has to be true, or people learn it isn't.
+  SIGNATURE_EXPIRY_CHOICES = [ 7, 14, 30 ].freeze
+
+  def signature_expiry_days
+    days = self[:signature_expiry_days].to_i
+    SIGNATURE_EXPIRY_CHOICES.include?(days) ? days : 14
+  end
+
   # --- Staffing notifications -------------------------------------------------
   # The managers the org chose to message about staffing events (today: a staff
   # member declining a shift). Same manager pool as the other lists; empty means

@@ -70,6 +70,45 @@ class ContractVersion < ApplicationRecord
     source.present? && source != self
   end
 
+  # When each nudge goes out, by window. A 7-day window gets two; 14 and 30 get
+  # three. The last always lands two days before the deadline so it can say so.
+  NUDGE_DAYS = { 7 => [ 3, 5 ], 14 => [ 4, 9, 12 ], 30 => [ 7, 18, 28 ] }.freeze
+
+  def nudge_schedule
+    NUDGE_DAYS[window_days] || NUDGE_DAYS[14]
+  end
+
+  def window_days
+    return 14 if signature_due_at.blank? || sent_for_signature_at.blank?
+
+    ((signature_due_at - sent_for_signature_at) / 1.day).round
+  end
+
+  def days_until_due
+    return nil if signature_due_at.blank?
+
+    ((signature_due_at - Time.current) / 1.day).ceil
+  end
+
+  def expired?
+    expired_at.present?
+  end
+
+  # Waiting on the counterparty, deadline not yet passed.
+  def awaiting_signature?
+    sent_for_signature_at.present? && executed_at.nil? && !expired?
+  end
+
+  # Which nudge (if any) is due right now: the schedule entry we've passed that
+  # we haven't sent yet.
+  def due_nudge_number
+    return nil unless awaiting_signature? && sent_for_signature_at.present?
+
+    elapsed = ((Time.current - sent_for_signature_at) / 1.day).floor
+    reached = nudge_schedule.count { |day| elapsed >= day }
+    reached > nudge_count ? reached : nil
+  end
+
   def pdf_document
     contract_documents.detect { |d| d.document_type == "signed_contract" && d.file.attached? }
   end

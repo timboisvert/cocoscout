@@ -1,0 +1,33 @@
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">How long a contract stays signable</h2>
+    <p class="text-sm text-gray-600 mt-1">
+      After you send a contract for signature, it stays valid for this long. We remind them as the
+      date approaches; if it passes, the link stops working and the contract comes back to you
+      ready to send again — your signature and the document exactly as you left them.
+    </p>
+  </div>
+
+  <%= form_with url: manage_contract_settings_signing_path, method: :patch, class: "px-6 py-5" do %>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 max-w-xl">
+      <% Organization::SIGNATURE_EXPIRY_CHOICES.each do |days| %>
+        <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
+          <input type="radio" name="signature_expiry_days" value="<%= days %>"
+                 class="mt-0.5 accent-pink-500" <%= "checked" if @expiry_days == days %>>
+          <span class="text-sm text-gray-700">
+            <span class="block font-medium text-gray-900"><%= days %> days</span>
+            <span class="block text-xs text-gray-500 mt-0.5">
+              <%= days == 7 ? "2 reminders" : "3 reminders" %>, last one 2 days out
+            </span>
+          </span>
+        </label>
+      <% end %>
+    </div>
+
+    <p class="text-xs text-gray-500 mt-3">You can set a different deadline on any single contract when you send it.</p>
+
+    <div class="mt-5">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

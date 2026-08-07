@@ -86,3 +86,31 @@ RSpec.describe "PayoutBatch retry timing", type: :model do
     expect(done.next_auto_retry_at).to be_nil
   end
 end
+
+# Delivery jobs rescue per-recipient so one bad address can't stop a run — which
+# also means a broken call is invisible unless a spec actually runs the job.
+# (It hid an ArgumentError from an unsupported kwarg for exactly this reason.)
+RSpec.describe PayoutReturnedNotificationJob, type: :job do
+  let(:owner) { create(:user) }
+  let!(:org) { create(:organization, owner: owner) }
+  let!(:manager_person) { create(:person, user: owner) }
+  let!(:manager_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let(:payee) { create(:person, name: "Sam Staffer", user: create(:user)) }
+  let(:batch) do
+    org.payout_batches.create!(kind: "performer", status: "partially_paid", trigger: "manual",
+                               funding_status: "succeeded", total_cents: 5_000)
+  end
+  let(:item) { batch.items.create!(payee: payee, amount_cents: 5_000, status: "returned", error: "Account closed") }
+
+  before { org.update!(payout_notification_user_ids: [ owner.id ]) }
+
+  it "actually delivers to both the payee and the org" do
+    expect { described_class.perform_now(item.id) }.to change(Message, :count).by_at_least(2)
+  end
+
+  it "does nothing for an item that wasn't returned" do
+    paid = batch.items.create!(payee: payee, amount_cents: 100, status: "paid")
+
+    expect { described_class.perform_now(paid.id) }.not_to change(Message, :count)
+  end
+end

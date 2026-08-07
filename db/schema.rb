@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -556,9 +556,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_160000) do
     t.bigint "created_by_id"
     t.jsonb "deal_snapshot", default: {}, null: false
     t.datetime "executed_at"
+    t.datetime "expired_at"
     t.boolean "force_overlap", default: false, null: false
+    t.datetime "last_nudged_at"
+    t.integer "nudge_count", default: 0, null: false
     t.boolean "requires_signature", default: true, null: false
     t.datetime "sent_for_signature_at"
+    t.datetime "signature_due_at"
     t.string "signing_token"
     t.jsonb "staged_amendment"
     t.integer "template_version"
@@ -568,6 +572,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_160000) do
     t.index ["contract_id"], name: "index_contract_versions_on_contract_id"
     t.index ["contract_template_id"], name: "index_contract_versions_on_contract_template_id"
     t.index ["created_by_id"], name: "index_contract_versions_on_created_by_id"
+    t.index ["signature_due_at"], name: "index_contract_versions_on_signature_due_at"
     t.index ["signing_token"], name: "index_contract_versions_on_signing_token", unique: true
   end
 
@@ -1428,6 +1433,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_160000) do
     t.integer "payout_schedule_day"
     t.boolean "payouts_enabled", default: false, null: false
     t.bigint "required_staff_agreement_template_id"
+    t.integer "signature_expiry_days", default: 14, null: false
     t.jsonb "staffing_notification_user_ids", default: [], null: false
     t.string "staffing_subscription_id"
     t.string "stripe_account_id"
