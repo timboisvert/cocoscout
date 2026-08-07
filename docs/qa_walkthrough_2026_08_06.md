@@ -16,39 +16,37 @@ build on setup from earlier ones.
 kamal deploy
 ```
 
-**Then one manual step in Stripe** — the only thing a deploy can't do for you.
-Section 4 is completely inert without it, because `payout.failed` is the only
-signal Stripe gives when a payee's bank rejects a deposit.
+**Then one manual step in Stripe.** Section 4 does nothing without it:
+`payout.failed` is the only signal Stripe gives when a payee's bank rejects a
+deposit.
 
-1. Dashboard in **Live** mode (check the toggle top-right), then
-   `https://dashboard.stripe.com/webhooks` — the nav calls it either
-   **Developers → Webhooks** or **Developers → Event destinations** depending on
-   which dashboard version you get.
-2. Find the endpoint for `https://cocoscout.com/webhooks/stripe`. **If it says
-   "All events" / `*`, you're done — nothing to add.**
-3. Otherwise: you may have two endpoints on that URL, one for events on *your*
-   account and one for events on *connected* accounts. You want the connected
-   one — identify it as the endpoint that already lists `account.updated`
-   (that's section 5's instant path, already working).
-4. Open it → **"..." → Update details** (or **Select events**), search
-   `payout.failed`, tick it, save. Confirm `account.updated` is still ticked
-   while you're in there.
+You need a **second** webhook endpoint. The existing "CocoScout Production"
+endpoint is set to **Events from: Your account**, which only carries events
+about CocoScout's own Stripe account. Payee events — a performer finishing
+onboarding, a performer's bank rejecting a deposit — are a separate stream.
+Leave that endpoint alone; its 11 events are all platform events and all correct.
 
-**The gotcha:** `payout.failed` exists for both your platform account and for
-connected accounts, and they're different events. Only the connected-account one
-matters — the handler bails unless the event carries an `account` field, which
-only connected-account events do. Added to the wrong endpoint it looks
-configured and does nothing.
+At `https://dashboard.stripe.com/webhooks` in **Live** mode:
 
-**Verify from the terminal instead:**
+1. **Add destination**
+2. **Events from: Connected accounts**
+3. **Endpoint URL:** `https://www.cocoscout.com/webhooks/stripe` (same URL as the
+   platform endpoint — that's expected)
+4. **Name:** CocoScout Production (Connect)
+5. **Events:** `account.updated` and `payout.failed`
+6. Save, then reveal the new endpoint's **Signing secret** (`whsec_...`)
+7. Add it to 1Password as **`STRIPE_CONNECT_WEBHOOK_SECRET`**, add that name to
+   the `secret:` list in `config/deploy.yml`, redeploy
 
-```bash
-stripe webhook_endpoints list
-```
+Step 7 is needed because Stripe issues a separate signing secret per endpoint.
+StripeWebhooksController accepts either secret.
 
-Each entry shows `url`, `enabled_events` and `connect: true/false`. You want
-`payout.failed` in the one where `connect` is `true`. Don't use the CLI to
-*edit* — `update` replaces the whole event list rather than appending to it.
+**Side effect worth knowing:** `account.updated` currently sits on the platform
+endpoint, where it only ever fires for CocoScout's own account. It has never
+fired for a payee. Today the only thing syncing a payee's bank status is them
+landing back on our return page after Stripe — so anyone whose verification
+completes later stays "not connected" in CocoScout. The Connect endpoint fixes
+that.
 
 **Optional, whenever you want the two new roles:**
 

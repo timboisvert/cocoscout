@@ -9,15 +9,9 @@ class StripeWebhooksController < ApplicationController
   def create
     payload = request.body.read
     sig_header = request.env["HTTP_STRIPE_SIGNATURE"]
-    endpoint_secret = ENV["STRIPE_WEBHOOK_SECRET"] || Rails.application.credentials.dig(:stripe, :webhook_secret)
 
-    begin
-      event = Stripe::Webhook.construct_event(payload, sig_header, endpoint_secret)
-    rescue JSON::ParserError
-      return head :bad_request
-    rescue Stripe::SignatureVerificationError
-      return head :bad_request
-    end
+    event = verified_event(payload, sig_header)
+    return head :bad_request unless event
 
     # Stripe redelivers on any non-2xx, and money-moving handlers must not run
     # twice for the same event. First writer wins; everyone else no-ops.
@@ -46,6 +40,33 @@ class StripeWebhooksController < ApplicationController
   end
 
   private
+
+  # Connect platforms need TWO Stripe endpoints on this URL: one for events on
+  # our own account (funding PaymentIntents, subscriptions, transfer reversals)
+  # and one for events on connected accounts (a payee finishing onboarding, or
+  # their bank rejecting a deposit). Stripe mints a separate signing secret per
+  # endpoint, so we have to accept either.
+  #
+  # Try each configured secret; the first that verifies wins. A payload that
+  # matches none is not from Stripe.
+  def verified_event(payload, sig_header)
+    webhook_secrets.each do |secret|
+      return Stripe::Webhook.construct_event(payload, sig_header, secret)
+    rescue Stripe::SignatureVerificationError
+      next
+    rescue JSON::ParserError
+      return nil
+    end
+    nil
+  end
+
+  def webhook_secrets
+    [
+      ENV["STRIPE_WEBHOOK_SECRET"],
+      ENV["STRIPE_CONNECT_WEBHOOK_SECRET"],
+      Rails.application.credentials.dig(:stripe, :webhook_secret)
+    ].compact_blank.uniq
+  end
 
   # A payout batch's funding PaymentIntent settled (ACH) or failed. On success,
   # advance the batch into processing (transfers go out); on failure, mark it
