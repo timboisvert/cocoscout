@@ -12,7 +12,9 @@ class GenerateContractPdfJob < ApplicationJob
 
   # The version argument is optional so jobs enqueued before this shipped still
   # resolve — they fall back to the latest executed version, which is right.
-  def perform(contract_id, contract_version_id = nil)
+  # notify_signer: only from the signing path. ensure_signed_pdf! backfills old
+  # contracts and must never email anyone about a years-old signature.
+  def perform(contract_id, contract_version_id = nil, notify_signer: false)
     contract = Contract.find_by(id: contract_id)
     return unless contract
 
@@ -33,5 +35,7 @@ class GenerateContractPdfJob < ApplicationJob
       filename: "contract-#{contract.id}-#{version.label}-signed.pdf",
       content_type: "application/pdf"
     )
+
+    ContractCountersignedNotificationJob.perform_later(contract.id, version.id) if notify_signer
   end
 end

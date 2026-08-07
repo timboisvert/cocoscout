@@ -46,6 +46,9 @@ class ContractSignatureRemindersJob < ApplicationJob
       organization: contract.organization,
       mailer_class: Manage::ContractSignatureMailer,
       mailer_method: :signature_request,
+      # The last reminder says so in the subject line — an escalation only in
+      # the body arrives looking identical to the first one.
+      subject_override: final_nudge_subject(contract, version, number),
       message_type: :system,
       system_generated: true
     )
@@ -74,9 +77,24 @@ class ContractSignatureRemindersJob < ApplicationJob
       sender: nil,
       recipients: [ person ],
       organization: contract.organization,
+      # A counterparty usually has no CocoScout account — the signing link is
+      # public and tokenised for exactly that reason — so the in-app message
+      # no-ops for them and email is the only channel that lands. Without a
+      # mailer here, the expiry notice reached nobody.
+      mailer_class: Manage::ContractSignatureMailer,
+      mailer_method: :signature_request,
       message_type: :system,
       system_generated: true
     )
+  end
+
+  # nil for every nudge but the last, so the template's own subject is used.
+  def final_nudge_subject(contract, version, number)
+    return nil unless number == version.nudge_schedule.size
+
+    days = version.days_until_due.to_i
+    when_text = days <= 1 ? "tomorrow" : "in #{days} days"
+    "Last reminder: your #{contract.organization.name} contract expires #{when_text}"
   end
 
   def nudge_variables(contract, version)
@@ -97,12 +115,11 @@ class ContractSignatureRemindersJob < ApplicationJob
     return if recipients.empty?
 
     ContentTemplateService.deliver(
-      template_key: "contract_signature_unsigned_manager",
+      template_key: kind == :expired ? "contract_signature_expired_manager" : "contract_signature_stalled_manager",
       variables: {
         contractor_name: contract.contractor_name,
         production_name: contract.production_name.presence || contract.contractor_name,
         organization_name: contract.organization.name,
-        state: kind == :expired ? "expired without being signed" : "still hasn't been signed",
         deadline: version.signature_due_at&.strftime("%B %-d"),
         contract_url: Rails.application.routes.url_helpers.manage_contract_path(contract)
       },
