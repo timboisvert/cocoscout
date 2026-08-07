@@ -1,31 +1,15 @@
-<% content_for :title, "Amend Contract - Details" %>
-
-<div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Contracts", manage_contracts_path],
-      [@contract.contractor_name, manage_contract_path(@contract)]
-    ],
-    text: "Amend Contract",
-    links: []
-  } %>
-
-  <%= render "manage/contracts/amend_steps", current: 4 %>
-
-  <div class="max-w-2xl mx-auto mt-6">
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Ticketing & Services", current: 4 } do %>
     <p class="text-gray-600 mb-6">Update the ticket tiers and prices, discounts, and the services on this contract.</p>
 
     <%# novalidate: unchecked service lines keep their inputs in hidden bodies —
         a constraint violation in one would block submit with an unfocusable-control error. %>
     <%= form_with url: save_amend_ticketing_tech_manage_contract_path(@contract), method: :post, local: true, html: { novalidate: true } do %>
-      <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6">
         <h3 class="text-base font-semibold text-gray-900 mb-4">Ticketing</h3>
         <%= render "manage/contracts/ticketing_fields", ticketing: @ticketing %>
       </div>
 
-      <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6">
         <h3 class="text-base font-semibold text-gray-900 mb-1">Services</h3>
         <p class="text-sm text-gray-500 mb-4">Adding or changing a service updates the pending payments on this contract. Anything already paid is left as is.</p>
         <%= render "manage/contracts/services_fields", service_options: @service_options, existing_services: @existing_services, bookings: @bookings %>
@@ -36,5 +20,4 @@
         <%= render "shared/button", text: "Next: Review", variant: "primary", size: "medium", type: :submit %>
       </div>
     <% end %>
-  </div>
-</div>
+<% end %>

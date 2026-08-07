@@ -1,20 +1,4 @@
-<% content_for :title, "Amend Contract - Financials" %>
-
-<div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Contracts", manage_contracts_path],
-      [@contract.contractor_name, manage_contract_path(@contract)]
-    ],
-    text: "Amend Contract",
-    links: []
-  } %>
-
-  <%= render "manage/contracts/amend_steps", current: 3 %>
-
-  <div class="max-w-2xl mx-auto mt-6">
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Financials", current: 3 } do %>
     <p class="text-gray-600 mb-6">Update the deal: who sells the tickets, how it settles, and every payment on this contract.</p>
 
     <%= render "manage/contracts/financials_fields",
@@ -27,5 +11,4 @@
           bookings: @bookings,
           bookings_count: @bookings_count,
           offline_payment_methods: @offline_payment_methods %>
-  </div>
-</div>
+<% end %>

@@ -1,20 +1,4 @@
-<% content_for :title, "Amend Contract - Events" %>
-
-<div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Contracts", manage_contracts_path],
-      [@contract.contractor_name, manage_contract_path(@contract)]
-    ],
-    text: "Amend Contract",
-    links: []
-  } %>
-
-  <%= render "manage/contracts/amend_steps", current: 1 %>
-
-  <div class="max-w-2xl mx-auto mt-6">
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Events", current: 1 } do %>
     <p class="text-gray-600 mb-6">Add or remove events from this contract.</p>
 
   <%
@@ -43,7 +27,7 @@
   <input type="hidden" name="removed_rental_ids" id="removed-rental-ids" value="<%= (@amend_data["removed_rental_ids"] || []).to_json %>">
 
   <%# Production Name — renaming here updates the linked production too. %>
-  <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6">
     <h3 class="text-sm font-semibold text-gray-700 mb-3">Production Name</h3>
     <label class="block text-xs font-medium text-gray-700 mb-1">Name shown on the contract and the show</label>
     <input type="text" name="production_name" value="<%= @production_name %>"
@@ -54,7 +38,7 @@
 
   <%# Existing Events Section %>
   <% if @existing_rentals.any? %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
         <h3 class="text-sm font-semibold text-gray-700">Current Events (<%= @existing_rentals.count %>)</h3>
       </div>
@@ -85,7 +69,7 @@
   <% end %>
 
   <%# Add New Events Section %>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+  <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
       <h3 class="text-sm font-semibold text-gray-700">Add New Events</h3>
     </div>
@@ -405,6 +389,4 @@
     });
   });
 </script>
-
-  </div>
-</div>
+<% end %>

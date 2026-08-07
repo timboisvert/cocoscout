@@ -1,20 +1,4 @@
-<% content_for :title, "Amend Contract - Review Events" %>
-
-<div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Contracts", manage_contracts_path],
-      [@contract.contractor_name, manage_contract_path(@contract)]
-    ],
-    text: "Amend Contract",
-    links: []
-  } %>
-
-  <%= render "manage/contracts/amend_steps", current: 2 %>
-
-  <div class="max-w-2xl mx-auto mt-6">
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Review Events", current: 2 } do %>
     <p class="text-gray-600 mb-6">Review all events after your changes are applied.</p>
 
     <%# Event Changes Summary (Pink!) %>
@@ -57,7 +41,7 @@
     <% end %>
 
     <%# Full Event List %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
         <h3 class="text-sm font-semibold text-gray-700">All Events After Amendment (<%= @all_events_after.count %>)</h3>
       </div>
@@ -114,7 +98,7 @@
 
     <%# Events Being Removed (detailed view) %>
     <% if @rentals_to_remove.any? %>
-      <div class="bg-white border border-red-200 rounded-lg overflow-hidden mb-6">
+      <div class="bg-red-50 border border-red-200 rounded-lg overflow-hidden mb-6">
         <div class="px-4 py-3 bg-red-50 border-b border-red-200">
           <h3 class="text-sm font-semibold text-red-700 flex items-center gap-2">
             <%= icon("minus-circle", class: "w-4 h-4") %>
@@ -148,6 +132,4 @@
       <%= render "shared/button", text: "Back: Events", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_bookings_manage_contract_path(@contract) %>
       <%= render "shared/button", text: "Next: Financials", variant: "primary", size: "medium", path: amend_payments_manage_contract_path(@contract) %>
     </div>
-
-  </div>
-</div>
+<% end %>

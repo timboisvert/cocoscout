@@ -1,25 +1,9 @@
-<% content_for :title, "Amend Contract - Review" %>
-
-<div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Contracts", manage_contracts_path],
-      [@contract.contractor_name, manage_contract_path(@contract)]
-    ],
-    text: "Review Amendments",
-    links: []
-  } %>
-
-  <%= render "manage/contracts/amend_steps", current: 5 %>
-
-  <div class="max-w-2xl mx-auto mt-6">
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Confirm", current: 5 } do %>
     <p class="text-gray-600 mb-6">Review and confirm your changes before applying.</p>
 
   <% if @has_changes %>
     <%# Events Changes %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
         <h3 class="text-sm font-semibold text-gray-700">Event Changes</h3>
       </div>
@@ -89,7 +73,7 @@
 
     <%# Payment Changes — the full set of payments after this amendment (paid
         payments are preserved; the pending ones are replaced by this list). %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
         <h3 class="text-sm font-semibold text-gray-700">Payments</h3>
       </div>
@@ -125,7 +109,7 @@
 
     <%# Production Name Change %>
     <% if @production_name_changed %>
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
           <h3 class="text-sm font-semibold text-gray-700">Production Name Change</h3>
         </div>
@@ -139,7 +123,7 @@
 
     <%# Ticketing & Services Changes %>
     <% if @ticketing_changed || @services_changed %>
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
           <h3 class="text-sm font-semibold text-gray-700">Ticketing &amp; Services Changes</h3>
         </div>
@@ -347,6 +331,4 @@
       <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: manage_contract_path(@contract) %>
     </div>
   <% end %>
-
-  </div>
-</div>
+<% end %>

@@ -1,0 +1,44 @@
+<%#
+  Amend-flow layout — the mirror of manage/contract_wizard/_wizard_layout.
+
+  Amending should look like the rest of the system, not like a page floating on
+  the background: same breadcrumb, same full-width step bar, same white card,
+  same centered column. Anything that changes here should change there too.
+
+  Locals:
+    step_name - appended to the page title
+    current   - 1-5 step number for the progress bar; omit for the pages that
+                aren't part of the five-step deal amendment (the chooser and
+                Change dates), which get the card without a bar rather than a
+                bar that lies about where you are
+    width     - container width, defaults to max-w-2xl
+%>
+<% content_for :title, "Amend Contract#{" — #{local_assigns[:step_name]}" if local_assigns[:step_name].present?}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Contracts", manage_contracts_path],
+      [@contract.contractor_name, manage_contract_path(@contract)]
+    ],
+    text: "Amend Contract",
+    links: []
+  } %>
+
+  <% if local_assigns[:current].present? %>
+    <%= render "manage/contracts/amend_steps", current: local_assigns[:current] %>
+  <% end %>
+
+  <div class="<%= local_assigns[:width].presence || "max-w-2xl" %> mx-auto <%= "mt-6" if local_assigns[:current].present? %>">
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <%= yield %>
+    </div>
+
+    <div class="mt-4 text-center">
+      <%= link_to "Cancel", manage_contract_path(@contract),
+            class: "text-sm text-gray-500 hover:text-gray-700" %>
+    </div>
+  </div>
+</div>

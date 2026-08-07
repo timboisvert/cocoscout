@@ -1,18 +1,4 @@
-<% content_for :title, "Change dates" %>
-
-<div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Contracts", manage_contracts_path],
-      [@contract.contractor_name, manage_contract_path(@contract)]
-    ],
-    text: "Change dates",
-    links: []
-  } %>
-
-  <div class="max-w-3xl mx-auto mt-6">
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Change dates", width: "max-w-3xl" } do %>
     <p class="text-gray-600 mb-6">
       Each date stands on its own. Removing one takes its still-pending payments with it and leaves
       the rest of the deal exactly as it is.
@@ -28,7 +14,7 @@
             pending = payments.select { |p| p.status_pending? && !p.in_payout_run? }
             past = rental.starts_at < Time.current
           %>
-          <div class="border border-gray-200 rounded-lg p-4 bg-white" data-controller="amend-date">
+          <div class="border border-gray-200 rounded-lg p-4 bg-gray-50" data-controller="amend-date">
             <div class="flex items-start justify-between gap-4 flex-wrap">
               <div class="min-w-0">
                 <p class="font-medium text-gray-900">
@@ -100,5 +86,4 @@
       Adding a date? Use <%= link_to "Change the deal", amend_bookings_manage_contract_path(@contract), class: "text-pink-600 hover:text-pink-700 underline" %>,
       which knows how to price a new one.
     </p>
-  </div>
-</div>
+<% end %>
