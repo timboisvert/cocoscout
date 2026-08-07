@@ -1,0 +1,66 @@
+<%#
+  Appendixes on the Prepare step — the titled rich-text sections that render at
+  the end of the contract, above the signatures.
+
+  Lettering is automatic (Appendix A, B, C…) and derived from position, so a
+  title is the only thing anyone has to type. Add and edit both happen in a
+  modal; deleting re-letters what's left so there's never a gap.
+
+  Locals:
+    contract  - the Contract
+    return_to - "prepare" to come back here after saving
+%>
+<%
+  appendixes = contract.contract_appendixes.ordered.to_a
+  next_letter = ("A".ord + appendixes.size).chr
+  add_id = "appendix-new-#{contract.id}"
+%>
+
+<div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+  <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3">
+    <div>
+      <h3 class="text-sm font-semibold text-gray-700">Appendixes</h3>
+      <p class="text-xs text-gray-500 mt-0.5">Riders, hospitality, anything extra. They print at the end of the contract and are signed with it.</p>
+    </div>
+    <%= render "shared/button", text: "Add appendix", variant: "primary", size: "small", icon: "plus", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: add_id } %>
+  </div>
+
+  <% if appendixes.any? %>
+    <div class="divide-y divide-gray-100">
+      <% appendixes.each do |appendix| %>
+        <% edit_id = "appendix-edit-#{appendix.id}" %>
+        <% delete_id = "appendix-delete-#{appendix.id}" %>
+        <div class="px-4 py-3 flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-900"><%= appendix.heading %></p>
+            <div class="text-xs text-gray-500 mt-0.5 line-clamp-2">
+              <%= truncate(strip_tags(appendix.body_html).squish, length: 140) %>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <%= render "shared/button", text: "Edit", variant: "secondary", size: "xs", icon: "pencil", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: edit_id } %>
+            <%= render "shared/button", text: "Remove", variant: "secondary", size: "xs", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: delete_id } %>
+          </div>
+        </div>
+
+        <%= render "manage/contracts/appendix_modal", contract: contract, appendix: appendix,
+              id: edit_id, heading: "Edit #{appendix.heading}", return_to: return_to %>
+
+        <%= render "shared/confirm_modal", id: delete_id,
+              title: "Remove #{appendix.heading}?",
+              message: "It comes off the contract. Anything already signed keeps its own copy.",
+              confirm_text: "Remove appendix",
+              url: manage_contract_contract_appendix_path(contract, appendix, return_to: return_to),
+              method: :delete %>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="px-4 py-6 text-sm text-gray-500 text-center">No appendixes. The contract is just the template above.</p>
+  <% end %>
+</div>
+
+<%= render "manage/contracts/appendix_modal", contract: contract, appendix: contract.contract_appendixes.new,
+      id: add_id, heading: "Add Appendix #{next_letter}", return_to: return_to %>

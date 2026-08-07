@@ -1,0 +1,53 @@
+<%#
+  Add/edit an appendix. One form serves both — a new record posts to create,
+  a persisted one patches.
+
+  Locals: contract, appendix, id, heading, return_to
+%>
+<div id="<%= id %>" class="hidden fixed inset-0 z-[60] bg-black/50 overflow-y-auto"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="flex min-h-full items-start justify-center p-4 py-12">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden"
+         data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600">
+        <h3 class="text-lg font-semibold text-white"><%= heading %></h3>
+        <button type="button" data-action="click->modal#close" class="text-white/70 hover:text-white cursor-pointer">
+          <%= icon("x-mark", class: "w-5 h-5") %>
+        </button>
+      </div>
+
+      <%= form_with model: appendix,
+            url: appendix.persisted? ? manage_contract_contract_appendix_path(contract, appendix, return_to: return_to)
+                                     : manage_contract_contract_appendixes_path(contract, return_to: return_to),
+            method: appendix.persisted? ? :patch : :post,
+            scope: :contract_appendix, local: true do |form| %>
+        <div class="px-5 py-4 space-y-4">
+          <div>
+            <%= form.label :title, "What is it?", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= form.text_field :title, required: true, placeholder: "e.g. Tech Rider",
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+            <p class="text-xs text-gray-500 mt-1">The letter is added for you — this becomes "Appendix A — Tech Rider".</p>
+          </div>
+
+          <div>
+            <%= form.label :body, "The text", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%# Attachments are disabled: an embedded image renders as an
+                <action-text-attachment>, which the contract PDF's HTML walker
+                can't draw — it would vanish from the signed document. %>
+            <div data-controller="no-attachments">
+              <%= form.rich_text_area :body,
+                    class: "block w-full rounded-lg border border-gray-300 shadow-sm min-h-[220px]" %>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
+          <button type="button" data-action="click->modal#close"
+                  class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+          <%= render "shared/button", text: appendix.persisted? ? "Save appendix" : "Add appendix",
+                variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

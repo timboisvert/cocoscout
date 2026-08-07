@@ -50,6 +50,10 @@
       </div>
     </div>
 
+    <%# Appendixes live between the document and the point of no return: they're
+        part of what gets signed, so they belong above "this is the contract". %>
+    <%= render "manage/contracts/appendixes_editor", contract: @contract, return_to: "prepare" %>
+
     <div class="mt-8 flex justify-between">
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_review_contract_wizard_path(@contract) %>
       <%= form_with url: manage_prepare_contract_wizard_path(@contract), method: :post, local: true do %>

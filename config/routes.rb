@@ -1444,6 +1444,9 @@ Rails.application.routes.draw do
         get "amend/review", action: :amend_review, as: :amend_review
         post "amend/apply", action: :apply_amendments, as: :apply_amendments
       end
+      # Appendixes: titled rich-text sections at the end of the contract body,
+      # managed from the Prepare step.
+      resources :contract_appendixes, only: %i[create update destroy], path: "appendixes"
       resources :contract_documents, only: %i[create destroy], path: "documents"
       resources :contract_payments, only: %i[create update destroy], path: "payments" do
         member do

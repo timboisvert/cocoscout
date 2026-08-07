@@ -18,9 +18,9 @@ class GenerateContractPdfJob < ApplicationJob
 
     version = if contract_version_id
                 contract.contract_versions.find_by(id: contract_version_id)
-              else
+    else
                 contract.latest_executed_version
-              end
+    end
     return unless version&.executed_at
     return if version.pdf_document.present?
 
