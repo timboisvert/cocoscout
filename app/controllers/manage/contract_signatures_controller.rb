@@ -28,9 +28,9 @@ module Manage
 
       notice = if @contract.amendment_pending?
                  "Request withdrawn. The amendment is still staged — sign and send it again when you're ready."
-               else
+      else
                  "Signature request revoked. You can edit and re-send it."
-               end
+      end
       redirect_to manage_contract_path(@contract), notice: notice
     end
 
