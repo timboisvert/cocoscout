@@ -48,6 +48,16 @@ proxy:
     interval: 1
     timeout: 2
 
+# Docker defaults to a single 10m log file per container, which on the web hosts
+# is about an hour of history — the 5xx burst that tripped the ALB alarm on
+# 2026-08-08 had already rolled off before anyone went looking. Keep 5 files so
+# an overnight incident is still readable the next morning.
+logging:
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: 5
+
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
 #
