@@ -170,15 +170,16 @@ class MoneyTodoService
   # A row with no date sorts to the end rather than to the front.
   UNDATED = Date.new(9999, 1, 1)
 
-  # Oldest debt first. Sorting by size put a $2,000 payment due in two months
-  # above money that went overdue a fortnight ago, which is exactly backwards
-  # for a list of what to chase.
+  # Strictly oldest first. Sorting by size put a $2,000 payment due in two
+  # months above money that went overdue a fortnight ago — backwards for a list
+  # of what to chase.
   #
-  # Rows with nothing left to pay still sort by date, but sit below the ones
-  # that do — they're on the page as a record of money already in motion, not
-  # as work.
+  # Money already in a run sorts on the same footing as money nobody has
+  # touched. It isn't paid until it lands, and burying it under the untouched
+  # rows is how a stuck run goes unnoticed. Everything leaves this list when
+  # it's actually paid, not when it's been dealt with.
   def payout_sort_key(item)
-    [ item[:amounts][:to_pay].to_f > 0.004 ? 0 : 1, item[:due_on] || UNDATED, -item[:amount].to_f ]
+    [ item[:due_on] || UNDATED, -item[:amount].to_f ]
   end
 
   # --- Payouts, by source --------------------------------------------------

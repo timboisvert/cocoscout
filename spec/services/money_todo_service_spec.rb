@@ -102,6 +102,24 @@ RSpec.describe MoneyTodoService do
       expect(names.index("Small But Overdue")).to be < names.index("Big But Later")
     end
 
+    # Money in a run isn't paid until it lands. Demoting it below untouched rows
+    # is how a stuck run goes unnoticed, so date is the only thing that ranks.
+    it "doesn't push a row down just because its money is already moving" do
+      moving = create(:contract, organization: org, contractor_name: "Already Moving",
+                                 production: create(:production, organization: org))
+      moving.contract_payments.create!(description: "Fee", amount: 100, direction: "outgoing",
+                                       due_date: 3.months.ago.to_date, status: "paid", paid_date: Date.current)
+      moving.contract_payments.create!(description: "Fee 2", amount: 50, direction: "outgoing",
+                                       due_date: 3.months.ago.to_date)
+      fresh = create(:contract, organization: org, contractor_name: "Just Came Up",
+                                production: create(:production, organization: org))
+      fresh.contract_payments.create!(description: "Fee", amount: 900, direction: "outgoing",
+                                      due_date: Date.current)
+
+      names = service.payouts.items.map { |i| i[:name] }
+      expect(names.index("Already Moving")).to be < names.index("Just Came Up")
+    end
+
     it "sorts a production by its oldest unpaid show, not by its size" do
       old_show = create(:show, production: production, event_type: :show, date_and_time: 1.year.ago)
       old_payout = ShowPayout.create!(show: old_show, status: "awaiting_payout",
