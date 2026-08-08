@@ -16,9 +16,14 @@ RSpec.describe "Flat-rate house roles", type: :model do
     create(:house_role, organization: org, name: "Bartender", default_hourly_rate_cents: 2_000)
   end
 
+  # Anchored at midday, not "now" — the flat-shift rule keys off the calendar
+  # date, so a fixture built from Time.current silently straddles midnight when
+  # the suite runs in the evening and a one-shift test becomes a two-day one.
+  let(:work_day) { 2.days.ago.midday }
+
   def entry!(role, hours:, shift_assignment: nil)
     org.staff_time_entries.create!(person: person, house_role: role, hours: hours,
-                                   started_at: 2.days.ago, ended_at: 2.days.ago + hours.hours,
+                                   started_at: work_day, ended_at: work_day + hours.hours,
                                    shift_assignment: shift_assignment,
                                    approved_at: Time.current)
   end
@@ -59,7 +64,7 @@ RSpec.describe "Flat-rate house roles", type: :model do
       # a night gets logged twice is two manual entries on the same date.)
       first = entry!(flat_role, hours: 2)
       second = org.staff_time_entries.create!(person: person, house_role: flat_role, hours: 3,
-                                              started_at: 2.days.ago + 6.hours, ended_at: 2.days.ago + 9.hours,
+                                              started_at: work_day + 3.hours, ended_at: work_day + 6.hours,
                                               approved_at: Time.current)
 
       cents = StaffPayRunService.worked_cents(organization: org, member: member,
@@ -70,7 +75,7 @@ RSpec.describe "Flat-rate house roles", type: :model do
     it "pays two separate days twice" do
       first = entry!(flat_role, hours: 4)
       second = org.staff_time_entries.create!(person: person, house_role: flat_role, hours: 4,
-                                              started_at: 5.days.ago, ended_at: 5.days.ago + 4.hours,
+                                              started_at: work_day - 3.days, ended_at: work_day - 3.days + 4.hours,
                                               approved_at: Time.current)
 
       cents = StaffPayRunService.worked_cents(organization: org, member: member,

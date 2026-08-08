@@ -37,4 +37,50 @@
       <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
     <% end %>
   </div>
+
+  <% if Current.organization.alert_uncovered_show_roles? %>
+    <div class="mt-5 pt-5 border-t border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Roles Role Call checks</h3>
+      <p class="text-xs text-gray-500 mt-1 mb-3">
+        Every per-show role, in or out. Leave one out when you only staff it now
+        and then — a videographer, say — so the shows without it aren't treated
+        as short-staffed. This is the same switch as on each role; it's here so
+        the whole roster reads at once.
+      </p>
+
+      <% if @role_call_roles.present? %>
+        <%= form_with url: manage_staffing_settings_path, method: :patch do %>
+          <%# Marker param so an all-unchecked submit still routes to this setting. %>
+          <%= hidden_field_tag :updating_role_call_roles, "1" %>
+          <div class="space-y-2">
+            <% @role_call_roles.each do |role| %>
+              <label class="flex items-start gap-3 px-3 py-2 rounded-lg border border-gray-200 cursor-pointer hover:border-pink-300">
+                <%= check_box_tag "role_call_role_ids[]", role.id, role.include_in_role_call?, id: "role_call_role_#{role.id}",
+                      class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium text-gray-900"><%= role.name %></span>
+                  <span class="block text-xs text-gray-500 mt-0.5">
+                    <% if role.location %>
+                      Only counts for shows at <%= role.location.name %>.
+                    <% else %>
+                      Checked on every show.
+                    <% end %>
+                  </span>
+                </span>
+              </label>
+            <% end %>
+          </div>
+          <div class="flex justify-end mt-4">
+            <%= render "shared/button", text: "Save roles", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="text-sm text-gray-500">
+          You don't have any per-show roles yet, so Role Call has nothing to check.
+          Add one on the
+          <%= link_to "roles page", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700 underline" %>.
+        </p>
+      <% end %>
+    </div>
+  <% end %>
 </div>

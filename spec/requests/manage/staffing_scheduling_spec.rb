@@ -298,6 +298,62 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(response.body).to include("Role Call")
       expect(response.body).to include("Run Role Call on my shows")
     end
+
+    describe "the roster of checked roles" do
+      let!(:tech) { create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific) }
+      let!(:video) { create(:house_role, organization: org, name: "Videographer", role_type: :show_specific) }
+      let!(:bar) { create(:house_role, organization: org, name: "Bartender", role_type: :house) }
+
+      it "isn't shown while Role Call is off" do
+        get manage_staffing_settings_section_path(section: "role_call")
+        expect(response.body).not_to include("Roles Role Call checks")
+      end
+
+      context "with Role Call on" do
+        before { org.update!(alert_uncovered_show_roles: true) }
+
+        it "lists per-show roles only, checked by default" do
+          get manage_staffing_settings_section_path(section: "role_call")
+          expect(response.body).to include("Roles Role Call checks")
+          expect(response.body).to include("Booth Tech")
+          expect(response.body).to include("Videographer")
+          # A house role is never checked by Role Call, so it has no switch here.
+          expect(response.body).not_to include("role_call_role_#{bar.id}")
+        end
+
+        it "leaves out the roles that weren't submitted, and puts back the ones that were" do
+          patch manage_staffing_settings_path,
+                params: { updating_role_call_roles: "1", role_call_role_ids: [ tech.id.to_s ] }
+
+          expect(tech.reload.include_in_role_call).to be(true)
+          expect(video.reload.include_in_role_call).to be(false)
+          expect(response).to redirect_to(manage_staffing_settings_section_path(section: "role_call"))
+          expect(flash[:notice]).to include("1 role")
+
+          patch manage_staffing_settings_path,
+                params: { updating_role_call_roles: "1", role_call_role_ids: [ tech.id.to_s, video.id.to_s ] }
+          expect(video.reload.include_in_role_call).to be(true)
+        end
+
+        it "an all-unchecked submit takes every role out rather than doing nothing" do
+          patch manage_staffing_settings_path, params: { updating_role_call_roles: "1" }
+
+          expect(tech.reload.include_in_role_call).to be(false)
+          expect(video.reload.include_in_role_call).to be(false)
+        end
+
+        it "can't reach a house role or another org's role" do
+          foreign = create(:house_role, organization: create(:organization, owner: create(:user)),
+                                        role_type: :show_specific, include_in_role_call: false)
+
+          patch manage_staffing_settings_path,
+                params: { updating_role_call_roles: "1", role_call_role_ids: [ bar.id.to_s, foreign.id.to_s ] }
+
+          expect(foreign.reload.include_in_role_call).to be(false)
+          expect(bar.reload.include_in_role_call).to be(true)
+        end
+      end
+    end
   end
 
   describe "GET index renders with both role types" do

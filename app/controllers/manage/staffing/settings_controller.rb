@@ -24,6 +24,11 @@ module Manage
           # the pay grid automatically.
           @active_staff_members = Current.organization.organization_staff_members.active
                                          .includes(:person).order("people.name").references(:person)
+        when "role_call"
+          # Every per-show role, in or out — the same set the roles page edits
+          # one at a time, gathered here so the whole roster reads at a glance.
+          @role_call_roles = Current.organization.house_roles.active
+                                    .where(role_type: ::HouseRole.role_types[:show_specific]).ordered.to_a
         when "notifications"
           @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
           @notification_selected_ids = Current.organization.staffing_notification_user_ids
@@ -38,6 +43,8 @@ module Manage
           update_pay_exclusions
         elsif params[:updating_coverage].present?
           update_coverage_alerts
+        elsif params[:updating_role_call_roles].present?
+          update_role_call_roles
         elsif params[:updating_notifications].present?
           update_notification_recipients
         else
@@ -104,6 +111,29 @@ module Manage
         Current.organization.update!(alert_uncovered_show_roles: enabled)
         redirect_to section_path("role_call"),
                     notice: enabled ? "Role Call is on — scheduling now checks every show for its roles." : "Role Call turned off."
+      end
+
+      # Which per-show roles Role Call actually checks. The submitted set is the
+      # full included list — any per-show role left unchecked sits it out. Scoped
+      # to this org's per-show roles, so a stray id can't reach anyone else's
+      # roles or quietly flip a house role. (updating_role_call_roles is a marker
+      # param so an all-unchecked submit still routes here.)
+      def update_role_call_roles
+        scope = Current.organization.house_roles.active.where(role_type: ::HouseRole.role_types[:show_specific])
+        included_ids = Array(params[:role_call_role_ids]).map(&:to_i).reject(&:zero?)
+        now = Time.current
+        scope.where(id: included_ids).where(include_in_role_call: false)
+             .update_all(include_in_role_call: true, updated_at: now)
+        scope.where.not(id: included_ids).where(include_in_role_call: true)
+             .update_all(include_in_role_call: false, updated_at: now)
+
+        left_out = scope.where(include_in_role_call: false).count
+        redirect_to section_path("role_call"),
+                    notice: if left_out.zero?
+                              "Role Call is checking every per-show role."
+                            else
+                              "#{helpers.pluralize(left_out, 'role')} now sitting Role Call out."
+                            end
       end
 
       # Which managers get an in-app message when a staff member can't make a
