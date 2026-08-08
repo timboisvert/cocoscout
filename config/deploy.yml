@@ -48,14 +48,32 @@ proxy:
     interval: 1
     timeout: 2
 
+  # kamal-proxy waits 30s for the app by default. On 2026-08-08 a slow probe of
+  # "/" sat for the full 30s before being cut off. Nothing legitimate here comes
+  # close — the slowest real request observed is /manage at ~4s, and the report
+  # CSVs are small org-scoped aggregates — so lower the ceiling.
+  response_timeout: 20
+
+  # kamal-proxy is booted separately from the app containers and does NOT
+  # inherit the `logging:` block below, so its retention is set here. It logs
+  # every request including health checks, which burned through a single 10m
+  # file in well under two minutes — the 5xx burst that tripped the ALB alarm
+  # on 2026-08-08 had already rolled off before anyone went looking.
+  # Takes effect on `kamal proxy reboot`, not on a normal deploy.
+  run:
+    log_max_size: "50m"
+    options:
+      log-opt:
+        - max-file=5
+
 # Docker defaults to a single 10m log file per container, which on the web hosts
-# is about an hour of history — the 5xx burst that tripped the ALB alarm on
-# 2026-08-08 had already rolled off before anyone went looking. Keep 5 files so
-# an overnight incident is still readable the next morning.
+# is about an hour of history. Keep 5 larger files so an overnight incident is
+# still readable the next morning. Applies to the app and job containers; see
+# proxy/run above for kamal-proxy.
 logging:
   driver: json-file
   options:
-    max-size: 10m
+    max-size: 50m
     max-file: 5
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
