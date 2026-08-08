@@ -5,8 +5,17 @@ import { parseMoney, sanitizeMoneyField } from "controllers/lib/money_input"
 // see a live total, and "Use total" writes the sum into the field. The breakdown
 // is stored as hidden inputs in the row (so it persists via the form draft), and
 // re-read the next time the worksheet opens.
+//
+// The grid has no tips text box — the button IS the field, exactly like Hours:
+// "Add tips" when there's nothing there, "3 days · $120.00" once there is. That
+// keeps the day-by-day breakdown and the total from ever disagreeing, which a
+// free-text box next to a worksheet link couldn't promise.
 export default class extends Controller {
-    static targets = ["modal", "title", "rows", "subtotal", "template"]
+    static targets = ["modal", "title", "rows", "subtotal", "template", "button"]
+
+    connect() {
+        this.syncAll()
+    }
 
     open(event) {
         if (event) event.preventDefault()
@@ -59,7 +68,31 @@ export default class extends Controller {
                 .map(r => `<input type="hidden" name="lines[${this.memberId}][${this.fieldName}][]" value="${this.escape(r.date)}|${r.amount}">`)
                 .join("")
         }
+        this.syncButton(this.buttonFor(this.fieldInputId))
         this.close()
+    }
+
+    // Re-derive every button's label from the form (runs on connect and on any
+    // grid input, so a restored draft labels itself).
+    syncAll() {
+        this.buttonTargets.forEach(button => this.syncButton(button))
+    }
+
+    syncButton(button) {
+        if (!button) return
+        const amount = parseMoney(document.getElementById(button.dataset.fieldInputId)?.value)
+        const days = document.getElementById(button.dataset.holderId)?.querySelectorAll("input").length || 0
+        const money = "$" + amount.toFixed(2)
+
+        // A draft saved before the worksheet existed can carry an amount with no
+        // days behind it — show the money rather than pretending it's empty.
+        if (amount <= 0) button.textContent = button.dataset.emptyLabel || "Add"
+        else if (days > 0) button.textContent = `${days} ${days === 1 ? "day" : "days"} · ${money}`
+        else button.textContent = money
+    }
+
+    buttonFor(fieldInputId) {
+        return this.buttonTargets.find(b => b.dataset.fieldInputId === fieldInputId)
     }
 
     close(event) {

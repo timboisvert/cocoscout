@@ -78,7 +78,7 @@ export default class extends Controller {
 
     recalc() {
         // One bubbling event re-runs totals, accordion summaries, and the Hours
-        // buttons' sync after a restore.
+        // and tips buttons' labels after a restore.
         const anyField = this.formTarget.querySelector('input[name^="lines["]')
         if (anyField) anyField.dispatchEvent(new Event("input", { bubbles: true }))
     }

@@ -23,6 +23,17 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
     expect(response.body).not_to include(%(data-entry-id="#{pending.id}"))
   end
 
+  # Tips and cash tips are entered day by day, like hours — so the grid holds a
+  # button, not a text box with a "worksheet" link tucked underneath it.
+  it "puts tips behind a button instead of a box beside a worksheet link" do
+    get manage_staffing_pay_path
+
+    expect(response.body).to include("Add tips").and include("Add cash tips")
+    expect(response.body).to include(%(id="pay-tips-#{member.id}" type="hidden"))
+    expect(response.body).to include(%(id="pay-cashtips-#{member.id}" type="hidden"))
+    expect(response.body).not_to include(">worksheet<")
+  end
+
   describe "role-aware pricing (rates belong to the work, not the person)" do
     let(:bartender) { create(:house_role, organization: org, name: "Bartender") }
     let(:house_mgr) { create(:house_role, organization: org, name: "House Manager") }

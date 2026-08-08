@@ -1,7 +1,7 @@
 <% content_for :title, "Pay People" %>
 
 <div class="w-full mb-10" data-controller="pay-run tips-worksheet pay-draft help-modal pay-hidden-staff"
-     data-action="input->pay-run#recalc change->pay-run#recalc input->pay-hidden-staff#autoReveal change->pay-hidden-staff#autoReveal"
+     data-action="input->pay-run#recalc change->pay-run#recalc input->pay-hidden-staff#autoReveal change->pay-hidden-staff#autoReveal input->tips-worksheet#syncAll"
      data-pay-draft-url-value="<%= manage_staffing_pay_draft_path %>"
      data-pay-draft-initial-value="<%= @draft %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -69,7 +69,7 @@
       <%# One grid, two layouts. Below lg each person is a stacked card with
           labeled fields (no sideways scrolling); from lg up it's the classic
           spreadsheet table. Same single set of inputs in both — the form,
-          draft autosave, pull-hours, worksheets, and pay-run math don't know
+          draft autosave, pull-hours, day-by-day entry, and pay-run math don't know
           the difference. %>
       <%# Rate has no column of its own — pay rates belong to the work (roles),
           and they surface inside each person's Hours modal where hours are
@@ -164,20 +164,31 @@
                 </td>
                 <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
                   <span class="text-xs text-gray-500 lg:hidden">Tips</span>
+                  <%# Same shape as Hours: the amount is entered day-by-day in the
+                      modal, so the button IS the field — it reads "Add tips" when
+                      empty and "3 days · $120.00" once there's something in it. %>
                   <div class="text-right">
-                    <input id="pay-tips-<%= member.id %>" type="text" inputmode="decimal" name="lines[<%= member.id %>][tips]" data-pay-field="tips" data-action="input->pay-run#recalc" placeholder="0" class="w-24 lg:w-20 px-2 py-1.5 text-base lg:text-sm border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
+                    <input id="pay-tips-<%= member.id %>" type="hidden" name="lines[<%= member.id %>][tips]" data-pay-field="tips" data-action="input->pay-run#recalc">
                     <span id="pay-tips-sheet-<%= member.id %>" class="hidden"></span>
-                    <button type="button" data-action="click->tips-worksheet#open" data-member-id="<%= member.id %>" data-field-input-id="pay-tips-<%= member.id %>" data-holder-id="pay-tips-sheet-<%= member.id %>" data-field-name="tips_sheet" data-title="Tips worksheet"
-                            class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">worksheet</button>
+                    <%= render "shared/button", text: "Add tips", variant: "secondary", size: "small", type: :button,
+                          classes: "w-full lg:w-auto",
+                          data: { action: "click->tips-worksheet#open", "tips-worksheet-target": "button",
+                                  member_id: member.id, field_input_id: "pay-tips-#{member.id}",
+                                  holder_id: "pay-tips-sheet-#{member.id}", field_name: "tips_sheet",
+                                  title: "Tips by day", empty_label: "Add tips" } %>
                   </div>
                 </td>
                 <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">
                   <span class="text-xs text-gray-500 lg:hidden">Cash tips</span>
                   <div class="text-right">
-                    <input id="pay-cashtips-<%= member.id %>" type="text" inputmode="decimal" name="lines[<%= member.id %>][cash_tips]" placeholder="0" class="w-24 lg:w-20 px-2 py-1.5 text-base lg:text-sm border border-gray-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-pink-300">
+                    <input id="pay-cashtips-<%= member.id %>" type="hidden" name="lines[<%= member.id %>][cash_tips]">
                     <span id="pay-cashtips-sheet-<%= member.id %>" class="hidden"></span>
-                    <button type="button" data-action="click->tips-worksheet#open" data-member-id="<%= member.id %>" data-field-input-id="pay-cashtips-<%= member.id %>" data-holder-id="pay-cashtips-sheet-<%= member.id %>" data-field-name="cash_tips_sheet" data-title="Cash tips worksheet"
-                            class="block ml-auto mt-1 text-[11px] text-pink-600 hover:text-pink-700 cursor-pointer">worksheet</button>
+                    <%= render "shared/button", text: "Add cash tips", variant: "secondary", size: "small", type: :button,
+                          classes: "w-full lg:w-auto",
+                          data: { action: "click->tips-worksheet#open", "tips-worksheet-target": "button",
+                                  member_id: member.id, field_input_id: "pay-cashtips-#{member.id}",
+                                  holder_id: "pay-cashtips-sheet-#{member.id}", field_name: "cash_tips_sheet",
+                                  title: "Cash tips by day", empty_label: "Add cash tips" } %>
                   </div>
                 </td>
                 <td data-acc-field class="hidden items-center justify-between gap-3 pt-2 mt-1 border-t border-gray-100 lg:border-t-0 lg:mt-0 lg:table-cell lg:px-3 lg:py-2 lg:pt-3.5 lg:text-right lg:align-top">
@@ -339,13 +350,13 @@
     <% end %>
   <% end %>
 
-  <%# ---- Tips / cash-tips worksheet modal (shared) ---- %>
+  <%# ---- Tips / cash-tips day-by-day modal (shared) ---- %>
   <div data-tips-worksheet-target="modal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
        data-action="click->tips-worksheet#backdropClose keydown.esc@window->tips-worksheet#close">
     <div class="flex min-h-full items-start justify-center p-4 py-12">
       <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->tips-worksheet#stopPropagation">
         <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
-          <h3 class="text-lg font-semibold text-white" data-tips-worksheet-target="title">Tips worksheet</h3>
+          <h3 class="text-lg font-semibold text-white" data-tips-worksheet-target="title">Tips</h3>
           <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->tips-worksheet#close">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -400,7 +411,7 @@
       </div>
       <div>
         <dt class="font-medium text-gray-900">Cash tips</dt>
-        <dd class="text-gray-600">Tips they <strong>already took in cash</strong> (their split from the jar). Saved to this pay run's permanent record — for your files and their pay history — but <strong>we don't send this money again</strong>, so it's excluded from the total. Use the worksheet to log which days they came from.</dd>
+        <dd class="text-gray-600">Tips they <strong>already took in cash</strong> (their split from the jar). Saved to this pay run's permanent record — for your files and their pay history — but <strong>we don't send this money again</strong>, so it's excluded from the total. Log them day by day, same as tips.</dd>
       </div>
       <div>
         <dt class="font-medium text-gray-900">Total</dt>
