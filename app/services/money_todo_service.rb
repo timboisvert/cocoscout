@@ -111,13 +111,13 @@ class MoneyTodoService
     end
   end
 
-  # Productions, courses and contracts with money still to move, most
-  # actionable first. Each row carries a per-status breakdown (to pay / in a
-  # draft run / in flight / paid) so it answers "what have I done about this?"
+  # Productions, courses and contracts with money still to move, oldest debt
+  # first. Each row carries a per-status breakdown (to pay / in a draft run /
+  # in flight / paid) so it answers "what have I done about this?"
   def payouts
     @payouts ||= begin
       items = production_payout_items + course_payout_items + contract_payout_items
-      items.sort_by! { |i| [ -i[:amounts][:to_pay].to_f, -i[:amount].to_f ] }
+      items.sort_by! { |i| payout_sort_key(i) }
 
       columns = [ :to_pay ]
       %i[in_draft in_flight paid].each do |col|
@@ -165,6 +165,20 @@ class MoneyTodoService
 
   def sum_amounts(payments)
     payments.reject(&:amount_tbd?).sum { |p| p.amount.to_f }
+  end
+
+  # A row with no date sorts to the end rather than to the front.
+  UNDATED = Date.new(9999, 1, 1)
+
+  # Oldest debt first. Sorting by size put a $2,000 payment due in two months
+  # above money that went overdue a fortnight ago, which is exactly backwards
+  # for a list of what to chase.
+  #
+  # Rows with nothing left to pay still sort by date, but sit below the ones
+  # that do — they're on the page as a record of money already in motion, not
+  # as work.
+  def payout_sort_key(item)
+    [ item[:amounts][:to_pay].to_f > 0.004 ? 0 : 1, item[:due_on] || UNDATED, -item[:amount].to_f ]
   end
 
   # --- Payouts, by source --------------------------------------------------
@@ -217,36 +231,44 @@ class MoneyTodoService
         amount: amounts[:to_pay] + amounts[:in_draft] + amounts[:in_flight],
         amounts: amounts,
         subtitle: parts.join(" · "),
+        # The oldest show still owing somebody — how long this has been waiting.
+        due_on: shows.map(&:date_and_time).min&.to_date,
         production: production,
         awaiting_shows: shows }
     end
   end
 
   def course_payout_items
-    items = []
-    user.accessible_productions.courses
-        .includes(course_offerings: { course_offering_payout: :line_items }).each do |course|
+    courses = user.accessible_productions.courses
+                  .includes(course_offerings: { course_offering_payout: :line_items }).to_a
+    offerings = courses.flat_map(&:course_offerings)
+    return [] if offerings.empty?
+
+    # First session per offering, in one query — the course's own "when", so it
+    # sorts against shows and contract due dates rather than falling to the end.
+    first_sessions = Show.where(course_offering_id: offerings.map(&:id))
+                         .group(:course_offering_id).minimum(:date_and_time)
+
+    offerings.filter_map do |offering|
       # One course can hold many runs — surface each run's own payout. Course
       # instructor payouts are settled directly (never staged in a run).
-      course.course_offerings.each do |offering|
-        payout = offering.course_offering_payout
-        next unless payout
+      payout = offering.course_offering_payout
+      next unless payout
 
-        unpaid = payout.line_items.reject(&:paid?)
-        paid = payout.line_items.select(&:paid?)
-        amount = unpaid.sum(&:amount_cents) / 100.0
-        next unless amount.positive?
+      unpaid = payout.line_items.reject(&:paid?)
+      paid = payout.line_items.select(&:paid?)
+      amount = unpaid.sum(&:amount_cents) / 100.0
+      next unless amount.positive?
 
-        subtitle = +"#{unpaid.count} instructor #{'payout'.pluralize(unpaid.count)} to pay"
-        subtitle << " · #{paid.count} already paid" if paid.any?
+      subtitle = +"#{unpaid.count} instructor #{'payout'.pluralize(unpaid.count)} to pay"
+      subtitle << " · #{paid.count} already paid" if paid.any?
 
-        items << { name: offering.title, kind: :course, amount: amount,
-                   amounts: { to_pay: amount, paid: paid.sum(&:amount_cents) / 100.0 },
-                   subtitle: subtitle,
-                   href: manage_course_offering_payout_path(offering) }
-      end
+      { name: offering.title, kind: :course, amount: amount,
+        amounts: { to_pay: amount, paid: paid.sum(&:amount_cents) / 100.0 },
+        subtitle: subtitle,
+        due_on: first_sessions[offering.id]&.to_date,
+        href: manage_course_offering_payout_path(offering) }
     end
-    items
   end
 
   def contract_payout_items
@@ -278,6 +300,8 @@ class MoneyTodoService
       items << { name: contract.contractor_name, kind: :contract, amount: amount,
                  amounts: amounts,
                  subtitle: parts.join(" · "),
+                 # The soonest thing owed, which is what the subtitle already says.
+                 due_on: due,
                  href: manage_contract_path(contract) }
     end
     items

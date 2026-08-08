@@ -87,6 +87,36 @@ RSpec.describe MoneyTodoService do
       expect(service.payouts.count).to eq(0)
     end
 
+    # Sorting by size put a big payment due in two months above money that went
+    # overdue a fortnight ago — backwards for a list of what to chase.
+    it "puts the oldest debt first, whatever it's worth" do
+      later = create(:contract, organization: org, production: production, contractor_name: "Big But Later")
+      later.contract_payments.create!(description: "Halloween Show", amount: 2_000, direction: "outgoing",
+                                      due_date: 2.months.from_now.to_date)
+      overdue = create(:contract, organization: org, contractor_name: "Small But Overdue",
+                                  production: create(:production, organization: org))
+      overdue.contract_payments.create!(description: "Fee", amount: 42, direction: "outgoing",
+                                        due_date: 2.weeks.ago.to_date)
+
+      names = service.payouts.items.map { |i| i[:name] }
+      expect(names.index("Small But Overdue")).to be < names.index("Big But Later")
+    end
+
+    it "sorts a production by its oldest unpaid show, not by its size" do
+      old_show = create(:show, production: production, event_type: :show, date_and_time: 1.year.ago)
+      old_payout = ShowPayout.create!(show: old_show, status: "awaiting_payout",
+                                      calculated_at: Time.current, total_payout: 5)
+      ShowPayoutLineItem.create!(show_payout: old_payout, payee: create(:person), amount: 5)
+
+      # The production row now covers a year-ago show and a three-days-ago one;
+      # it sorts on the older of the two, above a fatter contract due tomorrow.
+      contract = create(:contract, organization: org, production: create(:production, organization: org))
+      contract.contract_payments.create!(description: "Big", amount: 9_000, direction: "outgoing",
+                                         due_date: Date.tomorrow)
+
+      expect(service.payouts.items.first[:name]).to eq(production.name)
+    end
+
     it "never leaks another organization's payouts" do
       other_org = create(:organization, owner: create(:user))
       other_show = create(:show, production: create(:production, organization: other_org),
