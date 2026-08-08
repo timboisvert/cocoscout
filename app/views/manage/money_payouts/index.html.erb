@@ -241,39 +241,8 @@
       <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Awaiting Payout</h3>
       <div class="mb-8">
         <%= render layout: "shared/slim_list", locals: { label: "To pay", columns: awaiting_col_labels, min_width: list_min_width } do %>
-          <% @awaiting_items.each do |item| %>
-            <%
-              badge = case item[:kind]
-                      when :course   then { text: "Course", color: "purple" }
-                      when :contract then { text: "Contract", color: "gray" }
-                      end
-              common = {
-                title: item[:name],
-                subtitle: item[:subtitle],
-                badge: badge,
-                col_labels: awaiting_col_labels,
-                cells: @awaiting_columns.map { |c| awaiting_payout_cell(item[:amounts][c], c) }
-              }
-            %>
-            <% if item[:expand_src] %>
-              <%= render "shared/slim_list_row", **common, expand_src: item[:expand_src], expand_id: item[:expand_id] %>
-            <% else %>
-              <%= render "shared/slim_list_row", **common, href: item[:href] %>
-            <% end %>
-          <% end %>
-          <%# Per-status totals, so the numbers are right there instead of adding
-              up the rows by hand. The headline — what still hasn't been paid —
-              sits in the subtitle. %>
-          <% still_owed = @awaiting_items.sum { |i| i[:amount].to_f } %>
-          <div class="bg-gray-50 border-t-2 border-gray-200">
-            <%= render "shared/slim_list_row",
-                  title: "Total awaiting payout",
-                  subtitle: "#{number_to_currency(still_owed)} still unpaid in total",
-                  col_labels: awaiting_col_labels,
-                  cells: @awaiting_columns.map { |c|
-                    awaiting_payout_cell(@awaiting_items.sum { |i| i[:amounts][c].to_f }, c, bold: true)
-                  } %>
-          </div>
+          <%= render "manage/money_payouts/awaiting_payout_rows",
+                items: @awaiting_items, columns: @awaiting_columns, total: true %>
         <% end %>
       </div>
     <% end %>

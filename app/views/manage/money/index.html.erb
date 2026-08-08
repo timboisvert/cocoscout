@@ -14,6 +14,16 @@
     { icon: "banknotes", text: "Incoming Payments", description: "Track and collect money owed to you", path: manage_money_incoming_path },
     { icon: "cog", text: "Settings", description: "How you pay people", path: manage_money_settings_path }
   ]
+
+  payout_columns = @todo.payouts.columns.map { |c| Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS[c][:label] }
+
+  # Lead with what's late, since that's the part that needs a phone call.
+  incoming = @todo.incoming
+  incoming_subtitle = if incoming.overdue_count.positive?
+    "#{number_to_currency(incoming.overdue_amount)} overdue of #{number_to_currency(incoming.amount)}"
+  else
+    "#{number_to_currency(incoming.amount)} due"
+  end
 %>
 
 <div class="w-full mb-10">
@@ -25,53 +35,74 @@
     actions: money_actions
   %>
 
-  <div class="border-t border-gray-200 pt-4 mt-2">
+  <div class="border-t border-gray-200 pt-4 mt-2 mb-8">
     <%= render "shared/money_summary",
       title: "Money",
       money_in: @org_summary[:gross_revenue],
       money_out: @org_summary[:cost_of_shows],
       profit: @org_summary[:gross_profit],
       selected_period: @selected_period,
-      period_path: manage_money_index_path(production_filter: @production_filter),
-      refresh_url: manage_refresh_money_path(period: @selected_period, production_filter: @production_filter),
-      cached_at: @cached_at %>
+      period_path: manage_money_index_path,
+      refresh_url: manage_refresh_money_path(period: @selected_period) %>
   </div>
 
-  <%# Productions List — courses live in their own section below, so no type filter needed. %>
-  <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Productions</h3>
-  <div class="">
+  <%# What needs doing, in the order it costs you: numbers you owe yourself,
+      money you owe other people, money other people owe you. Each section is a
+      window onto its own page and links there for the rest. %>
 
-    <% if @production_summaries.any? %>
-      <%= render "manage/money/slim_grid", summaries: @production_summaries %>
-    <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p class="text-gray-600">No productions yet. Create a production to start tracking finances.</p>
-      </div>
-    <% end %>
-
-    <%# Show All / Hidden Productions Toggle %>
-    <% if !@show_all && @hidden_count && @hidden_count > 0 %>
-      <div class="mt-4 text-center">
-        <%= link_to manage_money_index_path(period: @selected_period, production_filter: @production_filter, show_all: "true"),
-            class: "text-sm text-gray-500 hover:text-pink-600 transition-colors" do %>
-          <%= @hidden_count %> older <%= "production".pluralize(@hidden_count) %> hidden &middot; Show all
-        <% end %>
-      </div>
-    <% elsif @show_all %>
-      <div class="mt-4 text-center">
-        <%= link_to manage_money_index_path(period: @selected_period, production_filter: @production_filter),
-            class: "text-sm text-gray-500 hover:text-pink-600 transition-colors" do %>
-          Show only recent productions
-        <% end %>
-      </div>
-    <% end %>
-  </div>
-
-  <%# Courses — same slim grid %>
-  <% if @course_summaries.any? %>
-    <div class="mt-8 border-t border-gray-200 pt-4">
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Courses (<%= @course_summaries.count %>)</h3>
-      <%= render "manage/money/slim_grid", summaries: @course_summaries, label: "Course" %>
-    </div>
+  <%= render layout: "manage/money/todo_section",
+        locals: { title: "Needs financials", section: @todo.financials, label: "Show",
+                  path: manage_money_financials_path, link_text: "Financials",
+                  empty: "You're all caught up on financials." } do %>
+    <%= render "manage/money_financials/financials_show_rows", shows: @todo.financials.items %>
   <% end %>
+
+  <%= render layout: "manage/money/todo_section",
+        locals: { title: "To pay", section: @todo.payouts, label: "To pay",
+                  columns: payout_columns, min_width: "min-w-[360px]",
+                  subtitle: "#{number_to_currency(@todo.payouts.amount)} still unpaid",
+                  path: manage_money_payouts_path, link_text: "Payouts",
+                  empty: "Nothing waiting to be paid." } do %>
+    <%# Same partial the Payouts page renders, so the rows can't differ. The
+        totals row sums the whole set even though only the first few show. %>
+    <%= render "manage/money_payouts/awaiting_payout_rows",
+          items: @todo.payouts.items, columns: @todo.payouts.columns %>
+  <% end %>
+
+  <%= render layout: "manage/money/todo_section",
+        locals: { title: "Owed to you", section: @todo.incoming, label: "Payer",
+                  columns: [ "Due", "Amount" ], min_width: "min-w-[420px]",
+                  subtitle: incoming_subtitle,
+                  # The window param is what makes this count match the page it
+                  # lands on — Incoming defaults to three months, the hub to 30 days.
+                  path: manage_money_incoming_path(window: "1m"), link_text: "Incoming Payments",
+                  empty: "Nothing owed to you in the next 30 days." } do %>
+    <% @todo.incoming.items.each do |payment| %>
+      <%= render "manage/money_incoming/payment_slim_row", payment: payment, show_production: true %>
+    <% end %>
+  <% end %>
+
+  <%# Browsing, not doing: the full grids live on the All Financials page, which
+      already carries both productions and courses behind a type filter. %>
+  <div class="space-y-2">
+    <%= link_to manage_money_all_financials_path(type: "productions"), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="font-semibold text-gray-900">All productions</h3>
+          <p class="text-sm text-gray-500 mt-0.5">Every production's revenue, costs, and profit, show by show.</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </div>
+    <% end %>
+
+    <%= link_to manage_money_all_financials_path(type: "courses"), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="font-semibold text-gray-900">All courses</h3>
+          <p class="text-sm text-gray-500 mt-0.5">What each course has taken in, and what's left after payouts.</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </div>
+    <% end %>
+  </div>
 </div>

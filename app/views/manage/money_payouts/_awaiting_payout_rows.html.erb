@@ -1,0 +1,53 @@
+<%#
+  The "Awaiting Payout" rows — productions, courses and contracts with money
+  still to move. Rendered by both the Payouts page and the Money hub, from the
+  same MoneyTodoService items, so the two can't show different rows for the
+  same money.
+
+  Required: items (Array of item hashes), columns (Array<Symbol>)
+  Optional: total (default false) — append the per-column totals footer row
+            totals_source (default items) — what the footer sums; the hub passes
+            the FULL set here while showing only the first few rows above.
+%>
+<%
+  col_meta = Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS
+  col_labels = columns.map { |c| col_meta[c][:label] }
+  show_total = local_assigns.fetch(:total, false)
+  totals_source = local_assigns.fetch(:totals_source, items)
+%>
+<% items.each do |item| %>
+  <%
+    badge = case item[:kind]
+            when :course   then { text: "Course", color: "purple" }
+            when :contract then { text: "Contract", color: "gray" }
+            end
+    common = {
+      title: item[:name],
+      subtitle: item[:subtitle],
+      badge: badge,
+      col_labels: col_labels,
+      cells: columns.map { |c| awaiting_payout_cell(item[:amounts][c], c) }
+    }
+  %>
+  <% if item[:expand_src] %>
+    <%= render "shared/slim_list_row", **common, expand_src: item[:expand_src], expand_id: item[:expand_id] %>
+  <% else %>
+    <%= render "shared/slim_list_row", **common, href: item[:href] %>
+  <% end %>
+<% end %>
+
+<% if show_total %>
+  <%# Per-status totals, so the numbers are right there instead of adding up the
+      rows by hand. The headline — what still hasn't been paid — sits in the
+      subtitle. %>
+  <% still_owed = totals_source.sum { |i| i[:amount].to_f } %>
+  <div class="bg-gray-50 border-t-2 border-gray-200">
+    <%= render "shared/slim_list_row",
+          title: "Total awaiting payout",
+          subtitle: "#{number_to_currency(still_owed)} still unpaid in total",
+          col_labels: col_labels,
+          cells: columns.map { |c|
+            awaiting_payout_cell(totals_source.sum { |i| i[:amounts][c].to_f }, c, bold: true)
+          } %>
+  </div>
+<% end %>

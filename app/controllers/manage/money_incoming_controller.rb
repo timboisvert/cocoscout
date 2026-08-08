@@ -194,19 +194,18 @@ module Manage
 
     # Everything owed to us, including the amounts that settle by deduction —
     # for totals and reporting, where the money is real even though the
-    # collection is automatic.
+    # collection is automatic. Defined in MoneyTodoService so this page and the
+    # Money hub count the same money.
     def all_incoming
-      ContractPayment.direction_incoming.status_pending
-                     .joins(:contract)
-                     .where(contracts: { organization_id: Current.organization.id })
+      MoneyTodoService.all_incoming(Current.organization)
     end
 
     def collectable_incoming
-      all_incoming.where.not(settlement_method: "payout_deduction")
+      MoneyTodoService.collectable_incoming(Current.organization)
     end
 
     def deduction_settled_incoming
-      all_incoming.where(settlement_method: "payout_deduction")
+      MoneyTodoService.deduction_settled_incoming(Current.organization)
     end
 
     # Detail/remind look up by id within the org, not restricted to pending — a

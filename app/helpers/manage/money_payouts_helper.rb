@@ -18,26 +18,12 @@ module Manage
     # Splits show-payout line items into the four column buckets above.
     # Returns { amounts: {col => Float}, counts: {col => Integer} } — amounts are
     # the payees' nets, counts are people.
+    #
+    # The bucketing itself lives in MoneyTodoService, which both the Payouts page
+    # and the Money hub build their rows from — two copies would let the hub's
+    # totals drift from the page's.
     def awaiting_payout_breakdown(line_items)
-      amounts = Hash.new(0.0)
-      counts = Hash.new(0)
-      line_items.each do |item|
-        col = if item.paid?
-          :paid
-        else
-          batch = item.payout_contribution&.payout_batch
-          if batch&.status == "draft"
-            :in_draft
-          elsif batch && PayoutBatchService::UNSETTLED_BATCH_STATUSES.include?(batch.status)
-            :in_flight
-          else
-            :to_pay
-          end
-        end
-        amounts[col] += item.net_amount.to_f
-        counts[col] += 1
-      end
-      { amounts: amounts, counts: counts }
+      MoneyTodoService.payout_breakdown(line_items)
     end
 
     # One right-aligned money cell for the grid. Zero renders as a quiet dash so

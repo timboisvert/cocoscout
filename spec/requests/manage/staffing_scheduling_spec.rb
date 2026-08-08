@@ -306,7 +306,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
 
       it "isn't shown while Role Call is off" do
         get manage_staffing_settings_section_path(section: "role_call")
-        expect(response.body).not_to include("Roles Role Call checks")
+        expect(response.body).not_to include("Which roles get checked")
       end
 
       context "with Role Call on" do
@@ -314,7 +314,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
 
         it "lists per-show roles only, checked by default" do
           get manage_staffing_settings_section_path(section: "role_call")
-          expect(response.body).to include("Roles Role Call checks")
+          expect(response.body).to include("Which roles get checked")
           expect(response.body).to include("Booth Tech")
           expect(response.body).to include("Videographer")
           # A house role is never checked by Role Call, so it has no switch here.

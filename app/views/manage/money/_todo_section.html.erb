@@ -1,0 +1,52 @@
+<%#
+  One to-do block on the Money hub: a heading carrying the FULL count, the first
+  few rows, and a link through to the page that holds the rest.
+
+  An empty section still renders — it says you're caught up. A hub that hides
+  its finished sections is a page of three links on a good week, which reads as
+  broken rather than as done.
+
+  Required: title, section (a MoneyTodoService::Section), path, link_text, empty
+  Optional: columns (slim_list column labels, default [])
+            min_width, subtitle (line under the heading, e.g. a total)
+            block content — the rows
+%>
+<%
+  columns = local_assigns.fetch(:columns, [])
+  min_width = local_assigns.fetch(:min_width, "min-w-[320px]")
+  subtitle = local_assigns[:subtitle]
+%>
+<div class="mb-8">
+  <div class="flex items-baseline justify-between gap-3 mb-3">
+    <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+      <%= title %>
+      <% if section.any? %>
+        <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= section.count %>)</span>
+      <% end %>
+    </h3>
+    <% if subtitle.present? && section.any? %>
+      <span class="text-sm text-gray-600 normal-case tracking-normal"><%= subtitle %></span>
+    <% end %>
+  </div>
+
+  <% if section.any? %>
+    <%= render layout: "shared/slim_list", locals: { label: label, columns: columns, min_width: min_width } do %>
+      <%= yield %>
+    <% end %>
+    <div class="mt-2 text-right">
+      <%= link_to path, class: "text-sm text-pink-600 hover:text-pink-700" do %>
+        <%= section.truncated? ? "See all #{section.count} in #{link_text}" : "Open #{link_text}" %> &rarr;
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-white rounded-lg border border-gray-200 p-5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-600 flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        </span>
+        <p class="text-sm text-gray-600"><%= empty %></p>
+      </div>
+      <%= link_to link_text, path, class: "text-sm text-pink-600 hover:text-pink-700 flex-shrink-0" %>
+    </div>
+  <% end %>
+</div>
