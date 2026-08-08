@@ -390,7 +390,7 @@ module Manage
       parts = []
       parts << "Removed #{removed.to_sentence}" if removed.any?
       parts << "Moved #{moved.to_sentence}" if moved.any?
-      parts << "Cancelled #{kept_paid.to_sentence} — that date was already settled, so its payment stays" if kept_paid.any?
+      parts << "Cancelled #{kept_paid.to_sentence} and released the room — that date was already settled, so its payment stays" if kept_paid.any?
       parts.any? ? "#{parts.join('. ')}." : "No date changes to make."
     end
     helper_method :date_change_notice

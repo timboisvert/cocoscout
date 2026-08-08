@@ -13,21 +13,34 @@ class ContractDateChanges
     # that already moved stays put, and only still-pending payments drop off.
     def remove!(contract:, rental:)
       shows = shows_for(contract, rental)
-      settled = settled?(contract, rental, shows)
+      settled = settled_for?(contract: contract, rental: rental, shows: shows)
       label = rental.starts_at.strftime("%b %-d")
 
       dropped = drop_pending_payments!(contract, rental, shows)
 
       if settled
-        # Cancel, keep the record. update! rather than update_all so the
+        # Cancel, keep the record: money that already moved has to stay
+        # attributable to a real show. update! rather than update_all so the
         # contract-payment sync hook still sees it.
-        shows.each { |s| s.update!(canceled: true) }
+        shows.each do |show|
+          # Pin the show's own span before the rental goes — without a
+          # duration of its own it reads its end time off the rental, and
+          # would lose it.
+          show.duration_minutes ||= rental.effective_duration_minutes
+          show.canceled = true
+          show.save!
+        end
       else
         Show.without_contract_payment_sync do
           shows.each(&:destroy!)
         end
-        rental.destroy!
       end
+
+      # Either way the date is off the contract, so the room is free again. A
+      # cancelled date that keeps its booking holds the space against everyone
+      # else — the overlap check still counts it — and reads as confirmed on
+      # the contract page, which is how this looked like nothing happened.
+      rental.destroy!
 
       { label: label, settled: settled, dropped: dropped }
     end
@@ -53,6 +66,21 @@ class ContractDateChanges
       starts_at.strftime("%b %-d")
     end
 
+    # Has money actually moved for this date? A paid payment, a payment
+    # committed to a payout run, or real revenue recorded against the show.
+    #
+    # Public because the Change dates screen has to warn about exactly the same
+    # dates this method will refuse to delete — a second copy of the rule in the
+    # view is a promise the service doesn't keep.
+    def settled_for?(contract:, rental:, shows: nil)
+      shows ||= shows_for(contract, rental)
+      payments = contract.contract_payments.where(show_id: shows.map(&:id)).to_a
+      payments += contract.contract_payments.where(due_date: rental.starts_at.to_date).to_a
+
+      payments.any? { |p| p.status_paid? || p.in_payout_run? } ||
+        shows.any? { |s| financials_settled?(s) }
+    end
+
     private
 
     def shows_for(contract, rental)
@@ -61,15 +89,17 @@ class ContractDateChanges
       contract.production.shows.where(space_rental_id: rental.id).to_a
     end
 
-    # Has money actually moved for this date? A paid payment, a payment
-    # committed to a payout run, or ticket revenue recorded against the show.
-    def settled?(contract, rental, shows)
-      show_ids = shows.map(&:id)
-      payments = contract.contract_payments.where(show_id: show_ids).to_a
-      payments += contract.contract_payments.where(due_date: rental.starts_at.to_date).to_a
+    # A ShowFinancials row on its own proves nothing — one gets created just by
+    # opening a show's payout page. It's only settled once someone confirmed the
+    # numbers or entered actual revenue. Treating the bare row as settled meant a
+    # future show nobody had paid a cent for couldn't be deleted.
+    def financials_settled?(show)
+      financials = show.show_financials
+      return false unless financials
 
-      payments.any? { |p| p.status_paid? || p.in_payout_run? } ||
-        shows.any? { |s| s.show_financials.present? }
+      financials.data_confirmed? ||
+        financials.ticket_revenue.to_f.positive? ||
+        financials.flat_fee.to_f.positive?
     end
 
     # Only pending, uncommitted payments for this date come off. Anything paid

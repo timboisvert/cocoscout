@@ -10,7 +10,8 @@
           <%
             show = @shows_by_rental[rental.id]
             payments = @contract.contract_payments.select { |p| p.show_id == show&.id || p.due_date == rental.starts_at.to_date }
-            settled = payments.any? { |p| p.status_paid? || p.in_payout_run? } || show&.show_financials.present?
+            # Ask the service, so the warning matches what removing actually does.
+            settled = ContractDateChanges.settled_for?(contract: @contract, rental: rental, shows: [ show ].compact)
             pending = payments.select { |p| p.status_pending? && !p.in_payout_run? }
             past = rental.starts_at < Time.current
           %>
@@ -28,7 +29,7 @@
 
                 <% if settled %>
                   <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 inline-block">
-                    Already settled — removing this cancels the date and leaves the money alone.
+                    Already settled — removing this cancels the show and frees the room, but leaves the money that already moved alone.
                   </p>
                 <% elsif pending.any? %>
                   <p class="text-xs text-gray-500 mt-1.5">

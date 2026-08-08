@@ -62,8 +62,56 @@ RSpec.describe "Contracts — change dates", type: :request do
            params: { dates: { rental.id.to_s => { action: "remove" } } }
 
       expect(Show.find(show.id).canceled).to be(true)
-      expect(SpaceRental.exists?(rental.id)).to be(true)
       expect(paid.reload.status).to eq("paid")
+      expect(flash[:notice]).to include("already settled")
+    end
+
+    # A cancelled date that keeps its booking holds the room against every other
+    # event and still reads "Confirmed" on the contract, which is how removing a
+    # date looked like it hadn't worked.
+    it "still releases the room, and the cancelled show keeps its own times" do
+      rental, show = booked_date!(2.weeks.ago.change(hour: 20))
+      show.update!(duration_minutes: nil)
+      contract.contract_payments.create!(description: "Settlement", amount: 63, direction: "outgoing",
+                                         due_date: rental.starts_at.to_date, show_id: show.id,
+                                         status: "paid", paid_date: Date.current)
+
+      post apply_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "remove" } } }
+
+      expect(SpaceRental.exists?(rental.id)).to be(false)
+      expect(show.reload.duration_minutes).to eq(120)
+      expect(show.ends_at).to eq(show.date_and_time + 120.minutes)
+    end
+  end
+
+  # A ShowFinancials row gets created just by opening a show's payout page. Read
+  # as "settled", it made a future show with no money on it undeletable — the
+  # date was merely cancelled and its room stayed booked.
+  describe "a future date with an empty financials row" do
+    it "deletes it outright, like any other unsettled date" do
+      rental, show = booked_date!(future)
+      show.create_show_financials!
+      pending = contract.contract_payments.create!(description: "Rent", amount: 200, direction: "incoming",
+                                                    due_date: future.to_date, show_id: show.id)
+
+      post apply_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "remove" } } }
+
+      expect(SpaceRental.exists?(rental.id)).to be(false)
+      expect(Show.exists?(show.id)).to be(false)
+      expect(ContractPayment.exists?(pending.id)).to be(false)
+      expect(flash[:notice]).not_to include("already settled")
+    end
+
+    it "but confirmed numbers still count as settled" do
+      rental, show = booked_date!(future)
+      show.create_show_financials!(ticket_revenue: 400, data_confirmed: true)
+
+      post apply_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "remove" } } }
+
+      expect(Show.find(show.id).canceled).to be(true)
       expect(flash[:notice]).to include("already settled")
     end
   end
