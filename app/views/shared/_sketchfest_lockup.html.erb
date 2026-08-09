@@ -1,0 +1,31 @@
+<%#
+  The CocoScout x Chicago SketchFest co-branded lockup, shared by the sponsor
+  page and the sketch-flavored signup panel.
+
+  The SketchFest mark is their artwork, not ours, so it may not be committed
+  yet — image_tag raises on a missing asset, which would turn that into a 500
+  on a live marketing page. Falls back to a typeset wordmark until the file
+  lands at app/assets/images/sketchfest-chicago.png.
+
+  Locals:
+    size — :large (hero, default) or :small (inline, e.g. the signup panel)
+
+  NOTE: keep ERB tags (percent-angle-bracket) out of this comment — the first
+  closing token would end the comment early and run the rest as code.
+%>
+<%
+  size = local_assigns[:size] || :large
+  logo_classes = size == :small ? "h-10 w-auto object-contain" : "h-16 sm:h-20 w-auto object-contain"
+  divider_classes = size == :small ? "text-lg text-slate-300 font-light leading-none" : "text-2xl sm:text-3xl text-slate-300 font-light leading-none"
+  wordmark_classes = size == :small ? "coustard-regular text-base text-slate-900 leading-tight" : "coustard-regular text-2xl sm:text-3xl text-slate-900 leading-tight"
+  wrapper_classes = size == :small ? "flex items-center gap-3" : "flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
+%>
+<div class="<%= wrapper_classes %>">
+  <%= image_tag "cocoscout.png", alt: "CocoScout", class: logo_classes %>
+  <span class="<%= divider_classes %>" aria-hidden="true">&times;</span>
+  <% if asset_available?("sketchfest-chicago.png") %>
+    <%= image_tag "sketchfest-chicago.png", alt: "Chicago SketchFest", class: logo_classes %>
+  <% else %>
+    <span class="<%= wordmark_classes %>">Chicago SketchFest</span>
+  <% end %>
+</div>

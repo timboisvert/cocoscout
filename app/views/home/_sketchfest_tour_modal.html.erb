@@ -1,0 +1,152 @@
+<%#
+  The "take a tour" modal on the SketchFest sponsor page. Four screenshot steps
+  covering what a sketch team actually does, then a closing step on what Pro
+  adds once they outgrow the free tier.
+
+  Opening and closing is the generic modal controller (same pattern as the
+  usage-fees modal on the pricing page); product-tour handles the stepping.
+  Both live on the wrapper. Since modal fires no open/close event, every close
+  path also calls product-tour#reset, so reopening starts at step one.
+
+  NOTE: keep ERB tags (percent-angle-bracket) out of this comment — the first
+  closing token would end the comment early and run the rest as code.
+%>
+<%
+  pro_monthly = SubscriptionPlan::PRO_MONTHLY_CENTS / 100
+  pro_annual  = SubscriptionPlan::PRO_ANNUAL_CENTS / 100
+
+  steps = [
+    {
+      image: "screenshots/scheduling/1-shows-list.png",
+      alt: "A production's list of upcoming shows and rehearsals in CocoScout",
+      eyebrow: "Your run",
+      title: "Every rehearsal and every show, in one list.",
+      body: "Put your run in once — rehearsals, tech, the shows themselves. Your whole team sees the same calendar, so nobody's working off a screenshot of a screenshot."
+    },
+    {
+      image: "screenshots/scheduling/3-availability-grid.png",
+      alt: "The availability grid showing who can make each date",
+      eyebrow: "Who can make it",
+      title: "Stop taking attendance in the group chat.",
+      body: "Everyone marks the dates they can make. You get a grid instead of forty messages, and you can see at a glance which night is going to be a problem."
+    },
+    {
+      image: "screenshots/casting/1-casting-table.png",
+      alt: "The casting table, assigning people to roles across a run of shows",
+      eyebrow: "Casting",
+      title: "Cast the whole run on one board.",
+      body: "Assign your people to roles across every date. They get told what they're in, and they confirm — so you know it landed."
+    },
+    {
+      image: "screenshots/sign-ups/1-sign-up-form.png",
+      alt: "A public sign-up form built in CocoScout",
+      eyebrow: "Sign-ups & auditions",
+      title: "A real form, not a spreadsheet link.",
+      body: "Run sign-ups and auditions with a form you can share anywhere. Submissions land in a list next to the show they're for, not in your inbox."
+    }
+  ]
+  last_index = steps.length
+%>
+<div id="sketchfest-tour"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal product-tour"
+     data-action="click->modal#closeOnBackdrop click->product-tour#reset keydown.esc@window->product-tour#reset">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col overflow-hidden"
+       data-action="click->modal#stopPropagation">
+
+    <%# Header — pink gradient (CocoScout modal standard) %>
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-white">A quick tour</h3>
+      <button type="button"
+              data-action="click->modal#close click->product-tour#reset"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%# Slides %>
+    <div class="px-6 py-5 overflow-y-auto">
+      <% steps.each_with_index do |step, i| %>
+        <div data-product-tour-target="slide" class="<%= "hidden" unless i.zero? %>">
+          <p class="text-pink-500 font-bold text-xs uppercase tracking-wide mb-1.5"><%= step[:eyebrow] %></p>
+          <h4 class="text-xl sm:text-2xl font-bold text-slate-900 coustard-regular leading-tight mb-2"><%= step[:title] %></h4>
+          <p class="text-sm sm:text-base text-slate-600 leading-relaxed mb-4"><%= step[:body] %></p>
+          <div class="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+            <%= image_tag step[:image], alt: step[:alt], loading: "lazy", class: "w-full block" %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Closing step — what Pro adds, once free stops being enough %>
+      <div data-product-tour-target="slide" class="hidden">
+        <p class="text-pink-500 font-bold text-xs uppercase tracking-wide mb-1.5">When you outgrow free</p>
+        <h4 class="text-xl sm:text-2xl font-bold text-slate-900 coustard-regular leading-tight mb-2">
+          There's more here when you need it.
+        </h4>
+        <p class="text-sm sm:text-base text-slate-600 leading-relaxed mb-5">
+          Everything in this tour is free, up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> shows or
+          rehearsals a month. When your team runs more than that — or you start paying people — Pro is
+          $<%= pro_monthly %> a month, or $<%= pro_annual %> a year.
+        </p>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <% [
+            ["Pay your people", "Set the splits, run one payout, money lands in their bank."],
+            ["Contracts & e-sign", "Send a booking contract and get it signed in minutes."],
+            ["Staffing & shifts", "Schedule your crew, approve their hours, pay them."],
+            ["Reports", "What you took in, what went out, who showed up."]
+          ].each do |title, desc| %>
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <div class="flex items-start gap-3">
+                <span class="mt-0.5 w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                </span>
+                <div>
+                  <div class="font-bold text-slate-900 text-sm"><%= title %></div>
+                  <div class="text-sm text-slate-600 leading-relaxed mt-0.5"><%= desc %></div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <p class="mt-4 text-sm text-slate-500">
+          Not now, though. Start free — <%= link_to "see the full comparison", pricing_path, class: "text-pink-600 hover:text-pink-700 underline font-medium" %> whenever you're curious.
+        </p>
+      </div>
+    </div>
+
+    <%# Footer — dots, counter, and the step controls %>
+    <div class="flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-4 flex-shrink-0 bg-white">
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5">
+          <% (last_index + 1).times do |i| %>
+            <span data-product-tour-target="dot"
+                  class="w-2 h-2 rounded-full transition-colors <%= i.zero? ? "bg-pink-500" : "bg-slate-300" %>"></span>
+          <% end %>
+        </div>
+        <span data-product-tour-target="counter" class="text-xs text-slate-500 hidden sm:inline">1 of <%= last_index + 1 %></span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <%# Wrappers, not the buttons themselves — shared/button is inline-flex, which beats `hidden`. %>
+        <div data-product-tour-target="backWrap" class="invisible">
+          <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button,
+                icon: "chevron-left", data: { action: "click->product-tour#back" } %>
+        </div>
+        <%# No chevron on Next — shared/button renders icons before the label, which reads backwards here. %>
+        <div data-product-tour-target="nextWrap">
+          <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :button,
+                data: { action: "click->product-tour#next" } %>
+        </div>
+        <div data-product-tour-target="ctaWrap" class="hidden">
+          <%= render "shared/button", text: "Start free", variant: "primary", size: "medium",
+                path: signup_path(ref: "sketchfest") %>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

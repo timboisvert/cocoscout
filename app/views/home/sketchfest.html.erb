@@ -1,0 +1,132 @@
+<% content_for :title, "CocoScout + Chicago SketchFest — free for sketch teams" %>
+
+<%#
+  Sponsor page for Chicago SketchFest, handed out at the festival. The audience
+  is working sketch producers who will give this about eight seconds, so the
+  page is a lockup, three highlights, and two buttons. Anything with depth goes
+  behind the tour modal.
+
+  NOTE: keep ERB tags (percent-angle-bracket) out of this comment — the first
+  closing token would end the comment early and run the rest as code.
+%>
+<%
+  free_events = Organization::FREE_MONTHLY_EVENT_LIMIT
+  sketchfest_signup_path = signup_path(ref: "sketchfest")
+%>
+
+<%# No marketing header here on purpose. This is a single-destination campaign
+    page handed out at the festival — the co-branded lockup is the branding, and
+    a nav bar would just offer people somewhere else to go. The footer stays for
+    Terms and Privacy. %>
+<div class="min-h-screen bg-[#f9f9f7]">
+  <main class="flex flex-col min-w-full">
+
+    <%# ============================ HERO ============================ %>
+    <section class="w-full px-6 pt-12 pb-14 sm:pt-16 sm:pb-20 bg-gradient-to-br from-pink-50 via-white to-slate-50">
+      <div class="max-w-4xl mx-auto text-center">
+
+        <div class="mb-8">
+          <%= render "shared/sketchfest_lockup", size: :large %>
+        </div>
+
+        <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-4">CocoScout is a Proud sponsor of Chicago SketchFest</p>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-5 coustard-regular leading-tight">
+          Your sketch team,<br class="hidden sm:block"> actually organized.
+        </h1>
+        <p class="text-lg sm:text-xl max-w-2xl mx-auto text-slate-600 leading-relaxed mb-8">
+          Rehearsals, show dates, who's in the sketch, who's actually showing up. One place,
+          instead of a group chat and three spreadsheets.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <%= render "shared/button", text: "Manage your sketch team - free",
+                path: sketchfest_signup_path, variant: "primary", size: "large" %>
+          <%= render "shared/button", text: "Take a 2-minute tour", variant: "outline", size: "large", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "sketchfest-tour" } %>
+        </div>
+        <p class="mt-5 text-sm text-slate-500">No credit card. Your performers never pay a cent.</p>
+      </div>
+    </section>
+
+    <%# ============================ THREE HIGHLIGHTS ============================ %>
+    <section class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-white">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center max-w-2xl mx-auto mb-10">
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">Built for how you actually work</p>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight">
+            Three things that stop being a hassle.
+          </h2>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-3">
+          <% [
+            ["The whole run in one place",
+             "Every rehearsal and every show date, with who can make each one. Your team sees the same calendar you do."],
+            ["Cast it without the group chat",
+             "Put people in roles across the run. They get told what they're in, and they confirm it."],
+            ["Sign-ups that aren't a spreadsheet",
+             "A real form for auditions and sign-ups, with submissions sitting next to the show they're for."]
+          ].each do |title, desc| %>
+            <div class="rounded-2xl border border-slate-200 bg-white p-6">
+              <span class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center mb-3">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+              </span>
+              <div class="font-bold text-slate-900 coustard-regular text-lg"><%= title %></div>
+              <div class="text-slate-600 mt-1.5 leading-relaxed"><%= desc %></div>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="mt-8 text-center">
+          <%= render "shared/button", text: "See it in action", variant: "outline", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "sketchfest-tour" } %>
+        </div>
+      </div>
+    </section>
+
+    <%# ==================== WHAT FREE ACTUALLY MEANS ====================
+        Said plainly rather than buried. Framed as shows-and-rehearsals-per-month
+        because that's the number a sketch team can picture — a weekly rehearsal
+        plus a show or two lands well inside it. A room of working producers
+        trusts a specific number more than a vague "free!". %>
+    <section class="w-full px-6 py-14 sm:py-16 border-t border-slate-100">
+      <div class="max-w-3xl mx-auto text-center">
+        <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">And "free" means free</p>
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 coustard-regular leading-tight mb-4">
+          Up to <%= free_events %> shows or rehearsals a month.
+        </h2>
+        <p class="text-lg text-slate-600 leading-relaxed">
+          A weekly rehearsal and a show or two — which is most sketch teams, most of the time.
+          No credit card, no trial clock, no "free for 30 days." If your team ever runs more than that,
+          <%= link_to "Pro is there", pricing_path, class: "text-pink-600 hover:text-pink-700 underline font-medium" %>.
+        </p>
+      </div>
+    </section>
+
+    <%# ============================ FINAL CTA BAND ============================ %>
+    <section class="w-full bg-pink-500 text-white px-6 py-16">
+      <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-3xl sm:text-4xl coustard-regular mb-3">See you at SketchFest.</h2>
+        <p class="text-pink-100 text-lg mb-8 max-w-2xl mx-auto">
+          Set your team up before your next rehearsal. It takes about five minutes.
+        </p>
+        <%# White-on-pink, so both buttons override the variant colors. Still
+            shared/button rather than hand-rolled anchors like the other
+            marketing bands do. %>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <%= render "shared/button", text: "Manage your sketch team - free",
+                path: sketchfest_signup_path, variant: "secondary", size: "large",
+                classes: "!bg-white !text-pink-700 !border-white font-semibold hover:!bg-pink-50" %>
+          <%= render "shared/button", text: "Questions? Email us",
+                path: "mailto:hello@cocoscout.com", variant: "ghost", size: "large",
+                classes: "!text-white border border-white/70 hover:!bg-white/10" %>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <%= render "shared/marketing/footer" %>
+</div>
+
+<%= render "home/sketchfest_tour_modal" %>

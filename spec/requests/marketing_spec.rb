@@ -57,6 +57,46 @@ RSpec.describe "Public marketing site", type: :request do
     end
   end
 
+  describe "GET /sketchfest (festival sponsor page)" do
+    before { get sketchfest_path }
+
+    it "leads with the co-branded lockup and the free CTA" do
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("CocoScout is a Proud sponsor of Chicago SketchFest")
+      expect(response.body).to include("Manage your sketch team - free")
+      expect(response.body).to include(%(href="#{signup_path(ref: "sketchfest")}"))
+    end
+
+    it "states what free actually covers rather than burying the limit" do
+      expect(response.body).to include("Up to #{Organization::FREE_MONTHLY_EVENT_LIMIT} shows or rehearsals a month.")
+    end
+
+    it "drops the top nav so the page has one destination" do
+      # The sticky marketing header and its mobile drawer are both gone.
+      expect(response.body).not_to include('data-controller="mobile-nav"')
+      expect(response.body).not_to include('sticky top-0 z-30')
+      # The footer stays — it carries Terms and Privacy.
+      expect(response.body).to include(%(href="#{terms_path}"))
+    end
+
+    it "wires the tour modal to both the modal and product-tour controllers" do
+      expect(response.body).to include('data-controller="modal product-tour"')
+      expect(response.body).to include('data-modal-id="sketchfest-tour"')
+      expect(response.body).to include('id="sketchfest-tour"')
+    end
+
+    it "renders the typeset wordmark until the partner artwork is committed" do
+      # Falls back rather than raising on a missing asset, so the page can ship
+      # before we have their logo file.
+      expect(response.body).to include("Chicago SketchFest")
+    end
+
+    it "stays out of the marketing nav — it is a handed-out URL, not navigation" do
+      get root_path
+      expect(response.body).not_to include(%(href="#{sketchfest_path}"))
+    end
+  end
+
   describe "auth pages" do
     it "sign in renders persona cards linking to Find a Mic" do
       get signin_path

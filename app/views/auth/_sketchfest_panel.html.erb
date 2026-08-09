@@ -1,0 +1,44 @@
+<%#
+  Sketch-flavored version of the signup page's left column, shown to visitors
+  who arrived through the SketchFest sponsor page (see ReferralTracking).
+
+  Same card chrome as the default panel — this replaces the persona cards and
+  the generic headline, not the surrounding box or the trust footer.
+
+  NOTE: keep ERB tags (percent-angle-bracket) out of this comment — the first
+  closing token would end the comment early and run the rest as code.
+%>
+<div class="mb-4">
+  <%= render "shared/sketchfest_lockup", size: :small %>
+</div>
+
+<div class="inline-block bg-pink-100 text-pink-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
+  FREE FOR SKETCH TEAMS
+</div>
+<h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Get your team organized</h2>
+<p class="text-slate-600 mb-6">
+  You're a few minutes from having your rehearsals, your show dates, and your cast in one place.
+</p>
+
+<div class="space-y-3">
+  <% [
+    ["Put your run in once", "Rehearsals and shows on one calendar your whole team can see."],
+    ["See who can make it", "Everyone marks their dates. You get a grid, not forty messages."],
+    ["Cast it and confirm it", "Assign roles across the run — your team gets told, and confirms."]
+  ].each do |title, desc| %>
+    <div class="flex items-start gap-3">
+      <span class="mt-0.5 w-6 h-6 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+      </span>
+      <div>
+        <div class="font-semibold text-slate-900 text-sm"><%= title %></div>
+        <div class="text-sm text-slate-600 leading-relaxed"><%= desc %></div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<p class="mt-5 text-sm text-slate-500">
+  Free for up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> shows or rehearsals a month, which
+  covers most sketch teams. Your performers are free forever, either way.
+</p>

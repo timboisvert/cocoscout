@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class AuthController < ApplicationController
+  include ReferralTracking
+
   allow_unauthenticated_access only: %i[signup handle_signup signin handle_signin password handle_password reset
                                         handle_reset set_password handle_set_password]
   rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: lambda {

@@ -49,6 +49,10 @@ module Manage
     def create
       @organization = Organization.new(organization_params)
       @organization.owner = Current.user
+      # Campaign attribution, carried in the session since the marketing page
+      # was several requests ago. Set from the session rather than
+      # organization_params on purpose — a crafted form post can't fake it.
+      @organization.referral_source = session[:referral_source]
 
       if @organization.save
         # Assign creator as manager via organization role

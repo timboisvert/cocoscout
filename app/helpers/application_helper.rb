@@ -4,6 +4,31 @@ module ApplicationHelper
   # `impersonating?` / `impersonator_user_id` live on ApplicationController
   # (exposed via helper_method) so controllers and views share one definition.
 
+  # True when this visitor arrived through the named campaign — see
+  # ReferralTracking, which puts the slug in the session on the public side.
+  # Views use it to swap in campaign-flavored copy.
+  #
+  # This lives in a helper rather than on a controller because the two sides
+  # that need it sit under different controller roots: /signup is an
+  # ApplicationController descendant, while the org-creation form is under
+  # Manage::ManageController (which descends from ActionController::Base, so
+  # helper_method on ApplicationController would never reach it). Helpers are
+  # included in both.
+  def referred_from?(source)
+    session[:referral_source] == source.to_s
+  end
+
+  # Whether an image/asset is actually on the Propshaft load path.
+  #
+  # image_tag raises on a missing asset, which turns "we haven't dropped the
+  # logo in yet" into a 500 on a live marketing page. Use this to fall back to
+  # something typeset when partner artwork we don't control isn't committed.
+  def asset_available?(logical_path)
+    Rails.application.assets.load_path.find(logical_path).present?
+  rescue StandardError
+    false
+  end
+
   def current_user_can_manage?(production = nil)
     return false unless Current.user
 
