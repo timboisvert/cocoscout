@@ -62,13 +62,15 @@ RSpec.describe "Public marketing site", type: :request do
 
     it "leads with the co-branded lockup and the free CTA" do
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("CocoScout is a Proud sponsor of Chicago SketchFest")
+      expect(response.body).to include("CocoScout is a Proud sponsor of Chicago SketchFest 2026")
       expect(response.body).to include("Manage your sketch team - free")
       expect(response.body).to include(%(href="#{signup_path(ref: "sketchfest")}"))
     end
 
     it "states what free actually covers rather than burying the limit" do
-      expect(response.body).to include("Up to #{Organization::FREE_MONTHLY_EVENT_LIMIT} shows or rehearsals a month.")
+      expect(response.body).to include(
+        "free forever for sketch teams with up to #{Organization::FREE_MONTHLY_EVENT_LIMIT} shows or rehearsals a month"
+      )
     end
 
     it "drops the top nav so the page has one destination" do
@@ -83,6 +85,24 @@ RSpec.describe "Public marketing site", type: :request do
       expect(response.body).to include('data-controller="modal product-tour"')
       expect(response.body).to include('data-modal-id="sketchfest-tour"')
       expect(response.body).to include('id="sketchfest-tour"')
+    end
+
+    it "keeps the dots and counter in step with the actual slides" do
+      # total_slides in the partial is hand-maintained (screenshot steps plus
+      # two written ones), so pin it against the rendered markup.
+      slides = response.body.scan('data-product-tour-target="slide"').length
+      dots = response.body.scan('data-product-tour-target="dot"').length
+
+      expect(slides).to eq(5)
+      expect(dots).to eq(slides)
+      expect(response.body).to include("1 of #{slides}")
+    end
+
+    it "leaves Pro-gated features out of the free walkthrough" do
+      # The multi-show casting table is in Organization::PAID_FEATURES —
+      # showing it here would be pitching a paid feature as free.
+      expect(Organization::PAID_FEATURES).to include(:casting_table)
+      expect(response.body).not_to include("casting/1-casting-table")
     end
 
     it "renders the typeset wordmark until the partner artwork is committed" do

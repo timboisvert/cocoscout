@@ -15,16 +15,20 @@
 %>
 <%
   size = local_assigns[:size] || :large
-  logo_classes = size == :small ? "h-10 w-auto object-contain" : "h-16 sm:h-20 w-auto object-contain"
-  divider_classes = size == :small ? "text-lg text-slate-300 font-light leading-none" : "text-2xl sm:text-3xl text-slate-300 font-light leading-none"
-  wordmark_classes = size == :small ? "coustard-regular text-base text-slate-900 leading-tight" : "coustard-regular text-2xl sm:text-3xl text-slate-900 leading-tight"
+
+  # The SketchFest mark runs 50% larger than ours — their logo carries more
+  # detail (banner, stars, wordmark) and reads small at matched heights.
+  coco_classes = size == :small ? "h-10 w-auto object-contain" : "h-32 sm:h-40 w-auto object-contain"
+  sketchfest_classes = size == :small ? "h-14 w-auto object-contain" : "h-48 sm:h-60 w-auto object-contain"
+  divider_classes = size == :small ? "text-lg text-slate-300 font-light leading-none" : "text-4xl sm:text-5xl text-slate-300 font-light leading-none"
+  wordmark_classes = size == :small ? "coustard-regular text-lg text-slate-900 leading-tight" : "coustard-regular text-5xl sm:text-6xl text-slate-900 leading-tight"
   wrapper_classes = size == :small ? "flex items-center gap-3" : "flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
 %>
 <div class="<%= wrapper_classes %>">
-  <%= image_tag "cocoscout.png", alt: "CocoScout", class: logo_classes %>
+  <%= image_tag "cocoscout.png", alt: "CocoScout", class: coco_classes %>
   <span class="<%= divider_classes %>" aria-hidden="true">&times;</span>
   <% if asset_available?("sketchfest-chicago.png") %>
-    <%= image_tag "sketchfest-chicago.png", alt: "Chicago SketchFest", class: logo_classes %>
+    <%= image_tag "sketchfest-chicago.png", alt: "Chicago SketchFest", class: sketchfest_classes %>
   <% else %>
     <span class="<%= wordmark_classes %>">Chicago SketchFest</span>
   <% end %>

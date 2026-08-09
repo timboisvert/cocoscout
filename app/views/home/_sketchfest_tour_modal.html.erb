@@ -30,13 +30,9 @@
       title: "Stop taking attendance in the group chat.",
       body: "Everyone marks the dates they can make. You get a grid instead of forty messages, and you can see at a glance which night is going to be a problem."
     },
-    {
-      image: "screenshots/casting/1-casting-table.png",
-      alt: "The casting table, assigning people to roles across a run of shows",
-      eyebrow: "Casting",
-      title: "Cast the whole run on one board.",
-      body: "Assign your people to roles across every date. They get told what they're in, and they confirm — so you know it landed."
-    },
+    # No casting-table step: the multi-show casting table is gated to Pro
+    # (Organization::PAID_FEATURES), and this tour only shows what a team
+    # actually gets for free.
     {
       image: "screenshots/sign-ups/1-sign-up-form.png",
       alt: "A public sign-up form built in CocoScout",
@@ -45,7 +41,9 @@
       body: "Run sign-ups and auditions with a form you can share anywhere. Submissions land in a list next to the show they're for, not in your inbox."
     }
   ]
-  last_index = steps.length
+  # Two hand-written slides follow the screenshot steps: the "all in one place"
+  # step and the Pro closer. Keep this in step with the markup below.
+  total_slides = steps.length + 2
 %>
 <div id="sketchfest-tour"
      class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -78,6 +76,35 @@
           </div>
         </div>
       <% end %>
+
+      <%# Everything that isn't a screenshot yet — the "and it's all in one
+          place" step. All three are on the free plan. %>
+      <div data-product-tour-target="slide" class="hidden">
+        <p class="text-pink-500 font-bold text-xs uppercase tracking-wide mb-1.5">All in one place</p>
+        <h4 class="text-xl sm:text-2xl font-bold text-slate-900 coustard-regular leading-tight mb-2">
+          And everything else your team keeps losing.
+        </h4>
+        <p class="text-sm sm:text-base text-slate-600 leading-relaxed mb-5">
+          The scripts, the thread where you decided something, the phone number you needed on a Tuesday —
+          all in the same place as the show they belong to.
+        </p>
+
+        <div class="grid gap-3 sm:grid-cols-3">
+          <% [
+            ["Documents", "Scripts, running orders, and notes, centralized instead of scattered across everyone's drive."],
+            ["Messages", "One communication hub for your team, so decisions don't get buried in a group chat."],
+            ["Contacts", "One list of everyone you work with, kept in the same place as everything else."]
+          ].each do |title, desc| %>
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <span class="w-8 h-8 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center mb-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+              </span>
+              <div class="font-bold text-slate-900 text-sm"><%= title %></div>
+              <div class="text-sm text-slate-600 leading-relaxed mt-0.5"><%= desc %></div>
+            </div>
+          <% end %>
+        </div>
+      </div>
 
       <%# Closing step — what Pro adds, once free stops being enough %>
       <div data-product-tour-target="slide" class="hidden">
@@ -122,12 +149,12 @@
     <div class="flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-4 flex-shrink-0 bg-white">
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-1.5">
-          <% (last_index + 1).times do |i| %>
+          <% total_slides.times do |i| %>
             <span data-product-tour-target="dot"
                   class="w-2 h-2 rounded-full transition-colors <%= i.zero? ? "bg-pink-500" : "bg-slate-300" %>"></span>
           <% end %>
         </div>
-        <span data-product-tour-target="counter" class="text-xs text-slate-500 hidden sm:inline">1 of <%= last_index + 1 %></span>
+        <span data-product-tour-target="counter" class="text-xs text-slate-500 hidden sm:inline">1 of <%= total_slides %></span>
       </div>
 
       <div class="flex items-center gap-2">
