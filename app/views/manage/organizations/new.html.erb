@@ -102,7 +102,9 @@
             </div>
           </div>
 
-          <%= form_with(model: [:manage, @organization], class: "space-y-5") do |form| %>
+          <%# turbo: false — choosing Pro ends in a cross-origin redirect to
+              Stripe checkout, which Turbo's fetch silently swallows. %>
+          <%= form_with(model: [:manage, @organization], class: "space-y-5", data: { turbo: false }) do |form| %>
 
             <!-- Name -->
             <div>

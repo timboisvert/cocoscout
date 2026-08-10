@@ -14,7 +14,10 @@
     </p>
   </div>
 
-  <%= form_with url: manage_producer_setup_complete_path, method: :post, local: true do %>
+  <%# turbo: false — choosing Pro ends in a cross-origin redirect to Stripe
+      checkout, which Turbo's fetch silently swallows. A plain form submit
+      lets the browser follow the whole redirect chain. %>
+  <%= form_with url: manage_producer_setup_complete_path, method: :post, data: { turbo: false } do %>
     <%# The plan radios sit as (visually hidden) siblings BEFORE the two cards,
         so each card's selected state is driven by its own named peer. Keeping
         the radios out of the cards means the interval radios below can never
