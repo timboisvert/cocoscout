@@ -31,10 +31,6 @@ class CourseOfferingPayout < ApplicationRecord
     status == "paid"
   end
 
-  def can_calculate?
-    !paid? && course_offering.course_registrations.confirmed.any?
-  end
-
   def can_recalculate?
     !pending?
   end
@@ -46,10 +42,6 @@ class CourseOfferingPayout < ApplicationRecord
 
   def mark_paid!
     update!(status: "paid", paid_at: Time.current)
-  end
-
-  def all_line_items_paid?
-    line_items.any? && line_items.all? { |li| li.paid? }
   end
 
   def formatted_total_revenue

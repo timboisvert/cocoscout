@@ -21,10 +21,4 @@ module StripeConnectable
   def needs_bank_connection?
     !can_receive_payouts?
   end
-
-  def connect_status_label
-    return "Not connected" unless connect_account_started?
-
-    can_receive_payouts? ? "Connected" : "Finishing setup"
-  end
 end

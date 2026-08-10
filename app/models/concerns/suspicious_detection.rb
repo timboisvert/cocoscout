@@ -71,26 +71,6 @@ module SuspiciousDetection
 
       MALICIOUS_PATTERNS.any? { |pattern| name.match?(pattern) }
     end
-
-    def cleanup_suspicious!(dry_run: true)
-      suspicious_records = suspicious.includes(:user)
-      count = suspicious_records.count
-
-      if dry_run
-        puts "Found #{count} suspicious records (dry run, not deleting):"
-        suspicious_records.find_each do |person|
-          puts "  ID: #{person.id}, Name: #{person.name.inspect}, Email: #{person.email}"
-        end
-      else
-        puts "Deleting #{count} suspicious records..."
-        suspicious_records.find_each do |person|
-          puts "  Deleting ID: #{person.id}, Name: #{person.name.inspect}"
-          person.destroy
-        end
-        puts "Deleted #{count} suspicious records."
-      end
-      count
-    end
   end
 
   private

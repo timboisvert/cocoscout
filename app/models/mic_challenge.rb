@@ -21,8 +21,4 @@ class MicChallenge < ApplicationRecord
   def response_due_at
     created_at + RESPONSE_WINDOW
   end
-
-  def response_overdue?
-    status_pending? && Time.current > response_due_at
-  end
 end

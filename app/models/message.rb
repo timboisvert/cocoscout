@@ -497,44 +497,11 @@ class Message < ApplicationRecord
     end
   end
 
-  # Get count of unread messages in this thread for a user
-  def unread_count_for(user)
-    subscription = root_message.message_subscriptions.find_by(user: user)
-    return 0 unless subscription
-
-    last_read = subscription.last_read_at || Time.at(0)
-    root = root_message
-    Message.where(id: [ root.id ] + root.descendant_ids)
-           .where("created_at > ?", last_read)
-           .count
-  end
-
   # Get latest activity timestamp in thread
   def latest_activity_at
     root = root_message
     latest = root.descendant_messages.maximum(:created_at)
     latest || root.created_at
-  end
-
-  # Context card info based on production/show
-  def regarding_context
-    if show.present?
-      {
-        type: :show,
-        title: show.production.name,
-        subtitle: show.formatted_date_and_time,
-        location: show.display_location,
-        image: show.production.posters.primary.first&.safe_image_variant(:small)
-      }
-    elsif production.present?
-      {
-        type: :production,
-        title: production.name,
-        image: production.logo
-      }
-    else
-      nil
-    end
   end
 
   private

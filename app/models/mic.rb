@@ -121,14 +121,6 @@ class Mic < ApplicationRecord
   # `.unpaused` wherever you wouldn't want a hiatusing mic to show up.
   scope :unpaused, -> { where(paused: false) }
 
-  # True iff the mic is paused AND not scheduled to come back within
-  # the foreseeable horizon. UI uses this to suppress the upcoming
-  # calendar entirely and show a hiatus card instead.
-  def on_hiatus?
-    return false unless paused
-    return true  if canceled_until.blank?
-    canceled_until < Date.current
-  end
   # Returns mics whose venue rolls up to the given hub (via venue.city_hub_id).
   scope :in_hub, ->(hub) {
     joins(:venue).where(venues: { city_hub_id: hub.id })
@@ -226,11 +218,6 @@ class Mic < ApplicationRecord
   def powered_by_cocoscout?
     return false unless production_id
     production&.sign_up_forms&.any? { |f| f.active && Array(f.event_type_filter).include?("open_mic") } || false
-  end
-
-  # Display string for "where this happens" — used in row + detail headers.
-  def location_text
-    venue&.neighborhood_city
   end
 
   # Next N occurrences in chronological order. Reads from the producer's

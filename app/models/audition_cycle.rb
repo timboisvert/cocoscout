@@ -53,10 +53,6 @@ class AuditionCycle < ApplicationRecord
   #             audition.
   enum :signup_mode, { curated: "curated", open: "open" }, default: "curated", prefix: :signup_mode
 
-  def open_signup?
-    signup_mode_open?
-  end
-
   # New boolean-based methods that should be used going forward
   # These check the new columns, with fallback to the enum for existing records
   def accepts_video_submissions?
@@ -69,10 +65,6 @@ class AuditionCycle < ApplicationRecord
 
   def video_only?
     allow_video_submissions && !allow_in_person_auditions
-  end
-
-  def in_person_only?
-    allow_in_person_auditions && !allow_video_submissions
   end
 
   def hybrid_auditions?
@@ -119,20 +111,6 @@ class AuditionCycle < ApplicationRecord
         total: audition_requests.active.count,
         scheduled: scheduled_count,
         cast: cast_count
-      }
-    end
-  end
-
-  def vote_summary
-    Rails.cache.fetch([ "audition_cycle_vote_summary_v3", id, AuditionRequestVote.where(audition_request_id: audition_requests.active.select(:id)).maximum(:updated_at)&.to_i ],
-                      expires_in: 2.minutes) do
-      total_requests = audition_requests.active.count
-      votes = AuditionRequestVote.where(audition_request_id: audition_requests.active.select(:id))
-
-      {
-        total_requests: total_requests,
-        total_votes: votes.count,
-        total_comments: votes.where.not(comment: [ nil, "" ]).count
       }
     end
   end
@@ -188,10 +166,6 @@ class AuditionCycle < ApplicationRecord
 
   def opening_soon?
     opens_at.present? && opens_at <= 7.days.from_now && opens_at > Time.current
-  end
-
-  def opening_soon_and_not_reviewed?
-    opening_soon? && !form_reviewed
   end
 
   def reviewer_count

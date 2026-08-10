@@ -271,12 +271,6 @@ class SignUpForm < ApplicationRecord
     end
   end
 
-  # URL helpers
-  def public_url_path
-    return nil unless url_slug.present?
-    "/p/#{production.public_key}/sign-ups/#{url_slug}"
-  end
-
   def generate_url_slug!
     return if url_slug.present?
     base_slug = name.parameterize
@@ -302,15 +296,6 @@ class SignUpForm < ApplicationRecord
     "/s/#{short_code}"
   end
 
-  # Get the appropriate instance or form for a show
-  def instance_for_show(show)
-    if repeated?
-      sign_up_form_instances.find_by(show: show)
-    else
-      self # For single_event or shared_pool, use the form directly
-    end
-  end
-
   # All upcoming instances for repeated forms
   def upcoming_instances
     sign_up_form_instances.upcoming.includes(:show)
@@ -328,12 +313,6 @@ class SignUpForm < ApplicationRecord
                  .joins(:sign_up_registrations)
                  .group("sign_up_slots.id")
                  .having("COUNT(sign_up_registrations.id) < sign_up_slots.capacity"))
-  end
-
-  def filled_slots_count
-    sign_up_slots.joins(:sign_up_registrations)
-                 .where.not(sign_up_registrations: { status: "cancelled" })
-                 .count
   end
 
   def total_capacity

@@ -40,20 +40,8 @@ class Contractor < ApplicationRecord
     contracts.status_completed.or(contracts.status_cancelled)
   end
 
-  def total_contracts_count
-    contracts.count
-  end
-
   def display_email
     email.presence || contracts.where.not(contractor_email: [ nil, "" ]).pick(:contractor_email)
-  end
-
-  def display_phone
-    phone.presence || contracts.where.not(contractor_phone: [ nil, "" ]).pick(:contractor_phone)
-  end
-
-  def display_address
-    address.presence || contracts.where.not(contractor_address: [ nil, "" ]).pick(:contractor_address)
   end
 
   def initials

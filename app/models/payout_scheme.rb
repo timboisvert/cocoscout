@@ -87,11 +87,6 @@ class PayoutScheme < ApplicationRecord
     production_id.blank?
   end
 
-  # Check if this is a production-specific scheme
-  def production_level?
-    production_id.present?
-  end
-
   private
 
   def must_have_organization_or_production

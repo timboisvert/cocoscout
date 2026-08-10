@@ -192,27 +192,6 @@ class Show < ApplicationRecord
     event_linkage.shows.where.not(id: id).order(:date_and_time)
   end
 
-  # Get sibling shows in the same linkage (excluding self if sibling)
-  def linked_siblings
-    return Show.none unless linked?
-
-    event_linkage.sibling_shows.where.not(id: id).order(:date_and_time)
-  end
-
-  # Get child shows in the same linkage
-  def linked_children
-    return Show.none unless linked?
-
-    event_linkage.child_shows.order(:date_and_time)
-  end
-
-  # Check if this show is the primary (first sibling)
-  def primary_linked_show?
-    return false unless linked? && linkage_sibling?
-
-    event_linkage.sibling_shows.order(:date_and_time).first == self
-  end
-
   # Determine if this show should be visible on the production's public profile
   # Cascade: individual show override > production event type override > global event type default
   def public_profile_visible?
@@ -272,15 +251,6 @@ class Show < ApplicationRecord
     return start_str unless duration_minutes.present? || space_rental.present?
     end_str = ends_at.strftime("%-I:%M %p")
     "#{start_str} – #{end_str}"
-  end
-
-  # The staffing shifts working this show. Shifts normally attach through their
-  # `source`; `shift_shows` is only populated when show-based shifts are
-  # deliberately merged, so both directions have to be asked. There's no
-  # association for this because a shift's source is polymorphic.
-  def staffing_shifts
-    Shift.where(source_type: "Show", source_id: id)
-         .or(Shift.where(id: ShiftShow.where(show_id: id).select(:shift_id)))
   end
 
   # Show-specific staffing roles this show has opted out of (the coverage
@@ -399,11 +369,6 @@ class Show < ApplicationRecord
     nil
   end
 
-  # Cache key for public show page
-  def public_show_cache_key
-    "show_public_page_v1_#{id}"
-  end
-
   # ETag for HTTP caching on public show page
   def public_show_etag
     Digest::MD5.hexdigest([
@@ -425,11 +390,6 @@ class Show < ApplicationRecord
     end
   end
 
-  # Check if this show has any linked sign-up forms
-  def has_sign_up_form?
-    sign_up_form_instances.exists?
-  end
-
   # Get all confirmed sign-up registrations for this show
   # Returns registrations with person and slot preloaded
   def sign_up_registrations
@@ -439,12 +399,6 @@ class Show < ApplicationRecord
       .where(status: %w[confirmed waitlisted])
       .includes(:person, sign_up_slot: { sign_up_form_instance: :sign_up_form })
       .order(:position)
-  end
-
-  # Signup-based casting - pulls attendees from sign-up form registrations
-  # Returns the sign-up form instance(s) associated with this show
-  def sign_up_form_instances_for_casting
-    sign_up_form_instances.includes(:sign_up_form)
   end
 
   # Find or create the system-managed Attendees role for signup-based casting
@@ -532,41 +486,11 @@ class Show < ApplicationRecord
     end
   end
 
-  # Check if signup-based casting is effectively enabled (considers production default)
-  def effective_signup_based_casting?
-    # If show has explicit setting, use it; otherwise use production default
-    if signup_based_casting.nil?
-      production&.default_signup_based_casting || false
-    else
-      signup_based_casting
-    end
-  end
-
-  # Check if show overrides the production default for signup-based casting
-  def overrides_signup_based_casting?
-    !signup_based_casting.nil? && signup_based_casting != production&.default_signup_based_casting
-  end
-
   # Attendance tracking helpers
   def attendance_enabled_default?
     # Check production default first, then fall back to event type
     return production.default_attendance_enabled if production&.default_attendance_enabled?
     %w[class workshop open_mic].include?(event_type)
-  end
-
-  # Check if attendance is effectively enabled (considers production default)
-  def effective_attendance_enabled?
-    # If show has explicit setting, use it; otherwise use production default or event type default
-    if attendance_enabled.nil?
-      attendance_enabled_default?
-    else
-      attendance_enabled
-    end
-  end
-
-  # Check if show overrides the production default for attendance
-  def overrides_attendance?
-    !attendance_enabled.nil? && attendance_enabled != attendance_enabled_default?
   end
 
   # Get or initialize attendance records for all cast members

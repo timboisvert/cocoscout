@@ -31,16 +31,8 @@ class HouseRole < ApplicationRecord
   # like any other — it just never flags a show for being without it.
   scope :role_call, -> { active.where(role_type: role_types[:show_specific], include_in_role_call: true) }
 
-  def role_called?
-    show_specific? && include_in_role_call?
-  end
-
   def flat?
     pay_type == "flat"
-  end
-
-  def hourly?
-    !flat?
   end
 
   # What this role's pay looks like on screen: "$20.00/hr" or "$50.00/shift".

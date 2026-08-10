@@ -17,10 +17,4 @@ class WebhookEvent < ApplicationRecord
   rescue ActiveRecord::RecordNotUnique
     false
   end
-
-  # Housekeeping: the table only exists to answer "have I seen this?", and
-  # Stripe stops retrying long before this.
-  def self.prune!(older_than: 30.days.ago)
-    where(created_at: ...older_than).delete_all
-  end
 end

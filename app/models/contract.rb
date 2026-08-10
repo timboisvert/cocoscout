@@ -726,16 +726,6 @@ class Contract < ApplicationRecord
     contract_versions.where.not(executed_at: nil).ordered.last
   end
 
-  def fully_executed?
-    current_version&.executed_at.present?
-  end
-
-  # An amendment has been applied and is waiting on a fresh signature.
-  def awaiting_resignature?
-    v = current_version
-    v.present? && v.version_number > 1 && v.requires_signature? && v.executed_at.nil?
-  end
-
   # Capture the pre-amendment state as v1 for a contract that was never signed
   # through CocoScout — otherwise its first amendment would be labelled "v1",
   # which reads as a lie about what came before.

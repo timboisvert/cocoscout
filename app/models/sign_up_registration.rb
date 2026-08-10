@@ -64,20 +64,12 @@ class SignUpRegistration < ApplicationRecord
     status == "confirmed"
   end
 
-  def waitlisted?
-    status == "waitlisted"
-  end
-
   def cancelled?
     status == "cancelled"
   end
 
   def queued?
     status == "queued"
-  end
-
-  def assigned?
-    sign_up_slot_id.present?
   end
 
   # Assign this registration to a slot (for admin_assigns mode)

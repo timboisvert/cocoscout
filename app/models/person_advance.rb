@@ -106,10 +106,6 @@ class PersonAdvance < ApplicationRecord
     not_settled?
   end
 
-  def fully_recovered?
-    settled?
-  end
-
   # How much has been applied to payouts
   def applied_amount
     original_amount - remaining_balance

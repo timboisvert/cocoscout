@@ -22,10 +22,6 @@ class ShiftAssignment < ApplicationRecord
     update!(declined_at: nil, decline_reason: nil)
   end
 
-  def notified?
-    notified_at.present?
-  end
-
   def accepted?
     accepted_at.present?
   end

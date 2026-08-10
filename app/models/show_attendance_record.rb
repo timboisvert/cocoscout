@@ -24,22 +24,6 @@ class ShowAttendanceRecord < ApplicationRecord
     status == "present"
   end
 
-  def absent?
-    status == "absent"
-  end
-
-  def excused?
-    status == "excused"
-  end
-
-  def unknown?
-    status == "unknown"
-  end
-
-  def attended?
-    present?
-  end
-
   # Returns the person associated with this record (from any source)
   def attendee
     if show_person_role_assignment_id.present?

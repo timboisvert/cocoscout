@@ -61,11 +61,6 @@ class SpaceRental < ApplicationRecord
     "#{starts_at.strftime('%l:%M %p')} - #{ends_at.strftime('%l:%M %p')}".strip
   end
 
-  def full_display
-    space_display = location_space&.display_name || location.name
-    "#{space_display}: #{date_display} #{time_range_display}"
-  end
-
   private
 
   def ends_after_starts

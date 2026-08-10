@@ -47,10 +47,6 @@ class StaffAgreementTemplate < ApplicationRecord
     rendered.html_safe
   end
 
-  def total_staff_members
-    organization_staff_members.active.count
-  end
-
   # Is this the agreement the org currently requires staff to sign?
   def required_for_org?
     organization.required_staff_agreement_template_id == id

@@ -37,9 +37,4 @@ class AuditionSession < ApplicationRecord
 
     [ capacity - signups_count, 0 ].max
   end
-
-  # A slot people can still book: in the future and not full.
-  def bookable?
-    start_at.present? && start_at > Time.current && !full?
-  end
 end

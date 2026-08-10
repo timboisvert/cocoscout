@@ -43,11 +43,6 @@ class AgreementTemplate < ApplicationRecord
     agreement_signatures.count
   end
 
-  # Productions currently using this template
-  def active_productions
-    productions.where.not(archived_at: nil)
-  end
-
   private
 
   def increment_version_on_content_change

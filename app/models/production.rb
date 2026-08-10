@@ -239,14 +239,6 @@ class Production < ApplicationRecord
     posters.find_by(is_primary: true)
   end
 
-  # Cached count of roles for this production
-  # Used in cast percentage calculations and other aggregate views
-  def cached_roles_count
-    Rails.cache.fetch([ "production_roles_count_v1", id, roles.maximum(:updated_at) ], expires_in: 30.minutes) do
-      roles.count
-    end
-  end
-
   # Count of unique members in the talent pool
   def talent_pool_member_count
     talent_pool&.members&.count || 0
@@ -324,15 +316,6 @@ class Production < ApplicationRecord
     save
   end
 
-  # Get parsed event visibility overrides hash
-  def parsed_event_visibility_overrides
-    return {} if event_visibility_overrides.blank?
-
-    JSON.parse(event_visibility_overrides)
-  rescue JSON::ParserError
-    {}
-  end
-
   # Check if an event type is publicly visible for this production
   # Uses the unified show_upcoming_events settings
   def event_type_publicly_visible?(event_type)
@@ -367,19 +350,9 @@ class Production < ApplicationRecord
     []
   end
 
-  # Set cast talent pool IDs from array
-  def cast_talent_pool_ids_array=(ids)
-    self.cast_talent_pool_ids = ids.present? ? ids.to_json : nil
-  end
-
   # Check if the talent pool should be shown (for backwards compatibility)
   def show_all_talent_pools?
     true
-  end
-
-  # Get the talent pool to display cast from
-  def displayable_talent_pools
-    talent_pool ? [ talent_pool ] : []
   end
 
   # Get unique cast members (people and groups) from the talent pool
@@ -455,10 +428,6 @@ class Production < ApplicationRecord
     contract.present? && contract.status_active?
   end
 
-  def contract_locked?
-    governed_by_contract?
-  end
-
   # Agreement methods
 
   # Returns true if this production requires performers to sign an agreement
@@ -501,15 +470,6 @@ class Production < ApplicationRecord
     signed_person_ids = agreement_signatures.pluck(:person_id)
     member_ids = effective_talent_pool.members.select { |m| m.is_a?(Person) }.map(&:id)
     Person.where(id: member_ids).where.not(id: signed_person_ids)
-  end
-
-  # People in talent pool who have signed
-  def people_with_agreement_signature
-    return Person.none unless agreement_required?
-
-    signed_person_ids = agreement_signatures.pluck(:person_id)
-    member_ids = effective_talent_pool.members.select { |m| m.is_a?(Person) }.map(&:id)
-    Person.where(id: member_ids).where(id: signed_person_ids)
   end
 
   # Count of signed vs total in talent pool

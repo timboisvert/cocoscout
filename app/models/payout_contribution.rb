@@ -55,10 +55,6 @@ class PayoutContribution < ApplicationRecord
   # has nothing left — then re-total the run.
   after_destroy :resettle_item_and_batch
 
-  def amount_dollars
-    amount_cents / 100.0
-  end
-
   private
 
   def resettle_item_and_batch

@@ -18,9 +18,6 @@ class Person < ApplicationRecord
   AVAILABILITY_MODES = %w[unavailable available].freeze
   validates :availability_mode, inclusion: { in: AVAILABILITY_MODES }
 
-  def availability_mode_available?
-    availability_mode == "available"
-  end
   accepts_nested_attributes_for :socials, allow_destroy: true
 
   has_many :audition_requests, as: :requestable, dependent: :destroy
@@ -245,42 +242,6 @@ class Person < ApplicationRecord
     show_person_role_assignments.exists?(show: show)
   end
 
-  # Returns all questionnaires this person is invited to, either directly or through group membership
-  def all_invited_questionnaires
-    # Get questionnaires where person is directly invited
-    direct_questionnaires = invited_questionnaires
-
-    # Get questionnaires where person's groups are invited
-    group_questionnaire_ids = QuestionnaireInvitation
-                              .where(invitee_type: "Group", invitee_id: groups.pluck(:id))
-                              .pluck(:questionnaire_id)
-
-    group_questionnaires = Questionnaire.where(id: group_questionnaire_ids)
-
-    # Combine and return unique questionnaires
-    Questionnaire.where(id: (direct_questionnaires.pluck(:id) + group_questionnaires.pluck(:id)).uniq)
-  end
-
-  # Returns the next show for a given production that this person has a role assignment in
-  def next_show_for_production_that_im_cast_in(production)
-    shows
-      .joins(:show_person_role_assignments)
-      .where(production: production, show_person_role_assignments: { assignable_type: "Person", assignable_id: id })
-      .where("date_and_time >= ?", Time.current)
-      .where(canceled: false)
-      .order(:date_and_time)
-      .first
-  end
-
-  # Returns the next event (show, rehearsal, or meeting) for a given production, regardless of cast status
-  def next_event_for_production(production)
-    Show
-      .where(production: production, canceled: false)
-      .where("date_and_time >= ?", Time.current)
-      .order(:date_and_time)
-      .first
-  end
-
   # Profile system helper methods
   def primary_headshot
     # Use in-memory filtering to leverage preloaded associations
@@ -419,10 +380,6 @@ class Person < ApplicationRecord
     tasks.sort_by { |t| t[:priority] }
   end
 
-  def onboarding_complete?
-    onboarding_tasks.all? { |t| t[:completed] }
-  end
-
   # True when this person belongs to at least one talent pool (direct membership).
   def in_any_talent_pool?
     talent_pools.exists?
@@ -439,21 +396,11 @@ class Person < ApplicationRecord
     gaps
   end
 
-  def onboarding_progress
-    tasks = onboarding_tasks
-    return 100 if tasks.empty?
-    (tasks.count { |t| t[:completed] }.to_f / tasks.count * 100).round
-  end
-
   # Total amount currently owed to this person across every organization they
   # work for, in cents (sum of their payout ledger — earnings minus payouts and
   # advance recoveries). Positive = we owe them.
   def payout_balance_cents
     payout_ledger_entries.sum(:amount_cents)
-  end
-
-  def owed_payout?
-    payout_balance_cents.positive?
   end
 
   private

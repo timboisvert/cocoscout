@@ -51,12 +51,6 @@ class AuditionRequest < ApplicationRecord
     audition_cycle.audition_requests.active.where("created_at < ?", created_at).order(created_at: :desc).first
   end
 
-  def scheduled_in_any?(audition_sessions)
-    Audition.joins(:audition_session)
-            .where(audition_request_id: id, audition_sessions: { id: audition_sessions.map(&:id) })
-            .exists?
-  end
-
   # Vote helper methods
   def vote_for(user)
     audition_request_votes.find_by(user: user)

@@ -42,14 +42,6 @@ class SignUpFormInstance < ApplicationRecord
     status == "initializing"
   end
 
-  def updating?
-    status == "updating"
-  end
-
-  def scheduled?
-    status == "scheduled"
-  end
-
   def open?
     return false unless status == "open"
     return false if opens_at.present? && opens_at > Time.current
@@ -65,26 +57,9 @@ class SignUpFormInstance < ApplicationRecord
     status == "cancelled"
   end
 
-  # Derived status based on current time (what the status SHOULD be)
-  def calculated_status
-    return "cancelled" if cancelled?
-    return "closed" if closes_at.present? && closes_at <= Time.current
-    return "open" if opens_at.nil? || opens_at <= Time.current
-    "scheduled"
-  end
-
   # The status as stored (may be stale until job runs)
   def current_status
     status
-  end
-
-  # Time-based checks
-  def opens_soon?
-    opens_at.present? && opens_at > Time.current && opens_at <= 24.hours.from_now
-  end
-
-  def closes_soon?
-    closes_at.present? && closes_at > Time.current && closes_at <= 2.hours.from_now
   end
 
   def past_edit_cutoff?
@@ -109,21 +84,6 @@ class SignUpFormInstance < ApplicationRecord
 
   def can_cancel?
     allow_cancel && !past_cancel_cutoff? && !closed? && !cancelled? && !initializing?
-  end
-
-  # Check if registrations are allowed for this instance
-  # Only accepts when status is "open" - the job manages this
-  def accepts_registrations?
-    return false if initializing?
-    return false if cancelled?
-    return false if show.canceled?
-    return false if closed?
-    status == "open"
-  end
-
-  # Check if the event is still happening (not cancelled/deleted)
-  def event_active?
-    !cancelled? && !show.canceled?
   end
 
   # Slot availability

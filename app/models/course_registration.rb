@@ -36,14 +36,6 @@ class CourseRegistration < ApplicationRecord
     end
   end
 
-  def confirm!(payment_intent_id: nil)
-    update!(
-      status: :confirmed,
-      paid_at: Time.current,
-      stripe_payment_intent_id: payment_intent_id
-    )
-  end
-
   def cancel!
     update!(status: :cancelled, cancelled_at: Time.current)
     cleanup_questionnaire_invitation

@@ -223,12 +223,6 @@ class Organization < ApplicationRecord
     comped_indefinitely? || (comped_until.present? && comped_until.future?)
   end
 
-  # Customer-facing plan name reflecting effective access ("Pro"
-  # when on the paid plan by any means, else "Producer").
-  def plan_name
-    on_paid_plan? ? TIER_NAMES["paid"] : TIER_NAMES["free"]
-  end
-
   # Whether a given feature (symbol from PAID_FEATURES, or any free feature) is
   # available to this org. Free features and courses are always available.
   def feature_available?(feature)
@@ -283,30 +277,12 @@ class Organization < ApplicationRecord
     productions_counting_toward_limit.count >= FREE_PRODUCTION_LIMIT
   end
 
-  # Organization stats
-  def active_productions_count
-    # A production is active if it has shows scheduled in the future
-    productions.joins(:shows).where("shows.date_and_time >= ? AND shows.canceled = ?", Time.current,
-                                    false).distinct.count
-  end
-
   def team_size
     users.count
   end
 
   def member_count
     people.count
-  end
-
-  # Cached directory counts for display in headers/pagination
-  def cached_directory_counts
-    Rails.cache.fetch([ "org_directory_counts_v1", id, people.maximum(:updated_at), groups.maximum(:updated_at) ],
-                      expires_in: 10.minutes) do
-      {
-        people: people.count,
-        groups: groups.count
-      }
-    end
   end
 
   # Returns the org-level talent pool (creates if needed when switching to single mode)

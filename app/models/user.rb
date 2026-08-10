@@ -127,10 +127,6 @@ class User < ApplicationRecord
     errors.add(:email_address, "is not valid")
   end
 
-  def can_manage?
-    organization_roles.any?
-  end
-
   # Returns the role for the current organization (default role)
   # Returns all organizations the user has access to on the manage side.
   # Includes orgs from organization_roles PLUS orgs where the user is a reviewer

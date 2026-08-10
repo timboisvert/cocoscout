@@ -18,10 +18,6 @@ class ExpenseCategories
       all.dig(key.to_s, "label") || key.to_s.titleize
     end
 
-    def description_for(key)
-      all.dig(key.to_s, "description")
-    end
-
     def icon_for(key)
       all.dig(key.to_s, "icon") || "ellipsis-horizontal-circle"
     end

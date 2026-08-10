@@ -74,11 +74,6 @@ class ProductionExpense < ApplicationRecord
     end
   end
 
-  # Get allocation for a specific show
-  def allocation_for(show)
-    allocations.find_by(show: show)
-  end
-
   # Total amount allocated (may differ from total_amount if overrides exist)
   def total_allocated
     allocations.sum(:allocated_amount)

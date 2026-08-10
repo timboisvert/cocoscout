@@ -71,10 +71,6 @@ class CourseOffering < ApplicationRecord
     format_cents(early_bird_price_cents)
   end
 
-  def formatted_current_price
-    format_cents(current_price_cents)
-  end
-
   # --- Capacity ---
 
   def confirmed_registrations_count
@@ -157,10 +153,6 @@ class CourseOffering < ApplicationRecord
   end
 
   # --- Instructors ---
-
-  def instructor_names
-    instructor_people.map(&:name).join(", ")
-  end
 
   private
 

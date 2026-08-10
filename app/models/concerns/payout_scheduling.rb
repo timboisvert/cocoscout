@@ -38,14 +38,6 @@ module PayoutScheduling
     payout_schedule_enabled? && next_payout_date(from: on) == on && last_auto_payout_on != on
   end
 
-  def payout_schedule_label
-    case payout_schedule
-    when "weekly"  then "Weekly on #{Date::DAYNAMES[(payout_schedule_day || DEFAULT_WEEKLY_DAY) % 7]}s"
-    when "monthly" then "Monthly on the #{(payout_schedule_day || DEFAULT_MONTHLY_DAY).ordinalize}"
-    else "Manual — run payouts yourself"
-    end
-  end
-
   private
 
   # The monthly payout date within the month containing `from`, or nil if that

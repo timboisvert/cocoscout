@@ -130,12 +130,6 @@ class ShowFinancials < ApplicationRecord
     total_revenue - calculated_expenses - calculated_production_expenses
   end
 
-  # Average ticket price (if any tickets sold)
-  def average_ticket_price
-    return 0 if ticket_count.nil? || ticket_count.zero?
-    (ticket_revenue || 0) / ticket_count
-  end
-
   # Check if we have enough data to calculate payouts
   def complete?
     # If user explicitly confirmed the data is complete, trust that
@@ -157,18 +151,6 @@ class ShowFinancials < ApplicationRecord
       ticket_revenue.to_f > 0 ||
       calculated_other_revenue > 0 ||
       calculated_expenses > 0
-  end
-
-  # Add a revenue line item
-  def add_other_revenue_item(description:, amount:)
-    self.other_revenue_details ||= []
-    self.other_revenue_details << { "description" => description, "amount" => amount.to_f }
-  end
-
-  # Add an expense line item
-  def add_expense_item(description:, amount:)
-    self.expense_details ||= []
-    self.expense_details << { "description" => description, "amount" => amount.to_f }
   end
 
   private

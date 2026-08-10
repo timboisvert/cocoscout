@@ -42,21 +42,6 @@ class Role < ApplicationRecord
   # Attribute to temporarily store eligible member IDs for validation
   attr_accessor :pending_eligible_member_ids
 
-  # Check if this is a show-specific role
-  def show_role?
-    show_id.present?
-  end
-
-  # Check if this is a production-level role
-  def production_role?
-    show_id.nil?
-  end
-
-  # Check if this is the attendees role from signup-based casting
-  def attendees_role?
-    system_managed? && system_role_type == "attendees"
-  end
-
   # Returns all eligible members (people and groups) for this role
   def eligible_members
     return [] unless restricted?
@@ -133,11 +118,6 @@ class Role < ApplicationRecord
   # Check if this role is fully filled for a given show
   def fully_filled?(show)
     filled_slots(show) >= total_slots
-  end
-
-  # Check if this role has room for more assignments
-  def has_open_slots?(show)
-    slots_remaining(show) > 0
   end
 
   private

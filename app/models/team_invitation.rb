@@ -23,10 +23,6 @@ class TeamInvitation < ApplicationRecord
     production_id.present?
   end
 
-  def organization_invite?
-    production_id.blank?
-  end
-
   private
 
   def production_belongs_to_organization

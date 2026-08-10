@@ -21,12 +21,4 @@ class ContractDocument < ApplicationRecord
 
   scope :by_type, ->(type) { where(document_type: type) }
   scope :recent, -> { order(created_at: :desc) }
-
-  def signed_contract?
-    document_type == "signed_contract"
-  end
-
-  def invoice?
-    document_type == "invoice"
-  end
 end

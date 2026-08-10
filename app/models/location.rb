@@ -20,10 +20,6 @@ class Location < ApplicationRecord
     audition_sessions.where("start_at > ?", Time.current).order(:start_at)
   end
 
-  def has_upcoming_events?
-    upcoming_shows.exists? || upcoming_audition_sessions.exists?
-  end
-
   def has_any_events?
     shows.exists? || audition_sessions.exists?
   end

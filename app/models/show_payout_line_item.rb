@@ -250,17 +250,6 @@ class ShowPayoutLineItem < ApplicationRecord
     amount - (advance_deduction || 0)
   end
 
-  # Check if this can be paid independently (for one-off payments)
-  def can_pay_independently?
-    !paid?
-  end
-
-  # Mark as paid independently (for one-off payments)
-  def pay_independently!(by_user, method: nil, notes: nil)
-    update!(paid_independently: true)
-    mark_as_already_paid!(by_user, method: method, notes: notes)
-  end
-
   # Calculation details accessors
   def calculation_breakdown
     calculation_details["breakdown"] || []
@@ -268,10 +257,6 @@ class ShowPayoutLineItem < ApplicationRecord
 
   def calculation_formula
     calculation_details["formula"] || ""
-  end
-
-  def calculation_inputs
-    calculation_details["inputs"] || {}
   end
 
   # Human-readable explanation of how amount was calculated
@@ -291,17 +276,6 @@ class ShowPayoutLineItem < ApplicationRecord
   # Payee display name
   def payee_name
     is_guest? ? guest_name : (payee&.name || "Unknown")
-  end
-
-  # Payee type label
-  def payee_type_label
-    return "Guest" if is_guest?
-    return "Allocation" if is_individual_allocation?
-    case payee_type
-    when "Person" then "Individual"
-    when "Group" then "Group"
-    else payee_type
-    end
   end
 
   private
