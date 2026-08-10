@@ -88,10 +88,16 @@ class ContractorPayoutRunService
       contract = outgoing_payment.contract
       return unless contract
 
+      # Only services due by the time this share settles: an event's settlement
+      # covers that event's fee (plus any earlier unpaid ones), never fees for
+      # future events that haven't happened yet — those wait for their own
+      # settlements.
+      cutoff = outgoing_payment.due_date || Date.current
       deductibles = contract.contract_payments
         .status_pending
         .direction_incoming
         .where(settlement_method: "payout_deduction", amount_tbd: false)
+        .where(due_date: ..cutoff)
         .order(:due_date, :id)
         .reject { |p| PayoutContribution.exists?(source: p) }
         .select { |p| (p.amount.to_d * 100).round.positive? }

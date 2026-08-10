@@ -149,6 +149,38 @@ RSpec.describe ContractorPayoutRunService do
       expect(org.payout_balance_cents_for(payee)).to eq(0)
     end
 
+    it "only deducts services due by the settling share's due date, never future events' fees" do
+      # Per-event booth tech fees: this event's, and four future events'.
+      current_fee = deductible_service!(amount: 50)
+      current_fee.update!(due_date: payment.due_date)
+      future_fees = [ 1, 2, 3, 4 ].map do |n|
+        deductible_service!(amount: 50, description: "Booth Tech").tap do |s|
+          s.update!(due_date: payment.due_date + n.months)
+        end
+      end
+
+      batch = described_class.add_contract_payment!(payment).batch
+      item = batch.items.find_by(payee: payee)
+
+      # Only this event's fee comes out of this event's share.
+      expect(item.payout_contributions.where("amount_cents < 0").count).to eq(1)
+      expect(item.amount_cents).to eq(25_000)
+      future_fees.each do |fee|
+        expect(fee.reload).to be_status_pending
+      end
+    end
+
+    it "sweeps in an earlier event's still-unpaid fee at the next settlement" do
+      overdue_fee = deductible_service!(amount: 50)
+      overdue_fee.update!(due_date: payment.due_date - 1.month)
+
+      batch = described_class.add_contract_payment!(payment).batch
+      item = batch.items.find_by(payee: payee)
+
+      expect(item.amount_cents).to eq(25_000)
+      expect(overdue_fee.reload).to be_status_paid
+    end
+
     it "never deducts the same service twice across runs" do
       deductible_service!(amount: 100)
       described_class.add_contract_payment!(payment)
