@@ -4,7 +4,7 @@ class AuthController < ApplicationController
   include ReferralTracking
 
   allow_unauthenticated_access only: %i[signup handle_signup signin handle_signin password handle_password reset
-                                        handle_reset set_password handle_set_password]
+                                        handle_reset]
   rate_limit to: 10, within: 3.minutes, only: :handle_signin, with: lambda {
     redirect_to signin_path, alert: "Try again later"
   }
@@ -223,41 +223,6 @@ class AuthController < ApplicationController
     else
       @password_unsuccessfully_reset = true
       render :reset, status: :unprocessable_entity
-    end
-  end
-
-  # DEPRECATED: This flow is replaced by PersonInvitation system
-  # Keeping for backwards compatibility with any old invitation links
-  def set_password
-    @user = User.find_by(invitation_token: params[:token])
-    if @user.nil? || !@user.invitation_token_valid?
-      session[:invitation_link_invalid] = true
-      redirect_to signin_path and return
-    end
-
-    # Get the production companies associated with this user's person
-    @organizations = @user.person&.organizations || []
-  end
-
-  # DEPRECATED: This flow is replaced by PersonInvitation system
-  # Keeping for backwards compatibility with any old invitation links
-  def handle_set_password
-    @user = User.find_by(invitation_token: params[:token])
-    if @user.nil? || !@user.invitation_token_valid?
-      session[:invitation_link_invalid] = true
-      redirect_to signin_path and return
-    end
-
-    # Remove null bytes from password to prevent BCrypt errors
-    sanitized_password = params[:password].to_s.delete("\0")
-
-    if @user.update(password: sanitized_password, invitation_token: nil, invitation_sent_at: nil)
-      # Automatically sign them in
-      start_new_session_for @user
-      redirect_to my_dashboard_path, notice: "Welcome to CocoScout! Your password has been set." and return
-    else
-      @password_unsuccessfully_set = true
-      render :set_password
     end
   end
 
