@@ -49,7 +49,12 @@ module My
       # only the bank's timeline remains; queued = sitting in a draft run that
       # goes out on its payday. Both still count in the owed balance (the
       # debiting ledger entry posts only when the transfer lands).
-      run_items = PayoutBatchItem.where(payee: @person, status: "pending")
+      #
+      # "failed" counts too: on a funded run it means a transfer bounced and
+      # will be retried automatically — from the payee's side the money is
+      # still on its way, and "failed" is an internal state they must never
+      # see (or worse, silently lose the "on its way" line they were emailed).
+      run_items = PayoutBatchItem.where(payee: @person, status: %w[pending failed])
                                  .joins(:payout_batch)
                                  .where(payout_batches: { status: PayoutBatchService::UNSETTLED_BATCH_STATUSES })
                                  .includes(payout_batch: :organization)

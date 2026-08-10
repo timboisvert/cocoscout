@@ -12,8 +12,10 @@
     <%
       owed = number_to_currency(owed_cents / 100.0)
       # Money already staged in submitted (in-flight) runs — funded, just
-      # waiting on the bank rails or on this person's bank details.
-      submitted_items = PayoutBatchItem.where(payee: ps_person, status: "pending")
+      # waiting on the bank rails or on this person's bank details. A "failed"
+      # item on a funded run is retried automatically, so to the payee it's
+      # still simply on its way — never show them the internal failure.
+      submitted_items = PayoutBatchItem.where(payee: ps_person, status: %w[pending failed])
                                        .joins(:payout_batch)
                                        .where(payout_batches: { status: PayoutBatchService::UNSETTLED_BATCH_STATUSES })
                                        .includes(:payout_batch).to_a
