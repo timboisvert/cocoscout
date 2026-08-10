@@ -796,7 +796,13 @@ class Contract < ApplicationRecord
     end
 
     if removed_rental_ids.any?
-      Show.where(space_rental_id: removed_rental_ids).destroy_all
+      # Unlink referencing payments first — contract_payments.show_id has a FK
+      # that blocks deleting a referenced show — and suppress the per-show
+      # payment sync, which re-links a payment to the show being deleted
+      # (same treatment as cancel! and ContractDateChanges).
+      removed_show_ids = Show.where(space_rental_id: removed_rental_ids).pluck(:id)
+      ContractPayment.where(show_id: removed_show_ids).update_all(show_id: nil) if removed_show_ids.any?
+      Show.without_contract_payment_sync { Show.where(id: removed_show_ids).destroy_all }
       space_rentals.where(id: removed_rental_ids).destroy_all
     end
 
