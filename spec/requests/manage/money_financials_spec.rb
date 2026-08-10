@@ -20,6 +20,26 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  # The grid used to run a whole FinancialSummaryService pass per production —
+  # and the org-wide summary above it had already queried the same shows. What
+  # matters isn't the absolute count but that adding productions doesn't add
+  # queries.
+  describe "the cost of the All Financials page" do
+    it "doesn't grow with the number of productions" do
+      get manage_money_all_financials_path # warm the route/view caches
+      baseline = count_queries { get manage_money_all_financials_path }
+
+      8.times do |i|
+        extra = create(:production, organization: org, name: "Extra #{i}")
+        s = create(:show, production: extra, event_type: :show, date_and_time: 4.days.ago)
+        create(:show_financials, :complete, show: s, ticket_revenue: 200.0)
+      end
+      scaled = count_queries { get manage_money_all_financials_path }
+
+      expect(scaled - baseline).to be <= 5
+    end
+  end
+
   describe "the all-productions slim list" do
     it "keeps the index action-focused with a link to All financials" do
       get manage_money_financials_path

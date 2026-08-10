@@ -105,7 +105,15 @@ module Manage
 
       @selected_period = (params[:period].presence || "all_time").to_sym
       @productions = Current.user.accessible_productions.order(:name)
-      @financial_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
+
+      # One pass gives both the org-wide summary above the grid and every row in
+      # it. Running the service per production re-queried, for each one, shows
+      # the org summary had already queried.
+      financials = FinancialSummaryService.summaries_by_production(@productions, @selected_period)
+      @financial_summary = financials[:total]
+      # A production with no shows in the period isn't in the map at all, but it
+      # still gets a row — of zeros, as before.
+      empty = FinancialSummaryService.empty_summary
 
       # Pre-compute pending show counts per production in bulk, from the same
       # definition the index and the hub use.
@@ -117,7 +125,7 @@ module Manage
         elsif production.type_third_party?
           build_third_party_summary(production)
         else
-          summary = FinancialSummaryService.new(production).summary_for_period(@selected_period)
+          summary = financials[:by_production][production.id] || empty
           {
             production: production,
             revenue_shows: summary[:show_count],

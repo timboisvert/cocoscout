@@ -75,7 +75,15 @@ class ShowFinancials < ApplicationRecord
   end
 
   # Calculate expenses from expense_items (preferred) or legacy expense_details
-  def calculated_expenses
+  #
+  # items_total lets a caller that has already summed the expense items for many
+  # rows at once hand the answer in. Preloading alone isn't enough: `any?` is
+  # free on a loaded association but `sum(:amount)` still issues SQL, so a
+  # batcher would pay one query per row anyway. nil means "no items" and falls
+  # through to the legacy JSONB path, matching the `any?` branch below.
+  def calculated_expenses(items_total: nil)
+    return items_total.to_f if items_total
+
     # Prefer expense_items if present
     if expense_items.loaded? ? expense_items.any? : expense_items.exists?
       return expense_items.sum(:amount).to_f
@@ -108,8 +116,12 @@ class ShowFinancials < ApplicationRecord
     primary_revenue + calculated_other_revenue
   end
 
-  # Calculate production expense allocations for this show
-  def calculated_production_expenses
+  # Calculate production expense allocations for this show.
+  # allocated:, like items_total: above, lets a batched caller supply a figure it
+  # already fetched for every show in one grouped query.
+  def calculated_production_expenses(allocated: nil)
+    return allocated.to_f if allocated
+
     show.production_expense_allocations.sum(:allocated_amount).to_f
   end
 

@@ -220,35 +220,23 @@ module Manage
       @missing_payment_info = people_missing_payment_info
     end
 
+    # One row of the All Payouts grid. Only what that grid renders: awaiting and
+    # paid money, and the two counts beside them.
+    #
+    # This used to run a whole FinancialSummaryService pass per production — a
+    # query for every show — plus counts of revenue shows, shows needing
+    # calculation, and two advance sums. None of it reached the page: the keys
+    # were read by _production_row.html.erb, which nothing renders any more.
     def build_payout_summary(production)
-      revenue_types = EventTypes.revenue_event_types
-      revenue_shows = production.shows.where(event_type: revenue_types).where("date_and_time <= ?", 1.day.from_now)
-
-      # Get financial summary for consistent data
-      financial_summary = FinancialSummaryService.new(production).summary_for_period(:all_time)
-
-      needs_calculation = revenue_shows.left_joins(:show_payout)
-                                       .where("show_payouts.id IS NULL OR show_payouts.calculated_at IS NULL")
-                                       .count
-
-      # Amounts from line items (paid vs unpaid); show counts stay show-level.
       amounts = net_payout_amounts(production)
 
       {
         production: production,
-        revenue_shows: revenue_shows.count,
-        gross_revenue: financial_summary[:gross_revenue],
-        show_expenses: financial_summary[:show_expenses],
-        total_payouts: financial_summary[:total_payouts],
-        net_income: financial_summary[:net_income],
-        needs_calculation_count: needs_calculation,
         awaiting_payout_count: production.show_payouts.where(status: "awaiting_payout").where.not(calculated_at: nil).count,
         awaiting_payout_amount: amounts[:awaiting_amount],
         awaiting_in_run_amount: amounts[:in_run_amount],
         paid_count: production.show_payouts.paid.count,
-        paid_amount: amounts[:paid_amount],
-        outstanding_advances: production.person_advances.not_settled.sum(:remaining_balance),
-        total_advances: production.person_advances.sum(:original_amount)
+        paid_amount: amounts[:paid_amount]
       }
     end
 

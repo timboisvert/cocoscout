@@ -46,10 +46,29 @@ class FinancialSummaryService
     calculate_summary(range)
   end
 
+  # Every production's summary plus the combined total, from one pass.
+  #
+  # The pages that show a per-production grid used to build this by running the
+  # whole service once per production — which meant re-querying, for each one,
+  # shows the org-wide summary above the grid had already queried. Returns
+  # { total: {...}, by_production: { id => {...} } }.
+  def summaries_by_period(period_key)
+    range = PERIODS[period_key.to_sym]&.call
+    calculate_summary(range, by_production: true)
+  end
+
+  def self.summaries_by_production(productions, period_key)
+    new(productions).summaries_by_period(period_key)
+  end
+
   def all_period_summaries
-    PERIODS.keys.each_with_object({}) do |period, hash|
-      hash[period] = summary_for_period(period)
-    end
+    PERIODS.keys.index_with { |period| summary_for_period(period) }
+  end
+
+  # The all-zeros shape, for a production that has no shows in the period and so
+  # never appears in a by_production map but still gets rendered a row.
+  def self.empty_summary
+    @empty_summary ||= new([]).summary_for_period(:all_time).freeze
   end
 
   def self.period_labels
@@ -58,119 +77,177 @@ class FinancialSummaryService
 
   private
 
-  def calculate_summary(date_range)
-    # Only include revenue events (shows, classes, workshops) - not rehearsals/meetings
-    revenue_event_types = EventTypes.revenue_event_types
+  # One pass over the shows in range, accumulating into a combined bucket and —
+  # when asked — a bucket per production. Every child table is fetched with a
+  # single grouped query, so the cost is flat in the number of productions and
+  # shows rather than a query or three per show.
+  def calculate_summary(date_range, by_production: false)
+    spine = show_spine(date_range)
+    show_ids = spine.map(&:first)
 
-    # Build scope across all productions, excluding third-party productions
-    # (their revenue comes through contracts, not show ticket sales)
-    in_house_productions = @productions.reject(&:type_third_party?)
-    production_ids = in_house_productions.map(&:id)
+    # expense_items is preloaded so the "does this row have any?" check is free.
+    # It's the sum that would still hit the database on a loaded association,
+    # and item_totals below answers that without asking.
+    financials = ShowFinancials.where(show_id: show_ids).includes(:expense_items).index_by(&:show_id)
+    item_totals, item_categories = expense_item_rollups(financials.values.map(&:id))
+    allocations = ProductionExpenseAllocation.where(show_id: show_ids).group(:show_id).sum(:allocated_amount)
+    payouts = ShowPayout.where(show_id: show_ids).group(:show_id).sum(:total_payout)
+
+    total = new_bucket
+    by_prod = Hash.new { |h, k| h[k] = new_bucket }
+    show_ids_by_production = Hash.new { |h, k| h[k] = [] }
+
+    spine.each do |show_id, production_id|
+      show_ids_by_production[production_id] << show_id
+      buckets = by_production ? [ total, by_prod[production_id] ] : [ total ]
+
+      buckets.each do |bucket|
+        bucket[:show_count] += 1
+        # Payouts count for every show in scope, with or without financials.
+        bucket[:total_payouts] += payouts[show_id].to_f
+      end
+
+      row = financials[show_id]
+      next unless row&.has_data?
+
+      buckets.each do |bucket|
+        accumulate_financials(bucket, row,
+                              items_total: item_totals[row.id],
+                              categories: item_categories[row.id],
+                              # A show missing from the grouped fetch genuinely
+                              # has no allocations, so hand over a real zero —
+                              # nil would send it back to the database to be
+                              # told the same thing, one query per show.
+                              allocated: allocations[show_id] || 0.0)
+      end
+    end
+
+    contract_money = contract_money_by_production
+    contract_money.each do |production_id, money|
+      total[:contract_money_in] += money[:money_in]
+      total[:contract_money_out] += money[:money_out]
+      next unless by_production
+
+      by_prod[production_id][:contract_money_in] += money[:money_in]
+      by_prod[production_id][:contract_money_out] += money[:money_out]
+    end
+
+    total_summary = finalize(total, allocations, show_ids)
+    return total_summary unless by_production
+
+    {
+      total: total_summary,
+      by_production: by_prod.each_with_object({}) do |(production_id, bucket), out|
+        out[production_id] = finalize(bucket, allocations, show_ids_by_production[production_id])
+      end
+    }
+  end
+
+  # (show_id, production_id) for every revenue show in range. Shows themselves
+  # are never loaded — nothing here reads a Show attribute beyond these two.
+  def show_spine(date_range)
+    # Third-party productions are excluded: their revenue arrives through a
+    # contract, not through show ticket sales.
+    production_ids = @productions.reject(&:type_third_party?).map(&:id)
     scope = Show.where(production_id: production_ids)
-                .where(event_type: revenue_event_types)
+                .where(event_type: EventTypes.revenue_event_types)
                 .where(canceled: false) # A canceled show earned nothing — keep it out of the totals
                 .where("date_and_time < ?", Time.current) # Only past shows
+    scope = scope.where(date_and_time: date_range) if date_range
+    scope.pluck(:id, :production_id)
+  end
 
-    if date_range
-      scope = scope.where(date_and_time: date_range)
+  # One grouped query answers both "what do this row's expense items total?" and
+  # "how do they split by category?" — the two questions the old code asked
+  # separately, per show.
+  def expense_item_rollups(financials_ids)
+    return [ {}, {} ] if financials_ids.empty?
+
+    grouped = ExpenseItem.where(show_financials_id: financials_ids)
+                         .group(:show_financials_id, :category).sum(:amount)
+    # Plain hashes on purpose: a missing key has to read as nil, meaning "this
+    # row has no expense items, use the legacy JSONB path". A default of 0.0
+    # would look like "items totalling nothing" and silently zero those rows.
+    totals = {}
+    categories = {}
+    grouped.each do |(financials_id, category), amount|
+      totals[financials_id] = totals.fetch(financials_id, 0.0) + amount.to_f
+      # presence, not SQL COALESCE: this also folds "" into "other", which is
+      # what the row-at-a-time version did.
+      key = category.presence || "other"
+      row = (categories[financials_id] ||= Hash.new(0.0))
+      row[key] += amount.to_f
     end
+    [ totals, categories ]
+  end
 
-    # Get shows with financials
-    shows_with_financials = scope.includes(:show_financials, :show_payout)
+  def new_bucket
+    { show_count: 0, shows_with_data: 0, gross_revenue: 0.0, show_expenses: 0.0,
+      production_expenses: 0.0, total_payouts: 0.0, ticket_revenue: 0.0,
+      flat_fee_revenue: 0.0, other_revenue: 0.0, contract_money_in: 0.0,
+      contract_money_out: 0.0, expense_by_category: Hash.new(0.0) }
+  end
 
-    # Calculate totals
-    gross_revenue = 0.0
-    show_expenses = 0.0
-    production_expenses = 0.0
-    shows_with_data = 0
-    expense_by_category = Hash.new(0.0)
-    ticket_revenue = 0.0
-    flat_fee_revenue = 0.0
-    other_revenue = 0.0
+  def accumulate_financials(bucket, row, items_total:, categories:, allocated:)
+    bucket[:shows_with_data] += 1
+    bucket[:gross_revenue] += row.total_revenue
+    bucket[:show_expenses] += row.calculated_expenses(items_total: items_total)
+    bucket[:production_expenses] += row.calculated_production_expenses(allocated: allocated)
 
-    shows_with_financials.each do |show|
-      next unless show.show_financials&.has_data?
-
-      shows_with_data += 1
-      financials = show.show_financials
-      gross_revenue += financials.total_revenue
-      show_expenses += financials.calculated_expenses
-      production_expenses += financials.calculated_production_expenses
-
-      # Track revenue by type
-      if financials.ticket_sales?
-        ticket_revenue += financials.ticket_revenue
-      else
-        flat_fee_revenue += financials.flat_fee.to_f
-      end
-      other_revenue += financials.calculated_other_revenue
-
-      # Track expenses by category
-      if financials.expense_items.loaded? ? financials.expense_items.any? : financials.expense_items.exists?
-        financials.expense_items.each do |item|
-          category = item.category.presence || "other"
-          expense_by_category[category] += item.amount.to_f
-        end
-      elsif financials.normalized_expense_details.any?
-        financials.normalized_expense_details.each do |item|
-          category = item["category"].presence || "other"
-          expense_by_category[category] += item["amount"].to_f
-        end
-      elsif financials.expenses.to_f > 0
-        expense_by_category["other"] += financials.expenses.to_f
-      end
+    if row.ticket_sales?
+      bucket[:ticket_revenue] += row.ticket_revenue
+    else
+      bucket[:flat_fee_revenue] += row.flat_fee.to_f
     end
+    bucket[:other_revenue] += row.calculated_other_revenue
 
-    # Get payout totals (performer payouts are part of Cost of Shows)
-    show_ids = scope.pluck(:id)
-    total_payouts = ShowPayout.where(show_id: show_ids).sum(:total_payout) || 0
+    if categories.present?
+      categories.each { |category, amount| bucket[:expense_by_category][category] += amount }
+    elsif row.normalized_expense_details.any?
+      row.normalized_expense_details.each do |item|
+        bucket[:expense_by_category][item["category"].presence || "other"] += item["amount"].to_f
+      end
+    elsif row.expenses.to_f > 0
+      bucket[:expense_by_category]["other"] += row.expenses.to_f
+    end
+  end
 
-    # Fold in contract money so third-party/contract deals aren't siloed: their
-    # revenue lands in money-in and their contractor payouts land in money-out,
-    # the same as any show. (Gross model — see Contract#money_summary.)
-    contract_money_in = 0.0
-    contract_money_out = 0.0
-    @productions.select(&:type_third_party?).each do |production|
+  # Contract money folded in so third-party deals aren't siloed: their revenue
+  # lands in money-in and their contractor payouts in money-out, like any show.
+  # (Gross model — see Contract#money_summary.)
+  def contract_money_by_production
+    @productions.select(&:type_third_party?).each_with_object({}) do |production, out|
       contract = production.contract
       next unless contract
 
-      money = contract.money_summary
-      contract_money_in += money[:money_in]
-      contract_money_out += money[:money_out]
+      out[production.id] = contract.money_summary
     end
-    gross_revenue += contract_money_in
-    total_payouts += contract_money_out
+  end
 
-    # Also include production expenses for shows that may not have financial data yet
-    # (production expenses are allocated to all shows regardless of whether financials are entered)
-    if production_expenses == 0 && @productions.any?
-      production_expense_total = ProductionExpenseAllocation
-        .joins(:show)
-        .where(shows: { id: show_ids })
-        .sum(:allocated_amount)
-      production_expenses = production_expense_total.to_f
+  def finalize(bucket, allocations, scoped_show_ids)
+    gross_revenue = bucket[:gross_revenue] + bucket[:contract_money_in]
+    total_payouts = bucket[:total_payouts] + bucket[:contract_money_out]
+
+    production_expenses = bucket[:production_expenses]
+    # Production expenses are allocated to every show whether or not anyone has
+    # entered financials, so a period with no entered data would otherwise report
+    # none of them. Reads from the same grouped fetch rather than re-querying.
+    if production_expenses.zero? && @productions.any?
+      production_expenses = scoped_show_ids.sum { |id| allocations[id].to_f }
     end
 
-    # Cost of Shows = Show Expenses + Production Expenses (Allocated) + Performer Payouts (direct costs)
-    cost_of_shows = show_expenses + production_expenses + total_payouts
-
-    # Gross Profit = Revenue - Cost of Shows
+    cost_of_shows = bucket[:show_expenses] + production_expenses + total_payouts
     gross_profit = gross_revenue - cost_of_shows
     gross_margin = gross_revenue > 0 ? (gross_profit / gross_revenue * 100).round(1) : 0
-
-    # For now, we don't track operating expenses separately, so Net Income = Gross Profit
-    # In future, operating_expenses would be subtracted here
+    # No operating expenses are tracked separately yet, so net income is gross profit.
     net_income = gross_profit
-
-    # Contract revenue is now folded into gross_revenue above (gross model). Keep
-    # the breakdown key pointing at that same money-in figure.
-    contract_revenue = contract_money_in
+    shows_with_data = bucket[:shows_with_data]
 
     {
-      show_count: scope.count,
+      show_count: bucket[:show_count],
       shows_with_data: shows_with_data,
       gross_revenue: gross_revenue,
-      show_expenses: show_expenses,
+      show_expenses: bucket[:show_expenses],
       production_expenses: production_expenses,
       total_payouts: total_payouts,
       cost_of_shows: cost_of_shows,
@@ -179,14 +256,16 @@ class FinancialSummaryService
       net_income: net_income,
       average_revenue_per_show: shows_with_data > 0 ? (gross_revenue / shows_with_data).round(2) : 0,
       # Breakdowns
-      ticket_revenue: ticket_revenue,
-      flat_fee_revenue: flat_fee_revenue,
-      other_revenue: other_revenue,
-      contract_revenue: contract_revenue,
-      expense_by_category: expense_by_category,
+      ticket_revenue: bucket[:ticket_revenue],
+      flat_fee_revenue: bucket[:flat_fee_revenue],
+      other_revenue: bucket[:other_revenue],
+      # Contract revenue is folded into gross_revenue above (gross model); this
+      # key points at that same money-in figure.
+      contract_revenue: bucket[:contract_money_in],
+      expense_by_category: bucket[:expense_by_category],
       # Legacy keys for backward compatibility during transition
       total_revenue: gross_revenue,
-      total_expenses: show_expenses,
+      total_expenses: bucket[:show_expenses],
       net_profit: gross_profit,
       profit_margin: gross_margin,
       retained: net_income
