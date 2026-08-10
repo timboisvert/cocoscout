@@ -624,7 +624,11 @@ class Contract < ApplicationRecord
   # already carry settled money are closed — nothing is ever created for them.
   def reconcile_amended_payments!(staged_payments)
     staged = Array(staged_payments).filter_map { |row| staged_payment_attributes(row) }
-    existing = contract_payments.to_a
+    # Service charges are billed by reconcile_service_payments!, never staged
+    # by the Financials editor — so to this reconcile they all look like rows
+    # the deal no longer produces. Leave them out entirely, or an amendment
+    # that adds a service destroys its own charges moments after billing them.
+    existing = contract_payments.to_a.reject { |p| service_charge?(p) }
 
     settled_slots = existing.select { |p| p.status_paid? || p.in_payout_run? }
                             .map { |p| payment_slot(p) }.to_set
@@ -872,6 +876,16 @@ class Contract < ApplicationRecord
   # Which way the money goes and when it's due — see reconcile_amended_payments!.
   def payment_slot(payment)
     [ payment.direction, payment.due_date ]
+  end
+
+  # A payment billed from the services list: named for the service, bare or
+  # with its event date ("Booth Tech" / "Booth Tech — Aug 9, 2026") — the same
+  # shapes bill_services! writes and reconcile_service_payments! matches.
+  def service_charge?(payment)
+    draft_services.any? do |s|
+      name = s["name"].to_s
+      name.present? && (payment.description == name || payment.description.to_s.start_with?("#{name} — "))
+    end
   end
 
   def staged_payment_attributes(row)

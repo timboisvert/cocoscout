@@ -202,6 +202,57 @@ RSpec.describe "Contract payment reconciliation", type: :model do
     end
   end
 
+  describe "amending services and payments together" do
+    # The booth-tech bug: one amendment added a per-show service AND carried a
+    # staged payment list. apply_amendment! billed the service, then
+    # reconcile_amended_payments! — whose staged list predates the billing —
+    # saw the fresh charges as rows the deal no longer produces and destroyed
+    # them moments after creating them.
+    it "keeps the service charges billed by the same amendment" do
+      contract.update!(draft_data: {
+        "payment_structure" => "revenue_share",
+        "payment_config" => { "revenue_settlement" => "per_event",
+                              "revenue_our_share" => 50.0, "revenue_their_share" => 50.0 }
+      })
+      create(:show, production: production, date_and_time: Time.zone.local(2026, 8, 9, 20))
+
+      contract.apply_amendment!({
+        "services" => [
+          { "name" => "Booth Tech", "unit" => "flat", "unit_price" => 50.0,
+            "direction" => "incoming", "settlement" => "direct", "per_event" => true,
+            "events" => [ { "starts_at" => "2026-08-09T20:00:00", "hours" => 1 } ] }
+        ],
+        "payments" => [
+          staged(description: "Aug 9 — 50% to them", due_date: Date.new(2026, 8, 9))
+        ]
+      })
+
+      payments = contract.contract_payments.reload
+      booth = payments.find { |p| p.description.start_with?("Booth Tech") }
+      expect(booth).to be_present
+      expect(booth.amount.to_f).to eq(50.0)
+      expect(booth.direction).to eq("incoming")
+      expect(payments.map(&:description)).to include("Aug 9 — 50% to them")
+    end
+
+    it "protects existing service charges from an amendment that only touches payments" do
+      contract.update_draft_step(:services, [
+        { "name" => "Booth Tech", "unit" => "flat", "unit_price" => 50.0,
+          "direction" => "incoming", "quantity" => 1 }
+      ])
+      charge = contract.contract_payments.create!(
+        description: "Booth Tech — Aug 9, 2026", amount: 50, direction: "incoming",
+        due_date: Date.new(2026, 8, 9)
+      )
+
+      contract.reconcile_amended_payments!([
+        staged(description: "Aug 9 — 50% to them", due_date: Date.new(2026, 8, 9))
+      ])
+
+      expect(contract.contract_payments.reload.ids).to include(charge.id)
+    end
+  end
+
   describe "re-billing services on an amendment" do
     it "does not raise a service charge that was already paid" do
       contract.update_draft_step(:services, [])
