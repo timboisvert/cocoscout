@@ -1370,6 +1370,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["manager_id"], name: "index_organization_staff_members_on_manager_id"
+    t.index ["organization_id", "archived_at"], name: "idx_org_staff_members_org_archived"
     t.index ["organization_id", "person_id"], name: "idx_org_staff_members_unique", unique: true
     t.index ["organization_id"], name: "index_organization_staff_members_on_organization_id"
     t.index ["person_id"], name: "index_organization_staff_members_on_person_id"
@@ -1447,6 +1448,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.string "stripe_transfer_id"
     t.datetime "updated_at", null: false
     t.index ["payee_type", "payee_id"], name: "index_payout_batch_items_on_payee_type_and_payee_id"
+    t.index ["payout_batch_id", "status"], name: "idx_payout_batch_items_batch_status"
     t.index ["payout_batch_id"], name: "index_payout_batch_items_on_payout_batch_id"
   end
 
@@ -1464,6 +1466,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.string "trigger", default: "manual", null: false
     t.datetime "updated_at", null: false
     t.index ["created_by_id"], name: "index_payout_batches_on_created_by_id"
+    t.index ["organization_id", "status"], name: "idx_payout_batches_org_status"
     t.index ["organization_id"], name: "index_payout_batches_on_organization_id"
   end
 
@@ -1792,6 +1795,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.index ["archived_at"], name: "index_productions_on_archived_at"
     t.index ["casting_source"], name: "index_productions_on_casting_source"
     t.index ["genre"], name: "index_productions_on_genre"
+    t.index ["organization_id", "archived_at"], name: "idx_productions_org_archived"
     t.index ["organization_id"], name: "index_productions_on_organization_id"
     t.index ["production_type"], name: "index_productions_on_production_type"
     t.index ["public_key"], name: "index_productions_on_public_key", unique: true
@@ -2326,10 +2330,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.boolean "use_custom_roles", default: false, null: false
     t.index ["casting_source"], name: "index_shows_on_casting_source"
     t.index ["course_offering_id"], name: "index_shows_on_course_offering_id"
+    t.index ["date_and_time"], name: "idx_shows_date_and_time"
     t.index ["event_linkage_id"], name: "index_shows_on_event_linkage_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["location_space_id"], name: "index_shows_on_location_space_id"
     t.index ["mic_status"], name: "index_shows_on_mic_status", where: "(mic_status IS NOT NULL)"
+    t.index ["production_id", "event_type", "canceled", "date_and_time"], name: "idx_shows_prod_type_canceled_date"
     t.index ["production_id"], name: "index_shows_on_production_id"
     t.index ["space_rental_id"], name: "index_shows_on_space_rental_id"
   end
@@ -2713,6 +2719,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.index ["approved_by_id"], name: "index_staff_time_entries_on_approved_by_id"
     t.index ["house_role_id"], name: "index_staff_time_entries_on_house_role_id"
     t.index ["offline_paid_by_id"], name: "index_staff_time_entries_on_offline_paid_by_id"
+    t.index ["organization_id", "approved_at"], name: "idx_staff_time_entries_org_unpaid", where: "((payout_batch_id IS NULL) AND (offline_paid_at IS NULL))"
+    t.index ["organization_id", "started_at"], name: "idx_staff_time_entries_org_started"
     t.index ["organization_id"], name: "index_staff_time_entries_on_organization_id"
     t.index ["payout_batch_id"], name: "index_staff_time_entries_on_payout_batch_id"
     t.index ["person_id"], name: "index_staff_time_entries_on_person_id"

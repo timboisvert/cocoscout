@@ -50,5 +50,7 @@ Rails.application.configure do
 
   # Scan every request for N+1s and log them (never raise — see
   # config/initializers/prosopite.rb). Findings land in log/prosopite.log.
+  # The middleware isn't autoloaded with the gem, so require it by hand.
+  require "prosopite/middleware/rack"
   config.middleware.use Prosopite::Middleware::Rack
 end
