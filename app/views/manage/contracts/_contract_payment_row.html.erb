@@ -109,10 +109,19 @@
         <div class="text-2xl font-bold <%= is_incoming ? 'text-green-600' : 'text-red-600' %>">
           <% if payment.amount_tbd? && payment.amount.to_f == 0 %>
             TBD
+          <% elsif deductions.any? %>
+            <%# The number that matters is what actually moves: the share net of
+                the services deducted from it. The gross is in the line below. %>
+            <%= number_to_currency(payment.amount.to_f - deduction_total) %>
           <% else %>
             <%= number_to_currency(payment.amount) %>
           <% end %>
         </div>
+        <% if deductions.any? && !(payment.amount_tbd? && payment.amount.to_f == 0) %>
+          <div class="text-xs text-gray-500 tabular-nums">
+            <%= number_to_currency(payment.amount) %> − <%= number_to_currency(deduction_total) %> services
+          </div>
+        <% end %>
         <% if payment.amount_tbd? && payment.amount.to_f > 0 %>
           <div class="text-xs text-amber-600">
             Partial — some shows still pending

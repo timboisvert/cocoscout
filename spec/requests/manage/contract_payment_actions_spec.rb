@@ -51,6 +51,24 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(response.body).not_to include("Add to payout run")
     end
 
+    it "shows the net amount actually paid when services deduct from a settlement" do
+      contract = contract_for(payable_person)
+      create(:contract_payment, contract: contract, direction: "outgoing", description: "Aug 9 — 50% to them",
+                                status: "pending", amount: 257.50, amount_tbd: false, due_date: Date.new(2026, 8, 9))
+      create(:contract_payment, contract: contract, direction: "incoming", description: "Booth Tech — Aug 9, 2026",
+                                status: "paid", paid_date: Date.new(2026, 8, 9), amount: 50,
+                                settlement_method: "payout_deduction", payment_method: "payout_deduction",
+                                due_date: Date.new(2026, 8, 9))
+
+      get manage_contract_path(contract)
+
+      expect(response).to have_http_status(:ok)
+      # The big number is what actually moves; the gross and deduction sit under it.
+      expect(response.body).to include("$207.50")
+      expect(response.body).to include("$257.50 − $50.00 services")
+      expect(response.body).to include("1 charge deducted from this payment")
+    end
+
     it "says an unsettled ticket-linked payment is waiting on sales" do
       contract = contract_for(payable_person)
       create(:contract_payment, contract: contract, direction: "outgoing", description: "Revenue share",
