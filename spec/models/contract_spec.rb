@@ -678,12 +678,14 @@ RSpec.describe Contract, type: :model do
 
     # One evening booking with a distinct event window, on a known stage.
     def booking(date:, space: mainstage, event_type: "show")
-      day = Date.parse(date)
+      # Build in the app zone — Date#to_time uses the machine's zone, which
+      # shifts every parsed hour on any box not set to the app's timezone.
+      day = Date.parse(date).in_time_zone
       {
-        "starts_at" => day.to_time.change(hour: 18).iso8601,
-        "ends_at" => day.to_time.change(hour: 23).iso8601,
-        "event_starts_at" => day.to_time.change(hour: 20).iso8601,
-        "event_ends_at" => day.to_time.change(hour: 22).iso8601,
+        "starts_at" => day.change(hour: 18).iso8601,
+        "ends_at" => day.change(hour: 23).iso8601,
+        "event_starts_at" => day.change(hour: 20).iso8601,
+        "event_ends_at" => day.change(hour: 22).iso8601,
         "location_id" => location.id,
         "location_space_id" => space.id,
         "event_type" => event_type
