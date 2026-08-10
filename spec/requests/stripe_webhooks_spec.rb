@@ -26,6 +26,10 @@ RSpec.describe "StripeWebhooksController", type: :request do
     event = Stripe::Event.construct_from(
       id: id, type: type, account: account, data: { object: object }
     )
+    # construct_event is stubbed, but the controller only calls it once per
+    # configured secret — and a fresh checkout (no .env, no master.key) has
+    # none, so verification would never even be attempted. Supply one.
+    allow_any_instance_of(StripeWebhooksController).to receive(:webhook_secrets).and_return([ "whsec_test" ])
     allow(Stripe::Webhook).to receive(:construct_event).and_return(event)
     post "/webhooks/stripe", params: "{}", headers: { "HTTP_STRIPE_SIGNATURE" => "sig" }
   end
