@@ -30,7 +30,11 @@ module My
       # included in the total but clearly flagged as not yet approved.
       # No .active filter: hours worked before someone was marked inactive still
       # price at their rate (an inactive membership keeps its rates).
-      members = OrganizationStaffMember.where(person_id: @person.id).index_by(&:organization_id)
+      # Qualifications carry the per-role rates every pending line is priced at;
+      # without them each line loads its member's whole qualification set again.
+      members = OrganizationStaffMember.where(person_id: @person.id)
+                                       .includes(staff_role_qualifications: :house_role)
+                                       .index_by(&:organization_id)
       pending = StaffTimeEntry.where(person_id: @person.id).pending
                               .includes(:organization, shift_assignment: { shift: :house_role })
                               .chronological.to_a
@@ -157,7 +161,9 @@ module My
                   method: li.payment_method }
       end
 
-      staff_members = OrganizationStaffMember.where(person_id: @person.id).index_by(&:organization_id)
+      staff_members = OrganizationStaffMember.where(person_id: @person.id)
+                                             .includes(staff_role_qualifications: :house_role)
+                                             .index_by(&:organization_id)
       StaffTimeEntry.where(person_id: @person.id).where.not(offline_paid_at: nil)
                     .includes(:organization, :house_role, shift_assignment: { shift: :house_role })
                     .find_each do |e|

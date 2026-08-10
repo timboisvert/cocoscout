@@ -35,9 +35,11 @@ module My
 
       # Staff positions this person has been invited to but hasn't accepted yet —
       # surfaced as a prompt bar so they can accept their onboarding right here.
+      # person: :user because onboarding_status asks whether the person has
+      # claimed an account, which reads through to their user.
       @pending_onboarding_invites = OrganizationStaffMember.active
         .where(person_id: people_ids)
-        .includes(:organization, :person)
+        .includes(:organization, person: :user)
         .select { |m| m.onboarding_status == :invited }
         .sort_by { |m| m.organization.name.to_s.downcase }
 

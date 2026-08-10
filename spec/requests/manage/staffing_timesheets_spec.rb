@@ -12,6 +12,24 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  # Pricing asks qualification_for four times per row. It used to answer with a
+  # detect over the loaded association and then, on a miss, a find_by that
+  # searched the same unscoped set and found the same nothing — so an entry
+  # logged against a role the member isn't qualified for cost four dead queries.
+  describe "the cost of the approval queue" do
+    it "doesn't grow with entries priced at a role the member doesn't hold" do
+      other_role = create(:house_role, organization: org, name: "Guest Spot")
+      create(:staff_time_entry, organization: org, person: person, house_role: other_role)
+      get manage_staffing_timesheets_path # warm
+      baseline = count_queries { get manage_staffing_timesheets_path }
+
+      5.times { create(:staff_time_entry, organization: org, person: person, house_role: other_role) }
+      scaled = count_queries { get manage_staffing_timesheets_path }
+
+      expect(scaled - baseline).to be <= 1
+    end
+  end
+
   it "lists pending hours awaiting approval grouped by person" do
     create(:staff_time_entry, organization: org, person: person)
     get manage_staffing_timesheets_path

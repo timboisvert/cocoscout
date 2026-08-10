@@ -169,9 +169,16 @@ class OrganizationStaffMember < ApplicationRecord
     end
   end
 
+  # detect loads the whole association (once), so it already sees everything a
+  # find_by could return — the association is unscoped. The find_by that used to
+  # back it up therefore only ever ran when there was no match, and then found
+  # nothing: a wasted query every time someone logged hours against a role
+  # they're not qualified for. Pricing calls this four times per entry, so on the
+  # timesheet and pay screens that was four wasted queries per row.
   def qualification_for(house_role)
-    staff_role_qualifications.detect { |q| q.house_role_id == house_role.id } ||
-      staff_role_qualifications.find_by(house_role_id: house_role.id)
+    return nil if house_role.nil?
+
+    staff_role_qualifications.detect { |q| q.house_role_id == house_role.id }
   end
 
   # Set which house roles this member can fill and each one's pay rate in one go.
