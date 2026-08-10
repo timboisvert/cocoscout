@@ -267,7 +267,6 @@ class SuperadminController < ApplicationController
 
       # --- Show-level references not handled by dependent: ---
       if show_ids.any?
-        CalendarEvent.where(show_id: show_ids).delete_all if defined?(CalendarEvent)
         Message.where(show_id: show_ids).update_all(show_id: nil)
       end
 
@@ -2002,7 +2001,6 @@ class SuperadminController < ApplicationController
   JOB_DESCRIPTIONS = {
     "MigrateStorageKeysJob" => "Migrates Active Storage blobs from flat keys to hierarchical folder structure for better S3 organization.",
     "CleanupOrphanedS3FilesJob" => "Deletes orphaned S3 files that no longer have database records. Only removes files older than 7 days.",
-    "CalendarSyncJob" => "Synchronizes calendar events with external calendar services.",
     "UpdateLastSeenJob" => "Updates the last_seen_at timestamp for active users.",
     "AuditionRequestNotificationJob" => "Sends notification emails for new audition requests.",
     "VacancyNotificationJob" => "Sends notification emails for role vacancies."

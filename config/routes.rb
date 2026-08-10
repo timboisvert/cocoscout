@@ -54,8 +54,6 @@ Rails.application.routes.draw do
   post  "/password",      to: "auth#handle_password", as: "handle_password"
   get   "/reset/:token",  to: "auth#reset",           as: "reset"
   post  "/reset/:token",  to: "auth#handle_reset",    as: "handle_reset"
-  get   "/set_password/:token",  to: "auth#set_password",        as: "set_password"
-  post  "/set_password/:token",  to: "auth#handle_set_password", as: "handle_set_password"
 
   # Public organization invite link - anyone can join via this link
   get  "/join/:token", to: "organization_join#show", as: "join_organization"
@@ -322,21 +320,6 @@ Rails.application.routes.draw do
   end
 
   # Pilot user setup (superadmins only)
-  get "/pilot", to: "pilot#index", as: "pilot"
-  post "/pilot/create_talent", to: "pilot#create_talent", as: "pilot_create_talent"
-  post "/pilot/create_producer_user", to: "pilot#create_producer_user", as: "pilot_create_producer_user"
-  post "/pilot/create_producer_org", to: "pilot#create_producer_org", as: "pilot_create_producer_org"
-  post "/pilot/create_producer_location", to: "pilot#create_producer_location", as: "pilot_create_producer_location"
-  post "/pilot/create_producer_production", to: "pilot#create_producer_production",
-                                            as: "pilot_create_producer_production"
-  post "/pilot/create_producer_talent_pool", to: "pilot#create_producer_talent_pool",
-                                             as: "pilot_create_producer_talent_pool"
-  post "/pilot/create_producer_show", to: "pilot#create_producer_show", as: "pilot_create_producer_show"
-  post "/pilot/create_producer_additional", to: "pilot#create_producer_additional",
-                                            as: "pilot_create_producer_additional"
-  post "/pilot/resend_invitation", to: "pilot#resend_invitation", as: "pilot_resend_invitation"
-  delete "/pilot/reset_talent", to: "pilot#reset_talent", as: "pilot_reset_talent"
-  delete "/pilot/reset_producer", to: "pilot#reset_producer", as: "pilot_reset_producer"
 
   # Respond to an audition request
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
@@ -366,7 +349,6 @@ Rails.application.routes.draw do
       member do
         post :archive
         post :unarchive
-        post :mark_read
         post :mark_unread
         post :reply
         post :mute
@@ -414,7 +396,6 @@ Rails.application.routes.draw do
     get   "/courses/directory",               to: "courses#directory",        as: "courses_directory"
     get   "/courses/:id",                   to: "courses#show",             as: "course"
     get   "/shows",                         to: "shows#index",              as: "shows"
-    get   "/shows/calendar",                to: redirect("/my"),            as: "shows_calendar"
     get   "/shows/:id",                     to: "shows#show",              as: "show"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
 
@@ -515,17 +496,9 @@ Rails.application.routes.draw do
     get    "/payments/receipt/:kind/:id",        to: "payments#receipt",                   as: "payment_receipt"
 
     # Calendar sync management
-    get   "/calendar-sync",                     to: "calendar_sync#index",                as: "calendar_sync"
-    get   "/calendar-sync/connect/google",      to: "calendar_sync#connect_google",       as: "calendar_sync_connect_google"
-    get   "/calendar-sync/callback",            to: "calendar_sync#oauth_callback",       as: "calendar_oauth_callback"
-    post  "/calendar-sync/ical",                to: "calendar_sync#create_ical",          as: "calendar_sync_create_ical"
-    patch "/calendar-sync/:id",                 to: "calendar_sync#update",               as: "calendar_sync_update"
-    delete "/calendar-sync/:id",                to: "calendar_sync#disconnect",           as: "calendar_sync_disconnect"
-    post "/calendar-sync/:id/sync",            to: "calendar_sync#sync_now",             as: "calendar_sync_sync_now"
   end
 
   # iCal feed (public, no authentication)
-  get "/calendar/:token.ics", to: "calendar_feeds#show", as: "calendar_feed"
 
   # Management interface
   namespace :manage do
@@ -749,8 +722,6 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/wizard/form_starter", to: "audition_cycle_wizard#save_form_starter", as: "signups_auditions_wizard_save_form_starter"
     post "/signups/auditions/:production_id/wizard/form_starter/questions", to: "audition_cycle_wizard#add_form_question", as: "signups_auditions_wizard_add_form_question"
     delete "/signups/auditions/:production_id/wizard/form_starter/questions/:index", to: "audition_cycle_wizard#delete_form_question", as: "signups_auditions_wizard_delete_form_question"
-    get  "/signups/auditions/:production_id/wizard/notifications", to: "audition_cycle_wizard#notifications", as: "signups_auditions_wizard_notifications"
-    post "/signups/auditions/:production_id/wizard/notifications", to: "audition_cycle_wizard#save_notifications", as: "signups_auditions_wizard_save_notifications"
     get  "/signups/auditions/:production_id/wizard/review", to: "audition_cycle_wizard#review", as: "signups_auditions_wizard_review"
     post "/signups/auditions/:production_id/wizard/create", to: "audition_cycle_wizard#create_cycle", as: "signups_auditions_wizard_create"
     delete "/signups/auditions/:production_id/wizard/cancel", to: "audition_cycle_wizard#cancel", as: "signups_auditions_wizard_cancel"
@@ -789,7 +760,6 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/:cycle_id/requests/confirm_bulk_archive", to: "audition_requests#confirm_bulk_archive", as: "confirm_bulk_archive_signups_auditions_cycle_requests"
     post "/signups/auditions/:production_id/:cycle_id/requests/bulk_archive", to: "audition_requests#bulk_archive", as: "bulk_archive_signups_auditions_cycle_requests"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#show", as: "signups_auditions_cycle_request"
-    get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit", to: "audition_requests#edit", as: "edit_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#update", as: "update_signups_auditions_cycle_request"
     delete "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#destroy", as: "destroy_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/archive", to: "audition_requests#archive", as: "archive_signups_auditions_cycle_request"
@@ -872,9 +842,7 @@ Rails.application.routes.draw do
     get  "/contacts/questionnaires/new",      to: "questionnaires#new",      as: "new_contacts_questionnaire"
     post "/contacts/questionnaires",          to: "questionnaires#create",   as: "create_contacts_questionnaire"
     get  "/contacts/questionnaires/:id",      to: "questionnaires#show",     as: "contacts_questionnaire"
-    get  "/contacts/questionnaires/:id/edit", to: "questionnaires#edit",     as: "edit_contacts_questionnaire"
     patch "/contacts/questionnaires/:id",     to: "questionnaires#update",   as: "update_contacts_questionnaire"
-    delete "/contacts/questionnaires/:id",    to: "questionnaires#destroy",  as: "destroy_contacts_questionnaire"
     get  "/contacts/questionnaires/:id/form", to: "questionnaires#form",     as: "form_contacts_questionnaire"
     get  "/contacts/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_contacts_questionnaire"
     post "/contacts/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_contacts_questionnaire"
@@ -887,7 +855,6 @@ Rails.application.routes.draw do
     get  "/contacts/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_contacts_questionnaire"
     get  "/contacts/questionnaires/:id/responses/table", to: "questionnaires#responses_table", as: "responses_table_contacts_questionnaire"
     get  "/contacts/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_contacts_questionnaire"
-    get  "/contacts/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_contacts_questionnaire"
 
     # Casting - production-level (new URL pattern: /manage/casting/:production_id)
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
@@ -945,14 +912,8 @@ Rails.application.routes.draw do
     post "/casting/:production_id/vacancies/:id/invitations/:invitation_id/resend", to: "vacancy_invitations#resend", as: "resend_casting_vacancy_invitation"
 
     # Email Groups (used for casting email notifications)
-    post "/casting/:production_id/email_groups", to: "email_groups#create", as: "create_casting_email_group"
-    patch "/casting/:production_id/email_groups/:id", to: "email_groups#update", as: "update_casting_email_group"
-    delete "/casting/:production_id/email_groups/:id", to: "email_groups#destroy", as: "destroy_casting_email_group"
 
     # Audition Email Assignments
-    post "/casting/:production_id/audition_email_assignments", to: "audition_email_assignments#create", as: "create_casting_audition_email_assignment"
-    patch "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#update", as: "update_casting_audition_email_assignment"
-    delete "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#destroy", as: "destroy_casting_audition_email_assignment"
 
     # Contacts - unified people and groups listing
     get "/contacts",          to: "directory#index", as: "contacts"
@@ -962,11 +923,9 @@ Rails.application.routes.draw do
     # Contacts - people (new URL pattern: /manage/contacts/people/:id)
     get  "/contacts/people/new", to: "people#new", as: "new_contacts_person"
     post "/contacts/people", to: "people#create", as: "create_contacts_person"
-    get  "/contacts/people/search", to: "people#search", as: "search_contacts_people"
     get  "/contacts/people/search_for_invite", to: "people#search_for_invite", as: "search_for_invite_contacts_people"
     get  "/contacts/people/check_email", to: "people#check_email", as: "check_email_contacts_people"
     get  "/contacts/people/:id", to: "people#show", as: "contacts_person"
-    get  "/contacts/people/:id/edit", to: "people#edit", as: "edit_contacts_person"
     patch "/contacts/people/:id", to: "people#update", as: "update_contacts_person"
     post "/contacts/people/:id/add_to_cast", to: "people#add_to_cast", as: "add_to_cast_contacts_person"
     post "/contacts/people/:id/remove_from_cast", to: "people#remove_from_cast", as: "remove_from_cast_contacts_person"
@@ -1038,7 +997,7 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :team_invitations do
+    resources :team_invitations, only: [] do
       collection do
         get "accept/:token", to: "team_invitations#accept", as: :accept
         post "accept/:token", to: "team_invitations#do_accept", as: :do_accept
@@ -1050,9 +1009,8 @@ Rails.application.routes.draw do
     post "person_invitations/accept/:token",  to: "person_invitations#do_accept", as: "do_accept_person_invitations"
     post "person_invitations/decline/:token", to: "person_invitations#decline",   as: "decline_person_invitations"
 
-    resources :people, except: [ :destroy ] do
+    resources :people, except: %i[destroy edit] do
       collection do
-        get :search
         get :search_for_invite
         get :check_email
       end
@@ -1368,7 +1326,6 @@ Rails.application.routes.draw do
     delete "money/schemes/:id", to: "payout_schemes#destroy"
     post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
     post "money/schemes/:id/update_defaults", to: "payout_schemes#update_defaults", as: "update_defaults_money_payout_scheme"
-    get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
     post "money/schemes/:id/archive", to: "payout_schemes#archive", as: "archive_money_payout_scheme"
     post "money/schemes/:id/unarchive", to: "payout_schemes#unarchive", as: "unarchive_money_payout_scheme"
 
@@ -1620,8 +1577,6 @@ Rails.application.routes.draw do
     post "courses/:course_offering_id/payout/line_items/:line_item_id/mark_paid", to: "course_offering_payouts#mark_line_item_paid", as: "course_offering_payout_mark_line_item_paid"
 
     resources :cast_assignment_stages, only: %i[create update destroy]
-    # resources :email_groups, only: %i[create update destroy] (moved to communications)
-    # resources :audition_email_assignments, only: %i[create update destroy] (moved to communications)
     # Note: auditions routes are now under signups/auditions
   end
 
@@ -1660,7 +1615,6 @@ Rails.application.routes.draw do
   patch  "/profile", to: "profile#update"  # Fallback for requests without ID (uses default profile)
   patch  "/profile/visibility", to: "profile#update_visibility", as: "update_profile_visibility"
   patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"
-  get    "/profile/public", to: "profile#public", as: "profile_public"
   get    "/profile/search_groups", to: "profile#search_groups", as: "search_groups_profile"
   post   "/profile/join_group", to: "profile#join_group", as: "join_group_profile"
   delete "/profile/leave_group/:id", to: "profile#leave_group", as: "leave_group_profile"

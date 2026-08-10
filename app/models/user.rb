@@ -358,18 +358,6 @@ class User < ApplicationRecord
     self.notification_preferences = notification_preferences.merge(key.to_s => enabled)
   end
 
-  # Generate an invitation token for setting password
-  def generate_invitation_token
-    self.invitation_token = SecureRandom.urlsafe_base64(32)
-    self.invitation_sent_at = Time.current
-    save!
-  end
-
-  # Check if invitation token is still valid
-  def invitation_token_valid?
-    invitation_token.present?
-  end
-
   private
 
   def password_complexity

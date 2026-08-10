@@ -293,15 +293,4 @@ module MicsHelper
   rescue ArgumentError, TZInfo::AmbiguousTime
     text
   end
-
-  def mics_time_label(time)
-    return nil if time.blank?
-    if time.to_date == Date.current
-      time.strftime("%-l:%M %p")
-    elsif time > Time.current.beginning_of_year
-      time.strftime("%a %b %-d %-l:%M %p")
-    else
-      time.strftime("%b %-d, %Y %-l:%M %p")
-    end
-  end
 end

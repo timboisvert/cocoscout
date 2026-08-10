@@ -6,7 +6,6 @@ gem "aws-sdk-s3", require: false
 gem "bcrypt", "~> 3.1.7"
 gem "bootsnap", require: false
 gem "csv" # bundled with Ruby <3.4; required by lib/tasks/mics_import_chicago.rake
-gem "icalendar", "~> 2.10"
 gem "image_processing", "~> 1.2"
 gem "importmap-rails"
 gem "kamal", require: false
@@ -15,6 +14,9 @@ gem "pagy", "~> 43.2.2"
 gem "pg"
 gem "prawn"        # PDF generation (signed contract documents)
 gem "prawn-table"  # tables inside those PDFs
+# prawn requires matrix at load time but does not declare it, and matrix stopped
+# being a default gem in Ruby 3.1. It used to arrive via poppler -> cairo.
+gem "matrix"
 gem "propshaft"
 gem "puma", ">= 5.0"
 gem "rack-attack"
@@ -24,8 +26,6 @@ gem "sentry-rails"
 gem "sentry-ruby"
 gem "solid_cache"
 gem "solid_queue"
-gem "sqlite3"
-gem "stackprof"
 gem "stripe"
 gem "stimulus-rails"
 gem "tailwindcss-rails"
@@ -37,14 +37,11 @@ gem "rpush"
 
 group :production do
   gem "mailgun-ruby", "~> 1.2"
-  gem "poppler"
 end
 
 group :development do
   gem "brakeman", require: false
-  gem "byebug", platforms: %i[mri windows]
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
-  gem "derailed_benchmarks", require: false
   gem "dockerfile-rails", ">= 1.7"
   gem "letter_opener"
   gem "rubocop-rails-omakase", require: false, group: [ :development ]
@@ -55,11 +52,8 @@ group :development do
 end
 
 group :development, :test do
-  gem "capybara"
   gem "database_cleaner-active_record"
   gem "dotenv-rails"
   gem "factory_bot_rails"
-  gem "faker"
   gem "rspec-rails"
-  gem "selenium-webdriver"
 end

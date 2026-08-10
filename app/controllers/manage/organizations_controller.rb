@@ -132,23 +132,6 @@ module Manage
       }
     end
 
-    def set_current
-      organization = Current.user.accessible_organizations.find(params[:id])
-
-      # Proceed with setting the new organization
-      user_id = Current.user&.id
-      if user_id
-        session[:current_organization_id] ||= {}
-        session[:current_organization_id][user_id.to_s] = organization.id
-
-        # Clear organization specific session filters/settings
-        session.delete(:people_order)
-        session.delete(:people_show)
-        session.delete(:people_filter)
-      end
-      redirect_to manage_path
-    end
-
     def transfer_ownership
       new_owner = User.find(params[:new_owner_id])
 

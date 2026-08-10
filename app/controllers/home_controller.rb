@@ -8,11 +8,6 @@ class HomeController < ApplicationController
   # Use the public facing layout
   layout "home"
 
-  def index; end
-
-  # New homepage preview
-  def new_home; end
-
   # Producer-first repositioning preview (three tiers) — /new
   def new_landing; end
   def new_performers; end

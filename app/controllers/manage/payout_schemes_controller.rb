@@ -2,7 +2,7 @@
 
 module Manage
   class PayoutSchemesController < Manage::ManageController
-    before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :update_defaults, :preview, :archive, :unarchive ]
+    before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :update_defaults, :archive, :unarchive ]
 
     def index
       # Show all payout schemes for the organization (both org-level and production-level)
@@ -108,26 +108,6 @@ module Manage
 
       notice += " (effective #{effective_from.strftime('%-d %B %Y')})" if effective_from.present?
       redirect_to manage_money_payout_scheme_path(@payout_scheme), notice: notice
-    end
-
-    def preview
-      # Build sample calculation for preview
-      @sample_inputs = {
-        ticket_count: params[:ticket_count]&.to_i || 50,
-        ticket_revenue: params[:ticket_revenue]&.to_f || 500.0,
-        performer_count: params[:performer_count]&.to_i || 4
-      }
-
-      @preview_result = PayoutCalculator.preview(
-        rules: @payout_scheme.rules,
-        financials: @sample_inputs,
-        performer_count: @sample_inputs[:performer_count]
-      )
-
-      respond_to do |format|
-        format.html
-        format.json { render json: @preview_result }
-      end
     end
 
     # Collection actions for presets

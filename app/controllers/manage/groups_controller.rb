@@ -3,7 +3,7 @@
 module Manage
   class GroupsController < Manage::ManageController
     before_action :set_group,
-                  only: %i[show update update_availability availability_modal add_to_cast remove_from_cast remove_from_organization destroy]
+                  only: %i[show update_availability availability_modal add_to_cast remove_from_cast remove_from_organization destroy]
 
     def show
       @members = @group.members.includes(profile_headshots_attachment: :blob)

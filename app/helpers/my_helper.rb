@@ -245,11 +245,4 @@ module MyHelper
     first = min.year == max.year ? min.strftime("%b %-d") : min.strftime("%b %-d, %Y")
     "#{first} – #{max.strftime('%b %-d, %Y')}"
   end
-
-  # Check if current user can moderate (delete) posts for a given post
-  def can_moderate_post?(post)
-    production = post.production
-    ProductionPermission.exists?(production: production, user: Current.user) ||
-      OrganizationRole.exists?(organization: production.organization, user: Current.user)
-  end
 end

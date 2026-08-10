@@ -6,7 +6,7 @@ module Manage
     before_action :check_production_access, except: %i[org_index add_to_session remove_from_session move_to_session]
     before_action :set_audition_cycle,
                   except: %i[org_index index archive schedule_auditions add_to_session remove_from_session move_to_session]
-    before_action :set_audition, only: %i[show edit update destroy cast_audition_vote]
+    before_action :set_audition, only: %i[show cast_audition_vote]
     before_action :ensure_user_is_manager,
                   except: %i[org_index index archive show casting casting_select schedule_auditions cast_audition_vote]
     before_action :ensure_audition_cycle_active, only: %i[cast_audition_vote]
@@ -345,40 +345,6 @@ module Manage
           format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_entity }
         end
       end
-    end
-
-    # GET /auditions/new
-    def new
-      @audition = Audition.new
-    end
-
-    # GET /auditions/1/edit
-    def edit; end
-
-    # POST /auditions
-    def create
-      @audition = Audition.new(audition_params)
-
-      if @audition.save
-        redirect_to @audition, notice: "Audition was successfully created"
-      else
-        render :new, status: :unprocessable_entity
-      end
-    end
-
-    # PATCH/PUT /auditions/1
-    def update
-      if @audition.update(audition_params)
-        redirect_to @audition, notice: "Audition was successfully updated", status: :see_other
-      else
-        render :edit, status: :unprocessable_entity
-      end
-    end
-
-    # DELETE /auditions/1
-    def destroy
-      @audition.destroy!
-      redirect_to auditions_path, notice: "Audition was successfully deleted", status: :see_other
     end
 
     # POST /auditions/add_to_session
