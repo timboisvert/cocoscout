@@ -389,6 +389,11 @@ module My
 
       # Staff who owe a signature on their org's (now-)required staff agreement.
       @pending_staff_agreements = OrganizationStaffMember.pending_agreement_signatures(people_ids)
+
+      # One-shot greeting after joining an org via its public /join link.
+      if flash[:just_joined_organization_id]
+        @just_joined_organization = Organization.find_by(id: flash[:just_joined_organization_id])
+      end
     end
 
     def dismiss_onboarding

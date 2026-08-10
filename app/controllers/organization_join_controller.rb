@@ -57,31 +57,21 @@ class OrganizationJoinController < ApplicationController
         render :show, status: :unprocessable_entity
       end
     else
-      # New user - create account
-      user = User.new(email_address: email, password: password)
+      # New user - create the account (User + Person together)
+      result = AccountCreator.call(email: email, password: password)
 
-      unless user.save
+      unless result.user.persisted?
         @email = email
-        @user = user
+        @user = result.user
         render :show, status: :unprocessable_entity
         return
       end
 
-      # Create a person for this user
-      person = Person.create!(
-        name: email.split("@").first.titleize,
-        email: email,
-        user_id: user.id
-      )
-      user.update!(default_person: person)
-
-      # Notify admin
-
       # Sign in the new user
-      start_new_session_for user
+      start_new_session_for result.user
 
       # Add to organization
-      add_user_to_organization(user)
+      add_user_to_organization(result.user)
     end
   end
 
@@ -112,7 +102,10 @@ class OrganizationJoinController < ApplicationController
     else
       # Add person to organization
       @organization.people << person
-      redirect_to my_dashboard_path, notice: "Welcome! You've joined #{@organization.name}."
+      # The dashboard greets them with what joining means (see the
+      # just-joined panel in my/dashboard/index).
+      flash[:just_joined_organization_id] = @organization.id
+      redirect_to my_dashboard_path
     end
   end
 
@@ -132,6 +125,7 @@ class OrganizationJoinController < ApplicationController
     # Add person to organization
     @organization.people << person unless person.organizations.include?(@organization)
 
-    redirect_to my_dashboard_path, notice: "Welcome! You've joined #{@organization.name}."
+    flash[:just_joined_organization_id] = @organization.id
+    redirect_to my_dashboard_path
   end
 end

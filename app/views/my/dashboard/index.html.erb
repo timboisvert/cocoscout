@@ -6,8 +6,17 @@
 
   <% primary = @people.first %>
 
+  <!-- One-shot greeting after joining an org via its public /join link -->
+  <% if @just_joined_organization %>
+    <%= render "shared/alert_panel",
+          eyebrow: "You're in",
+          headline: "You've joined #{@just_joined_organization.name}",
+          body: "They can now invite you to shows, add you to casts, and message you here. Your shows will appear on this calendar.",
+          actions: [ { text: "Complete your profile", path: profile_path } ] %>
+  <% end %>
+
   <!-- First-visit welcome for brand-new users (no orgs, no pools) -->
-  <% if primary %>
+  <% if primary && @just_joined_organization.nil? %>
     <%= render "my/dashboard/welcome", person: primary %>
   <% end %>
 

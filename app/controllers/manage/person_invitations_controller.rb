@@ -61,13 +61,16 @@ module Manage
         end
         user.save!
       else
-        # This shouldn't happen - user should exist when person invitation is created
-        # But handle it gracefully
-        user = User.new(email_address: @person_invitation.email.downcase, password: params[:password])
-        unless user.save
-          @user = user
+        # This shouldn't happen - user should exist when person invitation is
+        # created. But handle it gracefully: create the full account (User +
+        # Person, adopting an unclaimed Person with this email).
+        result = AccountCreator.call(email: @person_invitation.email.downcase, password: params[:password])
+        unless result.user.persisted?
+          @user = result.user
           render :accept, status: :unprocessable_entity and return
         end
+        user = result.user
+        person = result.person
       end
 
       # Ensure person exists and is linked to user

@@ -3,6 +3,9 @@
 module Manage
   class ProductionWizardController < Manage::ManageController
     before_action :ensure_user_is_global_manager
+    # Stop a Producer-plan org at the door with the upgrade pitch instead of
+    # letting them walk all seven steps into a validation wall at create.
+    before_action :enforce_free_production_limit, only: %i[name create_production]
     before_action :load_wizard_state
 
     # Step 1: Name - What's the production called?
