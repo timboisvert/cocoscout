@@ -4,9 +4,8 @@ module Manage
   class ShowPayoutsController < Manage::ManageController
     before_action :set_production
     before_action :set_show_payout, only: [
-      :show, :update, :edit_financials, :update_financials,
+      :show, :update,
       :calculate, :mark_paid, :reopen, :add_to_payout_run, :remove_from_run,
-      :mark_non_revenue, :unmark_non_revenue,
       :override, :save_override, :clear_override,
       :change_scheme, :apply_scheme_change,
       :mark_line_item_paid, :unmark_line_item_paid,
@@ -41,29 +40,6 @@ module Manage
                     notice: "Payout updated."
       else
         render :show, status: :unprocessable_entity
-      end
-    end
-
-    def edit_financials
-      @show_financials = @show.show_financials || @show.build_show_financials
-    end
-
-    def update_financials
-      @show_financials = @show.show_financials || @show.create_show_financials
-      attrs = show_financials_params.to_h
-
-      # Convert indexed line items to arrays
-      attrs = convert_line_items_to_arrays(attrs)
-
-      @show_financials.assign_attributes(attrs)
-      if @show_financials.save
-        # Recompute any revenue-share contract payment for this show from the new
-        # numbers (same as the other financials editors do).
-        ContractPaymentSyncService.new(@show).call
-        redirect_to manage_money_show_payout_path(@show),
-                    notice: "Financial data saved."
-      else
-        render :edit_financials, status: :unprocessable_entity
       end
     end
 
@@ -202,16 +178,6 @@ module Manage
       redirect_to manage_money_show_payout_path(@show),
                   notice: "Calculation reset. You can now issue advances or recalculate when ready."
     end
-    def approve
-      if @show_payout.approve!(Current.user)
-        redirect_to manage_money_show_payout_path(@show),
-                    notice: "Payout approved and locked."
-      else
-        redirect_to manage_money_show_payout_path(@show),
-                    alert: "Could not approve payout."
-      end
-    end
-
     def mark_paid
       if @show_payout.mark_paid!
         redirect_to manage_money_show_payout_path(@show),
@@ -219,24 +185,6 @@ module Manage
       else
         redirect_to manage_money_show_payout_path(@show),
                     alert: "Could not mark as paid."
-      end
-    end
-
-    def mark_non_revenue
-      financials = @show.show_financials || @show.create_show_financials!
-      financials.update!(non_revenue_override: true)
-      redirect_to manage_money_index_path,
-                  notice: "#{@show.date_and_time.strftime('%b %-d')} - #{@show.display_name} marked as non-revenue event."
-    end
-
-    def unmark_non_revenue
-      if @show.show_financials&.non_revenue_override?
-        @show.show_financials.update!(non_revenue_override: false)
-        redirect_to manage_edit_money_show_financials_path(@show),
-                    notice: "Event restored as revenue event. Enter financial data below."
-      else
-        redirect_to manage_money_index_path,
-                    alert: "This event was not marked as non-revenue."
       end
     end
 

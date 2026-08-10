@@ -10,12 +10,6 @@ module Manage
     before_action :set_question, only: %i[update_question destroy_question]
     before_action :ensure_user_is_manager, except: %i[preview show]
 
-    def new
-      @audition_cycle = AuditionCycle.new
-      # Set default closes_at to 2 weeks from now
-      @audition_cycle.closes_at = 2.weeks.from_now.change(hour: 23, min: 59)
-    end
-
     def show
       # Summary view for archived auditions
       @custom_questions = @audition_cycle.questions.order(:position)
@@ -29,26 +23,6 @@ module Manage
                                       .pluck(:assignable_id)
                                       .uniq
       @cast_people = Person.where(id: person_ids).order(:name)
-    end
-
-    def create
-      @audition_cycle = AuditionCycle.new(audition_cycle_params)
-      @audition_cycle.production = @production
-      @audition_cycle.active = true
-
-      # Generate unique token using ShortKeyService
-      @audition_cycle.token = ShortKeyService.generate(type: :audition)
-
-      ActiveRecord::Base.transaction do
-        # Deactivate all other audition cycles for this production
-        @production.audition_cycles.where(active: true).update_all(active: false)
-
-        raise ActiveRecord::Rollback unless @audition_cycle.save
-
-        redirect_to manage_signups_auditions_path(@production), notice: "Audition Cycle was successfully scheduled"
-      end
-
-      render :new, status: :unprocessable_entity unless @audition_cycle.persisted?
     end
 
     def form

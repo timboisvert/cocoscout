@@ -114,25 +114,6 @@ module Manage
       end
     end
 
-    def update_role
-      user = Current.organization.users.find(params[:id])
-      role = params[:role]
-      organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
-      if organization_role && %w[manager viewer none].include?(role)
-        organization_role.update(company_role: role)
-        expire_team_cache
-        respond_to do |format|
-          format.json { render json: { success: true } }
-          format.html { redirect_to manage_team_index_path, notice: "Role updated" }
-        end
-      else
-        respond_to do |format|
-          format.json { render json: { success: false }, status: :unprocessable_entity }
-          format.html { redirect_to manage_team_index_path, alert: "Could not update role" }
-        end
-      end
-    end
-
     def revoke_invite
       team_invitation = Current.organization.team_invitations.find_by(id: params[:id], accepted_at: nil)
       if team_invitation

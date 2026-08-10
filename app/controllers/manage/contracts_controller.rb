@@ -228,14 +228,6 @@ module Manage
       end
     end
 
-    def complete
-      if @contract.complete!
-        redirect_to manage_contract_path(@contract), notice: "Contract marked as completed."
-      else
-        redirect_to manage_contract_path(@contract), alert: "Could not complete contract."
-      end
-    end
-
     def reopen
       if @contract.reopen!
         redirect_to amend_bookings_manage_contract_path(@contract),
