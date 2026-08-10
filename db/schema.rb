@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -80,7 +80,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.integer "send_count", default: 1, null: false
     t.datetime "sent_at", null: false
     t.bigint "sent_by_id"
-    t.string "sent_via", default: "manual", null: false
     t.datetime "updated_at", null: false
     t.index ["agreement_template_id"], name: "index_agreement_requests_on_agreement_template_id"
     t.index ["person_id"], name: "index_agreement_requests_on_person_id"
@@ -190,7 +189,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.datetime "created_at", null: false
     t.datetime "invitation_notification_sent_at"
     t.boolean "notified_scheduled"
-    t.string "notified_status"
     t.integer "requestable_id"
     t.string "requestable_type"
     t.integer "status", default: 0
@@ -364,7 +362,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
   create_table "city_hubs", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "default_radius_miles", default: 25, null: false
-    t.jsonb "featured_mic_ids", default: [], null: false
     t.text "intro_markdown"
     t.float "lat"
     t.float "lng"
@@ -586,7 +583,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.string "signing_mode", default: "offline", null: false
     t.string "signing_state", default: "unsent", null: false
     t.string "signing_token"
-    t.boolean "skip_event_creation", default: false, null: false
     t.string "status", default: "draft", null: false
     t.text "terms"
     t.datetime "updated_at", null: false
@@ -717,7 +713,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -1218,7 +1214,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.boolean "active", default: true, null: false
     t.jsonb "channels", default: ["email"], null: false
     t.datetime "created_at", null: false
-    t.datetime "last_delivered_at"
     t.integer "lead_time_minutes", default: 5, null: false
     t.bigint "mic_id", null: false
     t.datetime "next_target_at"
@@ -1292,12 +1287,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.integer "recurrence_nth_week"
     t.jsonb "recurrence_nth_weeks", default: [], null: false
     t.integer "recurrence_pattern", default: 0, null: false
-    t.string "recurrence_rule"
     t.string "signup_cap"
     t.integer "signup_method"
     t.text "signup_notes"
     t.string "signup_opens_at_text"
-    t.integer "signup_opens_offset_minutes"
     t.string "signup_url"
     t.string "slug", null: false
     t.string "spot_length_minutes"
@@ -1568,7 +1561,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.boolean "hide_contact_info", default: true, null: false
     t.datetime "last_email_changed_at"
     t.datetime "last_public_key_changed_at"
-    t.string "legal_name"
     t.string "name"
     t.integer "notified_for_audition_cycle_id"
     t.text "old_keys"
@@ -2792,7 +2784,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
     t.string "email", null: false
-    t.boolean "invitation_notifications_enabled", default: true
     t.string "invitation_role", default: "viewer"
     t.bigint "organization_id", null: false
     t.bigint "person_id"
@@ -2836,8 +2827,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.boolean "message_digest_enabled", default: true
     t.jsonb "notification_preferences", default: {}, null: false
     t.string "password_digest", null: false
-    t.datetime "password_reset_sent_at"
-    t.string "password_reset_token"
     t.bigint "person_id"
     t.datetime "updated_at", null: false
     t.datetime "welcomed_production_at"
@@ -2845,7 +2834,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_120000) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["invitation_token"], name: "index_users_on_invitation_token", unique: true
     t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
-    t.index ["password_reset_token"], name: "index_users_on_password_reset_token", unique: true
     t.index ["person_id"], name: "index_users_on_person_id"
   end
 
