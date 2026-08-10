@@ -682,13 +682,25 @@ class Contract < ApplicationRecord
   # Returns [{ payment:, deductions: [ContractPayment], deduction_total: Float }]
   def payment_schedule_groups(payments = nil)
     rows = payments || contract_payments.by_due_date.to_a
-    deductible, rest = rows.partition { |p| p.status_pending? && p.deduct_from_payout? }
-    settlements = rest.select { |p| p.direction_outgoing? && p.status_pending? }.sort_by(&:due_date)
+    # A charge settled by payout deduction never has money of its own — no
+    # standalone "Paid" row, ever. It stays folded into the settlement it
+    # netted (or will net) against.
+    deductible, rest = rows.partition do |p|
+      p.direction_incoming? &&
+        ((p.status_pending? && p.deduct_from_payout?) ||
+         (p.status_paid? && p.payment_method == "payout_deduction"))
+    end
+    settlements = rest.select { |p| p.direction_outgoing? }.sort_by(&:due_date)
+    pending_settlements = settlements.select(&:status_pending?)
 
     attached = Hash.new { |h, k| h[k] = [] }
     orphans = []
     deductible.each do |charge|
-      host = settlements.detect { |s| s.due_date >= charge.due_date } || settlements.last
+      # A pending charge can only net against a settlement that hasn't happened
+      # yet; an already-deducted one belongs to the settlement it rode out on.
+      # Both match by date: a fee deducts at its own event's settlement.
+      pool = charge.status_paid? ? settlements : pending_settlements
+      host = pool.detect { |s| s.due_date >= charge.due_date } || pool.last
       host ? attached[host.id] << charge : orphans << charge
     end
 
