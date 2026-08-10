@@ -7,7 +7,10 @@
 # reloads; cleared once the run is submitted. Last write wins if two managers
 # edit at once (autosave is debounced per keystroke, so this converges fast).
 module PayDraft
-  TTL = 24.hours
+  # Long-lived on purpose: a pay run is often built up across a whole pay
+  # period (pull hours Friday, add tips Monday, pay the following week).
+  # Every autosave rewrites the entry, so this is 30 days from the last touch.
+  TTL = 30.days
 
   module_function
 

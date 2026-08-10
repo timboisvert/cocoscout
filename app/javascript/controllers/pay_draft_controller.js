@@ -65,7 +65,12 @@ export default class extends Controller {
                 }
             })
         })
-        this.recalc()
+        // Deferred a tick: this controller (outer wrapper) connects before
+        // pay-hours (grid), and recalc's event must not fire until pay-hours
+        // can price the restored entry ids into each row's workedCents —
+        // otherwise pulled-in hours read as $0 in the totals until the next
+        // input, which looks exactly like the draft losing them.
+        setTimeout(() => this.recalc(), 0)
     }
 
     holderFor(id, field) {
