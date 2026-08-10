@@ -108,98 +108,7 @@ module ApplicationHelper
       (!attachment.respond_to?(:blob) || attachment.blob.blank? || !attachment.blob.persisted?)
   end
 
-  def pagy_nav_tailwind(pagy, id: nil, aria_label: nil)
-    id               = %( id="#{id}") if id
-    link_classes     = "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600"
-    active_classes   = "inline-flex items-center justify-center rounded-md border border-pink-500 bg-pink-500 px-3 py-1 text-sm font-semibold text-white"
-    disabled_classes = "inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1 text-sm text-slate-300 cursor-not-allowed"
-    gap_classes      = "inline-flex items-center justify-center px-3 py-1 text-sm text-slate-400"
-
-    anchor = lambda do |page, text = page.to_s, classes: nil, aria_label: nil|
-      link_to text, pagy.page_url(page),
-              class: classes,
-              "aria-label": aria_label
-    end
-
-    html = %(<nav#{id} class="pagy-tailwind nav" aria-label="#{aria_label || 'Pagination'}"><ul class="flex items-center gap-2">#{
-							 tailwind_prev_html(pagy, anchor, link_classes, disabled_classes)
-						})
-
-    # Build series manually: show first, last, current and nearby pages with gaps
-    series = build_pagination_series(pagy.page, pagy.pages)
-    series.each do |item|
-      segment =
-        case item
-        when Integer
-          if item == pagy.page
-            %(<li><span class="#{active_classes}" aria-current="page">#{item}</span></li>)
-          else
-            %(<li>#{anchor.call(item, classes: link_classes)}</li>)
-          end
-        when :gap
-          %(<li><span class="#{gap_classes}" aria-hidden="true">&hellip;</span></li>)
-        end
-      html << segment
-    end
-    html << %(#{tailwind_next_html(pagy, anchor, link_classes, disabled_classes)}</ul></nav>)
-
-    html.html_safe
-  end
-
   private
-
-  # Build an array like [1, :gap, 4, 5, 6, :gap, 10] for pagination display
-  def build_pagination_series(current_page, total_pages)
-    return (1..total_pages).to_a if total_pages <= 7
-
-    series = []
-    # Always show first page
-    series << 1
-
-    # Calculate range around current page
-    start_range = [ current_page - 1, 2 ].max
-    end_range = [ current_page + 1, total_pages - 1 ].min
-
-    # Add gap if needed before the range
-    if start_range > 2
-      series << :gap
-    elsif start_range == 2
-      series << 2
-    end
-
-    # Add pages in range (excluding first and last)
-    (start_range..end_range).each do |p|
-      series << p unless p == 1 || p == total_pages
-    end
-
-    # Add gap if needed after the range
-    if end_range < total_pages - 1
-      series << :gap
-    elsif end_range == total_pages - 1
-      series << (total_pages - 1)
-    end
-
-    # Always show last page
-    series << total_pages unless total_pages == 1
-
-    series.uniq
-  end
-
-  def tailwind_prev_html(pagy, anchor, link_classes, disabled_classes)
-    if (p_prev = pagy.previous)
-      %(<li>#{anchor.call(p_prev, 'Previous', classes: link_classes, aria_label: 'Previous page')}</li>)
-    else
-      %(<li><span class="#{disabled_classes}" aria-disabled="true">Previous</span></li>)
-    end
-  end
-
-  def tailwind_next_html(pagy, anchor, link_classes, disabled_classes)
-    if (p_next = pagy.next)
-      %(<li>#{anchor.call(p_next, 'Next', classes: link_classes, aria_label: 'Next page')}</li>)
-    else
-      %(<li><span class="#{disabled_classes}" aria-disabled="true">Next</span></li>)
-    end
-  end
 
   def safe_headshot_url(entity, variant: :thumb)
     return nil unless entity
@@ -238,11 +147,6 @@ module ApplicationHelper
     end
 
     nil
-  end
-
-  def safe_logo_url(production, variant = :small)
-    variant_obj = production.safe_logo_variant(variant)
-    variant_obj ? url_for(variant_obj) : nil
   end
 
   # Returns CSS classes for event type badges

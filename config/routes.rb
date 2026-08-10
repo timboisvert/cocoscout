@@ -320,21 +320,6 @@ Rails.application.routes.draw do
   end
 
   # Pilot user setup (superadmins only)
-  get "/pilot", to: "pilot#index", as: "pilot"
-  post "/pilot/create_talent", to: "pilot#create_talent", as: "pilot_create_talent"
-  post "/pilot/create_producer_user", to: "pilot#create_producer_user", as: "pilot_create_producer_user"
-  post "/pilot/create_producer_org", to: "pilot#create_producer_org", as: "pilot_create_producer_org"
-  post "/pilot/create_producer_location", to: "pilot#create_producer_location", as: "pilot_create_producer_location"
-  post "/pilot/create_producer_production", to: "pilot#create_producer_production",
-                                            as: "pilot_create_producer_production"
-  post "/pilot/create_producer_talent_pool", to: "pilot#create_producer_talent_pool",
-                                             as: "pilot_create_producer_talent_pool"
-  post "/pilot/create_producer_show", to: "pilot#create_producer_show", as: "pilot_create_producer_show"
-  post "/pilot/create_producer_additional", to: "pilot#create_producer_additional",
-                                            as: "pilot_create_producer_additional"
-  post "/pilot/resend_invitation", to: "pilot#resend_invitation", as: "pilot_resend_invitation"
-  delete "/pilot/reset_talent", to: "pilot#reset_talent", as: "pilot_reset_talent"
-  delete "/pilot/reset_producer", to: "pilot#reset_producer", as: "pilot_reset_producer"
 
   # Respond to an audition request
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
@@ -927,14 +912,8 @@ Rails.application.routes.draw do
     post "/casting/:production_id/vacancies/:id/invitations/:invitation_id/resend", to: "vacancy_invitations#resend", as: "resend_casting_vacancy_invitation"
 
     # Email Groups (used for casting email notifications)
-    post "/casting/:production_id/email_groups", to: "email_groups#create", as: "create_casting_email_group"
-    patch "/casting/:production_id/email_groups/:id", to: "email_groups#update", as: "update_casting_email_group"
-    delete "/casting/:production_id/email_groups/:id", to: "email_groups#destroy", as: "destroy_casting_email_group"
 
     # Audition Email Assignments
-    post "/casting/:production_id/audition_email_assignments", to: "audition_email_assignments#create", as: "create_casting_audition_email_assignment"
-    patch "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#update", as: "update_casting_audition_email_assignment"
-    delete "/casting/:production_id/audition_email_assignments/:id", to: "audition_email_assignments#destroy", as: "destroy_casting_audition_email_assignment"
 
     # Contacts - unified people and groups listing
     get "/contacts",          to: "directory#index", as: "contacts"
@@ -1598,8 +1577,6 @@ Rails.application.routes.draw do
     post "courses/:course_offering_id/payout/line_items/:line_item_id/mark_paid", to: "course_offering_payouts#mark_line_item_paid", as: "course_offering_payout_mark_line_item_paid"
 
     resources :cast_assignment_stages, only: %i[create update destroy]
-    # resources :email_groups, only: %i[create update destroy] (moved to communications)
-    # resources :audition_email_assignments, only: %i[create update destroy] (moved to communications)
     # Note: auditions routes are now under signups/auditions
   end
 

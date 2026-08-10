@@ -16,19 +16,4 @@ module DurationHelper
     parts << "0 minutes" if parts.empty?
     parts.join(" ")
   end
-
-  # Short form: "2h 30m", "1h", "45m"
-  def format_duration_short(minutes)
-    return nil if minutes.blank?
-
-    minutes = minutes.to_i
-    hours = minutes / 60
-    mins = minutes % 60
-
-    parts = []
-    parts << "#{hours}h" if hours.positive?
-    parts << "#{mins}m" if mins.positive?
-    parts << "0m" if parts.empty?
-    parts.join(" ")
-  end
 end
