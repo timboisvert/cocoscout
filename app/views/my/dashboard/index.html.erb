@@ -6,6 +6,11 @@
 
   <% primary = @people.first %>
 
+  <!-- First-visit welcome for brand-new users (no orgs, no pools) -->
+  <% if primary %>
+    <%= render "my/dashboard/welcome", person: primary %>
+  <% end %>
+
   <%= render "my/payments/payout_summary" %>
 
   <!-- Open tasks (availability, sign-ups, questionnaires) waiting on the user -->

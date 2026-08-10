@@ -1,0 +1,38 @@
+<%# First-visit welcome hero for a truly brand-new organic signup: no orgs, no
+    talent pools, never dismissed. Invited users already belong somewhere and
+    skip straight to the contextual panels. Dismissing sets
+    profile_welcomed_at (same flag as the checklist below it). %>
+<% return unless person.profile_welcomed_at.nil? %>
+<% return if person.organizations.exists? || person.in_any_talent_pool? %>
+
+<div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-gradient-to-br from-pink-50 to-white">
+  <div class="px-5 py-4 sm:px-6 sm:py-5 flex items-start justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <%= render "shared/cocoscout_logo", size: :tiny %>
+        <h2 class="text-xl coustard-regular text-gray-900">Welcome to CocoScout!</h2>
+      </div>
+      <p class="text-sm text-gray-700 max-w-2xl">
+        This is your home base. When a production invites you, casts you, or
+        schedules you, it shows up here — your shows on the calendar, your
+        sign-ups and auditions, and your payments when you get paid.
+      </p>
+      <p class="text-sm text-gray-700 mt-2 max-w-2xl">
+        Start with your profile so producers know who they're booking.
+      </p>
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <%= link_to profile_path do %>
+          <%= render "shared/button", text: "Set up your profile", variant: "primary", size: "medium" %>
+        <% end %>
+        <%= link_to "Producing your own shows? Set that up here",
+              manage_producer_setup_path,
+              class: "text-sm text-gray-600 hover:text-pink-600 underline underline-offset-2" %>
+      </div>
+    </div>
+    <%= button_to my_dismiss_onboarding_path, method: :post, class: "text-gray-400 hover:text-gray-600 p-1 -mr-1 flex-shrink-0", title: "Dismiss" do %>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    <% end %>
+  </div>
+</div>

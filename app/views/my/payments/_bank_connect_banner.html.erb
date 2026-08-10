@@ -1,7 +1,9 @@
 <%# "Connect your bank" nudge. Shows to anyone who hasn't finished connecting a
-    bank. Works on any "my" page (uses Current.user's person). %>
+    bank and belongs to at least one organization — a brand-new signup with no
+    productions can't be owed anything yet, and this copy assumes payment
+    history. Works on any "my" page (uses Current.user's person). %>
 <% banner_person = @person || Current.user&.person %>
-<% if banner_person&.needs_bank_connection? %>
+<% if banner_person&.needs_bank_connection? && banner_person.organizations.exists? %>
   <%= render "shared/alert_panel",
         eyebrow: "Getting paid",
         headline: "We've upgraded how you get paid",
