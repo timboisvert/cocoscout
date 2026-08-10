@@ -62,11 +62,7 @@ module Manage
 
       # Build org-level home page data (filtered by user access)
       @productions = Current.user.accessible_productions.order(:name)
-      @production_dashboards = {}
-
-      @productions.each do |production|
-        @production_dashboards[production.id] = DashboardService.new(production).generate
-      end
+      @production_dashboards = DashboardService.generate_all(@productions)
 
       # Calendar: month navigation
       @current_month = if params[:month].present?

@@ -25,13 +25,36 @@ RSpec.describe DashboardService do
     end
   end
 
-  describe ".invalidate" do
-    it "clears the cache for the production" do
-      # Generate to populate cache
-      service.generate
+  describe ".generate_all" do
+    let(:other_production) { create(:production, organization: create(:organization, :pro)) }
 
-      # Should not raise
-      expect { described_class.invalidate(production) }.not_to raise_error
+    it "returns payloads keyed by production id" do
+      results = described_class.generate_all([ production, other_production ])
+
+      expect(results.keys).to contain_exactly(production.id, other_production.id)
+      expect(results[production.id]).to have_key(:open_calls)
+      expect(results[other_production.id]).to have_key(:upcoming_shows)
+    end
+
+    it "returns an empty hash for no productions" do
+      expect(described_class.generate_all([])).to eq({})
+    end
+
+    it "writes cache entries the single-production path reads (key parity)" do
+      cache = ActiveSupport::Cache::MemoryStore.new
+      allow(Rails).to receive(:cache).and_return(cache)
+
+      create(:show, production: production, date_and_time: 1.week.from_now)
+      create(:audition_cycle, production: production, opens_at: 1.day.ago, closes_at: 1.week.from_now)
+
+      bulk = described_class.generate_all([ production, other_production ])
+
+      # If the bulk keys matched, the single path must be a pure cache hit —
+      # no regeneration, identical payloads.
+      [ production, other_production ].each do |prod|
+        expect_any_instance_of(described_class).not_to receive(:build_payload)
+        expect(described_class.new(prod).generate).to eq(bulk[prod.id])
+      end
     end
   end
 

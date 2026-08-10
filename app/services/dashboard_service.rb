@@ -7,24 +7,71 @@ class DashboardService
 
   def generate
     Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
-      {
-        open_calls: open_calls_summary,
-        upcoming_shows: upcoming_shows,
-        availability_summary: availability_summary,
-        open_vacancies: open_vacancies,
-        sign_up_forms: sign_up_forms_summary
-      }
+      build_payload
     end
   end
 
-  def self.invalidate(production)
-    Rails.cache.delete([ "dashboard_v5", production.id ])
+  # Dashboard data for many productions at once — the org home page. Computing
+  # each production's cache key individually costs ~6 aggregate queries per
+  # production on EVERY request (cache hit or not), which is what made /manage
+  # crawl. Here the timestamps behind the keys come from 6 grouped queries
+  # total, and all keys are read in one fetch_multi round-trip. Keys are
+  # byte-identical to the single-production path, so the two stay interchangeable.
+  # Returns { production_id => payload }.
+  def self.generate_all(productions)
+    productions = productions.to_a
+    return {} if productions.empty?
+
+    ids = productions.map(&:id)
+
+    show_max = Show.where(production_id: ids).reorder(nil).group(:production_id).maximum(:updated_at)
+    request_max = AuditionRequest.joins(:audition_cycle)
+                                 .where(audition_cycles: { production_id: ids, active: true })
+                                 .reorder(nil).group("audition_cycles.production_id").maximum(:updated_at)
+    vacancy_max = RoleVacancy.joins(:show).where(shows: { production_id: ids })
+                             .reorder(nil).group("shows.production_id").maximum(:updated_at)
+    assignment_max = ShowPersonRoleAssignment.joins(:show).where(shows: { production_id: ids })
+                                             .reorder(nil).group("shows.production_id").maximum(:updated_at)
+    role_max = Role.where(production_id: ids, show_id: nil).reorder(nil).group(:production_id).maximum(:updated_at)
+    form_max = SignUpForm.where(production_id: ids).reorder(nil).group(:production_id).maximum(:updated_at)
+
+    production_by_key = productions.to_h do |production|
+      key = [
+        "dashboard_v5",
+        production.id,
+        production.updated_at.to_i,
+        show_max[production.id]&.to_i,
+        request_max[production.id]&.to_i,
+        vacancy_max[production.id]&.to_i,
+        assignment_max[production.id]&.to_i,
+        role_max[production.id]&.to_i,
+        form_max[production.id]&.to_i
+      ]
+      [ key, production ]
+    end
+
+    payloads = Rails.cache.fetch_multi(*production_by_key.keys, expires_in: 5.minutes) do |key|
+      new(production_by_key[key]).send(:build_payload)
+    end
+
+    production_by_key.to_h { |key, production| [ production.id, payloads[key] ] }
   end
 
   private
 
+  def build_payload
+    {
+      open_calls: open_calls_summary,
+      upcoming_shows: upcoming_shows,
+      availability_summary: availability_summary,
+      open_vacancies: open_vacancies,
+      sign_up_forms: sign_up_forms_summary
+    }
+  end
+
   def cache_key
-    # Cache key includes production ID and relevant timestamps
+    # Cache key includes production ID and relevant timestamps. Must stay in
+    # lockstep with the bulk key construction in .generate_all above.
     max_show_updated = @production.shows.maximum(:updated_at)
     max_request_updated = @production.audition_cycle&.audition_requests&.maximum(:updated_at)
     max_vacancy_updated = RoleVacancy.joins(:show).where(shows: { production_id: @production.id }).maximum(:updated_at)

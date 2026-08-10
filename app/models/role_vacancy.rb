@@ -31,7 +31,6 @@ class RoleVacancy < ApplicationRecord
   delegate :restricted?, :eligible_members, :eligible?, to: :role
 
   # Invalidate production dashboard cache when vacancy changes
-  after_commit :invalidate_dashboard_cache
 
   # Send notification to team when vacancy is created
   after_commit :notify_team_of_creation, on: :create
@@ -151,11 +150,6 @@ class RoleVacancy < ApplicationRecord
   end
 
   private
-
-  def invalidate_dashboard_cache
-    production = show&.production
-    DashboardService.invalidate(production) if production
-  end
 
   def notify_team_of_creation
     # Don't notify for vacancies on past shows
