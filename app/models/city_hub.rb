@@ -7,10 +7,6 @@
 # materializes for **promoted** cities, and is what unlocks intro markdown,
 # featured-mic curation, default-radius tuning, and editor memberships.
 class CityHub < ApplicationRecord
-  # Dropped in a follow-up migration; ignored first so no running container
-  # names them during the deploy that removes them.
-  self.ignored_columns += %w[featured_mic_ids]
-
   has_many :city_hub_memberships, dependent: :destroy
   has_many :memberships, class_name: "CityHubMembership"
   has_many :members, through: :memberships, source: :user

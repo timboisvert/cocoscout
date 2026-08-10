@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 class AuditionRequest < ApplicationRecord
-  # Dropped in a follow-up migration; ignored first so no running container
-  # names them during the deploy that removes them.
-  self.ignored_columns += %w[notified_status]
-
   belongs_to :audition_cycle
   belongs_to :requestable, polymorphic: true
   has_many :answers, dependent: :destroy

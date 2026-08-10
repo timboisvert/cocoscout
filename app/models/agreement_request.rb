@@ -7,10 +7,6 @@
 # One row per (production, person). Re-sending bumps sent_at and send_count
 # rather than creating duplicates (see .record!).
 class AgreementRequest < ApplicationRecord
-  # Dropped in a follow-up migration; ignored first so no running container
-  # names them during the deploy that removes them.
-  self.ignored_columns += %w[sent_via]
-
   belongs_to :production
   belongs_to :person
   belongs_to :agreement_template, optional: true

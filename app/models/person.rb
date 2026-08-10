@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 class Person < ApplicationRecord
-  # Dropped in a follow-up migration; ignored first so no running container
-  # names them during the deploy that removes them.
-  self.ignored_columns += %w[legal_name]
-
   include CacheInvalidation
   include SuspiciousDetection
   include StripeConnectable
