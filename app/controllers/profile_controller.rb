@@ -245,80 +245,6 @@ class ProfileController < ApplicationController
     end
   end
 
-  private
-
-  def set_person
-    # For headshot actions, params[:id] is the headshot ID, not the person ID
-    headshot_actions = %w[set_primary_headshot delete_headshot reorder_headshots]
-    skip_id_lookup = headshot_actions.include?(action_name)
-
-    if params[:id].present? && !skip_id_lookup
-      # Load specific profile by ID, but only if user owns it
-      @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: params[:id])
-      unless @person
-        redirect_to profile_path, alert: "Profile not found"
-        nil
-      end
-    else
-      @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: Current.user.primary_person&.id)
-      unless @person
-        # User doesn't have a profile yet - redirect to create one or show appropriate error
-        redirect_to root_path, alert: "No profile found. Please contact support."
-        nil
-      end
-    end
-  end
-
-  def hide_sidebar_on_welcome
-    @hide_sidebar = true
-  end
-
-  def person_params
-    permitted_params = params.require(:person).permit(
-      :name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info, :show_contact_info, :bio, :public_profile_enabled,
-      profile_visibility_settings: {},
-      socials_attributes: %i[id platform handle name _destroy],
-      profile_headshots_attributes: %i[id category is_primary position image _destroy],
-      profile_resumes_attributes: %i[id name position file _destroy],
-      profile_videos_attributes: %i[id title url position _destroy],
-      performance_sections_attributes: [
-        :id, :name, :position, :_destroy,
-        { performance_credits_attributes: %i[
-          id section_name title location role
-          year_start year_end ongoing notes link_url position _destroy
-        ] }
-      ],
-      training_credits_attributes: %i[
-        id institution program
-        year_start year_end ongoing notes position _destroy
-      ]
-    ).to_h
-
-    # Manually permit the nested profile_skills_attributes hash with specific keys
-    if params[:person][:profile_skills_attributes].present?
-      permitted_skills = {}
-      params[:person][:profile_skills_attributes].each do |key, attrs|
-        permitted_skills[key] = attrs.permit(:id, :category, :skill_name, :_destroy).to_h
-      end
-      permitted_params[:profile_skills_attributes] = permitted_skills
-    end
-
-    # Filter out profile_skills with blank skill_name (unchecked skills)
-    # BUT keep skills with an ID (existing skills being updated/deleted)
-    if permitted_params[:profile_skills_attributes].present?
-      permitted_params[:profile_skills_attributes] = permitted_params[:profile_skills_attributes].select do |_key, attrs|
-        # Keep if it has an ID (existing skill)
-        has_id = attrs[:id].present? || attrs["id"].present?
-        # OR if it has a skill_name (new skill being added)
-        has_skill_name = (attrs[:skill_name] || attrs["skill_name"]).present?
-
-        has_id || has_skill_name
-      end
-    end
-
-    permitted_params
-  end
-
   def search_groups
     query = params[:q]&.strip
 
@@ -397,5 +323,80 @@ class ProfileController < ApplicationController
     render json: { error: "Membership not found" }, status: :not_found
   rescue ActiveRecord::RecordInvalid => e
     render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  private
+
+  def set_person
+    # For these actions params[:id] identifies something other than a Person
+    # (a headshot, or a group membership), so fall through to the primary profile.
+    other_id_actions = %w[set_primary_headshot delete_headshot reorder_headshots leave_group]
+    skip_id_lookup = other_id_actions.include?(action_name)
+
+    if params[:id].present? && !skip_id_lookup
+      # Load specific profile by ID, but only if user owns it
+      @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: params[:id])
+      unless @person
+        redirect_to profile_path, alert: "Profile not found"
+        nil
+      end
+    else
+      @person = Current.user.people.includes(profile_headshots: { image_attachment: :blob }).find_by(id: Current.user.primary_person&.id)
+      unless @person
+        # User doesn't have a profile yet - redirect to create one or show appropriate error
+        redirect_to root_path, alert: "No profile found. Please contact support."
+        nil
+      end
+    end
+  end
+
+  def hide_sidebar_on_welcome
+    @hide_sidebar = true
+  end
+
+  def person_params
+    permitted_params = params.require(:person).permit(
+      :name, :email, :phone, :pronouns, :resume, :headshot, :hide_contact_info, :show_contact_info, :bio, :public_profile_enabled,
+      profile_visibility_settings: {},
+      socials_attributes: %i[id platform handle name _destroy],
+      profile_headshots_attributes: %i[id category is_primary position image _destroy],
+      profile_resumes_attributes: %i[id name position file _destroy],
+      profile_videos_attributes: %i[id title url position _destroy],
+      performance_sections_attributes: [
+        :id, :name, :position, :_destroy,
+        { performance_credits_attributes: %i[
+          id section_name title location role
+          year_start year_end ongoing notes link_url position _destroy
+        ] }
+      ],
+      training_credits_attributes: %i[
+        id institution program
+        year_start year_end ongoing notes position _destroy
+      ]
+    ).to_h
+
+    # Manually permit the nested profile_skills_attributes hash with specific keys
+    if params[:person][:profile_skills_attributes].present?
+      permitted_skills = {}
+      params[:person][:profile_skills_attributes].each do |key, attrs|
+        permitted_skills[key] = attrs.permit(:id, :category, :skill_name, :_destroy).to_h
+      end
+      permitted_params[:profile_skills_attributes] = permitted_skills
+    end
+
+    # Filter out profile_skills with blank skill_name (unchecked skills)
+    # BUT keep skills with an ID (existing skills being updated/deleted)
+    if permitted_params[:profile_skills_attributes].present?
+      permitted_params[:profile_skills_attributes] = permitted_params[:profile_skills_attributes].select do |_key, attrs|
+        # Keep if it has an ID (existing skill)
+        has_id = attrs[:id].present? || attrs["id"].present?
+        # OR if it has a skill_name (new skill being added)
+        has_skill_name = (attrs[:skill_name] || attrs["skill_name"]).present?
+
+        has_id || has_skill_name
+      end
+    end
+
+    permitted_params
   end
 end
