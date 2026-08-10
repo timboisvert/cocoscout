@@ -110,26 +110,6 @@ module Manage
       redirect_to manage_money_payout_scheme_path(@payout_scheme), notice: notice
     end
 
-    def preview
-      # Build sample calculation for preview
-      @sample_inputs = {
-        ticket_count: params[:ticket_count]&.to_i || 50,
-        ticket_revenue: params[:ticket_revenue]&.to_f || 500.0,
-        performer_count: params[:performer_count]&.to_i || 4
-      }
-
-      @preview_result = PayoutCalculator.preview(
-        rules: @payout_scheme.rules,
-        financials: @sample_inputs,
-        performer_count: @sample_inputs[:performer_count]
-      )
-
-      respond_to do |format|
-        format.html
-        format.json { render json: @preview_result }
-      end
-    end
-
     # Collection actions for presets
     def presets
       @presets = PayoutScheme::PRESETS

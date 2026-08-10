@@ -366,7 +366,6 @@ Rails.application.routes.draw do
       member do
         post :archive
         post :unarchive
-        post :mark_read
         post :mark_unread
         post :reply
         post :mute
@@ -749,8 +748,6 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/wizard/form_starter", to: "audition_cycle_wizard#save_form_starter", as: "signups_auditions_wizard_save_form_starter"
     post "/signups/auditions/:production_id/wizard/form_starter/questions", to: "audition_cycle_wizard#add_form_question", as: "signups_auditions_wizard_add_form_question"
     delete "/signups/auditions/:production_id/wizard/form_starter/questions/:index", to: "audition_cycle_wizard#delete_form_question", as: "signups_auditions_wizard_delete_form_question"
-    get  "/signups/auditions/:production_id/wizard/notifications", to: "audition_cycle_wizard#notifications", as: "signups_auditions_wizard_notifications"
-    post "/signups/auditions/:production_id/wizard/notifications", to: "audition_cycle_wizard#save_notifications", as: "signups_auditions_wizard_save_notifications"
     get  "/signups/auditions/:production_id/wizard/review", to: "audition_cycle_wizard#review", as: "signups_auditions_wizard_review"
     post "/signups/auditions/:production_id/wizard/create", to: "audition_cycle_wizard#create_cycle", as: "signups_auditions_wizard_create"
     delete "/signups/auditions/:production_id/wizard/cancel", to: "audition_cycle_wizard#cancel", as: "signups_auditions_wizard_cancel"
@@ -789,7 +786,6 @@ Rails.application.routes.draw do
     post "/signups/auditions/:production_id/:cycle_id/requests/confirm_bulk_archive", to: "audition_requests#confirm_bulk_archive", as: "confirm_bulk_archive_signups_auditions_cycle_requests"
     post "/signups/auditions/:production_id/:cycle_id/requests/bulk_archive", to: "audition_requests#bulk_archive", as: "bulk_archive_signups_auditions_cycle_requests"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#show", as: "signups_auditions_cycle_request"
-    get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit", to: "audition_requests#edit", as: "edit_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#update", as: "update_signups_auditions_cycle_request"
     delete "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#destroy", as: "destroy_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/archive", to: "audition_requests#archive", as: "archive_signups_auditions_cycle_request"
@@ -872,9 +868,7 @@ Rails.application.routes.draw do
     get  "/contacts/questionnaires/new",      to: "questionnaires#new",      as: "new_contacts_questionnaire"
     post "/contacts/questionnaires",          to: "questionnaires#create",   as: "create_contacts_questionnaire"
     get  "/contacts/questionnaires/:id",      to: "questionnaires#show",     as: "contacts_questionnaire"
-    get  "/contacts/questionnaires/:id/edit", to: "questionnaires#edit",     as: "edit_contacts_questionnaire"
     patch "/contacts/questionnaires/:id",     to: "questionnaires#update",   as: "update_contacts_questionnaire"
-    delete "/contacts/questionnaires/:id",    to: "questionnaires#destroy",  as: "destroy_contacts_questionnaire"
     get  "/contacts/questionnaires/:id/form", to: "questionnaires#form",     as: "form_contacts_questionnaire"
     get  "/contacts/questionnaires/:id/preview", to: "questionnaires#preview", as: "preview_contacts_questionnaire"
     post "/contacts/questionnaires/:id/create_question", to: "questionnaires#create_question", as: "create_question_contacts_questionnaire"
@@ -887,7 +881,6 @@ Rails.application.routes.draw do
     get  "/contacts/questionnaires/:id/responses", to: "questionnaires#responses", as: "responses_contacts_questionnaire"
     get  "/contacts/questionnaires/:id/responses/table", to: "questionnaires#responses_table", as: "responses_table_contacts_questionnaire"
     get  "/contacts/questionnaires/:id/responses/:response_id", to: "questionnaires#show_response", as: "response_contacts_questionnaire"
-    get  "/contacts/questionnaires/:id/request_invitations", to: "questionnaires#request_invitations", as: "request_invitations_contacts_questionnaire"
 
     # Casting - production-level (new URL pattern: /manage/casting/:production_id)
     get  "/casting/:production_id", to: "casting#index", as: "casting_production"
@@ -962,11 +955,9 @@ Rails.application.routes.draw do
     # Contacts - people (new URL pattern: /manage/contacts/people/:id)
     get  "/contacts/people/new", to: "people#new", as: "new_contacts_person"
     post "/contacts/people", to: "people#create", as: "create_contacts_person"
-    get  "/contacts/people/search", to: "people#search", as: "search_contacts_people"
     get  "/contacts/people/search_for_invite", to: "people#search_for_invite", as: "search_for_invite_contacts_people"
     get  "/contacts/people/check_email", to: "people#check_email", as: "check_email_contacts_people"
     get  "/contacts/people/:id", to: "people#show", as: "contacts_person"
-    get  "/contacts/people/:id/edit", to: "people#edit", as: "edit_contacts_person"
     patch "/contacts/people/:id", to: "people#update", as: "update_contacts_person"
     post "/contacts/people/:id/add_to_cast", to: "people#add_to_cast", as: "add_to_cast_contacts_person"
     post "/contacts/people/:id/remove_from_cast", to: "people#remove_from_cast", as: "remove_from_cast_contacts_person"
@@ -1038,7 +1029,7 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :team_invitations do
+    resources :team_invitations, only: [] do
       collection do
         get "accept/:token", to: "team_invitations#accept", as: :accept
         post "accept/:token", to: "team_invitations#do_accept", as: :do_accept
@@ -1050,9 +1041,8 @@ Rails.application.routes.draw do
     post "person_invitations/accept/:token",  to: "person_invitations#do_accept", as: "do_accept_person_invitations"
     post "person_invitations/decline/:token", to: "person_invitations#decline",   as: "decline_person_invitations"
 
-    resources :people, except: [ :destroy ] do
+    resources :people, except: %i[destroy edit] do
       collection do
-        get :search
         get :search_for_invite
         get :check_email
       end
@@ -1368,7 +1358,6 @@ Rails.application.routes.draw do
     delete "money/schemes/:id", to: "payout_schemes#destroy"
     post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
     post "money/schemes/:id/update_defaults", to: "payout_schemes#update_defaults", as: "update_defaults_money_payout_scheme"
-    get "money/schemes/:id/preview", to: "payout_schemes#preview", as: "preview_money_payout_scheme"
     post "money/schemes/:id/archive", to: "payout_schemes#archive", as: "archive_money_payout_scheme"
     post "money/schemes/:id/unarchive", to: "payout_schemes#unarchive", as: "unarchive_money_payout_scheme"
 
@@ -1660,7 +1649,6 @@ Rails.application.routes.draw do
   patch  "/profile", to: "profile#update"  # Fallback for requests without ID (uses default profile)
   patch  "/profile/visibility", to: "profile#update_visibility", as: "update_profile_visibility"
   patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"
-  get    "/profile/public", to: "profile#public", as: "profile_public"
   get    "/profile/search_groups", to: "profile#search_groups", as: "search_groups_profile"
   post   "/profile/join_group", to: "profile#join_group", as: "join_group_profile"
   delete "/profile/leave_group/:id", to: "profile#leave_group", as: "leave_group_profile"
