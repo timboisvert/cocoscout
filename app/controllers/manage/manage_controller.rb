@@ -23,9 +23,9 @@ module Manage
     }
     before_action :ensure_user_has_access_to_company, if: lambda {
       Current.user.present? && Current.organization.present?
-    }, except: %i[index welcome dismiss_production_welcome]
+    }, except: %i[index dismiss_production_welcome]
     before_action :ensure_user_has_access_to_production, if: -> { Current.user.present? },
-                  except: %i[index welcome dismiss_production_welcome]
+                  except: %i[index dismiss_production_welcome]
     # Pro-tier gate — runs after the org is loaded and access is confirmed.
     before_action :require_paid_feature!, if: -> { Current.user.present? }
 
@@ -176,15 +176,6 @@ module Manage
       @events_by_date = @calendar_events.group_by { |e| e[:date] }
 
       render "home"
-    end
-
-    def welcome
-      @show_manage_sidebar = false
-      @has_organization = Current.user.accessible_organizations.any?
-      @has_production = @has_organization && Current.organization&.productions&.any?
-      @current_org = Current.organization
-      @user_orgs = Current.user.accessible_organizations.includes(:organization_roles).order(:name)
-      render "welcome"
     end
 
     def dismiss_production_welcome
@@ -339,11 +330,11 @@ module Manage
     end
 
     def require_current_organization
-      # The org-level dashboard (this base controller's own index/welcome/dismiss)
+      # The org-level dashboard (this base controller's own index/dismiss)
       # handles a missing org itself — the org picker / welcome page. Subclasses
       # (contracts, casting, …) must NOT be let through, or they crash on a nil org
       # (e.g. while impersonating a contractor who has no organization).
-      return if instance_of?(Manage::ManageController) && %w[index welcome dismiss_production_welcome].include?(action_name)
+      return if instance_of?(Manage::ManageController) && %w[index dismiss_production_welcome].include?(action_name)
       return if controller_name == "organizations" && %w[new create index show].include?(action_name)
       return if controller_name == "select"
 

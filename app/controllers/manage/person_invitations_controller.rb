@@ -48,13 +48,12 @@ module Manage
       user = User.find_by(email_address: @person_invitation.email.downcase)
       person = Person.find_by(email: @person_invitation.email.downcase)
 
-      # If user already exists with a password, they shouldn't be here
-      # They should already be linked to the person
-      if user&.authenticate(params[:password])
-        # User is signing in - this shouldn't normally happen for person invitations
-        # but handle it gracefully
+      if user && user.authenticate(params[:password])
+        # The submitted password already matches this account (they typed their
+        # existing password) — proceed to the linking below without touching it.
       elsif user
-        # Set the password on the existing user or validate the new user
+        # Existing account, different password: treat the submission as setting
+        # a new password (the normal path for manager-created accounts).
         user.password = params[:password]
         unless user.valid?
           @user = user

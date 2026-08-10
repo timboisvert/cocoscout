@@ -41,6 +41,24 @@ module Authentication
     session.delete(:return_to_after_authenticating) || root_url
   end
 
+  # Where to land someone who just authenticated (signup, signin, or a
+  # password-reset that signs them in). Stashed return paths always win —
+  # an invitation, tokened form, or interrupted deep link keeps its promise
+  # regardless of how the user ended up authenticating. Otherwise fall back
+  # to the dashboard they last used; new users have no cookie entry and
+  # default to the talent dashboard.
+  def post_authentication_landing_path(user)
+    stashed = session.delete(:return_to) || session.delete(:return_to_after_authenticating)
+    return stashed if stashed.present?
+
+    last_dashboard_prefs = cookies.encrypted[:last_dashboard]
+    last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
+    case last_dashboard_prefs[user.id.to_s]
+    when "manage" then manage_path
+    else my_dashboard_path
+    end
+  end
+
   def start_new_session_for(user)
     user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
       Current.session = session

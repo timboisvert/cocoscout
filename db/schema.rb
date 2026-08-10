@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_08_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_034143) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2865,7 +2865,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_110000) do
     t.string "password_reset_token"
     t.bigint "person_id"
     t.datetime "updated_at", null: false
-    t.datetime "welcomed_at"
     t.datetime "welcomed_production_at"
     t.index ["default_person_id"], name: "index_users_on_default_person_id"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true

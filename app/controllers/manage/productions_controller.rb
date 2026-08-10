@@ -4,10 +4,7 @@ module Manage
   class ProductionsController < Manage::ManageController
     before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo]
     before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo]
-    before_action :ensure_user_is_global_manager, only: %i[new create]
-    before_action :enforce_free_production_limit, only: :create
     before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders]
-    skip_before_action :show_manage_sidebar, only: %i[new create]
 
     def index
       @filter = params[:filter] || "all"
@@ -41,25 +38,9 @@ module Manage
       @dashboard = DashboardService.new(@production).generate
     end
 
-    def new
-      @production = Current.organization.productions.new
-    end
-
     def edit
       # Eager load posters for visual assets tab
       @production = Current.organization.productions.includes(:posters).find_by(id: params[:id])
-    end
-
-    def create
-      @production = Current.organization.productions.new(production_params)
-
-      if @production.save
-        set_production_in_session
-        # Auto-dismiss welcome screen after creating first production
-        Current.user.update(welcomed_production_at: Time.current) if Current.user.welcomed_production_at.nil?
-      else
-        render :new, status: :unprocessable_entity
-      end
     end
 
     def update
