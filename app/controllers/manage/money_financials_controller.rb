@@ -2,6 +2,10 @@
 
 module Manage
   class MoneyFinancialsController < Manage::ManageController
+    # How many "needs financials" rows the index will render before pointing at
+    # the full filtered list instead.
+    AWAITING_FINANCIALS_LIMIT = 100
+
     before_action :set_production
 
     def index
@@ -59,10 +63,16 @@ module Manage
         # most-recent-first list the user can click into. The predicate lives in
         # MoneyTodoService so this page, the /all counts, the events accordion
         # and the Money hub can't drift apart — they used to.
-        @awaiting_financials_shows = MoneyTodoService
-          .shows_awaiting_financials(@productions)
+        # Capped: an org that has never entered financials has as many of these
+        # as it has ever had shows, and rendering all of them helps nobody. The
+        # count is the real one — only the rows are cut.
+        awaiting = MoneyTodoService.shows_awaiting_financials(@productions)
+        @awaiting_financials_count = awaiting.count
+        @awaiting_financials_shows = awaiting
           .includes(:production, :show_financials)
           .order(date_and_time: :desc)
+          .limit(AWAITING_FINANCIALS_LIMIT)
+          .to_a
       end
 
       # Apply filter if provided (for both in-house and third-party productions with shows)

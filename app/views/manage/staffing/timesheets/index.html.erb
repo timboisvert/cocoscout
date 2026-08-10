@@ -24,14 +24,19 @@
       <p class="text-sm text-gray-700">
         <span class="font-semibold text-gray-900"><%= pluralize(@total_entries, "entry") %></span>
         · <span class="font-semibold text-gray-900"><%= number_with_precision(@total_hours, precision: 2, strip_insignificant_zeros: true) %> hrs</span>
-        from <%= pluralize(@groups.size, "person") %> awaiting your approval
+        from <%= pluralize(@total_people, "person") %> awaiting your approval
+        <% if @total_entries > @shown_entries %>
+          <span class="block text-xs text-gray-500 mt-1">
+            Showing the oldest <%= @shown_entries %>. Approve some to see the rest.
+          </span>
+        <% end %>
       </p>
       <% approve_all_cid = "confirm-approve-all" %>
       <%= render "shared/button", text: "Approve everything", variant: "secondary", size: "small", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: approve_all_cid } %>
       <%= render "shared/confirm_modal", id: approve_all_cid,
             title: "Approve all pending?",
-            message: "Approve every pending entry from all #{@groups.size} people?",
+            message: "Approve every pending entry from all #{@total_people} people?",
             confirm_text: "Approve everything",
             url: manage_approve_staffing_timesheets_path, method: :patch,
             params: { all: "1" } %>

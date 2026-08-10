@@ -20,6 +20,31 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  # An org that has never entered financials has one of these rows for every
+  # show it has ever run. The list gets capped; the count above it does not.
+  describe "a Needs Financials list longer than the page shows" do
+    it "caps the rows, keeps the count honest, and says so" do
+      limit = Manage::MoneyFinancialsController::AWAITING_FINANCIALS_LIMIT
+      extra = create(:production, organization: org, name: "Backlog Revue")
+      (limit + 4).times do |i|
+        create(:show, production: extra, event_type: :show, date_and_time: (i + 2).days.ago)
+      end
+
+      get manage_money_financials_path
+
+      # The fixture show at the top of this file already has confirmed
+      # financials, so it isn't in the list — these 104 are the new ones.
+      expect(response.body).to include("(#{limit + 4})")
+      expect(response.body).to include("Showing the #{limit} most recent of #{limit + 4}")
+      expect(response.body).to include(manage_money_all_financials_path(filter: "pending"))
+    end
+
+    it "says nothing about truncation when everything fits" do
+      get manage_money_financials_path
+      expect(response.body).not_to include("most recent of")
+    end
+  end
+
   # The grid used to run a whole FinancialSummaryService pass per production —
   # and the org-wide summary above it had already queried the same shows. What
   # matters isn't the absolute count but that adding productions doesn't add

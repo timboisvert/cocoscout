@@ -16,6 +16,28 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
   # detect over the loaded association and then, on a miss, a find_by that
   # searched the same unscoped set and found the same nothing — so an entry
   # logged against a role the member isn't qualified for cost four dead queries.
+  # Capping the rows must never cap the numbers above them — the summary bar and
+  # the "approve everything" confirmation both describe the whole queue.
+  describe "a queue longer than the page shows" do
+    it "renders a capped list but counts everything" do
+      limit = Manage::Staffing::TimesheetsController::PENDING_LIMIT
+      other = create(:person, name: "Bob Overflow")
+      create(:organization_staff_member, organization: org, person: other)
+      limit.times { create(:staff_time_entry, organization: org, person: person, hours: 2) }
+      3.times { create(:staff_time_entry, organization: org, person: other, hours: 1) }
+
+      get manage_staffing_timesheets_path
+
+      # The summary bar describes the whole queue...
+      expect(response.body).to include("#{limit + 3} entries")
+      expect(response.body).to include("2 people awaiting your approval")
+      # ...and says plainly that the list beneath it isn't all of them.
+      expect(response.body).to include("Showing the oldest #{limit}")
+      # Approve-everything really does mean everything, so its count matches too.
+      expect(response.body).to include("Approve every pending entry from all 2 people?")
+    end
+  end
+
   describe "the cost of the approval queue" do
     it "doesn't grow with entries priced at a role the member doesn't hold" do
       other_role = create(:house_role, organization: org, name: "Guest Spot")

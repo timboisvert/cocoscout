@@ -131,10 +131,19 @@
       <div class="mb-6">
         <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
           Needs Financials
-          <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= @awaiting_financials_shows.size %>)</span>
+          <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= @awaiting_financials_count %>)</span>
         </h3>
         <%= render layout: "shared/slim_list", locals: { label: "Show", columns: [], min_width: "min-w-[320px]" } do %>
           <%= render "manage/money_financials/financials_show_rows", shows: @awaiting_financials_shows %>
+        <% end %>
+        <%# Only the rows are capped; the count above is the real one. %>
+        <% if @awaiting_financials_count > @awaiting_financials_shows.size %>
+          <p class="mt-2 text-xs text-gray-500">
+            Showing the <%= @awaiting_financials_shows.size %> most recent of <%= @awaiting_financials_count %>.
+            <%= link_to "See every production still owing numbers",
+                        manage_money_all_financials_path(filter: "pending"),
+                        class: "text-pink-600 hover:text-pink-700 underline" %>
+          </p>
         <% end %>
       </div>
     <% end %>

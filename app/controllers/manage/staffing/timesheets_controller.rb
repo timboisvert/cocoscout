@@ -8,22 +8,36 @@ module Manage
     # become pullable into a pay run (see PayController). This is the review step
     # that sits between "worker submitted" and "manager pays".
     class TimesheetsController < Manage::ManageController
+      # Rows rendered in the approval queue at once. The totals above it are
+      # always computed over everything pending, capped or not.
+      PENDING_LIMIT = 100
+
       before_action :ensure_org_owner_or_manager
 
       def index
+        pending = Current.organization.staff_time_entries.pending
+
+        # Totals come from SQL over the whole queue, so capping the rows below
+        # can't quietly shrink the numbers a manager is reading.
+        @total_entries = pending.count
+        @total_hours = pending.sum(:hours)
+        # "Approve everything" really does approve everything, so the count in
+        # its confirmation has to cover the whole queue, not just what's shown.
+        @total_people = pending.distinct.count(:person_id)
+
         # additional_roles because each row renders shift.role_label, and the
         # person's headshot preload because the queue is grouped by person.
-        entries = Current.organization.staff_time_entries.pending
-                         .includes(:house_role,
+        entries = pending.includes(:house_role,
                                    person: Manage::StaffingController::HEADSHOT_PRELOAD,
                                    shift_assignment: { shift: [ :house_role, :additional_roles ] })
                          .chronological
+                         .limit(PENDING_LIMIT)
+                         .to_a
+        @shown_entries = entries.size
 
         # Group by person so the manager reviews one teammate at a time.
         @groups = entries.group_by(&:person)
                          .sort_by { |person, _| person.name.to_s.downcase }
-        @total_entries = entries.size
-        @total_hours = entries.sum(&:hours)
         # Members (with role rates) so each entry can show what approving it
         # will cost — priced at the role the work was done as.
         @members_by_person_id = Current.organization.organization_staff_members
