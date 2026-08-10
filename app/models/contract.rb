@@ -1123,10 +1123,16 @@ class Contract < ApplicationRecord
 
     payment = case settlement
     when "per_event", "next_day", "same_day"
-      # Match by positional order: sort shows and payments by date, pair 1:1
-      all_shows = contract_shows.order(:date_and_time).to_a
-      show_index = all_shows.index { |s| s.id == show.id }
-      show_index ? revenue_payments.to_a[show_index] : nil
+      # A per-event payment is due on its event's date, so match on that.
+      # Positional pairing (kept as a fallback for deals whose due dates sit
+      # off the event dates) drifts as soon as any settled payment drops out
+      # of settlement_payments, linking a show to its neighbor's payment.
+      revenue_payments.detect { |p| p.due_date == show.date_and_time.to_date } ||
+        begin
+          all_shows = contract_shows.order(:date_and_time).to_a
+          show_index = all_shows.index { |s| s.id == show.id }
+          show_index ? revenue_payments.to_a[show_index] : nil
+        end
     when "weekly"
       show_week_start = show.date_and_time.to_date.beginning_of_week
       revenue_payments.find { |p| p.due_date.beginning_of_week == show_week_start }
@@ -1161,10 +1167,14 @@ class Contract < ApplicationRecord
 
     case settlement
     when "per_event", "next_day", "same_day"
-      # Match by positional order: sort payments by due_date, pair 1:1 with shows by date
-      revenue_payments = settlement_payments.to_a
-      payment_index = revenue_payments.index { |p| p.id == payment.id }
-      show = payment_index ? all_shows[payment_index] : nil
+      # A per-event payment is due on its event's date, so match on that;
+      # positional pairing stays only as a fallback (see find_payment_for_show).
+      show = all_shows.find { |s| s.date_and_time.to_date == payment.due_date }
+      if show.nil?
+        revenue_payments = settlement_payments.to_a
+        payment_index = revenue_payments.index { |p| p.id == payment.id }
+        show = payment_index ? all_shows[payment_index] : nil
+      end
       if show
         # Link for future lookups
         payment.update_column(:show_id, show.id) if payment.show_id.nil?
@@ -1956,16 +1966,37 @@ class Contract < ApplicationRecord
                   (structure == "revenue_share" && per_event_settlements.include?(settlement))
     return unless should_link
 
-    # Sort both by date and pair 1:1
     sorted_shows = shows.sort_by(&:date_and_time)
     # Per-event payments are named for their event date now (e.g. "Jul 1 event"),
     # so match the word case-insensitively; revenue-share ones are amount_tbd.
     sorted_payments = payments.select { |p| p.amount_tbd? || p.description&.downcase&.include?("event") || p.description&.downcase&.include?("revenue share") }
                               .sort_by(&:due_date)
 
-    sorted_payments.each_with_index do |payment, i|
-      next unless sorted_shows[i]
-      payment.update_column(:show_id, sorted_shows[i].id)
+    # Pair each payment with the show on its due date — a per-event payment is
+    # due on its event's date. Pairing by position corrupted amended contracts:
+    # the amendment relinks only PENDING payments while `shows` is the whole
+    # run, so with one show already settled every later payment linked to the
+    # show one slot back — and the financials sync then wrote one show's money
+    # onto the next show's payment. Links a payment already carries (from the
+    # sync or a manager) are kept, not rewritten.
+    linked_show_ids = sorted_payments.filter_map(&:show_id).to_set
+    unclaimed_shows = sorted_shows.reject { |s| linked_show_ids.include?(s.id) }
+    matched = sorted_payments.filter_map do |payment|
+      next if payment.show_id.present?
+
+      show = unclaimed_shows.find { |s| s.date_and_time.to_date == payment.due_date }
+      next unless show
+
+      unclaimed_shows.delete(show)
+      [ payment, show ]
     end
+
+    # A deal whose due dates don't sit on event dates still pairs 1:1 when the
+    # lists line up exactly (the create path always passes complete lists).
+    if matched.empty? && linked_show_ids.empty? && sorted_payments.size == sorted_shows.size
+      matched = sorted_payments.zip(sorted_shows)
+    end
+
+    matched.each { |payment, show| payment.update_column(:show_id, show.id) }
   end
 end

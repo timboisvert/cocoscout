@@ -139,6 +139,69 @@ RSpec.describe "Contract payment reconciliation", type: :model do
     end
   end
 
+  describe "relinking payments to shows after an amendment" do
+    # The Pavlov bug: a per-event revenue-share run whose first show had
+    # already been paid. The amendment relinks only PENDING payments, but the
+    # old code paired them positionally against the FULL show list — so every
+    # payment linked to the show one slot back, and the financials sync then
+    # wrote the Aug 9 show's share onto the Sep 13 payment.
+    it "links each pending payment to the show on its due date, not the neighbor's" do
+      contract.update!(draft_data: {
+        "payment_structure" => "revenue_share",
+        "payment_config" => { "revenue_settlement" => "per_event",
+                              "revenue_our_share" => 50.0, "revenue_their_share" => 50.0,
+                              "who_sells_tickets" => "us" }
+      })
+      jul = create(:show, production: production, date_and_time: Time.zone.local(2026, 7, 12, 20))
+      aug = create(:show, production: production, date_and_time: Time.zone.local(2026, 8, 9, 20))
+      sep = create(:show, production: production, date_and_time: Time.zone.local(2026, 9, 13, 20))
+
+      contract.contract_payments.create!(
+        description: "Revenue Share - Event 1 (50% to them)", amount: 320, direction: "outgoing",
+        due_date: Date.new(2026, 7, 12), status: "paid", paid_date: Date.new(2026, 7, 14), show: jul
+      )
+
+      contract.reconcile_amended_payments!([
+        staged(description: "Aug 9 — 50% to them", due_date: Date.new(2026, 8, 9)),
+        staged(description: "Sep 13 — 50% to them", due_date: Date.new(2026, 9, 13))
+      ])
+
+      aug_payment = contract.contract_payments.reload.find_by(due_date: Date.new(2026, 8, 9))
+      sep_payment = contract.contract_payments.find_by(due_date: Date.new(2026, 9, 13))
+      expect(aug_payment.show_id).to eq(aug.id)
+      expect(sep_payment.show_id).to eq(sep.id)
+
+      # And the money lands on the right payment: Aug 9's financials settle
+      # the Aug 9 payment, while Sep 13 stays awaiting its own ticket sales.
+      create(:show_financials, show: aug, ticket_count: 32, ticket_revenue: 515.0, expenses: 0)
+      ContractPaymentSyncService.new(aug.reload).call
+
+      expect(aug_payment.reload.amount.to_f).to eq(257.50)
+      expect(aug_payment.amount_tbd).to be(false)
+      expect(sep_payment.reload.amount_tbd).to be(true)
+    end
+
+    it "leaves a link the payment already carries alone" do
+      contract.update!(draft_data: {
+        "payment_structure" => "revenue_share",
+        "payment_config" => { "revenue_settlement" => "per_event",
+                              "revenue_our_share" => 50.0, "revenue_their_share" => 50.0 }
+      })
+      aug = create(:show, production: production, date_and_time: Time.zone.local(2026, 8, 9, 20))
+      payment = contract.contract_payments.create!(
+        description: "Aug 9 — 50% to them", amount: 0, amount_tbd: true,
+        direction: "outgoing", due_date: Date.new(2026, 8, 9), show: aug
+      )
+
+      contract.reconcile_amended_payments!([
+        staged(description: "Aug 9 — 55% to them", due_date: Date.new(2026, 8, 9))
+      ])
+
+      expect(payment.reload.show_id).to eq(aug.id)
+      expect(payment.description).to include("55%")
+    end
+  end
+
   describe "re-billing services on an amendment" do
     it "does not raise a service charge that was already paid" do
       contract.update_draft_step(:services, [])
