@@ -99,8 +99,9 @@ code review:
   Gross Profit / P&L** on every request (period selectable). It **hard-codes
   `net_income = gross_profit`** and explicitly does **not** track operating expenses. No
   balance sheet, no cash flow, no trial balance.
-- `app/views/manage/payouts/_profitability_summary.html.erb` renders 4 KPI cards + a
-  breakdown accordion. **No charts anywhere** (no chart library installed).
+- There is no profitability summary view any more — `_profitability_summary.html.erb`
+  rendered 4 KPI cards + a breakdown accordion but was never wired into a page, and was
+  deleted in the dead-code sweep. Whatever replaces it starts from scratch.
 - `Manage::ReportsController` is the only report hub: six fixed reports (Revenue by
   Production, Revenue Over Time, Course Revenue, Payouts Summary, Events Summary, Cast
   Participation) with **CSV export** (`report_to_csv`) and browser-print "PDF" (no
@@ -232,8 +233,9 @@ Goal: everything the owner already does auto-generates the books. Nothing new to
 
 Goal: the payoff of 1–2, in CocoScout language. Upgrade the money hub.
 
-- [ ] Rework `money/index` + `_profitability_summary` to read from the engine: **Money In /
-      Money Out / Profit**, cash-basis default, sliceable by production and period.
+- [ ] Rework `money/index` to read from the engine, and build a fresh profitability
+      summary to sit alongside it: **Money In / Money Out / Profit**, cash-basis default,
+      sliceable by production and period.
 - [ ] Keep **profit by show and by production** front and center; zero accounting jargon
       (no accounts, debits, journal entries in this view).
 - [ ] "Download your official summary" — a clean, official, traceable statement (sets up
@@ -360,8 +362,7 @@ default owner UI is wrong.
 
 - Ledger idempotency pattern: `app/models/payout_ledger_entry.rb`
   (`post!` / `unpost!`), balance queries in `app/models/organization.rb`.
-- On-the-fly P&L to supersede/validate against: `app/services/financial_summary_service.rb`,
-  `app/views/manage/payouts/_profitability_summary.html.erb`.
+- On-the-fly P&L to supersede/validate against: `app/services/financial_summary_service.rb`.
 - Money-in/out raw material for AR/AP: `app/models/contract_payment.rb`,
   `app/models/contract.rb` (`revenue_share_summary`, `suggested_amount_from_financials`),
   `app/models/expense_item.rb`, `app/models/production_expense.rb`.
