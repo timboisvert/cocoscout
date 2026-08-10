@@ -5,6 +5,7 @@
 
 production_genres:
   sketch:
+    icon: "pencil-square"
     label: "Sketch comedy"
     description: "A sketch team writing and performing scripted comedy"
     noun: "team"
@@ -20,6 +21,7 @@ production_genres:
         quantity: 1
         category: "performing"
   improv:
+    icon: "bolt"
     label: "Improv"
     description: "An improv team or house ensemble"
     noun: "team"
@@ -32,6 +34,7 @@ production_genres:
         quantity: 1
         category: "performing"
   standup:
+    icon: "microphone"
     label: "Standup"
     description: "A standup showcase, open mic, or comedy night"
     noun: "showcase"
@@ -44,6 +47,7 @@ production_genres:
         quantity: 5
         category: "performing"
   theater:
+    icon: "ticket"
     label: "Theater"
     description: "A play, musical, or theatrical production"
     noun: "production"
@@ -65,6 +69,7 @@ production_genres:
         quantity: 1
         category: "technical"
   variety:
+    icon: "sparkles"
     label: "Variety / cabaret"
     description: "A variety show, cabaret, burlesque, or mixed-bill night"
     noun: "show"
@@ -77,6 +82,7 @@ production_genres:
         quantity: 6
         category: "performing"
   other:
+    icon: "squares-plus"
     label: "Something else"
     description: "Any other kind of show or event series"
     noun: "production"

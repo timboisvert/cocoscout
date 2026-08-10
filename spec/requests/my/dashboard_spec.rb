@@ -44,20 +44,22 @@ RSpec.describe "My::Dashboard", type: :request do
   end
 
   describe "first-visit welcome" do
-    it "greets a brand-new user (no orgs, no pools) and hides the bank banner" do
+    it "greets a brand-new user with the hero alone — no bank banner, no checklist" do
       get my_dashboard_path
 
       expect(response.body).to include("Welcome to CocoScout!")
       expect(response.body).to include("Producing your own shows?")
       expect(response.body).not_to include("We&#39;ve upgraded how you get paid")
+      expect(response.body).not_to include("Get started by completing your profile")
     end
 
-    it "still shows the bank banner to an org member without a bank connection" do
+    it "swaps the hero for the checklist and bank banner once they belong somewhere" do
       org = create(:organization, :pro)
       org.people << person
 
       get my_dashboard_path
       expect(response.body).to include("We&#39;ve upgraded how you get paid")
+      expect(response.body).to include("Get started by completing your profile")
       expect(response.body).not_to include("Welcome to CocoScout!")
     end
 

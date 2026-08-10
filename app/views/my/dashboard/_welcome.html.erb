@@ -1,10 +1,7 @@
-<%# First-visit welcome hero for a truly brand-new organic signup: no orgs, no
-    talent pools, never dismissed. Invited users already belong somewhere and
-    skip straight to the contextual panels. Dismissing sets
-    profile_welcomed_at (same flag as the checklist below it). %>
-<% return unless person.profile_welcomed_at.nil? %>
-<% return if person.organizations.exists? || person.in_any_talent_pool? %>
-
+<%# First-visit welcome hero for a truly brand-new organic signup. The caller
+    (my/dashboard/index) decides visibility via show_welcome_hero — no orgs,
+    no talent pools, never dismissed. Dismissing sets profile_welcomed_at
+    (the same flag that gates the profile checklist). %>
 <div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-gradient-to-br from-pink-50 to-white">
   <div class="px-5 py-4 sm:px-6 sm:py-5 flex items-start justify-between gap-4">
     <div>

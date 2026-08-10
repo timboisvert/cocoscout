@@ -17,6 +17,11 @@ module ProductionGenres
     config.dig(genre.to_s, "label")
   end
 
+  # Icon key for the genre picker (see manage/producer_setup/_genre_icon).
+  def self.icon(genre)
+    config.dig(genre.to_s, "icon")
+  end
+
   def self.description(genre)
     config.dig(genre.to_s, "description")
   end

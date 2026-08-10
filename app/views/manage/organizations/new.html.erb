@@ -124,32 +124,37 @@
               <% end %>
             </div>
 
-            <!-- Plan selection -->
+            <!-- Plan selection. The plan radios sit as (visually hidden)
+                 siblings before the two option labels so each label's selected
+                 state comes from its own named peer — nesting the interval
+                 radios inside the Pro label made the Pro card always look
+                 selected (a checked descendant is still :checked to has-[]). -->
             <div>
               <span class="block text-sm font-medium text-slate-900 mb-1.5">Choose a plan</span>
               <div class="space-y-2">
-                <label class="flex items-start gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500">
-                  <%= radio_button_tag "plan", "free", true, class: "mt-1 h-4 w-4 accent-pink-500" %>
-                  <span>
-                    <span class="block text-sm font-semibold text-slate-900">Producer — Free</span>
-                    <span class="block text-xs text-slate-500">One production, up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> events per month. Casting, availability, sign-ups, messaging, contacts, documents, and courses.</span>
-                  </span>
+                <%= radio_button_tag "plan", "free", true, class: "peer/free sr-only" %>
+                <%= radio_button_tag "plan", "pro", false, class: "peer/pro sr-only" %>
+                <label for="plan_free" class="block p-3 border border-slate-300 rounded-lg cursor-pointer hover:border-pink-400 peer-checked/free:border-pink-500 peer-checked/free:ring-1 peer-checked/free:ring-pink-500 peer-checked/free:bg-pink-50/50">
+                  <span class="block text-sm font-semibold text-slate-900">Producer — Free</span>
+                  <span class="block text-xs text-slate-500">One production, up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> events per month. Casting, availability, sign-ups, messaging, contacts, documents, and courses.</span>
                 </label>
-                <label class="flex items-start gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500">
-                  <%= radio_button_tag "plan", "pro", false, class: "mt-1 h-4 w-4 accent-pink-500" %>
-                  <span class="flex-1">
-                    <span class="block text-sm font-semibold text-slate-900">Pro — $20/mo or $200/yr</span>
-                    <span class="block text-xs text-slate-500 mb-2">Everything in Producer, unlimited productions and events, plus Money, Staffing, Auditions, Casting Tables, and Reports.</span>
-                    <span class="flex gap-4 text-xs text-slate-700">
-                      <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                        <%= radio_button_tag "interval", "year", true, class: "h-3.5 w-3.5 accent-pink-500" %> Annual ($200/yr)
-                      </label>
-                      <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                        <%= radio_button_tag "interval", "month", false, class: "h-3.5 w-3.5 accent-pink-500" %> Monthly ($20/mo)
-                      </label>
-                    </span>
-                  </span>
+                <label for="plan_pro" class="block p-3 border border-slate-300 rounded-lg cursor-pointer hover:border-pink-400 peer-checked/pro:border-pink-500 peer-checked/pro:ring-1 peer-checked/pro:ring-pink-500 peer-checked/pro:bg-pink-50/50">
+                  <span class="block text-sm font-semibold text-slate-900">Pro — $20/mo or $200/yr</span>
+                  <span class="block text-xs text-slate-500">Everything in Producer, unlimited productions and events, plus Money, Staffing, Auditions, Casting Tables, and Reports.</span>
                 </label>
+              </div>
+              <div class="mt-2">
+                <span class="block text-xs font-medium text-slate-500 mb-1.5">If you choose Pro, how would you like to pay?</span>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg cursor-pointer text-xs text-slate-700 hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/50">
+                    <%= radio_button_tag "interval", "year", true, class: "sr-only" %>
+                    Annual ($200/yr)
+                  </label>
+                  <label class="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg cursor-pointer text-xs text-slate-700 hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/50">
+                    <%= radio_button_tag "interval", "month", false, class: "sr-only" %>
+                    Monthly ($20/mo)
+                  </label>
+                </div>
               </div>
               <p class="mt-1.5 text-xs text-slate-500">You can upgrade or change plans anytime. Choosing Pro takes you to secure checkout after your organization is created.</p>
             </div>

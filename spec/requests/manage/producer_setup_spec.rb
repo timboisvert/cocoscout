@@ -74,7 +74,7 @@ RSpec.describe "Producer setup", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Annual ($200/yr)")
       expect(response.body).to include("Monthly ($20/mo)")
-      expect(response.body).to include("Producer — Free")
+      expect(response.body).to include("free forever")
     end
 
     it "sends a Pro choice into checkout with the chosen interval" do
