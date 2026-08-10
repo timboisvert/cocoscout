@@ -48,6 +48,8 @@ group :development do
   gem "ruby-lsp", require: false
   gem "ruby-lsp-rails", require: false
   gem "ruby-lsp-rspec", require: false
+  # Was top-level to feed Sentry profiling; that's off, so it's a dev profiler now.
+  gem "stackprof", require: false
   gem "web-console"
 end
 
@@ -55,5 +57,9 @@ group :development, :test do
   gem "database_cleaner-active_record"
   gem "dotenv-rails"
   gem "factory_bot_rails"
+  # N+1 detection: warns in development, and fails specs that opt in.
+  # pg_query is prosopite's Postgres fingerprinter, not optional.
+  gem "pg_query"
+  gem "prosopite"
   gem "rspec-rails"
 end

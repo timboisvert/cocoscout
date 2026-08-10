@@ -182,17 +182,7 @@ RSpec.describe MoneyTodoService do
   # queries per survivor. The absolute query count isn't worth pinning — the
   # slope is, because that's what regresses when someone reintroduces a loop.
   describe "cost" do
-    def count_queries
-      count = 0
-      sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |_, _, _, _, payload|
-        count += 1 unless payload[:name].to_s.match?(/SCHEMA|TRANSACTION/)
-      end
-      yield
-      count
-    ensure
-      ActiveSupport::Notifications.unsubscribe(sub)
-    end
-
+    # count_queries lives in spec/support/query_counting.rb.
     def production_with_work!(name)
       prod = create(:production, organization: org, name: name)
       create(:show, production: prod, event_type: :show, date_and_time: 2.days.ago)
