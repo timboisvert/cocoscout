@@ -81,7 +81,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
     before { sign_in_as_superadmin }
 
     it "creates a full_course payment" do
-      create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "confirmed")
+      create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 1000, status: "confirmed")
 
       expect {
         post finances_record_payment_path(course_offering_id: course_offering.id), params: {
@@ -92,7 +92,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       }.to change(OrgPayout, :count).by(1)
 
       payout = OrgPayout.last
-      expect(payout.amount_cents).to eq(9500) # 95% of 10000
+      expect(payout.amount_cents).to eq(9000) # 10000 gross - 1000 stored CocoScout fee
       expect(payout.payout_type).to eq("full_course")
       expect(payout.payment_method).to eq("check")
       expect(payout.status).to eq("paid")
@@ -116,7 +116,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       location = create(:location)
       show1 = create(:show, production: production, course_offering: course_offering, location: location, date_and_time: 1.day.from_now)
       show2 = create(:show, production: production, course_offering: course_offering, location: location, date_and_time: 2.days.from_now)
-      create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "confirmed")
+      create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 1000, status: "confirmed")
 
       expect {
         post finances_record_payment_path(course_offering_id: course_offering.id), params: {
@@ -129,8 +129,8 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       payout = OrgPayout.last
       expect(payout.payout_type).to eq("per_session")
       expect(payout.covers_sessions).to eq([ show1.id ])
-      # 9500 owed total / 2 sessions * 1 session = 4750
-      expect(payout.amount_cents).to eq(4750)
+      # 9000 owed total / 2 sessions * 1 session = 4500
+      expect(payout.amount_cents).to eq(4500)
     end
   end
 

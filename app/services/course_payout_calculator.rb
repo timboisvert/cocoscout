@@ -4,7 +4,7 @@
 #
 # Revenue flow:
 #   Student pays via Stripe → fees are determined by promo code coverage:
-#     - No promo:         CocoScout keeps 5% platform fee, org gets 95%
+#     - No promo:         CocoScout keeps the platform fee (PLATFORM_FEE_PERCENTAGE, currently 10%)
 #     - coverage "full":  All fees waived, org gets 100%
 #     - "platform_only":  Only Stripe processing fees deducted, no CocoScout fee
 #

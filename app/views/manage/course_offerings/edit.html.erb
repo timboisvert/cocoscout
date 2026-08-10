@@ -746,6 +746,7 @@
 
       <div data-controller="fee-calculator"
            data-fee-calculator-validate-url-value="<%= manage_course_validate_promo_code_path %>"
+           data-fee-calculator-cocoscout-fee-percent-value="<%= CourseRegistration::PLATFORM_FEE_PERCENTAGE %>"
            data-fee-calculator-promo-applied-value="<%= @course_offering.feature_credit_redemption.present? %>">
 
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">

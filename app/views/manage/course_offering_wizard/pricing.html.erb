@@ -5,6 +5,7 @@
   <%= form_with url: manage_course_wizard_pricing_path, method: :post, local: true do |form| %>
     <div data-controller="fee-calculator"
          data-fee-calculator-validate-url-value="<%= manage_course_validate_promo_code_path %>"
+         data-fee-calculator-cocoscout-fee-percent-value="<%= CourseRegistration::PLATFORM_FEE_PERCENTAGE %>"
          data-fee-calculator-promo-applied-value="<%= @wizard_state[:promo_code].present? %>">
 
       <div>

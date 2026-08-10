@@ -108,7 +108,7 @@
                 <% elsif @coverage_type == "platform_only" %>
                   <span class="text-green-600 font-medium">(processing only)</span>
                 <% else %>
-                  (5%)
+                  (<%= CourseRegistration::PLATFORM_FEE_PERCENTAGE.to_i %>%)
                 <% end %>
               </span>
               <span class="text-sm text-gray-900">−<%= @payout.formatted_platform_fee %></span>

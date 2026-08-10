@@ -241,13 +241,13 @@
       <%# Fee breakdown summary %>
       <% price_dollars = @wizard_state[:price_cents].to_f / 100 %>
       <% has_promo = @wizard_state[:promo_code].present? %>
-      <% fee_percent = has_promo ? 0 : 5.0 %>
+      <% fee_percent = has_promo ? 0 : CourseRegistration::PLATFORM_FEE_PERCENTAGE %>
       <% cocoscout_fee = price_dollars * (fee_percent / 100) %>
       <% producer_net = price_dollars - cocoscout_fee %>
       <% if price_dollars > 0 %>
         <div class="mt-3 pt-3 border-t border-gray-100 space-y-1">
           <div class="flex justify-between text-xs text-gray-500">
-            <span>CocoScout fee (<%= has_promo ? "waived" : "5%" %>)</span>
+            <span>CocoScout fee (<%= has_promo ? "waived" : "#{CourseRegistration::PLATFORM_FEE_PERCENTAGE.to_i}%" %>)</span>
             <span class="<%= has_promo ? 'text-green-600 font-medium' : '' %>">-$<%= "%.2f" % cocoscout_fee %></span>
           </div>
           <div class="flex justify-between text-sm font-semibold">

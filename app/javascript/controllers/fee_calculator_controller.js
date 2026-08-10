@@ -14,7 +14,7 @@ export default class extends Controller {
 
     static values = {
         validateUrl: String,
-        cocoscoutFeePercent: { type: Number, default: 5.0 },
+        cocoscoutFeePercent: { type: Number, default: 10.0 }, // keep in sync with CourseRegistration::PLATFORM_FEE_PERCENTAGE; views pass the real value
         stripeFeePercent: { type: Number, default: 2.9 },
         stripeFeeCents: { type: Number, default: 30 },
         promoApplied: { type: Boolean, default: false },
@@ -64,7 +64,7 @@ export default class extends Controller {
             producerNet = price - stripeFee
             platformFee = 0
         } else {
-            // No promo - standard 5% fee
+            // No promo - standard platform fee
             cocoscoutFee = price * (this.cocoscoutFeePercentValue / 100)
             producerNet = price - cocoscoutFee
             stripeFee = price * (this.stripeFeePercentValue / 100) + (this.stripeFeeCentsValue / 100)
@@ -118,7 +118,7 @@ export default class extends Controller {
             } else if (coverageType === "platform_only") {
                 this.feeExplanationTarget.textContent = "Your promo code covers the CocoScout platform fee. Stripe processing fees (2.9% + 30\u00a2) still apply and are deducted from your revenue."
             } else {
-                this.feeExplanationTarget.textContent = "Stripe fees are the standard rate for online card payments. CocoScout covers these out of the 5% fee \u2014 net revenue will always be exactly 95%."
+                this.feeExplanationTarget.textContent = `Stripe fees are the standard rate for online card payments. CocoScout covers these out of the ${this.cocoscoutFeePercentValue}% fee \u2014 net revenue will always be exactly ${100 - this.cocoscoutFeePercentValue}%.`
             }
         }
 

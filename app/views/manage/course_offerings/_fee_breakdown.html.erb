@@ -18,7 +18,7 @@
     <div class="text-sm" data-fee-calculator-target="feeRow">
       <div class="flex justify-between">
         <a href="#" data-action="click->fee-calculator#toggleFeeDetails" class="flex items-center gap-1 hover:text-pink-500 transition">
-          <span data-fee-calculator-target="feeLabel">CocoScout fee (5%)</span>
+          <span data-fee-calculator-target="feeLabel">CocoScout fee (<%= CourseRegistration::PLATFORM_FEE_PERCENTAGE.to_i %>%)</span>
           <svg data-fee-calculator-target="feeChevron" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </a>
         <span class="font-medium" data-fee-calculator-target="cocoscoutFee">$0.00</span>
@@ -33,7 +33,7 @@
           <span>CocoScout platform fee</span>
           <span data-fee-calculator-target="platformFee">$0.00</span>
         </div>
-        <p class="text-xs text-gray-400 pt-1" data-fee-calculator-target="feeExplanation">Stripe fees are the standard rate for online card payments. CocoScout covers these out of the 5% fee — net revenue will always be exactly 95%.</p>
+        <p class="text-xs text-gray-400 pt-1" data-fee-calculator-target="feeExplanation">Stripe fees are the standard rate for online card payments. CocoScout covers these out of the <%= CourseRegistration::PLATFORM_FEE_PERCENTAGE.to_i %>% fee — net revenue will always be exactly <%= (100 - CourseRegistration::PLATFORM_FEE_PERCENTAGE).to_i %>%.</p>
       </div>
     </div>
     <div class="border-t border-gray-300 pt-2 flex justify-between text-sm font-semibold">

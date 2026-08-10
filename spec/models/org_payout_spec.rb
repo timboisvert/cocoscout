@@ -96,13 +96,21 @@ RSpec.describe OrgPayout, type: :model do
   describe ".owed_cents_for_course" do
     let(:course_offering) { create(:course_offering) }
 
-    it "calculates 95% of confirmed registrations only" do
-      create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "confirmed")
-      create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "confirmed")
-      create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "refunded")
+    it "subtracts the recorded CocoScout fee, from confirmed registrations only" do
+      create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 1000, status: "confirmed")
+      create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 1000, status: "confirmed")
+      create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 1000, status: "refunded")
 
-      # Only confirmed: 20000 * 0.95 = 19000 (refunded is ignored, not subtracted)
-      expect(described_class.owed_cents_for_course(course_offering)).to eq(19000)
+      # Only confirmed: 20000 gross - 2000 stored fees (refunded is ignored, not subtracted)
+      expect(described_class.owed_cents_for_course(course_offering)).to eq(18000)
+    end
+
+    it "honors the fee each registration actually stored, even across rate changes" do
+      # One row charged under the old 5% rate, one under the current 10%.
+      create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 500, status: "confirmed")
+      create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 1000, status: "confirmed")
+
+      expect(described_class.owed_cents_for_course(course_offering)).to eq(18500)
     end
 
     it "returns 0 when no registrations" do
@@ -128,11 +136,11 @@ RSpec.describe OrgPayout, type: :model do
 
     it "returns owed minus paid" do
       org = course_offering.organization
-      create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "confirmed")
+      create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 1000, status: "confirmed")
       create(:org_payout, organization: org, course_offering: course_offering, amount_cents: 5000, status: "paid")
 
-      # owed = 10000 * 0.95 = 9500, paid = 5000, balance = 4500
-      expect(described_class.balance_cents_for_course(course_offering)).to eq(4500)
+      # owed = 10000 - 1000 stored fee = 9000, paid = 5000, balance = 4000
+      expect(described_class.balance_cents_for_course(course_offering)).to eq(4000)
     end
   end
 end

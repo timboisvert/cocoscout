@@ -42,7 +42,7 @@ class OrgPayout < ApplicationRecord
 
   # Calculate what CocoScout owes an org for a specific course offering,
   # respecting promo code coverage types:
-  #   - no promo: org gets 95% (5% CocoScout fee)
+  #   - no promo: org gets gross minus the CocoScout fee (PLATFORM_FEE_PERCENTAGE, currently 10%)
   #   - coverage_type "full": org gets 100% (all fees waived)
   #   - coverage_type "platform_only": org gets gross minus actual Stripe fees
   def self.owed_cents_for_course(course_offering)
@@ -56,7 +56,10 @@ class OrgPayout < ApplicationRecord
       stripe_fees = course_offering.course_registrations.confirmed.sum(:stripe_fee_cents)
       gross - stripe_fees
     else
-      (gross * 0.95).round
+      # Subtract the CocoScout fee ACTUALLY charged on each registration (stored
+      # per row), not a re-computed rate — mirrors CoursePayoutCalculator, and
+      # stays right for registrations charged under an older rate.
+      gross - course_offering.course_registrations.confirmed.sum(:cocoscout_fee_cents)
     end
   end
 
