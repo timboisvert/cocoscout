@@ -44,7 +44,14 @@ class PayoutSentPayeeNotificationJob < ApplicationJob
   # connect a bank" deserves the real "it's on its way" once they connect and
   # a manager hits Pay remaining. That's the only case where the story we told
   # them stops being true, so it's the only case we re-send.
+  #
+  # A failed transfer never moved any money, and a returned one has its own
+  # notification — neither may claim money is on its way. (In Aug 2026 a run
+  # whose transfers all failed still emailed every payee a deposit window.)
+  # A failed item that later succeeds via Pay remaining re-enters here as
+  # "paid" and gets the notice then.
   def needs_notice?(item)
+    return false unless %w[pending paid].include?(item.status)
     return true if item.payee_notified_at.blank?
 
     item.status == "paid" && item.paid_at.present? && item.paid_at > item.payee_notified_at

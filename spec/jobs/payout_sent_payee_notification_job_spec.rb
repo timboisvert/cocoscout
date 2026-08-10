@@ -80,6 +80,28 @@ RSpec.describe PayoutSentPayeeNotificationJob, type: :job do
         .not_to change { ActionMailer::Base.deliveries.size }
     end
 
+    it "stays silent about a payee whose transfer failed — no money moved" do
+      item = item_for(connected_person)
+      item.update!(status: "failed", error: "insufficient funds")
+      batch.update!(status: "partially_paid", funding_status: "succeeded")
+
+      expect { described_class.perform_now(batch.id) }
+        .not_to change { ActionMailer::Base.deliveries.size }
+      expect(item.reload.payee_notified_at).to be_nil
+    end
+
+    it "tells a failed-then-retried payee only once the retry actually pays" do
+      item = item_for(connected_person)
+      item.update!(status: "failed", error: "insufficient funds")
+      batch.update!(status: "partially_paid", funding_status: "succeeded")
+      described_class.perform_now(batch.id)
+
+      item.update!(status: "paid", paid_at: Time.current)
+      expect { described_class.perform_now(batch.id) }
+        .to change { ActionMailer::Base.deliveries.size }.by(1)
+      expect(last_email_body).to include("just sent you")
+    end
+
     it "skips an Organization payee — that's the org paying itself" do
       org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
       item_for(org)

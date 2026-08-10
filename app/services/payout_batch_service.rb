@@ -210,17 +210,35 @@ class PayoutBatchService
   def self.process!(batch)
     batch.update!(status: "processing")
 
+    source_charge, source_remaining = funding_charge_for(batch)
+
     batch.items.pending.find_each do |item|
       # No connected bank yet: a transfer would just fail. Leave the item
       # pending — their slice of the funded money waits on this run.
       next unless item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
 
-      transfer = Stripe::Transfer.create(
+      params = {
         amount: item.amount_cents,
         currency: "usd",
         destination: item.payee.stripe_account_id,
         metadata: { payout_batch_item_id: item.id }
+      }
+      # Draw on the funding charge itself, not the platform's available balance
+      # (see funding_charge_for). Falls back to the balance when the charge's
+      # transferable capacity can't cover this item (credit-funded slices).
+      use_source = source_charge.present? && item.amount_cents <= source_remaining
+      params[:source_transaction] = source_charge if use_source
+
+      # The idempotency key survives a crash between the transfer succeeding
+      # and mark_paid! landing: the item is still pending with the same
+      # updated_at, so the retry replays the same transfer instead of paying
+      # twice. Any status change (mark_failed!, the pending reset in
+      # pay_remaining!) touches updated_at and mints a fresh key.
+      transfer = Stripe::Transfer.create(
+        params,
+        idempotency_key: "payout-batch-item-#{item.id}-#{item.updated_at.to_i}"
       )
+      source_remaining -= item.amount_cents if use_source
       item.mark_paid!(transfer_id: transfer.id)
       settle_item_sources!(item, transfer.id)
       record_performer_activation!(batch, item)
@@ -239,6 +257,35 @@ class PayoutBatchService
     # which on ACH can be several days earlier.
     PayoutSentPayeeNotificationJob.perform_later(batch.id)
     batch
+  end
+
+  # The Stripe charge that funded this run, plus how much of it is still
+  # transferable: [charge_id, remaining_cents].
+  #
+  # Transfers created with source_transaction draw on that specific charge
+  # rather than the platform's available balance, which closes two races that
+  # each failed a whole run in Aug 2026: an ACH debit that has settled but
+  # whose funds haven't become "available" yet, and an automatic platform
+  # payout sweeping the balance to our own bank before the transfers ran.
+  # Either way the plain transfers bounced with "insufficient funds" even
+  # though the org's money was fully collected.
+  #
+  # Remaining capacity conservatively assumes every already-paid item drew on
+  # this charge, so a retry can never over-commit it; items it can't cover
+  # (e.g. the credit-funded slice of a run) fall back to the plain balance.
+  # Best-effort: if Stripe can't tell us, transfers proceed the old way.
+  def self.funding_charge_for(batch)
+    return [ nil, 0 ] if batch.funding_payment_intent_id.blank?
+
+    intent = Stripe::PaymentIntent.retrieve(batch.funding_payment_intent_id)
+    charge = intent.latest_charge
+    charge_id = charge.is_a?(String) ? charge : charge&.id
+    return [ nil, 0 ] if charge_id.blank?
+
+    [ charge_id, intent.amount - batch.items.paid.sum(:amount_cents) ]
+  rescue Stripe::StripeError => e
+    Rails.logger.warn("[PayoutBatchService] no funding charge for batch #{batch.id}: #{e.message}")
+    [ nil, 0 ]
   end
 
   # A funded run stays open until every person in it is paid: all paid →

@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 # Pays the people who were parked on a funded run because they had no bank
-# account, once they've connected one.
+# account, once they've connected one — and retries transfers that failed
+# outright (a transient Stripe refusal shouldn't strand a funded run).
 #
 # Their money was debited from the org up front and has been sitting on the run
 # ever since. The only way it moved before was a manager noticing the "Pay
@@ -38,7 +39,7 @@ class RetryParkedPayoutsJob < ApplicationJob
     scope = PayoutBatch.where(status: "partially_paid").includes(:organization, items: :payee)
     return scope.to_a unless payee
 
-    scope.select { |b| b.items.any? { |i| i.status == "pending" && i.payee == payee } }
+    scope.select { |b| b.items.any? { |i| PayoutBatch::RETRYABLE_ITEM_STATUSES.include?(i.status) && i.payee == payee } }
   end
 
   # Money moved without anyone clicking, so it has to leave a trail.

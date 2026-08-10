@@ -28,6 +28,16 @@ RSpec.describe RetryParkedPayoutsJob, type: :job do
     expect(PayoutBatchService).to have_received(:pay_remaining!).with(batch)
   end
 
+  it "retries a run whose transfers failed outright (Aug 2026: swept balance)" do
+    batch = parked_run!(bank: true)
+    batch.items.update_all(status: "failed", error: "insufficient funds")
+    allow(PayoutBatchService).to receive(:pay_remaining!)
+
+    described_class.perform_now
+
+    expect(PayoutBatchService).to have_received(:pay_remaining!).with(batch)
+  end
+
   it "leaves a run alone while the person still has no bank" do
     parked_run!(bank: false)
     allow(PayoutBatchService).to receive(:pay_remaining!)
@@ -84,6 +94,14 @@ RSpec.describe "PayoutBatch retry timing", type: :model do
     expect(waiting.next_auto_retry_at.hour).to eq(PayoutBatch::AUTO_RETRY_HOUR)
     expect(waiting.next_auto_retry_at).to be > Time.zone.now
     expect(done.next_auto_retry_at).to be_nil
+  end
+
+  it "still promises the sweep when every transfer failed and nobody is merely pending" do
+    failed_run = org.payout_batches.create!(kind: "staff_pay", status: "partially_paid", trigger: "manual",
+                                            funding_status: "succeeded", total_cents: 100)
+    failed_run.items.create!(payee: create(:person), amount_cents: 100, status: "failed", error: "insufficient funds")
+
+    expect(failed_run.next_auto_retry_at).to be_present
   end
 end
 

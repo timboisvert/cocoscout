@@ -113,7 +113,7 @@ RSpec.describe ContractorPayoutRunService do
       batch = described_class.add_contract_payment!(payment).batch
       PayoutBatchService.process!(batch)
 
-      expect(Stripe::Transfer).to have_received(:create).with(hash_including(amount: 20_000))
+      expect(Stripe::Transfer).to have_received(:create).with(hash_including(amount: 20_000), anything)
       expect(org.payout_balance_cents_for(payee)).to eq(0)
     end
 

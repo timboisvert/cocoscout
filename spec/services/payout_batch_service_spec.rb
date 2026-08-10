@@ -68,6 +68,47 @@ RSpec.describe PayoutBatchService do
       expect(org.payout_balance_cents_for(ready)).to eq(0)
     end
 
+    it "ties each transfer to the funding charge, so settled-but-unavailable (or swept) funds still pay" do
+      captured = []
+      allow(Stripe::Transfer).to receive(:create) { |params, _opts| captured << params; double("transfer", id: "tr_src") }
+      allow(Stripe::PaymentIntent).to receive(:retrieve).with("pi_ach")
+        .and_return(double("pi", amount: 5000, latest_charge: "py_funding"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_ach")
+      PayoutBatchService.process!(batch)
+
+      expect(captured.first[:source_transaction]).to eq("py_funding")
+      expect(batch.items.first.reload.status).to eq("paid")
+    end
+
+    it "falls back to a plain balance transfer when the funding charge can't cover an item" do
+      captured = []
+      allow(Stripe::Transfer).to receive(:create) { |params, _opts| captured << params; double("transfer", id: "tr_plain") }
+      # Charge smaller than the item — e.g. the slice of a run funded by credit
+      # rather than the debit. That money is already plain available balance.
+      allow(Stripe::PaymentIntent).to receive(:retrieve)
+        .and_return(double("pi", amount: 1000, latest_charge: "py_small"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_ach")
+      PayoutBatchService.process!(batch)
+
+      expect(captured.first).not_to have_key(:source_transaction)
+      expect(batch.items.first.reload.status).to eq("paid")
+    end
+
+    it "still transfers when Stripe can't hand back the funding charge" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_fallback"))
+      allow(Stripe::PaymentIntent).to receive(:retrieve).and_raise(Stripe::StripeError.new("nope"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_gone")
+      PayoutBatchService.process!(batch)
+
+      expect(batch.items.first.reload.status).to eq("paid")
+    end
+
     it "settles every bundled show line with the shared transfer id (one item, many shows)" do
       allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_shared"))
 
@@ -109,7 +150,12 @@ RSpec.describe PayoutBatchService do
   end
 
   describe ".fund!" do
-    before { org.update!(stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account") }
+    before do
+      org.update!(stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account")
+      # process! looks up the funding charge to source its transfers from.
+      allow(Stripe::PaymentIntent).to receive(:retrieve)
+        .and_return(double("pi", amount: 5000, latest_charge: "py_fund"))
+    end
 
     it "card funding that succeeds immediately funds and processes the batch" do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
