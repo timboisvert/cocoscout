@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class HomeController < ApplicationController
-  include ReferralTracking
+  include SignupTracking
 
   allow_unauthenticated_access
 
@@ -23,5 +23,8 @@ class HomeController < ApplicationController
   # attributed when they later create an organization.
   def sketchfest
     session[:referral_source] ||= "sketchfest"
+    # The whole page is a producer pitch, so landing here is producer intent —
+    # but don't clobber a choice an earlier CTA click already made.
+    session[:signup_intent] ||= "producer"
   end
 end

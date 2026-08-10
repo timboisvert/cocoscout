@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AuthController < ApplicationController
-  include ReferralTracking
+  include SignupTracking
 
   allow_unauthenticated_access only: %i[signup handle_signup signin handle_signin password handle_password reset
                                         handle_reset set_password handle_set_password]
@@ -55,7 +55,7 @@ class AuthController < ApplicationController
         start_new_session_for @user
         AuthMailer.signup(@user).deliver_later
 
-        redirect_to post_authentication_landing_path(@user) and return
+        redirect_to post_authentication_landing_path(@user, new_signup: true) and return
       else
         render :signup, status: :unprocessable_entity
       end
