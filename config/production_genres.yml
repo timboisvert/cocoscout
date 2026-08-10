@@ -1,0 +1,90 @@
+# Production genres — the "what are you creating?" answer from producer setup.
+# Keys are stored in productions.genre, so renaming one requires a data
+# migration; keep them generic. Role presets seed the production's roles;
+# every category must be one of Role::CATEGORIES.
+
+production_genres:
+  sketch:
+    icon: "pencil-square"
+    label: "Sketch comedy"
+    description: "A sketch team writing and performing scripted comedy"
+    noun: "team"
+    name_placeholder: "e.g., The Late Shift"
+    role_presets:
+      - name: "Cast"
+        quantity: 6
+        category: "performing"
+      - name: "Writer"
+        quantity: 4
+        category: "performing"
+      - name: "Director"
+        quantity: 1
+        category: "performing"
+  improv:
+    icon: "bolt"
+    label: "Improv"
+    description: "An improv team or house ensemble"
+    noun: "team"
+    name_placeholder: "e.g., Fourth Wall"
+    role_presets:
+      - name: "Player"
+        quantity: 8
+        category: "performing"
+      - name: "Coach"
+        quantity: 1
+        category: "performing"
+  standup:
+    icon: "microphone"
+    label: "Standup"
+    description: "A standup showcase, open mic, or comedy night"
+    noun: "showcase"
+    name_placeholder: "e.g., Late Night Laughs"
+    role_presets:
+      - name: "Host"
+        quantity: 1
+        category: "performing"
+      - name: "Featured Comic"
+        quantity: 5
+        category: "performing"
+  theater:
+    icon: "ticket"
+    label: "Theater"
+    description: "A play, musical, or theatrical production"
+    noun: "production"
+    name_placeholder: "e.g., The Glass House"
+    role_presets:
+      - name: "Lead"
+        quantity: 2
+        category: "performing"
+      - name: "Supporting"
+        quantity: 4
+        category: "performing"
+      - name: "Understudy"
+        quantity: 2
+        category: "performing"
+      - name: "Director"
+        quantity: 1
+        category: "performing"
+      - name: "Stage Manager"
+        quantity: 1
+        category: "technical"
+  variety:
+    icon: "sparkles"
+    label: "Variety / cabaret"
+    description: "A variety show, cabaret, burlesque, or mixed-bill night"
+    noun: "show"
+    name_placeholder: "e.g., The Saturday Special"
+    role_presets:
+      - name: "Host"
+        quantity: 1
+        category: "performing"
+      - name: "Performer"
+        quantity: 6
+        category: "performing"
+  other:
+    icon: "squares-plus"
+    label: "Something else"
+    description: "Any other kind of show or event series"
+    noun: "production"
+    name_placeholder: "e.g., My Next Big Thing"
+    role_presets: []

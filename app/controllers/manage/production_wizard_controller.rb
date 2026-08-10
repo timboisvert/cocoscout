@@ -3,6 +3,9 @@
 module Manage
   class ProductionWizardController < Manage::ManageController
     before_action :ensure_user_is_global_manager
+    # Stop a Producer-plan org at the door with the upgrade pitch instead of
+    # letting them walk all seven steps into a validation wall at create.
+    before_action :enforce_free_production_limit, only: %i[name create_production]
     before_action :load_wizard_state
 
     # Step 1: Name - What's the production called?
@@ -14,6 +17,8 @@ module Manage
     def save_name
       @wizard_state[:name] = params[:name]&.strip
       @wizard_state[:description] = params[:description]&.strip
+      # Optional "what kind of production" — only allowlisted genres stick.
+      @wizard_state[:genre] = ProductionGenres.keys.include?(params[:genre].to_s) ? params[:genre].to_s : nil
 
       if @wizard_state[:name].blank?
         flash.now[:alert] = "Please enter a production name"
@@ -69,6 +74,15 @@ module Manage
       @wizard_state[:has_roles] ||= nil
       @wizard_state[:role_preset] ||= nil
       @wizard_state[:roles] ||= []
+
+      # If they told us the genre and haven't entered roles yet, prefill the
+      # editable rows with that genre's presets (they're just form defaults —
+      # nothing is saved until the step is submitted).
+      if @wizard_state[:roles].blank? && @wizard_state[:genre].present?
+        @wizard_state[:roles] = ProductionGenres.role_presets(@wizard_state[:genre]).map do |preset|
+          { name: preset["name"], quantity: preset["quantity"] || 1, category: preset["category"] || "performing" }
+        end
+      end
     end
 
     def save_roles
@@ -161,6 +175,7 @@ module Manage
         @production = Current.organization.productions.new(
           name: @wizard_state[:name],
           description: @wizard_state[:description],
+          genre: @wizard_state[:genre].presence,
           casting_source: @wizard_state[:casting_source] || "talent_pool",
           casting_setup_completed: true
         )

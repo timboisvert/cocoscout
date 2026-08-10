@@ -5,7 +5,7 @@ module ApplicationHelper
   # (exposed via helper_method) so controllers and views share one definition.
 
   # True when this visitor arrived through the named campaign — see
-  # ReferralTracking, which puts the slug in the session on the public side.
+  # SignupTracking, which puts the slug in the session on the public side.
   # Views use it to swap in campaign-flavored copy.
   #
   # This lives in a helper rather than on a controller because the two sides

@@ -48,13 +48,12 @@ module Manage
       user = User.find_by(email_address: @person_invitation.email.downcase)
       person = Person.find_by(email: @person_invitation.email.downcase)
 
-      # If user already exists with a password, they shouldn't be here
-      # They should already be linked to the person
-      if user&.authenticate(params[:password])
-        # User is signing in - this shouldn't normally happen for person invitations
-        # but handle it gracefully
+      if user && user.authenticate(params[:password])
+        # The submitted password already matches this account (they typed their
+        # existing password) — proceed to the linking below without touching it.
       elsif user
-        # Set the password on the existing user or validate the new user
+        # Existing account, different password: treat the submission as setting
+        # a new password (the normal path for manager-created accounts).
         user.password = params[:password]
         unless user.valid?
           @user = user
@@ -62,13 +61,16 @@ module Manage
         end
         user.save!
       else
-        # This shouldn't happen - user should exist when person invitation is created
-        # But handle it gracefully
-        user = User.new(email_address: @person_invitation.email.downcase, password: params[:password])
-        unless user.save
-          @user = user
+        # This shouldn't happen - user should exist when person invitation is
+        # created. But handle it gracefully: create the full account (User +
+        # Person, adopting an unclaimed Person with this email).
+        result = AccountCreator.call(email: @person_invitation.email.downcase, password: params[:password])
+        unless result.user.persisted?
+          @user = result.user
           render :accept, status: :unprocessable_entity and return
         end
+        user = result.user
+        person = result.person
       end
 
       # Ensure person exists and is linked to user

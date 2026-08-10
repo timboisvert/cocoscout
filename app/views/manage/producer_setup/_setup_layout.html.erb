@@ -1,0 +1,33 @@
+<%# Standalone first-run layout: no sidebar, no breadcrumbs (there is no
+    organization yet to crumb back to) — a soft gradient page with the logo,
+    a slim step meter, and the step content directly on the page. %>
+<% content_for :title, "Get Started - #{step_name}" %>
+
+<div class="min-h-screen bg-gradient-to-b from-pink-50/70 via-white to-white">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-16">
+    <div class="flex justify-center mb-8 sm:mb-10">
+      <%= render "shared/cocoscout_logo", size: :small %>
+    </div>
+
+    <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+    <div class="mb-8 sm:mb-10">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-pink-600">Step <%= current_step + 1 %> of 3</span>
+        <span class="text-xs text-gray-400"><%= step_name %></span>
+      </div>
+      <div class="flex gap-1.5">
+        <% 3.times do |i| %>
+          <div class="h-1 flex-1 rounded-full <%= i <= current_step ? "bg-pink-500" : "bg-gray-200" %>"></div>
+        <% end %>
+      </div>
+    </div>
+
+    <%= yield %>
+
+    <div class="mt-10 text-center">
+      <%= button_to "I'll do this later", manage_producer_setup_cancel_path, method: :delete,
+            class: "text-sm text-gray-400 hover:text-gray-600 bg-transparent border-0 cursor-pointer underline-offset-2 hover:underline" %>
+    </div>
+  </div>
+</div>

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AuthController < ApplicationController
-  include ReferralTracking
+  include SignupTracking
 
   allow_unauthenticated_access only: %i[signup handle_signup signin handle_signin password handle_password reset
                                         handle_reset]
@@ -34,45 +34,15 @@ class AuthController < ApplicationController
       return
     end
 
-    # The user doesn't exist, so create it
-    @user = User.new(user_params)
-    if @user.save
+    # The user doesn't exist, so create the account (User + Person together)
+    result = AccountCreator.call(email: user_params[:email_address], password: user_params[:password])
+    @user = result.user
 
-      # Create the associated person if it doesn't exist
-      person = Person.find_by(email: @user.email_address)
-      if person.nil?
-        person = Person.new(email: @user.email_address, name: @user.email_address.split("@").first, user: @user)
-      else
-        # The person exists, so just make sure their user and person are tied to each other
-        person.user = @user
-      end
+    if @user.persisted?
+      start_new_session_for @user
+      AuthMailer.signup(@user).deliver_later
 
-      # Save the person
-      person.save!
-
-      # The user has been created, so log them in
-      if User.authenticate_by(user_params.slice(:email_address, :password))
-        start_new_session_for @user
-        AuthMailer.signup(@user).deliver_later
-
-        # Redirect to the last dashboard they were on (defaults to my_dashboard for new signups)
-        last_dashboard_prefs = cookies.encrypted[:last_dashboard]
-        # Reset if it's an old string value instead of a hash
-        last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
-        user_preference = last_dashboard_prefs[@user.id.to_s]
-        default_path = case user_preference
-        when "manage"
-                         manage_path
-        else
-                         my_dashboard_path
-        end
-
-        # Check both return_to sources: explicit param and authentication redirect
-        redirect_path = session.delete(:return_to) || session.delete(:return_to_after_authenticating) || default_path
-        redirect_to(redirect_path) and return
-      else
-        render :signup, status: :unprocessable_entity
-      end
+      redirect_to post_authentication_landing_path(@user, new_signup: true) and return
     else
       render :signup, status: :unprocessable_entity
     end
@@ -86,19 +56,7 @@ class AuthController < ApplicationController
 
     # If user is already authenticated, redirect them to their dashboard
     if authenticated?
-      last_dashboard_prefs = cookies.encrypted[:last_dashboard]
-      last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
-      user_preference = last_dashboard_prefs[Current.user.id.to_s]
-      default_path = case user_preference
-      when "manage"
-                       manage_path
-      else
-                       my_dashboard_path
-      end
-
-      # Check both return_to sources: explicit param and authentication redirect
-      redirect_path = session.delete(:return_to) || session.delete(:return_to_after_authenticating) || default_path
-      redirect_to(redirect_path) and return
+      redirect_to post_authentication_landing_path(Current.user) and return
     end
 
     @user = User.new
@@ -106,11 +64,6 @@ class AuthController < ApplicationController
     if session[:password_reset_instructions_sent] == true
       session.delete(:password_reset_instructions_sent)
       @password_reset_instructions_sent = true
-    end
-
-    if session[:password_successfully_reset] == true
-      session.delete(:password_successfully_reset)
-      @password_successfully_reset = true
     end
 
     return unless session[:invitation_link_invalid] == true
@@ -141,21 +94,7 @@ class AuthController < ApplicationController
       # Continue signing them in.
       start_new_session_for user
 
-      # Redirect to the last dashboard they were on
-      last_dashboard_prefs = cookies.encrypted[:last_dashboard]
-      # Reset if it's an old string value instead of a hash
-      last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
-      user_preference = last_dashboard_prefs[user.id.to_s]
-      default_path = case user_preference
-      when "manage"
-                       manage_path
-      else
-                       my_dashboard_path
-      end
-
-      # Check both return_to sources: explicit param and authentication redirect
-      redirect_path = session.delete(:return_to) || session.delete(:return_to_after_authenticating) || default_path
-      redirect_to(redirect_path) and return
+      redirect_to post_authentication_landing_path(user) and return
     else
       @error = true
       render :signin, status: :unprocessable_entity
@@ -218,8 +157,12 @@ class AuthController < ApplicationController
     sanitized_password = params[:password].to_s.delete("\0")
 
     if @user.update(password: sanitized_password)
-      session[:password_successfully_reset] = true
-      redirect_to signin_path and return
+      # This link is also how manager-created accounts get activated, so sign
+      # them in directly instead of bouncing them to the signin form to type
+      # the password they just chose.
+      start_new_session_for @user
+      redirect_to post_authentication_landing_path(@user),
+                  notice: "Your password has been set — welcome back!" and return
     else
       @password_unsuccessfully_reset = true
       render :reset, status: :unprocessable_entity

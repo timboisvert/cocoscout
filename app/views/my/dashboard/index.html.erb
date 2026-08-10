@@ -5,6 +5,29 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <% primary = @people.first %>
+  <%# The hero welcomes truly brand-new users; while it shows, the profile
+      checklist below stays out of the way (the hero already says "set up
+      your profile"). The checklist takes over for everyone else who still
+      has profile gaps and hasn't dismissed it. %>
+  <% show_welcome_hero = primary &&
+       primary.profile_welcomed_at.nil? &&
+       !primary.organizations.exists? &&
+       !primary.in_any_talent_pool? &&
+       @just_joined_organization.nil? %>
+
+  <!-- One-shot greeting after joining an org via its public /join link -->
+  <% if @just_joined_organization %>
+    <%= render "shared/alert_panel",
+          eyebrow: "You're in",
+          headline: "You've joined #{@just_joined_organization.name}",
+          body: "They can now invite you to shows, add you to casts, and message you here. Your shows will appear on this calendar.",
+          actions: [ { text: "Complete your profile", path: profile_path } ] %>
+  <% end %>
+
+  <!-- First-visit welcome for brand-new users (no orgs, no pools) -->
+  <% if show_welcome_hero %>
+    <%= render "my/dashboard/welcome", person: primary %>
+  <% end %>
 
   <%= render "my/payments/payout_summary" %>
 
@@ -22,16 +45,18 @@
     <%= render "my/dashboard/profile_completion_panel", person: primary %>
   <% end %>
 
+  <!-- Profile checklist — with the other action boxes, above the calendar
+       header. Suppressed while the welcome hero is greeting a brand-new user
+       (only for the primary person, to avoid duplicates). -->
+  <% if primary && !show_welcome_hero %>
+    <%= render "my/dashboard/onboarding_checklist", person: primary %>
+  <% end %>
+
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
     text: "My Calendar",
     links: []
   } %>
-
-  <!-- Onboarding Checklist (show only for primary person to avoid duplicates) -->
-  <% if primary %>
-    <%= render "my/dashboard/onboarding_checklist", person: primary %>
-  <% end %>
 
   <!-- Pending Vacancy Invitations -->
   <%= render "my/vacancy_invitation_alerts", invitations: @pending_vacancy_invitations %>

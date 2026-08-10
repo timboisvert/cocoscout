@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_08_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_040000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1810,6 +1810,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_110000) do
     t.boolean "default_signup_based_casting", default: false, null: false
     t.text "description"
     t.text "event_visibility_overrides"
+    t.string "genre"
     t.string "name"
     t.text "old_keys"
     t.integer "organization_id", null: false
@@ -1825,6 +1826,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_110000) do
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
     t.index ["archived_at"], name: "index_productions_on_archived_at"
     t.index ["casting_source"], name: "index_productions_on_casting_source"
+    t.index ["genre"], name: "index_productions_on_genre"
     t.index ["organization_id"], name: "index_productions_on_organization_id"
     t.index ["production_type"], name: "index_productions_on_production_type"
     t.index ["public_key"], name: "index_productions_on_public_key", unique: true
@@ -2865,7 +2867,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_08_110000) do
     t.string "password_reset_token"
     t.bigint "person_id"
     t.datetime "updated_at", null: false
-    t.datetime "welcomed_at"
     t.datetime "welcomed_production_at"
     t.index ["default_person_id"], name: "index_users_on_default_person_id"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true

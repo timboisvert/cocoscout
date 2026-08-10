@@ -503,7 +503,6 @@ Rails.application.routes.draw do
   # Management interface
   namespace :manage do
     get  "/",                              to: "manage#index"
-    get  "/welcome",                       to: "manage#welcome",                    as: "welcome"
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
     # Messages
@@ -524,6 +523,17 @@ Rails.application.routes.draw do
         get "production_data/:production_id", action: :production_data, as: :production_data
       end
     end
+
+    # Producer setup — combined first-run flow for brand-new producers with no
+    # organization: what are you creating -> name it -> pick a plan. Creates the
+    # Organization and Production together; existing-org users use the wizard.
+    get    "/setup",          to: "producer_setup#genre",      as: "producer_setup"
+    post   "/setup/genre",    to: "producer_setup#save_genre", as: "producer_setup_save_genre"
+    get    "/setup/name",     to: "producer_setup#name",       as: "producer_setup_name"
+    post   "/setup/name",     to: "producer_setup#save_name",  as: "producer_setup_save_name"
+    get    "/setup/plan",     to: "producer_setup#plan",       as: "producer_setup_plan"
+    post   "/setup/complete", to: "producer_setup#complete",   as: "producer_setup_complete"
+    delete "/setup/cancel",   to: "producer_setup#cancel",     as: "producer_setup_cancel"
 
     # Productions > Wizard
     get    "/productions/new",                to: "production_wizard#name",          as: "productions_wizard"

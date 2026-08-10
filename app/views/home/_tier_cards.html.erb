@@ -13,7 +13,7 @@
       <% end %>
     </ul>
     <p class="mt-4 text-xs text-slate-400">1 production · 6 events / month</p>
-    <div class="mt-6"><%= render "shared/button", text: "Start free", path: signup_path, variant: "outline", size: "large" %></div>
+    <div class="mt-6"><%= render "shared/button", text: "Start free", path: signup_path(intent: "producer"), variant: "outline", size: "large" %></div>
   </div>
 
   <%# Pro (recommended) %>
@@ -28,7 +28,7 @@
         <li class="flex items-start gap-2"><span class="text-pink-500 mt-0.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg></span><span><%= f.html_safe %></span></li>
       <% end %>
     </ul>
-    <div class="mt-6"><%= render "shared/button", text: "Go Pro", path: signup_path, variant: "primary", size: "large" %></div>
+    <div class="mt-6"><%= render "shared/button", text: "Go Pro", path: signup_path(intent: "producer", plan: "pro", interval: "year"), variant: "primary", size: "large" %></div>
   </div>
 
   <%# Enterprise (dark premium) %>
