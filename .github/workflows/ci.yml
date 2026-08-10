@@ -86,8 +86,8 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Load the schema
-        run: bin/rails db:schema:load
+      - name: Create the database and load the schema
+        run: bin/rails db:prepare
 
       - name: Run the test suite
         run: bundle exec rspec
