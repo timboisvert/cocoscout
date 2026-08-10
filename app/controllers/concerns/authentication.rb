@@ -73,7 +73,11 @@ module Authentication
   # a "Go Pro" CTA carried ride along as query params and are re-allowlisted
   # by the setup flow.
   def producer_intent_landing_path(plan: nil, interval: nil)
-    plan == "pro" ? manage_path(plan: plan, interval: interval) : manage_path
+    if plan == "pro"
+      manage_producer_setup_path(plan: plan, interval: interval)
+    else
+      manage_producer_setup_path
+    end
   end
 
   def start_new_session_for(user)

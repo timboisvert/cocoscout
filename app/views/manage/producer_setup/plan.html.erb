@@ -1,0 +1,54 @@
+<% preselect_pro = @setup_state[:preselect_plan] == "pro" %>
+<% preselect_interval = @setup_state[:preselect_interval] || "year" %>
+<% genre_label = ProductionGenres.label(@setup_state[:genre]) %>
+
+<%= render layout: "manage/producer_setup/setup_layout", locals: { current_step: 2, step_name: "Plan" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Almost there</h2>
+    <p class="text-gray-600 mt-2">
+      Creating <span class="font-semibold text-gray-900"><%= @setup_state[:name] %></span>
+      <span class="text-gray-400">·</span> <%= genre_label %>
+    </p>
+  </div>
+
+  <%= form_with url: manage_producer_setup_complete_path, method: :post, local: true do %>
+    <span class="block text-sm font-medium text-gray-900 mb-1.5">Choose a plan</span>
+    <div class="space-y-2">
+      <label class="flex items-start gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500">
+        <%= radio_button_tag "plan", "free", !preselect_pro, class: "mt-1 h-4 w-4 accent-pink-500" %>
+        <span>
+          <span class="block text-sm font-semibold text-gray-900">Producer — Free</span>
+          <span class="block text-xs text-gray-500">One production, up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> events per month. Casting, availability, sign-ups, messaging, contacts, documents, and courses.</span>
+        </span>
+      </label>
+      <label class="flex items-start gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500">
+        <%= radio_button_tag "plan", "pro", preselect_pro, class: "mt-1 h-4 w-4 accent-pink-500" %>
+        <span class="flex-1">
+          <span class="block text-sm font-semibold text-gray-900">Pro — $20/mo or $200/yr</span>
+          <span class="block text-xs text-gray-500 mb-2">Everything in Producer, unlimited productions and events, plus Money, Staffing, Auditions, Casting Tables, and Reports.</span>
+          <span class="flex gap-4 text-xs text-gray-700">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <%= radio_button_tag "interval", "year", preselect_interval == "year", class: "h-3.5 w-3.5 accent-pink-500" %> Annual ($200/yr)
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <%= radio_button_tag "interval", "month", preselect_interval == "month", class: "h-3.5 w-3.5 accent-pink-500" %> Monthly ($20/mo)
+            </label>
+          </span>
+        </span>
+      </label>
+    </div>
+    <p class="mt-1.5 text-xs text-gray-500">You can upgrade or change plans anytime. Choosing Pro takes you to secure checkout after setup.</p>
+
+    <div class="mt-8 flex items-center justify-between">
+      <%= link_to manage_producer_setup_name_path do %>
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium" %>
+      <% end %>
+      <%= render "shared/button", text: "Create", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

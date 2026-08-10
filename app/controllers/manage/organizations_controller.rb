@@ -58,18 +58,7 @@ module Manage
         # Assign creator as manager via organization role
         OrganizationRole.create!(user: Current.user, organization: @organization, company_role: "manager")
 
-        # Ensure user has a person record and it's associated with this organization
-        if Current.user.person.nil?
-          person = Person.create!(
-            email: Current.user.email_address,
-            first_name: Current.user.email_address.split("@").first.titleize,
-            last_name: ""
-          )
-          Current.user.update(person: person)
-        end
-
-        # Associate the person with the organization if not already
-        @organization.people << Current.user.person unless @organization.people.include?(Current.user.person)
+        ensure_person_in_organization!(@organization)
 
         # Set as current organization
         session[:current_organization_id] ||= {}

@@ -28,6 +28,21 @@
       </div>
 
       <div>
+        <label for="genre" class="block text-sm font-medium text-gray-900 mb-1.5">
+          What kind of production is it?
+          <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <select name="genre" id="genre"
+                class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+          <option value="">Choose one…</option>
+          <% ProductionGenres.keys.each do |genre_key| %>
+            <option value="<%= genre_key %>" <%= "selected" if @wizard_state[:genre] == genre_key %>><%= ProductionGenres.label(genre_key) %></option>
+          <% end %>
+        </select>
+        <p class="mt-1.5 text-xs text-gray-500">Helps us suggest the right roles later in setup</p>
+      </div>
+
+      <div>
         <label for="description" class="block text-sm font-medium text-gray-900 mb-1.5">
           Description
           <span class="text-gray-400 font-normal">(optional)</span>

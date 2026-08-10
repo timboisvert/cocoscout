@@ -1,0 +1,30 @@
+<%= render layout: "manage/producer_setup/setup_layout", locals: { current_step: 0, step_name: "What you're making" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">What are you creating?</h2>
+    <p class="text-gray-600 mt-2">We'll set things up to fit — you can change any of it later.</p>
+  </div>
+
+  <%= form_with url: manage_producer_setup_save_genre_path, method: :post, local: true do %>
+    <div class="grid sm:grid-cols-2 gap-3">
+      <% ProductionGenres.keys.each do |genre_key| %>
+        <label class="flex items-start gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/40 transition">
+          <%= radio_button_tag "genre", genre_key, @setup_state[:genre] == genre_key,
+                class: "mt-1 h-4 w-4 accent-pink-500", required: true %>
+          <span>
+            <span class="block text-sm font-semibold text-gray-900"><%= ProductionGenres.label(genre_key) %></span>
+            <span class="block text-xs text-gray-500 mt-0.5"><%= ProductionGenres.description(genre_key) %></span>
+          </span>
+        </label>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex justify-end">
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

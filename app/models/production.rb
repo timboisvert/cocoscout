@@ -107,6 +107,7 @@ class Production < ApplicationRecord
   scope :non_contract, -> { where.not(production_type: "third_party") }
 
   validates :name, presence: true
+  validates :genre, inclusion: { in: -> { ProductionGenres.keys } }, allow_nil: true
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
   validates :public_key, uniqueness: true, allow_nil: true
   validates :public_key,

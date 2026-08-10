@@ -54,12 +54,19 @@ RSpec.describe "Signup intent routing", type: :request do
   end
 
   describe "landing after signup" do
-    it "sends a producer-intent signup to the producer side" do
+    it "sends a producer-intent signup to producer setup" do
       get producers_path
       get signup_path(intent: "producer")
       sign_up("producer@example.com")
 
-      expect(response).to redirect_to(manage_path)
+      expect(response).to redirect_to(manage_producer_setup_path)
+    end
+
+    it "carries a Go Pro plan choice into producer setup" do
+      get signup_path(intent: "producer", plan: "pro", interval: "month")
+      sign_up("gopro@example.com")
+
+      expect(response).to redirect_to(manage_producer_setup_path(plan: "pro", interval: "month"))
     end
 
     it "sends an organic signup to the talent dashboard" do
@@ -83,11 +90,11 @@ RSpec.describe "Signup intent routing", type: :request do
       expect(session[:signup_plan]).to be_nil
     end
 
-    it "routes a SketchFest signup to the producer side while keeping attribution" do
+    it "routes a SketchFest signup to producer setup while keeping attribution" do
       get sketchfest_path
       sign_up("sketch@example.com")
 
-      expect(response).to redirect_to(manage_path)
+      expect(response).to redirect_to(manage_producer_setup_path)
       expect(session[:referral_source]).to eq("sketchfest")
     end
   end

@@ -43,6 +43,13 @@ module Manage
         return
       end
 
+      # Brand-new producer with nothing to pick: skip the picker entirely and
+      # start the combined first-run setup. A stashed deep-link intent survives —
+      # producer setup's final redirect honors it.
+      if all_orgs.none?
+        redirect_to manage_producer_setup_path and return
+      end
+
       # Add role information for each organization
       @organization_roles = {}
       (@organizations + @demo_organizations).each do |org|

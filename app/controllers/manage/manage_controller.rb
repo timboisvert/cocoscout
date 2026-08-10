@@ -337,6 +337,8 @@ module Manage
       return if instance_of?(Manage::ManageController) && %w[index dismiss_production_welcome].include?(action_name)
       return if controller_name == "organizations" && %w[new create index show].include?(action_name)
       return if controller_name == "select"
+      # Producer setup exists precisely for users who have no organization yet.
+      return if controller_name == "producer_setup"
 
       return if Current.organization
 
@@ -359,6 +361,21 @@ module Manage
     def redirect_to_intent_or(fallback_path, **options)
       intent = session.delete(:manage_onboarding_intent)
       redirect_to(intent || fallback_path, **options)
+    end
+
+    # Guarantee the current user has a Person and that it belongs to the given
+    # organization. Shared by org creation and producer setup.
+    def ensure_person_in_organization!(organization)
+      if Current.user.person.nil?
+        person = Person.create!(
+          email: Current.user.email_address,
+          first_name: Current.user.email_address.split("@").first.titleize,
+          last_name: ""
+        )
+        Current.user.update(person: person)
+      end
+
+      organization.people << Current.user.person unless organization.people.include?(Current.user.person)
     end
 
     # Shared data fetchers for use across controllers
