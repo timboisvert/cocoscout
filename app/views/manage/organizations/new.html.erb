@@ -142,21 +142,23 @@
                   <span class="block text-sm font-semibold text-slate-900">Pro — $20/mo or $200/yr</span>
                   <span class="block text-xs text-slate-500">Everything in Producer, unlimited productions and events, plus Money, Staffing, Auditions, Casting Tables, and Reports.</span>
                 </label>
-              </div>
-              <div class="mt-2">
-                <span class="block text-xs font-medium text-slate-500 mb-1.5">If you choose Pro, how would you like to pay?</span>
-                <div class="grid grid-cols-2 gap-2">
-                  <label class="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg cursor-pointer text-xs text-slate-700 hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/50">
-                    <%= radio_button_tag "interval", "year", true, class: "sr-only" %>
-                    Annual ($200/yr)
-                  </label>
-                  <label class="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg cursor-pointer text-xs text-slate-700 hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/50">
-                    <%= radio_button_tag "interval", "month", false, class: "sr-only" %>
-                    Monthly ($20/mo)
-                  </label>
+
+                <%# Billing interval — a peer of the pro radio, shown only once Pro is chosen. %>
+                <div class="hidden peer-checked/pro:block">
+                  <span class="block text-xs font-medium text-slate-500 mb-1.5">How would you like to pay?</span>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg cursor-pointer text-xs text-slate-700 hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/50">
+                      <%= radio_button_tag "interval", "year", true, class: "sr-only" %>
+                      Annual ($200/yr)
+                    </label>
+                    <label class="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg cursor-pointer text-xs text-slate-700 hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/50">
+                      <%= radio_button_tag "interval", "month", false, class: "sr-only" %>
+                      Monthly ($20/mo)
+                    </label>
+                  </div>
+                  <p class="mt-1.5 text-xs text-slate-500">Choosing Pro takes you to secure checkout after your organization is created. Change plans anytime.</p>
                 </div>
               </div>
-              <p class="mt-1.5 text-xs text-slate-500">You can upgrade or change plans anytime. Choosing Pro takes you to secure checkout after your organization is created.</p>
             </div>
 
             <!-- Info Box -->
