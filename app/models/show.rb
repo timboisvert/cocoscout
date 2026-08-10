@@ -153,6 +153,10 @@ class Show < ApplicationRecord
   # Set default attendance_enabled based on event type
   before_validation :set_attendance_enabled_default, on: :create
 
+  # A room only makes sense within its own location — drop it if the location
+  # changed (or was cleared, e.g. when the show went online)
+  before_validation :clear_mismatched_location_space
+
   # Scope to find all shows in a recurrence group
   scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
 
@@ -572,6 +576,11 @@ class Show < ApplicationRecord
   def set_attendance_enabled_default
     return if attendance_enabled.present? # Don't override if explicitly set
     self.attendance_enabled = attendance_enabled_default?
+  end
+
+  def clear_mismatched_location_space
+    return if location_space_id.blank?
+    self.location_space_id = nil if location_id.blank? || location_space&.location_id != location_id
   end
 
   def create_attendees_role!

@@ -42,6 +42,7 @@ module Manage
             event_type: original_show.event_type,
             date_and_time: original_show.date_and_time,
             location_id: original_show.location_id,
+            location_space_id: original_show.location_space_id,
             is_online: original_show.is_online,
             online_location_info: original_show.online_location_info,
             secondary_name: original_show.secondary_name,
@@ -122,7 +123,7 @@ module Manage
     # Step 3: Location - Where is the event?
     def location
       @wizard_state[:is_online] ||= false
-      @locations = Current.organization.locations.order(:created_at)
+      @locations = Current.organization.locations.includes(:location_spaces).order(:created_at)
 
       # Set default location if available
       if @wizard_state[:location_id].blank?
@@ -134,11 +135,12 @@ module Manage
     def save_location
       @wizard_state[:is_online] = params[:is_online] == "true"
       @wizard_state[:location_id] = params[:location_id]
+      @wizard_state[:location_space_id] = params[:location_space_id]
       @wizard_state[:online_location_info] = params[:online_location_info]
 
       if !@wizard_state[:is_online] && @wizard_state[:location_id].blank?
         flash.now[:alert] = "Please select a location or mark as online"
-        @locations = Current.organization.locations.order(:created_at)
+        @locations = Current.organization.locations.includes(:location_spaces).order(:created_at)
         render :location, status: :unprocessable_entity and return
       end
 
@@ -163,6 +165,7 @@ module Manage
     # Step 5: Review - Confirm and create
     def review
       @location = @wizard_state[:location_id].present? ? Current.organization.locations.find_by(id: @wizard_state[:location_id]) : nil
+      @location_space = @location && @wizard_state[:location_space_id].present? ? @location.location_spaces.find_by(id: @wizard_state[:location_space_id]) : nil
     end
 
     def create_show
@@ -218,6 +221,7 @@ module Manage
         date_and_time: @wizard_state[:date_and_time],
         duration_minutes: @wizard_state[:duration_minutes],
         location_id: @wizard_state[:is_online] ? nil : @wizard_state[:location_id],
+        location_space_id: @wizard_state[:is_online] ? nil : @wizard_state[:location_space_id],
         is_online: @wizard_state[:is_online],
         online_location_info: @wizard_state[:online_location_info],
         secondary_name: @wizard_state[:secondary_name],
@@ -233,6 +237,7 @@ module Manage
       else
         flash.now[:alert] = @show.errors.full_messages.join(", ")
         @location = @wizard_state[:location_id].present? ? Current.organization.locations.find_by(id: @wizard_state[:location_id]) : nil
+        @location_space = @location && @wizard_state[:location_space_id].present? ? @location.location_spaces.find_by(id: @wizard_state[:location_space_id]) : nil
         render :review, status: :unprocessable_entity
       end
     end
@@ -271,6 +276,7 @@ module Manage
           date_and_time: date,
           duration_minutes: @wizard_state[:duration_minutes],
           location_id: @wizard_state[:is_online] ? nil : @wizard_state[:location_id],
+          location_space_id: @wizard_state[:is_online] ? nil : @wizard_state[:location_space_id],
           is_online: @wizard_state[:is_online],
           online_location_info: @wizard_state[:online_location_info],
           secondary_name: @wizard_state[:secondary_name],

@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["modal", "locationSelect", "form", "errorContainer", "errorCount", "errorList", "inPersonContainer", "onlineContainer", "isOnlineField", "toggleLink", "toggleLinkText"]
-    static values = { eventType: String }
+    static targets = ["modal", "locationSelect", "form", "errorContainer", "errorCount", "errorList", "inPersonContainer", "onlineContainer", "isOnlineField", "toggleLink", "toggleLinkText", "spaceContainer", "spaceSelect"]
+    static values = { eventType: String, spaces: Object }
 
     connect() {
         // Add escape key listener
@@ -265,7 +265,36 @@ export default class extends Controller {
     }
 
     handleLocationChange(event) {
-        // This is just a placeholder if we need to react to location selection
+        this.updateSpaceOptions()
+    }
+
+    // Rebuild the space/room dropdown for the currently selected location.
+    // Hidden entirely when the location has no spaces defined.
+    updateSpaceOptions() {
+        if (!this.hasSpaceSelectTarget || !this.hasLocationSelectTarget) return
+
+        const locationId = this.locationSelectTarget.value
+        const spaces = (this.spacesValue || {})[locationId] || []
+        const select = this.spaceSelectTarget
+        const previous = select.value
+
+        select.innerHTML = ""
+        const blank = document.createElement("option")
+        blank.value = ""
+        blank.textContent = "Entire venue"
+        select.appendChild(blank)
+
+        spaces.forEach(space => {
+            const option = document.createElement("option")
+            option.value = space.id
+            option.textContent = space.name
+            if (String(space.id) === previous) option.selected = true
+            select.appendChild(option)
+        })
+
+        if (this.hasSpaceContainerTarget) {
+            this.spaceContainerTarget.classList.toggle("hidden", spaces.length === 0)
+        }
     }
 }
 

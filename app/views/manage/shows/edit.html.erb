@@ -1,6 +1,7 @@
 <% content_for :title, "Edit #{ @show.event_type.titleize }: #{@show.date_and_time.strftime("%A, %B %-d, %Y")}" %>
 
-<div class="w-full mb-10" data-controller="location-modal tabs" data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>">
+<% location_spaces_map = Current.organization.locations.includes(:location_spaces).each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } } %>
+<div class="w-full mb-10" data-controller="location-modal tabs" data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>" data-location-modal-spaces-value="<%= location_spaces_map.to_json %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -65,6 +66,17 @@
             <a href="#" data-action="click->location-modal#toggleLocationType" class="text-pink-500 underline text-sm" data-location-modal-target="toggleLink">
               <span data-location-modal-target="toggleLinkText">Host <%= @show.event_type&.titleize&.downcase || 'event' %> online</span>
             </a>
+          </div>
+
+          <% current_spaces = location_spaces_map[@show.location_id] || [] %>
+          <div data-location-modal-target="spaceContainer" class="mt-3 <%= 'hidden' if current_spaces.empty? %>">
+            <%= form.label :location_space_id, "Space" %>
+            <span class="text-sm text-gray-500">(optional)</span>
+            <%= form.select :location_space_id,
+                  options_for_select(current_spaces.map { |s| [ s[:name], s[:id] ] }, @show.location_space_id),
+                  { include_blank: "Entire venue" },
+                  { class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full",
+                    data: { "location-modal-target": "spaceSelect" } } %>
           </div>
         </div>
 

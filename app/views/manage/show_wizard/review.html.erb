@@ -55,7 +55,7 @@
             <p class="text-sm text-gray-600"><%= @wizard_state[:online_location_info] %></p>
           <% end %>
         <% elsif @location %>
-          <p class="text-base text-gray-900"><%= @location.name %></p>
+          <p class="text-base text-gray-900"><%= @location.name %><% if @location_space %> · <%= @location_space.name %><% end %></p>
           <% if @location.full_address.present? %>
             <p class="text-sm text-gray-600"><%= @location.full_address %></p>
           <% end %>

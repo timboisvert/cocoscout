@@ -442,6 +442,7 @@ module Manage
           event_type: @last_show.event_type,
           secondary_name: @last_show.secondary_name,
           location_id: @last_show.location_id,
+          location_space_id: @last_show.location_space_id,
           is_online: @last_show.is_online,
           online_location_info: @last_show.online_location_info,
           casting_enabled: @last_show.casting_enabled,
@@ -481,6 +482,7 @@ module Manage
       @show.event_type = @original_show.event_type
       @show.secondary_name = @original_show.secondary_name
       @show.location = @original_show.location
+      @show.location_space = @original_show.location_space
       @show.casting_enabled = @original_show.casting_enabled
       @show.use_custom_roles = @original_show.use_custom_roles
       @show.call_time_enabled = @original_show.call_time_enabled
@@ -617,6 +619,7 @@ module Manage
           event_type: params[:show][:event_type],
           secondary_name: params[:show][:secondary_name],
           location_id: params[:show][:location_id],
+          location_space_id: params[:show][:location_space_id],
           is_online: params[:show][:is_online],
           online_location_info: params[:show][:online_location_info],
           casting_enabled: params[:show][:casting_enabled],
@@ -803,6 +806,7 @@ module Manage
       event_type = params[:show][:event_type] || @show.event_type
       secondary_name = params[:show][:secondary_name] || @show.secondary_name
       location_id = params[:show][:location_id] || @show.location_id
+      location_space_id = params[:show].key?(:location_space_id) ? params[:show][:location_space_id].presence : @show.location_space_id
       is_online = params[:show][:is_online].nil? ? @show.is_online : params[:show][:is_online]
       online_location_info = params[:show][:online_location_info] || @show.online_location_info
       casting_enabled = params[:show][:casting_enabled].nil? ? @show.casting_enabled : params[:show][:casting_enabled]
@@ -893,6 +897,7 @@ module Manage
           event_type: event_type,
           secondary_name: secondary_name,
           location_id: location_id,
+          location_space_id: location_space_id,
           is_online: is_online,
           online_location_info: online_location_info,
           casting_enabled: casting_enabled,
@@ -1709,6 +1714,7 @@ module Manage
           event_type: template_show.event_type,
           secondary_name: template_show.secondary_name,
           location_id: template_show.location_id,
+          location_space_id: template_show.location_space_id,
           is_online: template_show.is_online,
           online_location_info: template_show.online_location_info,
           casting_enabled: template_show.casting_enabled,
@@ -1835,7 +1841,7 @@ module Manage
 
     # Only allow a list of trusted parameters through.
     def show_params
-      permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :production_id, :location_id,
+      permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :production_id, :location_id, :location_space_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :is_online, :online_location_info,
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled,
@@ -1844,6 +1850,7 @@ module Manage
       # If is_online is true, clear location_id; if false, clear online_location_info
       if [ "1", "true", true ].include?(permitted[:is_online])
         permitted[:location_id] = nil
+        permitted[:location_space_id] = nil
         permitted[:is_online] = true
       else
         permitted[:online_location_info] = nil

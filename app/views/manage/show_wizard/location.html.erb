@@ -2,7 +2,8 @@
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Where is this event?</h2>
   <p class="text-gray-600 mb-6">Choose the location for your <%= @wizard_state[:event_type]&.titleize&.downcase || "event" %>.</p>
 
-  <%= form_with url: manage_shows_wizard_save_location_path(@production), method: :post, local: true, data: { controller: "location-toggle" } do |form| %>
+  <% location_spaces_map = @locations.each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } } %>
+  <%= form_with url: manage_shows_wizard_save_location_path(@production), method: :post, local: true, data: { controller: "location-toggle", "location-toggle-spaces-value": location_spaces_map.to_json } do |form| %>
     <div class="mb-6">
       <div class="flex items-center gap-4 mb-4">
         <label class="inline-flex items-center cursor-pointer">
@@ -30,7 +31,9 @@
       <!-- In-Person Location -->
       <div data-location-toggle-target="inPersonFields" class="<%= 'hidden' if @wizard_state[:is_online] %>">
         <label class="block text-sm font-medium text-gray-700 mb-2">Select Location</label>
-        <select name="location_id" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full">
+        <select name="location_id" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full"
+                data-location-toggle-target="locationSelect"
+                data-action="change->location-toggle#locationChanged">
           <option value="">Select a location</option>
           <% @locations.each do |location| %>
             <option value="<%= location.id %>" <%= "selected" if @wizard_state[:location_id].to_s == location.id.to_s %>><%= location.name %></option>
@@ -40,6 +43,21 @@
           Don't see your location? You can add locations in
           <%= link_to "Locations", manage_locations_path, class: "text-pink-500 hover:text-pink-600 underline" %>.
         </p>
+
+        <% current_spaces = location_spaces_map[@wizard_state[:location_id].presence&.to_i] || [] %>
+        <div data-location-toggle-target="spaceFields" class="mt-4 <%= 'hidden' if current_spaces.empty? %>">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+          <select name="location_space_id" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full"
+                  data-location-toggle-target="spaceSelect">
+            <option value="">Entire venue</option>
+            <% current_spaces.each do |space| %>
+              <option value="<%= space[:id] %>" <%= "selected" if @wizard_state[:location_space_id].to_s == space[:id].to_s %>><%= space[:name] %></option>
+            <% end %>
+          </select>
+          <p class="text-sm text-gray-500 mt-2">
+            Picking the space keeps other rooms free for rentals and other events on the same day.
+          </p>
+        </div>
       </div>
 
       <!-- Online Location -->
