@@ -818,8 +818,15 @@ module Manage
       public_profile_visible = params[:show][:public_profile_visible].nil? ? @show.public_profile_visible : params[:show][:public_profile_visible]
       use_custom_roles = params[:show][:use_custom_roles].nil? ? @show.use_custom_roles : params[:show][:use_custom_roles]
 
-      # Delete all existing events in the series
-      @show.recurrence_group.destroy_all
+      # Delete all existing events in the series. Unlink referencing contract
+      # payments first — contract_payments.show_id has an FK that blocks
+      # deleting a referenced show, and the ShowFinancials cascade re-links a
+      # payment to the very show being deleted (see
+      # Show.without_contract_payment_sync). Pending payments themselves stay:
+      # the rebuilt series re-links them by due date as the new shows sync.
+      series_shows = @show.recurrence_group.to_a
+      ContractPayment.where(show_id: series_shows.map(&:id)).update_all(show_id: nil)
+      Show.without_contract_payment_sync { series_shows.each(&:destroy!) }
 
       # Parse new recurrence parameters - use Time.zone.parse to respect application timezone
       start_datetime = Time.zone.parse(params[:show][:recurrence_start_datetime])
@@ -1018,26 +1025,41 @@ module Manage
 
       if scope == "all" && @show.recurring?
         # Delete all occurrences in the recurrence group
-        count = @show.recurrence_group.count
-        @show.recurrence_group.destroy_all
+        shows_to_delete = @show.recurrence_group.to_a
+        count = shows_to_delete.size
+        dropped = destroy_shows(shows_to_delete)
         redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully deleted #{count} #{event_label.pluralize.downcase}",
+                    notice: "Successfully deleted #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}",
                     status: :see_other
       elsif scope == "this_and_future" && @show.recurring?
         # Delete this and all future occurrences, keep past shows
-        future_shows = @show.recurrence_group.where("date_and_time >= ?", @show.date_and_time)
-        count = future_shows.count
-        future_shows.destroy_all
+        shows_to_delete = @show.recurrence_group.where("date_and_time >= ?", @show.date_and_time).to_a
+        count = shows_to_delete.size
+        dropped = destroy_shows(shows_to_delete)
         redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully deleted #{count} future #{event_label.pluralize.downcase}",
+                    notice: "Successfully deleted #{count} future #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}",
                     status: :see_other
       else
         # Delete just this occurrence
-        @show.destroy!
+        dropped = destroy_shows([ @show ])
         redirect_to manage_production_shows_path(@production),
-                    notice: "#{event_label} was successfully deleted",
+                    notice: "#{event_label} was successfully deleted#{cancellation_money_note(dropped)}",
                     status: :see_other
       end
+    end
+
+    # Deleting a show under a revenue-share contract mirrors cancelling one:
+    # still-pending, uncommitted payments come off with it, while anything paid
+    # or in a payout run stays — but loses its show link first, because
+    # contract_payments.show_id has an FK that blocks deleting a referenced
+    # show. The sync stays suppressed while the shows go: the ShowFinancials
+    # cascade fires it mid-destroy and it re-links a payment to the very show
+    # being deleted (see Show.without_contract_payment_sync).
+    def destroy_shows(shows)
+      dropped = drop_contract_payments_for(shows)
+      ContractPayment.where(show_id: shows.map(&:id)).update_all(show_id: nil)
+      Show.without_contract_payment_sync { shows.each(&:destroy!) }
+      dropped
     end
 
     def uncancel

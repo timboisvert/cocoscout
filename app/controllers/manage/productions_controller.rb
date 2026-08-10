@@ -99,7 +99,15 @@ module Manage
       return unless Current.organization && Current.user
 
       session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = nil
-      @production.destroy!
+      # Unlink referencing contract payments before the shows cascade —
+      # contract_payments.show_id has an FK that blocks deleting a referenced
+      # show, and the ShowFinancials cascade re-links a payment to the very
+      # show being deleted (see Show.without_contract_payment_sync). The
+      # contracts themselves are dependent: :nullify and survive with their
+      # payment history.
+      show_ids = @production.shows.pluck(:id)
+      ContractPayment.where(show_id: show_ids).update_all(show_id: nil) if show_ids.any?
+      Show.without_contract_payment_sync { @production.destroy! }
       redirect_to manage_productions_path, notice: "Production was successfully deleted", status: :see_other and return
     end
 
