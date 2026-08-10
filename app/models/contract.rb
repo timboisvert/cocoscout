@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class Contract < ApplicationRecord
+  # Dropped in a follow-up migration; ignored first so no running container
+  # names them during the deploy that removes them.
+  self.ignored_columns += %w[skip_event_creation]
+
   belongs_to :organization
   belongs_to :contractor, optional: true
 
@@ -96,8 +100,7 @@ class Contract < ApplicationRecord
 
       update!(
         status: :active,
-        activated_at: Time.current,
-        skip_event_creation: false
+        activated_at: Time.current
         # Keep draft_data - it contains the full contract config (services, payment_config, etc.)
       )
       activated = true

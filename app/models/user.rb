@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
+  # Dropped in a follow-up migration; ignored first so no running container
+  # names them during the deploy that removes them.
+  self.ignored_columns += %w[password_reset_token password_reset_sent_at]
+
   # Multi-profile support: users can have multiple person profiles
   has_many :people, dependent: :nullify
   belongs_to :default_person, class_name: "Person", optional: true

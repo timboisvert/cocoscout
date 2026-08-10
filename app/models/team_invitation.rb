@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class TeamInvitation < ApplicationRecord
+  # Dropped in a follow-up migration; ignored first so no running container
+  # names them during the deploy that removes them.
+  self.ignored_columns += %w[invitation_notifications_enabled]
+
   belongs_to :organization
   belongs_to :production, optional: true
   belongs_to :person, optional: true

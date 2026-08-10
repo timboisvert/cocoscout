@@ -4,6 +4,10 @@
 # scheduler computes the next target time and a delivery job mails the
 # user when it elapses. Channels: email (v1), web_push, native (later).
 class MicSignupAlert < ApplicationRecord
+  # Dropped in a follow-up migration; ignored first so no running container
+  # names them during the deploy that removes them.
+  self.ignored_columns += %w[last_delivered_at]
+
   belongs_to :mic
   belongs_to :user
 

@@ -13,6 +13,10 @@
 #
 # See docs/mics_finder_plan.md for the full spec.
 class Mic < ApplicationRecord
+  # Dropped in a follow-up migration; ignored first so no running container
+  # names them during the deploy that removes them.
+  self.ignored_columns += %w[recurrence_rule signup_opens_offset_minutes]
+
   belongs_to :venue
   belongs_to :production, optional: true
   belongs_to :lead_owner, class_name: "User",

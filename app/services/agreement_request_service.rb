@@ -12,7 +12,7 @@ class AgreementRequestService
   class << self
     # Send the request to specific people for a production.
     # Returns the number of people actually contacted (those with an account).
-    def send_to(production:, people:, via: "manual", sent_by: nil)
+    def send_to(production:, people:, sent_by: nil)
       return 0 unless production.agreement_template.present?
 
       # Only people with a login can receive the message; those still on an
@@ -28,7 +28,7 @@ class AgreementRequestService
 
       targets.each do |person|
         deliver(production: production, person: person, sender: sender, url: url)
-        AgreementRequest.record!(production: production, person: person, via: via, sent_by: sent_by)
+        AgreementRequest.record!(production: production, person: person, sent_by: sent_by)
       end
 
       targets.size
@@ -44,7 +44,7 @@ class AgreementRequestService
         next unless production.agreement_required? && production.agreement_auto_send?
         next if AgreementRequest.exists?(production: production, person: person)
 
-        send_to(production: production, people: [ person ], via: "auto_talent_pool")
+        send_to(production: production, people: [ person ])
       end
     rescue StandardError => e
       Rails.logger.error("[AgreementRequestService] auto-send failed for person #{person&.id}: #{e.class}: #{e.message}")

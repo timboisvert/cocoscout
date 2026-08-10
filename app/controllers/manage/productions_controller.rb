@@ -333,7 +333,6 @@ module Manage
       count = AgreementRequestService.send_to(
         production: @production,
         people: recipients.to_a,
-        via: "manual",
         sent_by: Current.user
       )
 

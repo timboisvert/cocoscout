@@ -7,6 +7,10 @@
 # One row per (production, person). Re-sending bumps sent_at and send_count
 # rather than creating duplicates (see .record!).
 class AgreementRequest < ApplicationRecord
+  # Dropped in a follow-up migration; ignored first so no running container
+  # names them during the deploy that removes them.
+  self.ignored_columns += %w[sent_via]
+
   belongs_to :production
   belongs_to :person
   belongs_to :agreement_template, optional: true
@@ -19,11 +23,10 @@ class AgreementRequest < ApplicationRecord
 
   # Idempotent record of "we asked this person". Creates the row on first send,
   # bumps sent_at / send_count on re-sends.
-  def self.record!(production:, person:, via: "manual", sent_by: nil)
+  def self.record!(production:, person:, sent_by: nil)
     request = find_or_initialize_by(production: production, person: person)
     request.agreement_template = production.agreement_template
     request.sent_by = sent_by if sent_by
-    request.sent_via = via
     request.sent_at = Time.current
     request.send_count = request.persisted? ? request.send_count + 1 : 1
     request.save!
