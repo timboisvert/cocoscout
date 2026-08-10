@@ -79,7 +79,6 @@ class Person < ApplicationRecord
   has_many :profile_skills, as: :profileable, dependent: :destroy
 
   # Calendar sync
-  has_many :calendar_subscriptions, dependent: :destroy
 
   # Messages addressed to this person (via MessageRecipient)
   has_many :message_recipients, as: :recipient, dependent: :destroy

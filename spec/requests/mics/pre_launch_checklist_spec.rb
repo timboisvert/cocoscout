@@ -6,7 +6,6 @@
 # Rich Results) are listed in the build summary instead.
 
 require "rails_helper"
-require "icalendar"
 require "nokogiri"
 
 RSpec.describe "Mics pre-launch checklist", type: :request do

@@ -229,12 +229,6 @@ GEM
     http-2 (1.2.0)
     i18n (1.15.0)
       concurrent-ruby (~> 1.0)
-    icalendar (2.12.3)
-      base64
-      ice_cube (~> 0.16)
-      logger
-      ostruct
-    ice_cube (0.17.0)
     image_processing (1.14.0)
       mini_magick (>= 4.9.5, < 6)
       ruby-vips (>= 2.0.17, < 3)
@@ -644,7 +638,6 @@ DEPENDENCIES
   dotenv-rails
   factory_bot_rails
   faker
-  icalendar (~> 2.10)
   image_processing (~> 1.2)
   importmap-rails
   kamal

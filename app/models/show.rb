@@ -21,10 +21,6 @@ class Show < ApplicationRecord
   has_many :messages, dependent: :nullify
   # Extra shows a merged staffing shift covers (the join rows die with the show).
   has_many :shift_shows, dependent: :destroy
-  # External-calendar mapping rows. No dependent option: prepare_calendar_events_for_destruction
-  # removes them and schedules remote (Google) deletion after commit.
-  has_many :calendar_events
-
   has_many :show_person_role_assignments, dependent: :destroy
 
   # Polymorphic associations for cast members (people or groups)
@@ -136,15 +132,6 @@ class Show < ApplicationRecord
 
   # Cache invalidation - invalidate production dashboard when show changes
   after_commit :invalidate_production_caches
-
-  # Calendar sync - trigger sync for affected people when show changes
-  after_commit :trigger_calendar_sync, on: [ :create, :update ]
-  # calendar_events.show_id carries a NOT NULL FK, so the mapping rows must go
-  # BEFORE the show row is deleted (an after_destroy hook never gets the chance —
-  # the DELETE itself is what trips the constraint). Remote deletion is network
-  # I/O, so it runs in a job after commit.
-  before_destroy :prepare_calendar_events_for_destruction
-  after_destroy_commit :enqueue_remote_calendar_event_cleanup
 
   # Contract payment sync - update revenue-share contract payments when show or its financials change
   after_commit :sync_contract_payments, on: [ :create, :update ]
@@ -934,70 +921,5 @@ class Show < ApplicationRecord
   # Determine if we should clear assignments when toggling custom roles
   def should_clear_assignments_on_toggle?
     use_custom_roles_changed? && !skip_assignment_clear_on_role_toggle
-  end
-
-  def trigger_calendar_sync
-    # Don't sync calendar for past shows
-    return if date_and_time < Time.current
-
-    # Find all people who might have this show in their calendar sync
-    # This includes:
-    # 1. People assigned to this show
-    # 2. People in the talent pool for this production (if they sync "all")
-    person_ids = affected_person_ids_for_calendar_sync
-
-    # Queue sync jobs for each person's subscriptions
-    CalendarSubscription.enabled.where(person_id: person_ids).find_each do |subscription|
-      CalendarSyncJob.perform_later(subscription.id)
-    end
-  end
-
-  def prepare_calendar_events_for_destruction
-    # Capture the Google event handles, then drop the local mapping rows so the
-    # FK doesn't block deleting this show. iCal is a pull feed — its rows just go.
-    @remote_calendar_events_to_cleanup = calendar_events
-      .joins(:calendar_subscription)
-      .where(calendar_subscriptions: { provider: "google" })
-      .pluck(:calendar_subscription_id, :provider_event_id)
-    # NOT the association's delete_all — without a dependent option that
-    # nullifies show_id, which its NOT NULL constraint rejects.
-    CalendarEvent.where(show_id: id).delete_all
-  end
-
-  def enqueue_remote_calendar_event_cleanup
-    (@remote_calendar_events_to_cleanup || []).each do |subscription_id, provider_event_id|
-      CalendarEventCleanupJob.perform_later(subscription_id, provider_event_id)
-    end
-  end
-
-  def affected_person_ids_for_calendar_sync
-    person_ids = Set.new
-
-    # People directly assigned to this show
-    show_person_role_assignments.where(assignable_type: "Person").pluck(:assignable_id).each do |id|
-      person_ids << id
-    end
-
-    # People in groups assigned to this show
-    group_ids = show_person_role_assignments.where(assignable_type: "Group").pluck(:assignable_id)
-    GroupMembership.where(group_id: group_ids).pluck(:person_id).each do |id|
-      person_ids << id
-    end
-
-    # People in the production's effective talent pool (they might have "talent_pool" sync scope)
-    talent_pool = production.effective_talent_pool
-    if talent_pool
-      TalentPoolMembership.where(talent_pool_id: talent_pool.id, member_type: "Person").pluck(:member_id).each do |id|
-        person_ids << id
-      end
-
-      # People in groups that are in the talent pool
-      group_ids_in_pool = TalentPoolMembership.where(talent_pool_id: talent_pool.id, member_type: "Group").pluck(:member_id)
-      GroupMembership.where(group_id: group_ids_in_pool).pluck(:person_id).each do |id|
-        person_ids << id
-      end
-    end
-
-    person_ids.to_a
   end
 end

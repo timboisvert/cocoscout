@@ -6,7 +6,6 @@ gem "aws-sdk-s3", require: false
 gem "bcrypt", "~> 3.1.7"
 gem "bootsnap", require: false
 gem "csv" # bundled with Ruby <3.4; required by lib/tasks/mics_import_chicago.rake
-gem "icalendar", "~> 2.10"
 gem "image_processing", "~> 1.2"
 gem "importmap-rails"
 gem "kamal", require: false

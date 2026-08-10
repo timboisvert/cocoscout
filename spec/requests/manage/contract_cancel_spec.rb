@@ -55,20 +55,15 @@ RSpec.describe "Manage::Contracts cancel page", type: :request do
   describe "process_cancel with rows referencing the contract's shows" do
     let!(:show) { build_rental_show!(starts_at: 2.weeks.from_now.change(hour: 19)) }
 
-    it "cancels despite synced calendar events on a show, scheduling remote cleanup" do
-      subscription = CalendarSubscription.create!(person: create(:person), provider: "google")
-      event = CalendarEvent.create!(calendar_subscription: subscription, show: show, provider_event_id: "evt_1")
-      # Rows that reference the production would block deleting it, too
+    it "cancels despite rows that reference the production" do
+      # Rows that reference the production would block deleting it
       AuditionWizardState.create!(production: production, user: owner)
 
-      expect {
-        post process_cancel_manage_contract_path(contract), params: { settlement_type: "cancel_all" }
-      }.to have_enqueued_job(CalendarEventCleanupJob).with(subscription.id, "evt_1")
+      post process_cancel_manage_contract_path(contract), params: { settlement_type: "cancel_all" }
 
       expect(response).to redirect_to(manage_contracts_path)
       expect(contract.reload.status).to eq("cancelled")
       expect(Show.exists?(show.id)).to be(false)
-      expect(CalendarEvent.exists?(event.id)).to be(false)
       expect(Production.exists?(production.id)).to be(false)
     end
 
