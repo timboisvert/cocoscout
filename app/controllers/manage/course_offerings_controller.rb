@@ -196,51 +196,46 @@ module Manage
     end
 
     def invite_instructor
-      name = params[:name].to_s.strip
-      email = params[:email].to_s.strip
+      email = params[:email]&.strip&.downcase
+      name = params[:name]&.strip
 
-      if name.blank? || email.blank?
-        render json: { error: "Name and email are required" }, status: :unprocessable_entity
+      if email.blank? || name.blank?
+        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_entity
         return
       end
 
-      # Check if a user with this email already exists
-      existing_user = User.find_by(email_address: email)
-      if existing_user&.person
-        render json: {
-          person_id: existing_user.person.id,
-          name: existing_user.person.name,
-          email: existing_user.person.email,
-          initials: existing_user.person.initials,
-          headshot_url: existing_user.person.safe_headshot_variant(:tile) ? url_for(existing_user.person.safe_headshot_variant(:tile)) : nil,
-          message: "This person already has an account"
-        }
-        return
+      # Check if person with this email already exists
+      existing_person = Person.find_by(email: email)
+
+      if existing_person
+        # Add to org if needed
+        unless existing_person.organizations.include?(Current.organization)
+          existing_person.organizations << Current.organization
+        end
+
+        render json: { success: true, person_id: existing_person.id, message: "#{existing_person.name} selected as instructor" }
+      else
+        # Create new person and user account
+        person = Person.create!(name: name, email: email)
+        person.organizations << Current.organization
+
+        user = User.create!(
+          email_address: email,
+          password: User.generate_secure_password
+        )
+        person.update!(user: user)
+
+        # Send invitation email
+        invitation = PersonInvitation.create!(
+          email: email,
+          organization: Current.organization
+        )
+        Manage::PersonMailer.person_invitation(invitation).deliver_later
+
+        render json: { success: true, person_id: person.id, message: "Invitation sent to #{name}" }
       end
-
-      # Create person + user + send invitation
-      person = Person.create!(
-        name: name,
-        email: email,
-        created_by_org: Current.organization
-      )
-
-      user = User.create!(
-        email_address: email,
-        password: SecureRandom.hex(32)
-      )
-      person.update!(user: user)
-
-      UserMailer.invitation_email(user, Current.organization).deliver_later
-
-      render json: {
-        person_id: person.id,
-        name: person.name,
-        email: person.email,
-        initials: person.initials,
-        headshot_url: nil,
-        message: "Invitation sent to #{email}"
-      }
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
     end
 
     def destroy
