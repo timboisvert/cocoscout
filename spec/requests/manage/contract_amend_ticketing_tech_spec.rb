@@ -83,6 +83,49 @@ RSpec.describe "Manage::Contracts amend ticketing & tech", type: :request do
     expect(ContractPayment.exists?(paid.id)).to be(true)
   end
 
+  # The per-event services date list must reflect the contract's schedule as
+  # amended: real rentals (not the creation wizard's stale draft bookings),
+  # plus dates being added in this amendment, minus dates being removed.
+  describe "per-event services date list" do
+    let!(:per_event_option) do
+      org.contract_service_options.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly",
+                                           default_direction: "incoming", booking_mode: "per_event")
+    end
+    let!(:rental) do
+      create(:space_rental, contract: contract,
+        starts_at: Time.zone.parse("2026-08-20 18:00"), ends_at: Time.zone.parse("2026-08-20 21:00"))
+    end
+
+    it "lists the contract's real rentals, not the creation wizard's draft bookings" do
+      # Simulate a contract whose draft bookings predate an applied amendment.
+      contract.update_draft_step(:bookings, [ { "starts_at" => Time.zone.parse("2026-07-01 18:00").iso8601, "duration" => "2" } ])
+
+      get amend_ticketing_tech_manage_contract_path(contract)
+
+      expect(response.body).to include("Thu, Aug 20")
+      expect(response.body).not_to include("Wed, Jul 1")
+    end
+
+    it "includes dates staged for addition in this amendment" do
+      contract.update_amend_data(
+        "new_bookings" => [ { "starts_at" => Time.zone.parse("2026-10-15 19:00").iso8601, "duration" => "3" } ]
+      )
+
+      get amend_ticketing_tech_manage_contract_path(contract)
+
+      expect(response.body).to include("Thu, Aug 20")
+      expect(response.body).to include("Thu, Oct 15")
+    end
+
+    it "excludes dates staged for removal in this amendment" do
+      contract.update_amend_data("removed_rental_ids" => [ rental.id ])
+
+      get amend_ticketing_tech_manage_contract_path(contract)
+
+      expect(response.body).not_to include("Thu, Aug 20")
+    end
+  end
+
   # Production name is edited on the bookings (Events) step now, not here.
   describe "production name (on the bookings step)" do
     let!(:production) { create(:production, organization: org, name: "Music & Improv Show").tap { |p| contract.update!(production: p) } }

@@ -515,9 +515,11 @@ module Manage
       @ticketing = @amend_data["ticketing"] || @contract.draft_ticketing
       @service_options = Current.organization.contract_service_options.ordered
       @existing_services = @amend_data["services"] || @contract.draft_services
-      # Amended bookings when the schedule step already changed them, else the
-      # contract's current dates — per-event services pick from these.
-      @bookings = @amend_data["bookings"] || @contract.draft_bookings || []
+      # The contract's live dates as amended so far: surviving rentals plus any
+      # dates added in the schedule step — per-event services pick from these.
+      # (Never the creation wizard's draft bookings; those go stale the moment
+      # an amendment touches the schedule.)
+      @bookings = effective_amend_bookings
     end
 
     def save_amend_ticketing_tech
@@ -688,15 +690,15 @@ module Manage
       end
     end
 
-    # The bookings the Financials step's per-event count should reflect: the
-    # rentals that survive this amendment plus any newly-added ones. Shaped like
-    # draft bookings ({ "starts_at" => iso }) for the shared partial.
+    # The bookings the amend steps should reflect: the rentals that survive
+    # this amendment plus any newly-added ones. Shaped like draft bookings
+    # ({ "starts_at" => iso, "duration" => hours }) for the shared partials.
     def effective_amend_bookings
       amend = @contract.amend_data
       removed = amend["removed_rental_ids"] || []
       remaining = @contract.space_rentals.where.not(id: removed).order(:starts_at)
-      remaining.map { |r| { "starts_at" => r.starts_at.iso8601 } } +
-        (amend["new_bookings"] || []).map { |b| { "starts_at" => b["starts_at"] } }
+      remaining.map { |r| { "starts_at" => r.starts_at.iso8601, "duration" => ((r.ends_at - r.starts_at) / 1.hour).round(1) } } +
+        (amend["new_bookings"] || []).map { |b| { "starts_at" => b["starts_at"], "duration" => b["duration"] } }
     end
 
     # The real scheduling conflicts this amendment's new events would create: a
