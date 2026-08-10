@@ -1,15 +1,11 @@
 # frozen_string_literal: true
 
 class PayoutScheme < ApplicationRecord
-  # Distribution methods
-  DISTRIBUTION_METHODS = %w[equal shares per_ticket per_ticket_guaranteed flat_fee no_pay].freeze
-
   belongs_to :organization, optional: true
   belongs_to :production, optional: true
 
   has_many :show_payouts, dependent: :nullify
   has_many :payout_scheme_defaults, dependent: :destroy
-  has_many :default_for_productions, through: :payout_scheme_defaults, source: :production
 
   validates :name, presence: true
   validates :rules, presence: true

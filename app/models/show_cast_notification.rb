@@ -12,7 +12,6 @@ class ShowCastNotification < ApplicationRecord
 
   scope :for_show, ->(show) { where(show: show) }
   scope :cast_notifications, -> { where(notification_type: :cast) }
-  scope :removed_notifications, -> { where(notification_type: :removed) }
 
   # Get the unique assignables that were previously notified as cast for this show
   def self.previously_cast_assignables(show)

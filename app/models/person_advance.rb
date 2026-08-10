@@ -59,7 +59,6 @@ class PersonAdvance < ApplicationRecord
   # Aliases for backwards compatibility
   scope :outstanding, -> { not_settled }
   scope :fully_recovered, -> { settled }
-  scope :partially_recovered, -> { partial }
 
   before_validation :set_remaining_balance, on: :create
 

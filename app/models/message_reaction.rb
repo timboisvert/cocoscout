@@ -20,9 +20,6 @@ class MessageReaction < ApplicationRecord
   # Only one reaction per user per message (user can change their reaction, but only have one)
   validates :user_id, uniqueness: { scope: :message_id, message: "can only have one reaction per message" }
 
-  # Scopes
-  scope :grouped_counts, -> { group(:emoji).count }
-
   def self.icon_for(reaction_type)
     REACTION_ICONS[reaction_type]
   end

@@ -22,7 +22,6 @@ class RoleVacancy < ApplicationRecord
   scope :active, -> { where(status: %w[open finding_replacement]) }
   scope :closed, -> { where(status: %w[not_filling filled cancelled]) }
   scope :for_show, ->(show) { where(show: show) }
-  scope :for_role, ->(role) { where(role: role) }
 
   validates :status, presence: true
   validates :role, presence: true

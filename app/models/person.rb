@@ -41,7 +41,6 @@ class Person < ApplicationRecord
 
   # House staffing (Staffing module): shifts this person is assigned to work.
   has_many :shift_assignments, dependent: :destroy
-  has_many :assigned_shifts, through: :shift_assignments, source: :shift
   has_many :organization_staff_members, dependent: :destroy
   has_many :staff_unavailabilities, dependent: :destroy
   has_many :staff_schedule_removals, dependent: :destroy

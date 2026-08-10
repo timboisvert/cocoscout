@@ -19,9 +19,6 @@ class SpaceRental < ApplicationRecord
   scope :upcoming, -> { where("starts_at >= ?", Time.current).order(:starts_at) }
   scope :past, -> { where("ends_at < ?", Time.current).order(starts_at: :desc) }
   scope :confirmed, -> { where(confirmed: true) }
-  scope :for_date_range, ->(start_date, end_date) {
-    where("starts_at <= ? AND ends_at >= ?", end_date, start_date)
-  }
 
   # Space name (handles "Entire venue" case)
   def space_name

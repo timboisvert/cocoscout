@@ -60,7 +60,6 @@ class SignUpForm < ApplicationRecord
   scope :active, -> { where(active: true) }
   scope :inactive, -> { where(active: false) }
   scope :open, -> { where("opens_at IS NULL OR opens_at <= ?", Time.current) }
-  scope :not_closed, -> { where("closes_at IS NULL OR closes_at > ?", Time.current) }
   scope :available, -> { active.open.not_closed }
   scope :repeated, -> { where(scope: "repeated") }
   scope :single_event, -> { where(scope: "single_event") }

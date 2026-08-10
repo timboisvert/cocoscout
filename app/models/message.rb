@@ -14,7 +14,6 @@ class Message < ApplicationRecord
   # Recipients (replaces single recipient + batch pattern)
   has_many :message_recipients, dependent: :destroy
   has_many :recipient_people, through: :message_recipients, source: :recipient, source_type: "Person"
-  has_many :recipient_groups, through: :message_recipients, source: :recipient, source_type: "Group"
 
   # Thread subscriptions (who sees this in their inbox)
   has_many :message_subscriptions, dependent: :destroy
@@ -130,11 +129,6 @@ class Message < ApplicationRecord
 
     false
   end
-
-  # Messages visible to a user based on subscriptions
-  scope :subscribed_by, ->(user) {
-    joins(:message_subscriptions).where(message_subscriptions: { user: user, muted: false })
-  }
 
   # Build per-thread inbox row data (participants, count, snippet) for a page of
   # root messages in O(depth) queries, not per-row. Returns
@@ -268,18 +262,6 @@ class Message < ApplicationRecord
   # Show-scoped messages
   scope :for_show, ->(show) {
     where(show: show, visibility: :show)
-  }
-
-  # Messages where user is a recipient
-  scope :received_by, ->(user) {
-    person_ids = user.people.pluck(:id)
-    joins(:message_recipients).where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
-  }
-
-  # Messages not archived by a specific recipient
-  scope :active_for_recipient, ->(person) {
-    joins(:message_recipients)
-      .where(message_recipients: { recipient: person, archived_at: nil })
   }
 
   # Add regardable objects to this message

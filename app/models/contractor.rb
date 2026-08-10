@@ -31,7 +31,6 @@ class Contractor < ApplicationRecord
 
   scope :alphabetical, -> { order(:name) }
   scope :with_contracts, -> { joins(:contracts).distinct }
-  scope :with_active_contracts, -> { joins(:contracts).where(contracts: { status: "active" }).distinct }
 
   def active_contracts
     contracts.status_active

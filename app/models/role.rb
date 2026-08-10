@@ -29,7 +29,6 @@ class Role < ApplicationRecord
 
   # Scopes for system-managed roles
   scope :system_managed, -> { where(system_managed: true) }
-  scope :user_managed, -> { where(system_managed: false) }
 
   validates :name, presence: true
   validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" }

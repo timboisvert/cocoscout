@@ -26,7 +26,6 @@ class PerformanceCredit < ApplicationRecord
 
   # Scopes
   default_scope { order(:position) }
-  scope :by_section, ->(section_id) { where(performance_section_id: section_id) }
 
   # Callbacks
   before_validation :set_default_position, on: :create

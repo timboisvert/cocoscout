@@ -8,13 +8,6 @@ class PayoutBatch < ApplicationRecord
   # it become "completed".
   STATUSES = %w[draft funding funded processing partially_paid completed failed canceled].freeze
   TRIGGERS = %w[manual scheduled].freeze
-  # Run kinds. "staff_pay" = staffing hours; "performer" = show payouts; "course"
-  # = course settlements (instructor pay + the org's leftover revenue). They run
-  # on separate schedules, so an org can have one open run of each kind at a time.
-  # A "course" run is special: the money is already in CocoScout's balance, so it
-  # skips funding entirely and just transfers held funds out. ("balance" is the
-  # legacy generic kind.)
-  KINDS = %w[staff_pay performer course balance].freeze
 
   belongs_to :organization
   belongs_to :created_by, class_name: "User", optional: true

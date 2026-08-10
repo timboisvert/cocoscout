@@ -13,15 +13,7 @@ class SignUpSlot < ApplicationRecord
 
   scope :available, -> { where(is_held: false) }
   scope :held, -> { where(is_held: true) }
-  scope :for_instance, ->(instance) { where(sign_up_form_instance: instance) }
   scope :direct, -> { where(sign_up_form_instance: nil) }
-  scope :with_capacity, -> {
-    available.left_joins(:sign_up_registrations)
-             .where("sign_up_registrations.id IS NULL OR sign_up_registrations.status = 'cancelled'")
-             .or(available.joins(:sign_up_registrations)
-             .group("sign_up_slots.id")
-             .having("COUNT(CASE WHEN sign_up_registrations.status != 'cancelled' THEN 1 END) < sign_up_slots.capacity"))
-  }
 
   def display_name
     name.presence || "Slot #{position}"

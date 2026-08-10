@@ -11,9 +11,6 @@ class FeatureCredit < ApplicationRecord
 
   before_validation :normalize_code
 
-  scope :active_codes, -> { where(active: true) }
-  scope :for_feature, ->(feature) { where(feature_type: feature) }
-
   def self.find_by_normalized_code(code)
     return nil if code.blank?
     find_by(code: code.strip.upcase)

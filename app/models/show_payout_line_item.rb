@@ -55,11 +55,7 @@ class ShowPayoutLineItem < ApplicationRecord
   # scopes above only see the manual case, so use these for money/people tallies.
   scope :paid, -> { where("manually_paid OR (payout_reference_id IS NOT NULL AND payout_status = 'success')") }
   scope :unpaid, -> { where("NOT manually_paid AND (payout_reference_id IS NULL OR payout_status IS DISTINCT FROM 'success')") }
-  scope :paid_offline, -> { where(manually_paid: true) }
-  scope :payout_pending, -> { where(payout_status: "pending") }
-  scope :payout_failed, -> { where(payout_status: "failed") }
   scope :individual_allocations, -> { where(is_individual_allocation: true) }
-  scope :performer_payouts, -> { where(is_individual_allocation: false, is_guest: false) }
   scope :guests, -> { where(is_guest: true) }
 
   def mark_as_already_paid!(by_user, method: nil, notes: nil, paid_on: nil)

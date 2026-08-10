@@ -10,7 +10,6 @@ class MessageRecipient < ApplicationRecord
   scope :archived, -> { where.not(archived_at: nil) }
 
   scope :for_person, ->(person) { where(recipient: person) }
-  scope :for_people, ->(people) { where(recipient_type: "Person", recipient_id: people.map(&:id)) }
 
   def mark_read!
     update!(read_at: Time.current) if read_at.nil?

@@ -33,7 +33,6 @@ class User < ApplicationRecord
 
   # Message subscriptions - threads the user is subscribed to
   has_many :message_subscriptions, dependent: :destroy
-  has_many :subscribed_threads, through: :message_subscriptions, source: :message
 
   # Messaging - messages addressed to any of user's People
   def received_messages
