@@ -2,7 +2,7 @@
 
 module Manage
   class PayoutSchemesController < Manage::ManageController
-    before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :update_defaults, :preview, :archive, :unarchive ]
+    before_action :set_payout_scheme, only: [ :show, :edit, :update, :destroy, :make_default, :update_defaults, :archive, :unarchive ]
 
     def index
       # Show all payout schemes for the organization (both org-level and production-level)
