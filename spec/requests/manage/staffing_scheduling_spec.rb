@@ -30,6 +30,36 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
 
   before { sign_in(owner) }
 
+  # Every face on this page costs three queries to resolve unless the headshot
+  # chain is preloaded — and the same person is drawn several times over. The
+  # absolute count isn't the point; that it stops growing with the roster is.
+  describe "the cost of the scheduling page" do
+    # One shift per role per slot is enforced by a unique index, so a busier week
+    # means more people on the shift — which is the real shape anyway.
+    def staffed_person!(role, shift, name)
+      person = create(:person, name: name)
+      staff!(person, role)
+      create(:shift_assignment, shift: shift, person: person)
+      create(:show_person_role_assignment, show: early_show, assignable: person)
+      person
+    end
+
+    it "doesn't grow with the number of staff on the week" do
+      role = create(:house_role, organization: org, role_type: :house)
+      shift = create(:shift, organization: org, house_role: role, source: early_show,
+                             required_count: 8,
+                             starts_at: early_show.date_and_time, ends_at: early_show.ends_at)
+      staffed_person!(role, shift, "First Staffer")
+      get manage_staffing_scheduling_path(week_start: week_start.to_s) # warm
+      baseline = count_queries { get manage_staffing_scheduling_path(week_start: week_start.to_s) }
+
+      6.times { |i| staffed_person!(role, shift, "Staffer #{i}") }
+      scaled = count_queries { get manage_staffing_scheduling_path(week_start: week_start.to_s) }
+
+      expect(scaled - baseline).to be <= 1
+    end
+  end
+
   describe "the retired Generate shifts feature" do
     it "no longer has a route or a button" do
       # The route is gone (the app's catch-all serves a 404 page rather than

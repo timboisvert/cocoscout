@@ -9,6 +9,13 @@ module Manage
 
     before_action :ensure_org_owner_or_manager
 
+    # Every staffing screen renders faces. Person#safe_headshot_variant reads
+    # primary_headshot (profile_headshots) and then its attachment and blob, so
+    # without this it's three queries per face — and the same person's face is
+    # drawn several times per page. .variant itself neither queries nor
+    # processes; the image is generated later, on its own request.
+    HEADSHOT_PRELOAD = { profile_headshots: { image_attachment: :blob } }.freeze
+
     # The Staffing landing is now the people-first hub: the org's staff list with
     # onboarding status. The weekly schedule moved to #scheduling.
     def index
@@ -16,7 +23,7 @@ module Manage
 
       members = Current.organization.organization_staff_members
                        .active
-                       .includes(:house_roles, person: :user)
+                       .includes(:house_roles, person: [ :user, HEADSHOT_PRELOAD ])
                        .joins(:person)
                        .order("people.name")
       @house_roles = Current.organization.house_roles.active.ordered
@@ -39,7 +46,7 @@ module Manage
       # Inactive members: still loved, still in the records — just not scheduled,
       # paid, counted, or nagged. Shown collapsed under the roster.
       @inactive_staff = Current.organization.organization_staff_members.inactive
-                               .includes(:house_roles, person: :user)
+                               .includes(:house_roles, person: [ :user, HEADSHOT_PRELOAD ])
                                .joins(:person).order("people.name")
 
       # Worked hours submitted by staff and awaiting a manager's sign-off — the
@@ -72,7 +79,8 @@ module Manage
       week_range = (@week_start..@week_end)
       shifts = Current.organization.shifts
         .for_week(@week_start)
-        .includes(:house_role, :additional_roles, :source, :shows, shift_assignments: :person)
+        .includes(:house_role, :additional_roles, :source, { shows: :production },
+                  shift_assignments: { person: HEADSHOT_PRELOAD })
         .ordered
         .to_a
       @shifts_by_day = shifts.group_by { |s| staffing_day_for(s, week_range) }
@@ -404,7 +412,7 @@ module Manage
         .joins(:shift)
         .where(shifts: { organization_id: Current.organization.id })
         .where("shifts.ends_at >= ?", Time.current)
-        .includes(:person, shift: [ :house_role, :source ])
+        .includes(shift: [ :house_role, :additional_roles, :source, { shows: :production } ], person: HEADSHOT_PRELOAD)
         .order("shifts.starts_at ASC")
         .to_a
     end
@@ -468,7 +476,7 @@ module Manage
     # staffing-home modal. Sets @roots + @children_by_manager.
     def load_org_chart
       @staff = Current.organization.organization_staff_members.active
-                      .includes(:person, :manager).order("people.name").references(:person).to_a
+                      .includes(:manager, person: HEADSHOT_PRELOAD).order("people.name").references(:person).to_a
       active_ids = @staff.map(&:id).to_set
       @children_by_manager = @staff.group_by(&:manager_id)
       # Roots: no manager, or a manager who's no longer active staff.
@@ -480,7 +488,8 @@ module Manage
     # scheduling page. Anyone with staffing access can see it — the org is flat.
     def load_availability_overview
       members = Current.organization.organization_staff_members.active
-                       .includes(:person).order("people.name").references(:person).to_a
+                       .includes(person: HEADSHOT_PRELOAD)
+                       .order("people.name").references(:person).to_a
       person_ids = members.map(&:person_id)
       future_by_person = StaffUnavailability
         .where(person_id: person_ids, date: Date.current..(Date.current + 4.months))
@@ -512,17 +521,35 @@ module Manage
       return {} if shows.empty?
 
       show_ids = shows.map(&:id)
-      result = Hash.new { |h, k| h[k] = [] }
 
-      ShowPersonRoleAssignment
+      # Two passes of ids first, then one load of the people. A polymorphic
+      # belongs_to can't carry nested includes, so preloading headshots through
+      # :assignable isn't available — and the same person often appears on
+      # several shows, so loading them once is the cheaper shape anyway.
+      direct = ShowPersonRoleAssignment
         .where(show_id: show_ids, assignable_type: "Person")
-        .includes(:assignable)
-        .each { |a| result[a.show_id] << a.assignable if a.assignable }
+        .pluck(:show_id, :assignable_id)
 
-      ShowPersonRoleAssignment
+      group_ids_by_show = ShowPersonRoleAssignment
         .where(show_id: show_ids, assignable_type: "Group")
-        .includes(:assignable)
-        .each { |a| a.assignable&.members&.each { |m| result[a.show_id] << m } }
+        .pluck(:show_id, :assignable_id)
+      members_by_group = if group_ids_by_show.any?
+        GroupMembership.where(group_id: group_ids_by_show.map(&:last))
+                       .pluck(:group_id, :person_id)
+                       .group_by(&:first)
+                       .transform_values { |rows| rows.map(&:last) }
+      else
+        {}
+      end
+
+      person_ids = direct.map(&:last) + members_by_group.values.flatten
+      people = Person.where(id: person_ids.uniq).includes(HEADSHOT_PRELOAD).index_by(&:id)
+
+      result = Hash.new { |h, k| h[k] = [] }
+      direct.each { |show_id, person_id| (person = people[person_id]) && result[show_id] << person }
+      group_ids_by_show.each do |show_id, group_id|
+        members_by_group.fetch(group_id, []).each { |pid| (person = people[pid]) && result[show_id] << person }
+      end
 
       result.transform_values(&:uniq)
     end
@@ -546,7 +573,7 @@ module Manage
       quals = StaffRoleQualification
         .joins(organization_staff_member: :person)
         .where(organization_staff_members: { organization_id: Current.organization.id, archived_at: nil })
-        .includes(organization_staff_member: :person)
+        .includes(organization_staff_member: { person: HEADSHOT_PRELOAD })
         .order("people.name")
 
       quals.group_by(&:house_role_id).transform_values do |group|

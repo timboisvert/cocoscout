@@ -11,8 +11,12 @@ module Manage
       before_action :ensure_org_owner_or_manager
 
       def index
+        # additional_roles because each row renders shift.role_label, and the
+        # person's headshot preload because the queue is grouped by person.
         entries = Current.organization.staff_time_entries.pending
-                         .includes(:person, :house_role, shift_assignment: { shift: :house_role })
+                         .includes(:house_role,
+                                   person: Manage::StaffingController::HEADSHOT_PRELOAD,
+                                   shift_assignment: { shift: [ :house_role, :additional_roles ] })
                          .chronological
 
         # Group by person so the manager reviews one teammate at a time.
