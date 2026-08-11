@@ -180,7 +180,7 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
     post manage_create_staffing_pay_path, params: { lines: { member.id.to_s => { hours: "4" } } }
     batch = PayoutBatch.last
 
-    allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+    allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
     allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
 
     post manage_fund_payout_batch_path(batch)

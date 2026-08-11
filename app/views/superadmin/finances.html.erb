@@ -159,6 +159,114 @@
       </div>
     <% end %>
 
+  <%# Held Balances — the per-org virtual cash ledger over the one shared
+      Stripe balance. The sanity footer reconciles the sum of all org ledgers
+      against the real balance; the residual is CocoScout's own share. %>
+  <% if @held_balances.any? %>
+    <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/card_header", title: "Held Balances (virtual cash ledger)" %>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organization</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Committed</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% @held_balances.each do |held| %>
+              <% adjust_cid = "adjust-cash-#{held[:organization].id}" %>
+              <tr>
+                <td class="px-4 py-3 text-sm font-medium text-gray-900"><%= held[:organization].name %></td>
+                <td class="px-4 py-3 text-sm text-right font-bold <%= held[:balance_cents].negative? ? 'text-red-600' : 'text-gray-900' %>">
+                  <%= format_cents.call(held[:balance_cents]) %>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600 text-right"><%= format_cents.call(held[:committed_cents]) %></td>
+                <td class="px-4 py-3 text-sm text-right font-medium <%= held[:available_cents].negative? ? 'text-red-600' : 'text-green-600' %>">
+                  <%= format_cents.call(held[:available_cents]) %>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <%= render "shared/button", text: "Adjust", variant: "secondary", size: "small", type: :button,
+                        data: { controller: "modal", action: "click->modal#open", modal_id: adjust_cid } %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot class="bg-gray-50">
+            <tr>
+              <td class="px-4 py-3 text-sm font-semibold text-gray-900">Sum of org ledgers</td>
+              <td class="px-4 py-3 text-sm text-right font-bold text-gray-900"><%= format_cents.call(@held_total_cents) %></td>
+              <td colspan="3"></td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 text-sm font-semibold text-gray-900">Actual Stripe balance</td>
+              <td class="px-4 py-3 text-sm text-right font-bold text-gray-900">
+                <%= @stripe_balance_cents ? format_cents.call(@stripe_balance_cents) : "unavailable" %>
+              </td>
+              <td colspan="3" class="px-4 py-3 text-sm text-gray-500">available + pending, cached 1 min</td>
+            </tr>
+            <% if @stripe_balance_cents %>
+              <tr>
+                <td class="px-4 py-3 text-sm font-semibold text-gray-900">Residual (CocoScout share)</td>
+                <td class="px-4 py-3 text-sm text-right font-bold <%= (@stripe_balance_cents - @held_total_cents).negative? ? 'text-red-600' : 'text-gray-900' %>">
+                  <%= format_cents.call(@stripe_balance_cents - @held_total_cents) %>
+                </td>
+                <td colspan="3" class="px-4 py-3 text-sm text-gray-500">fees + subscription revenue not yet swept; negative means org ledgers exceed the real balance</td>
+              </tr>
+            <% end %>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <%# Adjustment modals — outside the table so they aren't nested oddly.
+        Hand-rolled (needs form inputs), following the pink modal standard. %>
+    <% @held_balances.each do |held| %>
+      <% adjust_cid = "adjust-cash-#{held[:organization].id}" %>
+      <div id="<%= adjust_cid %>"
+           class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+           data-controller="modal"
+           data-action="click->modal#closeOnBackdrop">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+             data-action="click->modal#stopPropagation">
+          <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+            <h3 class="text-lg font-semibold text-white">Adjust <%= held[:organization].name %>'s held balance</h3>
+            <button type="button"
+                    data-action="click->modal#close"
+                    class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <%= form_with url: finances_cash_adjustment_path(org_id: held[:organization].id), method: :post do %>
+            <div class="px-6 py-5 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount (dollars; negative to reduce)</label>
+                <input type="number" name="amount" step="0.01" required
+                       class="block w-full rounded-lg border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Note</label>
+                <input type="text" name="note" placeholder="Why this correction is needed"
+                       class="block w-full rounded-lg border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm">
+              </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+                    data: { action: "click->modal#close" } %>
+              <%= render "shared/button", text: "Adjust balance", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+
   <%# CocoScout Income Transactions (existing) %>
   <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
     <%= render "shared/card_header", title: "CocoScout Income Transactions" %>

@@ -39,7 +39,11 @@ class ContractPaymentCheckoutController < ApplicationController
       metadata: checkout_metadata,
       # Session metadata doesn't reach the charge, so stamp the intent too —
       # that's what shows up next to the money in the Stripe dashboard.
-      payment_intent_data: { metadata: checkout_metadata }
+      # transfer_group segregates each org's money flows Stripe-side.
+      payment_intent_data: {
+        transfer_group: "org_#{@organization.id}",
+        metadata: checkout_metadata
+      }
     )
 
     redirect_to session.url, allow_other_host: true

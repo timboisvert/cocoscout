@@ -91,14 +91,19 @@ module My
           person_id: @person.id,
           user_id: Current.user.id,
           amount_cents: price_cents,
-          currency: @course_offering.currency
+          currency: @course_offering.currency,
+          organization_id: @course_offering.production.organization_id
         },
         # Also stamp the charge itself so the payment is traceable to the course
-        # from the Stripe dashboard (Session metadata doesn't reach the charge).
+        # AND the owning org from the Stripe dashboard (Session metadata doesn't
+        # reach the charge). transfer_group segregates each org's money flows
+        # Stripe-side, mirroring the OrgCashEntry ledger app-side.
         payment_intent_data: {
+          transfer_group: "org_#{@course_offering.production.organization_id}",
           metadata: {
             course_offering_id: @course_offering.id,
-            person_id: @person.id
+            person_id: @person.id,
+            organization_id: @course_offering.production.organization_id
           }
         }
       )
@@ -192,7 +197,10 @@ module My
         registered_at: Time.current,
         paid_at: Time.current,
         stripe_checkout_session_id: session.id,
-        stripe_payment_intent_id: session.payment_intent
+        stripe_payment_intent_id: session.payment_intent,
+        # The webhook path records the platform fee; this fallback used to skip
+        # it, leaving the row (and the org's books) reading gross.
+        cocoscout_fee_cents: CourseRegistration.platform_fee_cents_for(@course_offering, metadata["amount_cents"].to_i)
       )
 
       # Release Redis spot hold

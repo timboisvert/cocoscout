@@ -76,7 +76,7 @@ class StripeWebhooksController < ApplicationController
     return unless batch
 
     if event_type == "payment_intent.succeeded"
-      PayoutBatchService.advance_funding!(batch, "succeeded")
+      PayoutBatchService.advance_funding!(batch, "succeeded", funded_cents: intent.amount)
     else
       batch.update!(status: "failed", funding_status: "failed")
       # A bounced debit used to be silent — the run just sat there "failed"
@@ -92,7 +92,10 @@ class StripeWebhooksController < ApplicationController
     item = PayoutBatchItem.find_by(stripe_transfer_id: transfer.id)
     return unless item&.paid?
 
-    PayoutBatchService.return_item!(item, reason: "Transfer reversed")
+    # A reversal puts the money back in OUR platform balance (unlike a bank
+    # return, where it lands in the payee's Connect balance) — so the org's
+    # cash ledger gets it back too.
+    PayoutBatchService.return_item!(item, reason: "Transfer reversed", cash_returned: true)
   end
 
   # A payout from a payee's Stripe balance to their own bank failed — a closed
@@ -254,14 +257,7 @@ class StripeWebhooksController < ApplicationController
   end
 
   def calculate_cocoscout_fee(offering, amount_cents)
-    if offering.feature_credit_redemption.present?
-      coverage = offering.feature_credit_redemption.feature_credit&.coverage_type
-      return 0 if coverage == "full"
-      # platform_only: waive CocoScout's platform cut, but Stripe fees still apply to producer
-      # We still charge 0 platform fee — Stripe fees are deducted separately by Stripe
-      return 0
-    end
-    (amount_cents * CourseRegistration::PLATFORM_FEE_PERCENTAGE / 100.0).round
+    CourseRegistration.platform_fee_cents_for(offering, amount_cents)
   end
 
   def record_stripe_fee(registration, payment_intent_id)

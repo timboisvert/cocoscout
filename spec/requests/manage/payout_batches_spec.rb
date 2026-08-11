@@ -67,7 +67,7 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
   end
 
   it "runs a payout for connected payees and pays them" do
-    allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+    allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
     allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
 
     expect { post manage_create_payout_batch_path, params: { funding_method: "ach" } }
@@ -83,7 +83,7 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
 
   describe "a run with someone still waiting on a bank" do
     before do
-      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
     end
 
@@ -140,7 +140,7 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     include ActiveJob::TestHelper
 
     before do
-      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
       ContentTemplate.create!(
         key: "payout_run_submitted", name: "Payout Run Submitted",

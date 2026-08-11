@@ -24,6 +24,7 @@ class ContractPaymentCollection
       return false unless settled
 
       record_stripe_fee!(payment, intent_id)
+      record_org_cash_credit!(payment)
       remit_to_organization!(payment)
       true
     rescue ActiveRecord::RecordNotUnique
@@ -59,6 +60,20 @@ class ContractPaymentCollection
     end
 
     private
+
+    # The collected money sits in CocoScout's shared Stripe balance until the
+    # remittance run sends it — credit it to the org's cash ledger so it's
+    # theirs (and only theirs) to pay out in the meantime.
+    def record_org_cash_credit!(payment)
+      OrgCashEntry.post!(
+        organization: payment.contract.organization,
+        entry_type: "contract_payment",
+        amount_cents: payment.remittable_cents,
+        source: payment,
+        description: "Contract payment ##{payment.id} collected",
+        occurred_at: Time.current
+      )
+    end
 
     def remittance_label(payment)
       contract = payment.contract

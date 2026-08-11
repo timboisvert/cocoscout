@@ -13,7 +13,7 @@ class SuperadminController < ApplicationController
                          content_template_destroy content_template_preview content_template_export content_template_import search_users keys
                          agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread
                          promo_codes promo_code_new promo_code_create promo_code_deactivate
-                         finances finances_org_detail finances_org_record_payment finances_course_detail finances_record_payment finances_delete_payment finances_mark_payment_paid]
+                         finances finances_org_detail finances_org_record_payment finances_cash_adjustment finances_course_detail finances_record_payment finances_delete_payment finances_mark_payment_paid]
   before_action :use_superadmin_sidebar
 
   # Render superadmin pages inside the dashboard chrome with a dedicated Super
@@ -2335,6 +2335,45 @@ class SuperadminController < ApplicationController
 
     # Organization obligations
     @org_obligations = build_org_obligations
+
+    # Per-org virtual cash balances (the OrgCashEntry ledger) + a sanity line
+    # against the real Stripe balance: the residual is CocoScout's own share.
+    @held_balances = Organization
+      .where(id: OrgCashEntry.distinct.select(:organization_id))
+      .order(:name)
+      .map do |org|
+        {
+          organization: org,
+          balance_cents: OrgCashEntry.balance_cents(org),
+          committed_cents: OrgCashEntry.committed_cents(org),
+          available_cents: OrgCashEntry.available_cents(org)
+        }
+      end
+    @held_total_cents = @held_balances.sum { |h| h[:balance_cents] }
+    @stripe_balance_cents = Rails.cache.fetch("superadmin/stripe_balance", expires_in: 1.minute) do
+      OrgCashBackfill.stripe_balance_cents
+    end
+  end
+
+  # A signed superadmin correction to an org's cash ledger (positive or
+  # negative dollars) — the escape hatch when the virtual balance drifts from
+  # reality (e.g. a refund webhook landing while the balance was already spent).
+  def finances_cash_adjustment
+    org = Organization.find(params[:org_id])
+    cents = (params[:amount].to_f * 100).round
+    if cents.zero?
+      redirect_to finances_path, alert: "Enter a non-zero amount."
+      return
+    end
+
+    OrgCashEntry.post!(
+      organization: org,
+      entry_type: "adjustment",
+      amount_cents: cents,
+      description: "Superadmin adjustment by #{Current.user.email_address}: #{params[:note].presence || 'no note'}"
+    )
+    redirect_to finances_path,
+      notice: "Adjusted #{org.name}'s held balance by #{ActiveSupport::NumberHelper.number_to_currency(cents / 100.0)}."
   end
 
   def finances_org_detail

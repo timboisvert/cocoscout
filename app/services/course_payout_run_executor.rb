@@ -10,11 +10,25 @@
 # so the books show CocoScout remitted it. Idempotent: only pending items are
 # transferred, so re-running never double-pays.
 class CoursePayoutRunExecutor
-  Result = Struct.new(:batch, :paid, :failed, keyword_init: true)
+  Result = Struct.new(:batch, :paid, :failed, :error, keyword_init: true)
 
   class << self
     def pay!(batch)
       raise ArgumentError, "#{batch.kind} is not a course run" unless batch.kind == "course"
+
+      # These transfers draw on the raw shared platform balance (no funding
+      # step), which is exactly where one org could spend another org's money.
+      # The run may not exceed what CocoScout actually holds FOR this org.
+      if OrgCashEntry.enforcement_enabled?
+        available = OrgCashEntry.available_cents(batch.organization)
+        pending_total = batch.items.pending.sum(:amount_cents)
+        if pending_total > available
+          return Result.new(
+            batch: batch, paid: 0, failed: 0,
+            error: "Your held balance (#{format_usd(available)}) doesn't cover this run (#{format_usd(pending_total)})."
+          )
+        end
+      end
 
       paid = 0
       failed = 0
@@ -29,10 +43,26 @@ class CoursePayoutRunExecutor
         # stays pending on the (re-runnable) run until they connect.
         next unless item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
 
+        # Reserve the money on the org's cash ledger first — a draw that would
+        # dip into other orgs' held money parks instead of transferring.
+        begin
+          OrgCashEntry.debit!(
+            organization: batch.organization,
+            amount_cents: item.amount_cents,
+            source: item,
+            description: "Course payout run ##{batch.id} transfer"
+          )
+        rescue OrgCashEntry::InsufficientFunds
+          item.update!(error: "Insufficient held balance — not sent")
+          failed += 1
+          next
+        end
+
         transfer = Stripe::Transfer.create(
           amount: item.amount_cents,
           currency: "usd",
           destination: item.payee.stripe_account_id,
+          transfer_group: "org_#{batch.organization_id}",
           metadata: transfer_metadata(item)
         )
         item.mark_paid!(transfer_id: transfer.id)
@@ -40,8 +70,10 @@ class CoursePayoutRunExecutor
         settle_item_sources!(item)
         paid += 1
       rescue Stripe::StripeError => e
-        # Record the error but leave the item pending so it can be retried; only a
-        # successful transfer flips it to paid.
+        # The transfer never happened: release the reservation, record the error,
+        # and leave the item pending so it can be retried; only a successful
+        # transfer flips it to paid.
+        OrgCashEntry.unpost!(source: item, entry_type: "transfer")
         item.update!(error: e.message.to_s.truncate(500))
         failed += 1
       end
@@ -64,9 +96,15 @@ class CoursePayoutRunExecutor
 
     private
 
+    def format_usd(cents)
+      dollars = cents / 100.0
+      dollars == dollars.to_i ? "$#{dollars.to_i}" : "$#{'%.2f' % dollars}"
+    end
+
     # Tie the transfer back to the course and payout it settles.
     def transfer_metadata(item)
-      meta = { payout_batch_item_id: item.id, kind: "course" }
+      meta = { payout_batch_item_id: item.id, kind: "course",
+               organization_id: item.payout_batch.organization_id }
       payout = course_payout_for(item)
       if payout
         meta[:course_offering_payout_id] = payout.id

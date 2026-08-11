@@ -98,7 +98,7 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
 
     it "on a FUNDED run: records the payment, releases them, and mints funding credit" do
       org.update!(stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account")
-      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
 
       nobank = ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Nobank Nel"), amount: 30)
@@ -122,7 +122,7 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
       next_batch = PayoutBatch.create!(organization: org, kind: "staff_pay", status: "draft", trigger: "manual")
       next_batch.items.create!(payee: create(:person, name: "Next Ned", stripe_account_id: "acct_n", payouts_enabled: true), amount_cents: 5000, status: "pending")
       next_batch.recalculate_total!
-      expect(Stripe::PaymentIntent).to receive(:create).with(hash_including(amount: 2000)).and_return(double("pi", id: "pi_2", status: "succeeded"))
+      expect(Stripe::PaymentIntent).to receive(:create).with(hash_including(amount: 2000)).and_return(double("pi", id: "pi_2", status: "succeeded", amount: 2000))
       PayoutBatchService.fund!(next_batch, method: "ach")
       expect(PayoutFundingCredit.available_cents(org)).to eq(0)
     end

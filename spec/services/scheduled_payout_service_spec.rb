@@ -17,7 +17,7 @@ RSpec.describe ScheduledPayoutService do
 
   it "runs the payout when due and records the day" do
     payee_with_balance(4000)
-    allow(Stripe::PaymentIntent).to receive(:create).and_return(double(id: "pi_1", status: "succeeded"))
+    allow(Stripe::PaymentIntent).to receive(:create).and_return(double(id: "pi_1", status: "succeeded", amount: 4000))
     allow(Stripe::Transfer).to receive(:create).and_return(double(id: "tr_1"))
 
     result = nil

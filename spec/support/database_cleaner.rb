@@ -9,13 +9,19 @@ RSpec.configure do |config|
     seed_content_templates
   end
 
-  config.before(:each) do
-    DatabaseCleaner.strategy = :transaction
+  # Examples tagged `no_transaction: true` (threaded/concurrency tests) commit
+  # for real so other DB connections can see their rows; they're cleaned by
+  # deletion instead. Pair the tag with `uses_transaction "<example name>"` so
+  # rspec-rails fixture wrapping stays out of the way too.
+  config.before(:each) do |example|
+    DatabaseCleaner.strategy = example.metadata[:no_transaction] ? :deletion : :transaction
     DatabaseCleaner.start
   end
 
-  config.after(:each) do
+  config.after(:each) do |example|
     DatabaseCleaner.clean
+    # Deletion wipes every table, including the templates seeded before(:suite).
+    seed_content_templates if example.metadata[:no_transaction]
   end
 end
 

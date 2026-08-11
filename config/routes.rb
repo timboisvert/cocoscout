@@ -291,6 +291,7 @@ Rails.application.routes.draw do
     get    "/finances",          to: "superadmin#finances",            as: "finances"
     get    "/finances/orgs/:org_id", to: "superadmin#finances_org_detail", as: "finances_org_detail"
     post   "/finances/orgs/:org_id/pay", to: "superadmin#finances_org_record_payment", as: "finances_org_record_payment"
+    post   "/finances/orgs/:org_id/cash_adjustment", to: "superadmin#finances_cash_adjustment", as: "finances_cash_adjustment"
     get    "/finances/courses/:course_offering_id", to: "superadmin#finances_course_detail", as: "finances_course_detail"
     post   "/finances/courses/:course_offering_id/pay", to: "superadmin#finances_record_payment", as: "finances_record_payment"
     delete "/finances/payments/:id", to: "superadmin#finances_delete_payment", as: "finances_delete_payment"

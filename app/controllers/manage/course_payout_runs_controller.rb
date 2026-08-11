@@ -25,6 +25,11 @@ module Manage
       end
 
       result = CoursePayoutRunExecutor.pay!(run)
+      if result.error.present?
+        redirect_to manage_course_payout_run_path, alert: result.error
+        return
+      end
+
       notice = "Paid #{result.paid} #{'payout'.pluralize(result.paid)} straight to their bank."
       notice += " #{result.failed} couldn't be sent — see below." if result.failed.positive?
       redirect_to manage_course_payout_run_path, notice: notice

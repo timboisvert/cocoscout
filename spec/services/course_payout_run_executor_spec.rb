@@ -98,6 +98,73 @@ RSpec.describe CoursePayoutRunExecutor do
       .to have_enqueued_job(PayoutSentPayeeNotificationJob).with(batch.id)
   end
 
+  describe "org cash enforcement" do
+    before { allow(OrgCashEntry).to receive(:enforcement_enabled?).and_return(true) }
+
+    def credit_org!(cents)
+      OrgCashEntry.post!(organization: org, entry_type: "adjustment", amount_cents: cents)
+    end
+
+    it "refuses the whole run when the org's held balance doesn't cover it" do
+      batch = build_run
+      credit_org!(1000) # run needs 3800
+
+      result = described_class.pay!(batch)
+
+      expect(result.error).to include("doesn't cover this run")
+      expect(result.paid).to eq(0)
+      expect(batch.items.none?(&:paid?)).to be(true)
+      expect(Stripe::Transfer).not_to have_received(:create)
+      # Nothing was reserved either.
+      expect(OrgCashEntry.balance_cents(org)).to eq(1000)
+    end
+
+    it "pays and debits the org's balance when covered" do
+      batch = build_run
+      credit_org!(4000)
+
+      result = described_class.pay!(batch)
+
+      expect(result.paid).to eq(2)
+      expect(result.error).to be_nil
+      expect(OrgCashEntry.balance_cents(org)).to eq(200) # 4000 − 3800 sent
+    end
+
+    it "releases the reservation when Stripe rejects a transfer" do
+      batch = build_run
+      credit_org!(4000)
+      allow(Stripe::Transfer).to receive(:create).and_raise(Stripe::StripeError.new("no funds"))
+
+      described_class.pay!(batch)
+
+      expect(OrgCashEntry.balance_cents(org)).to eq(4000)
+    end
+
+    it "a successful retry doesn't double-debit" do
+      batch = build_run
+      credit_org!(4000)
+      allow(Stripe::Transfer).to receive(:create).and_raise(Stripe::StripeError.new("no funds"))
+      described_class.pay!(batch)
+
+      allow(Stripe::Transfer).to receive(:create) { |args| double(id: "tr_#{args[:destination]}") }
+      described_class.pay!(batch)
+
+      expect(OrgCashEntry.balance_cents(org)).to eq(200)
+    end
+
+    it "never spends another org's held money" do
+      batch = build_run
+      other_org = create(:organization)
+      OrgCashEntry.post!(organization: other_org, entry_type: "adjustment", amount_cents: 100_000)
+
+      result = described_class.pay!(batch)
+
+      expect(result.error).to be_present
+      expect(OrgCashEntry.balance_cents(other_org)).to eq(100_000)
+      expect(Stripe::Transfer).not_to have_received(:create)
+    end
+  end
+
   it "freshens a stale payday so the payee isn't quoted a deposit window in the past" do
     batch = build_run
     batch.update!(payday: 10.days.ago.to_date)

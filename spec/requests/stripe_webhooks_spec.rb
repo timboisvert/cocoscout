@@ -79,6 +79,72 @@ RSpec.describe "StripeWebhooksController", type: :request do
       expect(item.reload.status).to eq("returned")
       expect(batch.reload.status).to eq("partially_paid")
     end
+
+    it "credits the org's cash ledger — the money is back in OUR balance" do
+      deliver("transfer.reversed", Stripe::Transfer.construct_from(id: "tr_123", amount: 5_000))
+
+      entry = OrgCashEntry.find_by(source: item, entry_type: "transfer_reversal")
+      expect(entry.organization).to eq(org)
+      expect(entry.amount_cents).to eq(5_000)
+    end
+  end
+
+  describe "payout.failed does NOT credit the cash ledger" do
+    it "the money sits in the payee's Connect balance, not ours" do
+      payout = Stripe::Payout.construct_from(id: "po_1", amount: 5_000, failure_message: "Account closed")
+      deliver("payout.failed", payout, account: "acct_123")
+
+      expect(item.reload.status).to eq("returned")
+      expect(OrgCashEntry.where(entry_type: "transfer_reversal")).to be_empty
+    end
+  end
+
+  describe "checkout.session.completed — course registration" do
+    let(:production) { create(:production, organization: org, production_type: "course") }
+    let(:offering) { create(:course_offering, production: production, price_cents: 4_000) }
+    let(:student) { create(:person) }
+
+    it "posts the org's net share to the cash ledger, restated when the Stripe fee lands" do
+      allow_any_instance_of(StripeWebhooksController).to receive(:record_stripe_fee)
+
+      session = Stripe::Checkout::Session.construct_from(
+        id: "cs_1", payment_intent: "pi_course",
+        metadata: { "course_offering_id" => offering.id.to_s, "person_id" => student.id.to_s,
+                    "amount_cents" => "4000", "currency" => "usd" }
+      )
+      deliver("checkout.session.completed", session)
+
+      registration = CourseRegistration.find_by(stripe_checkout_session_id: "cs_1")
+      entry = OrgCashEntry.find_by(source: registration, entry_type: "course_registration")
+      # Net of the 10% platform fee.
+      expect(entry.organization).to eq(org)
+      expect(entry.amount_cents).to eq(3_600)
+
+      # The hourly fee backfill later restates the same row, not a second one.
+      registration.update!(stripe_fee_cents: 146)
+      expect(OrgCashEntry.where(source: registration, entry_type: "course_registration").count).to eq(1)
+    end
+  end
+
+  describe "charge.refunded — course registration" do
+    let(:production) { create(:production, organization: org, production_type: "course") }
+    let(:offering) { create(:course_offering, production: production, price_cents: 4_000) }
+
+    it "debits the org's cash ledger by the same net the credit posted" do
+      registration = offering.course_registrations.create!(
+        person: create(:person), status: :confirmed, amount_cents: 4_000, currency: "usd",
+        registered_at: Time.current, paid_at: Time.current,
+        stripe_checkout_session_id: "cs_r", stripe_payment_intent_id: "pi_r",
+        cocoscout_fee_cents: 400
+      )
+
+      deliver("charge.refunded", Stripe::Charge.construct_from(id: "ch_1", payment_intent: "pi_r"))
+
+      expect(registration.reload.status).to eq("refunded")
+      entries = OrgCashEntry.where(source: registration)
+      expect(entries.pluck(:entry_type)).to contain_exactly("course_registration", "refund")
+      expect(entries.sum(:amount_cents)).to eq(0)
+    end
   end
 
   describe "redelivery" do

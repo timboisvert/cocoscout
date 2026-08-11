@@ -158,7 +158,7 @@ RSpec.describe PayoutBatchService do
     end
 
     it "card funding that succeeds immediately funds and processes the batch" do
-      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded"))
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
 
       batch = PayoutBatchService.build_for(organization: org)
@@ -170,7 +170,7 @@ RSpec.describe PayoutBatchService do
     end
 
     it "ACH funding waits for settlement before transferring" do
-      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_ach", status: "processing"))
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_ach", status: "processing", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_2"))
 
       batch = PayoutBatchService.build_for(organization: org)
@@ -188,7 +188,7 @@ RSpec.describe PayoutBatchService do
     end
 
     it "promises the payee nothing while an ACH debit is still settling" do
-      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_n", status: "processing"))
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_n", status: "processing", amount: 5000))
 
       batch = PayoutBatchService.build_for(organization: org)
 
@@ -214,7 +214,7 @@ RSpec.describe PayoutBatchService do
     end
 
     it "notifies immediately for card funding, which sends in the same breath" do
-      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_c", status: "succeeded"))
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_c", status: "succeeded", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_c"))
 
       batch = PayoutBatchService.build_for(organization: org)
@@ -228,6 +228,74 @@ RSpec.describe PayoutBatchService do
       batch = PayoutBatchService.build_for(organization: org)
       expect { PayoutBatchService.fund!(batch, method: "ach") }
         .to raise_error(PayoutBatchService::Error, /Connect a bank or card/)
+    end
+  end
+
+  describe "org cash enforcement" do
+    before { allow(OrgCashEntry).to receive(:enforcement_enabled?).and_return(true) }
+
+    it "charge-pinned transfers post their debit but are never blocked by the cash balance" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_pin"))
+      allow(Stripe::PaymentIntent).to receive(:retrieve)
+        .and_return(double("pi", amount: 5000, latest_charge: "py_funding"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_ach")
+      PayoutBatchService.process!(batch)
+
+      expect(batch.items.first.reload.status).to eq("paid")
+      expect(OrgCashEntry.find_by(source: batch.items.first, entry_type: "transfer").amount_cents).to eq(-5000)
+    end
+
+    it "a fallback draw on the shared balance parks when the org's held money can't cover it" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_never"))
+      # Funding charge covers only 1000 of the 5000 item → fallback path.
+      allow(Stripe::PaymentIntent).to receive(:retrieve)
+        .and_return(double("pi", amount: 1000, latest_charge: "py_small"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_ach")
+      PayoutBatchService.process!(batch)
+
+      item = batch.items.first.reload
+      expect(item.status).to eq("failed")
+      expect(item.error).to include("Insufficient held balance")
+      expect(Stripe::Transfer).not_to have_received(:create)
+      # The payee's owed balance is untouched — nothing was sent.
+      expect(org.payout_balance_cents_for(ready)).to eq(5000)
+      expect(OrgCashEntry.balance_cents(org)).to eq(0)
+    end
+
+    it "a fallback draw covered by the org's own held money goes through" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_ok"))
+      allow(Stripe::PaymentIntent).to receive(:retrieve)
+        .and_return(double("pi", amount: 1000, latest_charge: "py_small"))
+      OrgCashEntry.post!(organization: org, entry_type: "adjustment", amount_cents: 6000)
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_ach")
+      PayoutBatchService.process!(batch)
+
+      expect(batch.items.first.reload.status).to eq("paid")
+      expect(OrgCashEntry.balance_cents(org)).to eq(1000)
+    end
+  end
+
+  describe ".advance_funding!" do
+    it "credits the org's cash ledger with the funded amount, idempotently" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_f"))
+      allow(Stripe::PaymentIntent).to receive(:retrieve)
+        .and_return(double("pi", amount: 5000, latest_charge: "py_f"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_f")
+
+      PayoutBatchService.advance_funding!(batch, "succeeded", funded_cents: 5000)
+      PayoutBatchService.advance_funding!(batch, "succeeded", funded_cents: 5000)
+
+      expect(OrgCashEntry.where(source: batch, entry_type: "funding").count).to eq(1)
+      # Funding in (+5000) and the transfer out (−5000) net to zero.
+      expect(OrgCashEntry.balance_cents(org)).to eq(0)
     end
   end
 

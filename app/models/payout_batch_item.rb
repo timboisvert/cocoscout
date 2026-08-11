@@ -58,6 +58,9 @@ class PayoutBatchItem < ApplicationRecord
     transaction do
       update!(status: "failed", error: message.to_s.truncate(500))
       PayoutLedgerEntry.unpost!(source: self, entry_type: "payout")
+      # The transfer never happened, so give the reserved money back to the
+      # org's cash ledger too (no-op when nothing was reserved).
+      OrgCashEntry.unpost!(source: self, entry_type: "transfer")
     end
   end
 

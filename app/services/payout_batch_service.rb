@@ -167,10 +167,11 @@ class PayoutBatchService
       payment_method_types: [ pm_type ],
       confirm: true,
       off_session: true,
-      metadata: { payout_batch_id: batch.id }
+      transfer_group: "org_#{org.id}",
+      metadata: { payout_batch_id: batch.id, organization_id: org.id }
     )
     batch.update!(status: "funding", funding_payment_intent_id: intent.id, funding_status: intent.status)
-    advance_funding!(batch, intent.status)
+    advance_funding!(batch, intent.status, funded_cents: intent.amount)
     # The run is submitted — tell the org's chosen managers (who's being paid,
     # how much, expected deposit window). Async; no recipients chosen = no-op.
     PayoutRunSubmittedNotificationJob.perform_later(batch.id)
@@ -188,9 +189,22 @@ class PayoutBatchService
 
   # Move a batch forward based on its funding PaymentIntent status. Called from
   # #fund! (instant card) and the payment_intent webhook (ACH settlement).
-  def self.advance_funding!(batch, intent_status)
+  # funded_cents is the intent's amount — the org money that actually entered
+  # the shared Stripe balance, credited to the org's cash ledger on success.
+  # (Runs covered entirely by funding credit pass no intent and post nothing —
+  # their money is already in the ledger.)
+  def self.advance_funding!(batch, intent_status, funded_cents: nil)
     case intent_status
     when "succeeded"
+      if funded_cents.to_i.positive?
+        OrgCashEntry.post!(
+          organization: batch.organization,
+          entry_type: "funding",
+          amount_cents: funded_cents.to_i,
+          source: batch,
+          description: "Funding for payout run ##{batch.id}"
+        )
+      end
       batch.update!(status: "funded", funding_status: "succeeded")
       process!(batch)
     when "processing", "requires_action"
@@ -221,13 +235,32 @@ class PayoutBatchService
         amount: item.amount_cents,
         currency: "usd",
         destination: item.payee.stripe_account_id,
-        metadata: { payout_batch_item_id: item.id }
+        transfer_group: "org_#{batch.organization_id}",
+        metadata: { payout_batch_item_id: item.id, organization_id: batch.organization_id }
       }
       # Draw on the funding charge itself, not the platform's available balance
       # (see funding_charge_for). Falls back to the balance when the charge's
       # transferable capacity can't cover this item (credit-funded slices).
       use_source = source_charge.present? && item.amount_cents <= source_remaining
       params[:source_transaction] = source_charge if use_source
+
+      # Reserve the money on the org's cash ledger before touching Stripe.
+      # Charge-pinned transfers can't be blocked (Stripe guarantees the charge
+      # covers them — enforce: false); a fallback draw on the shared platform
+      # balance must fit within the org's own held money, or it parks here
+      # instead of spending another org's cash.
+      begin
+        OrgCashEntry.debit!(
+          organization: batch.organization,
+          amount_cents: item.amount_cents,
+          source: item,
+          enforce: !use_source,
+          description: "Payout run ##{batch.id} transfer"
+        )
+      rescue OrgCashEntry::InsufficientFunds
+        item.mark_failed!("Insufficient held balance — not sent")
+        next
+      end
 
       # The idempotency key survives a crash between the transfer succeeding
       # and mark_paid! landing: the item is still pending with the same
@@ -359,8 +392,21 @@ class PayoutBatchService
   # A paid item whose money the bank sent back: reverse the ledger, put the
   # sources back to owed, and recompute the run's status so a "completed" run
   # doesn't quietly contain a returned item.
-  def self.return_item!(item, reason:)
+  #
+  # cash_returned: true only when the money actually re-entered OUR platform
+  # balance (a transfer reversal). A bank return leaves it in the payee's
+  # Connect balance, so the org's cash ledger must NOT be credited for it.
+  def self.return_item!(item, reason:, cash_returned: false)
     item.mark_returned!(reason: reason)
+    if cash_returned
+      OrgCashEntry.post!(
+        organization: item.organization,
+        entry_type: "transfer_reversal",
+        amount_cents: item.amount_cents,
+        source: item,
+        description: "Transfer reversed on payout run ##{item.payout_batch_id}"
+      )
+    end
     unsettle_item_sources!(item)
     finalize_status!(item.payout_batch)
     PayoutReturnedNotificationJob.perform_later(item.id)

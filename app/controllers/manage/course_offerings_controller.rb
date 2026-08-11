@@ -379,14 +379,38 @@ module Manage
 
       # Process Stripe refund
       if registration.stripe_payment_intent_id.present?
+        # The refund leaves the shared Stripe balance, so it must fit within
+        # this org's own held money — reserve it on the cash ledger first.
+        net = registration.org_net_cents
+        if net.positive?
+          begin
+            OrgCashEntry.debit!(
+              organization: registration.organization,
+              amount_cents: net,
+              source: registration,
+              entry_type: "refund",
+              description: "Refund of course registration ##{registration.id}"
+            )
+          rescue OrgCashEntry::InsufficientFunds
+            redirect_to manage_course_offering_path(@course_offering),
+              alert: "Your organization's held balance can't cover this refund right now."
+            return
+          end
+        end
+
         begin
-          refund = Stripe::Refund.create(payment_intent: registration.stripe_payment_intent_id)
+          refund = Stripe::Refund.create(
+            payment_intent: registration.stripe_payment_intent_id,
+            metadata: { organization_id: registration.organization&.id, course_registration_id: registration.id }
+          )
           # The webhook will call registration.refund! when the charge.refunded event fires.
           # But we also mark it here for immediate UI feedback, capturing the refund
           # id so the course can trace back to the exact Stripe refund.
           registration.refund!(stripe_refund_id: refund.id)
           redirect_to manage_course_offering_path(@course_offering), notice: "#{registration.person.name} has been refunded and removed."
         rescue Stripe::StripeError => e
+          # The money never left — release the reservation.
+          OrgCashEntry.unpost!(source: registration, entry_type: "refund")
           redirect_to manage_course_offering_path(@course_offering), alert: "Refund failed: #{e.message}"
         end
       else

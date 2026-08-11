@@ -49,6 +49,18 @@
               <% if paid.any? %> · <span class="text-green-600 font-medium"><%= paid.size %> paid</span><% end %>
               <% if failed.any? %> · <span class="text-red-600 font-medium"><%= failed.size %> failed</span><% end %>
             </div>
+            <% available_cents = OrgCashEntry.available_cents(Current.organization) %>
+            <% if pending.any? %>
+              <div class="text-sm text-gray-500 mt-1">
+                Available to pay out: <span class="font-medium text-gray-700"><%= number_to_currency(available_cents / 100.0) %></span>
+              </div>
+              <% if OrgCashEntry.enforcement_enabled? && pending_total > available_cents %>
+                <div class="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+                  This run needs <%= number_to_currency(pending_total / 100.0) %> but your held balance is
+                  <%= number_to_currency(available_cents / 100.0) %> — payouts beyond your balance will be held.
+                </div>
+              <% end %>
+            <% end %>
           </div>
 
           <% if pending.any? %>

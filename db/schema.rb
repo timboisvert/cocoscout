@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1306,6 +1306,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_180000) do
     t.index ["slug"], name: "index_mics_on_slug", unique: true
     t.index ["status"], name: "index_mics_on_status"
     t.index ["venue_id"], name: "index_mics_on_venue_id"
+  end
+
+  create_table "org_cash_entries", force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", default: "usd", null: false
+    t.string "description"
+    t.string "entry_type", null: false
+    t.datetime "occurred_at", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "source_id"
+    t.string "source_type"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "entry_type"], name: "index_org_cash_entries_on_organization_id_and_entry_type"
+    t.index ["organization_id"], name: "index_org_cash_entries_on_organization_id"
+    t.index ["source_type", "source_id", "entry_type"], name: "index_org_cash_entries_on_source_and_type", unique: true, where: "(source_id IS NOT NULL)"
   end
 
   create_table "org_payouts", force: :cascade do |t|
@@ -2996,6 +3012,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_180000) do
   add_foreign_key "mic_taggings", "mics"
   add_foreign_key "mics", "productions"
   add_foreign_key "mics", "venues"
+  add_foreign_key "org_cash_entries", "organizations"
   add_foreign_key "org_payouts", "course_offerings"
   add_foreign_key "org_payouts", "organizations"
   add_foreign_key "org_payouts", "users", column: "paid_by_user_id"
