@@ -170,9 +170,20 @@ module Manage
       if params[:user_id].present?
         user = User.find(params[:user_id])
 
+        # Adding a user from outside the org is a legit flow (they were picked
+        # from the global search), but leave an audit trail — and never echo
+        # their email back, so this can't be used as an id→email oracle.
+        display_name = user.person&.name || "New team member"
+        unless OrganizationRole.exists?(user: user, organization: Current.organization)
+          Rails.logger.info(
+            "[cross_org_user_attach] user=#{Current.user&.id} org=#{Current.organization&.id} " \
+            "attached_user=#{user.id} via=#{self.class.name}#add_team_member"
+          )
+        end
+
         if user.role_for_production(@production).present?
           redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
-                      alert: "#{user.person&.name || user.email_address} already has access to this production" and return
+                      alert: "#{display_name} already has access to this production" and return
         end
 
         # Ensure they have an org role
@@ -192,7 +203,7 @@ module Manage
         end
 
         redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
-                    notice: "#{user.person&.name || user.email_address} added to production team"
+                    notice: "#{display_name} added to production team"
       elsif params[:email].present?
         email = params[:email].strip.downcase
 

@@ -3,12 +3,15 @@
 module Manage
   class EmailLogsController < Manage::ManageController
     def show
-      @email_log = EmailLog.find(params[:id])
+      # Org-scoped: email bodies carry invite tokens and signing links, so a
+      # bare find here let any manage user read any org's mail.
+      @email_log = EmailLog.for_organization(Current.organization).find(params[:id])
       @recipient_entity = @email_log.recipient_entity
 
       # Find other recipients from the same email batch
       @other_recipients = if @email_log.email_batch_id.present?
-        EmailLog.where(email_batch_id: @email_log.email_batch_id)
+        EmailLog.for_organization(Current.organization)
+                .where(email_batch_id: @email_log.email_batch_id)
                 .where.not(id: @email_log.id)
                 .where.not(recipient_entity_id: nil)
                 .includes(:recipient_entity)

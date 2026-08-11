@@ -2,6 +2,7 @@
 
 module Manage
   class ContractWizardController < ManageController
+    include CrossOrgPersonLookup
     before_action :set_contract, except: %i[new create_draft]
 
     # Step 1: Choose the contractor. When launched from a specific contractor's
@@ -424,7 +425,7 @@ module Manage
 
       person =
         if params[:person_id].present?
-          Person.find_by(id: params[:person_id])
+          find_person_for_attach(params[:person_id])
         elsif params[:invite_email].present?
           email = params[:invite_email].to_s.strip.downcase
           name = params[:invite_name].to_s.strip.presence || email.split("@").first

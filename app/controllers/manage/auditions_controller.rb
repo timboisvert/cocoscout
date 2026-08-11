@@ -349,8 +349,8 @@ module Manage
 
     # POST /auditions/add_to_session
     def add_to_session
-      audition_request = AuditionRequest.find(params[:audition_request_id])
-      audition_session = AuditionSession.find(params[:audition_session_id])
+      audition_request = org_scoped_audition_requests.find(params[:audition_request_id])
+      audition_session = org_scoped_audition_sessions.find(params[:audition_session_id])
 
       # Check if this requestable is already in this session
       existing = Audition.joins(:audition_request).where(
@@ -416,8 +416,8 @@ module Manage
     end
 
     def remove_from_session
-      audition = Audition.find(params[:audition_id])
-      audition_session = AuditionSession.find(params[:audition_session_id])
+      audition = org_scoped_auditions.find(params[:audition_id])
+      audition_session = org_scoped_audition_sessions.find(params[:audition_session_id])
       audition_session.auditions.delete(audition)
       audition.destroy!
 
@@ -470,8 +470,8 @@ module Manage
     end
 
     def move_to_session
-      audition = Audition.find(params[:audition_id])
-      new_audition_session = AuditionSession.find(params[:audition_session_id])
+      audition = org_scoped_auditions.find(params[:audition_id])
+      new_audition_session = org_scoped_audition_sessions.find(params[:audition_session_id])
 
       # Check if auditionable (person/group) is already in the new session
       existing = Audition.where(
@@ -911,6 +911,25 @@ module Manage
     end
 
     private
+
+    # The three *_session actions (add/remove/move) have no production_id in
+    # their routes, so no production guard runs for them — every lookup must be
+    # scoped to the current organization here, or any manage user could destroy
+    # or reshuffle any org's auditions by iterating ids.
+    def org_scoped_audition_sessions
+      AuditionSession.joins(audition_cycle: :production)
+                     .where(productions: { organization_id: Current.organization.id })
+    end
+
+    def org_scoped_audition_requests
+      AuditionRequest.joins(audition_cycle: :production)
+                     .where(productions: { organization_id: Current.organization.id })
+    end
+
+    def org_scoped_auditions
+      Audition.joins(audition_session: { audition_cycle: :production })
+              .where(productions: { organization_id: Current.organization.id })
+    end
 
     # Re-renders one session's assigned-auditionee slots after an add/remove,
     # for the click-to-add scheduling UI (audition-assign controller swaps it in).

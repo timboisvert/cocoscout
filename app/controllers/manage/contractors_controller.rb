@@ -2,6 +2,7 @@
 
 module Manage
   class ContractorsController < ManageController
+    include CrossOrgPersonLookup
     before_action :set_contractor, only: [ :show, :edit, :update, :destroy, :invite, :link_person, :preview_person, :add_person ]
 
     def index
@@ -190,7 +191,7 @@ module Manage
     # in and see their contracts. Returns the Person, or nil if nothing was chosen.
     def link_or_invite_person!(contractor)
       if params[:person_id].present?
-        person = Person.find_by(id: params[:person_id])
+        person = find_person_for_attach(params[:person_id])
         return nil unless person
 
         add_to_org(person)
@@ -265,7 +266,7 @@ module Manage
     # name/email pair for someone new. Returns nil when neither is usable.
     def resolve_person_target
       if params[:person_id].present?
-        person = Person.find_by(id: params[:person_id])
+        person = find_person_for_attach(params[:person_id])
         person && { person: person, name: person.name, email: person.email, person_id: person.id }
       elsif params[:invite_email].present?
         email = params[:invite_email].to_s.strip.downcase

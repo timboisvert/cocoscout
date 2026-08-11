@@ -230,7 +230,7 @@ module Manage
     end
 
     def org_show_modal
-      @show = Show.includes(:production, :location).find(params[:id])
+      @show = org_scoped_shows.includes(:production, :location).find(params[:id])
       @production = @show.production
 
       # Get all members with their availability for this show
@@ -255,9 +255,9 @@ module Manage
     end
 
     def org_cast_person
-      show = Show.find(params[:show_id])
-      role = Role.find(params[:role_id])
-      person = Person.find(params[:person_id])
+      show = org_scoped_shows.find(params[:show_id])
+      role = show.available_roles.find(params[:role_id])
+      person = Current.organization.people.find(params[:person_id])
 
       assignment = ShowPersonRoleAssignment.create!(
         show: show,
@@ -276,8 +276,8 @@ module Manage
     end
 
     def org_register_person
-      show = Show.find(params[:show_id])
-      person = Person.find(params[:person_id])
+      show = org_scoped_shows.find(params[:show_id])
+      person = Current.organization.people.find(params[:person_id])
       slot_id = params[:slot_id]
 
       sign_up_form = find_sign_up_form_for_show(show)
@@ -344,8 +344,8 @@ module Manage
     end
 
     def org_pre_register
-      show = Show.find(params[:show_id])
-      person = Person.find(params[:person_id])
+      show = org_scoped_shows.find(params[:show_id])
+      person = Current.organization.people.find(params[:person_id])
       send_email = params[:send_email] == "true" || params[:send_email] == true
 
       sign_up_form = find_sign_up_form_for_show(show)
@@ -383,7 +383,7 @@ module Manage
     end
 
     def org_pre_register_all
-      show = Show.find(params[:show_id])
+      show = org_scoped_shows.find(params[:show_id])
       person_ids = params[:person_ids] || []
 
       sign_up_form = find_sign_up_form_for_show(show)
@@ -407,7 +407,7 @@ module Manage
 
       person_ids.each do |person_id|
         begin
-          person = Person.find(person_id)
+          person = Current.organization.people.find(person_id)
 
           # Skip if already registered
           existing = SignUpRegistration.joins(:sign_up_slot)
@@ -443,8 +443,8 @@ module Manage
     end
 
     def org_set_availability
-      show = Show.find(params[:show_id])
-      person = Person.find(params[:person_id])
+      show = org_scoped_shows.find(params[:show_id])
+      person = Current.organization.people.find(params[:person_id])
       status = params[:status]
 
       unless %w[available unavailable].include?(status)
@@ -462,6 +462,13 @@ module Manage
     end
 
     private
+
+    # The org_* actions carry no production_id in their routes, so the usual
+    # production guard never runs for them — every show lookup must be scoped
+    # to the current organization here.
+    def org_scoped_shows
+      Show.joins(:production).where(productions: { organization_id: Current.organization.id })
+    end
 
     # Courses don't use availability/casting — keep them out of this subsystem.
     def check_not_course
@@ -555,9 +562,9 @@ module Manage
 
     def find_member(id, type)
       if type == "Group"
-        Group.includes(profile_headshots: { image_attachment: :blob }).find(id)
+        Current.organization.groups.includes(profile_headshots: { image_attachment: :blob }).find(id)
       else
-        Person.includes(profile_headshots: { image_attachment: :blob }).find(id)
+        Current.organization.people.includes(profile_headshots: { image_attachment: :blob }).find(id)
       end
     end
 

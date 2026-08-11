@@ -82,7 +82,9 @@ module Manage
     private
 
     def set_location
-      @location = Location.find(params.expect(:id))
+      # Scoped: a bare find let a manager in any org view, edit or delete
+      # another org's venue.
+      @location = Current.organization.locations.find(params.expect(:id))
     end
 
     def location_params

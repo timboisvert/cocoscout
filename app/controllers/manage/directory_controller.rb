@@ -143,7 +143,9 @@ module Manage
     end
 
     def update_group_availability
-      @group = Group.find(params[:id])
+      # Both lookups org-scoped — bare finds let a manager write availability
+      # joining any group to any org's shows.
+      @group = Current.organization.groups.find(params[:id])
       updated_count = 0
 
       # Loop through all parameters looking for availability_Group_* keys
@@ -151,7 +153,9 @@ module Manage
         next unless key.start_with?("availability_Group_")
 
         show_id = key.split("_").last.to_i
-        show = Show.find(show_id)
+        show = Show.joins(:production)
+                   .where(productions: { organization_id: Current.organization.id })
+                   .find(show_id)
         availability = @group.show_availabilities.find_or_initialize_by(show: show)
 
         # Only update if the status has changed

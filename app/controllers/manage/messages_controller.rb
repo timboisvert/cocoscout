@@ -233,6 +233,14 @@ module Manage
       @message = Message.find(params[:id])
       @root_message = @message.root_message
 
+      # Ensure user has access (subscribed to thread) — mirrors
+      # My::MessagesController#show; without it any manage user could read any
+      # thread on the platform by iterating ids.
+      unless @root_message.subscribed?(Current.user)
+        redirect_to manage_messages_path, alert: "You don't have access to this message"
+        return
+      end
+
       # Clear focus param if trying to comment on a deleted message
       if @root_message.deleted? && params[:focus] == "comment"
         redirect_to manage_message_path(@root_message) and return
@@ -531,6 +539,13 @@ module Manage
     # POST /manage/messages/:id/react/:emoji
     def react
       message = Message.find(params[:id])
+
+      # Only thread participants may react.
+      unless message.root_message.subscribed?(Current.user)
+        head :forbidden
+        return
+      end
+
       emoji = params[:emoji]
 
       # Validate emoji is in allowed list
@@ -582,6 +597,13 @@ module Manage
     # POST /manage/messages/:id/vote_poll
     def vote_poll
       message = Message.find(params[:id])
+
+      # Only thread participants may vote.
+      unless message.root_message.subscribed?(Current.user)
+        redirect_to manage_messages_path, alert: "You don't have access to this message"
+        return
+      end
+
       poll = message.message_poll
 
       unless poll

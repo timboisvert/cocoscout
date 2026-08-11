@@ -157,7 +157,9 @@ module Manage
     private
 
     def set_group
-      @group = Group.find(params[:id])
+      # Scoped to the org — a bare find let any manager read (or destroy, with
+      # its full cascade of memberships/casting/payout history) any org's group.
+      @group = Current.organization.groups.find(params[:id])
     end
   end
 end

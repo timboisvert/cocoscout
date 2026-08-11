@@ -145,7 +145,9 @@ module Manage
     end
 
     def set_waiver
-      @waiver = ShowAdvanceWaiver.find(params[:id])
+      # Scoped through the production's shows — a bare find let a manager
+      # delete another org's waiver (changing what a performer is owed).
+      @waiver = ShowAdvanceWaiver.joins(:show).where(shows: { production_id: @production.id }).find(params[:id])
     end
 
     def advance_params

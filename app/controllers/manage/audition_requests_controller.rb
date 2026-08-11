@@ -202,7 +202,9 @@ module Manage
       end
 
       status = params["availability_#{session_id}"]
-      session = AuditionSession.find(session_id)
+      # Scoped to this cycle — a bare find could forge availability against
+      # another org's sessions.
+      session = @audition_cycle.audition_sessions.find(session_id)
       availability = AuditionSessionAvailability.find_or_initialize_by(
         available_entity: requestable,
         audition_session: session
@@ -218,7 +220,7 @@ module Manage
 
     def update_show_availability
       requestable = @audition_request.requestable
-      show = Show.find(params[:show_id])
+      show = @production.shows.find(params[:show_id])
 
       availability = ShowAvailability.find_or_initialize_by(
         available_entity: requestable,
@@ -337,10 +339,12 @@ module Manage
     end
 
     def set_audition_cycle
+      # Scoped through the (already org-verified) production — a bare find here
+      # exposed every applicant's PII to any manager in any org.
       if params[:cycle_id].present?
-        @audition_cycle = AuditionCycle.find(params[:cycle_id])
+        @audition_cycle = @production.audition_cycles.find(params[:cycle_id])
       elsif params[:audition_cycle_id].present?
-        @audition_cycle = AuditionCycle.find(params[:audition_cycle_id])
+        @audition_cycle = @production.audition_cycles.find(params[:audition_cycle_id])
       else
         @audition_cycle = @production.active_audition_cycle
         unless @audition_cycle

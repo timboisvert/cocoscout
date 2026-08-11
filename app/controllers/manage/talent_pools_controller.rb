@@ -2,6 +2,7 @@
 
 module Manage
   class TalentPoolsController < Manage::ManageController
+    include CrossOrgPersonLookup
     before_action :set_production, except: [ :org_index, :org_switch_to_single_confirm, :org_switch_to_single, :org_switch_to_per_production_confirm, :org_switch_to_per_production ]
     before_action :check_production_access, except: [ :org_index, :org_switch_to_single_confirm, :org_switch_to_single, :org_switch_to_per_production_confirm, :org_switch_to_per_production ]
     before_action :set_talent_pool, except: [ :org_index, :org_switch_to_single_confirm, :org_switch_to_single, :org_switch_to_per_production_confirm, :org_switch_to_per_production ]
@@ -185,7 +186,8 @@ module Manage
 
     # Add a person from CocoScout who's not in our org yet
     def add_global_person
-      person = Person.find(params[:person_id])
+      person = find_person_for_attach(params[:person_id])
+      return head :not_found unless person
 
       # Add person to organization if not already
       unless person.organizations.include?(Current.organization)

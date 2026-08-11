@@ -584,14 +584,14 @@ module Manage
     end
 
     def cancel_registration
-      @registration = SignUpRegistration.find(params[:registration_id])
+      @registration = find_form_registration!(params[:registration_id])
       @registration.cancel!
       redirect_to manage_signups_form_path(@production, @sign_up_form),
                   notice: "Registration cancelled"
     end
 
     def move_registration
-      @registration = SignUpRegistration.find(params[:registration_id])
+      @registration = find_form_registration!(params[:registration_id])
       target_slot = SignUpSlot.find(params[:target_slot_id])
 
       # Ensure the target slot belongs to the same form
@@ -733,7 +733,7 @@ module Manage
     end
 
     def assign_registration
-      registration = SignUpRegistration.find(params[:registration_id])
+      registration = find_form_registration!(params[:registration_id])
       slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
 
       if slot.full?
@@ -748,7 +748,7 @@ module Manage
     end
 
     def unassign_registration
-      registration = SignUpRegistration.find(params[:registration_id])
+      registration = find_form_registration!(params[:registration_id])
       registration.unassign!
       redirect_to manage_assign_signups_form_path(@production, @sign_up_form, instance_id: params[:instance_id]),
                   notice: "#{registration.display_name} returned to queue"
@@ -776,7 +776,7 @@ module Manage
       @instance = find_instance_for_assignment
       return unless @instance
 
-      registration = SignUpRegistration.find(params[:registration_id])
+      registration = find_form_registration!(params[:registration_id])
 
       # Find first available slot
       slot = @instance.sign_up_slots.available.find { |s| !s.full? }
@@ -791,6 +791,18 @@ module Manage
     end
 
     private
+
+    # A registration may only be acted on through the form it belongs to
+    # (directly via its slot, or via its instance for queued ones). A bare find
+    # here let a manager cancel/assign registrations on any org's forms.
+    def find_form_registration!(id)
+      registration = SignUpRegistration.find(id)
+      form_id = registration.sign_up_slot&.sign_up_form_id ||
+                registration.sign_up_form_instance&.sign_up_form_id
+      raise ActiveRecord::RecordNotFound unless form_id == @sign_up_form.id
+
+      registration
+    end
 
     def load_assignment_data
       @instance = find_instance_for_assignment

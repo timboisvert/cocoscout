@@ -424,7 +424,9 @@ module Manage
         return
       end
 
-      payee = payee_type == "Group" ? Group.find(payee_id) : Person.find(payee_id)
+      # Scoped to the org: a payout line's payee must be one of our own people
+      # or groups, not an arbitrary platform id.
+      payee = payee_type == "Group" ? Current.organization.groups.find(payee_id) : Current.organization.people.find(payee_id)
 
       # Check if already in payout
       if @show_payout.line_items.exists?(payee: payee)

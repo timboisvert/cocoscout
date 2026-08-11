@@ -10,6 +10,7 @@ module Manage
     # entered here — the worker provides that to Stripe during their own
     # onboarding.
     class StaffWizardController < Manage::ManageController
+    include CrossOrgPersonLookup
       before_action :ensure_org_owner_or_manager
       before_action :load_wizard_state
       before_action :require_started, only: %i[job manager start roles save_roles review save_review
@@ -133,7 +134,7 @@ module Manage
 
       # Pick an existing CocoScout person from the search results.
       def select_invite_person
-        person = Person.find_by(id: params[:person_id])
+        person = find_person_for_attach(params[:person_id])
         if person
           @wizard_state[:selected_person_id] = person.id
           @wizard_state.delete(:invite_email)

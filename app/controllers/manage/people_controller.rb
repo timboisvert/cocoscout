@@ -373,7 +373,11 @@ module Manage
     end
 
     def add_to_cast
-      @talent_pool = TalentPool.find(params[:talent_pool_id])
+      # Scoped through the org's productions — a bare find let a manager push
+      # people into (or pull them out of) another org's casting pool.
+      @talent_pool = TalentPool.joins(:production)
+                               .where(productions: { organization_id: Current.organization.id })
+                               .find(params[:talent_pool_id])
       @person = Current.organization.people.find(params[:person_id])
       @talent_pool.people << @person unless @talent_pool.people.include?(@person)
       render partial: "manage/talent_pools/talent_pool_membership_card",
@@ -381,7 +385,11 @@ module Manage
     end
 
     def remove_from_cast
-      @talent_pool = TalentPool.find(params[:talent_pool_id])
+      # Scoped through the org's productions — a bare find let a manager push
+      # people into (or pull them out of) another org's casting pool.
+      @talent_pool = TalentPool.joins(:production)
+                               .where(productions: { organization_id: Current.organization.id })
+                               .find(params[:talent_pool_id])
       @person = Current.organization.people.find(params[:person_id])
       @talent_pool.people.delete(@person) if @talent_pool.people.include?(@person)
       render partial: "manage/talent_pools/talent_pool_membership_card",

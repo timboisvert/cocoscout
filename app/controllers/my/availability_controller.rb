@@ -198,13 +198,13 @@ module My
     end
 
     def update
-      @show = Show.find(params[:show_id])
-
       # Determine the entity based on entity_key parameter (now person_ID or group_ID format)
       entity_key = params[:entity_key]
       entity = resolve_entity_from_key(entity_key)
 
       return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
+
+      @show = show_for_entity(entity, params[:show_id])
 
       @availability = ShowAvailability.find_or_initialize_by(available_entity: entity, show: @show)
       @availability.status = params[:status]
@@ -222,12 +222,12 @@ module My
     end
 
     def update_note
-      @show = Show.find(params[:show_id])
-
       entity_key = params[:entity_key]
       entity = resolve_entity_from_key(entity_key)
 
       return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
+
+      @show = show_for_entity(entity, params[:show_id])
 
       @availability = ShowAvailability.find_by(available_entity: entity, show: @show)
       return render json: { error: "Not found" }, status: :not_found unless @availability
@@ -240,13 +240,15 @@ module My
     end
 
     def update_audition_session
-      @session = AuditionSession.find(params[:session_id])
-
       # Determine the entity based on entity_key parameter (now person_ID or group_ID format)
       entity_key = params[:entity_key]
       entity = resolve_entity_from_key(entity_key)
 
       return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
+
+      @session = AuditionSession.joins(audition_cycle: :production)
+                                .where(productions: { organization_id: entity.organization_ids })
+                                .find(params[:session_id])
 
       @availability = AuditionSessionAvailability.find_or_initialize_by(available_entity: entity, audition_session: @session)
       @availability.status = params[:status]
@@ -263,6 +265,15 @@ module My
     end
 
     private
+
+    # Availability may only be written against shows in organizations the
+    # entity actually belongs to — unscoped finds let a user pollute any org's
+    # availability data with their own rows.
+    def show_for_entity(entity, show_id)
+      Show.joins(:production)
+          .where(productions: { organization_id: entity.organization_ids })
+          .find(show_id)
+    end
 
     def resolve_entity_from_key(entity_key)
       return nil unless entity_key

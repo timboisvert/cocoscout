@@ -265,7 +265,10 @@ module Manage
     end
 
     def set_audition_cycle
-      @audition_cycle = AuditionCycle.find(params.expect(:id))
+      # Scoped through the (already org-verified) production — a bare find here
+      # let any manager open another org's cycle by pairing their own
+      # production_id with a foreign cycle id.
+      @audition_cycle = @production.audition_cycles.find(params.expect(:id))
     end
 
     def set_question

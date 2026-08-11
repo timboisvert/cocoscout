@@ -4,16 +4,14 @@ class SuperadminController < ApplicationController
   # Demo users are excluded from counts/lists to avoid skewing real metrics
   DEMO_EMAIL_DOMAIN = "demo.cocoscout.com"
 
-  before_action :require_superadmin,
-                only: %i[index impersonate change_email queue queue_failed queue_retry queue_delete_job queue_clear_failed
-                         queue_clear_pending queue_run_recurring_job people_list person_detail destroy_person merge_person organizations_list organization_detail
-                         destroy_organization update_subscription organization_consolidation organization_consolidation_execute
-                         production_transfer production_transfer_execute
-                         content_templates content_template_new content_template_create content_template_edit content_template_update
-                         content_template_destroy content_template_preview content_template_export content_template_import search_users keys
-                         agreements update_default_agreement tasks messages_list message_detail message_delete message_restore subscription_mark_unread
-                         promo_codes promo_code_new promo_code_create promo_code_deactivate
-                         finances finances_org_detail finances_org_record_payment finances_cash_adjustment finances_course_detail finances_record_payment finances_delete_payment finances_mark_payment_paid]
+  # Unconditional: every action here is superadmin-only. The one exception is
+  # stop_impersonating — the person clicking it is (by design) currently
+  # signed in AS someone else, so a superadmin check would trap them.
+  # (This used to be an `only:` allowlist that had drifted 20+ actions behind
+  # the controller — email_logs, bulk_destroy_people, cache_clear and friends
+  # were reachable by any signed-in user.)
+  before_action :require_superadmin
+  skip_before_action :require_superadmin, only: %i[stop_impersonating]
   before_action :use_superadmin_sidebar
 
   # Render superadmin pages inside the dashboard chrome with a dedicated Super
