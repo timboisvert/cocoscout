@@ -1,0 +1,36 @@
+#!/bin/sh
+# Full RuboCop run before every commit. A non-zero exit aborts the commit.
+#
+# Enable (one time, per clone):   git config core.hooksPath .githooks
+# Bypass for one commit:          git commit --no-verify
+#
+# Runs the whole project (not just staged files) — this is the "full run on
+# every commit" setup. For a faster staged-files-only variant, see the comment
+# at the bottom.
+
+echo "Running RuboCop…"
+
+if ! command -v bundle >/dev/null 2>&1; then
+  echo "RuboCop pre-commit hook: 'bundle' not found in PATH — skipping. (Is RVM/your Ruby loaded in this shell?)"
+  exit 0
+fi
+
+bundle exec rubocop --force-exclusion
+status=$?
+
+if [ "$status" -ne 0 ]; then
+  echo
+  echo "RuboCop found offenses — commit aborted."
+  echo "  • autocorrect what it can:  bundle exec rubocop -A"
+  echo "  • skip the check this once: git commit --no-verify"
+fi
+
+exit "$status"
+
+# --- Faster alternative: lint only the Ruby files you're committing ---------
+# Replace the `bundle exec rubocop --force-exclusion` line above with:
+#
+#   files=$(git diff --cached --name-only --diff-filter=ACM -- '*.rb')
+#   [ -z "$files" ] && exit 0
+#   bundle exec rubocop --force-exclusion $files
+#   status=$?
