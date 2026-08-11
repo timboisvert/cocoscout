@@ -213,7 +213,7 @@ module Manage
     # and clears the user's recipient read_at so the thread reappears in both
     # the inbox unread filter and the sidebar badge.
     def mark_unread
-      message = Message.find(params[:id])
+      message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- operates only on the caller's own subscription/recipient
       root = message.root_message
 
       subscription = root.message_subscriptions.find_by(user: Current.user)
@@ -230,7 +230,7 @@ module Manage
     end
 
     def show
-      @message = Message.find(params[:id])
+      @message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by subscribed? immediately below
       @root_message = @message.root_message
 
       # Ensure user has access (subscribed to thread) — mirrors
@@ -538,7 +538,7 @@ module Manage
 
     # POST /manage/messages/:id/react/:emoji
     def react
-      message = Message.find(params[:id])
+      message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by subscribed? immediately below
 
       # Only thread participants may react.
       unless message.root_message.subscribed?(Current.user)
@@ -570,7 +570,7 @@ module Manage
 
     # DELETE /manage/messages/:id
     def destroy
-      message = Message.find_by(id: params[:id])
+      message = Message.find_by(id: params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by can_be_deleted_by? immediately below
 
       if message.nil?
         redirect_to manage_messages_path, alert: "Message not found"
@@ -596,7 +596,7 @@ module Manage
 
     # POST /manage/messages/:id/vote_poll
     def vote_poll
-      message = Message.find(params[:id])
+      message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by subscribed? immediately below
 
       # Only thread participants may vote.
       unless message.root_message.subscribed?(Current.user)
@@ -645,7 +645,7 @@ module Manage
 
     # POST /manage/messages/:id/close_poll
     def close_poll
-      message = Message.find(params[:id])
+      message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by created_by? immediately below
       poll = message.message_poll
 
       unless poll && poll.created_by?(Current.user)

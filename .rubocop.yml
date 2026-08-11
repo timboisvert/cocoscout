@@ -1,2 +1,17 @@
 # Omakase Ruby styling for Rails
 inherit_gem: { rubocop-rails-omakase: rubocop.yml }
+
+require:
+  - ./lib/rubocop/cop/cocoscout/unscoped_find
+
+# Every hole in the Aug 2026 cross-org isolation audit was a bare
+# `Model.find(params[...])` in a manage controller. Scope through
+# Current.organization / an already-scoped parent, or inline-disable with a
+# justification comment for intentionally platform-wide lookups.
+CocoScout/UnscopedFind:
+  Include:
+    - app/controllers/manage/**/*.rb
+  # Receivers that aren't org-owned ActiveRecord models — a type registry keyed
+  # by a question-type slug, not a tenant record.
+  AllowedReceivers:
+    - QuestionTypes::Base

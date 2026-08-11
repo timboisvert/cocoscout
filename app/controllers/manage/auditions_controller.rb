@@ -167,7 +167,10 @@ module Manage
 
     # GET /auditions/schedule_auditions
     def schedule_auditions
-      @audition_cycle = AuditionCycle.find(params[:id])
+      # Scoped through the org-verified production — set_audition_cycle is
+      # skipped for this action, so a bare find would expose another org's
+      # schedule (sessions, auditionees, vote counts) via a foreign cycle id.
+      @audition_cycle = @production.audition_cycles.find(params[:id])
       @audition_sessions = @audition_cycle.audition_sessions
         .includes(:location, auditions: :auditionable)
         .order(start_at: :asc)
@@ -219,7 +222,9 @@ module Manage
     # for the Review & Notify modal on the schedule page (computed fresh, since
     # scheduling changes client-side after page load).
     def notify_preview
-      @audition_cycle = AuditionCycle.find(params[:id])
+      # Scoped through the org-verified production (set_audition_cycle already
+      # loads it scoped; this reload must stay scoped too).
+      @audition_cycle = @production.audition_cycles.find(params[:id])
       sessions = @audition_cycle.audition_sessions.includes(auditions: :auditionable).order(:start_at)
 
       session_labels = Hash.new { |h, k| h[k] = [] }

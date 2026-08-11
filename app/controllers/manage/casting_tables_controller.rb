@@ -104,7 +104,9 @@ module Manage
       end
 
       show = @casting_table.shows.find_by(id: params[:show_id])
-      role = Role.find_by(id: params[:role_id])
+      # Scoped to the casting table's own productions so a foreign role id can't
+      # be assigned through this table.
+      role = Role.where(production_id: @casting_table.productions.select(:id)).find_by(id: params[:role_id])
 
       unless show && role
         render json: { error: "Invalid show or role" }, status: :unprocessable_entity

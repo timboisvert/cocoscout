@@ -122,7 +122,7 @@ module Manage
     end
 
     def transfer_ownership
-      new_owner = User.find(params[:new_owner_id])
+      new_owner = User.find(params[:new_owner_id]) # rubocop:disable CocoScout/UnscopedFind -- new owner verified as a manager of @organization immediately below
 
       # Ensure new owner has manager role
       unless @organization.organization_roles.exists?(user: new_owner, company_role: "manager")
@@ -177,7 +177,7 @@ module Manage
     end
 
     def set_organization
-      @organization = Organization.find(params[:id])
+      @organization = Organization.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- ensure_user_can_manage/ensure_user_is_owner before_action gates access
     end
 
     def organization_params

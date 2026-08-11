@@ -168,7 +168,7 @@ module Manage
 
       # If a user_id was provided (existing CocoScout user selected from search)
       if params[:user_id].present?
-        user = User.find(params[:user_id])
+        user = User.find(params[:user_id]) # rubocop:disable CocoScout/UnscopedFind -- intentional cross-org add from global search; audit-logged below
 
         # Adding a user from outside the org is a legit flow (they were picked
         # from the global search), but leave an audit trail — and never echo

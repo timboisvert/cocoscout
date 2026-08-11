@@ -547,7 +547,7 @@ module Manage
     end
 
     def load_course_offering
-      @course_offering = CourseOffering.find(params[:id])
+      @course_offering = CourseOffering.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- org ownership checked immediately below (production.organization)
       # Verify it belongs to the current organization
       unless @course_offering.production.organization == Current.organization
         redirect_to manage_course_offerings_path, alert: "Course offering not found."

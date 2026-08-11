@@ -271,7 +271,7 @@ module Manage
     end
 
     def confirm_remove_person
-      @person = Person.find_by(id: params[:person_id]) ||
+      @person = Person.find_by(id: params[:person_id]) || # rubocop:disable CocoScout/UnscopedFind -- removal is scoped to @talent_pool below; global find only for display
                 Current.organization.people.find(params[:person_id])
       @upcoming_assignments = ShowPersonRoleAssignment.joins(:show)
                                                        .includes(:show, :role)
@@ -289,7 +289,7 @@ module Manage
       # single-mode org pool, or their org membership was later removed), and the
       # org-scoped find would 404 → the UI shows "Failed to remove member". The
       # actual removal is still scoped to @talent_pool below, so this is safe.
-      person = Person.find_by(id: params[:person_id])
+      person = Person.find_by(id: params[:person_id]) # rubocop:disable CocoScout/UnscopedFind -- removal is scoped to @talent_pool below; global find only for display
       unless person
         return render json: { success: false, error: "Person not found" }, status: :not_found if request.xhr?
 
@@ -320,7 +320,7 @@ module Manage
     end
 
     def confirm_remove_group
-      @group = Group.find_by(id: params[:group_id]) ||
+      @group = Group.find_by(id: params[:group_id]) || # rubocop:disable CocoScout/UnscopedFind -- removal is scoped to @talent_pool below; global find only for display
                Current.organization.groups.find(params[:group_id])
       @upcoming_assignments = ShowPersonRoleAssignment.joins(:show)
                                                        .includes(:show, :role)
@@ -335,7 +335,7 @@ module Manage
     def remove_group
       # Resolve globally for the same reason as remove_person; the removal itself
       # is scoped to @talent_pool below.
-      group = Group.find_by(id: params[:group_id])
+      group = Group.find_by(id: params[:group_id]) # rubocop:disable CocoScout/UnscopedFind -- removal is scoped to @talent_pool below; global find only for display
       unless group
         return render json: { success: false, error: "Group not found" }, status: :not_found if request.xhr?
 

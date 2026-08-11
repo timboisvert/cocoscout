@@ -388,8 +388,10 @@ module Manage
         return
       end
 
-      # Find the role - all roles are now unified in the Role model
-      role = Role.find(params[:role_id])
+      # Find the role, scoped to the org so a foreign role id can't cast into
+      # (or read the restrictions of) another org's role. Joined through
+      # production so show-level roles (production_id set, show_id present) match too.
+      role = org_scoped_roles.find(params[:role_id])
 
       # Validate eligibility for restricted roles (unless force is true - user confirmed in modal)
       if role.restricted? && !role.eligible?(assignable) && !params[:force]
@@ -487,8 +489,8 @@ module Manage
         return
       end
 
-      # Find the role
-      role = Role.find(params[:role_id])
+      # Find the role, scoped to the org (see assign_person_to_role).
+      role = org_scoped_roles.find(params[:role_id])
 
       # Check if role is restricted - guests cannot be assigned unless force is true
       if role.restricted? && !params[:force]
@@ -1003,6 +1005,12 @@ module Manage
     end
 
     private
+
+    # Roles owned by the current org — through their production, so both
+    # production-level (show_id nil) and show-level roles are covered.
+    def org_scoped_roles
+      Role.joins(:production).where(productions: { organization_id: Current.organization.id })
+    end
 
     # Render a success response for assignment operations (used for both new assignments and no-ops)
     def render_assignment_success_response

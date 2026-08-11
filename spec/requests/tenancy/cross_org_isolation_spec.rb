@@ -40,6 +40,36 @@ RSpec.describe "Cross-org isolation (manage)", type: :request do
     end
   end
 
+  describe "audition schedule/notify (found by UnscopedFind cop)" do
+    let!(:victim_cycle) { create(:audition_cycle, production: victim_production) }
+
+    it "404s the schedule page for a foreign cycle through my production id" do
+      get manage_schedule_auditions_signups_auditions_cycle_path(production, victim_cycle)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "blocks notify_preview for a foreign cycle" do
+      # set_audition_cycle scopes through @production and redirects on a miss,
+      # so this is caught before the action body (which is also scoped now).
+      get manage_notify_preview_signups_auditions_cycle_path(production, victim_cycle)
+      expect(response).to have_http_status(:redirect)
+    end
+  end
+
+  describe "casting role assignment (found by UnscopedFind cop)" do
+    let!(:my_show) { create(:show, production: production, casting_enabled: true) }
+    let!(:my_person) { create(:person).tap { |p| org.people << p } }
+    let!(:victim_role) { create(:role, production: victim_production) }
+
+    it "404s assigning my person to a foreign org's role" do
+      expect {
+        post manage_casting_show_assign_person_path(production, my_show),
+             params: { person_id: my_person.id, role_id: victim_role.id }
+      }.not_to change(ShowPersonRoleAssignment, :count)
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   describe "audition requests (C-4)" do
     let!(:victim_cycle) { create(:audition_cycle, production: victim_production) }
     let!(:victim_request) { create(:audition_request, audition_cycle: victim_cycle) }

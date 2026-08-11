@@ -153,7 +153,12 @@ module Manage
 
     def set_audition_cycle
       if params[:audition_cycle_id].present?
-        @audition_cycle = AuditionCycle.find(params[:audition_cycle_id])
+        # Scoped to the org (set_production derives @production from this cycle,
+        # so a bare find would set a foreign production and lean on
+        # check_production_access catching it afterward).
+        @audition_cycle = AuditionCycle.joins(:production)
+                                       .where(productions: { organization_id: Current.organization.id })
+                                       .find(params[:audition_cycle_id])
       elsif params[:production_id].present?
         production = Current.organization.productions.find(params[:production_id])
         @audition_cycle = production.active_audition_cycle

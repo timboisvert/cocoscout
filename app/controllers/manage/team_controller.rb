@@ -53,7 +53,7 @@ module Manage
     end
 
     def invite
-      person = params[:team_invitation][:person_id].present? ? Person.find_by(id: params[:team_invitation][:person_id]) : nil
+      person = params[:team_invitation][:person_id].present? ? Person.find_by(id: params[:team_invitation][:person_id]) : nil # rubocop:disable CocoScout/UnscopedFind -- invite flow: gated by person.user check; adds to org intentionally
 
       # If the person has a CocoScout user account, add them directly (no pending invitation)
       if person&.user

@@ -544,7 +544,7 @@ module Manage
       @slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
 
       person = if params[:person_id].present?
-        Person.find(params[:person_id])
+        Current.organization.people.find(params[:person_id])
       end
 
       begin
@@ -566,7 +566,7 @@ module Manage
       @instance = @sign_up_form.sign_up_form_instances.find(instance_id)
 
       person = if params[:person_id].present?
-        Person.find(params[:person_id])
+        Current.organization.people.find(params[:person_id])
       end
 
       begin
@@ -592,7 +592,7 @@ module Manage
 
     def move_registration
       @registration = find_form_registration!(params[:registration_id])
-      target_slot = SignUpSlot.find(params[:target_slot_id])
+      target_slot = SignUpSlot.find(params[:target_slot_id]) # rubocop:disable CocoScout/UnscopedFind -- target_slot verified to belong to @sign_up_form immediately below
 
       # Ensure the target slot belongs to the same form
       unless target_slot.sign_up_form_id == @sign_up_form.id ||

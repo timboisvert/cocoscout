@@ -31,7 +31,10 @@ module Cocoscout
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks])
+    # rubocop: custom cops (loaded only by RuboCop via .rubocop.yml `require`),
+    # not by the app — and their RuboCop:: constants don't match zeitwerk's
+    # path-based naming, so they must stay out of autoload/eager-load.
+    config.autoload_lib(ignore: %w[assets tasks rubocop])
 
     config.log_level = ENV["LOG_LEVEL"] || :info
     # config.semantic_logger.application = "cocoscout"
