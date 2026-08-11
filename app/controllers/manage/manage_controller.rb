@@ -144,10 +144,10 @@ module Manage
           color = "purple"
           offering = @course_offering_by_production[production.id]
           path = offering ? manage_course_offering_path(offering) : manage_show_path(production, show)
-        elsif production.type_third_party?
-          color = "amber"
-          path = manage_show_path(production, show)
         else
+          # Everything else colors by the event's own nature (show/rehearsal/
+          # meeting) — whether it's an in-house production or a third-party
+          # rental is irrelevant on this calendar.
           color = case show.event_type
           when "rehearsal" then "blue"
           when "meeting" then "green"
