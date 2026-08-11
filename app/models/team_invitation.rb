@@ -5,7 +5,9 @@ class TeamInvitation < ApplicationRecord
   belongs_to :production, optional: true
   belongs_to :person, optional: true
 
-  validates :email, presence: true
+  normalizes :email, with: ->(e) { e.strip.downcase }
+
+  validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }
   validates :token, presence: true, uniqueness: true
   validate :production_belongs_to_organization
 

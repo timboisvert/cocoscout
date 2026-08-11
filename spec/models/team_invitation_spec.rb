@@ -15,6 +15,18 @@ RSpec.describe TeamInvitation, type: :model do
       expect(team_invitation.errors[:email]).to include("can't be blank")
     end
 
+    it 'is invalid with a malformed email' do
+      team_invitation = build(:team_invitation, email: 'manager@gmail,com')
+      expect(team_invitation).not_to be_valid
+      expect(team_invitation.errors[:email]).to include('must be a valid email address')
+    end
+
+    it 'strips and downcases the email' do
+      team_invitation = build(:team_invitation, email: ' Manager@Gmail.com ')
+      expect(team_invitation).to be_valid
+      expect(team_invitation.email).to eq('manager@gmail.com')
+    end
+
     it 'requires unique tokens' do
       create(:team_invitation, token: 'unique_token')
       duplicate = build(:team_invitation, token: 'unique_token')

@@ -20,14 +20,18 @@ class ApplicationMailer < ActionMailer::Base
   def mail(headers = {}, &block)
     user = find_user_from_params
 
-    if user
-      # Validate recipient email before sending
-      recipient_email = headers[:to] || user.email_address
-      unless recipient_email.to_s.match?(URI::MailTo::EMAIL_REGEXP)
-        Rails.logger.error("Attempted to send email to invalid address: #{recipient_email}")
-        return # Don't send email with invalid recipient
-      end
+    # Validate every recipient before sending — Mailgun 400s the whole request
+    # on one bad address, which kills the delivery job. Skipping here (with a
+    # log line) beats an unhandled Mailgun::BadRequest in solid_queue.
+    recipients = Array(headers[:to] || user&.email_address)
+    addresses = recipients.flat_map { |r| r.to_s.split(",") }
+                          .map { |r| r[/<([^>]*)>/, 1] || r.strip }
+    if addresses.empty? || addresses.any? { |a| !a.match?(URI::MailTo::EMAIL_REGEXP) }
+      Rails.logger.error("Skipping email with invalid recipient #{recipients.inspect} (#{self.class.name}##{action_name})")
+      return # Don't send email with invalid recipient
+    end
 
+    if user
       headers["X-User-ID"] = user.id.to_s
       headers["X-Mailer-Class"] = self.class.name
       headers["X-Mailer-Action"] = action_name

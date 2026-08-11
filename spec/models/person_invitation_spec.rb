@@ -15,6 +15,18 @@ RSpec.describe PersonInvitation, type: :model do
       expect(person_invitation.errors[:email]).to include("can't be blank")
     end
 
+    it 'is invalid with a malformed email' do
+      person_invitation = build(:person_invitation, email: 'performer@gmail,com')
+      expect(person_invitation).not_to be_valid
+      expect(person_invitation.errors[:email]).to include('must be a valid email address')
+    end
+
+    it 'strips and downcases the email' do
+      person_invitation = build(:person_invitation, email: ' Performer@Gmail.com ')
+      expect(person_invitation).to be_valid
+      expect(person_invitation.email).to eq('performer@gmail.com')
+    end
+
     it 'requires unique tokens' do
       create(:person_invitation, token: 'unique_token')
       duplicate = build(:person_invitation, token: 'unique_token')
