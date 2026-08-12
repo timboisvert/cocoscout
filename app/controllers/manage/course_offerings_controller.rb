@@ -14,7 +14,7 @@ module Manage
     def index
       all_offerings = Current.user.accessible_productions
         .courses
-        .includes(:course_offerings)
+        .includes(course_offerings: [ :course_registrations, :course_offering_payout ])
         .flat_map(&:course_offerings)
         .sort_by(&:created_at)
         .reverse
@@ -534,7 +534,13 @@ module Manage
     # A course is "awaiting payout" when it has taken money but the organization's
     # share hasn't been sent to a payout run yet.
     def course_awaiting_payout?(offering)
-      return false unless offering.course_registrations.confirmed.exists?
+      has_confirmed =
+        if offering.course_registrations.loaded?
+          offering.course_registrations.any? { |r| r.status == "confirmed" }
+        else
+          offering.course_registrations.confirmed.exists?
+        end
+      return false unless has_confirmed
 
       payout = offering.course_offering_payout
       return true if payout.nil?

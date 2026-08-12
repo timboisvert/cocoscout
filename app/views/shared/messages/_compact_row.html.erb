@@ -3,7 +3,7 @@
 
   Required:
     message: the root Message
-    summary: { participants:, count:, snippet: } from Message.thread_summaries_for
+    summary: { participants:, count:, snippet:, latest_activity_at: } from Message.thread_summaries_for
              — preloaded in the controller so this partial does no DB queries.
 
   Optional:
@@ -19,7 +19,7 @@
   snippet = summary[:snippet].to_s
   is_unread = summary[:is_unread]
 
-  ts = message.latest_activity_at || message.created_at
+  ts = summary[:latest_activity_at] || message.latest_activity_at || message.created_at
   date_label =
     if ts.to_date == Date.current
       ts.strftime("%-l:%M %p")

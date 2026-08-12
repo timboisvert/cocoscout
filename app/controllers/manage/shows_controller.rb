@@ -34,7 +34,7 @@ module Manage
       # Get shows across all productions, eager load location, event_linkage, and production
       base_productions = @production_filter ? @productions.where(id: @production_filter) : @productions
       base_scope = Show.where(production: base_productions)
-                       .includes(:location, :production, event_linkage: :shows)
+                       .includes(:location, :production, :custom_roles, event_linkage: :shows)
                        .where(event_type: @event_type_filter)
 
       if @filter == "past"
@@ -88,10 +88,18 @@ module Manage
 
       @assignments_by_show = assignments.group_by(&:show_id)
 
-      # Get all roles for these shows
+      # Get all roles for these shows: production-level roles in one query,
+      # custom roles from the preloaded association
+      production_roles = Role.production_roles
+                             .where(production_id: @shows.map(&:production_id).uniq)
+                             .group_by(&:production_id)
       @roles_by_show = {}
       @shows.each do |show|
-        @roles_by_show[show.id] = show.available_roles.to_a
+        @roles_by_show[show.id] = if show.use_custom_roles?
+          show.custom_roles.to_a
+        else
+          production_roles[show.production_id] || []
+        end
       end
 
       # Get open vacancies for these shows
@@ -108,7 +116,7 @@ module Manage
       all_vacancies.each do |vacancy|
         next unless vacancy.vacated_by.present?
 
-        affected_show_ids = vacancy.affected_shows.any? ? vacancy.affected_shows.pluck(:id) : [ vacancy.show_id ]
+        affected_show_ids = vacancy.affected_shows.any? ? vacancy.affected_shows.map(&:id) : [ vacancy.show_id ]
 
         affected_show_ids.each do |affected_show_id|
           next unless show_ids.include?(affected_show_id)
@@ -171,7 +179,7 @@ module Manage
       @event_type_filter = params[:event_type] ? params[:event_type].split(",") : EventTypes.all
 
       # Get the shows using the shows filter, eager load location and event_linkage to avoid N+1
-      @shows = @production.shows.includes(:location, event_linkage: :shows)
+      @shows = @production.shows.includes(:location, :custom_roles, event_linkage: :shows)
 
       # Apply event type filter
       @shows = @shows.where(event_type: @event_type_filter)
@@ -226,10 +234,18 @@ module Manage
 
       @assignments_by_show = assignments.group_by(&:show_id)
 
-      # Get all roles for these shows
+      # Get all roles for these shows: production-level roles in one query,
+      # custom roles from the preloaded association
+      production_roles = Role.production_roles
+                             .where(production_id: @shows.map(&:production_id).uniq)
+                             .group_by(&:production_id)
       @roles_by_show = {}
       @shows.each do |show|
-        @roles_by_show[show.id] = show.available_roles.to_a
+        @roles_by_show[show.id] = if show.use_custom_roles?
+          show.custom_roles.to_a
+        else
+          production_roles[show.production_id] || []
+        end
       end
 
       # Get open vacancies for these shows (includes open, finding_replacement, not_filling)
@@ -248,7 +264,7 @@ module Manage
         next unless vacancy.vacated_by.present?
 
         # Determine which shows this vacancy affects
-        affected_show_ids = vacancy.affected_shows.any? ? vacancy.affected_shows.pluck(:id) : [ vacancy.show_id ]
+        affected_show_ids = vacancy.affected_shows.any? ? vacancy.affected_shows.map(&:id) : [ vacancy.show_id ]
 
         affected_show_ids.each do |affected_show_id|
           next unless show_ids.include?(affected_show_id)

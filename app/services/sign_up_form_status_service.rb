@@ -58,14 +58,24 @@ class SignUpFormStatusService
   def upcoming_instances
     return [] unless sign_up_form.repeated?
 
-    @upcoming_instances ||= sign_up_form.sign_up_form_instances
-      .includes(:show, :sign_up_slots)
-      .joins(:show)
-      .where("shows.date_and_time > ?", @now)
-      .where.not(status: "cancelled")
-      .where.not("shows.canceled = ?", true)
-      .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
-      .map { |instance| build_instance_status(instance) }
+    @upcoming_instances ||=
+      if sign_up_form.sign_up_form_instances.loaded?
+        # Callers that preloaded the instances (org signups list, dashboard)
+        # filter in memory — no per-form query.
+        sign_up_form.sign_up_form_instances
+          .select { |i| i.show && i.show.date_and_time > @now && i.status != "cancelled" && i.show.canceled == false }
+          .sort_by { |i| [ i.show.date_and_time, i.id ] }
+          .map { |instance| build_instance_status(instance) }
+      else
+        sign_up_form.sign_up_form_instances
+          .includes(:show, sign_up_slots: :sign_up_registrations)
+          .joins(:show)
+          .where("shows.date_and_time > ?", @now)
+          .where.not(status: "cancelled")
+          .where.not("shows.canceled = ?", true)
+          .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
+          .map { |instance| build_instance_status(instance) }
+      end
   end
 
   # Get instances that are currently accepting registrations
@@ -341,9 +351,16 @@ class SignUpFormStatusService
   end
 
   def build_shared_pool_status
-    # Calculate totals for shared pool (slots are directly on the form)
-    total_regs = sign_up_form.sign_up_registrations.active.count
-    total_cap = sign_up_form.sign_up_slots.where(is_held: false).sum(:capacity)
+    # Calculate totals for shared pool (slots are directly on the form),
+    # from memory when the caller preloaded slots + registrations.
+    slots = sign_up_form.sign_up_slots
+    if slots.loaded? && slots.all? { |s| s.sign_up_registrations.loaded? }
+      total_regs = slots.sum { |s| s.sign_up_registrations.count { |r| r.status != "cancelled" } }
+      total_cap = slots.reject(&:is_held?).sum { |s| s.capacity.to_i }
+    else
+      total_regs = sign_up_form.sign_up_registrations.active.count
+      total_cap = sign_up_form.sign_up_slots.where(is_held: false).sum(:capacity)
+    end
 
     if !sign_up_form.active?
       {

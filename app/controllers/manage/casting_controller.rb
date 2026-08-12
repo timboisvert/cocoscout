@@ -66,11 +66,10 @@ module Manage
                 .order(Arel.sql("shows.date_and_time ASC"))
                 .to_a
 
-      # Preload roles per production
-      @roles_by_production = {}
-      @productions.each do |production|
-        @roles_by_production[production.id] = production.roles.order(:position).to_a
-      end
+      # Preload roles per production (one query for all productions)
+      @roles_by_production = Role.where(production_id: @productions.map(&:id), show_id: nil)
+                                 .group_by(&:production_id)
+      @productions.each { |production| @roles_by_production[production.id] ||= [] }
 
       # Precompute max assignment updated_at per show
       show_ids = @shows.map(&:id)
@@ -113,19 +112,15 @@ module Manage
                       .includes(profile_headshots: { image_attachment: :blob })
                       .index_by(&:id)
 
-      # Load cancelled vacancies for all shows
-      @cancelled_vacancies_by_show = {}
-      @shows.each do |show|
-        @cancelled_vacancies_by_show[show.id] = show.cancelled_vacancies_by_assignment
-      end
+      # Load cancelled vacancies for all shows (one query for the whole list)
+      @cancelled_vacancies_by_show = Show.cant_make_it_vacancies_by_assignment_for(show_ids)
 
-      # Load open vacancies for non-linked shows
-      @open_vacancies_by_show = {}
-      @shows.each do |show|
-        next if show.linked?
-        open_vacancies = show.role_vacancies.open.includes(:role, :vacated_by).to_a
-        @open_vacancies_by_show[show.id] = open_vacancies.group_by(&:role_id)
-      end
+      # Load open vacancies for non-linked shows (one query for the whole list)
+      non_linked_show_ids = @shows.reject(&:linked?).map(&:id)
+      @open_vacancies_by_show = non_linked_show_ids.index_with { {} }
+      RoleVacancy.open.where(show_id: non_linked_show_ids).includes(:role, :vacated_by)
+                 .group_by(&:show_id)
+                 .each { |sid, vacancies| @open_vacancies_by_show[sid] = vacancies.group_by(&:role_id) }
 
       # Load sign-up registrations for shows with linked sign-up forms
       sign_up_registrations = SignUpRegistration
@@ -212,18 +207,15 @@ module Manage
                       .index_by(&:id)
 
       # Load cancelled vacancies (can't make it but still cast) for all shows
-      @cancelled_vacancies_by_show = {}
-      @shows.each do |show|
-        @cancelled_vacancies_by_show[show.id] = show.cancelled_vacancies_by_assignment
-      end
+      @cancelled_vacancies_by_show = Show.cant_make_it_vacancies_by_assignment_for(show_ids)
 
-      # Load open vacancies for non-linked shows (person removed, role needs filling)
-      @open_vacancies_by_show = {}
-      @shows.each do |show|
-        next if show.linked? # Linked shows keep person cast with "can't make it" indicator
-        open_vacancies = show.role_vacancies.open.includes(:role, :vacated_by).to_a
-        @open_vacancies_by_show[show.id] = open_vacancies.group_by(&:role_id)
-      end
+      # Load open vacancies for non-linked shows (person removed, role needs filling).
+      # Linked shows keep person cast with "can't make it" indicator.
+      non_linked_show_ids = @shows.reject(&:linked?).map(&:id)
+      @open_vacancies_by_show = non_linked_show_ids.index_with { {} }
+      RoleVacancy.open.where(show_id: non_linked_show_ids).includes(:role, :vacated_by)
+                 .group_by(&:show_id)
+                 .each { |sid, vacancies| @open_vacancies_by_show[sid] = vacancies.group_by(&:role_id) }
 
       # Load sign-up registrations for shows that have linked sign-up forms
       sign_up_registrations = SignUpRegistration

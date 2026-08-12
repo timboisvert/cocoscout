@@ -140,15 +140,12 @@ class Message < ApplicationRecord
 
     root_ids = roots.map(&:id)
 
-    # BFS the tree under each root in bounded query passes. Typical thread
-    # depth is 1 so this runs ~2 includes-loads regardless of page size.
-    collected = {}
-    queue = Message.where(id: root_ids).includes(:sender, :rich_text_body, :production).to_a
-    until queue.empty?
-      queue.each { |m| collected[m.id] = m }
-      child_ids = Message.where(parent_message_id: queue.map(&:id)).where.not(id: collected.keys).pluck(:id)
-      queue = child_ids.any? ? Message.where(id: child_ids).includes(:sender, :rich_text_body, :production).to_a : []
-    end
+    # One recursive-CTE pass finds every message under the roots, then one
+    # includes-load hydrates them — query count is flat in page size and depth.
+    all_ids = root_ids + descendant_ids_for(root_ids)
+    collected = Message.where(id: all_ids)
+                       .includes(:sender, :rich_text_body, :production)
+                       .index_by(&:id)
 
     # Resolve the root for each message via the in-memory parent map.
     root_of = {}
@@ -207,7 +204,8 @@ class Message < ApplicationRecord
       out[rid] = {
         participants: labels.join(", "),
         count: msgs.size,
-        snippet: snippet
+        snippet: snippet,
+        latest_activity_at: latest&.created_at
       }
     end.tap do |out|
       # Also fold in the viewer's subscription read state in one query so the
@@ -441,12 +439,25 @@ class Message < ApplicationRecord
     current
   end
 
+  # All message IDs under the given roots (any depth), in one recursive query.
+  def self.descendant_ids_for(root_ids)
+    return [] if root_ids.blank?
+
+    sql = sanitize_sql_array([ <<~SQL, root_ids ])
+      WITH RECURSIVE message_tree AS (
+        SELECT id FROM messages WHERE parent_message_id IN (?)
+        UNION ALL
+        SELECT m.id FROM messages m
+        INNER JOIN message_tree t ON m.parent_message_id = t.id
+      )
+      SELECT id FROM message_tree
+    SQL
+    connection.select_values(sql)
+  end
+
   # Get all descendant message IDs (recursive)
   def descendant_ids
-    child_ids = child_messages.pluck(:id)
-    return child_ids if child_ids.empty?
-
-    child_ids + Message.where(id: child_ids).flat_map(&:descendant_ids)
+    self.class.descendant_ids_for([ id ])
   end
 
   # Get all descendant messages (recursive)

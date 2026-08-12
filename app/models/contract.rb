@@ -978,9 +978,19 @@ class Contract < ApplicationRecord
     else
       # Flat deals: the contract's own payments are the money, by direction.
       {
-        money_in: contract_payments.where(direction: "incoming").sum(:amount).to_f,
-        money_out: contract_payments.where(direction: "outgoing").sum(:amount).to_f
+        money_in: payments_amount_sum("incoming"),
+        money_out: payments_amount_sum("outgoing")
       }
+    end
+  end
+
+  # Sum of this contract's payments in one direction, using the in-memory
+  # records when the association is already (pre)loaded.
+  def payments_amount_sum(direction)
+    if contract_payments.loaded?
+      contract_payments.select { |p| p.direction == direction }.sum { |p| p.amount.to_f }
+    else
+      contract_payments.where(direction: direction).sum(:amount).to_f
     end
   end
 
@@ -1035,11 +1045,55 @@ class Contract < ApplicationRecord
   def contract_shows
     rental_show_ids = Show.where(space_rental_id: space_rentals.select(:id)).select(:id)
 
-    if production_id.present? && production && production.contracts.count <= 1
+    if production_id.present? && production && production.contracts.size <= 1
       Show.where(production_id: production_id).or(Show.where(id: rental_show_ids))
     else
       Show.where(id: rental_show_ids)
     end
+  end
+
+  # The not-canceled shows (with financials) that money summaries read from.
+  # Batch callers set this via Contract.preload_money_data so a page of
+  # contracts doesn't re-query shows per row.
+  attr_writer :preloaded_money_shows
+
+  def money_shows
+    @preloaded_money_shows ||= contract_shows.where(canceled: false).includes(show_financials: :expense_items).to_a
+  end
+
+  # Preload everything money_summary/money_display need for a list of contracts
+  # in a fixed number of queries: payments, rentals, sibling-contract counts,
+  # and each contract's owned shows with financials.
+  def self.preload_money_data(contracts)
+    contracts = Array(contracts)
+    return contracts if contracts.empty?
+
+    ActiveRecord::Associations::Preloader.new(
+      records: contracts,
+      associations: [ :contract_payments, :space_rentals, { production: :contracts } ]
+    ).call
+
+    rental_owner = {}
+    contracts.each { |c| c.space_rentals.each { |r| rental_owner[r.id] = c } }
+
+    # Mirrors #contract_shows: a production's shows belong to its contract only
+    # when that contract is the production's sole contract.
+    sole_owner = contracts.select { |c| c.production_id.present? && c.production && c.production.contracts.size <= 1 }
+                          .index_by(&:production_id)
+
+    shows_by_contract = Hash.new { |h, k| h[k] = [] }
+    if rental_owner.any? || sole_owner.any?
+      Show.where(canceled: false)
+          .merge(Show.where(production_id: sole_owner.keys).or(Show.where(space_rental_id: rental_owner.keys)))
+          .includes(show_financials: :expense_items)
+          .each do |show|
+            owners = [ rental_owner[show.space_rental_id], sole_owner[show.production_id] ].compact.uniq
+            owners.each { |owner| shows_by_contract[owner.id] << show }
+          end
+    end
+
+    contracts.each { |c| c.preloaded_money_shows = shows_by_contract[c.id] }
+    contracts
   end
 
   # Revenue share financial helpers — calculates from show-level financials
@@ -1050,9 +1104,10 @@ class Contract < ApplicationRecord
 
   # Returns { confirmed_revenue: X, tbd_count: N, contractor_share: Y }
   def revenue_share_summary
-    return nil unless revenue_share?
+    return @revenue_share_summary if defined?(@revenue_share_summary)
+    return @revenue_share_summary = nil unless revenue_share?
 
-    all_shows = contract_shows.where(canceled: false).includes(:show_financials).to_a
+    all_shows = money_shows
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
@@ -1060,7 +1115,7 @@ class Contract < ApplicationRecord
     our_share_amount = (confirmed_revenue * revenue_share_percentage / 100.0).round(2)
     contractor_share_amount = (confirmed_revenue * contractor_share_percentage / 100.0).round(2)
 
-    {
+    @revenue_share_summary = {
       confirmed_revenue: confirmed_revenue,
       confirmed_count: confirmed_shows.count,
       pending_count: pending_shows.count,
@@ -1072,9 +1127,10 @@ class Contract < ApplicationRecord
 
   # Returns financial summary for ticket_revenue_minus_fee contracts
   def flat_fee_revenue_summary
-    return nil unless ticket_revenue_minus_fee?
+    return @flat_fee_revenue_summary if defined?(@flat_fee_revenue_summary)
+    return @flat_fee_revenue_summary = nil unless ticket_revenue_minus_fee?
 
-    all_shows = contract_shows.where(canceled: false).includes(:show_financials).to_a
+    all_shows = money_shows
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
@@ -1085,7 +1141,7 @@ class Contract < ApplicationRecord
     fee = flat_fee_for_shows(confirmed_shows.count)
     contractor_amount = [ confirmed_revenue - fee, 0 ].max
 
-    {
+    @flat_fee_revenue_summary = {
       confirmed_revenue: confirmed_revenue,
       confirmed_count: confirmed_shows.count,
       pending_count: pending_shows.count,
@@ -1104,7 +1160,7 @@ class Contract < ApplicationRecord
     return 0.0 unless count.positive?
     return (flat_fee_per_show * count).round(2) if flat_fee_basis == "per_show"
 
-    total = contract_shows.where(canceled: false).count
+    total = money_shows.size
     return 0.0 if total.zero?
     return flat_fee_amount.round(2) if count >= total
 

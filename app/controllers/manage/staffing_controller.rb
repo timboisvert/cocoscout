@@ -83,6 +83,10 @@ module Manage
                   shift_assignments: { person: HEADSHOT_PRELOAD })
         .ordered
         .to_a
+      # source is polymorphic so the include above can't nest its production;
+      # preload it here for the covered-shows labels.
+      source_shows = shifts.map(&:source).select { |s| s.is_a?(Show) }
+      ActiveRecord::Associations::Preloader.new(records: source_shows, associations: :production).call
       @shifts_by_day = shifts.group_by { |s| staffing_day_for(s, week_range) }
 
       # Role Call (opt-in via Staffing settings): every show checked against the

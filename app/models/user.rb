@@ -175,8 +175,14 @@ class User < ApplicationRecord
   def role_for_production(production)
     return nil unless production
 
-    # Check for production-specific permission
-    production_permission = production_permissions.find_by(production_id: production.id)
+    # Check for production-specific permission (in memory when preloaded, so
+    # per-production loops don't query per row)
+    production_permission =
+      if production_permissions.loaded?
+        production_permissions.detect { |pp| pp.production_id == production.id }
+      else
+        production_permissions.find_by(production_id: production.id)
+      end
     return production_permission.role if production_permission
 
     # Fall back to default role if not 'member'

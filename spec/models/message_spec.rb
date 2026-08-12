@@ -485,5 +485,31 @@ RSpec.describe Message do
       summary = Message.thread_summaries_for([ message ], current_user: viewer)
       expect(summary[message.id][:participants]).to eq("Reese Real")
     end
+
+    it "reports each thread's latest activity without per-row queries" do
+      sender = create(:user)
+      root = create(:message, sender: sender, visibility: :personal)
+      reply = create(:message, sender: sender, visibility: :personal, parent_message: root)
+
+      summary = Message.thread_summaries_for([ root ], current_user: viewer)
+      expect(summary[root.id][:latest_activity_at]).to be_within(1.second).of(reply.created_at)
+    end
+
+    it "doesn't cost more per thread or per depth" do
+      sender = create(:user)
+      roots = [ create(:message, sender: sender, visibility: :personal) ]
+      baseline = count_queries { Message.thread_summaries_for(roots, current_user: viewer) }
+
+      9.times do
+        root = create(:message, sender: sender, visibility: :personal)
+        # A three-deep reply chain would have cost the old BFS a pass per level.
+        parent = root
+        3.times { parent = create(:message, sender: sender, visibility: :personal, parent_message: parent) }
+        roots << root
+      end
+      scaled = count_queries { Message.thread_summaries_for(roots, current_user: viewer) }
+
+      expect(scaled - baseline).to be <= 2
+    end
   end
 end

@@ -47,6 +47,7 @@ module Manage
 
     # Productions in this org the user can manage (and therefore add docs to).
     def load_managed_productions
+      Current.user.production_permissions.load  # one query for the whole loop below
       @managed_productions = Current.organization.productions.active
                                     .select { |p| Current.user.manager_for_production?(p) }
                                     .sort_by { |p| p.name.to_s.downcase }

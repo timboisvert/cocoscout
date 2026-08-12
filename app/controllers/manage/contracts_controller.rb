@@ -19,6 +19,8 @@ module Manage
         @draft_contracts.where.not(contract_start_date: nil).order(:contract_start_date).to_a +
         @draft_contracts.where(contract_start_date: nil).order(:created_at).to_a
       )
+      # The slim list shows per-contract money; batch its shows/payments lookups.
+      Contract.preload_money_data(@sorted_contracts)
 
       active_contract_ids = @active_contracts.map(&:id)
 
@@ -62,7 +64,7 @@ module Manage
       SpaceRental
         .where(contract_id: active_contract_ids)
         .where(starts_at: window_start..window_end)
-        .includes(:contract, :location)
+        .includes(:contract, :location, :location_space)
         .find_each do |rental|
           key = [ rental.contract_id, rental.starts_at.to_date ]
           # Only the first rental for a contract+date claims that day's payments,
@@ -131,10 +133,11 @@ module Manage
       # What this year's contracts made vs cost us (gross model — ticket revenue
       # counts as made for our-sale deals, contractor shares as cost; flat deals
       # use their payments by direction). Both sides shown, not one net number.
-      year_contract_money = Current.organization.contracts
-        .where.not(status: %w[draft cancelled])
-        .where("contracts.contract_start_date >= ? AND contracts.contract_start_date <= ?", year_start, year_end)
-        .map(&:money_display)
+      year_contract_money = Contract.preload_money_data(
+        Current.organization.contracts
+          .where.not(status: %w[draft cancelled])
+          .where("contracts.contract_start_date >= ? AND contracts.contract_start_date <= ?", year_start, year_end)
+      ).map(&:money_display)
       @contracts_made = year_contract_money.sum { |d| d[:made] }
       @contracts_cost = year_contract_money.sum { |d| d[:cost] }
 

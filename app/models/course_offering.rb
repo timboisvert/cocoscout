@@ -74,7 +74,11 @@ class CourseOffering < ApplicationRecord
   # --- Capacity ---
 
   def confirmed_registrations_count
-    course_registrations.where(status: :confirmed).count
+    if course_registrations.loaded?
+      course_registrations.count { |r| r.status == "confirmed" }
+    else
+      course_registrations.where(status: :confirmed).count
+    end
   end
 
   # Money in (registrations) − money out (platform fee + instructor payouts) =

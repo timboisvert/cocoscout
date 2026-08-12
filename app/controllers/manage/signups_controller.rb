@@ -9,10 +9,16 @@ module Manage
     # GET /signups (org-wide)
     def org_index
       # Get in-house productions the user has access to (exclude third-party)
-      @productions = Current.user.accessible_productions.castable.includes(:audition_cycles, :sign_up_forms).order(:name)
+      @productions = Current.user.accessible_productions.castable
+                            .includes(:audition_cycles, :sign_up_forms, posters: { image_attachment: :blob })
+                            .order(:name)
 
       # Aggregate sign-up forms and audition cycles across all productions
-      @all_sign_up_forms = SignUpForm.where(production: @productions).not_archived.includes(:production, :sign_up_form_instances, :sign_up_slots)
+      @all_sign_up_forms = SignUpForm.where(production: @productions).not_archived.includes(
+        :production,
+        { sign_up_form_instances: [ :show, { sign_up_slots: :sign_up_registrations } ] },
+        { sign_up_slots: :sign_up_registrations }
+      )
 
       # "Active" means: open now, scheduled to open, or has future events
       @active_sign_up_forms = @all_sign_up_forms.select do |f|
@@ -47,7 +53,7 @@ module Manage
           sign_up_forms_count: sign_up_forms.count,
           active_sign_up_forms_count: active_forms.count,
           active_audition_cycle: active_audition_cycle,
-          audition_requests_count: active_audition_cycle&.audition_requests&.active&.count || 0,
+          audition_requests_count: active_audition_cycle&.active_audition_requests_count || 0,
           past_audition_cycles_count: past_audition_cycles.count
         }
       end

@@ -86,7 +86,7 @@ class ShowFinancials < ApplicationRecord
 
     # Prefer expense_items if present
     if expense_items.loaded? ? expense_items.any? : expense_items.exists?
-      return expense_items.sum(:amount).to_f
+      return expense_items.loaded? ? expense_items.sum { |i| i.amount.to_f } : expense_items.sum(:amount).to_f
     end
 
     # Fall back to legacy JSONB expense_details

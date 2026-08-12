@@ -216,10 +216,13 @@ class FinancialSummaryService
   # lands in money-in and their contractor payouts in money-out, like any show.
   # (Gross model — see Contract#money_summary.)
   def contract_money_by_production
-    @productions.select(&:type_third_party?).each_with_object({}) do |production, out|
-      contract = production.contract
-      next unless contract
+    third_party = @productions.select(&:type_third_party?)
+    ActiveRecord::Associations::Preloader.new(records: third_party, associations: :contracts).call
 
+    with_contracts = third_party.filter_map { |p| [ p, p.contract ] if p.contract }
+    Contract.preload_money_data(with_contracts.map(&:last))
+
+    with_contracts.each_with_object({}) do |(production, contract), out|
       out[production.id] = contract.money_summary
     end
   end

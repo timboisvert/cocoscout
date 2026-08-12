@@ -5,7 +5,7 @@
   people_by_id ||= {}
   groups_by_id ||= {}
   cancelled_vacancies_by_assignment = show.cant_make_it_vacancies_by_assignment
-  cast_members = show.people.distinct
+  cast_members = show.people.distinct.includes(profile_headshots: { image_attachment: :blob })
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">

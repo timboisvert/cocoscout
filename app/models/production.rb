@@ -54,7 +54,11 @@ class Production < ApplicationRecord
   # recent one. Prefer show.space_rental&.contract when you need the contract for a
   # specific show, since a production may carry several contracts.
   def contract
-    contracts.order(:created_at, :id).last
+    if contracts.loaded?
+      contracts.max_by { |c| [ c.created_at, c.id ] }
+    else
+      contracts.order(:created_at, :id).last
+    end
   end
 
   has_one_attached :logo, dependent: :purge_later do |attachable|
@@ -142,14 +146,15 @@ class Production < ApplicationRecord
       return organization.talent_pool
     end
 
-    # Per-production mode: check for shared pool, then own pool
-    shared_pool = TalentPoolShare.find_by(production_id: id)&.talent_pool
+    # Per-production mode: check for shared pool, then own pool.
+    # Goes through the association so preloaded callers skip the query.
+    shared_pool = talent_pool_shares.first&.talent_pool
     shared_pool || talent_pool
   end
 
   # Returns true if this production uses a shared talent pool from another production
   def uses_shared_pool?
-    TalentPoolShare.exists?(production_id: id)
+    talent_pool_shares.any?
   end
 
   # Returns IDs for the effective talent pool (shared or own)
@@ -210,7 +215,11 @@ class Production < ApplicationRecord
   end
 
   def active_audition_cycle
-    audition_cycles.find_by(active: true)
+    if audition_cycles.loaded?
+      audition_cycles.detect(&:active)
+    else
+      audition_cycles.find_by(active: true)
+    end
   end
 
   # For backwards compatibility during transition
@@ -237,7 +246,11 @@ class Production < ApplicationRecord
   end
 
   def primary_poster
-    posters.find_by(is_primary: true)
+    if posters.loaded?
+      posters.detect(&:is_primary)
+    else
+      posters.find_by(is_primary: true)
+    end
   end
 
   # Count of unique members in the talent pool

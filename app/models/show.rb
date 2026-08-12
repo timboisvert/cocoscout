@@ -691,6 +691,31 @@ class Show < ApplicationRecord
   # Alias for backward compatibility
   alias_method :cancelled_vacancies_by_assignment, :cant_make_it_vacancies_by_assignment
 
+  # Batch form of #cant_make_it_vacancies_by_assignment: one vacancy query for
+  # the whole show list instead of one per show. Returns
+  #   { show_id => { [role_id, assignable_type, assignable_id] => vacancy } }
+  # with an entry for every given show id.
+  def self.cant_make_it_vacancies_by_assignment_for(show_ids)
+    result = show_ids.index_with { {} }
+    return result if show_ids.empty?
+
+    vacancies = RoleVacancy
+      .where(status: %w[open finding_replacement not_filling])
+      .joins("LEFT JOIN role_vacancy_shows ON role_vacancy_shows.role_vacancy_id = role_vacancies.id")
+      .where("role_vacancies.show_id IN (:ids) OR role_vacancy_shows.show_id IN (:ids)", ids: show_ids)
+      .includes(:role, :affected_shows, :vacated_by)
+      .distinct
+
+    vacancies.each do |vacancy|
+      next if vacancy.vacated_by.blank?
+
+      key = [ vacancy.role_id, vacancy.vacated_by_type, vacancy.vacated_by_id ]
+      touched_ids = ([ vacancy.show_id ] + vacancy.affected_shows.map(&:id)).compact
+      (touched_ids & show_ids).each { |sid| result[sid][key] = vacancy }
+    end
+    result
+  end
+
   private
 
   def create_sign_up_form_instances

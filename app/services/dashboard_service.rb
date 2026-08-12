@@ -99,7 +99,7 @@ class DashboardService
     return { total_open: 0, with_auditionees: [] } unless is_open
 
     # Only count active (non-archived) audition requests
-    auditionee_count = call.audition_requests.active.size
+    auditionee_count = call.active_audition_requests_count
 
     {
       total_open: 1,
@@ -217,7 +217,7 @@ class DashboardService
                .includes(:role, :show, :affected_shows, invitations: :person)
                .order("shows.date_and_time ASC")
                .map do |vacancy|
-                 affected = vacancy.affected_shows.order(:date_and_time).to_a
+                 affected = vacancy.affected_shows.sort_by(&:date_and_time)
                  # Check if the show itself is linked, not just whether affected_shows has entries
                  is_linked = vacancy.show.linked?
                  {
@@ -234,15 +234,16 @@ class DashboardService
 
   def sign_up_forms_summary
     forms = @production.sign_up_forms.where(active: true, archived_at: nil).order(created_at: :desc)
+                       .includes({ sign_up_slots: :sign_up_registrations },
+                                 { sign_up_form_instances: [ :show, { sign_up_slots: :sign_up_registrations } ] })
 
     forms.map do |form|
-      # Get the current/next instance for repeated forms
+      # Get the current/next instance for repeated forms (instances are
+      # preloaded above, so both branches work in memory)
       instance = if form.repeated?
         form.sign_up_form_instances
-            .joins(:show)
-            .where("shows.date_and_time > ?", Time.current)
-            .order("shows.date_and_time ASC, sign_up_form_instances.id ASC")
-            .first
+            .select { |i| i.show && i.show.date_and_time > Time.current }
+            .min_by { |i| [ i.show.date_and_time, i.id ] }
       else
         form.sign_up_form_instances.first
       end

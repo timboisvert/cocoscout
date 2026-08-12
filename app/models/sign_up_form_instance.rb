@@ -100,11 +100,19 @@ class SignUpFormInstance < ApplicationRecord
   end
 
   def total_capacity
-    sign_up_slots.where(is_held: false).sum(:capacity)
+    if sign_up_slots.loaded?
+      sign_up_slots.reject(&:is_held?).sum { |s| s.capacity.to_i }
+    else
+      sign_up_slots.where(is_held: false).sum(:capacity)
+    end
   end
 
   def registration_count
-    sign_up_registrations.active.count
+    if sign_up_slots.loaded? && sign_up_slots.all? { |s| s.sign_up_registrations.loaded? }
+      sign_up_slots.sum(&:active_registrations_count)
+    else
+      sign_up_registrations.active.count
+    end
   end
 
   def queue_count

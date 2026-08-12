@@ -19,7 +19,7 @@
   can_finalize = local_assigns.fetch(:can_finalize, fully_cast)
 
   notified_keys = show.notified_assignable_keys
-  notifiable = show.show_person_role_assignments.reject(&:guest?).select(&:assignable)
+  notifiable = show.show_person_role_assignments.includes(:assignable).reject(&:guest?).select(&:assignable)
   unnotified_assignments = notifiable.reject { |a| notified_keys.include?([ a.assignable_type, a.assignable_id ]) }
   removed_members = show.removed_cast_members
   has_removed = removed_members.any?

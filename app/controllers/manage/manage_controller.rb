@@ -60,8 +60,15 @@ module Manage
         redirect_to select_organization_path and return
       end
 
-      # Build org-level home page data (filtered by user access)
-      @productions = Current.user.accessible_productions.order(:name)
+      # Build org-level home page data (filtered by user access). Preload what
+      # the dashboard payloads and production cards read per production, so a
+      # page of productions doesn't query each one individually.
+      @productions = Current.user.accessible_productions.order(:name).includes(
+        { audition_cycles: :audition_requests },
+        :talent_pools,
+        { talent_pool_shares: :talent_pool },
+        { posters: { image_attachment: :blob } }
+      )
       @production_dashboards = DashboardService.generate_all(@productions)
 
       # Calendar: month navigation

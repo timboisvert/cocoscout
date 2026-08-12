@@ -12,6 +12,16 @@ class AuditionCycle < ApplicationRecord
   # to avoid foreign key constraint issues with casts
   has_many :cast_assignment_stages
 
+  # Count of non-archived requests, from memory when the association is
+  # preloaded (list pages) instead of a COUNT per cycle.
+  def active_audition_requests_count
+    if audition_requests.loaded?
+      audition_requests.count { |r| r.archived_at.nil? }
+    else
+      audition_requests.active.count
+    end
+  end
+
   scope :listed, -> { where(listed_in_directory: true) }
   scope :currently_open, -> { where(active: true, form_reviewed: true).where("opens_at <= ?", Time.current).where("closes_at IS NULL OR closes_at > ?", Time.current) }
 
