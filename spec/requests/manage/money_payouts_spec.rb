@@ -109,6 +109,30 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
       expect(response.body).to include("In flight")
       expect(response.body).not_to include("In draft run")
     end
+
+    it "shows the state boxes summing the same money as the sections below" do
+      get manage_money_payouts_path
+      expect(response.body).to include("To pay").and include("In draft")
+        .and include("Funding").and include("Waiting on people")
+      expect(response.body).to include("$30.00") # to pay — li_b, not in any run
+      expect(response.body).to include("$50.00") # in draft — the staged batch
+    end
+
+    it "lists the draft run under Active Runs" do
+      get manage_money_payouts_path
+      expect(response.body).to include("Active Runs")
+      expect(response.body).to include("Draft — not submitted yet")
+      expect(response.body).to include(manage_payout_batch_path(batch))
+    end
+
+    it "puts a partially paid run's unpaid remainder in the Waiting on people box" do
+      batch.update!(status: "partially_paid")
+      batch.items.create!(payee: create(:person), amount_cents: 2000, status: "paid")
+      batch.recalculate_total!
+      get manage_money_payouts_path
+      # $70 run total, $20 paid → $50 still waiting on people.
+      expect(response.body).to include("$50.00 waiting on people&#39;s bank info")
+    end
   end
 
   it "renders the lazy payout-events frame with per-show awaiting/paid" do

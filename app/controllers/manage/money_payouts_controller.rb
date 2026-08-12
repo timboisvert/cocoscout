@@ -209,11 +209,22 @@ module Manage
       @awaiting_items = @todo.payouts.items
       @awaiting_columns = @todo.payouts.columns
 
-      # Runs already in motion — submitted money the org is waiting on (ACH
-      # clearing, or partially paid runs waiting on people's bank info).
-      @in_flight_runs = Current.organization.payout_batches
-                               .where(status: %w[funding funded processing partially_paid])
-                               .recent.to_a
+      # Every run still moving money — drafts not yet submitted, ACH clearing,
+      # or partially paid runs waiting on people's bank info. Drafts show here
+      # too so the state boxes up top always have a matching row on this page.
+      @active_runs = Current.organization.payout_batches
+                            .where(status: PayoutBatchService::UNSETTLED_BATCH_STATUSES)
+                            .recent.to_a
+
+      # Money-by-state totals for the summary boxes, split by what still has to
+      # happen to it. Summed from the same runs the Active Runs list renders —
+      # a partially paid run counts only its unpaid remainder.
+      @run_state_cents = {
+        draft: @active_runs.select { |r| r.status == "draft" }.sum(&:total_cents),
+        funding: @active_runs.select { |r| %w[funding funded processing].include?(r.status) }.sum(&:total_cents),
+        waiting: @active_runs.select { |r| r.status == "partially_paid" }
+                             .sum { |r| r.total_cents - r.paid_total_cents }
+      }
 
       # Payouts blocked on the payee: people owed money who haven't set up
       # payment info yet, across all productions.

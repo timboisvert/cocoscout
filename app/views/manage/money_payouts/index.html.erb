@@ -193,13 +193,36 @@
     } %>
     <div class="mb-6"><%= render "shared/module_actions", actions: payouts_actions %></div>
 
-    <%# In flight — money already submitted, moving through funding/transfers.
-        Nothing to do here usually; it's the "we've acted" picture. %>
-    <% if @in_flight_runs.any? %>
-      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">In Flight</h3>
+    <%# Money by state — what still has to happen to it. The same numbers as the
+        sections below: "To pay" is the Awaiting Payout money not yet in a run;
+        the other three split the Active Runs money by lifecycle stage, so a
+        partially paid run counts only its unpaid remainder. %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-8">
+      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+        <div class="text-sm text-gray-500 sm:mb-1">To pay</div>
+        <div class="text-lg sm:text-2xl font-semibold text-pink-600 tabular-nums"><%= number_to_currency(@todo.payouts.amounts[:to_pay].to_f) %></div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+        <div class="text-sm text-gray-500 sm:mb-1">In draft</div>
+        <div class="text-lg sm:text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@run_state_cents[:draft] / 100.0) %></div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+        <div class="text-sm text-gray-500 sm:mb-1">Funding</div>
+        <div class="text-lg sm:text-2xl font-semibold text-amber-600 tabular-nums"><%= number_to_currency(@run_state_cents[:funding] / 100.0) %></div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+        <div class="text-sm text-gray-500 sm:mb-1">Waiting on people</div>
+        <div class="text-lg sm:text-2xl font-semibold text-blue-600 tabular-nums"><%= number_to_currency(@run_state_cents[:waiting] / 100.0) %></div>
+      </div>
+    </div>
+
+    <%# Active runs — drafts still being assembled, plus submitted money moving
+        through funding/transfers. Each state box above sums rows from here. %>
+    <% if @active_runs.any? %>
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Active Runs</h3>
       <div class="mb-8">
         <%= render layout: "shared/slim_list", locals: { label: "Payout run", columns: [ "Amount" ], min_width: "min-w-[360px]" } do %>
-          <% @in_flight_runs.each do |run| %>
+          <% @active_runs.each do |run| %>
             <%
               waiting_cents = run.status == "partially_paid" ? run.total_cents - run.paid_total_cents : run.total_cents
               next_try = run.next_auto_retry_at
@@ -211,10 +234,15 @@
                                 " · retrying #{when_text} #{next_try.strftime('%-l:%M%P')}"
               end
               subtitle = case run.status
+                         when "draft" then "Draft — not submitted yet"
                          when "partially_paid" then "#{number_to_currency(waiting_cents / 100.0)} waiting on people's bank info#{retry_label}"
                          else "ACH clearing — pays out automatically"
                          end
-              badge_color = run.status == "partially_paid" ? "blue" : "amber"
+              badge_color = case run.status
+                            when "draft" then "gray"
+                            when "partially_paid" then "blue"
+                            else "amber"
+                            end
             %>
             <%= render "shared/slim_list_row",
                   title: "#{run.kind_label} · #{run.created_at.strftime('%b %-d')}",
