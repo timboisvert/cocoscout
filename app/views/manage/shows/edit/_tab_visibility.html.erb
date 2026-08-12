@@ -1,0 +1,51 @@
+<%# Casting & Visibility tab — casting toggle + public listing. %>
+<%
+  event_type_default = @production.event_type_publicly_visible?(@show.event_type)
+  will_be_visible = @show.public_profile_visible.nil? ? event_type_default : @show.public_profile_visible
+%>
+<div class="space-y-6">
+  <%# Casting %>
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex-1">
+      <h4 class="text-sm font-semibold text-gray-900">Enable casting for this <%= @show.event_type.titleize.downcase %></h4>
+      <p class="text-xs text-gray-500 mt-1">
+        When enabled, you can assign cast members to roles for this event.
+        Shows, classes, and workshops default to on; rehearsals and meetings default to off.
+      </p>
+    </div>
+    <%= render "shared/toggle_switch", form: form, field: :casting_enabled %>
+  </div>
+
+  <%# Public listing %>
+  <div class="border-t border-gray-200 pt-6">
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex-1">
+        <h4 class="text-sm font-semibold text-gray-900">Show on <%= @production.name %>'s public listing</h4>
+        <p class="text-xs text-gray-500 mt-1">
+          When enabled, this event is visible to anyone viewing your public profile.
+          By default, <strong><%= @show.event_type %></strong> events are <strong><%= event_type_default ? "visible" : "hidden" %></strong>.
+        </p>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <%= form.hidden_field :public_profile_visible, value: "false", id: "public_profile_visible_hidden" %>
+        <%= form.check_box :public_profile_visible,
+              { checked: will_be_visible, class: "sr-only peer",
+                data: { show_edit_target: "publicProfileCheckbox", action: "change->show-edit#publicProfileToggled" } },
+              true, false %>
+        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+      </label>
+    </div>
+
+    <% if @production.public_profile_enabled && @production.public_key.present? %>
+      <div class="mt-4 <%= 'hidden' unless will_be_visible %>" data-show-edit-target="publicProfileContent">
+        <%= render "shared/copy_url", url: public_profile_show_url(@production.public_key, @show), label: "This event's public listing URL:" %>
+      </div>
+    <% else %>
+      <p class="mt-4 text-sm text-gray-500">
+        Public listing is not enabled for <%= @production.name %>.
+        <a href="<%= edit_manage_production_path(@production) %>#tab-2" class="text-pink-500 hover:text-pink-600 underline">Enable it in production settings</a>
+        to share your schedule publicly.
+      </p>
+    <% end %>
+  </div>
+</div>

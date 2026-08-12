@@ -75,9 +75,13 @@ export default class extends Controller {
         }
     }
 
-    // Called when event type changes to update the link text
+    // Called when event type changes to update the link text. Works for both a
+    // <select> (options text) and a radio card (data-radio-label).
     updateEventType(event) {
-        this.eventTypeValue = event.target.options[event.target.selectedIndex].text.toLowerCase()
+        const target = event.target
+        const label = target.dataset.radioLabel ||
+            (target.options ? target.options[target.selectedIndex].text : target.value)
+        this.eventTypeValue = label.toLowerCase()
         // Re-render the current state to update link text
         if (this.isOnlineFieldTarget.value === "true" || this.isOnlineFieldTarget.value === "1") {
             this.showOnlineFields()

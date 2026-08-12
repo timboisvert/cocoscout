@@ -9,23 +9,26 @@
     options  - array of { value:, label:, description? } (required)
     selected - currently selected value (optional)
     columns  - 2 (default) or 3 across on wider screens (optional)
-    required - mark the radios required (optional, default false)
-    action   - extra Stimulus action to fire on change (optional)
+    required   - mark the radios required (optional, default false)
+    action     - Stimulus action(s) to fire on change (optional)
+    input_data - extra data attributes merged onto every radio input, e.g.
+                 { some_controller_target: "foo" } (optional)
 %>
 <%
-  columns  = local_assigns[:columns] || 2
-  grid     = { 1 => "grid-cols-1", 2 => "grid-cols-1 sm:grid-cols-2", 3 => "grid-cols-2 sm:grid-cols-3" }[columns]
-  required = local_assigns[:required] || false
-  action   = local_assigns[:action]
+  columns    = local_assigns[:columns] || 2
+  grid       = { 1 => "grid-cols-1", 2 => "grid-cols-1 sm:grid-cols-2", 3 => "grid-cols-2 sm:grid-cols-3" }[columns]
+  required   = local_assigns[:required] || false
+  input_data = (local_assigns[:input_data] || {}).dup
+  input_data[:action] = local_assigns[:action] if local_assigns[:action].present?
 %>
 <div class="grid <%= grid %> gap-3">
   <% options.each do |option| %>
     <label class="group relative flex flex-col gap-1 p-4 bg-white border border-gray-200 rounded-2xl cursor-pointer transition-all duration-150 hover:border-pink-300 hover:shadow-md has-[:checked]:border-pink-500 has-[:checked]:ring-2 has-[:checked]:ring-pink-500/20 has-[:checked]:bg-pink-50/60 has-[:checked]:shadow-md">
       <input type="radio" name="<%= name %>" value="<%= option[:value] %>"
-             class="sr-only"
+             class="sr-only" data-radio-label="<%= option[:label] %>"
              <%= "checked" if option[:value].to_s == selected.to_s %>
              <%= "required" if required %>
-             <%= tag.attributes(data: { action: action }).html_safe if action.present? %>>
+             <%= tag.attributes(data: input_data).html_safe if input_data.any? %>>
       <span class="block text-sm font-semibold text-gray-900 pr-6"><%= option[:label] %></span>
       <% if option[:description].present? %>
         <span class="block text-xs text-gray-500 leading-snug"><%= option[:description] %></span>

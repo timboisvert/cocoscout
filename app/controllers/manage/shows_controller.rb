@@ -1844,7 +1844,7 @@ module Manage
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :production_id, :location_id, :location_space_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :is_online, :online_location_info,
-                                               :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled,
+                                               :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,
                                                show_links_attributes: %i[id url text _destroy])
 
       # If is_online is true, clear location_id; if false, clear online_location_info
