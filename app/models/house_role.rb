@@ -7,6 +7,7 @@ class HouseRole < ApplicationRecord
   belongs_to :location, optional: true
   has_many :shifts, dependent: :destroy
   has_many :staff_role_qualifications, dependent: :destroy
+  has_many :scheduling_rules, dependent: :destroy
 
   # :house     → one shift spans the whole evening (first show start → last
   #              show end), e.g. bartender, FOH, security.

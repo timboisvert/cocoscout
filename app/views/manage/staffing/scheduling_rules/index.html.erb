@@ -1,0 +1,202 @@
+<% content_for :title, "Regulars" %>
+
+<%
+  create_url = manage_create_staffing_scheduling_rule_path
+  # Template containing :id placeholder — the Stimulus controller substitutes
+  # in the row's rule id when opening the modal in edit mode.
+  update_url_template = manage_update_staffing_scheduling_rule_path(":id")
+%>
+
+<div class="w-full mb-10"
+     data-controller="scheduling-rule-modal"
+     data-scheduling-rule-modal-create-url-value="<%= create_url %>"
+     data-scheduling-rule-modal-update-url-template-value="<%= update_url_template %>">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Staffing", manage_staffing_index_path],
+      ["Scheduling", manage_staffing_scheduling_path]
+    ],
+    text: "Regulars",
+    links: [
+      { text: "Add a regular", icon: "plus", type: :button,
+        data_action: "click->scheduling-rule-modal#openForNew" }
+    ]
+  } %>
+
+  <p class="text-sm text-gray-600 mb-4">
+    Your regulars — people who always work the same slot. Each week, Scheduling
+    matches these rules against that week's events so you can create all their
+    shifts at once.
+  </p>
+
+  <% unless @regulars_enabled %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-800">
+      Regulars is currently turned off, so these rules aren't offered on Scheduling.
+      Turn it on in <%= link_to "Staffing settings", manage_staffing_settings_section_path(section: "regulars"), class: "underline hover:text-amber-900" %>.
+    </div>
+  <% end %>
+
+  <% if @rules.any? %>
+    <div class="space-y-2">
+      <% @rules.each do |rule| %>
+        <%# Whole row taps to edit (mobile-friendly); delete lives inside the modal. %>
+        <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-4 hover:border-pink-300 hover:bg-gray-50 transition-colors cursor-pointer"
+             role="button" tabindex="0"
+             data-action="click->scheduling-rule-modal#openForEdit keydown.enter->scheduling-rule-modal#openForEdit"
+             data-rule-id="<%= rule.id %>"
+             data-rule-person-id="<%= rule.person_id %>"
+             data-rule-house-role-id="<%= rule.house_role_id %>"
+             data-rule-rule-type="<%= rule.rule_type %>"
+             data-rule-production-id="<%= rule.production_id %>"
+             data-rule-day-of-week="<%= rule.day_of_week %>"
+             data-rule-starts-time="<%= rule.starts_local_time&.strftime("%H:%M") %>"
+             data-rule-ends-time="<%= rule.ends_local_time&.strftime("%H:%M") %>">
+          <% headshot_variant = rule.person.safe_headshot_variant(:thumb) %>
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: rule.person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+              <%= rule.person.initials %>
+            </div>
+          <% end %>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span class="font-medium text-gray-900"><%= rule.person.name %></span>
+              <span class="text-xs px-2 py-0.5 rounded <%= rule.production_anchored? ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700" %>">
+                <%= rule.production_anchored? ? "Every event" : "Weekly" %>
+              </span>
+            </div>
+            <div class="text-xs text-gray-500 mt-1">
+              <%= rule.house_role.name %> · <%= rule.target_label %>
+            </div>
+          </div>
+          <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
+      <p class="text-sm text-gray-600 mb-3">No regulars set up yet.</p>
+      <%= render "shared/button", text: "Add your first regular", variant: "primary", size: "small", type: :button,
+            data: { action: "click->scheduling-rule-modal#openForNew" } %>
+    </div>
+  <% end %>
+
+  <%# Add/Edit Regular modal — opens in either mode from the index. %>
+  <div data-scheduling-rule-modal-target="modal"
+       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->scheduling-rule-modal#backdropClose keydown.esc@window->scheduling-rule-modal#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-12">
+      <div class="relative w-full max-w-xl bg-white rounded-xl shadow-2xl"
+           data-action="click->scheduling-rule-modal#stopPropagation">
+        <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
+          <h3 class="text-lg font-semibold text-white" data-scheduling-rule-modal-target="title">Add a regular</h3>
+          <button type="button" data-action="click->scheduling-rule-modal#close" class="text-white/70 hover:text-white cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <%# JS rewrites this form's action for edits; pass the session CSRF token — the per-form token is minted for the create path and gets rejected elsewhere. %>
+        <%= form_with url: create_url, method: :post, local: true,
+                      authenticity_token: form_authenticity_token,
+                      data: { "scheduling-rule-modal-target": "form" },
+                      scope: :scheduling_rule do |form| %>
+          <%# Method override lets one form serve both create (POST) and update (PATCH). %>
+          <input type="hidden" name="_method" value="post" data-scheduling-rule-modal-target="methodInput">
+
+          <div class="px-5 py-4 space-y-4">
+            <div>
+              <%= form.label :person_id, "Who", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.select :person_id,
+                    options_for_select(@staff_members.map { |m| [ m.person.name, m.person_id ] }),
+                    { include_blank: "Choose a staff member" },
+                    required: true,
+                    data: { "scheduling-rule-modal-target": "personSelect" },
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+
+            <div>
+              <%= form.label :house_role_id, "Works as", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.select :house_role_id,
+                    options_from_collection_for_select(@house_roles, :id, :name),
+                    { include_blank: "Choose a role" },
+                    required: true,
+                    data: { "scheduling-rule-modal-target": "houseRoleSelect" },
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+
+            <div>
+              <%= form.label :rule_type, "When", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.select :rule_type,
+                    [ [ "Every event of a production", "production_anchored" ],
+                      [ "The same day every week", "weekday" ] ],
+                    {},
+                    data: { "scheduling-rule-modal-target": "ruleTypeSelect", action: "change->scheduling-rule-modal#ruleTypeChanged" },
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+
+            <div data-scheduling-rule-modal-target="productionWrap">
+              <%= form.label :production_id, "Production", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= form.select :production_id,
+                    options_from_collection_for_select(@productions, :id, :name),
+                    { include_blank: "Choose a production" },
+                    data: { "scheduling-rule-modal-target": "productionSelect" },
+                    class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <p class="text-xs text-gray-500 mt-1">
+                They'll be offered for every one of this production's events each week.
+                The shift runs the event's own hours — house roles span the whole evening.
+              </p>
+            </div>
+
+            <div data-scheduling-rule-modal-target="weekdayWrap" class="hidden space-y-4">
+              <div>
+                <%= form.label :day_of_week, "Day of the week", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.select :day_of_week,
+                      Date::DAYNAMES.each_with_index.map { |name, i| [ name.pluralize, i ] },
+                      { include_blank: "Choose a day" },
+                      data: { "scheduling-rule-modal-target": "daySelect" },
+                      class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <%= form.label :starts_local_time, "From", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                  <%= form.time_field :starts_local_time,
+                        data: { "scheduling-rule-modal-target": "startsTime" },
+                        class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                </div>
+                <div>
+                  <%= form.label :ends_local_time, "Until", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                  <%= form.time_field :ends_local_time,
+                        data: { "scheduling-rule-modal-target": "endsTime" },
+                        class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500">
+                Offered only on weeks where that day has at least one event. An
+                end time earlier than the start rolls past midnight.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 px-5 py-3 border-t border-gray-200">
+            <%# Delete lives here in edit mode — shown/hidden by the controller. %>
+            <button type="button" data-scheduling-rule-modal-target="deleteButton" data-action="click->scheduling-rule-modal#destroyRule"
+                    class="hidden text-sm text-gray-500 hover:text-red-600 cursor-pointer bg-transparent border-0">
+              Remove this regular
+            </button>
+            <div class="flex items-center gap-2 ml-auto">
+              <button type="button" data-action="click->scheduling-rule-modal#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+              <%= render "shared/button",
+                    text: "Add regular",
+                    variant: "primary",
+                    size: "small",
+                    type: :submit,
+                    data: { "scheduling-rule-modal-target": "submitButton" } %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

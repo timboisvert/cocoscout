@@ -26,6 +26,17 @@ class StaffUnavailability < ApplicationRecord
     time.hour >= EVENING_START_HOUR ? :evening : :day
   end
 
+  # Is this person unavailable at `time`? Ruby twin of the mode-aware check in
+  # shift_assign_controller.js. Takes the person's availability_mode and their
+  # preloaded entries (rather than a person) so callers can batch a whole
+  # week's people without N+1s. In "available" mode the marks are the only
+  # workable slots, so an unmarked time means unavailable.
+  def self.unavailable_for?(mode:, entries:, time:)
+    part = day_part_for(time)
+    covers = entries.any? { |e| e.date == time.to_date && e.covers_day_part?(part) }
+    mode == "available" ? !covers : covers
+  end
+
   # Does this record block a shift in the given day part (:day/:evening)?
   def covers_day_part?(part)
     all_day? || (day_shifts? && part == :day) || (evening_shifts? && part == :evening)

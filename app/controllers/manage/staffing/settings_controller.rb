@@ -8,9 +8,10 @@ module Manage
     # agreement-template CRUD lives in AgreementTemplatesController and
     # redirects back here), and who's hidden from the Pay People grid.
     class SettingsController < Manage::ManageController
-      SECTIONS = %w[agreements pay_people role_call notifications].freeze
+      SECTIONS = %w[agreements pay_people role_call regulars notifications].freeze
       SECTION_LABELS = { "agreements" => "Staff agreements", "pay_people" => "Pay People list",
-                         "role_call" => "Role Call", "notifications" => "Notifications" }.freeze
+                         "role_call" => "Role Call", "regulars" => "Regulars",
+                         "notifications" => "Notifications" }.freeze
       DEFAULT_SECTION = "agreements"
 
       before_action :set_section, only: %i[show]
@@ -29,6 +30,8 @@ module Manage
           # one at a time, gathered here so the whole roster reads at a glance.
           @role_call_roles = Current.organization.house_roles.active
                                     .where(role_type: ::HouseRole.role_types[:show_specific]).ordered.to_a
+        when "regulars"
+          @regulars_rule_count = Current.organization.scheduling_rules.active.count
         when "notifications"
           @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
           @notification_selected_ids = Current.organization.staffing_notification_user_ids
@@ -45,6 +48,8 @@ module Manage
           update_coverage_alerts
         elsif params[:updating_role_call_roles].present?
           update_role_call_roles
+        elsif params[:updating_regulars].present?
+          update_regulars_toggle
         elsif params[:updating_notifications].present?
           update_notification_recipients
         else
@@ -134,6 +139,17 @@ module Manage
                             else
                               "#{helpers.pluralize(left_out, 'role')} now sitting Role Call out."
                             end
+      end
+
+      # Regulars: when on, the scheduling page can match the org's standing
+      # rules against each week and bulk-create the shifts. (updating_regulars
+      # is a marker param so an unchecked box still routes here and turns it
+      # off.)
+      def update_regulars_toggle
+        enabled = params[:staffing_regulars_enabled].present?
+        Current.organization.update!(staffing_regulars_enabled: enabled)
+        redirect_to section_path("regulars"),
+                    notice: enabled ? "Regulars is on — Scheduling can now fill each week from your standing rules." : "Regulars turned off."
       end
 
       # Which managers get an in-app message when a staff member can't make a

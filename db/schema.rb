@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_121000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -713,7 +713,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_090000) do
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -1412,6 +1412,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_090000) do
     t.bigint "required_staff_agreement_template_id"
     t.integer "signature_expiry_days", default: 14, null: false
     t.jsonb "staffing_notification_user_ids", default: [], null: false
+    t.boolean "staffing_regulars_enabled", default: false, null: false
     t.string "staffing_subscription_id"
     t.string "stripe_account_id"
     t.string "stripe_account_status"
@@ -2077,6 +2078,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_090000) do
     t.string "uri"
     t.text "url_args"
     t.index ["delivered", "failed", "processing", "deliver_after", "created_at"], name: "index_rpush_notifications_multi", where: "((NOT delivered) AND (NOT failed))"
+  end
+
+  create_table "scheduling_rules", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.integer "day_of_week"
+    t.time "ends_local_time"
+    t.bigint "house_role_id", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "person_id", null: false
+    t.bigint "production_id"
+    t.integer "rule_type", default: 0, null: false
+    t.time "starts_local_time"
+    t.datetime "updated_at", null: false
+    t.index ["house_role_id"], name: "index_scheduling_rules_on_house_role_id"
+    t.index ["organization_id", "archived_at"], name: "index_scheduling_rules_on_organization_id_and_archived_at"
+    t.index ["organization_id"], name: "index_scheduling_rules_on_organization_id"
+    t.index ["person_id"], name: "index_scheduling_rules_on_person_id"
+    t.index ["production_id"], name: "index_scheduling_rules_on_production_id"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -3073,6 +3093,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_090000) do
   add_foreign_key "role_vacancy_shows", "shows"
   add_foreign_key "roles", "productions"
   add_foreign_key "roles", "shows", on_delete: :cascade
+  add_foreign_key "scheduling_rules", "house_roles"
+  add_foreign_key "scheduling_rules", "organizations"
+  add_foreign_key "scheduling_rules", "people"
+  add_foreign_key "scheduling_rules", "productions"
   add_foreign_key "sessions", "users"
   add_foreign_key "shift_additional_roles", "house_roles"
   add_foreign_key "shift_additional_roles", "shifts"

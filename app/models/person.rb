@@ -37,6 +37,7 @@ class Person < ApplicationRecord
   has_many :organization_staff_members, dependent: :destroy
   has_many :staff_unavailabilities, dependent: :destroy
   has_many :staff_schedule_removals, dependent: :destroy
+  has_many :scheduling_rules, dependent: :destroy
 
   has_many :role_eligibilities, as: :member, dependent: :destroy
 

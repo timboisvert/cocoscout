@@ -96,6 +96,19 @@ module Manage
         h[show_id] = missing if missing.any?
       end
 
+      # Regulars (opt-in via Staffing settings): the org's standing rules
+      # matched against this week, ready for the Apply-regulars modal. Reuses
+      # the shows/shifts already loaded above rather than querying again.
+      @regulars_enabled = Current.organization.staffing_regulars_enabled?
+      @regulars_matches = if @regulars_enabled
+        SchedulingRuleMatcher.new(
+          organization: Current.organization, week_start: @week_start,
+          shows_by_day: @shows_by_day, shifts: shifts
+        ).matches
+      else
+        []
+      end
+
       @finalization = Current.organization.staffing_finalizations.find_by(week_start: @week_start)
       @week_finalized = @finalization&.finalized? || false
       # Who the finalize modal would notify, with each person's shift count.

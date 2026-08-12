@@ -29,20 +29,26 @@
      data-shift-add-create-url-value="<%= manage_create_staffing_shift_path %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [
-      ["Staffing", manage_staffing_index_path]
-    ],
-    text: "Scheduling",
-    links: [
+  <%
+    top_links = [
       { text: "Availability", icon: "calendar", type: :button,
         data: { controller: "modal", modal_id: "staff-availability-modal" },
         data_action: "click->modal#open" },
       { text: "Manage roles", icon: "cog", path: manage_staffing_house_roles_path }
     ]
+    top_links.unshift({ text: "Regulars", icon: "star", path: manage_staffing_scheduling_rules_path }) if @regulars_enabled
+  %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Staffing", manage_staffing_index_path]
+    ],
+    text: "Scheduling",
+    links: top_links
   } %>
 
   <%= render "manage/staffing/availability_overview_modal" %>
+
+  <%= render "manage/staffing/regulars_apply_modal" if @regulars_enabled %>
 
   <%= render "manage/staffing/declined_alert" %>
 
@@ -69,6 +75,11 @@
       <% if @house_role_count.zero? %>
         <%= link_to "Add staffing roles to begin →", manage_staffing_house_roles_path,
               class: "text-sm text-pink-600 hover:text-pink-700 underline" %>
+      <% end %>
+      <% if @regulars_enabled && @regulars_matches.any? %>
+        <%= render "shared/button", text: "Apply regulars (#{@regulars_matches.size})",
+              variant: "outline-pink", size: "small", icon: "star", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "regulars-apply-modal" } %>
       <% end %>
     </div>
   </div>

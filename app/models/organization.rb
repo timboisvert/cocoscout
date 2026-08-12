@@ -27,6 +27,7 @@ class Organization < ApplicationRecord
   has_many :organization_staff_members, dependent: :destroy
   has_many :shifts, dependent: :destroy
   has_many :staffing_finalizations, dependent: :destroy
+  has_many :scheduling_rules, dependent: :destroy
   has_many :staff_schedule_removals, dependent: :destroy
   has_many :staff_agreement_templates, dependent: :destroy
   # The staff agreement this org requires staff to sign (if any). Nil = not required.
