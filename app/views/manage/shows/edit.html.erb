@@ -44,7 +44,7 @@
     <% end %>
   </nav>
 
-  <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit recurring-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
+  <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
 
     <div data-tabs-target="panel"><%= render "manage/shows/edit/tab_details", form: form %></div>
     <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_schedule", form: form %></div>
