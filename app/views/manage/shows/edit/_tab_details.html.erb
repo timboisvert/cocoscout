@@ -1,0 +1,19 @@
+<%# Details tab — event type + secondary name. Mirrors the wizard's Type step. %>
+<div class="space-y-6">
+  <div>
+    <%= form.label :event_type, "Event Type", class: "block text-sm font-medium text-gray-700 mb-2" %>
+    <%= render "shared/radio_card_grid",
+          name: "show[event_type]",
+          options: EventTypes.for_cards,
+          selected: @show.event_type,
+          columns: 3,
+          action: "change->location-modal#updateEventType" %>
+  </div>
+
+  <div>
+    <%= form.label :secondary_name, "Secondary name", class: "block text-sm font-medium text-gray-700" %>
+    <p class="text-sm text-gray-500 mt-0.5">Optional — a sub-name or special name for this particular date, shown alongside the production name.</p>
+    <%= form.text_field :secondary_name,
+          class: "mt-2 block w-full rounded-lg border px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 #{@show.errors[:secondary_name].any? ? 'border-pink-500' : 'border-gray-300'}" %>
+  </div>
+</div>

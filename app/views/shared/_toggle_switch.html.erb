@@ -1,0 +1,26 @@
+<%#
+  Pink iOS-style toggle switch bound to a Rails form checkbox. Replaces the
+  hand-rolled `sr-only peer` block that was duplicated across forms.
+
+  Locals:
+    form  - the form builder (required)
+    field - checkbox attribute name (required)
+    checked         - force checked state (optional; omit to use the model value)
+    data            - data attributes for the checkbox (optional)
+    unchecked_value - paired hidden-field false value (optional)
+%>
+<%
+  cb_options = { class: "sr-only peer" }
+  cb_options[:checked] = local_assigns[:checked] if local_assigns.key?(:checked)
+  cb_options[:data] = local_assigns[:data] if local_assigns[:data].present?
+  checked_value = "1"
+  unchecked_value = local_assigns[:unchecked_value]
+%>
+<label class="relative inline-flex items-center cursor-pointer">
+  <% if unchecked_value %>
+    <%= form.check_box field, cb_options, checked_value, unchecked_value %>
+  <% else %>
+    <%= form.check_box field, cb_options %>
+  <% end %>
+  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+</label>
