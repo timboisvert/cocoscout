@@ -63,6 +63,10 @@
 
   # Per-person notification status ([type, id] keys) for "Notified" badges.
   notified_keys = local_assigns[:notified_keys] || show.notified_assignable_keys
+
+  # ShowAvailability records keyed "Person_#{id}" / "Group_#{id}" — set by every
+  # action that renders this partial. Surfaces the performer's note on their card.
+  availability = local_assigns[:availability] || @availability || {}
 %>
 <div id="show-roles" data-drop-role-target="rolesContainer" data-show-id="<%= show.id %>" data-production-id="<%= production.id %>" data-is-linked="<%= is_linked %>" data-all-in-sync="<%= all_in_sync %>" data-click-to-add="<%= click_to_add %>">
 
@@ -237,6 +241,10 @@
                             <span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700" title="This person has been notified and can see their role">✓ Notified</span>
                           <% else %>
                             <span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600" title="Not notified yet — hidden from this person">Not notified yet</span>
+                          <% end %>
+                          <% assignable_note = availability["#{assignment.assignable_type}_#{assignment.assignable_id}"]&.note %>
+                          <% if assignable_note.present? %>
+                            <span class="text-xs text-gray-500 italic block truncate" title="<%= assignable_note %>"><%= assignable_note %></span>
                           <% end %>
                         <% end %>
                         <% if cant_make_it_vacancy %>
@@ -444,6 +452,10 @@
                             <span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700" title="This person has been notified and can see their role">✓ Notified</span>
                           <% else %>
                             <span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600" title="Not notified yet — hidden from this person">Not notified yet</span>
+                          <% end %>
+                          <% assignable_note = availability["#{assignment.assignable_type}_#{assignment.assignable_id}"]&.note %>
+                          <% if assignable_note.present? %>
+                            <span class="text-xs text-gray-500 italic block truncate" title="<%= assignable_note %>"><%= assignable_note %></span>
                           <% end %>
                         <% end %>
                         <% if cant_make_it_vacancy %>

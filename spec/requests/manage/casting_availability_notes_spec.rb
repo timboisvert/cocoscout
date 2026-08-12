@@ -36,6 +36,20 @@ RSpec.describe "Manage::Casting availability notes", type: :request do
     end
   end
 
+  describe "the assigned-cast cards on the roles side" do
+    it "shows the note on the card once the person is cast" do
+      # Deliberately NOT in the talent pool — the note can only be on their card.
+      cast_person = create(:person, name: "Cast Withanote")
+      org.people << cast_person
+      role = create(:role, production: production)
+      create(:show_person_role_assignment, show: show, role: role, assignable: cast_person)
+      create(:show_availability, :available, show: show, available_entity: cast_person, note: "Leaving by 10pm sharp")
+
+      get manage_casting_show_cast_path(production, show)
+      expect(response.body).to include("Leaving by 10pm sharp")
+    end
+  end
+
   describe "search_people" do
     it "returns the note alongside the status, HTML-escaped for the JS renderers" do
       create(:show_availability, :available, show: show, available_entity: person, note: "8pm <late> ok")
