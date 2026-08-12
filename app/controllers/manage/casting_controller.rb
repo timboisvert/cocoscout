@@ -349,7 +349,7 @@ module Manage
         show = production.shows.find_by(id: params[:show_id])
         if show
           ShowAvailability.where(show: show, available_entity_type: "Person", available_entity_id: people.map(&:id))
-                         .each { |sa| availability_by_person[sa.available_entity_id] = sa.status }
+                         .each { |sa| availability_by_person[sa.available_entity_id] = sa }
         end
       end
 
@@ -370,7 +370,10 @@ module Manage
         people: sorted_people.map { |p|
           result = person_search_result(p)
           result[:is_talent_pool] = pool_member_ids.include?(p.id)
-          result[:availability_status] = availability_by_person[p.id]
+          result[:availability_status] = availability_by_person[p.id]&.status
+          # Escaped here because both search renderers splice it into innerHTML.
+          note = availability_by_person[p.id]&.note
+          result[:availability_note] = note.present? ? ERB::Util.html_escape(note) : nil
           result
         },
         groups: groups.map { |g| group_search_result(g) }

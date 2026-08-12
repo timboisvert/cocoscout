@@ -11,7 +11,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["modal", "form", "subtitle", "roleSelect", "details",
                       "startInput", "endInput", "startTimeInput", "endTimeInput", "timeHint",
-                      "sourceTypeInput", "sourceIdInput", "showRow", "showSelect",
+                      "sourceTypeInput", "sourceIdInput", "showRow", "showList", "showIdsWrap",
                       "people", "personIdInput", "submitWrap"]
     static values = { createUrl: String }
 
@@ -40,6 +40,18 @@ export default class extends Controller {
         this.show()
     }
 
+    // Role Call's "Staff it": the uncovered role and its show arrive on the
+    // button, so the modal opens with both preselected and the qualified
+    // people already showing.
+    openToStaff(event) {
+        this.open(event)
+        const roleId = event.currentTarget.dataset.preselectRoleId || ""
+        if (this.hasRoleSelectTarget && roleId) {
+            this.roleSelectTarget.value = roleId
+            this.roleChanged()
+        }
+    }
+
     // Role picked: reveal the rest. Per-show roles get the show picker (which
     // drives the times); house roles get the whole-evening window.
     roleChanged() {
@@ -48,6 +60,7 @@ export default class extends Controller {
 
         if (!roleId) {
             if (this.hasDetailsTarget) this.detailsTarget.classList.add("hidden")
+            this.writeExtraShowIds([])
             this.setSubmitEnabled(false)
             return
         }
@@ -57,11 +70,12 @@ export default class extends Controller {
 
         const perShow = this.showDefaults[roleId]
         if (perShow && this.dayShows.length) {
-            this.populateShowOptions()
+            this.renderShowChecklist()
             if (this.hasShowRowTarget) this.showRowTarget.classList.remove("hidden")
-            this.showChanged()
+            this.showsChanged()
         } else {
             if (this.hasShowRowTarget) this.showRowTarget.classList.add("hidden")
+            this.writeExtraShowIds([])
             const d = this.roleDefaults[roleId]
             if (d) this.applyTimes(d.starts_at, d.ends_at)
             this.setSource(this.defaultSourceShowId)
@@ -71,27 +85,61 @@ export default class extends Controller {
         this.renderPeople(roleId)
     }
 
-    // Show picked (per-show roles): anchor the shift to that show and use its hours.
-    showChanged() {
+    // Shows checked or unchecked (per-show roles): the shift spans every
+    // checked show — earliest start to latest end — anchored to the first
+    // (source), with the rest submitted as extra covered shows.
+    showsChanged() {
         const perShow = this.showDefaults[this.roleSelectTarget.value]
         if (!perShow) return
-        const showId = this.hasShowSelectTarget ? this.showSelectTarget.value : ""
-        const d = perShow[showId]
-        if (d) this.applyTimes(d.starts_at, d.ends_at)
-        this.setSource(showId)
+
+        const checked = this.checkedShowIds()
+        if (checked.length === 0) {
+            this.setSource("")
+            this.writeExtraShowIds([])
+            this.setSubmitEnabled(false)
+            if (this.hasTimeHintTarget) this.timeHintTarget.textContent = "Check at least one show."
+            return
+        }
+        this.setSubmitEnabled(true)
+
+        let start = null, end = null
+        checked.forEach(id => {
+            const d = perShow[id]
+            if (!d) return
+            if (!start || d.starts_at < start) start = d.starts_at
+            if (!end || d.ends_at > end) end = d.ends_at
+        })
+        if (start && end) this.applyTimes(start, end)
+
+        this.setSource(checked[0])
+        this.writeExtraShowIds(checked.slice(1))
     }
 
-    populateShowOptions() {
-        if (!this.hasShowSelectTarget) return
-        const current = this.showSelectTarget.value
-        this.showSelectTarget.innerHTML = ""
-        this.dayShows.forEach(s => {
-            const opt = document.createElement("option")
-            opt.value = s.id
-            opt.textContent = s.label
-            this.showSelectTarget.appendChild(opt)
-        })
-        if (current && this.dayShows.some(s => s.id === current)) this.showSelectTarget.value = current
+    renderShowChecklist() {
+        if (!this.hasShowListTarget) return
+        const preferred = this.defaultSourceShowId && this.dayShows.some(s => s.id === this.defaultSourceShowId)
+            ? this.defaultSourceShowId
+            : (this.dayShows[0] || {}).id
+        this.showListTarget.innerHTML = this.dayShows.map(s => `
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" value="${this.h(s.id)}" ${s.id === preferred ? "checked" : ""}
+                       data-action="change->shift-add#showsChanged"
+                       class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span class="text-sm text-gray-800 min-w-0 truncate">${this.h(s.label)}</span>
+            </label>`).join("")
+    }
+
+    // Checked ids in DOM order — dayShows is chronological, so the first
+    // checked show is the earliest and becomes the source anchor.
+    checkedShowIds() {
+        if (!this.hasShowListTarget) return []
+        return Array.from(this.showListTarget.querySelectorAll("input[type=checkbox]:checked")).map(i => i.value)
+    }
+
+    writeExtraShowIds(ids) {
+        if (!this.hasShowIdsWrapTarget) return
+        this.showIdsWrapTarget.innerHTML = ids.map(id =>
+            `<input type="hidden" name="shift[show_ids][]" value="${this.h(id)}">`).join("")
     }
 
     // Seed the visible time inputs and the hidden datetimes from a suggested

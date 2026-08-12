@@ -72,6 +72,9 @@
 
               <div class="flex-1 min-w-0">
                 <span class="font-medium text-sm block truncate"><%= member.name %></span>
+                <% if member_availability&.note.present? %>
+                  <span class="text-xs text-gray-500 italic block truncate" title="<%= member_availability.note %>"><%= member_availability.note %></span>
+                <% end %>
                 <% if is_linked %>
                   <span class="text-xs text-gray-400 block hidden" data-availability-text>
                     <% if is_fully_available %>

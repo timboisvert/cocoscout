@@ -514,6 +514,10 @@ export default class extends Controller {
         } else if (person.availability_status === 'unavailable') {
             subtitle = '<span class="text-red-600">Unavailable</span>';
         }
+        // availability_note arrives pre-escaped from search_people.
+        const note = person.availability_note
+            ? `<div class="text-xs text-gray-500 italic truncate" title="${person.availability_note}">${person.availability_note}</div>`
+            : '';
 
         return `
             <button type="button"
@@ -525,6 +529,7 @@ export default class extends Controller {
                 <div class="flex-1 min-w-0">
                     <div class="font-medium text-sm text-gray-900 truncate">${person.name}</div>
                     ${subtitle ? `<div class="text-xs">${subtitle}</div>` : ''}
+                    ${note}
                 </div>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

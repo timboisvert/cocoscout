@@ -114,6 +114,54 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     end
   end
 
+  # Three shows in a row, one tech working all of them: the modal's show
+  # checklist creates that as ONE shift — anchored to the first show, the rest
+  # recorded as extra covered shows (the same shape merging produces).
+  describe "creating one shift that covers several shows" do
+    let!(:tech) { create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific) }
+
+    def multi_show_params(show_ids)
+      { shift: {
+        house_role_id: tech.id,
+        starts_at: early_show.date_and_time.iso8601,
+        ends_at: late_show.ends_at.iso8601,
+        required_count: 1, coverage_mode: "needs_assignment",
+        source_type: "Show", source_id: early_show.id,
+        show_ids: show_ids
+      } }
+    end
+
+    it "anchors to the first show and records the rest as covered" do
+      expect { post manage_create_staffing_shift_path, params: multi_show_params([ late_show.id.to_s ]) }
+        .to change(Shift, :count).by(1)
+
+      shift = Shift.last
+      expect(shift.source).to eq(early_show)
+      expect(shift.covered_shows).to eq([ early_show, late_show ])
+    end
+
+    it "satisfies Role Call for every checked show once staffed" do
+      org.update!(alert_uncovered_show_roles: true)
+      person = create(:person)
+      staff!(person, tech)
+
+      post manage_create_staffing_shift_path,
+           params: multi_show_params([ late_show.id.to_s ]).merge(person_id: person.id)
+
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      expect(response.body).not_to include("needs Booth Tech")
+    end
+
+    it "shrugs off the anchor repeated in the list and shows from other orgs" do
+      stranger = create(:show) # some other organization's show
+
+      post manage_create_staffing_shift_path,
+           params: multi_show_params([ early_show.id.to_s, late_show.id.to_s, stranger.id.to_s ])
+
+      expect(Shift.last.shows).to eq([ late_show ])
+    end
+  end
+
   # Turbo only morphs the page — patching what changed, leaving scroll alone —
   # when a form redirects to the exact URL it was submitted from. An anchor, a
   # dropped query param, anything: the match fails and the manager gets a full
@@ -166,6 +214,18 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     end
   end
 
+  describe "the show panel's event-type label" do
+    it "names the event type instead of a generic 'Show'" do
+      create(:show, production: production, event_type: "rehearsal",
+                    date_and_time: show_day.in_time_zone.change(hour: 14), duration_minutes: 60)
+
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      expect(response.body).to include(%(<span class="text-gray-500">Rehearsal</span>))
+      # The actual shows keep saying Show.
+      expect(response.body).to include(%(<span class="text-gray-500">Show</span>))
+    end
+  end
+
   describe "the retired gap acknowledgment" do
     it "no longer renders a gap banner between adjacent shifts" do
       role = create(:house_role, organization: org, role_type: :house)
@@ -193,6 +253,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(response.body).not_to include("Role Call")
       expect(response.body).not_to include("not covered yet")
       expect(response.body).not_to include("Not needed here")
+      expect(response.body).not_to include("Staff it")
     end
 
     context "with the setting on" do
@@ -222,6 +283,13 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
 
         get manage_staffing_scheduling_path(week_start: week_start.to_s)
         expect(response.body).not_to include("needs Booth Tech")
+      end
+
+      it "offers to staff an uncovered role straight from the panel" do
+        get manage_staffing_scheduling_path(week_start: week_start.to_s)
+        expect(response.body).to include("Staff it")
+        expect(response.body).to include(%(data-preselect-role-id="#{tech.id}"))
+        expect(response.body).to include("shift-add#openToStaff")
       end
 
       it "an unstaffed shift isn't coverage — the flag stays" do

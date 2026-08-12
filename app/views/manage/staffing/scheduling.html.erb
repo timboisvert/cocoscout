@@ -553,6 +553,7 @@
                     coverage = @show_coverage[show.id]
                     rental = show.space_rental
                     show_time = "#{show.date_and_time.strftime("%-l:%M %p")}–#{show.ends_at.strftime("%-l:%M %p")}"
+                    event_type_label = EventTypes.labels[show.event_type] || "Show"
                     call_time = show.call_time_enabled? && show.call_time ? show.call_time.strftime("%-l:%M %p") : nil
                     # The contract's booked window, when it's wider than the show itself.
                     booked_range = if rental && (rental.starts_at != show.date_and_time || rental.ends_at != show.ends_at)
@@ -583,7 +584,7 @@
                           class="invisible opacity-0 transition-opacity absolute z-50 left-0 bottom-full mb-1 w-64 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2.5 text-left">
                       <span class="block text-xs font-semibold text-gray-900 mb-1.5"><%= show.display_name %></span>
                       <span class="block space-y-0.5 mb-1.5">
-                        <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500">Show</span><span class="text-gray-800 font-medium tabular-nums"><%= show_time %></span></span>
+                        <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500"><%= event_type_label %></span><span class="text-gray-800 font-medium tabular-nums"><%= show_time %></span></span>
                         <% if call_time %>
                           <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500">Call</span><span class="text-gray-800 font-medium tabular-nums"><%= call_time %></span></span>
                         <% end %>
@@ -645,7 +646,7 @@
                       </div>
                       <div class="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div class="space-y-1">
-                          <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500">Show</span><span class="text-gray-900 font-medium tabular-nums"><%= show_time %></span></div>
+                          <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500"><%= event_type_label %></span><span class="text-gray-900 font-medium tabular-nums"><%= show_time %></span></div>
                           <% if call_time %>
                             <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500">Call time</span><span class="text-gray-900 font-medium tabular-nums"><%= call_time %></span></div>
                           <% end %>
@@ -710,7 +711,20 @@
                                     <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
                                     <span class="text-gray-900"><%= role[:name] %></span>
                                     <span class="text-xs text-amber-700 font-medium">not covered yet</span>
-                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch, class: "ml-auto flex-shrink-0" do %>
+                                    <%# Straight into the Add-shift modal with this role and
+                                        show preselected — the day payloads ride on the button
+                                        exactly like the "+ Add shift" trigger. %>
+                                    <button type="button"
+                                            data-action="click->modal#close click->shift-add#openToStaff"
+                                            data-preselect-role-id="<%= role[:id] %>"
+                                            data-day-label="<%= day_label %>"
+                                            data-day-iso="<%= day.iso8601 %>"
+                                            data-role-defaults="<%= role_defaults_for_day.to_json %>"
+                                            data-source-show-id="<%= show.id %>"
+                                            data-show-defaults="<%= show_defaults_for_day.to_json %>"
+                                            data-day-shows="<%= day_shows_options.to_json %>"
+                                            class="ml-auto text-xs text-pink-600 hover:text-pink-700 font-medium underline cursor-pointer bg-transparent border-0 p-0 flex-shrink-0">Staff it</button>
+                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch, class: "flex-shrink-0" do %>
                                       <button type="submit" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">Not needed here</button>
                                     <% end %>
                                   <% end %>
@@ -1002,13 +1016,15 @@
 
             <%# Everything below reveals once a role is chosen. %>
             <div data-shift-add-target="details" class="hidden space-y-3">
-              <%# Which show — per-show roles only; options come from the day's
-                  shows so the shift anchors to the chosen show. %>
+              <%# Which shows — per-show roles only; the day's shows render as a
+                  checkbox list so one shift can cover several back-to-back shows
+                  (one tech working all three). The first checked show is the
+                  anchor (source); the rest ride along as extra covered shows. %>
               <div data-shift-add-target="showRow" class="hidden">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Show</label>
-                <%= select_tag "shift[source_show_id]", nil,
-                      data: { "shift-add-target": "showSelect", action: "change->shift-add#showChanged" },
-                      class: "block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Shows</label>
+                <div data-shift-add-target="showList"
+                     class="space-y-1.5 rounded border border-gray-300 shadow-sm px-3 py-2 max-h-36 overflow-y-auto"></div>
+                <p class="text-[11px] text-gray-500 mt-1">Check every show this shift covers.</p>
               </div>
 
               <%# Suggested times, fully editable. %>
@@ -1047,6 +1063,9 @@
                 when its hours cross midnight. Blank for no-show days. %>
             <%= f.hidden_field :source_type, data: { "shift-add-target": "sourceTypeInput" } %>
             <%= f.hidden_field :source_id,   data: { "shift-add-target": "sourceIdInput" } %>
+            <%# Extra covered shows beyond the source anchor — filled by JS when
+                more than one show is checked. %>
+            <span data-shift-add-target="showIdsWrap"></span>
             <%= hidden_field_tag :person_id, nil, data: { "shift-add-target": "personIdInput" } %>
             <%= f.hidden_field :required_count, value: 1 %>
             <%= f.hidden_field :coverage_mode,  value: "needs_assignment" %>

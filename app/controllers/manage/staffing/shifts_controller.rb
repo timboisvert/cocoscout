@@ -11,6 +11,7 @@ module Manage
       def create
         attrs = shift_params
         @shift = Current.organization.shifts.new(sanitize_roles(attrs, attrs[:house_role_id]))
+        attach_extra_shows
         if @shift.save
           assigned_note = assign_initial_person
           redirect_to_scheduling notice: [ "Shift added.", assigned_note ].compact.join(" ")
@@ -276,6 +277,20 @@ module Manage
           :coverage_mode, :renter_name, :notes, :source_type, :source_id,
           additional_role_ids: []
         )
+      end
+
+      # Extra shows this shift covers beyond its source anchor — the Add-shift
+      # modal's multi-show checklist. Same shape merge produces: the earliest
+      # show is the source, the rest live in shift_shows. Deliberately not in
+      # shift_params so the ids are scoped to the org here, never mass-assigned.
+      def attach_extra_shows
+        ids = Array(params[:shift][:show_ids]).map(&:to_s).reject(&:blank?).uniq
+        return if ids.empty? || @shift.source_type != "Show" || @shift.source_id.blank?
+        @shift.shows = ::Show.joins(:production)
+                             .where(productions: { organization_id: Current.organization.id })
+                             .where(id: ids)
+                             .where.not(id: @shift.source_id)
+                             .to_a
       end
 
       # Clean the "also covers" set: ints, no blanks, no dups, and never the
