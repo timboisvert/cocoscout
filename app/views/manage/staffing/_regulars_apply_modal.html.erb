@@ -54,7 +54,7 @@
                           <% elsif match.rule.production_anchored? %>
                             · <%= match.rule.production&.name %>
                           <% end %>
-                          · <%= match.starts_at.strftime("%-l:%M") %>–<%= match.ends_at.strftime("%-l:%M %p") %>
+                          · <%= match.starts_at.strftime("%-l:%M %p") %>–<%= match.ends_at.strftime("%-l:%M %p") %>
                         </span>
                       </span>
                       <% if match.already_assigned %>

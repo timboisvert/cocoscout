@@ -123,7 +123,7 @@
                    style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= block_height %>px;"
                    title="<%= "#{label} · #{show.date_and_time.strftime("%-l:%M %p")}–#{show_end.strftime("%-l:%M %p")}" %>">
                 <span class="truncate text-[11px] font-medium"><%= label %></span>
-                <span class="text-[10px] text-pink-700 tabular-nums flex-shrink-0 ml-auto"><%= show.date_and_time.strftime("%-l:%M") %>–<%= show_end.strftime("%-l:%M") %></span>
+                <span class="text-[10px] text-pink-700 tabular-nums flex-shrink-0 ml-auto"><%= show.date_and_time.strftime("%-l:%M %p") %>–<%= show_end.strftime("%-l:%M %p") %></span>
               </div>
             <% end %>
           <% end %>

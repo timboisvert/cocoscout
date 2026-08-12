@@ -312,7 +312,7 @@
                               data-shift-additional-role-ids="<%= shift.additional_role_ids.to_json %>"
                               data-shift-house-role-id="<%= shift.house_role_id %>"
                               class="flex-1 min-w-0 px-3 py-2 text-sm text-left text-gray-900 font-medium hover:bg-black/5 cursor-pointer flex items-center justify-between gap-2">
-                        <span class="truncate"><%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></span>
+                        <span class="truncate"><%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></span>
                         <span class="text-[10px] text-gray-400 flex-shrink-0">edit</span>
                       </button>
                       <% remove_shift_cid = "confirm-remove-shift-#{shift.id}" %>
@@ -391,7 +391,7 @@
                                   data-shift-id="<%= shift.id %>"
                                   data-role-id="<%= role.id %>"
                                   data-role-name="<%= role.name %>"
-                                  data-time-range="<%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
+                                  data-time-range="<%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
                                   data-assigned-ids="<%= assigned_ids.to_json %>"
                                   class="w-full text-left text-xs px-2 py-1 rounded border border-dashed border-pink-400 text-pink-700 hover:bg-pink-100 transition-colors cursor-pointer">
                             + Click to add a staff member
@@ -404,7 +404,7 @@
                                   data-shift-id="<%= shift.id %>"
                                   data-role-id="<%= role.id %>"
                                   data-role-name="<%= role.name %>"
-                                  data-time-range="<%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
+                                  data-time-range="<%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
                                   data-assigned-ids="<%= assigned_ids.to_json %>"
                                   class="w-full text-left text-[11px] px-2 py-0.5 text-gray-500 hover:text-pink-600 cursor-pointer bg-transparent border-0">
                             + Add another person
@@ -446,7 +446,7 @@
                                 data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                                 data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                                 data-shift-role-name="<%= role.name %>"
-                                data-shift-time-range="<%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
+                                data-shift-time-range="<%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %>"
                                 data-shift-show-specific="<%= role.show_specific? %>"
                                 data-shift-covered-show-count="<%= split_covered.size %>"
                                 data-shift-covered-shows="<%= split_covered.map { |s| [ s.production&.name, s.date_and_time.strftime("%-l:%M %p") ].compact.join(" · ") }.to_json %>"
@@ -474,14 +474,14 @@
                             <%= form_with url: manage_merge_staffing_shift_path(shift), method: :post do %>
                               <div class="px-5 py-4">
                                 <% this_shows = shift.covered_shows.map { |s| s.production&.name }.compact.uniq %>
-                                <p class="text-sm text-gray-600 mb-3">Pick the shifts to merge into this one (<%= shift.starts_at.strftime("%-l:%M") %>–<%= shift.ends_at.strftime("%-l:%M %p") %><% if this_shows.any? %> · <%= this_shows.join(", ") %><% end %>). They become one shift and everyone assigned comes along.</p>
+                                <p class="text-sm text-gray-600 mb-3">Pick the shifts to merge into this one (<%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %><% if this_shows.any? %> · <%= this_shows.join(", ") %><% end %>). They become one shift and everyone assigned comes along.</p>
                                 <div class="space-y-1 max-h-64 overflow-y-auto">
                                   <% merge_siblings.each do |sib| %>
                                     <% names = sib.shift_assignments.map { |a| a.person&.name }.compact %>
                                     <% sib_shows = sib.covered_shows.map { |s| s.production&.name }.compact.uniq %>
                                     <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
                                       <input type="checkbox" name="shift_ids[]" value="<%= sib.id %>" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500 flex-shrink-0">
-                                      <span class="text-sm text-gray-900 tabular-nums whitespace-nowrap"><%= sib.starts_at.strftime("%-l:%M") %>–<%= sib.ends_at.strftime("%-l:%M %p") %></span>
+                                      <span class="text-sm text-gray-900 tabular-nums whitespace-nowrap"><%= sib.starts_at.strftime("%-l:%M %p") %>–<%= sib.ends_at.strftime("%-l:%M %p") %></span>
                                       <% if sib_shows.any? %><span class="text-xs text-purple-700 truncate">· <%= sib_shows.join(", ") %></span><% end %>
                                       <% if names.any? %><span class="text-xs text-gray-500 truncate flex-shrink-0">· <%= names.join(", ") %></span><% end %>
                                     </label>
@@ -648,7 +648,7 @@
                       own modal would re-open it on every backdrop click). %>
                   <div id="<%= detail_cid %>" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
                        data-controller="modal" data-action="click->modal#closeOnBackdrop">
-                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
                       <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
                         <h3 class="text-lg font-semibold text-white truncate"><%= show.display_name %> · <%= show.date_and_time.strftime("%a, %b %-d") %></h3>
                         <button type="button" data-action="click->modal#close" class="text-white/70 hover:text-white cursor-pointer flex-shrink-0 ml-3">
@@ -697,47 +697,59 @@
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                               </span>
                               <span class="text-base text-gray-900 coustard-regular">Role Call</span>
-                              <%= link_to "Settings", manage_staffing_settings_section_path(section: "role_call"),
-                                    class: "ml-auto text-xs text-pink-600 hover:text-pink-700 underline" %>
+                              <span class="ml-auto flex-shrink-0">
+                                <%= link_to manage_staffing_settings_section_path(section: "role_call") do %>
+                                  <%= render "shared/button", text: "Settings", variant: "secondary", size: "xs" %>
+                                <% end %>
+                              </span>
                             </div>
-                            <p class="text-xs text-gray-500 mb-2.5">The show-specific roles this show is checked for. Excuse any this show genuinely doesn't need.</p>
+                            <p class="text-xs text-gray-500 mb-3">The show-specific roles this show is checked for. Excuse any this show genuinely doesn't need.</p>
 
                             <%# Each role flips on its own — a show can skip the booth
                                 tech and still be checked for the door person. %>
                             <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
                               <% coverage[:roles].each do |role| %>
-                                <div class="flex items-center gap-2 text-sm px-3 py-2 <%= "bg-gray-50/60" if role[:exempt] %>">
+                                <div class="flex items-center gap-3 px-4 py-3 <%= "bg-gray-50/60" if role[:exempt] %>">
                                   <% if role[:exempt] %>
-                                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
-                                    <span class="text-gray-500"><%= role[:name] %></span>
-                                    <span class="text-xs text-gray-400">not needed for this show</span>
-                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "ml-auto flex-shrink-0" do %>
-                                      <button type="submit" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">Needs it again</button>
+                                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+                                    <div class="min-w-0 flex-1">
+                                      <p class="text-sm font-medium text-gray-500"><%= role[:name] %></p>
+                                      <p class="text-xs text-gray-400">Not needed for this show</p>
+                                    </div>
+                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "flex-shrink-0" do %>
+                                      <%= render "shared/button", text: "Needs it again", variant: "secondary", size: "small", type: :submit %>
                                     <% end %>
                                   <% elsif role[:covered] %>
-                                    <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                                    <span class="text-gray-900"><%= role[:name] %></span>
-                                    <span class="text-xs text-gray-400">covered</span>
+                                    <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                    <div class="min-w-0 flex-1">
+                                      <p class="text-sm font-medium text-gray-900"><%= role[:name] %></p>
+                                      <p class="text-xs text-gray-400">Covered</p>
+                                    </div>
                                   <% else %>
-                                    <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-                                    <span class="text-gray-900"><%= role[:name] %></span>
-                                    <span class="text-xs text-amber-700 font-medium">not covered yet</span>
-                                    <%# Straight into the Add-shift modal with this role and
-                                        show preselected — the day payloads ride on the button
-                                        exactly like the "+ Add shift" trigger. %>
-                                    <button type="button"
-                                            data-action="click->modal#close click->shift-add#openToStaff"
-                                            data-preselect-role-id="<%= role[:id] %>"
-                                            data-day-label="<%= day_label %>"
-                                            data-day-iso="<%= day.iso8601 %>"
-                                            data-role-defaults="<%= role_defaults_for_day.to_json %>"
-                                            data-source-show-id="<%= show.id %>"
-                                            data-show-defaults="<%= show_defaults_for_day.to_json %>"
-                                            data-day-shows="<%= day_shows_options.to_json %>"
-                                            class="ml-auto text-xs text-pink-600 hover:text-pink-700 font-medium underline cursor-pointer bg-transparent border-0 p-0 flex-shrink-0">Staff it</button>
-                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch, class: "flex-shrink-0" do %>
-                                      <button type="submit" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-0">Not needed here</button>
-                                    <% end %>
+                                    <svg class="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                                    <div class="min-w-0 flex-1">
+                                      <p class="text-sm font-medium text-gray-900"><%= role[:name] %></p>
+                                      <p class="text-xs text-amber-700 font-medium">Not covered yet</p>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                      <%# Straight into the Add-shift modal with this role and
+                                          show preselected — the day payloads ride on the button
+                                          exactly like the "+ Add shift" trigger. %>
+                                      <%= render "shared/button", text: "Staff it", variant: "primary", size: "small", type: :button,
+                                            data: {
+                                              action: "click->modal#close click->shift-add#openToStaff",
+                                              "preselect-role-id": role[:id],
+                                              "day-label": day_label,
+                                              "day-iso": day.iso8601,
+                                              "role-defaults": role_defaults_for_day.to_json,
+                                              "source-show-id": show.id,
+                                              "show-defaults": show_defaults_for_day.to_json,
+                                              "day-shows": day_shows_options.to_json
+                                            } %>
+                                      <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch do %>
+                                        <%= render "shared/button", text: "Not needed here", variant: "secondary", size: "small", type: :submit %>
+                                      <% end %>
+                                    </div>
                                   <% end %>
                                 </div>
                               <% end %>

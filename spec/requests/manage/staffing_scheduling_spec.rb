@@ -251,7 +251,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     it "is absent from the show popover and panel entirely when the setting is off" do
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
       expect(response.body).not_to include("Role Call")
-      expect(response.body).not_to include("not covered yet")
+      expect(response.body).not_to include("Not covered yet")
       expect(response.body).not_to include("Not needed here")
       expect(response.body).not_to include("Staff it")
     end
@@ -268,7 +268,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
         get manage_staffing_scheduling_path(week_start: week_start.to_s)
         expect(response.body).to include("Role Call")
         expect(response.body).to include("Still needs Booth Tech")   # popover summary
-        expect(response.body).to include("not covered yet")          # panel row
+        expect(response.body).to include("Not covered yet")          # panel row
         expect(response.body).to include(manage_staffing_settings_section_path(section: "role_call"))
       end
 
@@ -312,7 +312,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
 
         get manage_staffing_scheduling_path(week_start: week_start.to_s)
         expect(response.body).not_to include("needs Booth Tech")
-        expect(response.body).to include("not needed for this show")
+        expect(response.body).to include("Not needed for this show")
         expect(response.body).to include("Needs it again")
       end
 
