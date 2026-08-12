@@ -25,6 +25,15 @@ module EventTypes
     config.map { |key, value| [ value["label"], key ] }
   end
 
+  def self.description(event_type)
+    config.dig(event_type.to_s, "description")
+  end
+
+  # [{ value:, label:, description: }] for the radio-card picker.
+  def self.for_cards
+    config.map { |key, value| { value: key, label: value["label"], description: value["description"] } }
+  end
+
   def self.casting_enabled_default(event_type)
     config.dig(event_type.to_s, "casting_enabled_default") || false
   end

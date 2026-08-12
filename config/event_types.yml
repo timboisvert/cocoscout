@@ -4,36 +4,42 @@
 event_types:
   show:
     label: "Show"
+    description: "A performance for an audience"
     casting_enabled_default: true
     public_visible_default: true
     call_time_enabled_default: true
     revenue_event: true
   rehearsal:
     label: "Rehearsal"
+    description: "Practice session for cast members"
     casting_enabled_default: false
     public_visible_default: false
     call_time_enabled_default: false
     revenue_event: false
   meeting:
     label: "Meeting"
+    description: "Team meeting or planning session"
     casting_enabled_default: false
     public_visible_default: false
     call_time_enabled_default: false
     revenue_event: false
   class:
     label: "Class"
+    description: "Educational or training session"
     casting_enabled_default: true
     public_visible_default: true
     call_time_enabled_default: false
     revenue_event: true
   workshop:
     label: "Workshop"
+    description: "Interactive learning or creation session"
     casting_enabled_default: true
     public_visible_default: true
     call_time_enabled_default: false
     revenue_event: true
   open_mic:
     label: "Open Mic"
+    description: "Open sign-up performance night"
     casting_enabled_default: true
     public_visible_default: true
     call_time_enabled_default: false
