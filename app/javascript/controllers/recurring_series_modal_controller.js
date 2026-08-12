@@ -5,7 +5,8 @@ export default class extends Controller {
         "durationSelect", "customDateField", "extendForm", "previewContainer", "previewList",
         "previewCount", "previewThrough", "previewError", "previewButton", "confirmForm",
         "rescheduleForm", "reschedulePreviewButton", "rescheduleError", "reschedulePreviewContainer",
-        "rescheduleList", "rescheduleRemoving", "rescheduleAdding", "rescheduleConfirmForm"
+        "rescheduleList", "rescheduleRemoving", "rescheduleAdding", "rescheduleConfirmForm",
+        "rebuildEndType", "rebuildCustomDate"
     ]
     static values = { previewUrl: String, extendUrl: String, previewRescheduleUrl: String, rescheduleUrl: String }
 
@@ -34,6 +35,11 @@ export default class extends Controller {
 
         // Reset preview when changing duration
         this.hidePreview()
+    }
+
+    toggleRebuildCustomDate() {
+        if (!this.hasRebuildEndTypeTarget || !this.hasRebuildCustomDateTarget) return
+        this.rebuildCustomDateTarget.classList.toggle('hidden', this.rebuildEndTypeTarget.value !== 'custom')
     }
 
     async previewExtend(event) {

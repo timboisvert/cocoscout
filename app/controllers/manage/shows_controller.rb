@@ -662,6 +662,12 @@ module Manage
             updated_count += 1 if show.update(update_params)
           end
 
+          # Date/time is per-occurrence (series-wide reschedules go through the
+          # Change-series-schedule modal), but don't silently drop an edit the
+          # manager made to THIS occurrence's date while "apply to all" was on.
+          this_at = parse_param_datetime(show_params[:date_and_time])
+          @show.update(date_and_time: this_at) if this_at && this_at != @show.date_and_time
+
           redirect_to manage_show_path(@production, @show),
                       notice: "Successfully updated #{updated_count} events in the series",
                       status: :see_other
