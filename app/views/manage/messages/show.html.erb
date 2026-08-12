@@ -16,8 +16,10 @@
   production_context = @message.production
   recipient_count = @message.recipient_count
 
-  # Get all replies in the thread
-  all_replies = @message.child_messages.includes(:sender, :child_messages).order(created_at: :asc)
+  # Get all replies in the thread from the already-loaded @thread_messages —
+  # the nested_reply partial walks this map instead of querying per node
+  children_by_parent_id = @thread_messages.group_by(&:parent_message_id)
+  all_replies = (children_by_parent_id[@message.id] || []).sort_by(&:created_at)
 
   # Check if we came from a production-scoped page (via nested route or query param)
   from_production_id = params[:production_id] || params[:from_production]
@@ -87,7 +89,7 @@
       <% end %>
 
       <div class="space-y-4" data-message-thread-target="replies">
-        <%= render partial: "shared/messages/nested_reply", collection: all_replies, as: :reply, locals: { depth: 0 } %>
+        <%= render partial: "shared/messages/nested_reply", collection: all_replies, as: :reply, locals: { depth: 0, children_by_parent_id: children_by_parent_id, root_message: @root_message } %>
       </div>
     </div>
 

@@ -4,7 +4,11 @@
 %>
 
 <%
-  all_reactions = message.message_reactions.includes(user: { default_person: { profile_headshots: { image_attachment: :blob } } })
+  all_reactions = if message.message_reactions.loaded?
+    message.message_reactions
+  else
+    message.message_reactions.includes(user: { default_person: { profile_headshots: { image_attachment: :blob } } })
+  end
   reactions_by_emoji = all_reactions.group_by(&:emoji)
   reaction_counts = reactions_by_emoji.transform_values(&:count)
   user_reaction = Current.user ? message.user_reaction(Current.user) : nil

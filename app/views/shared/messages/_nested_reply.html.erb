@@ -8,13 +8,25 @@
 
 <%
   sender_person = reply.sender.is_a?(Person) ? reply.sender : reply.sender&.person
-  nested_replies = reply.child_messages.includes(:sender, :child_messages).order(:created_at)
+
+  # When the caller preloaded the whole thread, children come from its in-memory
+  # map and the root is handed down — no per-node queries. Fallbacks keep other
+  # render sites (e.g. turbo-stream single-reply appends) working.
+  children_by_parent_id = local_assigns[:children_by_parent_id]
+  nested_replies = if children_by_parent_id
+    (children_by_parent_id[reply.id] || []).sort_by(&:created_at)
+  else
+    reply.child_messages.includes(:sender, :child_messages).order(:created_at).to_a
+  end
   max_depth = 4  # Maximum visual nesting before we stop indenting
   visual_depth = [depth, max_depth].min
 
   # Get the root message for the reply form
-  root_message = reply
-  root_message = root_message.parent_message while root_message.parent_message.present?
+  root_message = local_assigns[:root_message]
+  if root_message.nil?
+    root_message = reply
+    root_message = root_message.parent_message while root_message.parent_message.present?
+  end
 
   # Determine the reply path based on current context
   is_manage = controller.controller_path.start_with?("manage")
@@ -261,7 +273,7 @@
     <%# Nested replies - wrap in relative container for tree lines %>
     <% if nested_replies.any? %>
       <div class="relative mt-3 space-y-3" data-nested-replies="true">
-        <%= render partial: "shared/messages/nested_reply", collection: nested_replies, as: :reply, locals: { depth: [depth + 1, max_depth].min } %>
+        <%= render partial: "shared/messages/nested_reply", collection: nested_replies, as: :reply, locals: { depth: [depth + 1, max_depth].min, children_by_parent_id: children_by_parent_id, root_message: root_message } %>
       </div>
     <% end %>
   </div>

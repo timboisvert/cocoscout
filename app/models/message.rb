@@ -397,7 +397,11 @@ class Message < ApplicationRecord
   end
 
   def user_reaction(user)
-    message_reactions.find_by(user: user)&.emoji
+    if message_reactions.loaded?
+      message_reactions.detect { |r| r.user_id == user.id }&.emoji
+    else
+      message_reactions.find_by(user: user)&.emoji
+    end
   end
 
   def add_reaction!(user, emoji)
@@ -437,6 +441,19 @@ class Message < ApplicationRecord
     current = self
     current = current.parent_message while current.parent_message_id.present?
     current
+  end
+
+  # Batch-load headshots for every Person recipient across a loaded thread, so
+  # the read-receipts modal renders without per-person queries. (recipient is
+  # polymorphic, so this can't ride along in the thread includes.)
+  def self.preload_recipient_headshots(messages)
+    people = messages.flat_map(&:message_recipients).map(&:recipient).grep(Person)
+    return if people.empty?
+
+    ActiveRecord::Associations::Preloader.new(
+      records: people,
+      associations: { profile_headshots: { image_attachment: :blob } }
+    ).call
   end
 
   # All message IDs under the given roots (any depth), in one recursive query.

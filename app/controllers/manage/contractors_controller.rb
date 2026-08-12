@@ -13,7 +13,7 @@ module Manage
       scope = scope.where("LOWER(name) LIKE ?", "%#{@query.downcase}%") if @query.present?
       all_contractors = scope.to_a
 
-      with_active = all_contractors.select { |c| c.active_contracts.any? }
+      with_active = all_contractors.select { |c| c.contracts.any? { |ct| ct.status == "active" } }
       without_active = all_contractors - with_active
 
       # Counts (respect the search, ignore the status filter) for the filter chips
@@ -41,6 +41,8 @@ module Manage
       @completed_contracts = @contractor.contracts.status_completed
         .or(@contractor.contracts.status_cancelled)
         .order(contract_end_date: :desc)
+      # The slim lists show per-contract money; batch their shows/payments lookups.
+      Contract.preload_money_data(@active_contracts.to_a + @draft_contracts.to_a + @completed_contracts.to_a)
       # A contractor is paid as its backing Person — chosen explicitly by the
       # manager (search-or-invite), never auto-created.
       @person = @contractor.person

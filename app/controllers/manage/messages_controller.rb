@@ -10,8 +10,11 @@ module Manage
       @order = params[:order] || "newest"
 
       # Productions the user can access (for the production-filter dropdown).
+      # The compose flow asks each for its effective talent pool — preload so
+      # that check doesn't query per production.
       @accessible_productions = Current.user.accessible_productions
         .where(organization: Current.organization)
+        .includes(:talent_pools, talent_pool_shares: :talent_pool)
         .order(:name)
 
       # Single source of truth for what belongs in this manage inbox — shared
@@ -260,10 +263,16 @@ module Manage
       subscription = @root_message.message_subscriptions.find_by(user: Current.user)
       subscription&.mark_read!
 
-      # Load all messages in thread
+      # Load all messages in thread, with everything the thread view reads per
+      # message (body, images, reactions, recipients) so rendering is query-free
       @thread_messages = Message.where(id: [ @root_message.id ] + @root_message.descendant_ids)
-                                .includes(:sender, :message_recipients, message_poll: :message_poll_options)
+                                .includes(:sender, :rich_text_body,
+                                          { images_attachments: :blob },
+                                          { message_recipients: :recipient },
+                                          { message_reactions: { user: { default_person: { profile_headshots: { image_attachment: :blob } } } } },
+                                          message_poll: :message_poll_options)
                                 .order(:created_at)
+      Message.preload_recipient_headshots(@thread_messages)
     end
 
     # POST /manage/messages

@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 class DashboardService
-  def initialize(production)
+  def initialize(production, batch: nil)
     @production = production
+    @batch = batch
   end
 
   def generate
@@ -50,11 +51,94 @@ class DashboardService
       [ key, production ]
     end
 
-    payloads = Rails.cache.fetch_multi(*production_by_key.keys, expires_in: 5.minutes) do |key|
-      new(production_by_key[key]).send(:build_payload)
+    payloads = Rails.cache.read_multi(*production_by_key.keys)
+
+    # Build the misses together: one Batch runs the grouped queries every
+    # per-production payload would otherwise run individually.
+    missing = production_by_key.reject { |key, _| payloads.key?(key) }
+    if missing.any?
+      batch = Batch.new(missing.values)
+      built = missing.to_h { |key, production| [ key, new(production, batch: batch).send(:build_payload) ] }
+      Rails.cache.write_multi(built, expires_in: 5.minutes)
+      payloads.merge!(built)
     end
 
     production_by_key.to_h { |key, production| [ production.id, payloads[key] ] }
+  end
+
+  # Shared data source for generate_all cache misses: every per-production
+  # query the payload methods run, executed once for the whole production set.
+  # Accessors mirror the shapes the single-production queries return.
+  class Batch
+    def initialize(productions)
+      @now = Time.current
+      ids = productions.map(&:id)
+
+      ActiveRecord::Associations::Preloader.new(
+        records: productions,
+        associations: [ :organization, { audition_cycles: :audition_requests },
+                        :talent_pools, { talent_pool_shares: :talent_pool } ]
+      ).call
+
+      window_shows = Show.where(production_id: ids)
+                         .where("date_and_time >= ? AND date_and_time <= ?", @now, 6.weeks.from_now)
+                         .includes(:location, :custom_roles, :show_person_role_assignments, :show_availabilities)
+                         .order(date_and_time: :asc)
+                         .to_a
+      @shows_by_production = window_shows.group_by(&:production_id)
+
+      @roles_by_production = Role.production_roles.where(production_id: ids).group_by(&:production_id)
+
+      pool_ids = productions.flat_map(&:effective_talent_pool_ids).uniq
+      @person_ids_by_pool = TalentPoolMembership
+                            .where(talent_pool_id: pool_ids, member_type: "Person")
+                            .pluck(:talent_pool_id, :member_id)
+                            .group_by(&:first)
+                            .transform_values { |rows| rows.map(&:last) }
+
+      @vacancies_by_production = RoleVacancy.open
+                                            .joins(:show)
+                                            .where(shows: { production_id: ids })
+                                            .where("shows.date_and_time >= ?", @now)
+                                            .includes(:role, :show, :affected_shows, invitations: :person)
+                                            .to_a
+                                            .group_by { |v| v.show.production_id }
+
+      @forms_by_production = SignUpForm
+                             .where(production_id: ids, active: true, archived_at: nil)
+                             .includes({ sign_up_slots: :sign_up_registrations },
+                                       { sign_up_form_instances: [ :show, { sign_up_slots: :sign_up_registrations } ] })
+                             .order(created_at: :desc)
+                             .group_by(&:production_id)
+    end
+
+    def upcoming_shows(production_id)
+      (@shows_by_production[production_id] || []).first(5)
+    end
+
+    # availability_summary's window is exclusive of "now" where the shared
+    # fetch is inclusive — re-apply the boundary for parity.
+    def availability_shows(production_id)
+      (@shows_by_production[production_id] || []).select { |s| s.date_and_time > @now }
+    end
+
+    def production_roles(production_id)
+      @roles_by_production[production_id] || []
+    end
+
+    def pool_person_ids(production)
+      production.effective_talent_pool_ids
+                .flat_map { |pool_id| @person_ids_by_pool[pool_id] || [] }
+                .uniq
+    end
+
+    def vacancies(production_id)
+      (@vacancies_by_production[production_id] || []).sort_by { |v| v.show.date_and_time }
+    end
+
+    def sign_up_forms(production_id)
+      @forms_by_production[production_id] || []
+    end
   end
 
   private
@@ -91,6 +175,32 @@ class DashboardService
     ]
   end
 
+  # People in the production's effective talent pool — from the batch when
+  # generate_all is driving, one query otherwise. Memoized because both
+  # upcoming_shows and availability_summary need it.
+  def cast_person_ids
+    @cast_person_ids ||= if @batch
+      @batch.pool_person_ids(@production)
+    else
+      Person.joins(:talent_pool_memberships)
+            .where(talent_pool_memberships: { talent_pool_id: @production.effective_talent_pool_ids })
+            .distinct
+            .pluck(:id)
+    end
+  end
+
+  # A show's castable roles without the per-show production.roles query the
+  # unbatched available_roles path would run.
+  def roles_for(show)
+    if show.use_custom_roles?
+      show.custom_roles.to_a
+    elsif @batch
+      @batch.production_roles(show.production_id)
+    else
+      show.available_roles.to_a
+    end
+  end
+
   def open_calls_summary
     call = @production.audition_cycle
     return { total_open: 0, with_auditionees: [] } if call.blank?
@@ -111,27 +221,25 @@ class DashboardService
   end
 
   def upcoming_shows
-    # Get all people in the production's effective talent pool (may be shared) in a single query
-    all_cast_person_ids = Person
-                          .joins(:talent_pool_memberships)
-                          .where(talent_pool_memberships: { talent_pool_id: @production.effective_talent_pool_ids })
-                          .distinct
-                          .pluck(:id)
-
+    all_cast_person_ids = cast_person_ids
     total_cast_count = all_cast_person_ids.size
 
-    # Eager load location, assignments, and availabilities in a single query
-    shows = @production.shows
-                       .where("date_and_time >= ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
-                       .includes(:location, :show_person_role_assignments, :show_availabilities)
-                       .order(date_and_time: :asc)
-                       .limit(5)
+    shows = if @batch
+      @batch.upcoming_shows(@production.id)
+    else
+      # Eager load location, assignments, and availabilities in a single query
+      @production.shows
+                 .where("date_and_time >= ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
+                 .includes(:location, :show_person_role_assignments, :show_availabilities)
+                 .order(date_and_time: :asc)
+                 .limit(5)
+    end
 
     shows.map do |show|
       # Use .size on already-loaded associations to avoid COUNT queries
       assignments_count = show.show_person_role_assignments.size
       # Calculate total slots (sum of quantities for multi-person roles)
-      roles = show.available_roles.to_a
+      roles = roles_for(show)
       roles_count = roles.sum { |r| r.quantity || 1 }
       uncast_count = roles_count - assignments_count
       days_until = (show.date_and_time.to_date - Date.today).to_i
@@ -169,20 +277,17 @@ class DashboardService
   end
 
   def availability_summary
-    # Eager load shows with availabilities in a single query
-    upcoming_shows = @production.shows
-                                .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
-                                .includes(:show_availabilities)
-                                .order(date_and_time: :asc)
+    upcoming_shows = if @batch
+      @batch.availability_shows(@production.id)
+    else
+      # Eager load shows with availabilities in a single query
+      @production.shows
+                 .where("date_and_time > ? AND date_and_time <= ?", Time.current, 6.weeks.from_now)
+                 .includes(:show_availabilities)
+                 .order(date_and_time: :asc)
+    end
 
-    # Get all people in the production's effective talent pool (may be shared) in a single query
-    # Use joins instead of flat_map to avoid N+1
-    all_cast_person_ids = Person
-                          .joins(:talent_pool_memberships)
-                          .where(talent_pool_memberships: { talent_pool_id: @production.effective_talent_pool_ids })
-                          .distinct
-                          .pluck(:id)
-
+    all_cast_person_ids = cast_person_ids
     total_cast_count = all_cast_person_ids.size
 
     shows_with_availability = upcoming_shows.map do |show|
@@ -210,13 +315,18 @@ class DashboardService
   end
 
   def open_vacancies
-    RoleVacancy.open
-               .joins(:show)
-               .where(shows: { production_id: @production.id })
-               .where("shows.date_and_time >= ?", Time.current)
-               .includes(:role, :show, :affected_shows, invitations: :person)
-               .order("shows.date_and_time ASC")
-               .map do |vacancy|
+    vacancies = if @batch
+      @batch.vacancies(@production.id)
+    else
+      RoleVacancy.open
+                 .joins(:show)
+                 .where(shows: { production_id: @production.id })
+                 .where("shows.date_and_time >= ?", Time.current)
+                 .includes(:role, :show, :affected_shows, invitations: :person)
+                 .order("shows.date_and_time ASC")
+    end
+
+    vacancies.map do |vacancy|
                  affected = vacancy.affected_shows.sort_by(&:date_and_time)
                  # Check if the show itself is linked, not just whether affected_shows has entries
                  is_linked = vacancy.show.linked?
@@ -233,9 +343,13 @@ class DashboardService
   end
 
   def sign_up_forms_summary
-    forms = @production.sign_up_forms.where(active: true, archived_at: nil).order(created_at: :desc)
-                       .includes({ sign_up_slots: :sign_up_registrations },
-                                 { sign_up_form_instances: [ :show, { sign_up_slots: :sign_up_registrations } ] })
+    forms = if @batch
+      @batch.sign_up_forms(@production.id)
+    else
+      @production.sign_up_forms.where(active: true, archived_at: nil).order(created_at: :desc)
+                 .includes({ sign_up_slots: :sign_up_registrations },
+                           { sign_up_form_instances: [ :show, { sign_up_slots: :sign_up_registrations } ] })
+    end
 
     forms.map do |form|
       # Get the current/next instance for repeated forms (instances are

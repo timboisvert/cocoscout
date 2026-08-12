@@ -59,11 +59,12 @@
     <%= render "shared/messages/message_card", message: @root_message, context: :show %>
 
     <% if @root_message.repliable? %>
-      <%# Thread Replies - Nested Tree View %>
-      <% direct_replies = @root_message.child_messages.includes(:sender, :child_messages).order(:created_at) %>
+      <%# Thread Replies - Nested Tree View (built from the preloaded thread) %>
+      <% children_by_parent_id = @thread_messages.group_by(&:parent_message_id) %>
+      <% direct_replies = (children_by_parent_id[@root_message.id] || []).sort_by(&:created_at) %>
       <div class="mt-6">
         <div class="space-y-4" data-message-thread-target="replies">
-          <%= render partial: "shared/messages/nested_reply", collection: direct_replies, as: :reply, locals: { depth: 0 } %>
+          <%= render partial: "shared/messages/nested_reply", collection: direct_replies, as: :reply, locals: { depth: 0, children_by_parent_id: children_by_parent_id, root_message: @root_message } %>
         </div>
       </div>
 

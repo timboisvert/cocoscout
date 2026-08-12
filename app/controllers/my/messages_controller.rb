@@ -100,10 +100,16 @@ class My::MessagesController < ApplicationController
       recipient_person&.then { |p| @root_message.mark_read_for!(p) }
     end
 
-    # Load all messages in thread (root + descendants)
+    # Load all messages in thread (root + descendants), with everything the
+    # thread view reads per message so rendering is query-free
     @thread_messages = Message.where(id: [ @root_message.id ] + @root_message.descendant_ids)
-                              .includes(:sender, :message_recipients, message_poll: :message_poll_options)
+                              .includes(:sender, :rich_text_body,
+                                        { images_attachments: :blob },
+                                        { message_recipients: :recipient },
+                                        { message_reactions: { user: { default_person: { profile_headshots: { image_attachment: :blob } } } } },
+                                        message_poll: :message_poll_options)
                               .order(:created_at)
+    Message.preload_recipient_headshots(@thread_messages)
   end
 
   def archive
