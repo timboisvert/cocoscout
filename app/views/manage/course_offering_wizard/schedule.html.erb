@@ -1,32 +1,17 @@
 <%= render layout: "manage/course_offering_wizard/wizard_layout", locals: { step_name: "Schedule" } do %>
   <h2 class="text-lg font-bold text-gray-900 mb-1">Class Schedule</h2>
-  <p class="text-sm text-gray-600 mb-6">When does this course meet? Add your session dates now, or you can adjust them later.</p>
+  <% if @contract_mode %>
+    <p class="text-sm text-gray-600 mb-6">Pick the contract this course belongs to &mdash; its booked time slots become your class sessions.</p>
+  <% else %>
+    <p class="text-sm text-gray-600 mb-6">When does this course meet? Add your session dates now, or you can adjust them later.</p>
+  <% end %>
 
   <%= form_with url: manage_course_wizard_schedule_path, method: :post, local: true do |form| %>
-    <%# Contract toggle - only visible to org managers on the Pro plan
-        (contracts are a paid feature). %>
-    <% has_org_role = Current.user.organization_roles.where(organization: Current.organization).exists? %>
-    <% if has_org_role && Current.organization.on_paid_plan? && @contracts.any? %>
-      <div class="mb-6">
-        <div class="flex items-start gap-3 p-4 border border-gray-200 rounded-lg">
-          <label class="relative inline-flex items-center cursor-pointer mt-0.5">
-            <input type="checkbox" id="contract-toggle"
-                   class="sr-only peer"
-                   <%= 'checked' if @wizard_state[:schedule_mode] == 'contract' %>>
-            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
-          </label>
-          <div>
-            <p class="text-sm font-medium text-gray-900">Part of an existing contract</p>
-            <p class="text-xs text-gray-500 mt-0.5">Link this course to a contract's booked time slots.</p>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <input type="hidden" name="schedule_mode" id="schedule-mode" value="<%= @wizard_state[:schedule_mode] || 'independent' %>">
+    <input type="hidden" name="schedule_mode" value="<%= @contract_mode ? 'contract' : 'independent' %>">
 
     <%# Contract mode - select contract + pick rental dates %>
-    <div id="contract-section" class="<%= 'hidden' unless @wizard_state[:schedule_mode] == 'contract' %> space-y-5">
+    <% if @contract_mode %>
+    <div id="contract-section" class="space-y-5">
       <div>
         <label for="contract_id" class="block text-sm font-medium text-gray-900 mb-1.5">
           Select Contract
@@ -72,9 +57,10 @@
         </div>
       </div>
     </div>
+    <% else %>
 
     <%# Independent mode - manual session entry %>
-    <div id="independent-section" class="<%= 'hidden' if @wizard_state[:schedule_mode] == 'contract' %> space-y-5"
+    <div id="independent-section" class="space-y-5"
          data-controller="location-modal"
          data-location-modal-event-type-value="class">
 
@@ -391,10 +377,12 @@
           </div>
         </template>
       </div>
-    </div><%# /#independent-section — the footer below stays outside both mode sections %>
+    </div><%# /#independent-section %>
+    <% end %><%# /mode branch — the footer below stays outside both mode sections %>
 
     <div class="mt-8 flex items-center justify-between">
-      <%= link_to manage_course_wizard_instructor_path, class: "text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1" do %>
+      <%# Pro orgs go back to the schedule-source choice; everyone else to Instructor. %>
+      <%= link_to (@contract_scheduling_available ? manage_course_wizard_schedule_source_path : manage_course_wizard_instructor_path), class: "text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1" do %>
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
@@ -404,12 +392,9 @@
     </div>
   <% end %>
 
+  <% if @contract_mode %>
   <script>
     (function() {
-      const contractToggle = document.getElementById('contract-toggle');
-      const contractSection = document.getElementById('contract-section');
-      const independentSection = document.getElementById('independent-section');
-      const scheduleModeInput = document.getElementById('schedule-mode');
       const contractSelect = document.getElementById('contract-select');
       const rentalCheckboxes = document.getElementById('rental-checkboxes');
       const rentalList = document.getElementById('rental-list');
@@ -417,21 +402,6 @@
 
       // Previously selected show IDs for pre-checking
       const preSelectedIds = <%= raw (@wizard_state[:selected_show_ids] || []).to_json %>;
-
-      // Toggle between contract and independent modes
-      if (contractToggle) {
-        contractToggle.addEventListener('change', function() {
-          if (this.checked) {
-            scheduleModeInput.value = 'contract';
-            contractSection.classList.remove('hidden');
-            independentSection.classList.add('hidden');
-          } else {
-            scheduleModeInput.value = 'independent';
-            contractSection.classList.add('hidden');
-            independentSection.classList.remove('hidden');
-          }
-        });
-      }
 
       // Load rentals when contract is selected
       if (contractSelect) {
@@ -483,4 +453,5 @@
       }
     })();
   </script>
+  <% end %>
 <% end %>

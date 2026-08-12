@@ -139,15 +139,43 @@ module Manage
       end
 
       save_wizard_state
+      redirect_to(contract_scheduling_available? ? manage_course_wizard_schedule_source_path : manage_course_wizard_schedule_path)
+    end
+
+    # Step 3a: Where does the schedule come from? Pro orgs pick between linking
+    # a contract's booked time slots and entering a fresh schedule. Producer-plan
+    # orgs skip this page entirely and go straight to the schedule.
+    def schedule_source
+      redirect_to(manage_course_wizard_basics_path) and return unless @wizard_state[:title].present?
+      redirect_to(manage_course_wizard_schedule_path) and return unless contract_scheduling_available?
+      @step = 3
+      @has_active_contracts = Current.organization.contracts.status_active.exists?
+    end
+
+    def save_schedule_source
+      redirect_to(manage_course_wizard_schedule_path) and return unless contract_scheduling_available?
+
+      if params[:schedule_source] == "contract" && Current.organization.contracts.status_active.exists?
+        @wizard_state[:schedule_mode] = "contract"
+      else
+        @wizard_state[:schedule_mode] = "independent"
+        @wizard_state[:contract_id] = nil
+        @wizard_state[:selected_show_ids] = nil
+      end
+
+      save_wizard_state
       redirect_to manage_course_wizard_schedule_path
     end
 
-    # Step 3: Schedule (sessions & optional contract link)
+    # Step 3: Schedule (contract time slots or manual sessions, per schedule_mode)
     def schedule
       redirect_to manage_course_wizard_basics_path unless @wizard_state[:title].present?
       @step = 3
-      # Linking a course to a contract is a Pro (paid) capability.
-      @contracts = if Current.organization.on_paid_plan?
+      @contract_scheduling_available = contract_scheduling_available?
+      # A stored contract mode is only honored while the plan still allows it.
+      @wizard_state[:schedule_mode] = "independent" unless @contract_scheduling_available
+      @contract_mode = @wizard_state[:schedule_mode] == "contract"
+      @contracts = if @contract_mode
         Current.organization.contracts.status_active.order(:contractor_name)
       else
         Current.organization.contracts.none
@@ -156,9 +184,9 @@ module Manage
     end
 
     def save_schedule
-      # Contract scheduling requires the paid plan; Producer-plan orgs always
-      # schedule independently regardless of what was posted.
-      contract_scheduling_allowed = Current.organization.on_paid_plan?
+      # Contract scheduling requires the paid plan (and an org-level role);
+      # everyone else schedules independently regardless of what was posted.
+      contract_scheduling_allowed = contract_scheduling_available?
 
       @wizard_state[:contract_id] = params[:contract_id].presence&.to_i if contract_scheduling_allowed
       @wizard_state[:schedule_mode] = if contract_scheduling_allowed
@@ -597,6 +625,13 @@ module Manage
     end
 
     private
+
+    # Contract-linked scheduling is a Pro (paid) capability, and contracts are
+    # org-level, so it's only offered to users with an org-level role.
+    def contract_scheduling_available?
+      Current.organization.on_paid_plan? &&
+        Current.user.organization_roles.where(organization: Current.organization).exists?
+    end
 
     # Course productions that already have at least one run — candidates for
     # "another run of an existing course."

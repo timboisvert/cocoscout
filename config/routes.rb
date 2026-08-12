@@ -1535,6 +1535,8 @@ Rails.application.routes.draw do
     post "courses/wizard/start",      to: "course_offering_wizard#save_start"
     get  "courses/wizard/new",        to: "course_offering_wizard#basics",          as: "course_wizard_basics"
     post "courses/wizard/new",        to: "course_offering_wizard#save_basics",     as: "course_wizard_save_basics"
+    get  "courses/wizard/schedule/source", to: "course_offering_wizard#schedule_source", as: "course_wizard_schedule_source"
+    post "courses/wizard/schedule/source", to: "course_offering_wizard#save_schedule_source"
     get  "courses/wizard/schedule",   to: "course_offering_wizard#schedule",        as: "course_wizard_schedule"
     post "courses/wizard/schedule",   to: "course_offering_wizard#save_schedule"
     get  "courses/wizard/instructor",  to: "course_offering_wizard#instructor",     as: "course_wizard_instructor"
