@@ -489,7 +489,11 @@ module Manage
       @show.call_time = @original_show.call_time
     end
 
-    def edit; end
+    def edit
+      # Data for the Danger Zone in-place cancel modal.
+      @future_count = @show.recurring? ? @show.recurrence_group.where("date_and_time >= ?", @show.date_and_time).count : 1
+      @cancel_notifiable_count = notifiable_cast_count(@show)
+    end
 
     def create
       if params[:show][:event_frequency] == "recurring"
@@ -1022,6 +1026,16 @@ module Manage
                                 .reject(&:in_payout_run?)
       payments.each(&:destroy!)
       payments.size
+    end
+
+    # How many cast members on this show have an email we could notify — drives
+    # the Danger Zone cancel modal's notify toggle.
+    def notifiable_cast_count(show)
+      assignments = show.show_person_role_assignments.includes(:role)
+      person_ids = assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id)
+      group_ids = assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id)
+      person_ids += GroupMembership.where(group_id: group_ids).pluck(:person_id)
+      Person.where(id: person_ids.uniq).joins(:user).distinct.count
     end
 
     def cancellation_money_note(count)

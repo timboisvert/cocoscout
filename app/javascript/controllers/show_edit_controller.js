@@ -57,6 +57,13 @@ export default class extends Controller {
         this.castingEnabledCheckboxTarget.dataset.manuallyChanged = 'true'
     }
 
+    // The move modal is driven by the separate show-actions controller (it
+    // lazy-loads productions). It lives outside this form, so reach it with a
+    // window event instead of a Stimulus action.
+    openMoveModal() {
+        window.dispatchEvent(new CustomEvent('show-actions:open-move-modal'))
+    }
+
     removePoster() {
         // Hide the poster image
         const posterImage = this.element.querySelector('.poster-image')

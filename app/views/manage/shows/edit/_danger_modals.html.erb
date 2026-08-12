@@ -1,0 +1,113 @@
+<%# In-place cancel / delete / uncancel modals for the Danger Zone. Rendered
+   OUTSIDE the edit form (they carry their own forms). Opened by id from the
+   Danger Zone tab's trigger buttons. %>
+<% event_label = @show.event_type.titleize %>
+<%
+  scope_options = ->(action_label) {
+    capture do %>
+      <div class="space-y-2">
+        <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="scope" value="this" checked class="mt-0.5 accent-pink-500">
+          <span class="text-sm text-gray-700"><span class="block font-medium text-gray-900">Only this occurrence</span><span class="block text-xs text-gray-500"><%= @show.date_and_time.strftime("%B %-d, %Y") %></span></span>
+        </label>
+        <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="scope" value="this_and_future" class="mt-0.5 accent-pink-500">
+          <span class="text-sm text-gray-700"><span class="block font-medium text-gray-900">This &amp; future occurrences (<%= @future_count %>)</span><span class="block text-xs text-gray-500">From this date onward</span></span>
+        </label>
+        <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="scope" value="all" class="mt-0.5 accent-pink-500">
+          <span class="text-sm text-gray-700"><span class="block font-medium text-gray-900">All <%= @show.recurrence_group.count %> occurrences</span><span class="block text-xs text-gray-500"><%= action_label %> the entire series</span></span>
+        </label>
+      </div>
+    <% end
+  }
+%>
+
+<%# --- Cancel modal --- %>
+<% unless @show.canceled %>
+  <div id="danger-cancel-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">Cancel this <%= @show.event_type.downcase %>?</h3>
+        <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+      </div>
+      <%= form_with url: manage_cancel_show_path(@production, @show), method: :patch, id: "danger-cancel-form" do %>
+        <div class="px-6 py-5 space-y-4">
+          <p class="text-sm text-gray-600">It stays on the calendar marked canceled — you can uncancel later.</p>
+          <% if @show.recurring? %>
+            <div>
+              <p class="text-sm font-medium text-gray-700 mb-2">What to cancel</p>
+              <%= scope_options.call("Cancel") %>
+            </div>
+          <% end %>
+          <label class="flex items-center justify-between gap-3 pt-1">
+            <span class="text-sm text-gray-700">
+              Notify cast by email
+              <% if @cancel_notifiable_count.to_i.zero? %><span class="block text-xs text-gray-400">No cast members with email to notify</span><% end %>
+            </span>
+            <span class="relative inline-flex items-center <%= @cancel_notifiable_count.to_i.positive? ? 'cursor-pointer' : 'opacity-50' %>">
+              <input type="checkbox" name="notify_cast" value="1" <%= 'disabled' if @cancel_notifiable_count.to_i.zero? %> class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+            </span>
+          </label>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+          <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Cancel #{event_label}", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<%# --- Delete modal --- %>
+<div id="danger-delete-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Delete this <%= @show.event_type.downcase %>?</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <%= form_with url: manage_delete_show_path(@production, @show), method: :delete, id: "danger-delete-form" do %>
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-sm text-gray-600">This permanently removes the <%= @show.event_type.downcase %> and its data. This can't be undone.</p>
+        <% if @show.recurring? %>
+          <div>
+            <p class="text-sm font-medium text-gray-700 mb-2">What to delete</p>
+            <%= scope_options.call("Delete") %>
+          </div>
+        <% end %>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+        <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Delete #{event_label}", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# --- Uncancel modal --- %>
+<% if @show.canceled %>
+  <div id="danger-uncancel-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">Restore this <%= @show.event_type.downcase %>?</h3>
+        <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+      </div>
+      <%= form_with url: manage_uncancel_show_path(@production, @show), method: :patch, id: "danger-uncancel-form" do %>
+        <div class="px-6 py-5 space-y-4">
+          <p class="text-sm text-gray-600">Remove the canceled status and put it back on the calendar.</p>
+          <% if @show.recurring? %>
+            <div>
+              <p class="text-sm font-medium text-gray-700 mb-2">What to restore</p>
+              <%= scope_options.call("Uncancel") %>
+            </div>
+          <% end %>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+          <%= render "shared/button", text: "Keep it canceled", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Uncancel", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
