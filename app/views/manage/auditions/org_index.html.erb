@@ -13,23 +13,7 @@
     ]
   } %>
 
-  <%
-    auditions_guide_body = <<~HTML.html_safe
-      <p>An audition cycle takes you from "we need performers" to a cast, in a few steps:</p>
-      <ol>
-        <li><strong>Create the sign-up form</strong> — what you want to know about each person, plus video submissions if you want them.</li>
-        <li><strong>Share it</strong> — post the link anywhere; people sign up from their phone.</li>
-        <li><strong>Review the responses</strong> — read submissions, watch videos, and vote with your fellow reviewers if that's your thing.</li>
-        <li><strong>Assign people to audition sessions</strong> — for in-person auditions, slot everyone into scheduled sessions.</li>
-        <li><strong>Pick your cast</strong> — decide who's in, and they join your talent pool ready to be cast in shows.</li>
-      </ol>
-      <p>You can skip steps that don't fit — video-only cycles have no sessions, and voting is optional.</p>
-    HTML
-  %>
-  <%= render "shared/intro_guide",
-        guide_key: "auditions_intro",
-        title: "How audition cycles work",
-        body: auditions_guide_body,
+  <%= render "manage/auditions/auditions_guide",
         actions: [
           { text: "Create an audition cycle", path: manage_signups_auditions_new_wizard_path }
         ] %>

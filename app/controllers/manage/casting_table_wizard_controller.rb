@@ -4,6 +4,7 @@ module Manage
   class CastingTableWizardController < Manage::ManageController
     before_action :ensure_user_is_manager
     before_action :load_wizard_state
+    before_action :set_wizard_steps
 
     # Step 1: Select Productions
     def productions
@@ -227,6 +228,13 @@ module Manage
 
     def load_wizard_state
       @wizard_state = (session[:casting_table_wizard] || {}).with_indifferent_access
+    end
+
+    # Step bar for every wizard view. With one castable production the picker
+    # step is skipped (see #productions), so it shouldn't appear as a step.
+    def set_wizard_steps
+      @wizard_steps = [ { name: "Productions" }, { name: "Events" }, { name: "Members" }, { name: "Review" } ]
+      @wizard_steps.shift if Current.user.accessible_productions.castable.one?
     end
 
     def save_wizard_state

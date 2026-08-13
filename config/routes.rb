@@ -951,8 +951,6 @@ Rails.application.routes.draw do
     # Contacts - groups (new URL pattern: /manage/contacts/groups/:id)
     get  "/contacts/groups/:id", to: "groups#show", as: "contacts_group"
     delete "/contacts/groups/:id", to: "groups#destroy", as: "destroy_contacts_group"
-    post "/contacts/groups/:id/add_to_cast", to: "groups#add_to_cast", as: "add_to_cast_contacts_group"
-    post "/contacts/groups/:id/remove_from_cast", to: "groups#remove_from_cast", as: "remove_from_cast_contacts_group"
     post "/contacts/groups/:id/remove_from_organization", to: "groups#remove_from_organization", as: "remove_from_organization_contacts_group"
     patch "/contacts/groups/:id/update_availability", to: "groups#update_availability", as: "update_availability_contacts_group"
     get "/contacts/groups/:id/availability_modal", to: "groups#availability_modal", as: "availability_modal_contacts_group"
@@ -1042,8 +1040,6 @@ Rails.application.routes.draw do
 
     resources :groups, only: %i[show destroy] do
       member do
-        post :add_to_cast
-        post :remove_from_cast
         post :remove_from_organization
         patch :update_availability
         get :availability_modal

@@ -33,10 +33,19 @@ RSpec.describe "Production picker skip", type: :request do
       get manage_casting_tables_new_path
       expect(response).to redirect_to(manage_casting_tables_events_path)
 
-      # The events step only renders when a production selection is in state.
+      # The events step only renders when a production selection is in state,
+      # and the step bar drops the skipped Productions step.
       get manage_casting_tables_events_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(production.name)
+      progress_bar = response.body[/aria-label="Progress".*?<\/nav>/m]
+      expect(progress_bar).not_to include("Productions")
+      expect(progress_bar).to match(/aria-current="step">Events</)
+    end
+
+    it "skips the roles production list" do
+      get manage_casting_roles_path
+      expect(response).to redirect_to(manage_casting_settings_section_path(production_id: production, section: "roles"))
     end
   end
 
@@ -64,6 +73,12 @@ RSpec.describe "Production picker skip", type: :request do
 
     it "still shows the casting table wizard picker" do
       get manage_casting_tables_new_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Rising Stars")
+    end
+
+    it "still shows the roles production list" do
+      get manage_casting_roles_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Rising Stars")
     end

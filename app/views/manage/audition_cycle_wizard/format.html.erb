@@ -1,4 +1,8 @@
 <%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: 1, current_step_key: "format", step_name: "Audition Format" } do %>
+  <%# First-timers get the high-level walkthrough right where they start. %>
+  <% if AuditionCycle.joins(:production).where(productions: { organization_id: Current.organization.id }).none? %>
+    <%= render "manage/auditions/auditions_guide" %>
+  <% end %>
   <% mode = (@wizard_state[:signup_mode].presence || "curated").to_s %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">How do you want to run auditions?</h2>
   <p class="text-gray-600 mb-6">This sets up the rest of the wizard. You can change it later in the audition's settings.</p>

@@ -13,8 +13,8 @@
 
   <%# Full-width step bar, directly below the breadcrumb. %>
   <%= render "shared/wizard_steps",
-        steps: [{ name: "Productions" }, { name: "Events" }, { name: "Members" }, { name: "Review" }],
-        current_index: 2 %>
+        steps: @wizard_steps,
+        current_index: @wizard_steps.index({ name: "Members" }) %>
 
   <div class="max-w-2xl mx-auto mt-8">
     <!-- Step Content -->

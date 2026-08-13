@@ -13,6 +13,11 @@ module Manage
       @productions = Current.user.accessible_productions.castable
                              .includes(:roles)
                              .order(:name)
+      # With exactly one castable production the list is a one-row picker —
+      # go straight to that production's roles.
+      if @productions.one?
+        redirect_to manage_casting_settings_section_path(production_id: @productions.first, section: "roles") and return
+      end
     end
 
     def create

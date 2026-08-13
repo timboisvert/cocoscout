@@ -3,7 +3,7 @@
 module Manage
   class GroupsController < Manage::ManageController
     before_action :set_group,
-                  only: %i[show update_availability availability_modal add_to_cast remove_from_cast remove_from_organization destroy]
+                  only: %i[show update_availability availability_modal remove_from_organization destroy]
 
     def show
       @members = @group.members.includes(profile_headshots_attachment: :blob)
@@ -106,39 +106,6 @@ module Manage
         availabilities: @availabilities,
         current_production_id: params[:production_id].to_s
       }
-    end
-
-    def add_to_cast
-      if Current.production.blank?
-        redirect_to manage_group_path(@group), alert: "Please select a production first"
-        return
-      end
-
-      TalentPool.find_or_create_by(
-        production: Current.production,
-        entity: @group
-      )
-
-      redirect_to manage_group_path(@group), notice: "#{@group.name} added to #{Current.production.name}"
-    end
-
-    def remove_from_cast
-      if Current.production.blank?
-        redirect_to manage_group_path(@group), alert: "Please select a production first"
-        return
-      end
-
-      talent_pool = TalentPool.find_by(
-        production: Current.production,
-        entity: @group
-      )
-
-      if talent_pool
-        talent_pool.destroy
-        redirect_to manage_group_path(@group), notice: "#{@group.name} removed from #{Current.production.name}"
-      else
-        redirect_to manage_group_path(@group), alert: "#{@group.name} was not in #{Current.production.name}"
-      end
     end
 
     def remove_from_organization

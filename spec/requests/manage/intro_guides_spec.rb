@@ -39,6 +39,15 @@ RSpec.describe "Intro guides", type: :request do
     expect(response.body).to include("How audition cycles work")
   end
 
+  it "shows the auditions guide on the wizard's first screen only for a first cycle" do
+    get manage_signups_auditions_wizard_path(production)
+    expect(response.body).to include('data-intro-guide="auditions_intro"')
+
+    create(:audition_cycle, production: production)
+    get manage_signups_auditions_wizard_path(production)
+    expect(response.body).not_to include('data-intro-guide="auditions_intro"')
+  end
+
   it "shows the documents guide on the documents index" do
     get manage_org_documents_path
     expect(response.body).to include('data-intro-guide="documents_intro"')
