@@ -80,16 +80,6 @@ module Manage
           casting_setup_completed: true
         )
         @production.save!
-
-        ProductionGenres.role_presets(@setup_state[:genre]).each_with_index do |preset, index|
-          @production.roles.create!(
-            name: preset["name"],
-            quantity: preset["quantity"] || 1,
-            category: preset["category"] || "performing",
-            position: index + 1,
-            restricted: false
-          )
-        end
       end
 
       clear_setup_state
@@ -102,14 +92,17 @@ module Manage
 
       # They've produced — the Start Producing welcome has nothing left to teach.
       Current.user.update(welcomed_production_at: Time.current) if Current.user.welcomed_production_at.nil?
+      # Turn on the "here's what to do next" panel on the manage home page.
+      Current.user.activate_guide!(:production_next_steps)
 
       if chosen_plan == "pro"
         # Straight into Stripe checkout; the org stays on the free tier until
-        # Stripe confirms the subscription.
+        # Stripe confirms the subscription. Land on home afterwards so the
+        # what's-next panel greets them, not the billing tab.
+        session[:return_to_home_after_checkout] = true
         redirect_to manage_billing_path(upgrade: interval)
       else
-        redirect_to_intent_or(manage_production_path(@production),
-                              notice: "#{@production.name} is ready!")
+        redirect_to_intent_or(manage_path, notice: "#{@production.name} is ready!")
       end
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.record.errors.full_messages.to_sentence.presence || e.message

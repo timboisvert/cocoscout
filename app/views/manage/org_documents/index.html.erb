@@ -2,13 +2,9 @@
 
 <%
   documents_description = <<~HTML
-    <p class="mb-2">
+    <p>
       Everything your company needs to read in one place — handbooks, house rules,
       rehearsal notes, safety info.
-    </p>
-    <p>
-      A document can be shared across as many productions as you like, and you choose
-      who sees it: performers, staff, or your whole team.
     </p>
   HTML
 
@@ -25,6 +21,24 @@
     description: documents_description,
     actions: documents_actions
   %>
+
+  <%
+    documents_guide_body = <<~HTML.html_safe
+      <p>A document is a page you write once and your team reads in their own CocoScout account:</p>
+      <ol>
+        <li><strong>Write it</strong> — a handbook, house rules, safety info, anything your team should read.</li>
+        <li><strong>Choose where it applies</strong> — one production or several. Edit it once and everyone sees the update.</li>
+        <li><strong>Choose who sees it</strong> — performers, staff, or your whole team.</li>
+      </ol>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "documents_intro",
+        title: "How documents work",
+        body: documents_guide_body,
+        actions: [
+          { text: "Write your first document", path: manage_new_org_document_path }
+        ] %>
 
   <div class="border-t border-gray-200 pt-6 mt-2">
   <% if @documents.any? %>

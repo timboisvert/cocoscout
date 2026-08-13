@@ -20,11 +20,21 @@ RSpec.describe "Manage::OrgDocuments", type: :request do
     expect(response.body).to include(production.name)
   end
 
-  it "renders the new form with a production picker" do
+  it "renders the new form with a production picker when there are several productions" do
+    create(:production, organization: org, name: "Rising Stars")
+
     get manage_new_org_document_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("production_id")
+    expect(response.body).to include("Which productions does this apply to?")
     expect(response.body).to include(production.name)
+    expect(response.body).to include("Rising Stars")
+  end
+
+  it "skips the production picker when there is only one production" do
+    get manage_new_org_document_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Which productions does this apply to?")
+    expect(response.body).to include(%(<input type="hidden" name="production_ids[]" value="#{production.id}">))
   end
 
   it "creates a document in the chosen production and redirects to its editor" do

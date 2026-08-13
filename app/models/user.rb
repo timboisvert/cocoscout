@@ -359,6 +359,32 @@ class User < ApplicationRecord
     self.notification_preferences = notification_preferences.merge(key.to_s => enabled)
   end
 
+  # Intro guides (shared/_intro_guide). Three states per key: absent means the
+  # guide falls back to its own default visibility, "active" and "dismissed"
+  # are explicit choices. The dual default lets the home "what's next" panel
+  # stay hidden until a production is created, while page intros show up front.
+  def guide_dismissed?(key)
+    dismissed_guides[key.to_s] == "dismissed"
+  end
+
+  def guide_active?(key)
+    dismissed_guides[key.to_s] == "active"
+  end
+
+  def guide_visible?(key, default_visible: true)
+    return true if guide_active?(key)
+    return false if guide_dismissed?(key)
+    default_visible
+  end
+
+  def dismiss_guide!(key)
+    update!(dismissed_guides: dismissed_guides.merge(key.to_s => "dismissed"))
+  end
+
+  def activate_guide!(key)
+    update!(dismissed_guides: dismissed_guides.merge(key.to_s => "active"))
+  end
+
   private
 
   def password_complexity

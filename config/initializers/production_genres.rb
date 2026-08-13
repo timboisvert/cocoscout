@@ -35,9 +35,4 @@ module ProductionGenres
   def self.name_placeholder(genre)
     config.dig(genre.to_s, "name_placeholder")
   end
-
-  # [{ "name" => ..., "quantity" => ..., "category" => ... }, ...]
-  def self.role_presets(genre)
-    config.dig(genre.to_s, "role_presets") || []
-  end
 end

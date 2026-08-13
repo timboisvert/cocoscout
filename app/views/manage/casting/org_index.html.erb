@@ -25,6 +25,27 @@
     actions: casting_actions
   %>
 
+  <%
+    casting_guide_body = <<~HTML.html_safe
+      <p>Casting is how you decide who performs in each show. At a high level it works like this:</p>
+      <ol>
+        <li><strong>Define your roles</strong> — the positions you fill for a show, like Host, Player, or Stage Manager.</li>
+        <li><strong>Build your talent pool</strong> — the people who can be cast. Add them directly or bring them in through auditions.</li>
+        <li><strong>Check availability</strong> — see who's free for each date before you assign anyone.</li>
+        <li><strong>Assign people to roles</strong> — show by show, or several shows at once with a casting table.</li>
+      </ol>
+      <p>There's no single right order — many teams cast directly and never run auditions. Use the parts that fit how you work.</p>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "casting_intro",
+        title: "New to casting in CocoScout?",
+        body: casting_guide_body,
+        actions: [
+          { text: "Define roles", path: manage_casting_roles_path },
+          { text: "Build your talent pool", path: manage_casting_talent_pools_path }
+        ] %>
+
   <div class="border-t border-gray-200 pt-4 mt-2" data-controller="casting-filter">
     <%= render "shared/filters/filter_bar", wrapper_data_controller: "filter-select", filter_groups: [
       {

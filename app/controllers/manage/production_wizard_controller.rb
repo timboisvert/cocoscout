@@ -72,17 +72,7 @@ module Manage
     # Step 4: Roles - Define positions to fill
     def roles
       @wizard_state[:has_roles] ||= nil
-      @wizard_state[:role_preset] ||= nil
       @wizard_state[:roles] ||= []
-
-      # If they told us the genre and haven't entered roles yet, prefill the
-      # editable rows with that genre's presets (they're just form defaults —
-      # nothing is saved until the step is submitted).
-      if @wizard_state[:roles].blank? && @wizard_state[:genre].present?
-        @wizard_state[:roles] = ProductionGenres.role_presets(@wizard_state[:genre]).map do |preset|
-          { name: preset["name"], quantity: preset["quantity"] || 1, category: preset["category"] || "performing" }
-        end
-      end
     end
 
     def save_roles
@@ -233,8 +223,10 @@ module Manage
 
       # Auto-dismiss welcome screen after creating first production
       Current.user.update(welcomed_production_at: Time.current) if Current.user.welcomed_production_at.nil?
+      # Turn on the "here's what to do next" panel on the manage home page.
+      Current.user.activate_guide!(:production_next_steps)
 
-      redirect_to manage_production_path(@production), notice: "#{@production.name} has been created!"
+      redirect_to manage_path, notice: "#{@production.name} has been created!"
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.message
       render :review, status: :unprocessable_entity

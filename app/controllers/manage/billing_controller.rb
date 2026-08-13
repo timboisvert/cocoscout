@@ -47,10 +47,14 @@ module Manage
       @organization = Current.organization
       sync_from_checkout_session(params[:session_id]) if params[:session_id].present?
 
+      # Producer setup routes through checkout mid-flow — send those users to
+      # the manage home (where the what's-next panel is) instead of billing.
+      landing = session.delete(:return_to_home_after_checkout) ? manage_path : org_billing_tab_path
+
       if @organization.reload.on_paid_plan?
-        redirect_to org_billing_tab_path, notice: "You're on CocoScout Pro — thank you!"
+        redirect_to landing, notice: "You're on CocoScout Pro — thank you!"
       else
-        redirect_to org_billing_tab_path, notice: "Your subscription is being processed. It'll be active shortly."
+        redirect_to landing, notice: "Your subscription is being processed. It'll be active shortly."
       end
     end
 

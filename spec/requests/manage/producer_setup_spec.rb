@@ -23,7 +23,7 @@ RSpec.describe "Producer setup", type: :request do
   end
 
   describe "the happy path" do
-    it "creates the org and production together with preset roles" do
+    it "creates the org and production together and lands on the manage home" do
       sign_up
       complete_setup
 
@@ -34,9 +34,34 @@ RSpec.describe "Producer setup", type: :request do
       production = org.productions.find_by(name: "The Late Shift")
       expect(production).to be_present
       expect(production.genre).to eq("sketch")
-      expect(production.roles.pluck(:name)).to include("Cast", "Writer", "Director")
+      # Genre never seeds roles — the user defines their own.
+      expect(production.roles).to be_empty
 
-      expect(response).to redirect_to(manage_production_path(production))
+      expect(response).to redirect_to(manage_path)
+    end
+
+    it "activates the what's-next panel on the manage home" do
+      sign_up
+      complete_setup
+
+      expect(User.find_by(email_address: "producer@example.com").guide_active?(:production_next_steps)).to be(true)
+
+      get manage_path
+      expect(response.body).to include("Here&#39;s what to do next")
+    end
+
+    it "hides the what's-next panel once dismissed, with a way back" do
+      sign_up
+      complete_setup
+
+      post manage_guide_dismiss_path("production_next_steps")
+      get manage_path
+      expect(response.body).not_to include("data-intro-guide=\"production_next_steps\"")
+      expect(response.body).to include("Show guide")
+
+      post manage_guide_restore_path("production_next_steps")
+      get manage_path
+      expect(response.body).to include("data-intro-guide=\"production_next_steps\"")
     end
 
     it "makes the creator a manager and a member of the org" do
@@ -54,13 +79,6 @@ RSpec.describe "Producer setup", type: :request do
       complete_setup
 
       expect(User.find_by(email_address: "producer@example.com").welcomed_production_at).to be_present
-    end
-
-    it "creates no preset roles for the 'other' genre" do
-      sign_up
-      complete_setup(genre: "other", name: "My Thing")
-
-      expect(Organization.find_by(name: "My Thing").productions.first.roles).to be_empty
     end
   end
 
@@ -84,6 +102,8 @@ RSpec.describe "Producer setup", type: :request do
       expect(response).to redirect_to(manage_billing_path(upgrade: "month"))
       # The org exists on the free tier until Stripe confirms.
       expect(Organization.find_by(name: "The Late Shift").subscription_tier).to eq("free")
+      # The what's-next panel is armed even though checkout comes first.
+      expect(User.find_by(email_address: "producer@example.com").guide_active?(:production_next_steps)).to be(true)
     end
 
     it "defaults a bogus interval to annual" do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_121000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2851,6 +2851,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_121000) do
     t.datetime "created_at", null: false
     t.bigint "default_person_id"
     t.integer "digest_throttle_days", default: 1, null: false
+    t.jsonb "dismissed_guides", default: {}, null: false
     t.string "email_address", null: false
     t.datetime "email_changed_at"
     t.integer "included_production_ids", default: [], null: false, array: true

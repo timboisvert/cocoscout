@@ -42,17 +42,17 @@ RSpec.describe "Production wizard", type: :request do
   end
 
   describe "genre" do
-    it "prefills the roles step from the chosen genre's presets" do
+    it "never prefills the roles step from the genre" do
       set_up_org(pro: true)
 
       post manage_productions_wizard_save_name_path, params: { name: "Fourth Wall", genre: "improv" }
       get manage_productions_wizard_roles_path
 
-      expect(response.body).to include('value="Player"')
-      expect(response.body).to include('value="Coach"')
+      expect(response.body).not_to include('value="Player"')
+      expect(response.body).not_to include('value="Coach"')
     end
 
-    it "stamps the genre on the created production" do
+    it "stamps the genre on the created production and lands on the manage home" do
       set_up_org(pro: true)
 
       post manage_productions_wizard_save_name_path, params: { name: "Fourth Wall", genre: "improv" }
@@ -63,6 +63,8 @@ RSpec.describe "Production wizard", type: :request do
       post manage_productions_wizard_create_path
 
       expect(Production.find_by(name: "Fourth Wall").genre).to eq("improv")
+      expect(response).to redirect_to(manage_path)
+      expect(user.reload.guide_active?(:production_next_steps)).to be(true)
     end
 
     it "ignores a genre outside the catalog" do

@@ -506,6 +506,10 @@ Rails.application.routes.draw do
     get  "/",                              to: "manage#index"
     post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
 
+    # Dismissible intro guides (shared/_intro_guide)
+    post "/guides/:key/dismiss", to: "guides#dismiss", as: "guide_dismiss", constraints: { key: /[a-z_]+/ }
+    post "/guides/:key/restore", to: "guides#restore", as: "guide_restore", constraints: { key: /[a-z_]+/ }
+
     # Messages
     resources :messages, only: [ :index, :show, :create ] do
       member do

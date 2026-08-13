@@ -9,6 +9,15 @@ module Manage
     def productions
       # Exclude third-party productions as they don't have casting
       @productions = Current.user.accessible_productions.castable.order(:name)
+
+      # With exactly one castable production there is nothing to pick — seed
+      # the wizard state and jump straight to the events step.
+      if @productions.one?
+        @wizard_state[:production_ids] = [ @productions.first.id ]
+        save_wizard_state
+        redirect_to manage_casting_tables_events_path and return
+      end
+
       @selected_production_ids = @wizard_state[:production_ids] || []
     end
 

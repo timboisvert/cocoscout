@@ -13,6 +13,8 @@ module Manage
     def select_production
       # Exclude third-party productions as they don't have casting/sign-ups
       @productions = Current.user.accessible_productions.castable.order(:name)
+      # With exactly one castable production there is nothing to pick.
+      redirect_to manage_signups_forms_wizard_path(@productions.first) and return if @productions.one?
     end
 
     def save_production_selection

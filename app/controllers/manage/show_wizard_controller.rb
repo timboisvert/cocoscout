@@ -10,6 +10,8 @@ module Manage
     # Step 0: Select Production (when entering from org-level)
     def select_production
       @productions = Current.user.accessible_productions.schedulable.order(:name)
+      # With exactly one schedulable production there is nothing to pick.
+      redirect_to manage_shows_wizard_path(@productions.first) and return if @productions.one?
     end
 
     def save_production_selection

@@ -3,6 +3,31 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
+  <%
+    # Activated by producer setup / the production wizard when a production is
+    # created; hidden for everyone else (default_visible: false).
+    next_steps_body = <<~HTML.html_safe
+      <p>Your production is set up — from here, most producers start with one of these:</p>
+      <ol>
+        <li><strong>Schedule your shows.</strong> Add dates so everything else — casting, sign-ups, availability — has shows to point at.</li>
+        <li><strong>Run auditions.</strong> Create an audition cycle to collect sign-ups, review people, and build your cast.</li>
+        <li><strong>Cast your shows.</strong> Already know who's performing? Add people and assign them to roles directly.</li>
+      </ol>
+      <p>You can do these in any order, and this note stays here until you dismiss it.</p>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "production_next_steps",
+        default_visible: false,
+        title: "Here's what to do next",
+        body: next_steps_body,
+        actions: [
+          { text: "Schedule shows", path: manage_shows_new_wizard_path },
+          { text: "Set up auditions", path: manage_signups_auditions_new_wizard_path },
+          { text: "Cast your shows", path: manage_casting_path },
+          { text: "Add your people", path: manage_contacts_path }
+        ] %>
+
   <% if @production_dashboards.any? %>
     <%
       # Aggregate data from all productions

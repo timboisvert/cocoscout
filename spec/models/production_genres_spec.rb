@@ -2,9 +2,9 @@
 
 require "rails_helper"
 
-# The genre catalog is config, but its keys become data (productions.genre)
-# and its presets become Role rows — so pin the invariants that would
-# otherwise fail at runtime in the middle of producer setup.
+# The genre catalog is config, but its keys become data (productions.genre) —
+# so pin the invariants that would otherwise fail at runtime in the middle of
+# producer setup.
 RSpec.describe ProductionGenres do
   it "has at least the core genres" do
     expect(described_class.keys).to include("sketch", "improv", "standup", "theater", "variety", "other")
@@ -16,17 +16,6 @@ RSpec.describe ProductionGenres do
       expect(described_class.description(key)).to be_present, "#{key} is missing a description"
       expect(described_class.noun(key)).to be_present
       expect(described_class.name_placeholder(key)).to be_present, "#{key} is missing a name_placeholder"
-    end
-  end
-
-  it "only uses valid Role categories in presets" do
-    described_class.keys.each do |key|
-      described_class.role_presets(key).each do |preset|
-        expect(preset["name"]).to be_present
-        expect(Role::CATEGORIES).to include(preset["category"]),
-          "#{key} preset #{preset["name"].inspect} has invalid category #{preset["category"].inspect}"
-        expect(preset["quantity"]).to be_a(Integer).and(be >= 1)
-      end
     end
   end
 
