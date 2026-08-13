@@ -4,8 +4,9 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%
-    # Activated by producer setup / the production wizard when a production is
-    # created; hidden for everyone else (default_visible: false).
+    # Shown to anyone with a production until they dismiss it. Creating a
+    # production also re-activates it (see producer setup / production wizard),
+    # so a second production brings the checklist back even after a dismissal.
     next_steps_body = <<~HTML.html_safe
       <p>Your production is set up — from here, most producers start with one of these:</p>
       <ol>
@@ -18,7 +19,7 @@
   %>
   <%= render "shared/intro_guide",
         guide_key: "production_next_steps",
-        default_visible: false,
+        default_visible: @productions.any?,
         title: "Here's what to do next",
         body: next_steps_body,
         actions: [

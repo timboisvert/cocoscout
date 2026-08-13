@@ -72,7 +72,19 @@ RSpec.describe "Intro guides", type: :request do
     expect(owner.reload.dismissed_guides).to be_empty
   end
 
-  it "hides the what's-next home panel for users who never created a production" do
+  it "shows the what's-next home panel to anyone with a production until dismissed" do
+    get manage_path
+    expect(response.body).to include('data-intro-guide="production_next_steps"')
+
+    post manage_guide_dismiss_path("production_next_steps")
+    get manage_path
+    expect(response.body).not_to include('data-intro-guide="production_next_steps"')
+    expect(response.body).to include("Show guide")
+  end
+
+  it "hides the what's-next home panel when the org has no productions" do
+    production.destroy!
+
     get manage_path
     expect(response.body).not_to include('data-intro-guide="production_next_steps"')
     expect(response.body).not_to include("Show guide")
