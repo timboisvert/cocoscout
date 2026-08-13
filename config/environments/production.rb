@@ -79,12 +79,18 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # Enable DNS rebinding protection and other `Host` header attacks. Requests
+  # with any other Host header (raw ALB/EIP IPs, EC2 rDNS names — scanner
+  # traffic) get a 403 instead of the full site. Verified against 5 days of
+  # kamal-proxy logs on both web hosts (2026-08-08 → 2026-08-13): all real
+  # traffic arrives on these two hostnames (Stripe webhooks on www), and the
+  # only other inbound requests were credential scanners and ALB health checks.
+  config.hosts = [
+    "cocoscout.com",
+    "www.cocoscout.com"
+  ]
+
+  # Skip host authorization for the health check endpoint — the ALB health
+  # checker sends the instance's private 10.0.x.x IP as the Host header.
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end
