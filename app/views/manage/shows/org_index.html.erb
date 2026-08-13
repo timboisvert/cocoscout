@@ -23,6 +23,25 @@
     actions: shows_actions
   %>
 
+  <%
+    shows_guide_body = <<~HTML.html_safe
+      <p>Events are the backbone of CocoScout — most other things point at one:</p>
+      <ol>
+        <li><strong>Schedule your events</strong> — shows, rehearsals, or anything else, one at a time or as a recurring series.</li>
+        <li><strong>Everything hangs off them</strong> — casting assignments, sign-ups, and availability are all per-event, so a date on the calendar is step one.</li>
+        <li><strong>See them your way</strong> — browse the list by month, or switch to the calendar view.</li>
+      </ol>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "shows_intro",
+        title: "How shows & events work",
+        body: shows_guide_body,
+        actions: [
+          { text: "Schedule an event", path: manage_shows_new_wizard_path },
+          { text: "View the calendar", path: manage_shows_calendar_path }
+        ] %>
+
   <div class="border-t border-gray-200 pt-4 mt-2">
     <%= render "shared/filters/filter_bar", wrapper_data_controller: "filter-select", filter_groups: [
     {

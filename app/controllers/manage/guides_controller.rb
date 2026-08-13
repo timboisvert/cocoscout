@@ -10,6 +10,10 @@ module Manage
       casting_intro
       auditions_intro
       documents_intro
+      courses_intro
+      shows_intro
+      contacts_intro
+      messages_intro
     ].freeze
 
     def dismiss

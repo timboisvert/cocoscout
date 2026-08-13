@@ -33,6 +33,21 @@
     ]
   } %>
 
+  <%
+    messages_guide_body = <<~HTML.html_safe
+      <p>Messages keeps production communication out of your personal inbox:</p>
+      <ol>
+        <li><strong>Send a message</strong> — to one person, a group, a whole talent pool, or everyone on a production.</li>
+        <li><strong>People read it in CocoScout</strong> — every recipient sees it in their own account, no email addresses to wrangle.</li>
+        <li><strong>Replies land back here</strong> — each conversation stays in its thread, organized by production.</li>
+      </ol>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "messages_intro",
+        title: "How messages work",
+        body: messages_guide_body %>
+
   <%# Search + Filter Bar %>
   <%= form_with url: manage_messages_path, method: :get, data: { turbo_action: "advance" }, class: "mt-4" do |f| %>
     <%# Search sits above the filter box, spanning the row. %>

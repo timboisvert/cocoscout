@@ -23,6 +23,26 @@
     actions: directory_actions
   %>
 
+  <%
+    contacts_guide_body = <<~HTML.html_safe
+      <p>Contacts is your whole company in one directory:</p>
+      <ol>
+        <li><strong>Invite people</strong> — performers and staff join with their own account, so their profile, headshots, and availability stay up to date.</li>
+        <li><strong>Organize into groups</strong> — a team or ensemble acts like a single contact you can cast and message.</li>
+        <li><strong>Collect what you need</strong> — send questionnaires when you need information from everyone at once.</li>
+      </ol>
+      <p>From here, people flow into your talent pools, casting, and messages.</p>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "contacts_intro",
+        title: "How contacts work",
+        body: contacts_guide_body,
+        actions: [
+          { text: "Invite people", path: new_manage_person_path },
+          { text: "Create a questionnaire", path: manage_contacts_questionnaires_path }
+        ] %>
+
   <div class="border-t border-gray-200 pt-4 mt-2">
   <%# Search Bar - Always Visible %>
   <div class="mb-4" data-controller="search-bar">

@@ -54,6 +54,30 @@ RSpec.describe "Intro guides", type: :request do
     expect(response.body).to include("How documents work")
   end
 
+  it "shows the shows guide on the shows index" do
+    get manage_shows_path
+    expect(response.body).to include('data-intro-guide="shows_intro"')
+    expect(response.body).to include("How shows &amp; events work")
+  end
+
+  it "shows the courses guide on the courses index" do
+    get manage_course_offerings_path
+    expect(response.body).to include('data-intro-guide="courses_intro"')
+    expect(response.body).to include("How courses work")
+  end
+
+  it "shows the contacts guide on the contacts directory" do
+    get manage_contacts_path
+    expect(response.body).to include('data-intro-guide="contacts_intro"')
+    expect(response.body).to include("How contacts work")
+  end
+
+  it "shows the messages guide on the messages inbox" do
+    get manage_messages_path
+    expect(response.body).to include('data-intro-guide="messages_intro"')
+    expect(response.body).to include("How messages work")
+  end
+
   it "keeps guide state per user" do
     post manage_guide_dismiss_path("casting_intro")
 
