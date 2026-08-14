@@ -5,18 +5,20 @@ module Manage
     include CrossOrgPersonLookup
     before_action :set_contract, except: %i[new create_draft]
 
-    # Step 1: Choose the contractor. When launched from a specific contractor's
-    # page (?contractor_id=), skip the picker entirely and drop straight into the
-    # "what's this contract for?" step with the draft already created.
+    # Step 1: Choose the contractor. A GET must never mint a draft — Turbo
+    # prefetches links on hover, so a create-on-GET here stamped out an identical
+    # step-2 draft per hover. With ?contractor_id= we reuse that contractor's
+    # untouched draft if one exists, else show the picker preselected; the
+    # contractor page's "New Contract" buttons POST straight to create_draft.
     def new
       if params[:contractor_id].present?
         contractor = Current.organization.contractors.find_by(id: params[:contractor_id])
         if contractor
-          @contract = build_draft_for(contractor)
-          if @contract.persisted?
-            redirect_to manage_production_contract_wizard_path(@contract)
+          if (draft = reusable_bare_draft_for(contractor))
+            redirect_to manage_production_contract_wizard_path(draft)
             return
           end
+          @preselected_contractor_id = contractor.id
         end
       end
 
@@ -25,7 +27,8 @@ module Manage
     end
 
     def create_draft
-      contractor = Current.organization.contractors.find_by(id: params.dig(:contract, :contractor_id).presence)
+      contractor_id = params.dig(:contract, :contractor_id).presence || params[:contractor_id].presence
+      contractor = Current.organization.contractors.find_by(id: contractor_id)
 
       # Require a contractor to be selected
       unless contractor
@@ -521,7 +524,7 @@ module Manage
     # normal create flow and the skip-the-picker path from a contractor's page.
     # Production name + signing mode are chosen in the next two "About" steps.
     def build_draft_for(contractor)
-      Current.organization.contracts.create(
+      reusable_bare_draft_for(contractor) || Current.organization.contracts.create(
         contractor_id: contractor.id,
         contractor_name: contractor.name,
         contractor_email: contractor.email,
@@ -530,6 +533,17 @@ module Manage
         status: :draft,
         wizard_step: 2
       )
+    end
+
+    # A draft the wizard minted but nobody ever touched: still on step 2 with no
+    # name and no banked data. Re-entering the wizard for the same contractor
+    # lands back in it instead of stacking up identical clones.
+    def reusable_bare_draft_for(contractor)
+      Current.organization.contracts.status_draft
+        .where(contractor_id: contractor.id, wizard_step: 2, production_name: nil)
+        .where("draft_data = '{}'::jsonb")
+        .order(:created_at)
+        .first
     end
 
     # Active productions not already tied to a contract — candidates a new contract

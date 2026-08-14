@@ -11,7 +11,7 @@
     text: @contractor.name,
     links: [
       { icon: "pencil", text: "Edit", path: edit_manage_contractor_path(@contractor) },
-      { icon: "plus", text: "New Contract", path: manage_new_contract_wizard_path(contractor_id: @contractor.id) }
+      { icon: "plus", text: "New Contract", path: manage_create_draft_contract_wizard_path(contractor_id: @contractor.id), data: { turbo_method: :post } }
     ]
   } %>
 
@@ -171,7 +171,7 @@
       <p class="text-gray-600 mb-4">
         Create a contract for this contractor.
       </p>
-      <%= link_to manage_new_contract_wizard_path(contractor_id: @contractor.id) do %>
+      <%= link_to manage_create_draft_contract_wizard_path(contractor_id: @contractor.id), data: { turbo_method: :post } do %>
         <%= render "shared/button", text: "New Contract", variant: "primary", icon: "plus" %>
       <% end %>
     </div>

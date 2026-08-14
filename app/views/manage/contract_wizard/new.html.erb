@@ -41,7 +41,7 @@
                       class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
                 <option value="">-- Choose a contractor --</option>
                 <% @contractors.each do |contractor| %>
-                  <option value="<%= contractor.id %>"><%= contractor.name %></option>
+                  <option value="<%= contractor.id %>" <%= "selected" if contractor.id == @preselected_contractor_id %>><%= contractor.name %></option>
                 <% end %>
               </select>
 
