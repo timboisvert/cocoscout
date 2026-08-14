@@ -32,7 +32,7 @@
 
     <% if @batch.status == "funding" %>
       <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        We're collecting the funds for this run. Payouts to each person go out automatically once it clears.
+        We're collecting the funds for this run. Payouts to each payee go out automatically once it clears.
         <% if Rails.env.development? %>
           <%# Dev has no Stripe webhooks unless you run `stripe listen` — this
               fakes the payment_intent.succeeded event so the run can advance. %>
@@ -50,9 +50,9 @@
         <div class="flex items-start gap-3">
           <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-amber-900"><%= pluralize(@not_ready_items.size, "person") %> <%= @not_ready_items.size == 1 ? "hasn't" : "haven't" %> connected a bank yet</p>
+            <p class="text-sm font-medium text-amber-900"><%= pluralize(@not_ready_items.size, "payee") %> <%= @not_ready_items.size == 1 ? "hasn't" : "haven't" %> connected a bank yet</p>
             <% if @batch.status == "partially_paid" %>
-              <p class="text-xs text-amber-800 mt-0.5">Their money is already funded and waiting on this run. You don't have to do anything — we pay each person automatically as soon as they connect a bank.</p>
+              <p class="text-xs text-amber-800 mt-0.5">Their money is already funded and waiting on this run. You don't have to do anything — we pay each payee automatically as soon as they connect a bank.</p>
               <% next_try = @batch.next_auto_retry_at %>
               <% if next_try %>
                 <p class="text-xs text-amber-800 mt-1 flex items-center gap-1.5">
@@ -64,7 +64,7 @@
                 </p>
               <% end %>
             <% else %>
-              <p class="text-xs text-amber-800 mt-0.5">You can still pay the run — the full amount is funded up front, we pay everyone who's ready, and each remaining person's money waits on this run until they connect a bank.</p>
+              <p class="text-xs text-amber-800 mt-0.5">You can still pay the run — the full amount is funded up front, we pay everyone who's ready, and each remaining payee's money waits on this run until they connect a bank.</p>
             <% end %>
             <div class="mt-2 flex flex-wrap gap-1.5">
               <% @not_ready_items.each do |item| %>
@@ -88,7 +88,7 @@
           <% next_try = @batch.next_auto_retry_at %>
           <% if @payable_remaining_items.any? %>
             <p class="text-xs text-gray-600 mt-0.5">
-              <%= pluralize(@payable_remaining_items.size, "person") %> <%= @payable_remaining_items.size == 1 ? "is" : "are" %> ready now (<%= @payable_remaining_items.map { |i| i.payee&.name }.join(", ") %>).
+              <%= pluralize(@payable_remaining_items.size, "payee") %> <%= @payable_remaining_items.size == 1 ? "is" : "are" %> ready now (<%= @payable_remaining_items.map { |i| i.payee&.name }.join(", ") %>).
               <% if next_try %>
                 We'll send it automatically <%= next_try.to_date == Date.current ? "today" : (next_try.to_date == Date.current + 1 ? "tomorrow" : next_try.strftime("%a, %b %-d")) %>
                 at <%= next_try.strftime("%-l:%M%P") %>, or hit the button to send it now.
@@ -111,8 +111,8 @@
             <%= render "shared/button", text: "Pay remaining", variant: "primary", size: "medium", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: pay_remaining_cid } %>
             <%= render "shared/confirm_modal", id: pay_remaining_cid,
-                  title: "Pay the remaining people?",
-                  message: "Send #{number_to_currency(@payable_remaining_items.sum(&:amount_cents) / 100.0)} to #{pluralize(@payable_remaining_items.size, 'person')} from this run's already-funded balance? No new money is debited.",
+                  title: "Pay the remaining payees?",
+                  message: "Send #{number_to_currency(@payable_remaining_items.sum(&:amount_cents) / 100.0)} to #{pluralize(@payable_remaining_items.size, 'payee')} from this run's already-funded balance? No new money is debited.",
                   confirm_text: "Pay remaining",
                   url: manage_pay_remaining_payout_batch_path(@batch),
                   method: :post %>
@@ -131,8 +131,8 @@
     <% if @batch.open? && @batch.items.any? %>
       <div class="mb-6 rounded-lg border border-pink-200 bg-pink-50 p-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="text-sm font-medium text-gray-900">Ready to pay <%= pluralize(@batch.items.count, "person") %> · <%= number_to_currency(@batch.total_cents / 100.0) %></p>
-          <p class="text-xs text-gray-600 mt-0.5">We debit your bank via ACH, then pay each person to their connected bank.</p>
+          <p class="text-sm font-medium text-gray-900">Ready to pay <%= pluralize(@batch.items.count, "payee") %> · <%= number_to_currency(@batch.total_cents / 100.0) %></p>
+          <p class="text-xs text-gray-600 mt-0.5">We debit your bank via ACH, then pay each payee to their connected bank.</p>
           <% earliest, latest = estimated_deposit_window %>
           <p class="text-xs font-medium text-gray-800 mt-1">
             Fund &amp; pay today → most staff see deposits by <%= l(latest, format: :long) %>

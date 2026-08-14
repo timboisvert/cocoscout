@@ -23,7 +23,7 @@ class PayoutBatchMailer < ApplicationMailer
       organization_name: batch.organization.name,
       run_kind: batch.kind_label,
       total: number_to_currency(batch.total_cents / 100.0),
-      people_count: "#{items.size} #{items.size == 1 ? 'person' : 'people'}",
+      people_count: "#{items.size} #{items.size == 1 ? 'payee' : 'payees'}",
       expected_window: "#{earliest.strftime('%B %-d')} – #{latest.strftime('%B %-d, %Y')}",
       payee_lines: payee_lines_html(items),
       payout_run_url: manage_payout_batch_url(batch)

@@ -1,14 +1,14 @@
 <%# One run in the payout-runs tables (active + completed share this). Locals: batch %>
 <tr class="hover:bg-gray-50">
-  <td class="px-4 py-2.5">
+  <td class="px-3 sm:px-4 py-2.5 whitespace-nowrap">
     <%= link_to batch.created_at.strftime("%b %-d, %Y"), manage_payout_batch_path(batch), class: "text-pink-600 hover:text-pink-700 font-medium" %>
     <div class="text-xs text-gray-500 mt-0.5"><%= batch.kind_label %><%= " · open" if batch.open? %></div>
   </td>
-  <td class="px-4 py-2.5"><%= render "manage/payout_batches/status_badge", status: batch.status %></td>
-  <td class="px-4 py-2.5 text-right tabular-nums"><%= number_to_currency(batch.total_cents / 100.0) %></td>
-  <td class="px-4 py-2.5 text-right tabular-nums"><%= batch.items.size %></td>
-  <td class="px-4 py-2.5 text-gray-600 hidden sm:table-cell"><%= batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled" %></td>
-  <td class="px-4 py-2.5 text-right">
+  <td class="px-3 sm:px-4 py-2.5 whitespace-nowrap"><%= render "manage/payout_batches/status_badge", status: batch.status %></td>
+  <td class="px-3 sm:px-4 py-2.5 text-right tabular-nums whitespace-nowrap"><%= number_to_currency(batch.total_cents / 100.0) %></td>
+  <td class="px-3 sm:px-4 py-2.5 text-right tabular-nums"><%= batch.items.size %></td>
+  <td class="px-3 sm:px-4 py-2.5 text-gray-600 hidden sm:table-cell"><%= batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled" %></td>
+  <td class="px-3 sm:px-4 py-2.5 text-right">
     <% if batch.status == "draft" %>
       <% dcid = "confirm-discard-#{batch.id}" %>
       <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= dcid %>"

@@ -223,7 +223,7 @@ class MoneyTodoService
 
       # Say what state the money is in, not just that it exists.
       parts = [ "#{shows.size} #{'show'.pluralize(shows.size)}" ]
-      parts << "#{counts[:to_pay]} #{'person'.pluralize(counts[:to_pay])} to pay" if counts[:to_pay].positive?
+      parts << "#{counts[:to_pay]} #{'payee'.pluralize(counts[:to_pay])} to pay" if counts[:to_pay].positive?
       parts << "#{counts[:in_draft]} in a draft run" if counts[:in_draft].positive?
       parts << "#{counts[:in_flight]} in flight" if counts[:in_flight].positive?
       parts << "#{counts[:paid]} already paid" if counts[:paid].positive?

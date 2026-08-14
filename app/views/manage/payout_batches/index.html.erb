@@ -17,7 +17,7 @@
   <% org = Current.organization %>
 
   <%# ---- Money by lifecycle state: where every dollar currently sits.
-      Draft → Funding → Waiting on people → Paid out, echoing the badge colors. %>
+      Draft → Funding → Waiting on payees → Paid out, echoing the badge colors. %>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-lg border border-gray-200 p-4">
       <div class="text-xs text-gray-500 uppercase tracking-wide">In draft</div>
@@ -30,7 +30,7 @@
       <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@runs_by_state[:funding], "run") %> · ACH clearing, pays out automatically</div>
     </div>
     <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-xs text-gray-500 uppercase tracking-wide">Waiting on people</div>
+      <div class="text-xs text-gray-500 uppercase tracking-wide">Waiting on payees</div>
       <div class="mt-1 text-2xl font-bold text-blue-700 tabular-nums"><%= number_to_currency(@money_by_state[:waiting] / 100.0) %></div>
       <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@runs_by_state[:waiting], "partially paid run") %> · funded, needs their bank info</div>
     </div>
@@ -55,12 +55,12 @@
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
-                  <th class="px-4 py-2.5 font-semibold">Run</th>
-                  <th class="px-4 py-2.5 font-semibold">Status</th>
-                  <th class="px-4 py-2.5 font-semibold text-right">Total</th>
-                  <th class="px-4 py-2.5 font-semibold text-right">People</th>
-                  <th class="px-4 py-2.5 font-semibold hidden sm:table-cell">Started by</th>
-                  <th class="px-4 py-2.5"></th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Run</th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Total</th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Payees</th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold hidden sm:table-cell">Started by</th>
+                  <th class="px-3 sm:px-4 py-2.5"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
@@ -91,12 +91,12 @@
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
-                  <th class="px-4 py-2.5 font-semibold">Run</th>
-                  <th class="px-4 py-2.5 font-semibold">Status</th>
-                  <th class="px-4 py-2.5 font-semibold text-right">Total</th>
-                  <th class="px-4 py-2.5 font-semibold text-right">People</th>
-                  <th class="px-4 py-2.5 font-semibold hidden sm:table-cell">Started by</th>
-                  <th class="px-4 py-2.5"></th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Run</th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Total</th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Payees</th>
+                  <th class="px-3 sm:px-4 py-2.5 font-semibold hidden sm:table-cell">Started by</th>
+                  <th class="px-3 sm:px-4 py-2.5"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
@@ -135,12 +135,12 @@
         <div class="bg-white border border-green-200 rounded-lg p-5">
           <h2 class="text-sm font-semibold text-gray-900 mb-1">Funding credit</h2>
           <div class="text-2xl font-bold text-green-700 tabular-nums"><%= number_to_currency(credit_cents / 100.0) %></div>
-          <p class="text-sm text-gray-500 mt-1">Already in your balance from people released from funded runs (paid another way). It's applied automatically — your next run's bank debit is reduced by this amount.</p>
+          <p class="text-sm text-gray-500 mt-1">Already in your balance from payees released from funded runs (paid another way). It's applied automatically — your next run's bank debit is reduced by this amount.</p>
         </div>
       <% end %>
 
       <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
-        <p class="text-xs text-gray-500">A run's money moves in one direction: <span class="font-medium text-gray-700">draft</span> (building it up) → <span class="font-medium text-amber-700">funding</span> (ACH debit clearing) → <span class="font-medium text-blue-700">waiting on people</span> (funded; pays each person as they connect a bank) → <span class="font-medium text-green-700">paid out</span>.</p>
+        <p class="text-xs text-gray-500">A run's money moves in one direction: <span class="font-medium text-gray-700">draft</span> (building it up) → <span class="font-medium text-amber-700">funding</span> (ACH debit clearing) → <span class="font-medium text-blue-700">waiting on payees</span> (funded; pays each payee as they connect a bank) → <span class="font-medium text-green-700">paid out</span>.</p>
       </div>
     </aside>
   </div>

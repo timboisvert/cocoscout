@@ -100,7 +100,7 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
       expect(response.body).to include("$30.00") # li_b — still needs action
       expect(response.body).to include("$50.00") # li_a — staged, run not yet submitted
       expect(response.body).to include("$70.00") # li_paid — already paid
-      expect(response.body).to include("1 person to pay · 1 in a draft run · 1 already paid")
+      expect(response.body).to include("1 payee to pay · 1 in a draft run · 1 already paid")
     end
 
     it "moves the staged money to In flight once the run is submitted" do
@@ -113,7 +113,7 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
     it "shows the state boxes summing the same money as the sections below" do
       get manage_money_payouts_path
       expect(response.body).to include("To pay").and include("In draft")
-        .and include("Funding").and include("Waiting on people")
+        .and include("Funding").and include("Waiting on payees")
       expect(response.body).to include("$30.00") # to pay — li_b, not in any run
       expect(response.body).to include("$50.00") # in draft — the staged batch
     end
@@ -125,13 +125,13 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
       expect(response.body).to include(manage_payout_batch_path(batch))
     end
 
-    it "puts a partially paid run's unpaid remainder in the Waiting on people box" do
+    it "puts a partially paid run's unpaid remainder in the Waiting on payees box" do
       batch.update!(status: "partially_paid")
       batch.items.create!(payee: create(:person), amount_cents: 2000, status: "paid")
       batch.recalculate_total!
       get manage_money_payouts_path
-      # $70 run total, $20 paid → $50 still waiting on people.
-      expect(response.body).to include("$50.00 waiting on people&#39;s bank info")
+      # $70 run total, $20 paid → $50 still waiting on payees.
+      expect(response.body).to include("$50.00 waiting on payees&#39; bank info")
     end
   end
 

@@ -169,7 +169,7 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
 
       mail = ActionMailer::Base.deliveries.last
       expect(mail.to).to eq([ owner.email_address ])
-      expect(mail.subject).to include("$40.00").and include("1 person")
+      expect(mail.subject).to include("$40.00").and include("1 payee")
       raw = mail.to_s
       expect(raw).to include("Ready Rita")
       expect(raw).to include("$40.00")
