@@ -5,7 +5,7 @@ require "rails_helper"
 # The manage home summary boxes only appear when they have something to say.
 RSpec.describe "Manage home summary boxes", type: :request do
   let(:password) { "Password123!" }
-  let(:owner) { create(:user, password: password, welcomed_production_at: Time.current) }
+  let(:owner) { create(:user, password: password) }
   let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
   let!(:production) { create(:production, organization: org) }
   let!(:show) { create(:show, production: production, date_and_time: 1.week.from_now) }

@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-# Dismissible intro guides (shared/_intro_guide + Manage::GuidesController).
+# Dismissible intro guides (shared/_intro_guide + GuidesController).
 # Page guides show by default; the home what's-next panel is opt-in via
 # production creation and covered in producer_setup_spec.
 RSpec.describe "Intro guides", type: :request do
@@ -13,7 +13,6 @@ RSpec.describe "Intro guides", type: :request do
   let!(:production) { create(:production, organization: org) }
 
   before do
-    owner.update!(welcomed_production_at: Time.current)
     post handle_signin_path, params: { email_address: owner.email_address, password: password }
   end
 
@@ -21,14 +20,14 @@ RSpec.describe "Intro guides", type: :request do
     get manage_casting_path
     expect(response.body).to include('data-intro-guide="casting_intro"')
 
-    post manage_guide_dismiss_path("casting_intro"), headers: { "HTTP_REFERER" => manage_casting_path }
+    post guide_dismiss_path("casting_intro"), headers: { "HTTP_REFERER" => manage_casting_path }
     expect(response).to redirect_to(manage_casting_path)
 
     get manage_casting_path
     expect(response.body).not_to include('data-intro-guide="casting_intro"')
     expect(response.body).to include("Show guide")
 
-    post manage_guide_restore_path("casting_intro")
+    post guide_restore_path("casting_intro")
     get manage_casting_path
     expect(response.body).to include('data-intro-guide="casting_intro"')
   end
@@ -85,7 +84,7 @@ RSpec.describe "Intro guides", type: :request do
   end
 
   it "keeps guide state per user" do
-    post manage_guide_dismiss_path("casting_intro")
+    post guide_dismiss_path("casting_intro")
 
     other = create(:user, password: password)
     create(:organization_role, :manager, user: other, organization: org)
@@ -97,7 +96,7 @@ RSpec.describe "Intro guides", type: :request do
   end
 
   it "rejects keys outside the catalog" do
-    post manage_guide_dismiss_path("made_up_guide")
+    post guide_dismiss_path("made_up_guide")
     expect(response).to have_http_status(:unprocessable_entity)
     expect(owner.reload.dismissed_guides).to be_empty
   end
@@ -106,7 +105,7 @@ RSpec.describe "Intro guides", type: :request do
     get manage_path
     expect(response.body).to include('data-intro-guide="production_next_steps"')
 
-    post manage_guide_dismiss_path("production_next_steps")
+    post guide_dismiss_path("production_next_steps")
     get manage_path
     expect(response.body).not_to include('data-intro-guide="production_next_steps"')
     expect(response.body).to include("Show guide")

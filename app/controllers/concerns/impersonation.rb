@@ -28,6 +28,8 @@ module Impersonation
   end
 
   def impersonating?
-    impersonator_user_id.present?
+    # A stale impersonator cookie can outlive the impersonated login (e.g. on
+    # the signed-out /signin page) — no signed-in user means no impersonation.
+    Current.user.present? && impersonator_user_id.present?
   end
 end

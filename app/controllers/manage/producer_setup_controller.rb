@@ -90,8 +90,6 @@ module Manage
       session[:current_production_id_for_organization] ||= {}
       session[:current_production_id_for_organization]["#{Current.user.id}_#{@organization.id}"] = @production.id
 
-      # They've produced — the Start Producing welcome has nothing left to teach.
-      Current.user.update(welcomed_production_at: Time.current) if Current.user.welcomed_production_at.nil?
       # Turn on the "here's what to do next" panel on the manage home page.
       Current.user.activate_guide!(:production_next_steps)
 
@@ -116,8 +114,7 @@ module Manage
 
     private
 
-    # No org exists yet, so the manage sidebar has nothing to show (same
-    # treatment as the Start Producing welcome).
+    # No org exists yet, so the manage sidebar has nothing to show.
     def hide_sidebar
       @show_manage_sidebar = false
     end

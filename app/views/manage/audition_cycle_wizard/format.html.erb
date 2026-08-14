@@ -16,7 +16,7 @@
             <input type="radio" name="signup_mode" value="curated" <%= "checked" if mode == "curated" %>
                    class="text-pink-600 focus:ring-pink-500 accent-pink-500 cursor-pointer"
                    data-action="change->audition-mode#update">
-            <span class="font-medium text-gray-900">Curated auditions</span>
+            <span class="font-medium text-gray-900">Apply for an audition</span>
           </span>
           <span class="block text-sm text-gray-500 mt-2">People apply, your team reviews and votes, then you schedule them into sessions.</span>
         </label>
@@ -34,7 +34,7 @@
 
       <%# ---- Curated-only format options (hidden by JS when Open sign-up is chosen) ---- %>
       <div data-audition-mode-target="curatedOptions" class="space-y-4 <%= "hidden" if mode == "open" %>">
-        <p class="text-sm font-medium text-gray-700">Curated format options</p>
+        <p class="text-sm font-medium text-gray-700">Format options</p>
 
         <!-- Scheduled Sessions Toggle -->
         <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">

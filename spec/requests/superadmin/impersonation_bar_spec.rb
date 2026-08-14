@@ -50,6 +50,20 @@ RSpec.describe "Impersonation bar", type: :request do
     end
   end
 
+  context "signed out with a stale impersonation cookie" do
+    it "renders the signin page without a bar instead of crashing" do
+      sign_in_superadmin
+      post impersonate_user_path, params: { email: target.email_address }
+      get signout_path
+
+      # The impersonator cookie can outlive the login; the signed-out signin
+      # page must not try to render the bar for a nil Current.user.
+      get signin_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include('id="impersonation-bar"')
+    end
+  end
+
   context "on a mics page, which renders its own richer banner" do
     before do
       sign_in_superadmin

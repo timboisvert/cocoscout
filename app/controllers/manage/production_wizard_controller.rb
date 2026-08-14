@@ -221,8 +221,6 @@ module Manage
       session[:current_production_id_for_organization] ||= {}
       session[:current_production_id_for_organization]["#{Current.user&.id}_#{Current.organization&.id}"] = @production.id
 
-      # Auto-dismiss welcome screen after creating first production
-      Current.user.update(welcomed_production_at: Time.current) if Current.user.welcomed_production_at.nil?
       # Turn on the "here's what to do next" panel on the manage home page.
       Current.user.activate_guide!(:production_next_steps)
 

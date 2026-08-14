@@ -43,31 +43,32 @@ RSpec.describe "My::Dashboard", type: :request do
     end
   end
 
-  describe "first-visit welcome" do
-    it "greets a brand-new user with the hero alone — no bank banner, no checklist" do
+  describe "welcome guide" do
+    it "greets the user with the welcome guide and holds the checklist back" do
       get my_dashboard_path
 
+      expect(response.body).to include('data-intro-guide="talent_welcome"')
       expect(response.body).to include("Welcome to CocoScout!")
       expect(response.body).to include("Producing your own shows?")
-      expect(response.body).not_to include("We&#39;ve upgraded how you get paid")
       expect(response.body).not_to include("Get started by completing your profile")
     end
 
-    it "swaps the hero for the checklist and bank banner once they belong somewhere" do
+    it "keeps greeting org members until they dismiss it" do
       org = create(:organization, :pro)
       org.people << person
 
       get my_dashboard_path
+      expect(response.body).to include('data-intro-guide="talent_welcome"')
       expect(response.body).to include("We&#39;ve upgraded how you get paid")
-      expect(response.body).to include("Get started by completing your profile")
-      expect(response.body).not_to include("Welcome to CocoScout!")
     end
 
-    it "disappears once dismissed" do
-      post my_dismiss_onboarding_path
+    it "swaps to the checklist once dismissed, with a way back" do
+      post guide_dismiss_path("talent_welcome")
       get my_dashboard_path
 
-      expect(response.body).not_to include("Welcome to CocoScout!")
+      expect(response.body).not_to include('data-intro-guide="talent_welcome"')
+      expect(response.body).to include("Show guide")
+      expect(response.body).to include("Get started by completing your profile")
     end
   end
 

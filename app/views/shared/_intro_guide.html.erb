@@ -3,7 +3,7 @@
     don't invent another "here's how this works" box.
 
     Locals:
-      guide_key       (required) — key in Manage::GuidesController::GUIDE_KEYS;
+      guide_key       (required) — key in GuidesController::GUIDE_KEYS;
                                    drives per-user visibility + dismiss/restore.
       title           (required) — one line, e.g. "How casting works"
       body            (required) — html_safe fragment: a short paragraph and/or
@@ -46,7 +46,7 @@
   <div data-intro-guide="<%= guide_key %>" class="<%= panel_classes %>">
     <div class="flex items-start justify-between gap-4">
       <h2 class="<%= title_classes %>"><%= title %></h2>
-      <%= button_to manage_guide_dismiss_path(guide_key), method: :post,
+      <%= button_to guide_dismiss_path(guide_key), method: :post,
             class: "flex-shrink-0 text-gray-400 hover:text-gray-600 cursor-pointer p-1 -m-1",
             title: "Dismiss this guide", "aria-label": "Dismiss this guide" do %>
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -72,7 +72,7 @@
   </div>
 <% elsif Current.user.guide_dismissed?(guide_key) %>
   <div class="mb-2 flex justify-end">
-    <%= button_to manage_guide_restore_path(guide_key), method: :post,
+    <%= button_to guide_restore_path(guide_key), method: :post,
           class: "text-xs text-gray-400 hover:text-pink-600 cursor-pointer" do %>
       Show guide: <%= title %>
     <% end %>

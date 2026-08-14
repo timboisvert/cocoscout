@@ -5,15 +5,6 @@
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <% primary = @people.first %>
-  <%# The hero welcomes truly brand-new users; while it shows, the profile
-      checklist below stays out of the way (the hero already says "set up
-      your profile"). The checklist takes over for everyone else who still
-      has profile gaps and hasn't dismissed it. %>
-  <% show_welcome_hero = primary &&
-       primary.profile_welcomed_at.nil? &&
-       !primary.organizations.exists? &&
-       !primary.in_any_talent_pool? &&
-       @just_joined_organization.nil? %>
 
   <!-- One-shot greeting after joining an org via its public /join link -->
   <% if @just_joined_organization %>
@@ -24,9 +15,31 @@
           actions: [ { text: "Complete your profile", path: profile_path } ] %>
   <% end %>
 
-  <!-- First-visit welcome for brand-new users (no orgs, no pools) -->
-  <% if show_welcome_hero %>
-    <%= render "my/dashboard/welcome", person: primary %>
+  <%# Welcome guide for the talent dashboard — shows until dismissed, with a
+      "Show guide" link to bring it back. While it's visible, the profile
+      checklist below stays out of the way (the guide already points at the
+      profile). Held back for the just-joined visit so the org greeting above
+      stands alone; the guide appears from the next visit on. %>
+  <% unless @just_joined_organization %>
+  <%
+    talent_welcome_body = <<~HTML.html_safe
+      <p>
+        This is your home base as a performer. When a production invites you, casts you,
+        or schedules you, it all lands here — your shows on the calendar, your sign-ups
+        and auditions, your messages, and your payments when you get paid.
+      </p>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "talent_welcome",
+        variant: "welcome",
+        title: "Welcome to CocoScout!",
+        body: talent_welcome_body,
+        cards: [
+          { icon: "users", text: "Set up your profile", description: "Headshots, resume, and skills, so producers know who they're booking", path: profile_path },
+          { icon: "clipboard-list", text: "Find an audition", description: "Browse open auditions and throw your hat in", path: my_auditions_directory_path },
+          { icon: "calendar", text: "Producing your own shows?", description: "Set up your production and run it on CocoScout", path: manage_producer_setup_path }
+        ] %>
   <% end %>
 
   <%= render "my/payments/payout_summary" %>
@@ -46,9 +59,9 @@
   <% end %>
 
   <!-- Profile checklist — with the other action boxes, above the calendar
-       header. Suppressed while the welcome hero is greeting a brand-new user
+       header. Suppressed while the welcome guide is greeting the user
        (only for the primary person, to avoid duplicates). -->
-  <% if primary && !show_welcome_hero %>
+  <% if primary && !Current.user.guide_visible?("talent_welcome") %>
     <%= render "my/dashboard/onboarding_checklist", person: primary %>
   <% end %>
 

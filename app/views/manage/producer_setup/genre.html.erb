@@ -1,7 +1,12 @@
 <%= render layout: "manage/producer_setup/setup_layout", locals: { current_step: 0, step_name: "Genre" } do %>
   <div class="text-center mb-8">
+    <p class="text-xs font-semibold uppercase tracking-widest text-pink-500 mb-3">Welcome to the production side of CocoScout</p>
     <h2 class="text-2xl sm:text-3xl coustard-regular text-gray-900">What are you creating?</h2>
-    <p class="text-gray-500 mt-2">We'll set things up to fit — you can change any of it later.</p>
+    <p class="text-gray-500 mt-3 max-w-xl mx-auto">
+      This is where you run your own shows — schedule events, hold auditions, build casts,
+      and keep your people in the loop. Tell us what you're making and we'll set things up
+      to fit; you can change any of it later.
+    </p>
   </div>
 
   <%= form_with url: manage_producer_setup_save_genre_path, method: :post, local: true do %>

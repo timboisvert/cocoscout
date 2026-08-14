@@ -43,7 +43,6 @@ RSpec.describe "Post-authentication landing", type: :request do
       org = Organization.create!(name: "Landing Org", owner: user)
       OrganizationRole.create!(user: user, organization: org, company_role: "manager")
       org.people << person
-      user.update!(welcomed_production_at: Time.current)
 
       post handle_signin_path, params: { email_address: user.email_address, password: user.password }
       get manage_path # stamps the last_dashboard cookie with "manage"

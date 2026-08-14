@@ -502,13 +502,13 @@ Rails.application.routes.draw do
   # iCal feed (public, no authentication)
 
   # Management interface
-  namespace :manage do
-    get  "/",                              to: "manage#index"
-    post "/dismiss_production_welcome",    to: "manage#dismiss_production_welcome", as: "dismiss_production_welcome"
+  # Dismissible intro guides (shared/_intro_guide) — root-level because they
+  # render on both the manage side and the talent dashboard.
+  post "/guides/:key/dismiss", to: "guides#dismiss", as: "guide_dismiss", constraints: { key: /[a-z_]+/ }
+  post "/guides/:key/restore", to: "guides#restore", as: "guide_restore", constraints: { key: /[a-z_]+/ }
 
-    # Dismissible intro guides (shared/_intro_guide)
-    post "/guides/:key/dismiss", to: "guides#dismiss", as: "guide_dismiss", constraints: { key: /[a-z_]+/ }
-    post "/guides/:key/restore", to: "guides#restore", as: "guide_restore", constraints: { key: /[a-z_]+/ }
+  namespace :manage do
+    get "/",                              to: "manage#index"
 
     # Messages
     resources :messages, only: [ :index, :show, :create ] do

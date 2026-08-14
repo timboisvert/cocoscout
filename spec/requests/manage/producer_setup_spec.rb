@@ -54,12 +54,12 @@ RSpec.describe "Producer setup", type: :request do
       sign_up
       complete_setup
 
-      post manage_guide_dismiss_path("production_next_steps")
+      post guide_dismiss_path("production_next_steps")
       get manage_path
       expect(response.body).not_to include("data-intro-guide=\"production_next_steps\"")
       expect(response.body).to include("Show guide")
 
-      post manage_guide_restore_path("production_next_steps")
+      post guide_restore_path("production_next_steps")
       get manage_path
       expect(response.body).to include("data-intro-guide=\"production_next_steps\"")
     end
@@ -72,13 +72,6 @@ RSpec.describe "Producer setup", type: :request do
       user = User.find_by(email_address: "producer@example.com")
       expect(org.organization_roles.find_by(user: user).company_role).to eq("manager")
       expect(org.people).to include(user.person)
-    end
-
-    it "dismisses the Start Producing welcome" do
-      sign_up
-      complete_setup
-
-      expect(User.find_by(email_address: "producer@example.com").welcomed_production_at).to be_present
     end
   end
 
