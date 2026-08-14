@@ -54,7 +54,7 @@ export default class extends Controller {
 
         let visible = 0
         Array.from(this.roleSelectTarget.options).forEach(opt => {
-            if (!opt.dataset.orgId) return // the "no specific role" option
+            if (!opt.dataset.orgId) return // the "select a role" placeholder
             const match = opt.dataset.orgId === String(this.currentOrgId)
             opt.hidden = !match
             opt.disabled = !match

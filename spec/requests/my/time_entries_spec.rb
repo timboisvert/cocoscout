@@ -87,6 +87,29 @@ RSpec.describe "My::TimeEntries", type: :request do
       expect(entry.house_role).to eq(role)
     end
 
+    it "rejects self-logged time with no role when the person has roles to pick from" do
+      create(:staff_role_qualification, organization_staff_member: membership, house_role: role)
+      expect {
+        post my_time_entries_path, params: {
+          organization_id: org.id,
+          started_at: 1.day.ago.change(hour: 13).strftime("%Y-%m-%dT%H:%M"),
+          ended_at: 1.day.ago.change(hour: 16).strftime("%Y-%m-%dT%H:%M")
+        }
+      }.not_to change(StaffTimeEntry, :count)
+      expect(flash[:alert]).to include("Pick the role")
+    end
+
+    it "still allows role-less time when the person has no qualified roles (default rate applies)" do
+      expect {
+        post my_time_entries_path, params: {
+          organization_id: org.id,
+          started_at: 1.day.ago.change(hour: 13).strftime("%Y-%m-%dT%H:%M"),
+          ended_at: 1.day.ago.change(hour: 16).strftime("%Y-%m-%dT%H:%M")
+        }
+      }.to change(StaffTimeEntry, :count).by(1)
+      expect(StaffTimeEntry.last.house_role).to be_nil
+    end
+
     it "rejects a role from another organization" do
       foreign_role = create(:house_role)
       post my_time_entries_path, params: {

@@ -19,6 +19,8 @@ module My
 
       entry.assign_attributes(time_params)
       assign_manual_role(entry)
+      return if reject_roleless_manual_entry(entry)
+
       if entry.save
         redirect_to my_shifts_path, notice: "Hours saved."
       else
@@ -29,6 +31,8 @@ module My
     def update
       @entry.assign_attributes(time_params)
       assign_manual_role(@entry)
+      return if reject_roleless_manual_entry(@entry)
+
       if @entry.save
         redirect_to my_shifts_path, notice: "Hours updated."
       else
@@ -102,6 +106,23 @@ module My
       return unless entry.source == "manual" && params.key?(:house_role_id)
 
       entry.house_role_id = params[:house_role_id].presence
+    end
+
+    # Self-logged hours must name the role they were worked as whenever the
+    # person has qualified roles to pick from — the role is what prices the
+    # work. (A person with no qualified roles at the org falls back to their
+    # default rate; that's the only role-less case left.)
+    # Redirects (and returns true) when the entry is rejected.
+    def reject_roleless_manual_entry(entry)
+      return false unless entry.source == "manual" && entry.house_role_id.blank?
+
+      member = OrganizationStaffMember.active
+                                      .includes(staff_role_qualifications: :house_role)
+                                      .find_by(organization_id: entry.organization_id, person_id: my_person_ids)
+      return false unless member&.staff_role_qualifications&.any? { |q| q.house_role.present? }
+
+      redirect_to my_shifts_path, alert: "Pick the role you worked as — it's what sets the pay for your hours."
+      true
     end
   end
 end

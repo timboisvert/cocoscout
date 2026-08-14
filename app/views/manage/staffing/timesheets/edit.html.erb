@@ -16,14 +16,15 @@
               <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
             </div>
             <div class="text-sm text-gray-600">
+              <% role_suffix = @entry.effective_house_role ? " as #{@entry.effective_house_role.name}" : "" %>
               <% if @was_approved %>
-                You changed <span class="font-medium text-gray-900"><%= @entry.person.name %></span>'s hours
-                (now <span class="font-medium text-gray-900"><%= number_with_precision(@entry.hours, precision: 2, strip_insignificant_zeros: true) %>h</span>),
-                so they've gone back to review. Approve them again to make them payable, or leave them in the queue for now.
+                You adjusted <span class="font-medium text-gray-900"><%= @entry.person.name %></span>'s entry
+                (now <span class="font-medium text-gray-900"><%= number_with_precision(@entry.hours, precision: 2, strip_insignificant_zeros: true) %>h<%= role_suffix %></span>),
+                so it's gone back to review. Approve it again to make it payable, or leave it in the queue for now.
               <% else %>
-                <span class="font-medium text-gray-900"><%= @entry.person.name %></span>'s hours are now
-                <span class="font-medium text-gray-900"><%= number_with_precision(@entry.hours, precision: 2, strip_insignificant_zeros: true) %>h</span>.
-                Approve them to make them payable, or leave them in the queue for now.
+                <span class="font-medium text-gray-900"><%= @entry.person.name %></span>'s entry is now
+                <span class="font-medium text-gray-900"><%= number_with_precision(@entry.hours, precision: 2, strip_insignificant_zeros: true) %>h<%= role_suffix %></span>.
+                Approve it to make it payable, or leave it in the queue for now.
               <% end %>
             </div>
           </div>
@@ -43,7 +44,7 @@
          data-action="click->timesheet-edit-modal#closeOnBackdrop keydown.esc@window->timesheet-edit-modal#close">
       <div class="relative w-full max-w-md bg-white rounded-lg shadow-lg" data-action="click->timesheet-edit-modal#stopPropagation">
         <div class="flex items-center justify-between px-6 py-4 bg-pink-500 rounded-t-lg">
-          <h3 class="text-lg font-semibold text-white">Edit hours</h3>
+          <h3 class="text-lg font-semibold text-white">Adjust</h3>
           <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->timesheet-edit-modal#close">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
@@ -74,19 +75,44 @@
           <%= form_with model: @entry, url: manage_staffing_timesheet_path(@entry), method: :patch do |f| %>
             <div class="space-y-4">
               <div>
+                <%= f.label :house_role_id, "Worked as", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%
+                  # Each option carries this person's rate for that role so the
+                  # pay preview can reprice live as the manager changes it.
+                  role_choices = @adjust_roles.map do |r|
+                    cents = r.flat? ? @member&.flat_cents_for(r).to_i : @member&.rate_cents_for(r).to_i
+                    [ r.name, r.id, { data: { rate_type: r.flat? ? "flat" : "hourly", rate_cents: cents, rate_label: @member&.rate_label_for(r) } } ]
+                  end
+                  role_choices.unshift([ "No specific role (default rate)", "",
+                    { data: { rate_type: "hourly", rate_cents: @member&.rate_cents_for(nil).to_i, rate_label: @member&.rate_label_for(nil) } } ])
+                %>
+                <%= f.select :house_role_id, options_for_select(role_choices, @entry.effective_house_role&.id),
+                      {},
+                      class: "w-full rounded-lg bg-white border border-gray-300 px-3 py-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500",
+                      data: { "timesheet-edit-modal-target": "role", action: "change->timesheet-edit-modal#recalc" } %>
+              </div>
+              <div>
                 <%= f.label :started_at, "Clock in", class: "block text-sm font-medium text-gray-700 mb-1" %>
                 <%= f.datetime_field :started_at, value: @entry.started_at&.strftime("%Y-%m-%dT%H:%M"),
-                      class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+                      class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
+                      data: { "timesheet-edit-modal-target": "started", action: "input->timesheet-edit-modal#recalc" } %>
               </div>
               <div>
                 <%= f.label :ended_at, "Clock out", class: "block text-sm font-medium text-gray-700 mb-1" %>
                 <%= f.datetime_field :ended_at, value: @entry.ended_at&.strftime("%Y-%m-%dT%H:%M"),
-                      class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+                      class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
+                      data: { "timesheet-edit-modal-target": "ended", action: "input->timesheet-edit-modal#recalc" } %>
               </div>
               <div>
                 <%= f.label :notes, "Notes", class: "block text-sm font-medium text-gray-700 mb-1" %>
                 <%= f.text_area :notes, rows: 2,
                       class: "w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+
+              <%# Live answer to "what will these hours cost at that role?" %>
+              <div class="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                <span data-timesheet-edit-modal-target="payBreakdown"></span>
+                <span class="font-semibold text-gray-900" data-timesheet-edit-modal-target="payTotal"></span>
               </div>
             </div>
 

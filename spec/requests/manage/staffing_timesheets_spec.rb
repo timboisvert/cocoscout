@@ -163,6 +163,42 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
       patch manage_staffing_timesheet_path(entry), params: { staff_time_entry: { started_at: "2026-07-01T18:00", ended_at: "2026-07-01T22:00" } }
       expect(flash[:alert]).to be_present
     end
+
+    it "offers the org's roles with this member's rates in the Adjust modal" do
+      bar_role = create(:house_role, organization: org, name: "Bar Lead")
+      create(:staff_role_qualification, organization_staff_member: member, house_role: bar_role, hourly_rate_cents: 2500)
+      entry = create(:staff_time_entry, organization: org, person: person)
+
+      get manage_edit_staffing_timesheet_path(entry)
+
+      expect(response.body).to include("Adjust").and include("Worked as").and include("Bar Lead")
+      expect(response.body).to include('data-rate-cents="2500"')
+    end
+
+    it "changes the role the hours were worked as (repricing them) and kicks back to review" do
+      bar_role = create(:house_role, organization: org, name: "Bar Lead")
+      entry = create(:staff_time_entry, organization: org, person: person, approved_at: Time.current, approved_by: owner)
+
+      patch manage_staffing_timesheet_path(entry), params: {
+        staff_time_entry: { started_at: "2026-07-01T18:00", ended_at: "2026-07-01T21:00", house_role_id: bar_role.id }
+      }
+
+      entry.reload
+      expect(entry.house_role).to eq(bar_role)
+      expect(entry.approved_at).to be_nil
+    end
+
+    it "rejects a role from another organization" do
+      foreign_role = create(:house_role)
+      entry = create(:staff_time_entry, organization: org, person: person)
+
+      patch manage_staffing_timesheet_path(entry), params: {
+        staff_time_entry: { started_at: "2026-07-01T18:00", ended_at: "2026-07-01T21:00", house_role_id: foreign_role.id }
+      }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(entry.reload.house_role).to be_nil
+    end
   end
 
   describe "reapprove" do

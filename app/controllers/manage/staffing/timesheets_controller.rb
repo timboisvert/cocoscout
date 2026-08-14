@@ -102,6 +102,9 @@ module Manage
 
       def edit
         @entry = find_editable_entry
+        return unless @entry
+
+        load_adjust_context
       end
 
       # Correct the worked time on an entry (unpaid only). For the audit trail,
@@ -121,6 +124,7 @@ module Manage
           @saved = true
           render :edit
         else
+          load_adjust_context
           render :edit, status: :unprocessable_entity
         end
       end
@@ -200,7 +204,17 @@ module Manage
       end
 
       def entry_params
-        params.require(:staff_time_entry).permit(:started_at, :ended_at, :notes)
+        params.require(:staff_time_entry).permit(:started_at, :ended_at, :notes, :house_role_id)
+      end
+
+      # The Adjust modal lets a manager reprice an entry by changing the role the
+      # work was done as, so it needs the org's roles and this person's member
+      # record (which knows their rate for each role).
+      def load_adjust_context
+        @member = Current.organization.organization_staff_members
+                         .includes(staff_role_qualifications: :house_role)
+                         .find_by(person_id: @entry.person_id)
+        @adjust_roles = Current.organization.house_roles.order(:name).to_a
       end
     end
   end
