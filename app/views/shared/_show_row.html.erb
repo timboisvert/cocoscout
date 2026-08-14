@@ -363,32 +363,8 @@
         %>
         <% roles.each do |role| %>
           <%
-            role_quantity = role.quantity || 1
-            role_assignments = (assignments_by_role[role.id] || []).sort_by { |a| a.position || 0 }
-
-            # Build a hash of slot_position => assignment for multi-slot roles
-            assignments_by_slot = {}
-            legacy_assignments = []
-
-            role_assignments.each do |a|
-              if a.position.present? && a.position > 0
-                assignments_by_slot[a.position] = a
-              else
-                legacy_assignments << a
-              end
-            end
-
-            # Assign legacy (position=0) assignments to available slots
-            next_slot = 1
-            legacy_assignments.each do |a|
-              while assignments_by_slot[next_slot] && next_slot <= role_quantity
-                next_slot += 1
-              end
-              if next_slot <= role_quantity
-                assignments_by_slot[next_slot] = a
-                next_slot += 1
-              end
-            end
+            assignments_by_slot = cast_assignments_by_slot(role, assignments_by_role[role.id])
+            role_quantity = cast_total_slots(role, assignments_by_slot)
           %>
           <% (1..role_quantity).each do |slot_position| %>
             <% assignment = assignments_by_slot[slot_position] %>

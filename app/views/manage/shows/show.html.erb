@@ -399,12 +399,13 @@
               <div class="flex flex-wrap gap-1.5">
                 <% @roles.each do |role| %>
                   <%
-                    role_quantity = role.quantity || 1
-                    role_assignments = @show.show_person_role_assignments.select { |a| a.role_id == role.id }.sort_by { |a| a.position || 0 }
+                    role_assignments = @show.show_person_role_assignments.select { |a| a.role_id == role.id }
+                    assignments_by_slot = cast_assignments_by_slot(role, role_assignments)
+                    role_quantity = cast_total_slots(role, assignments_by_slot)
                     role_open_vacancies = (open_vacancies_by_role[role.id] || []).dup
                   %>
                   <% (1..role_quantity).each do |slot_position| %>
-                    <% assignment = role_assignments.find { |a| a.position == slot_position } %>
+                    <% assignment = assignments_by_slot[slot_position] %>
                     <% if assignment %>
                       <%
                         is_guest = assignment.guest?
@@ -495,8 +496,8 @@
                 <%
                   cant_make_it_list = []
                   @roles.each do |role|
-                    assignment = @show.show_person_role_assignments.find { |a| a.role_id == role.id }
-                    if assignment && !assignment.guest?
+                    @show.show_person_role_assignments.select { |a| a.role_id == role.id }.each do |assignment|
+                      next if assignment.guest?
                       assignable = if assignment.assignable_type == "Person"
                         @people_by_id[assignment.assignable_id] || assignment.assignable
                       else
