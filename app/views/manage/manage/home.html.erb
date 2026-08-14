@@ -6,27 +6,26 @@
   <%
     # Shown to anyone with a production until they dismiss it. Creating a
     # production also re-activates it (see producer setup / production wizard),
-    # so a second production brings the checklist back even after a dismissal.
+    # so a second production brings the greeting back even after a dismissal.
     next_steps_body = <<~HTML.html_safe
-      <p>Your production is set up — from here, most producers start with one of these:</p>
-      <ol>
-        <li><strong>Schedule your shows.</strong> Add dates so everything else — casting, sign-ups, availability — has shows to point at.</li>
-        <li><strong>Run auditions.</strong> Create an audition cycle to collect sign-ups, review people, and build your cast.</li>
-        <li><strong>Cast your shows.</strong> Already know who's performing? Add people and assign them to roles directly.</li>
-      </ol>
-      <p>You can do these in any order, and this note stays here until you dismiss it.</p>
+      <p>
+        Everything your production needs lives here now — your calendar, your cast, your
+        auditions, your people, all in one place. There's a lot you can do, and no wrong
+        place to start. Here are the paths most producers take first:
+      </p>
     HTML
   %>
   <%= render "shared/intro_guide",
         guide_key: "production_next_steps",
+        variant: "welcome",
         default_visible: @productions.any?,
-        title: "Here's what to do next",
+        title: "Welcome to running your production on CocoScout",
         body: next_steps_body,
-        actions: [
-          { text: "Schedule shows", path: manage_shows_new_wizard_path },
-          { text: "Set up auditions", path: manage_signups_auditions_new_wizard_path },
-          { text: "Cast your shows", path: manage_casting_path },
-          { text: "Add your people", path: manage_contacts_path }
+        cards: [
+          { icon: "calendar", text: "Schedule your shows", description: "Put dates on the calendar — everything else points at them", path: manage_shows_new_wizard_path },
+          { icon: "clipboard-list", text: "Run auditions", description: "Collect sign-ups, review, and build your cast", path: manage_signups_auditions_new_wizard_path },
+          { icon: "user-group", text: "Cast your shows", description: "Assign people to roles, show by show", path: manage_casting_path },
+          { icon: "user-plus", text: "Invite your people", description: "Bring in your performers and staff", path: manage_contacts_path }
         ] %>
 
   <% if @production_dashboards.any? %>

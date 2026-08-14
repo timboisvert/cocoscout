@@ -78,6 +78,12 @@ RSpec.describe "Intro guides", type: :request do
     expect(response.body).to include("How messages work")
   end
 
+  it "shows the signups guide on the sign-ups hub" do
+    get manage_signups_path
+    expect(response.body).to include('data-intro-guide="signups_intro"')
+    expect(response.body).to include("Which kind of sign-up do you need?")
+  end
+
   it "keeps guide state per user" do
     post manage_guide_dismiss_path("casting_intro")
 

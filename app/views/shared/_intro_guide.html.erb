@@ -11,10 +11,15 @@
                                    an embedded walkthrough video (video_url).
       actions         (optional) — array of hashes handed to shared/button
                                    (text:, path:, ...). First is pink, rest secondary.
+      cards           (optional) — array of { icon:, text:, description:, path: }
+                                   rendered as the boxed shared/module_actions
+                                   grid. Use instead of (or after) a step list
+                                   when the guide is a launchpad, not a how-to.
+      variant         (optional) — "standard" (default) or "welcome": bigger
+                                   coustard title on a soft pink wash, for the
+                                   home-page greeting.
       default_visible (optional, default true) — what users with no stored
-                                   state see. The home "what's next" panel passes
-                                   false and is activated when a production is
-                                   created.
+                                   state see.
 
     States (per user, users.dismissed_guides): visible -> the panel with a
     dismiss X; explicitly dismissed -> a tiny right-aligned "Show guide" link;
@@ -24,12 +29,23 @@
   title           = local_assigns.fetch(:title)
   body            = local_assigns.fetch(:body)
   actions         = local_assigns.fetch(:actions, [])
+  cards           = local_assigns.fetch(:cards, [])
+  variant         = local_assigns.fetch(:variant, "standard")
   default_visible = local_assigns.fetch(:default_visible, true)
+  welcome         = variant == "welcome"
+
+  panel_classes = if welcome
+    "mb-8 rounded-xl border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-white p-6 sm:p-8 shadow-sm"
+  else
+    "mb-6 rounded-lg border border-gray-200 border-l-4 border-l-pink-400 bg-white p-5 shadow-sm"
+  end
+  title_classes = welcome ? "text-2xl sm:text-3xl coustard-regular text-gray-900" : "text-lg font-semibold text-gray-900"
+  body_classes  = welcome ? "mt-3 text-base text-gray-600 max-w-3xl" : "mt-2 text-sm text-gray-600 max-w-3xl"
 %>
 <% if Current.user.guide_visible?(guide_key, default_visible: default_visible) %>
-  <div data-intro-guide="<%= guide_key %>" class="mb-6 rounded-lg border border-gray-200 border-l-4 border-l-pink-400 bg-white p-5 shadow-sm">
+  <div data-intro-guide="<%= guide_key %>" class="<%= panel_classes %>">
     <div class="flex items-start justify-between gap-4">
-      <h2 class="text-lg font-semibold text-gray-900"><%= title %></h2>
+      <h2 class="<%= title_classes %>"><%= title %></h2>
       <%= button_to manage_guide_dismiss_path(guide_key), method: :post,
             class: "flex-shrink-0 text-gray-400 hover:text-gray-600 cursor-pointer p-1 -m-1",
             title: "Dismiss this guide", "aria-label": "Dismiss this guide" do %>
@@ -38,9 +54,14 @@
         </svg>
       <% end %>
     </div>
-    <div class="mt-2 text-sm text-gray-600 max-w-3xl [&_p]:mb-2 [&_ol]:list-decimal [&_ol]:my-3 [&_ol]:pl-5 [&_ol]:space-y-1 [&_li]:pl-1">
+    <div class="<%= body_classes %> [&_p]:mb-2 [&_ol]:list-decimal [&_ol]:my-3 [&_ol]:pl-5 [&_ol]:space-y-1 [&_li]:pl-1">
       <%= body %>
     </div>
+    <% if cards.any? %>
+      <div class="mt-5">
+        <%= render "shared/module_actions", actions: cards %>
+      </div>
+    <% end %>
     <% if actions.any? %>
       <div class="mt-4 flex flex-wrap items-center gap-2">
         <% actions.each_with_index do |action, i| %>

@@ -73,7 +73,7 @@ RSpec.describe "Manage::OrgDocuments", type: :request do
 
     expect(response.body).to include("New document")
     expect(response.body).to include(manage_new_org_document_path)
-    # The hub explains what the section is for.
-    expect(response.body).to include("Everything your company needs to read")
+    # The intro guide (not a header blurb) explains what the section is for.
+    expect(response.body).to include("How documents work")
   end
 end

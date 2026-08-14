@@ -1,13 +1,6 @@
 <% content_for :title, "Courses" %>
 
 <%
-  courses_description = <<~HTML
-    <p>
-      This is where you run your classes and workshops — set them up, sell registrations
-      online, and get paid.
-    </p>
-  HTML
-
   courses_actions = [
     { icon: "clipboard-list", text: "Add a Course", description: "Start a new course, or add a run of an existing one", path: manage_course_wizard_start_path },
     { icon: "cog", text: "Course Settings", description: "Your bank and how payouts work", path: manage_course_settings_path }
@@ -19,7 +12,6 @@
 
   <%= render "shared/module_header",
     title: "Courses",
-    description: courses_description,
     actions: courses_actions
   %>
 

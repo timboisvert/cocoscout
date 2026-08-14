@@ -14,6 +14,7 @@ module Manage
       shows_intro
       contacts_intro
       messages_intro
+      signups_intro
     ].freeze
 
     def dismiss

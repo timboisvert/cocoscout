@@ -47,7 +47,7 @@ RSpec.describe "Producer setup", type: :request do
       expect(User.find_by(email_address: "producer@example.com").guide_active?(:production_next_steps)).to be(true)
 
       get manage_path
-      expect(response.body).to include("Here&#39;s what to do next")
+      expect(response.body).to include("Welcome to running your production on CocoScout")
     end
 
     it "hides the what's-next panel once dismissed, with a way back" do

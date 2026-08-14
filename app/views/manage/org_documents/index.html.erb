@@ -1,13 +1,6 @@
 <% content_for :title, "Documents" %>
 
 <%
-  documents_description = <<~HTML
-    <p>
-      Everything your company needs to read in one place — handbooks, house rules,
-      rehearsal notes, safety info.
-    </p>
-  HTML
-
   documents_actions = [
     { icon: "document-text", text: "New document", description: "Write something for your team", path: manage_new_org_document_path }
   ]
@@ -18,7 +11,6 @@
 
   <%= render "shared/module_header",
     title: "Documents",
-    description: documents_description,
     actions: documents_actions
   %>
 

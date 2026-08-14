@@ -8,12 +8,6 @@
     { icon: "user-group", text: "Talent Pool", description: "Manage who can be cast", path: manage_casting_talent_pools_path }
   ]
 
-  description = <<~HTML
-    <p>
-      This is your organization's casting hub — view and manage cast assignments across all productions.
-      From here, you can see upcoming and past shows, who's assigned to each role, and make changes on the fly.
-    </p>
-  HTML
 %>
 
 <div class="w-full" data-controller="linked-highlight">
@@ -21,7 +15,6 @@
 
   <%= render "shared/module_header",
     title: "Casting",
-    description: description,
     actions: casting_actions
   %>
 

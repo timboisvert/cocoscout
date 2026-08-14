@@ -6,12 +6,6 @@
     { icon: "clipboard-list", text: "Questionnaires", description: "Create and manage questionnaires", path: manage_contacts_questionnaires_path }
   ]
 
-  directory_description = <<~HTML
-    <p>
-      Your organization's contacts — performers, staff, and groups. Search, filter, and manage everyone
-      who's part of your productions.
-    </p>
-  HTML
 %>
 
 <div class="w-full">
@@ -19,7 +13,6 @@
 
   <%= render "shared/module_header",
     title: "Contacts",
-    description: directory_description,
     actions: directory_actions
   %>
 

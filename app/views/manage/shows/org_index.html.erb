@@ -6,12 +6,6 @@
     { icon: "clipboard-list", text: "Schedule Event", description: "Create a new show or event", path: manage_shows_new_wizard_path }
   ]
 
-  shows_description = <<~HTML
-    <p>
-      Manage all your shows and events across all productions. View upcoming performances, track
-      past events, and see cast assignments at a glance.
-    </p>
-  HTML
 %>
 
 <div class="w-full" data-turbo-cache="false">
@@ -19,7 +13,6 @@
 
   <%= render "shared/module_header",
     title: "Shows & Events",
-    description: shows_description,
     actions: shows_actions
   %>
 

@@ -1,16 +1,6 @@
 <% content_for :title, "Sign-ups" %>
 
 <%
-  description = <<~HTML
-    <p>
-      This is your organization's sign-ups hub — manage how people sign up for opportunities across all productions.
-    </p>
-    <p>
-      <strong>Forms</strong> let people claim spots or join a queue for events.
-      <strong>Auditions</strong> let you run casting — collect video submissions and schedule in-person audition slots.
-    </p>
-  HTML
-
   signup_actions = [
     { icon: "calendar", text: "Event Registrations", description: "Sign up for specific events", path: manage_signups_all_forms_path(filter: "registrations") },
     { icon: "queue-list", text: "Waitlists", description: "Not tied to specific lists", path: manage_signups_all_forms_path(filter: "waitlists") },
@@ -24,9 +14,29 @@
 
   <%= render "shared/module_header",
     title: "Sign-ups",
-    description: description,
     actions: signup_actions
   %>
+
+  <%
+    signups_guide_body = <<~HTML.html_safe
+      <p>Everything here is a way for people to put their name on something — they differ in what happens next:</p>
+      <ol>
+        <li><strong>Event registrations</strong> — a form for claiming spots at specific events, like performers signing up for a mic or a jam.</li>
+        <li><strong>Waitlists</strong> — a standing queue that isn't tied to any one event; you pull from it whenever a spot opens.</li>
+        <li><strong>In-person auditions</strong> — part of an audition cycle: people apply, you review, then schedule them into live audition sessions.</li>
+        <li><strong>Video auditions</strong> — the same cycle, but people submit a video instead of (or before) showing up in person.</li>
+      </ol>
+      <p>Rule of thumb: casting a show means an audition cycle; filling spots at an event means a sign-up form.</p>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "signups_intro",
+        title: "Which kind of sign-up do you need?",
+        body: signups_guide_body,
+        actions: [
+          { text: "Create a sign-up form", path: manage_signups_forms_new_wizard_path },
+          { text: "Create an audition cycle", path: manage_signups_auditions_new_wizard_path }
+        ] %>
 
   <div class="border-t border-gray-200 pt-6 mt-2">
     <%# Productions List %>
@@ -35,6 +45,18 @@
         <% @production_summaries.each do |summary| %>
           <%= render "manage/signups/org_partials/production_row", summary: summary %>
         <% end %>
+      </div>
+    <% elsif @productions.any? %>
+      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <p class="text-gray-600 mb-4">No sign-ups yet. Create a sign-up form or an audition cycle to get started.</p>
+        <div class="flex items-center justify-center gap-2">
+          <%= link_to manage_signups_forms_new_wizard_path do %>
+            <%= render "shared/button", text: "Create a sign-up form", variant: "primary", size: "small" %>
+          <% end %>
+          <%= link_to manage_signups_auditions_new_wizard_path do %>
+            <%= render "shared/button", text: "Create an audition cycle", variant: "secondary", size: "small" %>
+          <% end %>
+        </div>
       </div>
     <% else %>
       <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">

@@ -3,6 +3,7 @@
   <p class="text-gray-600 mb-6">Choose the location for your <%= @wizard_state[:event_type]&.titleize&.downcase || "event" %>.</p>
 
   <% location_spaces_map = @locations.each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } } %>
+  <div data-controller="location-modal" data-location-modal-event-type-value="<%= @wizard_state[:event_type]&.titleize&.downcase || "event" %>">
   <%= form_with url: manage_shows_wizard_save_location_path(@production), method: :post, local: true, data: { controller: "location-toggle", "location-toggle-spaces-value": location_spaces_map.to_json } do |form| %>
     <div class="mb-6">
       <div class="flex items-center gap-4 mb-4">
@@ -33,6 +34,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">Select Location</label>
         <select name="location_id" class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full"
                 data-location-toggle-target="locationSelect"
+                data-location-modal-target="locationSelect"
                 data-action="change->location-toggle#locationChanged">
           <option value="">Select a location</option>
           <% @locations.each do |location| %>
@@ -40,8 +42,8 @@
           <% end %>
         </select>
         <p class="text-sm text-gray-500 mt-2">
-          Don't see your location? You can add locations in
-          <%= link_to "Locations", manage_locations_path, class: "text-pink-500 hover:text-pink-600 underline" %>.
+          Don't see your location?
+          <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 hover:text-pink-600 underline cursor-pointer">Add a location</a>
         </p>
 
         <% current_spaces = location_spaces_map[@wizard_state[:location_id].presence&.to_i] || [] %>
@@ -81,4 +83,8 @@
       <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
+
+  <%# Outside the form_with so the modal's inputs never ride the wizard submit. %>
+  <%= render "manage/locations/add_location_modal" %>
+  </div>
 <% end %>

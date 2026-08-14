@@ -80,32 +80,7 @@
       </div>
 
       <%# Location creation modal %>
-      <div data-location-modal-target="modal" class="hidden fixed inset-0 z-50">
-        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" data-action="click->location-modal#closeModal"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Add Location</h3>
-              <p class="text-xs text-gray-500 mt-1">Create a new location for your organization.</p>
-            </div>
-            <div data-location-modal-target="errorContainer" class="hidden px-6 pt-4">
-              <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p class="text-sm text-red-600" data-location-modal-target="errorCount"></p>
-                <ul class="mt-1 text-sm text-red-500 list-disc list-inside" data-location-modal-target="errorList"></ul>
-              </div>
-            </div>
-            <div data-location-modal-target="form" data-form-url="<%= manage_locations_path %>">
-              <div class="px-6 py-4">
-                <%= render "manage/productions/location_form_fields" %>
-              </div>
-              <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
-                <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "location-modal#closeModal" } %>
-                <%= render "shared/button", text: "Create Location", variant: "primary", size: "medium", type: :button, data: { action: "click->location-modal#submitForm" } %>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <%= render "manage/locations/add_location_modal" %>
 
       <p class="text-sm font-medium text-gray-900 mb-2">Session dates & times</p>
       <p class="text-xs text-gray-500 mb-3">Add each class meeting. You can add single sessions or a recurring series. You can skip this and add sessions later.</p>
