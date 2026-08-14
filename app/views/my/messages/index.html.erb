@@ -53,11 +53,11 @@
           },
           (@user_productions.any? ? { separator: true } : nil),
           (@user_productions.any? ? {
-            partial: "shared/filters/dropdown_filter",
+            partial: "shared/filters/production_dropdown_filter",
             locals: {
               label: "Production",
               name: "production_id",
-              options: [{ value: "", text: "All Productions" }] + @user_productions.map { |p| { value: p.id.to_s, text: p.name } },
+              options: [{ value: "", text: "All Productions" }] + @user_productions.map { |p| { value: p.id.to_s, text: p.name, type: p.production_type } },
               selected: @production_filter.to_s,
               data_attributes: {
                 action: "change->filter-select#update",

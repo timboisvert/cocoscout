@@ -1,0 +1,102 @@
+<%
+# Production filter dropdown for orgs with long production lists: a wide,
+# multi-column panel instead of one tall scroll, with production-type chips
+# (In-house / Contracts / Courses) to narrow the list client-side.
+#
+# Same contract as shared/filters/dropdown_filter, plus an optional :type key
+# (the production_type) on each option — chips only render when the options
+# span more than one type. The "All Productions" option (blank value) stays
+# pinned above the columns.
+#
+# Parameters:
+#   label: String - Label for the filter (usually "Production")
+#   name: String - Param name (usually "production")
+#   options: Array - [{ value:, text:, type: }] — blank value = "all" row
+#   selected: String - Currently selected value
+#   data_attributes: Hash (optional) - Same keys dropdown_filter understands
+
+  selected_option = options.find { |o| o[:value].to_s == selected.to_s }
+  selected_text = selected_option ? selected_option[:text] : options.first&.dig(:text) || "Select"
+
+  all_option = options.find { |o| o[:value].to_s == "" }
+  production_options = options.reject { |o| o[:value].to_s == "" }
+
+  types_present = production_options.filter_map { |o| o[:type] }.uniq
+  type_labels = { "in_house" => "In-house", "third_party" => "Contracts", "course" => "Courses" }
+  show_type_chips = types_present.size > 1
+
+  build_url = lambda do |option|
+    url_params = {}
+    if data_attributes
+      param_name = data_attributes[:filter_select_param_value] || name
+      url_params[param_name.to_sym] = option[:value]
+      url_params[:filter] = data_attributes[:filter_select_filter_value] if data_attributes[:filter_select_filter_value]
+      url_params[:event_type] = data_attributes[:filter_select_event_type_value] if data_attributes[:filter_select_event_type_value]
+    end
+    url_for(url_params)
+  end
+%>
+<div class="flex items-center gap-2">
+  <span class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></span>
+  <div class="relative" data-controller="dropdown">
+    <button
+      type="button"
+      data-action="click->dropdown#toggle"
+      class="inline-flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white hover:bg-pink-600"
+    >
+      <span class="max-w-[200px] truncate"><%= selected_text %></span>
+      <svg class="w-4 h-4 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+
+    <div data-dropdown-target="menu"
+         data-controller="production-dropdown"
+         class="hidden absolute left-0 mt-1 w-[22rem] sm:w-[34rem] max-w-[90vw] p-2 bg-pink-500 rounded-lg shadow-lg z-50">
+      <% if show_type_chips %>
+        <div class="flex flex-wrap items-center gap-1.5 px-1 pb-2 border-b border-pink-400 mb-2">
+          <button type="button"
+                  data-production-dropdown-target="chip"
+                  data-production-dropdown-type-param=""
+                  data-action="click->production-dropdown#setType"
+                  class="px-2.5 py-1 rounded-full text-[11px] font-medium cursor-pointer transition hover:opacity-90 bg-white text-pink-600">
+            All types
+          </button>
+          <% types_present.each do |type| %>
+            <button type="button"
+                    data-production-dropdown-target="chip"
+                    data-production-dropdown-type-param="<%= type %>"
+                    data-action="click->production-dropdown#setType"
+                    class="px-2.5 py-1 rounded-full text-[11px] font-medium cursor-pointer transition hover:opacity-90 bg-pink-600 text-white">
+              <%= type_labels[type] || type.humanize %>
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if all_option %>
+        <%= link_to build_url.call(all_option),
+                data: { turbo_prefetch: false },
+                class: "block px-3 py-1.5 rounded text-xs font-semibold text-white hover:bg-pink-600 #{'bg-pink-600' if selected.to_s == ''}" do %>
+          <%= all_option[:text] %>
+        <% end %>
+      <% end %>
+
+      <div class="columns-1 sm:columns-2 lg:columns-3 gap-1 mt-1">
+        <% production_options.each do |option| %>
+          <% is_selected = option[:value].to_s == selected.to_s %>
+          <%= link_to build_url.call(option),
+                  data: { turbo_prefetch: false, production_dropdown_target: "row", type: option[:type] },
+                  class: "block break-inside-avoid px-3 py-1.5 rounded text-xs font-medium text-white truncate transition hover:bg-pink-600 #{'bg-pink-600' if is_selected}",
+                  title: option[:text] do %>
+            <%= option[:text] %>
+          <% end %>
+        <% end %>
+      </div>
+
+      <div data-production-dropdown-target="empty" style="display: none" class="px-3 py-2 text-xs text-pink-100">
+        No productions of this type.
+      </div>
+    </div>
+  </div>
+</div>

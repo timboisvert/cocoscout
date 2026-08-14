@@ -79,11 +79,11 @@
           },
           (@accessible_productions.count > 1 ? { separator: true } : nil),
           (@accessible_productions.count > 1 ? {
-            partial: "shared/filters/dropdown_filter",
+            partial: "shared/filters/production_dropdown_filter",
             locals: {
               label: "Production",
               name: "production_id",
-              options: [{ value: "", text: "All Productions" }] + @accessible_productions.map { |p| { value: p.id.to_s, text: p.name } },
+              options: [{ value: "", text: "All Productions" }] + @accessible_productions.map { |p| { value: p.id.to_s, text: p.name, type: p.production_type } },
               selected: @production_filter.to_s,
               data_attributes: {
                 action: "change->filter-select#update",
