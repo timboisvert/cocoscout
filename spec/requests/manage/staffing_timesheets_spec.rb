@@ -211,6 +211,15 @@ RSpec.describe "Manage::Staffing::Timesheets", type: :request do
       expect(entry.approved_by).to eq(owner)
     end
 
+    # The adjust modal opens from the review queue too — approving from there
+    # must land the manager back on the queue, not bounce to approved hours.
+    it "returns to the page the manager was working on" do
+      entry = create(:staff_time_entry, organization: org, person: person)
+      patch manage_reapprove_staffing_timesheet_path(entry),
+            headers: { "HTTP_REFERER" => manage_staffing_timesheets_url }
+      expect(response).to redirect_to(manage_staffing_timesheets_url)
+    end
+
     it "refuses to reapprove a paid entry" do
       entry = create(:staff_time_entry, :paid, organization: org, person: person)
       patch manage_reapprove_staffing_timesheet_path(entry)

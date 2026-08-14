@@ -130,13 +130,14 @@ module Manage
       end
 
       # Sign off again on an entry that was just edited (and thereby kicked back to
-      # pending). Full-page redirect so the approved-hours list reflects it.
+      # pending). The adjust modal opens from both the review queue and the
+      # approved-hours page, so land back wherever the manager was working.
       def reapprove
         entry = find_editable_entry
         return unless entry
 
         entry.update!(approved_at: Time.current, approved_by: Current.user)
-        redirect_to manage_approved_staffing_timesheets_path, notice: "Re-approved those hours."
+        redirect_back fallback_location: manage_approved_staffing_timesheets_path, notice: "Re-approved those hours."
       end
 
       # These hours were already settled outside CocoScout (e.g. a payroll check
