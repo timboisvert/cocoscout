@@ -340,7 +340,6 @@ Rails.application.routes.draw do
   # Talent-facing interface
   namespace :my do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
-    post  "/dismiss_onboarding",            to: "dashboard#dismiss_onboarding", as: "dismiss_onboarding"
 
     # Slim account screen for the mobile app. Routes /my/account → AccountsController#show.
     get   "/account",                       to: "accounts#show",            as: "account"
@@ -1628,9 +1627,6 @@ Rails.application.routes.draw do
 
   # Profile routes (top-level) - supports optional :person_id for multi-profile editing
   get    "/profile",         to: "profile#index",   as: "profile"
-  get    "/profile/welcome", to: "profile#welcome", as: "profile_welcome"
-  post   "/profile/dismiss_welcome", to: "profile#dismiss_welcome", as: "dismiss_profile_welcome"
-  post   "/profile/mark_welcomed", to: "profile#mark_welcomed", as: "mark_profile_welcomed"
   patch  "/profile", to: "profile#update"  # Fallback for requests without ID (uses default profile)
   patch  "/profile/visibility", to: "profile#update_visibility", as: "update_profile_visibility"
   patch  "/profile/headshots/:id/set_primary", to: "profile#set_primary_headshot", as: "set_primary_headshot"

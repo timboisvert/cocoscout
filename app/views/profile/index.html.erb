@@ -13,6 +13,25 @@
     <%= render partial: "shared/notice", locals: { notice: notice } %>
   </div>
 
+  <%# First-visit education for the profile, replacing the old full-page
+      welcome takeover. Dismissible, with a "Show guide" way back. %>
+  <%
+    profile_guide_body = <<~HTML.html_safe
+      <p>This profile is what producers see when they're casting, booking, and paying people:</p>
+      <ol>
+        <li><strong>Add headshots and a resume</strong> — make one photo your primary; that's your face across CocoScout.</li>
+        <li><strong>Show your work</strong> — link performance videos and reels, and list your skills.</li>
+        <li><strong>Control what's visible</strong> — visibility settings decide what's public, and your profile link is yours to share anywhere.</li>
+      </ol>
+      <p>Producers you work with always see the essentials; the rest is up to you.</p>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "profile_intro",
+        variant: "welcome",
+        title: "Welcome to your profile",
+        body: profile_guide_body %>
+
   <!-- Profile Card -->
   <div id="profile-card" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
     <div class="flex flex-col lg:flex-row">

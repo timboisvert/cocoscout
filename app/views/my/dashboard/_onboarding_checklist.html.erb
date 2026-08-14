@@ -1,5 +1,5 @@
 <% tasks = person.onboarding_tasks %>
-<% return if tasks.empty? || person.profile_welcomed_at.present? %>
+<% return if tasks.empty? || !Current.user.guide_visible?("profile_checklist") %>
 
 <%
   # Map task keys to their destination paths
@@ -17,7 +17,7 @@
       <%= render "shared/cocoscout_logo", size: :tiny %>
       <h3 class="text-base coustard-regular text-gray-900">Get started by completing your profile.</h3>
     </div>
-    <%= button_to my_dismiss_onboarding_path, method: :post, class: "text-gray-400 hover:text-gray-600 p-1 -mr-1", title: "Dismiss" do %>
+    <%= button_to guide_dismiss_path("profile_checklist"), method: :post, class: "text-gray-400 hover:text-gray-600 p-1 -mr-1", title: "Dismiss" do %>
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
       </svg>
