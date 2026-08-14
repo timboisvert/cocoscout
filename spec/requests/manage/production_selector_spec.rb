@@ -15,20 +15,24 @@ RSpec.describe "Production selector", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  it "offers search and the recently used productions first" do
+  it "offers search and recents, keeping the full list behind a button" do
     owner.update!(recent_production_ids: [ productions[3].id, productions[0].id ])
 
     get manage_shows_new_wizard_path
 
     expect(response.body).to include("Search productions")
     expect(response.body).to include("Recently used")
-    # Recent rows render before the full list.
+    expect(response.body).to include("Show all 7 productions")
+    # Recent rows render before the (collapsed) full list.
     expect(response.body.index("Recently used")).to be < response.body.index("All productions")
+    # The full list starts hidden — the whole point is not facing the wall.
+    expect(response.body).to match(/style="display: none" data-production-selector-target="allList"/)
   end
 
-  it "hides the recents section when there's nothing recent" do
+  it "hides the recents section when there's nothing recent, but still collapses the list" do
     get manage_shows_new_wizard_path
     expect(response.body).not_to include("Recently used")
+    expect(response.body).to include("Show all 7 productions")
   end
 
   it "records the production on production-scoped page views" do

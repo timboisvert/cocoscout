@@ -1,17 +1,32 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Type-to-filter for the production picker (shared/production_selector).
-// Rows are submit buttons, so choosing needs no JS — this controller only
-// narrows the "all productions" list as the user types and hides the
-// recently-used section (its entries are duplicates of filtered rows).
+// Drives the production picker (shared/production_selector). Long lists open
+// with only the search box and the recently-used section; the full list sits
+// behind the "Show all productions" button. Typing reveals the full list
+// (filtered per keystroke) and hides recents; clearing the search restores
+// whichever state the user was in. Rows are submit buttons, so choosing a
+// production needs no JS.
 export default class extends Controller {
-  static targets = ["search", "row", "recents", "empty"]
+  static targets = ["search", "row", "recents", "allList", "showAll", "empty"]
+
+  showAll() {
+    this.expanded = true
+    if (this.hasAllListTarget) this.allListTarget.style.display = ""
+    if (this.hasShowAllTarget) this.showAllTarget.style.display = "none"
+  }
 
   filter() {
     const query = this.searchTarget.value.trim().toLowerCase()
 
     if (this.hasRecentsTarget) {
       this.recentsTarget.style.display = query ? "none" : ""
+    }
+
+    // Searching reveals the full (filtered) list; clearing it collapses the
+    // list again unless the user had expanded it themselves.
+    if (!this.expanded) {
+      if (this.hasAllListTarget) this.allListTarget.style.display = query ? "" : "none"
+      if (this.hasShowAllTarget) this.showAllTarget.style.display = query ? "none" : ""
     }
 
     let visible = 0

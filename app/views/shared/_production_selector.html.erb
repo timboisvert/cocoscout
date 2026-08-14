@@ -1,8 +1,11 @@
 <%# Searchable production picker for wizard "which production?" steps.
-    Type-to-filter on every keystroke, with the user's recently used
-    productions (stored on users.recent_production_ids, so it follows them
-    across devices) offered up front. Clicking a production submits the
-    surrounding form immediately.
+    The point is NOT to face a wall of productions: long lists open with just
+    the search box and the user's recently used productions (stored on
+    users.recent_production_ids, so they follow the user across devices).
+    The full list stays behind a "Show all productions" button — typing in
+    the search also reveals it, filtered on every keystroke. Clicking a
+    production submits the surrounding form immediately. Short lists (5 or
+    fewer) skip the collapsing and just render.
 
     Locals:
     - productions: array of productions to offer
@@ -15,7 +18,8 @@
   productions_by_id = productions.index_by(&:id)
   recent_ids = Array(Current.user.recent_production_ids).map(&:to_i)
   recent_productions = recent_ids.filter_map { |id| productions_by_id[id] }.first(5)
-  show_recents = recent_productions.any? && productions.size > 5
+  long_list = productions.size > 5
+  show_recents = recent_productions.any? && long_list
 %>
 <%= form_with url: url, method: :post, data: { turbo: false, controller: "production-selector" } do |form| %>
   <div class="mb-4">
@@ -31,23 +35,33 @@
   <% if show_recents %>
     <div data-production-selector-target="recents">
       <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Recently used</div>
-      <div class="space-y-2 mb-5">
+      <div class="space-y-2">
         <% recent_productions.each do |production| %>
           <%= render "shared/production_selector_row", production: production, badge: badges[production.id] %>
         <% end %>
       </div>
-      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">All productions</div>
     </div>
   <% end %>
 
-  <div class="space-y-2">
-    <% productions.each do |production| %>
-      <%= render "shared/production_selector_row", production: production, badge: badges[production.id], filterable: true %>
-    <% end %>
-  </div>
+  <% if long_list %>
+    <div class="mt-5" data-production-selector-target="showAll">
+      <%= render "shared/button", text: "Show all #{productions.size} productions", variant: "secondary", size: "medium", type: :button,
+            data: { action: "click->production-selector#showAll" } %>
+    </div>
+  <% end %>
 
-  <div data-production-selector-target="empty" style="display: none" class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-    No productions match your search.
+  <div <% if long_list %>style="display: none" data-production-selector-target="allList"<% end %>>
+    <% if long_list %>
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-5 mb-2">All productions</div>
+    <% end %>
+    <div class="space-y-2">
+      <% productions.each do |production| %>
+        <%= render "shared/production_selector_row", production: production, badge: badges[production.id], filterable: true %>
+      <% end %>
+    </div>
+    <div data-production-selector-target="empty" style="display: none" class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+      No productions match your search.
+    </div>
   </div>
 
   <% if productions.empty? %>
