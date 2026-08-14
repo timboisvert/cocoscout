@@ -1103,7 +1103,7 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :shows do
+      resources :shows, except: [ :new, :create ] do
         collection do
           get :calendar
           get :recurring_series, to: "shows#recurring_series"

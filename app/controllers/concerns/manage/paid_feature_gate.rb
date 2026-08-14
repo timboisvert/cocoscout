@@ -186,36 +186,6 @@ module Manage
       section_manage_organization_path(Current.organization, section: "billing")
     end
 
-    # before_action for Show-creation actions: redirect free orgs that have hit
-    # the monthly event cap to billing. The Show model validation is the hard
-    # backstop; this just gives a friendlier redirect for the common paths.
-    # Reads the event's target date from the submitted params.
-    def enforce_free_event_limit
-      return if Current.organization.nil?
-      return if Current.organization.on_paid_plan?
-
-      target_date = event_limit_target_date
-      return if target_date.nil?
-      return unless Current.organization.at_event_limit?(target_date)
-
-      respond_to do |format|
-        format.json do
-          render json: { error: "event_limit_reached", limit: Organization::FREE_MONTHLY_EVENT_LIMIT },
-                 status: :payment_required
-        end
-        format.any { redirect_to org_billing_tab_path, notice: event_limit_notice(target_date) }
-      end
-    end
-
-    def event_limit_target_date
-      raw = params.dig(:show, :recurrence_start_datetime).presence || params.dig(:show, :date_and_time).presence
-      return nil if raw.blank?
-
-      Time.zone.parse(raw.to_s)
-    rescue ArgumentError
-      nil
-    end
-
     def event_limit_notice(target_date = nil)
       "You've reached the Producer plan limit of #{Organization::FREE_MONTHLY_EVENT_LIMIT} events " \
         "#{event_limit_month_phrase(target_date)}. Upgrade to Pro for unlimited events."
