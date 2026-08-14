@@ -70,6 +70,14 @@ RSpec.describe "My::Dashboard", type: :request do
       expect(response.body).to include("Show guide")
       expect(response.body).to include("Get started by completing your profile")
     end
+
+    it "dismisses the checklist through the guide system" do
+      post guide_dismiss_path("talent_welcome")
+      post guide_dismiss_path("profile_checklist")
+      get my_dashboard_path
+
+      expect(response.body).not_to include("Get started by completing your profile")
+    end
   end
 
   describe "open tasks summary card" do

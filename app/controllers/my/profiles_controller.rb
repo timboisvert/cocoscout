@@ -16,7 +16,6 @@ module My
       @profile = Person.new(profile_params)
       @profile.user = Current.user
       @profile.email ||= Current.user.email_address
-      @profile.profile_welcomed_at = Time.current  # Skip welcome screen for additional profiles
 
       if @profile.save
         set_default_if_requested

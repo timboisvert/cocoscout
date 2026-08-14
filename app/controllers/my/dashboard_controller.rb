@@ -395,10 +395,5 @@ module My
         @just_joined_organization = Organization.find_by(id: flash[:just_joined_organization_id])
       end
     end
-
-    def dismiss_onboarding
-      Current.user.people.active.update_all(profile_welcomed_at: Time.current)
-      redirect_to my_dashboard_path
-    end
   end
 end

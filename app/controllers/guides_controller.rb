@@ -17,6 +17,8 @@ class GuidesController < ApplicationController
     messages_intro
     signups_intro
     talent_welcome
+    profile_intro
+    profile_checklist
   ].freeze
 
   def dismiss

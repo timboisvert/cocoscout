@@ -2,42 +2,17 @@
 
 class ProfileController < ApplicationController
   before_action :set_person
-  layout "profile", except: %i[preview welcome]
-  before_action :hide_sidebar_on_welcome, only: [ :welcome ]
+  layout "profile", except: %i[preview]
 
   def index
-    # If @person is nil, set_person already issued a redirect
-    return if @person.nil?
-
-    # Redirect to welcome screen if this is their first time
-    return unless @person.profile_welcomed_at.nil?
-
-    redirect_to profile_welcome_path
-    nil
-
-    # Edit mode - show profile edit form with left sidebar
+    # If @person is nil, set_person already issued a redirect. The first-visit
+    # education is the profile_intro guide on the page itself (shared/_intro_guide).
   end
 
   # Show/edit a specific profile (when selected from dropdown)
   def show
     # @person is already set by set_person with the ID from params
-    # For additional profiles, skip the welcome screen - they've already been through onboarding
-    # Only redirect to welcome for the primary profile if they haven't seen it
     render :index
-  end
-
-  def welcome
-    # Show welcome screen (don't mark as welcomed until they proceed)
-  end
-
-  def dismiss_welcome
-    @person.update(profile_welcomed_at: Time.current)
-    redirect_to profile_path
-  end
-
-  def mark_welcomed
-    @person.update(profile_welcomed_at: Time.current)
-    head :ok
   end
 
   def update
@@ -348,10 +323,6 @@ class ProfileController < ApplicationController
         nil
       end
     end
-  end
-
-  def hide_sidebar_on_welcome
-    @hide_sidebar = true
   end
 
   def person_params
