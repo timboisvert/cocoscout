@@ -31,10 +31,10 @@
           <div class="flex gap-2 mb-4">
             <div class="flex-1">
               <%# Filter out question types that the current context's answer storage can't handle.
-                  Only Questionnaire stores file uploads (has_one_attached :file on QuestionnaireAnswer);
-                  Answer (audition requests) and sign-up form answers don't, so the file would silently vanish. %>
+                  Questionnaires and audition cycles store file uploads (has_one_attached :file on
+                  their answer models); sign-up form answers don't, so the file would silently vanish. %>
               <% allowed_types = QuestionTypes::Base.all_types
-                 unless @question.questionable.is_a?(Questionnaire)
+                 unless @question.questionable.is_a?(Questionnaire) || @question.questionable.is_a?(AuditionCycle)
                    allowed_types = allowed_types.reject { |t| t.key == "file_upload" }
                  end %>
               <%= form.label :question_type, "Question Type", class: "block text-sm font-medium text-gray-700 mb-2" %>

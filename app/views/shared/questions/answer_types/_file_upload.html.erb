@@ -1,6 +1,6 @@
-<%# Renders a file_upload-type answer.
-    QuestionnaireAnswer has has_one_attached :file and supports this fully.
-    Answer (audition request) does not yet — for those we fall back to text. %>
+<%# Renders a file_upload-type answer. QuestionnaireAnswer and Answer
+    (audition request) both attach files via QuestionFileUpload; the text
+    fallback covers older answers that only stored a value. %>
 <% if answer.respond_to?(:file) && answer.file.attached? %>
   <% if answer.respond_to?(:image?) && answer.image? %>
     <%= image_tag answer.file, class: "max-w-xs rounded-lg" %>

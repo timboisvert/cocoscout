@@ -104,14 +104,35 @@ module Manage
         @answers[id.to_s] = answer.value
       end
 
+      # File-upload questions post as file_upload[question_id]; replace (or
+      # create) the answer's attachment.
+      params[:file_upload]&.each do |id, file|
+        next if file.blank? || !file.respond_to?(:original_filename)
+
+        question = @questions.detect { |q| q.id.to_s == id.to_s && q.question_type == "file_upload" }
+        next unless question
+
+        answer = @audition_request.answers.find_or_initialize_by(question: question)
+        answer.file.attach(file)
+        answer.value = file.original_filename
+        answer.save!
+        @answers[question.id.to_s] = answer.value
+      end
+
       @audition_request.assign_attributes(audition_request_params) if params[:audition_request]
 
       # Validate required questions
       @missing_required_questions = []
       @questions.select(&:required).each do |question|
-        answer_value = @answers[question.id.to_s]
-        if answer_value.blank? || (answer_value.is_a?(Hash) && answer_value.values.all?(&:blank?))
-          @missing_required_questions << question
+        if question.question_type == "file_upload"
+          has_file = params.dig(:file_upload, question.id.to_s).present?
+          has_existing = @audition_request.answers.find_by(question: question)&.file&.attached?
+          @missing_required_questions << question unless has_file || has_existing
+        else
+          answer_value = @answers[question.id.to_s]
+          if answer_value.blank? || (answer_value.is_a?(Hash) && answer_value.values.all?(&:blank?))
+            @missing_required_questions << question
+          end
         end
       end
 

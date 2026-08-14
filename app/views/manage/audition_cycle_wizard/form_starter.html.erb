@@ -1,8 +1,6 @@
 <%
   form_starter_step = @wizard_state[:allow_in_person_auditions] ? 7 : 6
-  # Audition request answers don't support file uploads — keep that type out of the dropdown
-  # so users don't create questions whose submissions will silently vanish.
-  question_types = QuestionTypes::Base.registry.values.sort_by(&:sort_order).reject { |t| t.key == "file_upload" }
+  question_types = QuestionTypes::Base.registry.values.sort_by(&:sort_order)
   needs_options_keys = question_types.select { |t| t.needs_options? }.map(&:key)
 %>
 <%= render layout: "manage/audition_cycle_wizard/wizard_layout", locals: { current_step: form_starter_step, step_name: "Form" } do %>

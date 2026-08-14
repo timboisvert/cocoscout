@@ -49,6 +49,10 @@ class StorageKeyGeneratorService
         build_show_attachment_key(record, attachment_name, blob_key)
       when ActionText::RichText
         build_action_text_key(record, blob_key)
+      when Answer
+        build_audition_answer_key(record, blob_key)
+      when QuestionnaireAnswer
+        build_questionnaire_answer_key(record, blob_key)
       else
         # Generic fallback for other record types
         build_generic_key(record, attachment_name, blob_key)
@@ -98,6 +102,25 @@ class StorageKeyGeneratorService
       record_type = rich_text.record_type.underscore.pluralize
       record_id = rich_text.record_id
       "action_text/#{record_type}/#{record_id}/#{blob_key}"
+    end
+
+    # A file uploaded with an audition submission, filed under the cycle it
+    # was submitted to.
+    def build_audition_answer_key(answer, blob_key)
+      cycle = answer.audition_request&.audition_cycle
+      production = cycle&.production
+      return nil unless production
+
+      "organizations/#{production.organization_id}/productions/#{production.id}/audition_cycles/#{cycle.id}/requests/#{answer.audition_request_id}/answers/#{blob_key}"
+    end
+
+    # A file uploaded with a questionnaire response, filed under the org's
+    # questionnaire.
+    def build_questionnaire_answer_key(answer, blob_key)
+      questionnaire = answer.questionnaire_response&.questionnaire
+      return nil unless questionnaire
+
+      "organizations/#{questionnaire.organization_id}/questionnaires/#{questionnaire.id}/responses/#{answer.questionnaire_response_id}/answers/#{blob_key}"
     end
 
     def build_generic_key(record, attachment_name, blob_key)

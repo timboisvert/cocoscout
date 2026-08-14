@@ -1,27 +1,12 @@
 # frozen_string_literal: true
 
 class QuestionnaireAnswer < ApplicationRecord
+  include QuestionFileUpload
+
   belongs_to :questionnaire_response
   belongs_to :question
 
-  has_one_attached :file
-
   validates :question, presence: true
-  validate :validate_file_attachment
-
-  ALLOWED_AUDIO_TYPES = %w[audio/mpeg audio/wav audio/aac audio/ogg audio/mp4].freeze
-  ALLOWED_IMAGE_TYPES = %w[image/jpeg image/png image/gif image/webp].freeze
-  ALLOWED_FILE_TYPES = (ALLOWED_AUDIO_TYPES + ALLOWED_IMAGE_TYPES).freeze
-  MAX_FILE_SIZE = 25.megabytes
-
-  # Media type detection for attached files
-  def image?
-    file.attached? && file.content_type.in?(ALLOWED_IMAGE_TYPES)
-  end
-
-  def audio?
-    file.attached? && file.content_type.in?(ALLOWED_AUDIO_TYPES)
-  end
 
   # URL type detection for url question answers
   def youtube_url?
@@ -97,19 +82,5 @@ class QuestionnaireAnswer < ApplicationRecord
     return [ value ] unless type_class
 
     type_class.parse_answer_value(value)
-  end
-
-  private
-
-  def validate_file_attachment
-    return unless file.attached?
-
-    unless file.content_type.in?(ALLOWED_FILE_TYPES)
-      errors.add(:file, "must be an image (JPEG, PNG, GIF, WebP) or audio file (MP3, WAV, AAC, OGG, MP4)")
-    end
-
-    if file.byte_size > MAX_FILE_SIZE
-      errors.add(:file, "must be less than 25MB")
-    end
   end
 end

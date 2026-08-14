@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Answer < ApplicationRecord
+  include QuestionFileUpload
+
   belongs_to :question
   belongs_to :audition_request
 

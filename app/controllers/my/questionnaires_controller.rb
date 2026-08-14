@@ -211,17 +211,18 @@ module My
       elsif @questionnaire_response.valid?
         @questionnaire_response.save!
 
-        # Attach files for new responses (after save so answer records have IDs)
+        # Attach files for new responses (after save so answer records have IDs).
+        # File-only questions have no question[] entry, so their answer row may
+        # not exist yet — create it rather than dropping the upload.
         if existing_response.nil?
           params[:file_upload]&.each do |id, file|
             question_id = id.to_i
             next unless file.present? && questions_by_id[question_id]&.question_type == "file_upload"
 
-            answer = @questionnaire_response.questionnaire_answers.find_by(question_id: question_id)
-            if answer
-              answer.file.attach(file)
-              answer.update!(value: file.original_filename)
-            end
+            answer = @questionnaire_response.questionnaire_answers.find_by(question_id: question_id) ||
+                     @questionnaire_response.questionnaire_answers.create!(question: questions_by_id[question_id])
+            answer.file.attach(file)
+            answer.update!(value: file.original_filename)
           end
         end
 

@@ -133,6 +133,8 @@ module My
           @answers[id.to_s] = answer.value
         end
 
+        attach_uploaded_files
+
       else
 
         # It's a new request, so instantiate the objects
@@ -148,6 +150,8 @@ module My
           @answers[answer.question.id.to_s] = answer.value
         end
 
+        attach_uploaded_files
+
       end
 
       # Assign the submitted attributes to the audition request (video_url if present)
@@ -156,9 +160,17 @@ module My
       # Validate required questions
       @missing_required_questions = []
       @questions.select(&:required).each do |question|
-        answer_value = @answers[question.id.to_s]
-        if answer_value.blank? || (answer_value.is_a?(Hash) && answer_value.values.all?(&:blank?))
-          @missing_required_questions << question
+        if question.question_type == "file_upload"
+          # A file satisfies the requirement whether it arrived just now or on
+          # an earlier submission.
+          has_file = params.dig(:file_upload, question.id.to_s).present?
+          has_existing = @audition_request.answers.detect { |a| a.question_id == question.id }&.file&.attached?
+          @missing_required_questions << question unless has_file || has_existing
+        else
+          answer_value = @answers[question.id.to_s]
+          if answer_value.blank? || (answer_value.is_a?(Hash) && answer_value.values.all?(&:blank?))
+            @missing_required_questions << question
+          end
         end
       end
 
@@ -420,6 +432,26 @@ module My
 
     def audition_request_params
       params.require(:audition_request).permit(:video_url)
+    end
+
+    # File-upload questions post as file_upload[question_id] (there's no
+    # question[] entry for them), so they get their answer rows here. Attaching
+    # to a not-yet-saved answer is fine — the blob persists when the request
+    # (and its answers) save, and the answer's own validation vets type/size.
+    def attach_uploaded_files
+      params[:file_upload]&.each do |id, file|
+        next if file.blank? || !file.respond_to?(:original_filename)
+
+        question = @questions.detect { |q| q.id.to_s == id.to_s && q.question_type == "file_upload" }
+        next unless question
+
+        answer = @audition_request.answers.detect { |a| a.question_id == question.id } ||
+                 @audition_request.answers.build(question: question)
+        answer.file.attach(file)
+        answer.value = file.original_filename
+        answer.save! if answer.persisted?
+        @answers[question.id.to_s] = answer.value
+      end
     end
   end
 end

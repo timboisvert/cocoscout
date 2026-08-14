@@ -102,7 +102,7 @@
                                        (@audition_cycle.resume_required? && !entity.profile_resumes.exists?)
         %>
 
-        <%= form_with(model: @audition_request, url: my_submit_submit_audition_request_form_path(@audition_cycle.token), method: :post, data: { turbo: false }, class: "space-y-4") do |form| %>
+        <%= form_with(model: @audition_request, url: my_submit_submit_audition_request_form_path(@audition_cycle.token), method: :post, data: { turbo: false }, html: { multipart: true }, class: "space-y-4") do |form| %>
 
     <!-- Profile Section -->
     <div class="bg-white border border-slate-200 rounded-lg shadow-sm" data-audition-request-form-target="profileSection">
