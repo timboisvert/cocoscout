@@ -1,0 +1,63 @@
+<%# Searchable production picker for wizard "which production?" steps.
+    Type-to-filter on every keystroke, with the user's recently used
+    productions (stored on users.recent_production_ids, so it follows them
+    across devices) offered up front. Clicking a production submits the
+    surrounding form immediately.
+
+    Locals:
+    - productions: array of productions to offer
+    - url:         where the form posts (expects a production_id param)
+    - cancel_path: where the Cancel link goes
+    - badges:      optional hash of production_id => { text:, highlight: }
+                   rendered on the right of each row %>
+<%
+  badges ||= {}
+  productions_by_id = productions.index_by(&:id)
+  recent_ids = Array(Current.user.recent_production_ids).map(&:to_i)
+  recent_productions = recent_ids.filter_map { |id| productions_by_id[id] }.first(5)
+  show_recents = recent_productions.any? && productions.size > 5
+%>
+<%= form_with url: url, method: :post, data: { turbo: false, controller: "production-selector" } do |form| %>
+  <div class="mb-4">
+    <input type="text"
+           placeholder="Search productions…"
+           autocomplete="off"
+           autofocus
+           data-production-selector-target="search"
+           data-action="input->production-selector#filter"
+           class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+  </div>
+
+  <% if show_recents %>
+    <div data-production-selector-target="recents">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Recently used</div>
+      <div class="space-y-2 mb-5">
+        <% recent_productions.each do |production| %>
+          <%= render "shared/production_selector_row", production: production, badge: badges[production.id] %>
+        <% end %>
+      </div>
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">All productions</div>
+    </div>
+  <% end %>
+
+  <div class="space-y-2">
+    <% productions.each do |production| %>
+      <%= render "shared/production_selector_row", production: production, badge: badges[production.id], filterable: true %>
+    <% end %>
+  </div>
+
+  <div data-production-selector-target="empty" style="display: none" class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+    No productions match your search.
+  </div>
+
+  <% if productions.empty? %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <p class="text-gray-600">No productions found. Create a production first.</p>
+      <%= link_to "Create Production", manage_productions_wizard_path, class: "mt-2 inline-block text-pink-600 hover:text-pink-700" %>
+    </div>
+  <% end %>
+
+  <div class="mt-8">
+    <%= link_to "Cancel", cancel_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" %>
+  </div>
+<% end %>

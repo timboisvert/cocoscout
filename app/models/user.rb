@@ -385,6 +385,21 @@ class User < ApplicationRecord
     update!(dismissed_guides: dismissed_guides.merge(key.to_s => "active"))
   end
 
+  # How many productions the picker's "recently used" memory holds.
+  RECENT_PRODUCTIONS_LIMIT = 8
+
+  # Move a production to the front of this user's recently-used list. Called on
+  # every production-scoped page view, so it skips the write when the order
+  # wouldn't change and bypasses callbacks/updated_at.
+  def touch_recent_production(production_id)
+    production_id = production_id.to_i
+    ids = Array(recent_production_ids).map(&:to_i)
+    return if ids.first == production_id
+
+    ids = ([ production_id ] + (ids - [ production_id ])).first(RECENT_PRODUCTIONS_LIMIT)
+    update_column(:recent_production_ids, ids)
+  end
+
   private
 
   def password_complexity

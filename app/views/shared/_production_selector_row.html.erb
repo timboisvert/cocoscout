@@ -1,0 +1,18 @@
+<%# One clickable production in the production selector. Clicking submits the
+    surrounding form with this production_id. Rows in the "all" list carry
+    filterable: true so the search box can hide them (recents rows stay put —
+    their whole section hides while searching).
+    Locals: production, badge ({ text:, highlight: } or nil), filterable %>
+<%
+  filterable = local_assigns.fetch(:filterable, false)
+%>
+<button type="submit" name="production_id" value="<%= production.id %>"
+        <% if filterable %>data-production-selector-target="row" data-name="<%= production.name.downcase %>"<% end %>
+        class="w-full flex items-center justify-between gap-4 cursor-pointer px-4 py-3 rounded-lg border-2 text-left transition-colors border-gray-200 bg-gray-50 hover:border-pink-400 hover:bg-pink-50">
+  <p class="font-medium text-gray-900 truncate min-w-0"><%= production.name %></p>
+  <% if badge %>
+    <span class="text-sm flex-shrink-0 whitespace-nowrap <%= badge[:highlight] ? 'text-pink-600 font-medium' : 'text-gray-400' %>">
+      <%= badge[:text] %>
+    </span>
+  <% end %>
+</button>

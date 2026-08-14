@@ -40,39 +40,21 @@
     <!-- Step Content -->
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
       <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Which production is this audition for?</h2>
-      <p class="text-gray-600 mb-6">Select the production this audition cycle will belong to.</p>
+      <p class="text-gray-600 mb-6">Search for the production this audition cycle belongs to, or pick one you've used recently.</p>
 
-      <%= form_with url: manage_signups_auditions_save_production_selection_path, method: :post, data: { turbo: false, controller: "option-select", "option-select-selected-value": "" } do |form| %>
-        <div class="space-y-2">
-          <% @productions.each do |production| %>
-            <% active_count = production.audition_cycles.where(active: true).count %>
-            <div class="flex items-center justify-between gap-4 cursor-pointer px-4 py-3 rounded-lg border-2 transition-colors border-gray-200 bg-gray-50 hover:border-pink-300"
-                 data-option-select-target="option"
-                 data-value="<%= production.id %>"
-                 data-action="click->option-select#select">
-              <input type="radio" name="production_id" value="<%= production.id %>"
-                     class="sr-only"
-                     data-option-select-target="input">
-              <p class="font-medium text-gray-900 truncate min-w-0"><%= production.name %></p>
-              <span class="text-sm flex-shrink-0 whitespace-nowrap <%= active_count.positive? ? 'text-pink-600 font-medium' : 'text-gray-400' %>">
-                <%= active_count %> active
-              </span>
-            </div>
-          <% end %>
-        </div>
-
-        <% if @productions.empty? %>
-          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-            <p class="text-gray-600">No productions found. Create a production first.</p>
-            <%= link_to "Create Production", manage_productions_wizard_path, class: "mt-2 inline-block text-pink-600 hover:text-pink-700" %>
-          </div>
-        <% end %>
-
-        <div class="mt-8 flex justify-between">
-          <%= link_to "Cancel", manage_signups_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" %>
-          <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
-        </div>
-      <% end %>
+      <%
+        active_counts = AuditionCycle.where(production_id: @productions.map(&:id), active: true)
+                                     .group(:production_id).count
+        badges = @productions.index_by(&:id).transform_values do |p|
+          count = active_counts[p.id].to_i
+          { text: "#{count} active", highlight: count.positive? }
+        end
+      %>
+      <%= render "shared/production_selector",
+            productions: @productions,
+            url: manage_signups_auditions_save_production_selection_path,
+            cancel_path: manage_signups_path,
+            badges: badges %>
     </div>
   </div>
 </div>

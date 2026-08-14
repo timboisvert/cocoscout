@@ -416,6 +416,9 @@ module Manage
       Current.production = production
       session[:current_production_id_for_organization] ||= {}
       session[:current_production_id_for_organization]["#{Current.user.id}_#{Current.organization.id}"] = production.id
+
+      # Feed the production picker's cross-device "recently used" list.
+      Current.user.touch_recent_production(production.id)
     end
   end
 end
