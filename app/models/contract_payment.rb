@@ -141,6 +141,47 @@ class ContractPayment < ApplicationRecord
     update!(status: :pending, paid_date: nil, payment_method: nil, reference_number: nil)
   end
 
+  # --- Paying them outside CocoScout -----------------------------------------
+  # The payout run is the normal way money we owe reaches a contractor, but it
+  # can only reach someone who's connected a bank. When they haven't, the money
+  # still has to get to them somehow — Zelle, a check, cash — and that has to be
+  # recordable here or the payment stays "due" forever.
+
+  # Ways a manager may say they paid someone by hand. Mirrors the show payout
+  # rail's manual methods; the org still has to turn each one on in Money
+  # settings (Organization#offline_payout_method_choices) before it's offered.
+  OFFLINE_PAYOUT_METHODS = %w[cash check zelle venmo other].freeze
+
+  # Money we handed them outside CocoScout. Nothing posts to the ledger: an
+  # outgoing contract payment only accrues a balance when it joins a run (that's
+  # where ContractorPayoutRunService posts the `earning` entry), so one settled
+  # by hand has nothing to offset. Services this contract meant to net out of
+  # the payment settle here too — they were waiting on a payout run that is now
+  # never coming, and leaving them pending would quietly cost the org the fee.
+  def pay_offline!(method:, paid_on: Date.current, reference: nil, deductions: [])
+    transaction do
+      deductions.each do |charge|
+        charge.mark_paid_via_deduction!(
+          reference: "Netted out of #{description.presence || 'settlement'} paid #{paid_on.strftime('%b %-d, %Y')}"
+        )
+      end
+      update!(status: :paid, paid_date: paid_on, payment_method: method, reference_number: reference)
+    end
+  end
+
+  # Paid by hand rather than through a payout run or a pay link.
+  def paid_offline?
+    status_paid? && payment_method.in?(OFFLINE_PAYOUT_METHODS)
+  end
+
+  # How the money moved, for the paid badge. Nil for methods that speak for
+  # themselves (a payout run, a pay link).
+  def offline_payment_method_label
+    return nil unless paid_offline?
+
+    payment_method == "other" ? "Another way" : payment_method.titleize
+  end
+
   # Mark as paid
   def mark_paid!(paid_on: Date.current, method: nil, reference: nil, amount: nil)
     attrs = {

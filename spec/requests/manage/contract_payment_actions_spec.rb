@@ -2,9 +2,11 @@
 
 require "rails_helper"
 
-# Phase 4 of the contracts redesign: money we owe leaves only through the
-# contractor payout run (Stripe, to their bank). Nothing in the contract UI
-# offers Venmo or Zelle, and outgoing payments can't be marked paid by hand.
+# Phase 4 of the contracts redesign: money we owe leaves through the contractor
+# payout run (Stripe, to their bank) whenever it can. The one exception is a
+# contractor a run can't reach — no connected bank — who has to be paid by hand;
+# there the org's own offline methods (Money settings) are offered, and only
+# there.
 RSpec.describe "Manage contract payment actions", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
@@ -245,6 +247,118 @@ RSpec.describe "Manage contract payment actions", type: :request do
       patch manage_contract_settings_payment_methods_path, params: { offline_payment_methods: [ "bank_transfer" ] }
 
       expect(org.reload.default_contract_payment_methods).to eq(%w[online bank_transfer])
+    end
+  end
+
+  # Paying someone who never connected a bank: the run can't reach them, so the
+  # money goes out by hand and has to be recordable, or the payment stays due
+  # forever.
+  describe "POST pay_offline" do
+    before { org.update!(enabled_offline_payout_methods: %w[zelle check]) }
+
+    let(:contract) { contract_for(create(:person)) }
+    let(:payment) do
+      create(:contract_payment, contract: contract, direction: "outgoing", description: "Revenue Share - Event 6",
+                                status: "pending", amount: 40, amount_tbd: false, due_date: Date.current)
+    end
+
+    it "offers it on the row for a contractor with no bank" do
+      payment
+      get manage_contract_path(contract)
+
+      expect(response.body).to include("Needs bank")
+      expect(response.body).to include("Paid another way")
+      expect(response.body).to include("Zelle")
+    end
+
+    it "stays off the row for a contractor who can be paid on a run" do
+      payable = contract_for(payable_person)
+      create(:contract_payment, contract: payable, direction: "outgoing",
+                                status: "pending", amount: 40, amount_tbd: false, due_date: Date.current)
+
+      get manage_contract_path(payable)
+
+      expect(response.body).to include("Add to payout run")
+      expect(response.body).not_to include("Paid another way")
+    end
+
+    it "stays off the row when the org hasn't turned on any offline method" do
+      org.update!(enabled_offline_payout_methods: [])
+      payment
+      get manage_contract_path(contract)
+
+      expect(response.body).to include("Needs bank")
+      expect(response.body).not_to include("Paid another way")
+    end
+
+    it "records the payment paid, with no ledger entry and no payout run" do
+      expect {
+        post pay_offline_manage_contract_contract_payment_path(contract, payment),
+             params: { payment_method: "zelle", paid_date: Date.current.to_s, payment_notes: "Zelle #4471" }
+      }.not_to change(PayoutLedgerEntry, :count)
+
+      expect(payment.reload).to be_status_paid
+      expect(payment.payment_method).to eq("zelle")
+      expect(payment.reference_number).to eq("Zelle #4471")
+      expect(payment).to be_paid_offline
+      expect(payment.payout_contribution).to be_nil
+      expect(flash[:notice]).to include("$40.00")
+    end
+
+    it "refuses a method the org doesn't pay with" do
+      post pay_offline_manage_contract_contract_payment_path(contract, payment),
+           params: { payment_method: "venmo", paid_date: Date.current.to_s }
+
+      expect(payment.reload).to be_status_pending
+      expect(flash[:alert]).to include("doesn't pay people by venmo")
+    end
+
+    it "refuses money they owe us" do
+      incoming = create(:contract_payment, contract: contract, direction: "incoming",
+                                           status: "pending", amount: 40, amount_tbd: false, due_date: Date.current)
+
+      post pay_offline_manage_contract_contract_payment_path(contract, incoming),
+           params: { payment_method: "zelle" }
+
+      expect(incoming.reload).to be_status_pending
+      expect(flash[:alert]).to include("Collect page")
+    end
+
+    it "refuses a payment with no amount set yet" do
+      tbd = create(:contract_payment, contract: contract, direction: "outgoing",
+                                      status: "pending", amount: 0, amount_tbd: true, due_date: Date.current)
+
+      post pay_offline_manage_contract_contract_payment_path(contract, tbd), params: { payment_method: "zelle" }
+
+      expect(tbd.reload).to be_status_pending
+      expect(flash[:alert]).to include("Set an amount")
+    end
+
+    it "settles the services that were waiting to net out of it" do
+      payment.update!(amount: 257.50, due_date: Date.new(2026, 8, 9))
+      service = create(:contract_payment, contract: contract, direction: "incoming", description: "Booth Tech",
+                                          status: "pending", amount: 50, amount_tbd: false,
+                                          settlement_method: "payout_deduction", due_date: Date.new(2026, 8, 9))
+
+      post pay_offline_manage_contract_contract_payment_path(contract, payment),
+           params: { payment_method: "zelle", paid_date: Date.new(2026, 8, 9).to_s }
+
+      expect(payment.reload).to be_status_paid
+      expect(service.reload).to be_status_paid
+      expect(service.payment_method).to eq("payout_deduction")
+      # What actually left the org is the share net of the service.
+      expect(flash[:notice]).to include("$207.50")
+    end
+
+    it "refuses when the services come to more than the payment" do
+      create(:contract_payment, contract: contract, direction: "incoming", description: "Booth Tech",
+                                status: "pending", amount: 60, amount_tbd: false,
+                                settlement_method: "payout_deduction", due_date: payment.due_date)
+
+      post pay_offline_manage_contract_contract_payment_path(contract, payment), params: { payment_method: "zelle" }
+
+      expect(payment.reload).to be_status_pending
+      expect(flash[:alert]).to include("nothing to hand over")
     end
   end
 

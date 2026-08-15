@@ -33,6 +33,21 @@
   payable = contractor_person&.can_receive_payouts?
   # Money may only be recorded by hand in a way this contract actually allows.
   offline_allowed = contract.offline_payments_allowed?
+  # Paying THEM by hand (Zelle/check/cash) — for the contractor who never
+  # connected a bank, which is exactly who a payout run can't reach. Offered
+  # only for the ways the org said it pays people, in Money settings, and only
+  # when there's something left to hand over after services are netted out.
+  offline_pay_methods = Current.organization.offline_payout_method_choices
+  # Only charges still waiting to be netted — an already-deducted one took its
+  # cut long ago (matches Manage::ContractPaymentsController#deductible_services).
+  pending_deductions = deductions.select { |d| d.status_pending? && d.deduct_from_payout? }
+  pending_deduction_total = pending_deductions.sum { |d| d.amount.to_f }
+  net_to_hand_over = payment.amount.to_f - pending_deduction_total
+  offline_pay_id = "pay-offline-#{payment.id}"
+  # Deliberately only for people a payout run can't reach: if they've connected a
+  # bank, the run is the way (same rule as the show payout page).
+  can_pay_offline = !is_incoming && payment.status_pending? && !in_run && amount_set &&
+    !payable && net_to_hand_over.positive? && offline_pay_methods.any?
   # Ticket-linked amounts land on their own once show financials are in.
   awaits_financials = payment.amount_tbd? &&
     (payment.revenue_share? || contract.revenue_share? || contract.ticket_revenue_minus_fee?)
@@ -145,7 +160,7 @@
         <div class="flex items-center gap-2">
           <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
             <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
-            Paid<%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %>
+            Paid<%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %>
           </span>
           <%# Amounts settled through a payout run are fixed by the transfer. %>
           <% if show_actions && !in_run %>
@@ -232,17 +247,35 @@
                   url: add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
                   method: :post %>
           <% else %>
-            <%= link_to contractor ? manage_contractor_path(contractor) : "#",
-                  class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors",
-                  title: "They need to connect a bank account before you can pay them." do %>
-              Needs bank
-            <% end %>
+            <%# No connected bank, so no payout run can reach them — which is
+                exactly when the money goes out by hand. Record that here; the
+                badge still links to setting them up properly. %>
+            <div class="flex items-center gap-1.5">
+              <%= link_to contractor ? manage_contractor_path(contractor) : "#",
+                    class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors",
+                    title: "They need to connect a bank account before a payout run can pay them." do %>
+                Needs bank
+              <% end %>
+              <% if can_pay_offline %>
+                <%= render "shared/button", text: "Paid another way", variant: "outline-pink", size: "xs",
+                      icon: "check-circle", type: :button,
+                      title: "Record money you sent them outside CocoScout — Zelle, a check, cash.",
+                      data: { controller: "modal", action: "click->modal#open", modal_id: offline_pay_id } %>
+              <% end %>
+            </div>
           <% end %>
         </div>
       <% end %>
     </div>
   </div>
 </div>
+
+<%# Money we sent them by hand, for a payment no payout run can settle %>
+<% if show_actions && can_pay_offline %>
+  <%= render "manage/contracts/offline_pay_modal", id: offline_pay_id, payment: payment,
+        contract: contract, methods: offline_pay_methods, net_amount: net_to_hand_over,
+        deductions: pending_deductions %>
+<% end %>
 
 <%# Compute suggested amount for TBD payments (used by both modals) %>
 <% suggestion = payment.amount_tbd? ? payment.suggested_amount_from_financials : nil %>

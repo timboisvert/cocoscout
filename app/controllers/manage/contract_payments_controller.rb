@@ -3,7 +3,7 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid add_to_payout_run settlement]
+    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run settlement]
 
     def create
       @payment = @contract.contract_payments.build(payment_params)
@@ -57,6 +57,59 @@ module Manage
       redirect_back fallback_location: manage_contract_path(@contract), notice: "Payment recorded."
     end
 
+    # Records money we paid them outside CocoScout — Zelle, a check, cash. The
+    # payout run is the normal rail, but it only reaches someone who's connected
+    # a bank, and the people who haven't are exactly the ones who get paid by
+    # hand. The org has to have turned the method on in Money settings first.
+    def pay_offline
+      unless @payment.direction_outgoing?
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "Money they owe you is recorded from its Collect page, not here."
+      end
+
+      unless @payment.status_pending?
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "This payment is already settled."
+      end
+
+      if @payment.in_payout_run?
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "This payment is in a payout run. Take it off the run first, then record how you paid it."
+      end
+
+      if @payment.amount_tbd? || !@payment.amount.to_f.positive?
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "Set an amount on this payment before recording how you paid it."
+      end
+
+      method = params[:payment_method].to_s
+      choices = Current.organization.offline_payout_method_choices
+      unless method.in?(choices)
+        alert = choices.any? ?
+          "#{Current.organization.name} doesn't pay people by #{method.humanize.downcase}." :
+          "Turn on the ways you pay people outside CocoScout in Money settings first."
+        return redirect_back fallback_location: manage_contract_path(@contract), alert: alert
+      end
+
+      deductions = deductible_services(@payment)
+      net = @payment.amount.to_f - deductions.sum { |d| d.amount.to_f }
+      if net <= 0
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "Their services come to at least as much as this payment, so there's nothing to hand over. Settle it through a payout run, which records the offset."
+      end
+
+      @payment.pay_offline!(
+        method: method,
+        paid_on: params[:paid_date].present? ? Date.parse(params[:paid_date]) : Date.current,
+        reference: params[:payment_notes].presence,
+        deductions: deductions
+      )
+
+      notice = "Recorded #{helpers.number_to_currency(net)} paid to #{@contract.contractor_name}."
+      notice += " #{helpers.pluralize(deductions.size, 'service charge')} netted out of it." if deductions.any?
+      redirect_back fallback_location: manage_contract_path(@contract), notice: notice
+    end
+
     # Add this outgoing payment to the org's open contractor payout run, to be
     # paid to the contractor's bank via Stripe (same rail as performers/staff).
     def add_to_payout_run
@@ -93,6 +146,14 @@ module Manage
     end
 
     private
+
+    # The service charges this payment is shown netting out of on the contract
+    # page — the same grouping the manager saw, so what settles matches what the
+    # row said would settle (see Contract#payment_schedule_groups).
+    def deductible_services(payment)
+      group = @contract.payment_schedule_groups.detect { |g| g[:payment].id == payment.id }
+      Array(group && group[:deductions]).select { |c| c.status_pending? && c.deduct_from_payout? }
+    end
 
     def set_contract
       @contract = Current.organization.contracts.find(params[:contract_id])
