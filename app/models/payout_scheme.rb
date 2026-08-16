@@ -149,11 +149,12 @@ class PayoutScheme < ApplicationRecord
         allocation: [],
         distribution: {
           method: "per_act",
-          act_mode: "tiers",
-          tiers: [
-            { acts: 1, amount: 25.0 },
-            { acts: 2, amount: 50.0 }
-          ]
+          act_mode: "schedule",
+          act_rates: [
+            { act: 1, amount: 75.0 },
+            { act: 2, amount: 50.0 }
+          ],
+          additional_act_rate: 50.0
         },
         performer_overrides: {}
       }
@@ -322,15 +323,19 @@ class PayoutScheme < ApplicationRecord
   # --- Act-based pay -------------------------------------------------------
   #
   # Some shows pay by how many acts a person did on the night rather than by
-  # ticket sales or an even split. Two shapes, both under the "per_act" method:
+  # ticket sales or an even split. Rooms word that three different ways, so
+  # "per_act" carries an act_mode saying which one this scheme means:
   #
-  #   simple — a flat rate per act ($25/act, so two acts pays $50)
-  #   tiers  — a table of "N or more acts pays $X" rows, which is how most
-  #            rooms actually word it (1 act → $25, 2+ acts → $50)
+  #   simple   — every act is worth the same ($25/act, so two acts pays $50)
+  #   schedule — each act is worth its own amount and they add up: the first
+  #              act pays $75, the second $50, and every act after that pays
+  #              the "additional" rate. Two acts pays $125.
+  #   tiers    — the act count picks one total for the night, it doesn't add
+  #              up: 1 act pays $25, 2 or more pays $50.
   #
   # The act counts themselves aren't part of the scheme — they're entered per
   # show at calculation time and stored on ShowPayout#act_counts.
-  ACT_MODES = %w[simple tiers].freeze
+  ACT_MODES = %w[simple schedule tiers].freeze
 
   def act_based?
     distribution_method == "per_act"
@@ -344,15 +349,20 @@ class PayoutScheme < ApplicationRecord
     count = act_count.to_i
     return 0.0 if count <= 0
 
-    if distribution["act_mode"].to_s == "simple"
+    case distribution["act_mode"].to_s
+    when "simple"
       (distribution["per_act_rate"].to_f * count).round(2)
+    when "schedule"
+      rates = act_rates(distribution)
+      tail = additional_act_rate(distribution)
+      (1..count).sum { |n| rates[n - 1] ? rates[n - 1]["amount"].to_f : tail }.round(2)
     else
       tier = act_tiers(distribution).select { |t| t["acts"].to_i <= count }.last
       tier ? tier["amount"].to_f.round(2) : 0.0
     end
   end
 
-  # Tier rows, cleaned up and sorted by act count ascending.
+  # Tier rows ("this many acts pays this total"), sorted by act count ascending.
   def self.act_tiers(distribution)
     tiers = (distribution || {}).deep_stringify_keys["tiers"]
     Array(tiers)
@@ -361,24 +371,66 @@ class PayoutScheme < ApplicationRecord
       .sort_by { |t| t["acts"].to_i }
   end
 
-  def act_tiers
-    self.class.act_tiers(distribution_config)
+  # Schedule rows ("the Nth act is worth this much"), in act order. The rows are
+  # positional, so a bare list of amounts is accepted and numbered by position.
+  def self.act_rates(distribution)
+    rows = (distribution || {}).deep_stringify_keys["act_rates"]
+    Array(rows)
+      .each_with_index
+      .map do |row, index|
+        row = { "amount" => row } unless row.is_a?(Hash)
+        { "act" => (row["act"].presence || index + 1).to_i, "amount" => row["amount"].to_f }
+      end
+      .sort_by { |row| row["act"] }
   end
 
-  # "1 act $25, 2+ acts $50" / "$25.00 per act"
-  def act_rules_description
-    if distribution_config["act_mode"].to_s == "simple"
-      "$#{'%.2f' % distribution_config['per_act_rate'].to_f} per act"
+  # What every act past the end of the schedule is worth. Blank means those
+  # acts add nothing, which is a real choice ("we only pay for two").
+  def self.additional_act_rate(distribution)
+    (distribution || {}).deep_stringify_keys["additional_act_rate"].to_f
+  end
+
+  # "1st act $75.00, 2nd act $50.00, then $50.00 each" / "1 act $25.00, 2+ acts
+  # $50.00" / "$25.00 per act"
+  def self.act_rules_description(distribution)
+    distribution = (distribution || {}).deep_stringify_keys
+
+    case distribution["act_mode"].to_s
+    when "simple"
+      "#{act_money(distribution['per_act_rate'])} per act"
+    when "schedule"
+      rows = act_rates(distribution)
+      return "No act rates set" if rows.empty?
+
+      parts = rows.map { |row| "#{row['act'].ordinalize} act #{act_money(row['amount'])}" }
+      parts << "then #{act_money(distribution['additional_act_rate'])} each" if distribution["additional_act_rate"].present?
+      parts.join(", ")
     else
-      rows = act_tiers
+      rows = act_tiers(distribution)
       return "No act tiers set" if rows.empty?
 
       rows.each_with_index.map do |tier, index|
         acts = tier["acts"].to_i
         label = index == rows.length - 1 ? "#{acts}+ acts" : "#{acts} #{'act'.pluralize(acts)}"
-        "#{label} $#{'%.2f' % tier['amount'].to_f}"
+        "#{label} #{act_money(tier['amount'])}"
       end.join(", ")
     end
+  end
+
+  def self.act_money(amount)
+    "$#{'%.2f' % amount.to_f}"
+  end
+
+  def act_tiers
+    self.class.act_tiers(distribution_config)
+  end
+
+  def act_rates
+    self.class.act_rates(distribution_config)
+  end
+
+  def act_rules_description
+    self.class.act_rules_description(distribution_config)
   end
 
   # Human-readable summary of rules

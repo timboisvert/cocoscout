@@ -570,13 +570,7 @@ class PayoutCalculator
   end
 
   def act_rules_label(distribution)
-    if distribution["act_mode"].to_s == "simple"
-      "#{format_currency(distribution['per_act_rate'].to_f)} per act"
-    else
-      PayoutScheme.act_tiers(distribution)
-                  .map { |t| "#{t['acts']}+ acts #{format_currency(t['amount'].to_f)}" }
-                  .join(", ")
-    end
+    PayoutScheme.act_rules_description(distribution)
   end
 
   def distribute_no_pay(performers, breakdown)

@@ -204,11 +204,22 @@ module Manage
       when "flat_fee"
         distribution["flat_amount"] = distribution_params[:flat_amount]&.to_f || 0
       when "per_act"
-        act_mode = distribution_params[:act_mode].to_s == "simple" ? "simple" : "tiers"
+        act_mode = distribution_params[:act_mode].to_s
+        act_mode = "schedule" unless PayoutScheme::ACT_MODES.include?(act_mode)
         distribution["act_mode"] = act_mode
 
-        if act_mode == "simple"
+        case act_mode
+        when "simple"
           distribution["per_act_rate"] = distribution_params[:per_act_rate]&.to_f || 0
+        when "schedule"
+          # What each act is worth, in order — the rows are positional, so the
+          # first amount is the first act's rate. Plus what every act past the
+          # end of the list is worth (blank means those acts pay nothing).
+          distribution["act_rates"] = Array(distribution_params[:act_rates])
+            .each_with_index
+            .map { |amount, index| { "act" => index + 1, "amount" => amount.to_f } }
+          distribution["additional_act_rate"] =
+            distribution_params[:additional_act_rate].presence&.to_f
         else
           # Each row is "this many acts pays this much"; blank/zero rows are dropped
           # and the table is stored sorted so lookups can walk it in order.

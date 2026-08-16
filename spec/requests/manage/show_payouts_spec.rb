@@ -124,6 +124,33 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
       expect(payout.line_items.find_by(payee: performer).amount.to_f).to eq(50.0)
     end
 
+    context "when each act has its own rate" do
+      before do
+        scheme.update!(rules: {
+          "distribution" => {
+            "method" => "per_act",
+            "act_mode" => "schedule",
+            "act_rates" => [ { "act" => 1, "amount" => 75.0 }, { "act" => 2, "amount" => 50.0 } ],
+            "additional_act_rate" => 25.0
+          }
+        })
+      end
+
+      it "spells the schedule out in the modal" do
+        get manage_money_show_payout_path(show, enter_acts: 1)
+
+        expect(response.body).to include("1st act $75.00, 2nd act $50.00, then $25.00 each")
+        expect(response.body).to include("Each act is paid at its own rate and they add up.")
+      end
+
+      it "adds the acts up when it calculates" do
+        post manage_calculate_money_show_payout_path(show),
+             params: { act_counts: { "Person_#{performer.id}" => "2" } }
+
+        expect(payout.line_items.find_by(payee: performer).amount.to_f).to eq(125.0)
+      end
+    end
+
     it "prefills the modal with the counts entered last time" do
       post manage_calculate_money_show_payout_path(show),
            params: { act_counts: { "Person_#{performer.id}" => "2" } }

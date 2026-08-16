@@ -57,9 +57,14 @@ class ShowPayout < ApplicationRecord
     "#{payee.class.name}_#{payee.id}"
   end
 
-  # The distribution config an act-based calculation runs on (rate or tiers).
+  # The distribution config an act-based calculation runs on (rate, schedule or
+  # tiers), and the same rules spelled out for the person entering act counts.
   def act_distribution
     resolved_rules["distribution"] || {}
+  end
+
+  def act_rules_description
+    PayoutScheme.act_rules_description(act_distribution)
   end
 
   def act_count_for(payee)

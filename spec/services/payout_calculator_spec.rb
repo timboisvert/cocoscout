@@ -275,6 +275,60 @@ RSpec.describe PayoutCalculator do
         end
       end
 
+      context "with a rate for each act that adds up" do
+        let(:rules) do
+          {
+            "distribution" => {
+              "method" => "per_act",
+              "act_mode" => "schedule",
+              "act_rates" => [ { "act" => 1, "amount" => 75.0 }, { "act" => 2, "amount" => 50.0 } ],
+              "additional_act_rate" => 25.0
+            }
+          }
+        end
+
+        it "adds each act's own rate together" do
+          result = described_class.calculate(
+            show: show,
+            rules: rules,
+            act_counts: { "Person_#{performer1.id}" => 1, "Person_#{performer2.id}" => 2 }
+          )
+
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(75.0)
+          expect(result[:line_items].find { |li| li.payee == performer2 }.amount.to_f).to eq(125.0)
+        end
+
+        it "pays the additional rate for acts past the end of the list" do
+          result = described_class.calculate(
+            show: show, rules: rules, act_counts: { "Person_#{performer1.id}" => 4 }
+          )
+
+          # 75 + 50 + 25 + 25
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(175.0)
+        end
+
+        it "stops paying past the list when there is no additional rate" do
+          capped = rules.deep_dup
+          capped["distribution"].delete("additional_act_rate")
+
+          result = described_class.calculate(
+            show: show, rules: capped, act_counts: { "Person_#{performer1.id}" => 5 }
+          )
+
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(125.0)
+        end
+
+        it "spells the schedule out on the line item" do
+          result = described_class.calculate(
+            show: show, rules: rules, act_counts: { "Person_#{performer1.id}" => 2 }
+          )
+
+          item = result[:line_items].find { |li| li.payee == performer1 }
+          expect(item.calculation_details["breakdown"].first)
+            .to eq("1st act $75.00, 2nd act $50.00, then $25.00 each")
+        end
+      end
+
       context "with a flat rate per act" do
         let(:rules) do
           {

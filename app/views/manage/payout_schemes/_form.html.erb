@@ -23,8 +23,13 @@
   # Act-based pay: either a flat rate per act, or a table of "N or more acts
   # pays $X" rows. Falls back to a sensible starter table so the panel is never
   # empty the first time someone opens it.
-  act_mode = distribution["act_mode"].presence || "tiers"
+  act_mode = PayoutScheme::ACT_MODES.include?(distribution["act_mode"].to_s) ? distribution["act_mode"].to_s : "schedule"
   per_act_rate = distribution["per_act_rate"] || 25.0
+
+  act_rates = PayoutScheme.act_rates(distribution)
+  act_rates = [ { "act" => 1, "amount" => 75.0 }, { "act" => 2, "amount" => 50.0 } ] if act_rates.empty?
+  additional_act_rate = distribution["additional_act_rate"]
+
   act_tiers = PayoutScheme.act_tiers(distribution)
   act_tiers = [ { "acts" => 1, "amount" => 25.0 }, { "acts" => 2, "amount" => 50.0 } ] if act_tiers.empty?
 
@@ -190,15 +195,22 @@
               <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
                 <input type="radio" name="rules[distribution][act_mode]" value="simple" <%= "checked" if act_mode == "simple" %> class="mt-0.5" data-action="change->payout-scheme-form#updateActMode">
                 <div>
-                  <div class="font-medium text-gray-900">A rate per act</div>
-                  <div class="text-sm text-gray-500">Every act pays the same. Two acts pays twice one act.</div>
+                  <div class="font-medium text-gray-900">The same rate for every act</div>
+                  <div class="text-sm text-gray-500">$25 an act, so two acts pays $50 and three pays $75.</div>
                 </div>
               </label>
               <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-                <input type="radio" name="rules[distribution][act_mode]" value="tiers" <%= "checked" if act_mode != "simple" %> class="mt-0.5" data-action="change->payout-scheme-form#updateActMode">
+                <input type="radio" name="rules[distribution][act_mode]" value="schedule" <%= "checked" if act_mode == "schedule" %> class="mt-0.5" data-action="change->payout-scheme-form#updateActMode">
                 <div>
-                  <div class="font-medium text-gray-900">A table of act counts</div>
-                  <div class="text-sm text-gray-500">Set what each number of acts pays — one act $25, two acts $50, and so on.</div>
+                  <div class="font-medium text-gray-900">A different rate for each act</div>
+                  <div class="text-sm text-gray-500">The first act pays $75, the second $50, and they add up — two acts pays $125.</div>
+                </div>
+              </label>
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <input type="radio" name="rules[distribution][act_mode]" value="tiers" <%= "checked" if act_mode == "tiers" %> class="mt-0.5" data-action="change->payout-scheme-form#updateActMode">
+                <div>
+                  <div class="font-medium text-gray-900">One total for the night</div>
+                  <div class="text-sm text-gray-500">The act count picks a single amount and nothing adds up — one act pays $25, two or more pays $50.</div>
                 </div>
               </label>
             </div>
@@ -212,9 +224,43 @@
             </div>
           </div>
 
-          <div data-payout-scheme-form-target="perActTiers" class="<%= act_mode == 'simple' ? 'hidden' : '' %>">
+          <div data-payout-scheme-form-target="perActSchedule" class="<%= act_mode == 'schedule' ? '' : 'hidden' %>">
+            <label class="block text-sm font-medium text-gray-700 mb-1">What each act pays</label>
+            <p class="text-xs text-gray-500 mb-3">These add up. Someone who does two acts is paid the first act's rate plus the second act's rate.</p>
+
+            <div data-payout-scheme-form-target="actRatesList" class="space-y-2">
+              <% act_rates.each_with_index do |rate, index| %>
+                <div class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg" data-payout-scheme-form-target="actRateRow">
+                  <span class="text-sm text-gray-600 w-24 whitespace-nowrap" data-payout-scheme-form-target="actRateLabel"><%= (index + 1).ordinalize %> act pays</span>
+                  <span class="text-gray-500">$</span>
+                  <input type="number" name="rules[distribution][act_rates][]" value="<%= rate['amount'] %>" min="0" step="0.01" class="w-24 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+                  <button type="button" data-action="click->payout-scheme-form#removeActRate" class="ml-auto text-gray-400 hover:text-red-500 cursor-pointer" title="Remove this row">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="mt-3">
+              <%= render "shared/button", text: "Add an act", variant: "secondary", size: "small", type: :button,
+                    data: { action: "click->payout-scheme-form#addActRate" } %>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-gray-200">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Every act after that pays</label>
+              <div class="flex items-center gap-2">
+                <span class="text-gray-500">$</span>
+                <input type="number" name="rules[distribution][additional_act_rate]" value="<%= additional_act_rate %>" min="0" step="0.01" placeholder="0.00" class="w-24 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Leave this blank if acts past the list above aren't paid.</p>
+            </div>
+          </div>
+
+          <div data-payout-scheme-form-target="perActTiers" class="<%= act_mode == 'tiers' ? '' : 'hidden' %>">
             <label class="block text-sm font-medium text-gray-700 mb-1">Act table</label>
-            <p class="text-xs text-gray-500 mb-3">Each row is "this many acts pays this much". Anyone who does more acts than the last row is paid at that last row.</p>
+            <p class="text-xs text-gray-500 mb-3">Each row is "this many acts pays this much in total". Anyone who does more acts than the last row is paid at that last row.</p>
 
             <div data-payout-scheme-form-target="actTiersList" class="space-y-2">
               <% act_tiers.each_with_index do |tier, index| %>

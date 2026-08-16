@@ -8,7 +8,9 @@ export default class extends Controller {
     static values = {
         mode: { type: String, default: "tiers" },
         rate: { type: Number, default: 0 },
-        tiers: { type: Array, default: [] }
+        tiers: { type: Array, default: [] },
+        actRates: { type: Array, default: [] },
+        additionalRate: { type: Number, default: 0 }
     }
 
     connect() {
@@ -82,6 +84,18 @@ export default class extends Controller {
 
         if (this.modeValue === "simple") {
             return Math.round(this.rateValue * count * 100) / 100
+        }
+
+        if (this.modeValue === "schedule") {
+            // Each act is worth its own amount and they add up; anything past
+            // the end of the schedule is worth the "additional" rate.
+            const rates = [...this.actRatesValue].sort((a, b) => Number(a.act) - Number(b.act))
+            let total = 0
+            for (let n = 1; n <= count; n++) {
+                const row = rates[n - 1]
+                total += row ? Number(row.amount) : this.additionalRateValue
+            }
+            return Math.round(total * 100) / 100
         }
 
         // Tiers read as "N or more acts pays $X" — take the highest one reached.

@@ -10,7 +10,11 @@ export default class extends Controller {
         "flatFeeOptions",
         "perActOptions",
         "perActSimple",
+        "perActSchedule",
         "perActTiers",
+        "actRatesList",
+        "actRateRow",
+        "actRateLabel",
         "actTiersList",
         "actTierRow",
         "allocationSection",
@@ -138,9 +142,57 @@ export default class extends Controller {
     }
 
     updateActMode() {
-        const simple = this.selectedActMode === "simple"
-        if (this.hasPerActSimpleTarget) this.perActSimpleTarget.classList.toggle("hidden", !simple)
-        if (this.hasPerActTiersTarget) this.perActTiersTarget.classList.toggle("hidden", simple)
+        const mode = this.selectedActMode
+        if (this.hasPerActSimpleTarget) this.perActSimpleTarget.classList.toggle("hidden", mode !== "simple")
+        if (this.hasPerActScheduleTarget) this.perActScheduleTarget.classList.toggle("hidden", mode !== "schedule")
+        if (this.hasPerActTiersTarget) this.perActTiersTarget.classList.toggle("hidden", mode !== "tiers")
+    }
+
+    // The schedule rows are positional — the first row is the first act — so
+    // adding or removing one renumbers the labels.
+    addActRate(event) {
+        if (event) event.preventDefault()
+        if (!this.hasActRatesListTarget) return
+
+        const row = document.createElement("div")
+        row.className = "flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg"
+        row.dataset.payoutSchemeFormTarget = "actRateRow"
+        row.innerHTML = `
+            <span class="text-sm text-gray-600 w-24 whitespace-nowrap" data-payout-scheme-form-target="actRateLabel"></span>
+            <span class="text-gray-500">$</span>
+            <input type="number" name="rules[distribution][act_rates][]" value="0" min="0" step="0.01" class="w-24 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+            <button type="button" data-action="click->payout-scheme-form#removeActRate" class="ml-auto text-gray-400 hover:text-red-500 cursor-pointer" title="Remove this row">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        `
+
+        this.actRatesListTarget.appendChild(row)
+        this.renumberActRates()
+    }
+
+    removeActRate(event) {
+        event.preventDefault()
+        event.target.closest('[data-payout-scheme-form-target="actRateRow"]')?.remove()
+        this.renumberActRates()
+    }
+
+    renumberActRates() {
+        this.actRateLabelTargets.forEach((label, index) => {
+            label.textContent = `${this.ordinalize(index + 1)} act pays`
+        })
+    }
+
+    ordinalize(number) {
+        const rest = number % 100
+        if (rest >= 11 && rest <= 13) return `${number}th`
+        switch (number % 10) {
+            case 1: return `${number}st`
+            case 2: return `${number}nd`
+            case 3: return `${number}rd`
+            default: return `${number}th`
+        }
     }
 
     // Add another "N acts pays $X" row to the act table.
