@@ -13,55 +13,30 @@
     ]
   } %>
 
-  <%# Filter bar with production dropdown and time range %>
-  <div class="flex flex-wrap items-center gap-3 md:gap-4 px-3 md:px-4 py-3 bg-white border border-gray-200 rounded-lg mb-4">
-    <%# Production dropdown %>
-    <div class="flex items-center gap-2">
-      <span class="hidden md:inline text-xs font-medium text-gray-500 uppercase tracking-wide">Production</span>
-      <div class="relative">
-        <select
-          onchange="window.location.href = this.value"
-          class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600">
-          <option value="<%= manage_org_availability_path(months: @months) %>" <%= 'selected' if @selected_production.nil? %>>All Productions</option>
-          <% @all_productions.each do |p| %>
-            <option value="<%= manage_org_availability_path(months: @months, production_id: p.id) %>" <%= 'selected' if @selected_production_id == p.id %>><%= p.name %></option>
-          <% end %>
-        </select>
-        <svg class="absolute right-2 top-2 w-4 h-4 text-white pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
-    </div>
-
-    <%# Separator - hidden on mobile %>
-    <div class="hidden md:block w-px h-6 bg-gray-200"></div>
-
-    <%# Time range buttons %>
-    <div class="flex items-center gap-2">
-      <span class="hidden md:inline text-xs font-medium text-gray-500 uppercase tracking-wide">Time Range</span>
-      <div class="flex gap-1">
-        <% [[3, "3mo"], [6, "6mo"], [12, "12mo"]].each do |months, label| %>
-          <a href="<%= manage_org_availability_path(months: months, production_id: @selected_production_id) %>"
-             class="px-2 md:px-3 py-1.5 rounded text-xs font-medium transition <%= @months == months ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' %>">
-            <span class="md:hidden"><%= label %></span>
-            <span class="hidden md:inline"><%= months %> months</span>
-          </a>
-        <% end %>
-      </div>
-    </div>
-
-    <%# Spacer to push key to right %>
-    <div class="flex-1"></div>
-
-    <%# Key/Legend - hidden on mobile %>
-    <div class="hidden md:flex items-center gap-4 text-xs text-gray-500">
-      <span class="font-medium text-gray-400 uppercase tracking-wide">Key:</span>
-      <span class="flex items-center gap-1"><span class="text-pink-500 font-medium">A</span> Available</span>
-      <span class="flex items-center gap-1"><span class="text-gray-400 font-medium">U</span> Unavailable</span>
-      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-pink-500"></span> Cast</span>
-      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Registered</span>
-    </div>
-  </div>
+  <%# Filter bar — same construction as the other org-level lists %>
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    {
+      partial: "shared/filters/production_dropdown_filter",
+      locals: {
+        label: "Production",
+        name: "production_id",
+        options: [{ value: "", text: "All Productions" }] + @all_productions.map { |p| { value: p.id.to_s, text: p.name, type: p.production_type } },
+        selected: @selected_production_id.to_s,
+        extra_url_params: { months: @months }
+      }
+    },
+    { separator: true },
+    {
+      label: "Time Range",
+      filters: [3, 6, 12].map do |months|
+        { text: "#{months} months",
+          path: manage_org_availability_path(months: months, production_id: @selected_production_id),
+          active: @months == months }
+      end
+    },
+    { separator: true },
+    { partial: "manage/casting_availability/org_partials/key_legend" }
+  ] %>
 
   <% has_any_shows = @shows_by_production.values.any?(&:any?) %>
 

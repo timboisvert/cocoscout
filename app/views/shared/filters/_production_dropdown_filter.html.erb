@@ -14,7 +14,11 @@
 #   options: Array - [{ value:, text:, type: }] — blank value = "all" row
 #   selected: String - Currently selected value
 #   data_attributes: Hash (optional) - Same keys dropdown_filter understands
+#   extra_url_params: Hash (optional) - Query params to carry through on every
+#     option link (e.g. a time range the page is already filtered by)
 
+  extra_url_params = local_assigns[:extra_url_params] || {}
+  data_attributes = local_assigns[:data_attributes]
   selected_option = options.find { |o| o[:value].to_s == selected.to_s }
   selected_text = selected_option ? selected_option[:text] : options.first&.dig(:text) || "Select"
 
@@ -26,10 +30,10 @@
   show_type_chips = types_present.size > 1
 
   build_url = lambda do |option|
-    url_params = {}
+    url_params = extra_url_params.dup
+    param_name = data_attributes&.dig(:filter_select_param_value) || name
+    url_params[param_name.to_sym] = option[:value]
     if data_attributes
-      param_name = data_attributes[:filter_select_param_value] || name
-      url_params[param_name.to_sym] = option[:value]
       url_params[:filter] = data_attributes[:filter_select_filter_value] if data_attributes[:filter_select_filter_value]
       url_params[:event_type] = data_attributes[:filter_select_event_type_value] if data_attributes[:filter_select_event_type_value]
     end
