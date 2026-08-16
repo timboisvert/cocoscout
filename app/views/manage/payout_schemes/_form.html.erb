@@ -20,6 +20,17 @@
   flat_amount = distribution["flat_amount"] || 50.0
   default_shares = distribution["default_shares"] || 1.0
 
+  # Act-based pay: either a flat rate per act, or a table of "N or more acts
+  # pays $X" rows. Falls back to a sensible starter table so the panel is never
+  # empty the first time someone opens it.
+  act_mode = distribution["act_mode"].presence || "tiers"
+  per_act_rate = distribution["per_act_rate"] || 25.0
+  act_tiers = PayoutScheme.act_tiers(distribution)
+  act_tiers = [ { "acts" => 1, "amount" => 25.0 }, { "acts" => 2, "amount" => 50.0 } ] if act_tiers.empty?
+
+  # Methods that pay people directly rather than out of a revenue pool.
+  poolless_methods = %w[flat_fee per_act]
+
   # Get available people from effective talent pool (may be shared)
   # payout_scheme may be organization-level (no production) or production-level
   production = payout_scheme.production
@@ -128,6 +139,14 @@
                 <div class="text-sm text-gray-500">Fixed amount per performer regardless of ticket sales</div>
               </div>
             </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <input type="radio" name="rules[distribution][method]" value="per_act" <%= "checked" if dist_method == "per_act" %> class="mt-0.5" data-action="change->payout-scheme-form#updateMethod">
+              <div>
+                <div class="font-medium text-gray-900">Per Act</div>
+                <div class="text-sm text-gray-500">Pay by how many acts each person did. You enter the act counts when you calculate the payout.</div>
+              </div>
+            </label>
           </div>
         </div>
 
@@ -163,6 +182,62 @@
             <input type="number" name="rules[distribution][flat_amount]" value="<%= flat_amount %>" min="0" step="1" class="w-24 rounded-lg border border-gray-300 px-3 py-2">
           </div>
         </div>
+
+        <div data-payout-scheme-form-target="perActOptions" class="<%= dist_method == 'per_act' ? '' : 'hidden' %> p-4 bg-gray-50 rounded-lg space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">How act pay is worked out</label>
+            <div class="space-y-2">
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <input type="radio" name="rules[distribution][act_mode]" value="simple" <%= "checked" if act_mode == "simple" %> class="mt-0.5" data-action="change->payout-scheme-form#updateActMode">
+                <div>
+                  <div class="font-medium text-gray-900">A rate per act</div>
+                  <div class="text-sm text-gray-500">Every act pays the same. Two acts pays twice one act.</div>
+                </div>
+              </label>
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <input type="radio" name="rules[distribution][act_mode]" value="tiers" <%= "checked" if act_mode != "simple" %> class="mt-0.5" data-action="change->payout-scheme-form#updateActMode">
+                <div>
+                  <div class="font-medium text-gray-900">A table of act counts</div>
+                  <div class="text-sm text-gray-500">Set what each number of acts pays — one act $25, two acts $50, and so on.</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div data-payout-scheme-form-target="perActSimple" class="<%= act_mode == 'simple' ? '' : 'hidden' %>">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount per act</label>
+            <div class="flex items-center gap-2">
+              <span class="text-gray-500">$</span>
+              <input type="number" name="rules[distribution][per_act_rate]" value="<%= per_act_rate %>" min="0" step="0.01" class="w-24 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+            </div>
+          </div>
+
+          <div data-payout-scheme-form-target="perActTiers" class="<%= act_mode == 'simple' ? 'hidden' : '' %>">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Act table</label>
+            <p class="text-xs text-gray-500 mb-3">Each row is "this many acts pays this much". Anyone who does more acts than the last row is paid at that last row.</p>
+
+            <div data-payout-scheme-form-target="actTiersList" class="space-y-2">
+              <% act_tiers.each_with_index do |tier, index| %>
+                <div class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg" data-payout-scheme-form-target="actTierRow">
+                  <input type="number" name="rules[distribution][tiers][<%= index %>][acts]" value="<%= tier['acts'] %>" min="1" step="1" class="w-20 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+                  <span class="text-sm text-gray-600 whitespace-nowrap">acts pays</span>
+                  <span class="text-gray-500">$</span>
+                  <input type="number" name="rules[distribution][tiers][<%= index %>][amount]" value="<%= tier['amount'] %>" min="0" step="0.01" class="w-24 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+                  <button type="button" data-action="click->payout-scheme-form#removeActTier" class="ml-auto text-gray-400 hover:text-red-500 cursor-pointer" title="Remove this row">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="mt-3">
+              <%= render "shared/button", text: "Add a row", variant: "secondary", size: "small", type: :button,
+                    data: { action: "click->payout-scheme-form#addActTier" } %>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -193,7 +268,7 @@
     <% end %>
 
     <!-- Revenue Allocation (for all methods except flat_fee) -->
-    <div data-payout-scheme-form-target="allocationSection" class="<%= dist_method == 'flat_fee' ? 'hidden' : '' %> bg-white rounded-lg border border-gray-200 p-5">
+    <div data-payout-scheme-form-target="allocationSection" class="<%= poolless_methods.include?(dist_method) ? 'hidden' : '' %> bg-white rounded-lg border border-gray-200 p-5">
       <h3 class="font-semibold text-gray-900 mb-4">Revenue Allocation</h3>
       <p class="text-sm text-gray-600 mb-4">How is revenue split between house and performers?</p>
 
@@ -227,7 +302,7 @@
 
     <!-- Individual Allocations (percentage to specific people like producers) -->
     <% if org_members.any? %>
-      <div data-payout-scheme-form-target="individualAllocationsSection" class="<%= dist_method == 'flat_fee' ? 'hidden' : '' %> bg-white rounded-lg border border-gray-200 p-5">
+      <div data-payout-scheme-form-target="individualAllocationsSection" class="<%= poolless_methods.include?(dist_method) ? 'hidden' : '' %> bg-white rounded-lg border border-gray-200 p-5">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="font-semibold text-gray-900">Individual Allocations</h3>
@@ -334,6 +409,13 @@
                 <input type="number" name="rules[performer_overrides][<%= person.id %>][flat_amount]" value="<%= override['flat_amount'] %>" min="0" step="1" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="amount">
               </div>
 
+              <!-- Per-act rate override -->
+              <div data-payout-scheme-form-target="overridePerAct" class="<%= dist_method == 'per_act' ? 'flex items-center gap-2' : 'hidden' %>">
+                <span class="text-sm text-gray-500">$</span>
+                <input type="number" name="rules[performer_overrides][<%= person.id %>][per_act_rate]" value="<%= override['per_act_rate'] %>" min="0" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
+                <span class="text-sm text-gray-500">/act</span>
+              </div>
+
               <button type="button" data-action="click->payout-scheme-form#removeOverride" class="text-gray-400 hover:text-red-500">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -380,6 +462,13 @@
             <div data-payout-scheme-form-target="newOverrideFlatAmount" class="<%= dist_method == 'flat_fee' ? 'flex items-center gap-2' : 'hidden' %>">
               <span class="text-sm text-gray-500">$</span>
               <input type="number" data-payout-scheme-form-target="newFlatAmount" min="0" step="1" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="amount">
+            </div>
+
+            <!-- Per-act rate input for new override -->
+            <div data-payout-scheme-form-target="newOverridePerAct" class="<%= dist_method == 'per_act' ? 'flex items-center gap-2' : 'hidden' %>">
+              <span class="text-sm text-gray-500">$</span>
+              <input type="number" data-payout-scheme-form-target="newPerActRate" min="0" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
+              <span class="text-sm text-gray-500">/act</span>
             </div>
 
             <button type="button" data-action="click->payout-scheme-form#addOverride" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium">

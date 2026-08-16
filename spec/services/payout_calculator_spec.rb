@@ -198,6 +198,114 @@ RSpec.describe PayoutCalculator do
       end
     end
 
+    context "with per_act distribution" do
+      let(:guest_assignment) do
+        create(:show_person_role_assignment, show: show, role: role, guest_name: "Guest Star", assignable: nil)
+      end
+
+      before do
+        guest_assignment
+        create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, expenses: 0.0)
+        create(:show_payout, show: show)
+      end
+
+      context "with a table of act counts" do
+        let(:rules) do
+          {
+            "distribution" => {
+              "method" => "per_act",
+              "act_mode" => "tiers",
+              "tiers" => [ { "acts" => 1, "amount" => 25.0 }, { "acts" => 2, "amount" => 50.0 } ]
+            }
+          }
+        end
+
+        it "pays each person the tier their act count reaches" do
+          result = described_class.calculate(
+            show: show,
+            rules: rules,
+            act_counts: {
+              "Person_#{performer1.id}" => 1,
+              "Person_#{performer2.id}" => 2,
+              "guest_#{guest_assignment.id}" => 2
+            }
+          )
+
+          expect(result[:success]).to be true
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(25.0)
+          expect(result[:line_items].find { |li| li.payee == performer2 }.amount.to_f).to eq(50.0)
+          expect(result[:line_items].find(&:is_guest?).amount.to_f).to eq(50.0)
+          expect(result[:total]).to eq(125.0)
+        end
+
+        it "pays the top tier to anyone who does more acts than the table covers" do
+          result = described_class.calculate(
+            show: show, rules: rules, act_counts: { "Person_#{performer1.id}" => 5 }
+          )
+
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(50.0)
+        end
+
+        it "pays nothing to someone with no acts" do
+          result = described_class.calculate(show: show, rules: rules, act_counts: {})
+
+          expect(result[:success]).to be true
+          expect(result[:total]).to eq(0.0)
+          expect(result[:line_items].map { |li| li.amount.to_f }).to all(eq(0.0))
+        end
+
+        it "records the act count on the line item" do
+          result = described_class.calculate(
+            show: show, rules: rules, act_counts: { "Person_#{performer1.id}" => 2 }
+          )
+
+          item = result[:line_items].find { |li| li.payee == performer1 }
+          expect(item.calculation_details["inputs"]["acts"]).to eq(2)
+          expect(item.calculation_explanation).to eq("2 acts")
+        end
+
+        it "ignores ticket revenue entirely" do
+          show.show_financials.update!(ticket_revenue: 99_999.0)
+
+          result = described_class.calculate(
+            show: show, rules: rules, act_counts: { "Person_#{performer1.id}" => 1 }
+          )
+
+          expect(result[:total]).to eq(25.0)
+        end
+      end
+
+      context "with a flat rate per act" do
+        let(:rules) do
+          {
+            "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 20.0 }
+          }
+        end
+
+        it "multiplies the rate by the act count" do
+          result = described_class.calculate(
+            show: show, rules: rules, act_counts: { "Person_#{performer1.id}" => 3 }
+          )
+
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(60.0)
+        end
+
+        it "honours a per-performer rate override" do
+          rules_with_override = rules.merge(
+            "performer_overrides" => { performer1.id.to_s => { "per_act_rate" => 40.0 } }
+          )
+
+          result = described_class.calculate(
+            show: show, rules: rules_with_override,
+            act_counts: { "Person_#{performer1.id}" => 2, "Person_#{performer2.id}" => 2 }
+          )
+
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(80.0)
+          expect(result[:line_items].find { |li| li.payee == performer2 }.amount.to_f).to eq(40.0)
+        end
+      end
+    end
+
     context "with guest performers" do
       before do
         # Add a guest assignment

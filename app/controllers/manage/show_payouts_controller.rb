@@ -76,10 +76,24 @@ module Manage
         return
       end
 
+      # Act-based schemes can't be worked out from the show's data alone — someone
+      # has to say how many acts each person did. Bounce back to the payout page
+      # with the acts modal open, then calculate once the counts come in.
+      if rules.dig("distribution", "method").to_s == "per_act"
+        submitted_act_counts = act_counts_from_params
+        if submitted_act_counts.nil?
+          redirect_to manage_money_show_payout_path(@show, enter_acts: 1)
+          return
+        end
+
+        @show_payout.update!(act_counts: submitted_act_counts)
+      end
+
       # Calculate payouts
       result = PayoutCalculator.calculate(
         show: @show,
-        rules: rules
+        rules: rules,
+        act_counts: @show_payout.act_counts
       )
 
       if result[:success]
@@ -574,6 +588,18 @@ module Manage
     end
 
     private
+
+    # Act counts submitted from the "How many acts?" modal, keyed by payee
+    # ("Person_12", "guest_9"). nil means the modal hasn't been filled in yet.
+    def act_counts_from_params
+      raw = params[:act_counts]
+      return nil if raw.blank?
+
+      raw = raw.to_unsafe_h if raw.respond_to?(:to_unsafe_h)
+      raw.each_with_object({}) do |(key, value), counts|
+        counts[key.to_s] = [ value.to_i, 0 ].max
+      end
+    end
 
     # Pull a hand-paid line out of its payout run. Draft run: the contribution
     # just goes away (no money moved). Funded run: the item shrinks (or drops),

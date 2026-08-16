@@ -8,6 +8,11 @@ export default class extends Controller {
         "perTicketOptions",
         "minimumOption",
         "flatFeeOptions",
+        "perActOptions",
+        "perActSimple",
+        "perActTiers",
+        "actTiersList",
+        "actTierRow",
         "allocationSection",
         "performerPercentage",
         "housePercentage",
@@ -19,15 +24,18 @@ export default class extends Controller {
         "overrideMinimum",
         "overrideShares",
         "overrideFlatAmount",
+        "overridePerAct",
         "personSelect",
         "newOverridePerTicket",
         "newOverrideMinimum",
         "newOverrideShares",
         "newOverrideFlatAmount",
+        "newOverridePerAct",
         "newPerTicketRate",
         "newMinimum",
         "newShares",
         "newFlatAmount",
+        "newPerActRate",
         // Individual allocations targets
         "individualAllocationsSection",
         "individualAllocationsList",
@@ -41,6 +49,7 @@ export default class extends Controller {
         this.updateVisibility()
         this.updatePercentages()
         this.individualAllocationIndex = this.individualAllocationRowTargets.length
+        this.actTierIndex = this.actTierRowTargets.length
     }
 
     // Called when distribution method changes
@@ -71,22 +80,18 @@ export default class extends Controller {
         if (this.hasFlatFeeOptionsTarget) {
             this.flatFeeOptionsTarget.classList.add("hidden")
         }
-        if (this.hasAllocationSectionTarget) {
-            // Show allocation section for all methods except flat_fee
-            if (method === "flat_fee") {
-                this.allocationSectionTarget.classList.add("hidden")
-            } else {
-                this.allocationSectionTarget.classList.remove("hidden")
-            }
+        if (this.hasPerActOptionsTarget) {
+            this.perActOptionsTarget.classList.add("hidden")
         }
 
-        // Show/hide individual allocations section for all methods except flat_fee
+        // Flat fee and per-act pay people directly, so there's no revenue pool
+        // to allocate.
+        const poolless = ["flat_fee", "per_act"].includes(method)
+        if (this.hasAllocationSectionTarget) {
+            this.allocationSectionTarget.classList.toggle("hidden", poolless)
+        }
         if (this.hasIndividualAllocationsSectionTarget) {
-            if (method === "flat_fee") {
-                this.individualAllocationsSectionTarget.classList.add("hidden")
-            } else {
-                this.individualAllocationsSectionTarget.classList.remove("hidden")
-            }
+            this.individualAllocationsSectionTarget.classList.toggle("hidden", poolless)
         }
 
         // Show the relevant options
@@ -114,10 +119,60 @@ export default class extends Controller {
                     this.flatFeeOptionsTarget.classList.remove("hidden")
                 }
                 break
+            case "per_act":
+                if (this.hasPerActOptionsTarget) {
+                    this.perActOptionsTarget.classList.remove("hidden")
+                }
+                this.updateActMode()
+                break
         }
 
         // Update overrides section visibility
         this.updateOverridesVisibility(method)
+    }
+
+    // Act pay is either a flat rate per act or a table of act counts.
+    get selectedActMode() {
+        const checked = this.element.querySelector('input[name="rules[distribution][act_mode]"]:checked')
+        return checked ? checked.value : "tiers"
+    }
+
+    updateActMode() {
+        const simple = this.selectedActMode === "simple"
+        if (this.hasPerActSimpleTarget) this.perActSimpleTarget.classList.toggle("hidden", !simple)
+        if (this.hasPerActTiersTarget) this.perActTiersTarget.classList.toggle("hidden", simple)
+    }
+
+    // Add another "N acts pays $X" row to the act table.
+    addActTier(event) {
+        if (event) event.preventDefault()
+        if (!this.hasActTiersListTarget) return
+
+        const index = this.actTierIndex++
+        const lastRow = this.actTierRowTargets[this.actTierRowTargets.length - 1]
+        const nextActs = lastRow ? (parseInt(lastRow.querySelector('input[type="number"]').value, 10) || 0) + 1 : 1
+
+        const row = document.createElement("div")
+        row.className = "flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg"
+        row.dataset.payoutSchemeFormTarget = "actTierRow"
+        row.innerHTML = `
+            <input type="number" name="rules[distribution][tiers][${index}][acts]" value="${nextActs}" min="1" step="1" class="w-20 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+            <span class="text-sm text-gray-600 whitespace-nowrap">acts pays</span>
+            <span class="text-gray-500">$</span>
+            <input type="number" name="rules[distribution][tiers][${index}][amount]" value="0" min="0" step="0.01" class="w-24 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+            <button type="button" data-action="click->payout-scheme-form#removeActTier" class="ml-auto text-gray-400 hover:text-red-500 cursor-pointer" title="Remove this row">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        `
+
+        this.actTiersListTarget.appendChild(row)
+    }
+
+    removeActTier(event) {
+        event.preventDefault()
+        event.target.closest('[data-payout-scheme-form-target="actTierRow"]')?.remove()
     }
 
     // Show/hide the overrides section and appropriate fields
@@ -160,6 +215,13 @@ export default class extends Controller {
             }
         })
 
+        this.overridePerActTargets.forEach(el => {
+            el.classList.toggle("hidden", method !== "per_act")
+            if (method === "per_act") {
+                el.classList.add("flex", "items-center", "gap-2")
+            }
+        })
+
         // Update visibility for new override inputs
         if (this.hasNewOverridePerTicketTarget) {
             this.newOverridePerTicketTarget.classList.toggle("hidden", !["per_ticket", "per_ticket_guaranteed"].includes(method))
@@ -186,6 +248,13 @@ export default class extends Controller {
             this.newOverrideFlatAmountTarget.classList.toggle("hidden", method !== "flat_fee")
             if (method === "flat_fee") {
                 this.newOverrideFlatAmountTarget.classList.add("flex", "items-center", "gap-2")
+            }
+        }
+
+        if (this.hasNewOverridePerActTarget) {
+            this.newOverridePerActTarget.classList.toggle("hidden", method !== "per_act")
+            if (method === "per_act") {
+                this.newOverridePerActTarget.classList.add("flex", "items-center", "gap-2")
             }
         }
     }
@@ -258,6 +327,17 @@ export default class extends Controller {
             </div>
         `
 
+        // Per-act rate field
+        const perActRate = this.hasNewPerActRateTarget ? this.newPerActRateTarget.value : ""
+        const showPerAct = method === "per_act"
+        fieldsHtml += `
+            <div data-payout-scheme-form-target="overridePerAct" class="${showPerAct ? 'flex items-center gap-2' : 'hidden'}">
+                <span class="text-sm text-gray-500">$</span>
+                <input type="number" name="rules[performer_overrides][${personId}][per_act_rate]" value="${perActRate}" min="0" step="0.01" class="w-20 rounded border border-gray-300 px-2 py-1 text-sm" placeholder="rate">
+                <span class="text-sm text-gray-500">/act</span>
+            </div>
+        `
+
         // Remove button
         fieldsHtml += `
             <button type="button" data-action="click->payout-scheme-form#removeOverride" class="text-gray-400 hover:text-red-500">
@@ -282,6 +362,7 @@ export default class extends Controller {
         if (this.hasNewMinimumTarget) this.newMinimumTarget.value = ""
         if (this.hasNewSharesTarget) this.newSharesTarget.value = ""
         if (this.hasNewFlatAmountTarget) this.newFlatAmountTarget.value = ""
+        if (this.hasNewPerActRateTarget) this.newPerActRateTarget.value = ""
 
         // Reset select
         select.value = ""

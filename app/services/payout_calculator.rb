@@ -11,9 +11,10 @@
 #
 class PayoutCalculator
   class << self
-    # Calculate and persist payouts for a show
-    def calculate(show:, rules:)
-      new(show: show, rules: rules).calculate
+    # Calculate and persist payouts for a show.
+    # act_counts is only used by act-based schemes: { "Person_12" => 2, "guest_9" => 1 }
+    def calculate(show:, rules:, act_counts: {})
+      new(show: show, rules: rules, act_counts: act_counts).calculate
     end
 
     # Preview calculation without persisting (for UI feedback)
@@ -22,11 +23,12 @@ class PayoutCalculator
     end
   end
 
-  def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil)
+  def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil, act_counts: {})
     @show = show
     @rules = rules&.deep_stringify_keys || {}
     @preview_financials = preview_financials
     @preview_performer_count = preview_performer_count
+    @act_counts = (act_counts || {}).stringify_keys
   end
 
   # Calculate and persist payouts
@@ -99,6 +101,12 @@ class PayoutCalculator
         flat_amount,
         overrides
       )
+    when "per_act"
+      # Act-based: everyone's amount comes from their own act count, so there's
+      # no pool to share and nothing to adjust for guests.
+      per_person_amount = 0
+      adjusted_line_items = result[:line_items]
+      guest_line_items = calculate_guest_payouts_per_act(guest_assignments, distribution, overrides)
     when "no_pay"
       # No pay: everyone gets $0
       per_person_amount = 0
@@ -276,6 +284,8 @@ class PayoutCalculator
       distribute_per_ticket_guaranteed(inputs, performers, distribution, overrides, breakdown)
     when "flat_fee"
       distribute_flat_fee(performers, distribution, overrides, breakdown)
+    when "per_act"
+      distribute_per_act(performers, distribution, overrides, breakdown)
     when "no_pay"
       distribute_no_pay(performers, breakdown)
     else
@@ -494,6 +504,78 @@ class PayoutCalculator
           breakdown: [ "Fixed: #{format_currency(amount)}" ]
         }
       }
+    end
+  end
+
+  # Act-based: each performer is paid off their own act count for this show,
+  # which the manager entered when they kicked off the calculation.
+  def distribute_per_act(performers, distribution, overrides, breakdown)
+    return [] if performers.empty?
+
+    breakdown << "Paid by acts: #{act_rules_label(distribution)}"
+
+    performers.map do |performer|
+      acts = act_count_for(ShowPayout.act_key(performer))
+      override = overrides[performer.id.to_s] || {}
+      amount, formula = per_act_amount_and_formula(distribution, override, acts)
+
+      {
+        payee: performer,
+        amount: amount,
+        shares: nil,
+        calculation_details: {
+          formula: formula,
+          inputs: { acts: acts },
+          breakdown: [ act_rules_label(distribution), "#{acts} #{'act'.pluralize(acts)} = #{format_currency(amount)}" ]
+        }
+      }
+    end
+  end
+
+  # Guests are paid by acts too — their counts are keyed by assignment.
+  def calculate_guest_payouts_per_act(guest_assignments, distribution, overrides = {})
+    return [] if guest_assignments.empty?
+
+    guest_assignments.map do |assignment|
+      acts = act_count_for(ShowPayout.act_key(assignment))
+      override = overrides["guest_#{assignment.id}"] || {}
+      amount, formula = per_act_amount_and_formula(distribution, override, acts)
+
+      {
+        guest_name: assignment.guest_name,
+        guest_assignment_id: assignment.id,
+        amount: amount,
+        shares: nil,
+        calculation_details: {
+          formula: formula,
+          inputs: { acts: acts },
+          breakdown: [ act_rules_label(distribution), "#{acts} #{'act'.pluralize(acts)} = #{format_currency(amount)}" ]
+        }
+      }
+    end
+  end
+
+  # A flat per-act override beats the scheme's own rate/tiers for that person.
+  def per_act_amount_and_formula(distribution, override, acts)
+    if override["per_act_rate"].present?
+      rate = override["per_act_rate"].to_f
+      [ (rate * acts).round(2), "#{acts} #{'act'.pluralize(acts)} × #{format_currency(rate)}/act (custom rate)" ]
+    else
+      [ PayoutScheme.act_amount(distribution, acts), "#{acts} #{'act'.pluralize(acts)}" ]
+    end
+  end
+
+  def act_count_for(key)
+    @act_counts[key].to_i
+  end
+
+  def act_rules_label(distribution)
+    if distribution["act_mode"].to_s == "simple"
+      "#{format_currency(distribution['per_act_rate'].to_f)} per act"
+    else
+      PayoutScheme.act_tiers(distribution)
+                  .map { |t| "#{t['acts']}+ acts #{format_currency(t['amount'].to_f)}" }
+                  .join(", ")
     end
   end
 

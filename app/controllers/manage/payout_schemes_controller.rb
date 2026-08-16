@@ -203,6 +203,24 @@ module Manage
         distribution["minimum"] = distribution_params[:minimum]&.to_f || 0
       when "flat_fee"
         distribution["flat_amount"] = distribution_params[:flat_amount]&.to_f || 0
+      when "per_act"
+        act_mode = distribution_params[:act_mode].to_s == "simple" ? "simple" : "tiers"
+        distribution["act_mode"] = act_mode
+
+        if act_mode == "simple"
+          distribution["per_act_rate"] = distribution_params[:per_act_rate]&.to_f || 0
+        else
+          # Each row is "this many acts pays this much"; blank/zero rows are dropped
+          # and the table is stored sorted so lookups can walk it in order.
+          distribution["tiers"] = Array(distribution_params[:tiers]&.values)
+            .filter_map do |tier|
+              acts = tier[:acts].to_i
+              next if acts <= 0
+
+              { "acts" => acts, "amount" => tier[:amount].to_f }
+            end
+            .sort_by { |tier| tier["acts"] }
+        end
       end
 
       # Build performer overrides
@@ -216,6 +234,7 @@ module Manage
         override["minimum"] = override_data[:minimum].to_f if override_data[:minimum].present?
         override["shares"] = override_data[:shares].to_f if override_data[:shares].present?
         override["flat_amount"] = override_data[:flat_amount].to_f if override_data[:flat_amount].present?
+        override["per_act_rate"] = override_data[:per_act_rate].to_f if override_data[:per_act_rate].present?
 
         performer_overrides[person_id.to_s] = override if override.any?
       end

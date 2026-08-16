@@ -1202,7 +1202,11 @@
           %>
           <div class="text-center py-6">
             <% if has_cast %>
-              <p class="text-gray-500 mb-3">Ready to calculate payouts based on the financial data.</p>
+              <% if @show_payout.act_based? %>
+                <p class="text-gray-500 mb-3">This show pays by acts. We'll ask how many acts each person did, then work out what they're owed.</p>
+              <% else %>
+                <p class="text-gray-500 mb-3">Ready to calculate payouts based on the financial data.</p>
+              <% end %>
               <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true do %>
                 <%= render "shared/button", text: "Calculate Payouts", variant: "primary", size: "medium", type: :submit %>
               <% end %>
@@ -1557,6 +1561,12 @@
                show: @show,
                cast_members: advance_cast_members,
                existing_advances: existing_show_advances %>
+
+    <%# "How many acts?" — act-based schemes can't calculate without the counts,
+        so calculate bounces back here with this modal open. %>
+    <% if @show_payout.act_based? %>
+      <%= render "manage/show_payouts/acts_modal" %>
+    <% end %>
 
   </div>
   <% end %><%# end of third_party vs performer conditional %>

@@ -32,6 +32,51 @@ class ShowPayout < ApplicationRecord
     override_rules.present?
   end
 
+  # --- Act-based pay -------------------------------------------------------
+  #
+  # An act-based scheme can't be calculated from the show's data alone: someone
+  # has to say how many acts each person did. Those counts live here (keyed by
+  # payee) so they survive the line items being rebuilt on every recalculation.
+
+  # The rules a calculation would actually run on: an event-level override, this
+  # payout's scheme, or — when neither is set — the default scheme for the show.
+  def resolved_rules
+    override_rules.presence || (payout_scheme || PayoutScheme.default_for_show(show))&.rules || {}
+  end
+
+  def act_based?
+    resolved_rules.dig("distribution", "method").to_s == "per_act"
+  end
+
+  # Stable key for one payee's act count: a cast member ("Person_12" /
+  # "Group_3"), or a guest slot on the show ("guest_45", keyed by the
+  # assignment because a guest has no record of their own).
+  def self.act_key(payee)
+    return "guest_#{payee.id}" if payee.is_a?(ShowPersonRoleAssignment)
+
+    "#{payee.class.name}_#{payee.id}"
+  end
+
+  # The distribution config an act-based calculation runs on (rate or tiers).
+  def act_distribution
+    resolved_rules["distribution"] || {}
+  end
+
+  def act_count_for(payee)
+    (act_counts || {})[self.class.act_key(payee)].to_i
+  end
+
+  # The payees an act-based calculation needs a count for: everyone assigned to
+  # the show whose role isn't excluded by the scheme.
+  def act_payees
+    excluded_role_ids = Array(resolved_rules["excluded_role_ids"]).map(&:to_i)
+    assignments = show.show_person_role_assignments.includes(:assignable, :role).to_a
+    assignments = assignments.reject { |a| excluded_role_ids.include?(a.role_id) } if excluded_role_ids.any?
+
+    people = assignments.reject(&:guest?).map(&:assignable).compact.uniq
+    people + assignments.select(&:guest?)
+  end
+
   # Status helpers
   def awaiting_payout?
     status == "awaiting_payout"

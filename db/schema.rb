@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_14_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_15_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2289,6 +2289,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_100000) do
   end
 
   create_table "show_payouts", force: :cascade do |t|
+    t.jsonb "act_counts", default: {}, null: false
     t.datetime "approved_at"
     t.bigint "approved_by_id"
     t.datetime "calculated_at"

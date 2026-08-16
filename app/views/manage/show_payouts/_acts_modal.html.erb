@@ -1,0 +1,133 @@
+<%#
+  How Many Acts? — the modal an act-based payout scheme asks for before it can
+  calculate. One row per payee on the show (cast + guests), each with an act
+  count; submitting posts straight to the calculate action.
+
+  Opens automatically when the calculate action bounced back here because the
+  counts were missing (?enter_acts=1), and can be reopened from the payout page.
+%>
+<%
+  distribution = @show_payout.act_distribution
+  act_mode = distribution["act_mode"].to_s == "simple" ? "simple" : "tiers"
+  per_act_rate = distribution["per_act_rate"].to_f
+  tiers = PayoutScheme.act_tiers(distribution)
+  payees = @show_payout.act_payees
+  auto_open = params[:enter_acts].present?
+%>
+
+<div data-controller="payout-acts"
+     data-payout-acts-mode-value="<%= act_mode %>"
+     data-payout-acts-rate-value="<%= per_act_rate %>"
+     data-payout-acts-tiers-value="<%= tiers.to_json %>">
+
+  <div data-payout-acts-target="modal"
+       class="<%= "hidden" unless auto_open %> fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50"
+       data-action="click->payout-acts#closeOnBackdrop keydown.esc@window->payout-acts#close">
+    <div class="relative top-10 mx-auto mb-16 w-full max-w-2xl shadow-lg rounded-lg bg-white"
+         data-action="click->payout-acts#stop">
+
+      <%# Header %>
+      <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-lg">
+        <h3 class="text-lg font-semibold text-white">How many acts?</h3>
+        <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="payout-acts#close">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-5">
+        <p class="text-sm text-gray-600">
+          This show pays by acts. Enter how many acts each person did and we'll apply the scheme's rules.
+        </p>
+        <div class="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
+          <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Pay rules</span>
+          <div class="mt-1 font-medium text-gray-900">
+            <% if act_mode == "simple" %>
+              <%= number_to_currency(per_act_rate) %> per act
+            <% elsif tiers.any? %>
+              <%= tiers.each_with_index.map { |t, i|
+                    acts = t["acts"].to_i
+                    label = i == tiers.length - 1 ? "#{acts}+ acts" : "#{acts} #{'act'.pluralize(acts)}"
+                    "#{label} → #{number_to_currency(t['amount'].to_f)}"
+                  }.join(" · ") %>
+            <% else %>
+              No act tiers are set on this scheme yet.
+            <% end %>
+          </div>
+        </div>
+
+        <% if payees.empty? %>
+          <div class="mt-5 text-center py-8 text-gray-500 text-sm">
+            Nobody is assigned to this show yet, so there are no acts to record.
+          </div>
+          <div class="mt-4 flex justify-end">
+            <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button,
+                  data: { action: "click->payout-acts#close" } %>
+          </div>
+        <% else %>
+          <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true, class: "mt-5" do %>
+
+            <%# Everyone did the same number of acts, the common case %>
+            <div class="flex flex-wrap items-center gap-2 pb-3 mb-1 border-b border-gray-200">
+              <label class="text-sm text-gray-600" for="payout-acts-apply-all">Everyone did</label>
+              <input type="number" id="payout-acts-apply-all" min="0" step="1" value="1"
+                     data-payout-acts-target="applyAllInput"
+                     class="w-20 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+              <span class="text-sm text-gray-600">acts</span>
+              <%= render "shared/button", text: "Apply to all", variant: "secondary", size: "small", type: :button,
+                    data: { action: "click->payout-acts#applyAll" } %>
+            </div>
+
+            <div class="max-h-[45vh] overflow-y-auto divide-y divide-gray-100">
+              <% payees.each do |payee| %>
+                <%
+                  key = ShowPayout.act_key(payee)
+                  is_guest = payee.is_a?(ShowPersonRoleAssignment)
+                  name = is_guest ? payee.guest_name : payee.name
+                  headshot_variant = is_guest ? nil : payee.safe_headshot_variant(:thumb)
+                  count = @show_payout.act_count_for(payee)
+                %>
+                <div class="flex items-center gap-3 py-2.5">
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+                      <%= is_guest ? name.to_s.split.map(&:first).first(2).join.upcase : payee.initials %>
+                    </div>
+                  <% end %>
+
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 truncate"><%= name %></div>
+                    <% if is_guest %>
+                      <div class="text-xs text-gray-500">Guest</div>
+                    <% end %>
+                  </div>
+
+                  <input type="number" name="act_counts[<%= key %>]" value="<%= count %>" min="0" step="1"
+                         data-payout-acts-target="input"
+                         data-action="input->payout-acts#update"
+                         class="w-20 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+
+                  <span class="w-20 text-right text-sm font-medium text-gray-900 tabular-nums"
+                        data-payout-acts-target="amount">$0.00</span>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 mt-1 border-t border-gray-200">
+              <span class="text-sm text-gray-600">Total</span>
+              <span class="text-base font-semibold text-gray-900 tabular-nums" data-payout-acts-target="total">$0.00</span>
+            </div>
+
+            <div class="mt-5 flex items-center justify-end gap-3">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+                    data: { action: "click->payout-acts#close" } %>
+              <%= render "shared/button", text: "Calculate Payouts", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

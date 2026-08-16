@@ -80,6 +80,60 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
     expect(nobank.reload.in_payout_run?).to be(false)
   end
 
+  describe "an act-based payout scheme" do
+    let!(:role) { create(:role, production: production) }
+    let!(:performer) { create(:person, name: "Acty Ada") }
+    let!(:assignment) { create(:show_person_role_assignment, show: show, role: role, assignable: performer) }
+    let!(:scheme) do
+      PayoutScheme.create!(
+        organization: org,
+        name: "Act Pay",
+        rules: {
+          "distribution" => {
+            "method" => "per_act",
+            "act_mode" => "tiers",
+            "tiers" => [ { "acts" => 1, "amount" => 25.0 }, { "acts" => 2, "amount" => 50.0 } ]
+          }
+        }
+      )
+    end
+
+    before { payout.update!(payout_scheme: scheme, calculated_at: nil) }
+
+    it "asks how many acts instead of calculating blind" do
+      post manage_calculate_money_show_payout_path(show)
+
+      expect(response).to redirect_to(manage_money_show_payout_path(show, enter_acts: 1))
+      expect(payout.reload.calculated_at).to be_nil
+    end
+
+    it "opens the acts modal on the page it bounced back to" do
+      get manage_money_show_payout_path(show, enter_acts: 1)
+
+      expect(response.body).to include("How many acts?")
+      expect(response.body).to include("Acty Ada")
+      expect(response.body).to include("act_counts[Person_#{performer.id}]")
+    end
+
+    it "calculates from the submitted counts and remembers them" do
+      post manage_calculate_money_show_payout_path(show),
+           params: { act_counts: { "Person_#{performer.id}" => "2" } }
+
+      expect(response).to redirect_to(manage_money_show_payout_path(show))
+      expect(payout.reload.act_counts).to eq("Person_#{performer.id}" => 2)
+      expect(payout.line_items.find_by(payee: performer).amount.to_f).to eq(50.0)
+    end
+
+    it "prefills the modal with the counts entered last time" do
+      post manage_calculate_money_show_payout_path(show),
+           params: { act_counts: { "Person_#{performer.id}" => "2" } }
+
+      get manage_money_show_payout_path(show, enter_acts: 1)
+
+      expect(response.body).to include(%(name="act_counts[Person_#{performer.id}]" value="2"))
+    end
+  end
+
   describe "marking an in-run line paid another way" do
     before { org.update!(enabled_offline_payout_methods: [ "cash" ]) }
 

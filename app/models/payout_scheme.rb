@@ -142,6 +142,22 @@ class PayoutScheme < ApplicationRecord
         performer_overrides: {}
       }
     },
+    per_act: {
+      name: "Per Act",
+      description: "Pay each performer by how many acts they did that night. You enter the act counts when you calculate the payout.",
+      rules: {
+        allocation: [],
+        distribution: {
+          method: "per_act",
+          act_mode: "tiers",
+          tiers: [
+            { acts: 1, amount: 25.0 },
+            { acts: 2, amount: 50.0 }
+          ]
+        },
+        performer_overrides: {}
+      }
+    },
     flat_fee: {
       name: "Flat Fee",
       description: "Pay each performer a fixed amount regardless of ticket sales.",
@@ -303,6 +319,68 @@ class PayoutScheme < ApplicationRecord
     distribution_config["method"] || "equal"
   end
 
+  # --- Act-based pay -------------------------------------------------------
+  #
+  # Some shows pay by how many acts a person did on the night rather than by
+  # ticket sales or an even split. Two shapes, both under the "per_act" method:
+  #
+  #   simple — a flat rate per act ($25/act, so two acts pays $50)
+  #   tiers  — a table of "N or more acts pays $X" rows, which is how most
+  #            rooms actually word it (1 act → $25, 2+ acts → $50)
+  #
+  # The act counts themselves aren't part of the scheme — they're entered per
+  # show at calculation time and stored on ShowPayout#act_counts.
+  ACT_MODES = %w[simple tiers].freeze
+
+  def act_based?
+    distribution_method == "per_act"
+  end
+
+  # What a payee earns for `act_count` acts under the given distribution config.
+  # Takes the raw distribution hash (not a scheme) because a show can override
+  # its scheme's rules without a PayoutScheme record existing for them.
+  def self.act_amount(distribution, act_count)
+    distribution = (distribution || {}).deep_stringify_keys
+    count = act_count.to_i
+    return 0.0 if count <= 0
+
+    if distribution["act_mode"].to_s == "simple"
+      (distribution["per_act_rate"].to_f * count).round(2)
+    else
+      tier = act_tiers(distribution).select { |t| t["acts"].to_i <= count }.last
+      tier ? tier["amount"].to_f.round(2) : 0.0
+    end
+  end
+
+  # Tier rows, cleaned up and sorted by act count ascending.
+  def self.act_tiers(distribution)
+    tiers = (distribution || {}).deep_stringify_keys["tiers"]
+    Array(tiers)
+      .map { |t| t.deep_stringify_keys }
+      .select { |t| t["acts"].to_i > 0 }
+      .sort_by { |t| t["acts"].to_i }
+  end
+
+  def act_tiers
+    self.class.act_tiers(distribution_config)
+  end
+
+  # "1 act $25, 2+ acts $50" / "$25.00 per act"
+  def act_rules_description
+    if distribution_config["act_mode"].to_s == "simple"
+      "$#{'%.2f' % distribution_config['per_act_rate'].to_f} per act"
+    else
+      rows = act_tiers
+      return "No act tiers set" if rows.empty?
+
+      rows.each_with_index.map do |tier, index|
+        acts = tier["acts"].to_i
+        label = index == rows.length - 1 ? "#{acts}+ acts" : "#{acts} #{'act'.pluralize(acts)}"
+        "#{label} $#{'%.2f' % tier['amount'].to_f}"
+      end.join(", ")
+    end
+  end
+
   # Human-readable summary of rules
   def rules_summary
     parts = []
@@ -347,6 +425,8 @@ class PayoutScheme < ApplicationRecord
       parts << "$#{distribution_config['per_ticket_rate']}/ticket (min $#{distribution_config['minimum']})"
     when "flat_fee"
       parts << "$#{distribution_config['flat_amount']} flat per performer"
+    when "per_act"
+      parts << "Paid by acts (#{act_rules_description})"
     end
 
     parts.join(" → ")
