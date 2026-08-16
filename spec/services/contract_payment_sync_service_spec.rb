@@ -258,7 +258,8 @@ RSpec.describe ContractPaymentSyncService, type: :service do
 
     context "Case 3 when a night sells for less than our fee" do
       # We sell the tickets and keep a $300 fee. The night took $190, so there's
-      # nothing to hand back and they still owe us the other $110.
+      # nothing to hand back — the same settlement now faces the other way and
+      # they owe us the $110 our fee wasn't covered by. One payment per show.
       let(:contract) do
         create(:contract, :active, organization: organization, draft_data: {
                  "payment_structure" => "flat_fee",
@@ -281,75 +282,97 @@ RSpec.describe ContractPaymentSyncService, type: :service do
                                   amount: 0, amount_tbd: true, due_date: Date.new(2026, 8, 15))
       end
 
-      def shortfall
-        contract.contract_payments.find_by(auto_shortfall: true)
-      end
-
-      it "bills them the part their ticket revenue didn't cover" do
+      it "turns the settlement around to bill them the part their tickets didn't cover" do
         create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
 
         described_class.new(show).call
 
-        expect(settlement.reload.amount).to eq(0.0)
-        expect(shortfall).to have_attributes(
-          amount: 110.0, direction: "incoming", status: "pending", show_id: show.id,
-          due_date: Date.new(2026, 8, 15), amount_tbd: false
+        expect(settlement.reload).to have_attributes(
+          direction: "incoming", amount: 110.0, amount_tbd: false, auto_shortfall: true,
+          status: "pending", show_id: show.id, description: "Fee shortfall — Aug 15"
         )
+        expect(contract.contract_payments.count).to eq(1)
       end
 
-      it "leaves the shortfall collectable rather than waiting on a payout to net it" do
+      it "leaves the turned-around settlement collectable rather than waiting on a payout to net it" do
         create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
 
         described_class.new(show).call
 
-        expect(shortfall.deduct_from_payout?).to be false
-        expect(shortfall.collectable_online?).to be true
+        expect(settlement.reload.deduct_from_payout?).to be false
+        expect(settlement.collectable_online?).to be true
+        expect(contract.outgoing_settlement?).to be false
       end
 
-      it "restates the shortfall when the reported revenue changes" do
+      it "restates what they owe when the reported revenue changes" do
         financials = create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
         described_class.new(show).call
 
         financials.update!(ticket_revenue: 250.0)
         described_class.new(show.reload).call
 
-        expect(shortfall.reload.amount).to eq(50.0)
+        expect(settlement.reload).to have_attributes(direction: "incoming", amount: 50.0)
       end
 
-      it "clears the shortfall once the night covers the fee" do
+      it "faces them again once the night covers the fee" do
         financials = create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
         described_class.new(show).call
-        expect(shortfall).to be_present
+        expect(settlement.reload).to be_direction_incoming
 
         financials.update!(ticket_revenue: 500.0)
         described_class.new(show.reload).call
 
-        expect(shortfall).to be_nil
-        expect(settlement.reload.amount).to eq(200.0) # 500 revenue − 300 fee
+        expect(settlement.reload).to have_attributes(
+          direction: "outgoing", amount: 200.0, auto_shortfall: false, # 500 revenue − 300 fee
+          description: "Ticket revenue less $300.00 fee — Aug 15"
+        )
       end
 
-      it "keeps a shortfall they've already paid, even if revenue is restated" do
-        financials = create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
-        described_class.new(show).call
-        shortfall.update!(status: "paid", paid_date: Date.current, amount: 110.0)
+      it "settles to nothing, not late, when the night covers the fee exactly" do
+        create(:show_financials, :complete, show: show, ticket_revenue: 300.0, other_revenue: 0.0)
 
-        financials.update!(ticket_revenue: 500.0)
+        described_class.new(show).call
+
+        expect(settlement.reload).to have_attributes(direction: "outgoing", amount: 0.0, amount_tbd: false)
+        expect(settlement.nothing_to_hand_back?).to be true
+        expect(settlement.overdue?).to be false
+      end
+
+      it "goes back to TBD facing them if the financials are withdrawn" do
+        create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+        described_class.new(show).call
+        expect(settlement.reload).to be_direction_incoming
+
+        show.show_financials.destroy!
         described_class.new(show.reload).call
 
-        expect(shortfall.reload.amount).to eq(110.0)
-        expect(shortfall.status).to eq("paid")
+        expect(settlement.reload).to have_attributes(direction: "outgoing", amount: 0.0, amount_tbd: true, auto_shortfall: false)
       end
 
       it "leaves a settlement that already went through alone" do
         # Whatever a paid settlement settled for, it settled — restating the
-        # revenue behind it must not open a new bill against it.
-        settlement.update!(status: "paid", paid_date: Date.current, amount: 400.0)
+        # revenue behind it must not turn it into a bill.
+        settlement.update!(status: "paid", paid_date: Date.current, amount: 400.0, amount_tbd: false)
         create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
 
         described_class.new(show).call
 
-        expect(shortfall).to be_nil
-        expect(settlement.reload.amount).to eq(400.0)
+        expect(settlement.reload).to have_attributes(direction: "outgoing", amount: 400.0, status: "paid")
+        expect(contract.contract_payments.count).to eq(1)
+      end
+
+      it "leaves a settlement that's already on a payout run alone" do
+        settlement.update!(amount: 400.0, amount_tbd: false)
+        payee = create(:person)
+        batch = PayoutBatch.create!(organization: organization, status: "draft", kind: "performer")
+        item = batch.items.create!(payee: payee, amount_cents: 40_000)
+        batch.payout_contributions.create!(source: settlement, payout_batch_item: item,
+                                           payee: payee, amount_cents: 40_000, label: "Settlement")
+        create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+
+        described_class.new(show).call
+
+        expect(settlement.reload).to have_attributes(direction: "outgoing", amount: 400.0)
       end
 
       it "counts the shortfall as money in, so the fee lands whole in the books" do
@@ -411,7 +434,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
         expect(week_two.amount_tbd).to be false
       end
 
-      it "never pays out a negative when a week's revenue is under its fee" do
+      it "turns a week that sold under its fee around so they owe us the difference" do
         payment = create(:contract_payment, contract: contract, direction: "outgoing",
                                             description: "Ticket revenue less $750.00 fee — week of Mar 2",
                                             amount: 0, amount_tbd: true, due_date: Date.new(2026, 3, 7))
@@ -420,7 +443,9 @@ RSpec.describe ContractPaymentSyncService, type: :service do
 
         described_class.new(production.shows.first).call
 
-        expect(payment.reload.amount).to eq(0.0) # 300 revenue − 750 fee, floored
+        # 300 revenue − 750 fee: nothing to hand back, $450 of fee uncovered.
+        expect(payment.reload).to have_attributes(direction: "incoming", amount: 450.0, auto_shortfall: true,
+                                                  description: "Fee shortfall — Mar 3–Mar 7")
       end
 
       it "holds a week at TBD until every show in it is confirmed" do

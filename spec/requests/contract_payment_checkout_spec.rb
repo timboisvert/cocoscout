@@ -57,6 +57,22 @@ RSpec.describe "Contract payment checkout", type: :request do
       expect(response.body).to include("Payment received")
       expect(response.body).not_to include("Pay $250.00")
     end
+
+    it "shows the payer only CocoScout when the contract is online-only" do
+      get pay_contract_path(token: payment.payment_token!)
+
+      expect(response.body).to include("Pay $250.00")
+      expect(response.body).not_to include("Prefer to pay by")
+    end
+
+    it "tells the payer the other ways their contract lets them pay" do
+      contract.update_draft_step(:payment_config, { "accepted_payment_methods" => %w[online zelle check] })
+
+      get pay_contract_path(token: payment.payment_token!)
+
+      expect(response.body).to include("Prefer to pay by Zelle or check?")
+      expect(response.body).not_to match(/venmo|cash/i)
+    end
   end
 
   describe "starting checkout" do

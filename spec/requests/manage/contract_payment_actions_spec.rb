@@ -92,13 +92,13 @@ RSpec.describe "Manage contract payment actions", type: :request do
 
       expect(response.body).to include("Copy pay link")
       expect(response.body).to include("Record Payment Received")
+      # Recording lists every way money arrives; the contract's own methods lead.
       expect(response.body).to include("Check")
-      # Only what this contract accepts — no bank transfer, and never Venmo/Zelle.
-      expect(response.body).not_to include("Bank transfer")
-      expect(response.body).not_to match(/venmo|zelle|paypal/i)
+      expect(response.body).to include("Zelle")
     end
 
-    it "offers only the pay link on an online-only contract" do
+    it "still lets money be recorded on an online-only contract" do
+      # Online-only is what the payer is told, not a bar on recording what came in.
       contract = contract_for(payable_person)
       create(:contract_payment, contract: contract, direction: "incoming",
                                 status: "pending", amount: 300, amount_tbd: false, due_date: Date.current)
@@ -106,7 +106,7 @@ RSpec.describe "Manage contract payment actions", type: :request do
       get manage_contract_path(contract)
 
       expect(response.body).to include("Copy pay link")
-      expect(response.body).not_to include("Record Payment Received")
+      expect(response.body).to include("Record Payment Received")
     end
 
     it "has nothing to offer on an unsettled incoming amount" do
@@ -160,14 +160,26 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(response.body).not_to include("Copy pay link")
     end
 
-    it "shows the deduction chip on a charge with no pending settlement to fold into" do
-      # Every settlement has already gone out, so the charge stands as its own row.
+    it "offers the pay link again once every settlement has gone out" do
+      # Nothing left to net against: the charge is an ordinary invoice now, and
+      # must not sit as a "deducts from payout" that can never happen.
       settlement.update!(status: "paid", paid_date: Date.current)
       service.update!(settlement_method: "payout_deduction")
 
       get manage_contract_path(contract)
 
-      expect(response.body).to include("Deducts from payout")
+      expect(response.body).not_to include("Deducts from payout")
+      expect(response.body).to include("Copy pay link")
+    end
+
+    it "renders a cancelled payment muted, marked, and with no actions" do
+      # Cancelling a contract cancels its pending payments; that history stays
+      # on the page but must read as history — never as money still moving.
+      service.update!(status: "cancelled")
+      get manage_contract_path(contract)
+
+      expect(response.body).to include("Cancelled")
+      expect(response.body).to include("line-through")
       expect(response.body).not_to include("Copy pay link")
     end
 
@@ -207,31 +219,45 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(payment.reload).to be_status_paid
     end
 
-    it "refuses a method the contract doesn't accept" do
+    it "records money however it actually arrived, whatever the contract told them" do
+      # The accepted methods are what the PAYER is shown; a Zelle that already
+      # landed is a fact and gets recorded — on an online-only contract too.
       contract = contract_for(payable_person)
-      contract.update_draft_step(:payment_config, { "accepted_payment_methods" => %w[online check] })
       payment = create(:contract_payment, contract: contract, direction: "incoming",
                                           status: "pending", amount: 300, amount_tbd: false,
                                           due_date: Date.current)
 
       post mark_paid_manage_contract_contract_payment_path(contract, payment),
-           params: { payment_amount: 300, paid_date: Date.current.to_s, payment_method: "cash" }
+           params: { payment_amount: 300, paid_date: Date.current.to_s, payment_method: "zelle" }
 
-      expect(payment.reload).to be_status_pending
-      expect(flash[:alert]).to include("doesn't accept")
+      expect(payment.reload).to be_status_paid
+      expect(payment.payment_method).to eq("zelle")
     end
 
-    it "refuses to record anything by hand on an online-only contract" do
+    it "still refuses a method that isn't a way money arrives" do
       contract = contract_for(payable_person)
       payment = create(:contract_payment, contract: contract, direction: "incoming",
                                           status: "pending", amount: 300, amount_tbd: false,
                                           due_date: Date.current)
 
       post mark_paid_manage_contract_contract_payment_path(contract, payment),
-           params: { payment_amount: 300, paid_date: Date.current.to_s, payment_method: "check" }
+           params: { payment_amount: 300, paid_date: Date.current.to_s, payment_method: "bitcoin" }
 
       expect(payment.reload).to be_status_pending
-      expect(flash[:alert]).to include("online payment only")
+      expect(flash[:alert]).to include("Unknown payment method")
+    end
+
+    it "agrees with the Collect page: both record the same Zelle" do
+      contract = contract_for(payable_person)
+      payment = create(:contract_payment, contract: contract, direction: "incoming",
+                                          status: "pending", amount: 300, amount_tbd: false,
+                                          due_date: Date.current)
+
+      post manage_mark_received_money_incoming_payment_path(payment),
+           params: { payment_amount: 300, paid_date: Date.current.to_s, payment_method: "zelle" }
+
+      expect(payment.reload).to be_status_paid
+      expect(payment.payment_method).to eq("zelle")
     end
   end
 
@@ -249,10 +275,23 @@ RSpec.describe "Manage contract payment actions", type: :request do
     end
 
     it "always keeps online available and ignores anything unrecognized" do
-      org.update!(default_contract_payment_methods: %w[venmo zelle])
+      org.update!(default_contract_payment_methods: %w[bitcoin paypal])
       contract = contract_for(payable_person)
 
       expect(contract.accepted_payment_methods).to eq([ "online" ])
+    end
+
+    it "lets a contract tell the payer they may use Zelle or Venmo" do
+      contract = contract_for(payable_person)
+      contract.update_draft_step(:payment_config, { "accepted_payment_methods" => %w[online zelle check] })
+
+      expect(contract.offline_payment_methods).to eq(%w[zelle check])
+      expect(contract.offline_payment_methods_sentence).to eq("Zelle or check")
+    end
+
+    it "tells the payer nothing but CocoScout when the contract is online-only" do
+      contract = contract_for(payable_person)
+      expect(contract.offline_payment_methods_sentence).to be_nil
     end
 
     it "saves the per-contract choice from the Financials step" do

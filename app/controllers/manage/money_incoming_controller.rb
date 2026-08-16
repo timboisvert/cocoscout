@@ -11,18 +11,9 @@ module Manage
   class MoneyIncomingController < Manage::ManageController
     include ActionView::Helpers::NumberHelper
 
-    # Ways an incoming payment can arrive outside CocoScout's Stripe rail. Recorded
-    # for the org's own books — the label is stored, nothing settles through Stripe.
-    # (Venmo/Zelle kept here on purpose for historic hand-recording, even though
-    # they're gone from the payout/payee side.)
-    RECEIVED_METHODS = [
-      [ "Cash", "cash" ],
-      [ "Check", "check" ],
-      [ "Zelle", "zelle" ],
-      [ "Venmo", "venmo" ],
-      [ "Bank transfer", "bank_transfer" ],
-      [ "Other", "other" ]
-    ].freeze
+    # Ways an incoming payment can arrive outside CocoScout's Stripe rail — the
+    # one list shared with the contract page (ContractPayment::RECEIVED_PAYMENT_METHODS).
+    RECEIVED_METHODS = ContractPayment::RECEIVED_PAYMENT_METHODS
 
     # Forward-looking windows for the "what's coming in" view.
     WINDOWS = [
@@ -135,7 +126,10 @@ module Manage
           description: @payment.description.presence || "a payment",
           due_date: @payment.due_date.strftime("%B %-d, %Y"),
           pay_url: pay_url,
-          custom_message: params[:custom_message].to_s.strip
+          custom_message: params[:custom_message].to_s.strip,
+          # Only the ways this contract says they may pay; blank means the
+          # template shows CocoScout alone.
+          other_payment_methods: contract.offline_payment_methods_sentence.to_s
         },
         sender: Current.user,
         recipients: [ person ],

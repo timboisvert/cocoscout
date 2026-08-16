@@ -43,10 +43,10 @@ RSpec.describe "Manage::ShowFinancials settling a contract", type: :request do
       show_financials: { revenue_type: "ticket_sales", ticket_count: 10, ticket_revenue: 190, data_confirmed: true }
     }
 
-    expect(settlement.reload.amount).to eq(0.0)
-    shortfall = contract.contract_payments.find_by(auto_shortfall: true)
-    expect(shortfall).to have_attributes(amount: 110.0, direction: "incoming", show_id: show.id)
-    expect(shortfall.collectable_online?).to be true
+    # The settlement itself turns around: one payment per show, facing whoever owes.
+    expect(settlement.reload).to have_attributes(amount: 110.0, direction: "incoming", auto_shortfall: true, show_id: show.id)
+    expect(settlement.collectable_online?).to be true
+    expect(contract.contract_payments.count).to eq(1)
   end
 
   it "hands back the remainder when the night clears the fee" do
@@ -54,7 +54,7 @@ RSpec.describe "Manage::ShowFinancials settling a contract", type: :request do
       show_financials: { revenue_type: "ticket_sales", ticket_count: 40, ticket_revenue: 800, data_confirmed: true }
     }
 
-    expect(settlement.reload.amount).to eq(500.0)
-    expect(contract.contract_payments.find_by(auto_shortfall: true)).to be_nil
+    expect(settlement.reload).to have_attributes(amount: 500.0, direction: "outgoing", auto_shortfall: false)
+    expect(contract.contract_payments.count).to eq(1)
   end
 end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-# Syncs show-level financial data to ContractPayment records for revenue-share contracts.
+# Syncs show-level financial data to ContractPayment records for revenue-share
+# and ticket-revenue-minus-fee contracts.
 #
 # When a show's financials are confirmed for a third-party production,
 # this service finds the matching ContractPayment (by settlement period)
@@ -41,25 +42,81 @@ class ContractPaymentSyncService
   end
 
   # Case 3 settling once: we sell, contractor gets all ticket revenue minus our
-  # fee. One whole-contract outgoing payment settled from every confirmed show.
+  # fee. One whole-contract payment settled from every confirmed show.
   def sync_whole_contract
     summary = @contract.flat_fee_revenue_summary
     return unless summary
 
-    payment = @contract.contract_payments.where(direction: "outgoing").order(:due_date).first
+    payment = @contract.settlement_payments.first
     return unless payment
 
     confirmed = @contract.contract_shows.includes(:show_financials)
                          .select { |s| s.show_financials&.has_data? }
 
     if summary[:confirmed_count].positive?
-      details = confirmed.map { |s| [ s, s.show_financials.total_revenue ] }
-      update_payment(payment, summary[:contractor_share], details, pending_count: summary[:pending_count])
-      sync_shortfall(payment, confirmed)
-    elsif !payment.status_paid?
-      payment.update(amount: 0, amount_tbd: true)
-      clear_shortfall(payment)
+      settle(payment, confirmed, pending_count: summary[:pending_count])
+    else
+      reset_to_tbd(payment)
     end
+  end
+
+  # For per-event settlement: each show maps to one ContractPayment
+  def sync_per_event
+    payment = @contract.find_payment_for_show(@show)
+    return unless payment
+
+    if @show.show_financials&.has_data?
+      settle(payment, [ @show ])
+    else
+      reset_to_tbd(payment)
+    end
+  end
+
+  # For weekly/monthly settlement: aggregate all shows in the period
+  def sync_period(period_method)
+    # Find all settlement payments. Direction-agnostic: a revenue split can run
+    # either way, and a minus-fee settlement flips to face whichever way the
+    # money went.
+    revenue_payments = @contract.settlement_payments
+
+    # Group shows by period
+    all_shows = @contract.contract_shows.includes(:show_financials).to_a
+
+    revenue_payments.each do |payment|
+      period_start = payment.due_date.public_send(period_method)
+      period_shows = all_shows.select { |s| s.date_and_time.to_date.public_send(period_method) == period_start }
+
+      confirmed_shows = period_shows.select { |s| s.show_financials&.has_data? }
+
+      if confirmed_shows.any?
+        settle(payment, confirmed_shows, pending_count: period_shows.size - confirmed_shows.size)
+      elsif settlement_payment?(payment)
+        # All shows still pending — keep TBD
+        reset_to_tbd(payment)
+      end
+    end
+  end
+
+  # Bring one settlement in line with the shows it covers: its amount, and on
+  # a minus-fee deal which way it faces.
+  def settle(payment, shows, pending_count: 0)
+    show_details = shows.map { |s| [ s, s.show_financials.total_revenue ] }
+    remainder = settled_amount_for(shows)
+    update_payment(payment, remainder.abs, show_details, pending_count: pending_count)
+    face_the_money!(payment, remainder, shows)
+  end
+
+  # Financials withdrawn (or none in yet): the settlement is TBD again, and a
+  # minus-fee one faces its natural way while it waits.
+  def reset_to_tbd(payment)
+    return if payment.status_paid? || payment.in_payout_run?
+
+    attrs = { amount: 0, amount_tbd: true }
+    if @contract.ticket_revenue_minus_fee? && payment.auto_shortfall?
+      attrs.merge!(direction: "outgoing", auto_shortfall: false,
+                   description: settlement_description(period_label_for(payment)))
+    end
+    payment.update!(attrs)
   end
 
   # What one settlement covering these shows should move. A minus-fee deal
@@ -67,16 +124,61 @@ class ContractPaymentSyncService
   # settlement — so a week of three shows deducts three shows' worth, and the
   # run as a whole still deducts the whole fee. A split takes its percentage.
   #
-  # Never negative: when the fee comes to more than the night took, there is
-  # nothing to hand back and the difference becomes money they owe us instead
-  # (see #sync_shortfall).
+  # For a minus-fee deal the number is SIGNED: negative means the night took
+  # less than our fee, so the difference is money they owe us (see
+  # #face_the_money!). A split is always positive.
   def settled_amount_for(shows)
     if @contract.ticket_revenue_minus_fee?
-      [ @contract.settlement_remainder(shows), 0 ].max
+      @contract.settlement_remainder(shows)
     else
       revenue = shows.sum { |s| s.show_financials.total_revenue }
       (revenue * share_pct_for(nil) / 100.0).round(2)
     end
+  end
+
+  # A minus-fee deal has exactly one settlement per show (or period), and it
+  # faces whichever way the money actually goes. Revenue above the fee: we hand
+  # them the remainder — an outgoing payment. Revenue under the fee: our fee
+  # still stands, their tickets covered what they covered, and they owe us the
+  # rest — the same payment, now incoming and collectable. Never a second row,
+  # and never a payment that's already gone through or joined a run.
+  def face_the_money!(payment, remainder, shows)
+    return unless @contract.ticket_revenue_minus_fee?
+    return if payment.status_paid? || payment.in_payout_run?
+
+    label = period_label_for(payment, shows)
+    if remainder.negative?
+      revenue = shows.sum { |s| s.show_financials.total_revenue }
+      fee = @contract.flat_fee_for_shows(shows.size)
+      money = ActionController::Base.helpers.method(:number_to_currency)
+      payment.update!(
+        direction: "incoming", auto_shortfall: true, settlement_method: "direct",
+        description: "Fee shortfall — #{label}",
+        notes: "Ticket revenue of #{money.call(revenue)} came in " \
+               "#{money.call(-remainder)} under our #{money.call(fee)} fee."
+      )
+    elsif payment.direction_incoming? && payment.auto_shortfall?
+      # Revenue caught back up — the settlement faces them again.
+      payment.update!(direction: "outgoing", auto_shortfall: false,
+                      description: settlement_description(label))
+    end
+  end
+
+  def settlement_description(label)
+    fee = ActionController::Base.helpers.number_to_currency(@contract.flat_fee_per_show)
+    base = "Ticket revenue less #{fee} fee"
+    @contract.settles_periodically? && label ? "#{base} — #{label}" : base
+  end
+
+  # How the settlement names its stretch of dates: a single night by its date,
+  # a period by its first and last.
+  def period_label_for(payment, shows = nil)
+    dates = Array(shows).filter_map(&:date_and_time).sort
+    dates = [ payment.due_date ] if dates.empty? && @contract.settles_periodically?
+    return nil if dates.empty?
+    return dates.first.strftime("%b %-d") if dates.first.to_date == dates.last.to_date
+
+    "#{dates.first.strftime('%b %-d')}–#{dates.last.strftime('%b %-d')}"
   end
 
   # Whether a payment is one of the contract's core settlements (as opposed to
@@ -97,122 +199,12 @@ class ContractPaymentSyncService
     end
   end
 
-  # For per-event settlement: each show maps to one ContractPayment
-  def sync_per_event
-    payment = @contract.find_payment_for_show(@show)
-    return unless payment
-
-    financials = @show.show_financials
-    if financials&.has_data?
-      update_payment(payment, settled_amount_for([ @show ]), [ [ @show, financials.total_revenue ] ])
-      sync_shortfall(payment, [ @show ])
-    elsif !payment.status_paid?
-      # Reset to TBD if financial data removed
-      payment.update(amount: 0, amount_tbd: true) if payment.amount_tbd? == false
-      clear_shortfall(payment)
-    end
-  end
-
-  # For weekly/monthly settlement: aggregate all shows in the period
-  def sync_period(period_method)
-    # Find all settlement payments. Direction-agnostic: a revenue split can run
-    # either way, while minus-fee settlements are always outgoing.
-    revenue_payments = @contract.settlement_payments
-
-    # Group shows by period
-    all_shows = @contract.contract_shows.includes(:show_financials).to_a
-
-    revenue_payments.each do |payment|
-      period_start = payment.due_date.public_send(period_method)
-      period_shows = all_shows.select { |s| s.date_and_time.to_date.public_send(period_method) == period_start }
-
-      confirmed_shows = period_shows.select { |s| s.show_financials&.has_data? }
-
-      if confirmed_shows.any?
-        show_details = confirmed_shows.map { |s| [ s, s.show_financials.total_revenue ] }
-        update_payment(payment, settled_amount_for(confirmed_shows), show_details,
-                       pending_count: period_shows.size - confirmed_shows.size)
-        sync_shortfall(payment, confirmed_shows)
-      elsif settlement_payment?(payment) && !payment.status_paid?
-        # All shows still pending — keep TBD
-        payment.update(amount: 0, amount_tbd: true)
-        clear_shortfall(payment)
-      end
-    end
-  end
-
-  # --- Fee shortfalls ---------------------------------------------------------
-  # A minus-fee deal assumes the night takes more than our fee, so what's left
-  # goes back to them. When it doesn't, the fee still stands: their ticket
-  # revenue covers what it covers and they owe us the rest. That difference
-  # rides alongside the settlement as an ordinary incoming payment, so it can be
-  # collected with a pay link or recorded when the money arrives some other way.
-  def sync_shortfall(settlement, shows)
-    return unless @contract.ticket_revenue_minus_fee?
-    # A settlement that's already gone through is closed — whatever it settled
-    # for, it settled. Restating the revenue behind it doesn't reopen a bill.
-    return if settlement.status_paid?
-
-    owed = -@contract.settlement_remainder(shows)
-    return clear_shortfall(settlement) unless owed.positive?
-
-    existing = shortfall_payment_for(settlement)
-    # Money that already changed hands is never rewritten, here as anywhere.
-    return if existing&.status_paid?
-
-    revenue = shows.sum { |s| s.show_financials&.total_revenue.to_f }
-    fee = @contract.flat_fee_for_shows(shows.size)
-    money = ActionController::Base.helpers.method(:number_to_currency)
-    attrs = {
-      amount: owed,
-      amount_tbd: false,
-      due_date: settlement.due_date,
-      show_id: settlement.show_id,
-      description: "Fee shortfall — #{shortfall_period_label(shows)}",
-      notes: "Ticket revenue of #{money.call(revenue)} came in " \
-             "#{money.call(owed)} under our #{money.call(fee)} fee."
-    }
-
-    if existing
-      existing.update!(attrs)
-    else
-      @contract.contract_payments.create!(
-        attrs.merge(direction: "incoming", status: "pending",
-                    settlement_method: "direct", auto_shortfall: true)
-      )
-    end
-  end
-
-  # Revenue caught up (or the numbers were withdrawn) — nothing is owed, so the
-  # row goes away. One that's been paid stays: that money really moved.
-  def clear_shortfall(settlement)
-    payment = shortfall_payment_for(settlement)
-    payment.destroy if payment && !payment.status_paid?
-  end
-
-  # This settlement's shortfall row, if it has one. Per-event settlements carry
-  # a show; period ones are found by the date they settle on.
-  def shortfall_payment_for(settlement)
-    rows = @contract.contract_payments.where(auto_shortfall: true).order(:id).to_a
-    return rows.find { |p| p.show_id == settlement.show_id } if settlement.show_id.present?
-
-    rows.find { |p| p.show_id.nil? && p.due_date == settlement.due_date } ||
-      (@contract.settles_periodically? ? nil : rows.find { |p| p.show_id.nil? })
-  end
-
-  def shortfall_period_label(shows)
-    dates = shows.filter_map(&:date_and_time).sort
-    return "this settlement" if dates.empty?
-    return dates.first.strftime("%b %-d") if dates.first.to_date == dates.last.to_date
-
-    "#{dates.first.strftime('%b %-d')}–#{dates.last.strftime('%b %-d')}"
-  end
-
   def update_payment(payment, amount, show_details, pending_count: 0)
     # Never rewrite a payment that's already been settled. A re-sync (e.g. a
     # contractor re-submitting sales on a closed contract) must not overwrite the
-    # amount/notes of money that already moved.
-    return if payment.status_paid?
+    # amount/notes of money that already moved. Same for one that's joined a
+    # payout run: the run's contribution is fixed by the transfer.
+    return if payment.status_paid? || payment.in_payout_run?
 
     attrs = { amount: amount }
 

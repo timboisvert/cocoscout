@@ -60,7 +60,11 @@
         </div>
       <% else %>
         <div class="px-5 py-8 text-center text-sm text-gray-500">
-          No outgoing contract payments for this show yet.
+          <% if @contract&.ticket_revenue_minus_fee? && incoming.any? %>
+            Nothing to hand back for this show — ticket sales came in under the fee.
+          <% else %>
+            No outgoing contract payments for this show yet.
+          <% end %>
         </div>
       <% end %>
     </div>

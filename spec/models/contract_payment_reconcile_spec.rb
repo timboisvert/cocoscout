@@ -22,6 +22,60 @@ RSpec.describe "Contract payment reconciliation", type: :model do
       "amount" => amount, "amount_tbd" => tbd, "notes" => notes }
   end
 
+  describe "a ticket-revenue-minus-fee settlement that turned around" do
+    # A night that sold under the fee faces us (they owe the difference). To an
+    # amendment it must still be THE settlement for that date — not an empty
+    # slot to fill with a second one.
+    let(:contract) do
+      create(:contract, :active, organization: org, production: production, draft_data: {
+               "payment_structure" => "flat_fee",
+               "payment_config" => { "settlement_basis" => "revenue_minus_fee", "flat_fee_direction" => "ticket_revenue_minus_fee",
+                                     "flat_fee_amount" => 300, "flat_fee_basis" => "per_show", "flat_fee_settlement" => "per_event" }
+             })
+    end
+    let(:show) { create(:show, production: production, date_and_time: Date.new(2026, 8, 15).to_time) }
+    let!(:settlement) do
+      contract.contract_payments.create!(
+        description: "Ticket revenue less $300.00 fee", amount: 0, amount_tbd: true, direction: "outgoing",
+        due_date: Date.new(2026, 8, 15), show: show
+      )
+    end
+
+    before do
+      create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+      ContractPaymentSyncService.new(show).call
+      expect(settlement.reload).to have_attributes(direction: "incoming", amount: 110.0, auto_shortfall: true)
+    end
+
+    it "does not re-bill a short night that already settled" do
+      settlement.update!(status: "paid", paid_date: Date.new(2026, 8, 15), payment_method: "zelle")
+
+      contract.reconcile_amended_payments!([
+        staged(description: "Ticket revenue less $300.00 fee", due_date: Date.new(2026, 8, 15))
+      ])
+
+      august = contract.contract_payments.reload.where(due_date: Date.new(2026, 8, 15))
+      expect(august.count).to eq(1)
+      expect(august.first).to eq(settlement)
+      expect(settlement.reload).to have_attributes(status: "paid", direction: "incoming", amount: 110.0)
+    end
+
+    it "re-prices a pending short night under the amended fee instead of replacing it" do
+      # The fee drops to $250: the same night now leaves them owing $60, and it's
+      # still the same payment row.
+      contract.update_draft_step(:payment_config, contract.draft_payment_config.merge("flat_fee_amount" => 250))
+
+      contract.reconcile_amended_payments!([
+        staged(description: "Ticket revenue less $250.00 fee", due_date: Date.new(2026, 8, 15))
+      ])
+
+      august = contract.contract_payments.reload.where(due_date: Date.new(2026, 8, 15))
+      expect(august.count).to eq(1)
+      expect(august.first).to eq(settlement)
+      expect(settlement.reload).to have_attributes(direction: "incoming", amount: 60.0, auto_shortfall: true, status: "pending")
+    end
+  end
+
   describe "dates that already carry settled money" do
     it "does not create a second payment for a date that's already been paid" do
       paid = contract.contract_payments.create!(

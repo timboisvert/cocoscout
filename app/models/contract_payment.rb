@@ -27,6 +27,20 @@ class ContractPayment < ApplicationRecord
   # share joins a payout run (see ContractorPayoutRunService).
   SETTLEMENT_METHODS = %w[direct payout_deduction].freeze
 
+  # Ways money owed TO us can arrive outside CocoScout's Stripe rail, as a
+  # manager records them — [label, value], in the order offered. Recording is
+  # a statement of fact and is never gated by what the contract told the payer
+  # they may use (Contract::OFFLINE_PAYMENT_METHODS is that policy). Venmo and
+  # Zelle stay here for hand-recording even though nothing settles through them.
+  RECEIVED_PAYMENT_METHODS = [
+    [ "Cash", "cash" ],
+    [ "Check", "check" ],
+    [ "Zelle", "zelle" ],
+    [ "Venmo", "venmo" ],
+    [ "Bank transfer", "bank_transfer" ],
+    [ "Other", "other" ]
+  ].freeze
+
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :amount, numericality: { greater_than_or_equal_to: 0 }, unless: :amount_tbd?
   validates :due_date, presence: true
@@ -49,7 +63,15 @@ class ContractPayment < ApplicationRecord
 
   # Check if payment is overdue
   def overdue?
-    status_pending? && due_date < Date.current
+    status_pending? && due_date < Date.current && !nothing_to_hand_back?
+  end
+
+  # A settlement that resolved to exactly nothing: on a ticket-revenue deal, the
+  # night covered our fee to the penny, so there is nothing to hand back and
+  # nothing to collect. Not late, not "set an amount" — done.
+  def nothing_to_hand_back?
+    status_pending? && direction_outgoing? && !amount_tbd? && amount.to_f.zero? &&
+      (contract.ticket_revenue_minus_fee? || contract.revenue_share?)
   end
 
   # Whether this payment has been added to a payout run.

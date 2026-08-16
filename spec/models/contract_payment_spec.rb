@@ -207,6 +207,17 @@ RSpec.describe ContractPayment, type: :model do
       expect(charge.deduct_from_payout?).to be false
       expect(charge.collectable_online?).to be true
     end
+
+    it "needs the payout to still be pending with money in it" do
+      # A settlement that already went out, or one that came to nothing, is
+      # nothing to net against either.
+      create(:contract_payment, :outgoing, :paid, contract: contract, amount: 500.0)
+      create(:contract_payment, :outgoing, contract: contract, amount: 0.0)
+      charge = create(:contract_payment, contract: contract, amount: 100.0, settlement_method: "payout_deduction")
+
+      expect(charge.deduct_from_payout?).to be false
+      expect(charge.collectable_online?).to be true
+    end
   end
 
   describe "#status_badge_class" do

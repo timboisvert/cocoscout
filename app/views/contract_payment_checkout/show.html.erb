@@ -73,6 +73,12 @@
           <p class="mt-4 text-xs text-gray-400 text-center">
             Payments are processed securely by Stripe.
           </p>
+          <% if (other_ways = @contract.offline_payment_methods_sentence) %>
+            <%# Only what this contract says they may use. Online-only contracts show nothing here. %>
+            <p class="mt-3 text-xs text-gray-500 text-center">
+              Prefer to pay by <%= other_ways %>? Reach out to <%= @organization.name %> to arrange it.
+            </p>
+          <% end %>
         <% else %>
           <p class="text-sm text-gray-600 text-center">
             This payment isn't ready to be paid yet. Check with <%= @organization.name %>.

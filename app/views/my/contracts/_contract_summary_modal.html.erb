@@ -135,6 +135,10 @@
                 <span class="text-gray-900"><%= number_to_currency(owing_total) %></span>
               </div>
             </div>
+            <% if (other_ways = contract.offline_payment_methods_sentence) %>
+              <%# Only what this contract allows; online-only shows nothing extra. %>
+              <p class="mt-2 text-xs text-gray-500">You can pay online, or by <%= other_ways %> — reach out to <%= org_name %> to arrange it.</p>
+            <% end %>
           </div>
         <% end %>
 

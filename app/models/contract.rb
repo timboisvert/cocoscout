@@ -58,15 +58,21 @@ class Contract < ApplicationRecord
   SERVICES_TOKEN = "{{services}}"
   APPENDIXES_TOKEN = "{{appendixes}}"
 
-  # Ways money can reach us that aren't the online pay link. Each must be
-  # allowed on the contract before a manager may record one.
-  OFFLINE_PAYMENT_METHODS = %w[check bank_transfer cash].freeze
+  # Ways money can reach us that aren't the online pay link. This is POLICY for
+  # the payer: the contract says which of these they may use, and that's what
+  # they're told (pay page, reminders). Nothing on the contract means the only
+  # way they're shown is through CocoScout. It never gates recording — money
+  # that arrived is a fact, and a manager records it however it came (see
+  # ContractPayment::RECEIVED_PAYMENT_METHODS).
+  OFFLINE_PAYMENT_METHODS = %w[check bank_transfer cash zelle venmo].freeze
 
   # Labels for the offline methods, in the order they're offered.
   OFFLINE_PAYMENT_METHOD_LABELS = {
     "check" => "Check",
     "bank_transfer" => "Bank transfer",
-    "cash" => "Cash"
+    "cash" => "Cash",
+    "zelle" => "Zelle",
+    "venmo" => "Venmo"
   }.freeze
 
   # Callbacks to sync contractor data
@@ -648,8 +654,12 @@ class Contract < ApplicationRecord
         unclaimed.delete(match)
         attrs[:claimed] = true
         # Only the deal's own fields are rewritten. settlement_method,
-        # payment_token and show_id belong to the manager, and survive.
-        match.update!(attrs[:values])
+        # payment_token and show_id belong to the manager, and survive. A
+        # settlement that turned around because its night sold under the fee
+        # keeps facing the way the money went — the financials decide that,
+        # not the staged row (resynced below).
+        values = match.auto_shortfall? ? attrs[:values].slice(:notes) : attrs[:values]
+        match.update!(values)
         kept << match
       end
     end
@@ -666,6 +676,18 @@ class Contract < ApplicationRecord
     unclaimed.each(&:destroy!)
 
     link_payments_to_shows(kept, contract_shows.order(:date_and_time).to_a)
+    resettle_from_financials!
+  end
+
+  # An amendment can change the terms a settlement is worked out from (the fee,
+  # the split), so every show whose numbers are already in settles again under
+  # the amended deal — the same path a financials save takes.
+  def resettle_from_financials!
+    return unless revenue_share? || ticket_revenue_minus_fee?
+
+    contract_shows.includes(:show_financials, :space_rental, :production)
+                  .select { |s| s.show_financials&.has_data? }
+                  .each { |s| ContractPaymentSyncService.new(s).call }
   end
 
   # The payment schedule with deduction-settled charges folded into the
@@ -881,8 +903,13 @@ class Contract < ApplicationRecord
   end
 
   # Which way the money goes and when it's due — see reconcile_amended_payments!.
+  # A settlement that turned around (its night sold under the fee, so it faces
+  # us instead of them) still occupies the slot the deal generates for that
+  # date — otherwise an amendment would see that slot as empty and invent a
+  # second settlement beside it.
   def payment_slot(payment)
-    [ payment.direction, payment.due_date ]
+    direction = payment.auto_shortfall? ? settlement_direction : payment.direction
+    [ direction, payment.due_date ]
   end
 
   # A payment billed from the services list: named for the service, bare or
@@ -989,11 +1016,12 @@ class Contract < ApplicationRecord
 
   # Sum of this contract's payments in one direction, using the in-memory
   # records when the association is already (pre)loaded.
+  # Cancelled payments are history, not money — they never count.
   def payments_amount_sum(direction)
     if contract_payments.loaded?
-      contract_payments.select { |p| p.direction == direction }.sum { |p| p.amount.to_f }
+      contract_payments.select { |p| p.direction == direction && !p.status_cancelled? }.sum { |p| p.amount.to_f }
     else
-      contract_payments.where(direction: direction).sum(:amount).to_f
+      contract_payments.where(direction: direction).where.not(status: "cancelled").sum(:amount).to_f
     end
   end
 
@@ -1026,7 +1054,7 @@ class Contract < ApplicationRecord
   end
 
   def total_outgoing
-    contract_payments.where(direction: "outgoing").sum(:amount)
+    contract_payments.where(direction: "outgoing").where.not(status: "cancelled").sum(:amount)
   end
 
   def net_amount
@@ -1214,15 +1242,19 @@ class Contract < ApplicationRecord
   # The payments that carry this contract's core settlement, oldest first.
   # Revenue splits can run either direction and are named for the split;
   # minus-fee settlements are always us paying them and are named for the fee.
+  # Direction-agnostic on purpose: a revenue split can run either way, and a
+  # minus-fee settlement flips to face whichever way the money went (see
+  # ContractPaymentSyncService#face_the_money!). Cancelled rows are history,
+  # not settlements, and never pair with a show.
   def settlement_payments
+    live = contract_payments.where.not(status: "cancelled")
     if ticket_revenue_minus_fee?
-      contract_payments.where(direction: "outgoing")
-                       .where("amount_tbd = ? OR description LIKE ?", true, "Ticket revenue%")
-                       .order(:due_date)
+      live.where("amount_tbd = ? OR auto_shortfall = ? OR description LIKE ?", true, true, "Ticket revenue%")
+          .order(:due_date)
     else
-      contract_payments.where(amount_tbd: true)
-                       .or(contract_payments.where("description LIKE ?", "%Revenue Share%"))
-                       .order(:due_date)
+      live.where(amount_tbd: true)
+          .or(live.where("description LIKE ?", "%Revenue Share%"))
+          .order(:due_date)
     end
   end
 
@@ -1409,18 +1441,15 @@ class Contract < ApplicationRecord
     settlement_cadence != "once"
   end
 
-  # Whether this contract has any outgoing money at all — the thing an incoming
-  # charge can be netted out of. A deal where money only ever comes IN has
-  # nothing to deduct from (see ContractPayment#deduct_from_payout?).
+  # Whether this contract still has money going OUT that an incoming charge
+  # could be netted out of: an outgoing payment that's pending and actually
+  # carries an amount (or is waiting on one). Nothing pending, or a settlement
+  # that came to nothing, means there is nothing to deduct from (see
+  # ContractPayment#deduct_from_payout?). Not memoized — a settlement can flip
+  # direction mid-request.
   def outgoing_settlement?
-    return @outgoing_settlement if defined?(@outgoing_settlement)
-
-    @outgoing_settlement =
-      if contract_payments.loaded?
-        contract_payments.any?(&:direction_outgoing?)
-      else
-        contract_payments.direction_outgoing.exists?
-      end
+    rows = contract_payments.loaded? ? contract_payments.to_a : contract_payments.direction_outgoing.status_pending.to_a
+    rows.any? { |p| p.direction_outgoing? && p.status_pending? && (p.amount_tbd? || p.amount.to_f.positive?) }
   end
 
   def settlement_cadence_label
@@ -1506,8 +1535,9 @@ class Contract < ApplicationRecord
 
   # --- How they're allowed to pay us -----------------------------------------
   # Online is always available (that's the Stripe pay link). The rest are ways
-  # money can reach us outside CocoScout, and each has to be allowed explicitly
-  # before we'll let anyone record one by hand.
+  # money can reach us outside CocoScout, and the payer is only ever told about
+  # the ones this contract allows. (Recording money that arrived is a separate
+  # matter and is never gated by this — see ContractPayment::RECEIVED_PAYMENT_METHODS.)
 
   # Ways a contractor may pay us, defaulting to the org's policy.
   def accepted_payment_methods
@@ -1519,6 +1549,21 @@ class Contract < ApplicationRecord
   # The allowed offline methods, in the order they're offered.
   def offline_payment_methods
     accepted_payment_methods - [ "online" ]
+  end
+
+  # The other ways the payer may settle up, as a sentence fragment for the pay
+  # page and reminders — "Zelle or check", "cash, Zelle, or a bank transfer".
+  # Nil when the contract is online-only, so nothing is shown but CocoScout.
+  OFFLINE_PAYMENT_METHOD_PHRASES = {
+    "check" => "check", "bank_transfer" => "a bank transfer", "cash" => "cash",
+    "zelle" => "Zelle", "venmo" => "Venmo"
+  }.freeze
+
+  def offline_payment_methods_sentence
+    phrases = offline_payment_methods.filter_map { |m| OFFLINE_PAYMENT_METHOD_PHRASES[m] }
+    return nil if phrases.empty?
+
+    phrases.to_sentence(two_words_connector: " or ", last_word_connector: ", or ")
   end
 
   # True when this contract allows money to reach us outside Stripe, so a

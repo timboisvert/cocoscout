@@ -58,6 +58,43 @@ RSpec.describe ContractorPayoutRunService do
       tbd = create(:contract_payment, :outgoing, :revenue_share_tbd, contract: contract)
       expect(described_class.add_contract_payment!(tbd).error).to match(/Set an amount/)
     end
+
+    context "a ticket-revenue-minus-fee settlement that turned around" do
+      # A minus-fee settlement faces whoever owes: under the fee it's incoming
+      # (they pay us), and once revenue is restated above the fee it faces them
+      # again — and rides the run like any other outgoing payment.
+      let(:contract) do
+        create(:contract, :active, organization: org, contractor: contractor, draft_data: {
+                 "payment_structure" => "flat_fee",
+                 "payment_config" => { "flat_fee_direction" => "ticket_revenue_minus_fee", "flat_fee_amount" => 300,
+                                       "flat_fee_basis" => "per_show", "flat_fee_settlement" => "per_event" }
+               })
+      end
+      let(:production) { create(:production, organization: org, production_type: "third_party").tap { |p| contract.update!(production: p) } }
+      let(:show) { create(:show, production: production, date_and_time: Date.new(2026, 8, 15).to_time) }
+      let!(:settlement) do
+        create(:contract_payment, contract: contract, direction: "outgoing", show: show, amount: 0, amount_tbd: true,
+                                  description: "Ticket revenue less $300.00 fee", due_date: Date.new(2026, 8, 15))
+      end
+      let!(:financials) { create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0) }
+
+      it "can't be added while it faces us" do
+        ContractPaymentSyncService.new(show).call
+        expect(settlement.reload).to be_direction_incoming
+        expect(described_class.add_contract_payment!(settlement).added).to be(false)
+      end
+
+      it "rides the run once it faces them again" do
+        ContractPaymentSyncService.new(show).call
+        financials.update!(ticket_revenue: 800.0)
+        ContractPaymentSyncService.new(show.reload).call
+        expect(settlement.reload).to have_attributes(direction: "outgoing", amount: 500.0)
+
+        result = described_class.add_contract_payment!(settlement)
+        expect(result.added).to be(true)
+        expect(result.batch.items.find_by(payee: payee).amount_cents).to eq(50_000)
+      end
+    end
   end
 
   describe "paying the run" do
