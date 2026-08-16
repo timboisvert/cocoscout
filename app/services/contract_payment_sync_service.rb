@@ -149,6 +149,9 @@ class ContractPaymentSyncService
   # collected with a pay link or recorded when the money arrives some other way.
   def sync_shortfall(settlement, shows)
     return unless @contract.ticket_revenue_minus_fee?
+    # A settlement that's already gone through is closed — whatever it settled
+    # for, it settled. Restating the revenue behind it doesn't reopen a bill.
+    return if settlement.status_paid?
 
     owed = -@contract.settlement_remainder(shows)
     return clear_shortfall(settlement) unless owed.positive?

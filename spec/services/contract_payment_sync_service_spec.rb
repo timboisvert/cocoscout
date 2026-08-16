@@ -340,6 +340,18 @@ RSpec.describe ContractPaymentSyncService, type: :service do
         expect(shortfall.status).to eq("paid")
       end
 
+      it "leaves a settlement that already went through alone" do
+        # Whatever a paid settlement settled for, it settled — restating the
+        # revenue behind it must not open a new bill against it.
+        settlement.update!(status: "paid", paid_date: Date.current, amount: 400.0)
+        create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+
+        described_class.new(show).call
+
+        expect(shortfall).to be_nil
+        expect(settlement.reload.amount).to eq(400.0)
+      end
+
       it "counts the shortfall as money in, so the fee lands whole in the books" do
         create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
         described_class.new(show).call
