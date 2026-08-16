@@ -72,11 +72,9 @@ class ShowPayout < ApplicationRecord
   end
 
   # The payees an act-based calculation needs a count for: everyone assigned to
-  # the show whose role isn't excluded by the scheme.
+  # the show.
   def act_payees
-    excluded_role_ids = Array(resolved_rules["excluded_role_ids"]).map(&:to_i)
     assignments = show.show_person_role_assignments.includes(:assignable, :role).to_a
-    assignments = assignments.reject { |a| excluded_role_ids.include?(a.role_id) } if excluded_role_ids.any?
 
     people = assignments.reject(&:guest?).map(&:assignable).compact.uniq
     people + assignments.select(&:guest?)

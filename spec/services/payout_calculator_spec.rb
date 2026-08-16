@@ -461,112 +461,49 @@ RSpec.describe PayoutCalculator do
     end
   end
 
-  describe "excluded_role_ids" do
+  # Schemes used to be able to exclude a role from payouts ("excluded_role_ids").
+  # It was configured once in production and never actually kept anyone out, so
+  # it was removed — every assigned role is paid.
+  describe "everyone assigned to the show" do
     let(:tech_role) { create(:role, production: production, name: "Tech", category: "technical") }
     let(:performer_role) { create(:role, production: production, name: "Performer", category: "performing") }
     let(:tech_person) { create(:person, user: create(:user)) }
 
     before do
-      # Clear default assignments from let block
       show.show_person_role_assignments.destroy_all
-
-      # Assign performer1 and performer2 to performing role
       create(:show_person_role_assignment, show: show, role: performer_role, assignable: performer1)
       create(:show_person_role_assignment, show: show, role: performer_role, assignable: performer2)
-
-      # Assign tech_person ONLY to the tech role
       create(:show_person_role_assignment, show: show, role: tech_role, assignable: tech_person)
 
-      create(:show_financials, :complete,
-             show: show,
-             ticket_count: 100,
-             ticket_revenue: 1000.0,
-             expenses: 0.0)
+      create(:show_financials, :complete, show: show, ticket_count: 100, ticket_revenue: 1000.0, expenses: 0.0)
       create(:show_payout, show: show)
     end
 
-    context "with equal distribution and excluded tech role" do
-      let(:rules) do
-        {
-          "distribution" => { "method" => "equal" },
-          "excluded_role_ids" => [ tech_role.id ]
-        }
-      end
+    it "pays everyone on the show, whatever role they hold" do
+      result = described_class.calculate(show: show, rules: { "distribution" => { "method" => "equal" } })
 
-      it "excludes people assigned only to excluded roles" do
-        result = described_class.calculate(show: show, rules: rules)
-
-        expect(result[:success]).to be true
-        expect(result[:line_items].size).to eq(2)
-
-        payee_ids = result[:line_items].map(&:payee_id)
-        expect(payee_ids).to include(performer1.id, performer2.id)
-        expect(payee_ids).not_to include(tech_person.id)
-      end
-
-      it "splits the full pool among non-excluded performers only" do
-        result = described_class.calculate(show: show, rules: rules)
-
-        # $1000 revenue, 0 expenses, split 2 ways = $500 each (not 3 ways)
-        expect(result[:line_items].first.amount.to_f).to eq(500.0)
-        expect(result[:line_items].last.amount.to_f).to eq(500.0)
-        expect(result[:total]).to eq(1000.0)
-      end
+      expect(result[:success]).to be true
+      expect(result[:line_items].map(&:payee_id)).to include(performer1.id, performer2.id, tech_person.id)
+      expect(result[:line_items].map { |li| li.amount.to_f }).to all(eq(333.33))
     end
 
-    context "when a person has both excluded and non-excluded roles" do
-      before do
-        # Also assign tech_person to the performing role
-        create(:show_person_role_assignment, show: show, role: performer_role, assignable: tech_person)
-      end
+    it "pays a technical role the flat fee too" do
+      result = described_class.calculate(
+        show: show, rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 75.0 } }
+      )
 
-      let(:rules) do
-        {
-          "distribution" => { "method" => "equal" },
-          "excluded_role_ids" => [ tech_role.id ]
-        }
-      end
-
-      it "still includes them because they have a non-excluded role" do
-        result = described_class.calculate(show: show, rules: rules)
-
-        expect(result[:success]).to be true
-        payee_ids = result[:line_items].map(&:payee_id)
-        expect(payee_ids).to include(tech_person.id)
-        expect(result[:line_items].size).to eq(3)
-      end
+      expect(result[:line_items].size).to eq(3)
+      expect(result[:total]).to eq(225.0)
     end
 
-    context "with no excluded roles" do
-      let(:rules) do
-        {
-          "distribution" => { "method" => "equal" }
-        }
-      end
+    it "ignores a stale excluded_role_ids key left behind in stored rules" do
+      result = described_class.calculate(show: show, rules: {
+        "distribution" => { "method" => "equal" },
+        "excluded_role_ids" => [ tech_role.id ]
+      })
 
-      it "includes all performers" do
-        result = described_class.calculate(show: show, rules: rules)
-
-        expect(result[:success]).to be true
-        expect(result[:line_items].size).to eq(3)
-      end
-    end
-
-    context "with flat_fee distribution and excluded roles" do
-      let(:rules) do
-        {
-          "distribution" => { "method" => "flat_fee", "flat_amount" => 75.0 },
-          "excluded_role_ids" => [ tech_role.id ]
-        }
-      end
-
-      it "only pays non-excluded performers the flat fee" do
-        result = described_class.calculate(show: show, rules: rules)
-
-        expect(result[:success]).to be true
-        expect(result[:line_items].size).to eq(2)
-        expect(result[:total]).to eq(150.0)
-      end
+      expect(result[:line_items].map(&:payee_id)).to include(tech_person.id)
+      expect(result[:line_items].size).to eq(3)
     end
   end
 end
