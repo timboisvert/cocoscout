@@ -27,6 +27,48 @@ RSpec.describe "My::Messages inbox", type: :request do
     expect(response.body).to include("msg-density-compact")
   end
 
+  # The Gmail-style single line squeezed the subject into ~100px on a phone.
+  # The row now stacks: who + when on one line, subject underneath.
+  describe "the inbox row on mobile" do
+    before do
+      sender = create(:user)
+      create(:person, name: "Pat Sender", user: sender)
+      MessageService.create_message(
+        sender: sender, recipients: [ viewer_person ],
+        subject: "A subject long enough to need the whole width", body: "And a snippet after it",
+        message_type: :direct, visibility: :personal
+      )
+    end
+
+    it "stacks the row on phones and lays it out in one line from sm up" do
+      get my_messages_path
+
+      expect(response.body).to include("msg-row flex flex-col sm:flex-row")
+      expect(response.body).not_to include("msg-participants flex-shrink-0 w-40")
+    end
+
+    it "keeps a date visible in both layouts" do
+      get my_messages_path
+
+      expect(response.body).to include("msg-date hidden sm:block")
+    end
+
+    it "never asks an element to hide while setting a display that overrides it" do
+      get my_messages_path
+
+      # `hidden` (display:none) loses to any display utility sorting after it in
+      # the built Tailwind CSS, so an element carrying both stays visible.
+      overrides_hidden = %w[inline inline-block inline-flex table]
+      conflicted = response.body.scan(/class="([^"]*)"/).flatten.select do |classes|
+        names = classes.split(/\s+/)
+        names.include?("hidden") && names.any? { |n| overrides_hidden.include?(n) }
+      end
+
+      expect(conflicted).to be_empty,
+        "these elements ask to hide but set a display that overrides it: #{conflicted.inspect}"
+    end
+  end
+
   it "shows a system notification as 'Automated Notification', not its fallback sender" do
     admin = create(:user)
     create(:person, name: "Andy Wanacott", user: admin)

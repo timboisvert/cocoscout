@@ -30,27 +30,32 @@
     end
 %>
 
-<%# msg-* class hooks let the message-density controller adjust spacing/wrapping. %>
+<%# msg-* class hooks let the message-density controller adjust spacing/wrapping.
+    Mobile stacks the row onto two lines (who + when, then subject) because a
+    single Gmail-style line leaves the subject barely any width. %>
 <%= link_to message_path,
-      class: "msg-row flex items-center gap-4 px-4 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors",
+      class: "msg-row flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-0.5 px-3 sm:px-4 py-2.5 sm:py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors",
       data: { message_id: message.id } do %>
-  <%# Participants + thread count %>
-  <span class="msg-participants flex-shrink-0 w-40 sm:w-56 flex items-baseline gap-2 min-w-0">
+  <%# Participants + thread count (and, on mobile, the date on the same line) %>
+  <span class="msg-participants w-full sm:w-56 sm:flex-shrink-0 flex items-baseline gap-2 min-w-0">
     <span class="truncate text-sm <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>">
       <%= participants %>
     </span>
     <% if thread_count > 1 %>
       <span class="flex-shrink-0 text-xs text-gray-400 tabular-nums"><%= thread_count %></span>
     <% end %>
+    <span class="sm:hidden ml-auto pl-2 flex-shrink-0 text-xs tabular-nums <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-500' %>">
+      <%= date_label %>
+    </span>
   </span>
 
   <%# Subject - snippet %>
-  <span class="msg-main flex-1 min-w-0 truncate text-sm">
+  <span class="msg-main w-full sm:w-auto sm:flex-1 min-w-0 truncate text-sm">
     <span class="<%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>"><%= message.subject %></span><% if snippet.present? %><span class="msg-sep font-light text-gray-400"> - </span><span class="msg-snippet font-light text-gray-400"><%= snippet %></span><% end %>
   </span>
 
-  <%# Date %>
-  <span class="msg-date flex-shrink-0 text-xs tabular-nums <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-500' %>">
+  <%# Date (desktop only — mobile shows it beside the participants) %>
+  <span class="msg-date hidden sm:block flex-shrink-0 text-xs tabular-nums <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-500' %>">
     <%= date_label %>
   </span>
 <% end %>
