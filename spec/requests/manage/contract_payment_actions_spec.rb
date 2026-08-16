@@ -126,6 +126,12 @@ RSpec.describe "Manage contract payment actions", type: :request do
       create(:contract_payment, contract: contract, direction: "incoming",
                                 amount: 120, description: "Tech service")
     end
+    # The share this charge nets out of. Without money going the other way there
+    # is no payout to deduct from at all.
+    let!(:settlement) do
+      create(:contract_payment, :outgoing, contract: contract, amount: 800,
+                                           description: "Revenue Share Settlement")
+    end
 
     it "flips a pending incoming payment to deduct-from-payout and back" do
       patch settlement_manage_contract_contract_payment_path(contract, service, settlement_method: "payout_deduction")
@@ -147,11 +153,30 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(service.reload.settlement_method).to eq("direct")
     end
 
-    it "shows the deduction chip instead of pay-link actions on the contract page" do
+    it "folds the charge into its settlement instead of offering pay-link actions" do
       service.update!(settlement_method: "payout_deduction")
       get manage_contract_path(contract)
+      expect(response.body).to include("charge deducted from this payment")
+      expect(response.body).not_to include("Copy pay link")
+    end
+
+    it "shows the deduction chip on a charge with no pending settlement to fold into" do
+      # Every settlement has already gone out, so the charge stands as its own row.
+      settlement.update!(status: "paid", paid_date: Date.current)
+      service.update!(settlement_method: "payout_deduction")
+
+      get manage_contract_path(contract)
+
       expect(response.body).to include("Deducts from payout")
       expect(response.body).not_to include("Copy pay link")
+    end
+
+    it "refuses to deduct on a contract with no payout going out" do
+      settlement.destroy
+      patch settlement_manage_contract_contract_payment_path(contract, service, settlement_method: "payout_deduction")
+
+      expect(service.reload.settlement_method).to eq("direct")
+      expect(flash[:alert]).to include("no payout to deduct from")
     end
   end
 

@@ -36,6 +36,28 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
     expect(response.body).not_to include("Calculate Payout")
   end
 
+  it "settles a per-event rental on its contract rather than offering a payout scheme" do
+    # A per-event fee deal never writes show_id onto its payments, so the show
+    # has to be recognized by the contract that booked it.
+    contractor = create(:contractor, organization: org, person: create(:person), name: "Tommy Corts")
+    contract = create(:contract, :active, organization: org, production: production,
+                                           contractor: contractor, contractor_name: contractor.name,
+                                           draft_data: {
+                                             "payment_structure" => "per_event",
+                                             "payment_config" => { "per_event_amount" => "300", "per_event_direction" => "incoming" }
+                                           })
+    rental = create(:space_rental, contract: contract, starts_at: show.date_and_time)
+    show.update!(space_rental: rental)
+    create(:contract_payment, contract: contract, direction: "incoming", status: "pending",
+                              amount: 300, due_date: show.date_and_time.to_date, description: "Event 2 Fee")
+
+    get manage_money_show_payout_path(show)
+
+    expect(response.body).to include("Contract payout")
+    expect(response.body).to include("Event 2 Fee")
+    expect(response.body).not_to include("Payout Scheme")
+  end
+
   it "flags a contractor with no connected bank instead of offering to pay" do
     contractor = create(:contractor, organization: org, person: create(:person), name: "No Bank Co")
     contract = create(:contract, :active, organization: org, production: production,

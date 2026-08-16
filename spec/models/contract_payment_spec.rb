@@ -188,6 +188,27 @@ RSpec.describe ContractPayment, type: :model do
     end
   end
 
+  describe "#deduct_from_payout?" do
+    let(:contract) { create(:contract) }
+
+    it "is true when the contract has outgoing money to net it against" do
+      create(:contract_payment, :outgoing, contract: contract, amount: 500.0)
+      charge = create(:contract_payment, contract: contract, amount: 100.0, settlement_method: "payout_deduction")
+
+      expect(charge.deduct_from_payout?).to be true
+      expect(charge.collectable_online?).to be false
+    end
+
+    it "falls back to an ordinary invoice when the contract has no payout to deduct from" do
+      # A rental where money only ever comes IN: nothing will ever net this out,
+      # so it has to stay collectable instead of stranding with no way to settle.
+      charge = create(:contract_payment, contract: contract, amount: 100.0, settlement_method: "payout_deduction")
+
+      expect(charge.deduct_from_payout?).to be false
+      expect(charge.collectable_online?).to be true
+    end
+  end
+
   describe "#status_badge_class" do
     it "returns success for paid" do
       payment = build(:contract_payment, :paid)

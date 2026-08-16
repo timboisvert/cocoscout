@@ -138,6 +138,13 @@ module Manage
         redirect_back fallback_location: manage_contract_path(@contract), alert: "Unknown settlement method." and return
       end
 
+      # Deducting needs a payout to deduct from. On a deal where money only ever
+      # comes in, this would settle nothing and leave the charge uncollectable.
+      if method == "payout_deduction" && !@contract.outgoing_settlement?
+        redirect_back fallback_location: manage_contract_path(@contract),
+                      alert: "This contract has no payout to deduct from — nothing here goes out to them." and return
+      end
+
       @payment.update!(settlement_method: method)
       notice = method == "payout_deduction" ?
         "#{@payment.description.presence || 'This payment'} will be deducted from their payout." :

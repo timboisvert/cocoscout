@@ -27,10 +27,11 @@ module Manage
       handle_cleared_sections
 
       if @show_financials.update(show_financials_params)
-        # Sync to ContractPayments if this is a third-party/contract production
-        if @production.type_third_party? && @production.contract&.revenue_share?
-          ContractPaymentSyncService.new(@show).call
-        end
+        # Push the new numbers at this show's contract settlement. The service
+        # decides whether there is one — asking @production.contract here got
+        # the newest of a production's contracts rather than the one that booked
+        # this show, and skipped minus-fee deals entirely.
+        ContractPaymentSyncService.new(@show).call
 
         respond_to do |format|
           format.html { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }

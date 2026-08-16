@@ -973,8 +973,11 @@ class Contract < ApplicationRecord
       summary = flat_fee_revenue_summary
       return { money_in: 0.0, money_out: 0.0 } unless summary
 
-      # We sell, keep a fee, hand back the rest: full revenue in, their remainder out.
-      { money_in: summary[:confirmed_revenue], money_out: summary[:contractor_share] }
+      # We sell, keep a fee, hand back the rest: full revenue in, their remainder
+      # out. A night that sold under the fee leaves them owing us the shortfall,
+      # which reaches us as its own payment — so it's money in as well.
+      { money_in: summary[:confirmed_revenue] + summary[:shortfall].to_f,
+        money_out: summary[:contractor_share] }
     else
       # Flat deals: the contract's own payments are the money, by direction.
       {
@@ -1139,16 +1142,57 @@ class Contract < ApplicationRecord
     # the shows whose numbers are in — it doesn't sit at the full contract fee
     # while half the run is still unreported.
     fee = flat_fee_for_shows(confirmed_shows.count)
-    contractor_amount = [ confirmed_revenue - fee, 0 ].max
+
+    # Each settlement stands on its own, exactly as its payment does: a night
+    # that sold above the fee hands back the difference, and a night that sold
+    # below it leaves them owing us the shortfall. Netting the whole run in one
+    # go would let a good night quietly pay off a bad one, which is neither what
+    # the payments say nor what anyone agreed to.
+    contractor_amount = 0.0
+    shortfall_amount = 0.0
+    settlement_show_groups(confirmed_shows).each do |group|
+      remainder = settlement_remainder(group)
+      remainder.positive? ? contractor_amount += remainder : shortfall_amount -= remainder
+    end
 
     @flat_fee_revenue_summary = {
       confirmed_revenue: confirmed_revenue,
       confirmed_count: confirmed_shows.count,
       pending_count: pending_shows.count,
       our_share: fee,
-      contractor_share: contractor_amount,
+      contractor_share: contractor_amount.round(2),
+      # What they still owe us because their ticket revenue came in under our
+      # fee. Carried as real incoming payments by ContractPaymentSyncService.
+      shortfall: shortfall_amount.round(2),
       total_shows: all_shows.count
     }
+  end
+
+  # What one settlement moves, signed: positive is revenue we hand back to them,
+  # negative is fee their revenue didn't cover, which they owe us.
+  def settlement_remainder(shows)
+    shows = Array(shows)
+    return 0.0 if shows.empty?
+
+    revenue = shows.sum { |s| s.show_financials&.total_revenue.to_f }
+    (revenue - flat_fee_for_shows(shows.size)).round(2)
+  end
+
+  # The shows this contract settles together, one group per settlement, oldest
+  # first. A deal that settles once has a single group covering the whole run.
+  def settlement_show_groups(shows = money_shows)
+    shows = Array(shows).select(&:date_and_time).sort_by(&:date_and_time)
+    return shows.any? ? [ shows ] : [] unless settles_periodically?
+
+    # Grouping an already date-sorted list keeps the groups in date order too.
+    case settlement_cadence
+    when "weekly"
+      shows.group_by { |s| s.date_and_time.to_date.beginning_of_week }.values
+    when "monthly"
+      shows.group_by { |s| s.date_and_time.to_date.beginning_of_month }.values
+    else # per_event, next_day, same_day — every show settles on its own
+      shows.map { |s| [ s ] }
+    end
   end
 
   # The fee due across a given number of shows. A per-show deal is simply the
@@ -1226,6 +1270,21 @@ class Contract < ApplicationRecord
     end
 
     payment
+  end
+
+  # Every payment that settles a given show, however it happens to be linked.
+  # The explicit show link is the truth when there is one; otherwise a payment
+  # falling due on the show's own date is that show's, which is how per-event
+  # deals are written. Unlike #find_payment_for_show this asks nothing of the
+  # deal's basis — a plain per-event rental fee is still that show's money.
+  def payments_covering_show(show)
+    return [] if show.nil?
+
+    linked = contract_payments.where(show_id: show.id).by_due_date.to_a
+    return linked if linked.any?
+    return [] if show.date_and_time.blank?
+
+    contract_payments.where(show_id: nil, due_date: show.date_and_time.to_date).by_due_date.to_a
   end
 
   # Get all shows that map to a given ContractPayment
@@ -1348,6 +1407,20 @@ class Contract < ApplicationRecord
   # a single payment at the end.
   def settles_periodically?
     settlement_cadence != "once"
+  end
+
+  # Whether this contract has any outgoing money at all — the thing an incoming
+  # charge can be netted out of. A deal where money only ever comes IN has
+  # nothing to deduct from (see ContractPayment#deduct_from_payout?).
+  def outgoing_settlement?
+    return @outgoing_settlement if defined?(@outgoing_settlement)
+
+    @outgoing_settlement =
+      if contract_payments.loaded?
+        contract_payments.any?(&:direction_outgoing?)
+      else
+        contract_payments.direction_outgoing.exists?
+      end
   end
 
   def settlement_cadence_label

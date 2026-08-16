@@ -3,6 +3,7 @@
   outgoing = @outgoing_payments || []
   incoming = @incoming_payments || []
   owed_total = outgoing.reject(&:status_paid?).sum { |p| p.amount.to_f }
+  due_to_us_total = incoming.reject(&:status_paid?).sum { |p| p.amount.to_f }
 %>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -77,10 +78,20 @@
               <div class="min-w-0">
                 <div class="font-medium text-gray-900 truncate"><%= payment.description.presence || "Payment" %></div>
                 <div class="text-sm text-gray-500">due <%= payment.due_date.strftime("%b %-d, %Y") %></div>
+                <% if payment.notes.present? %>
+                  <div class="text-xs text-gray-500 mt-0.5"><%= payment.notes.lines.first.strip %></div>
+                <% end %>
               </div>
               <div class="flex items-center gap-3 flex-shrink-0">
                 <span class="text-lg font-semibold text-gray-900 tabular-nums"><%= payment.amount_tbd? ? "TBD" : number_to_currency(payment.amount) %></span>
-                <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full <%= payment.status_paid? ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' %>"><%= payment.status.titleize %></span>
+                <% if payment.status_paid? %>
+                  <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">Paid</span>
+                <% else %>
+                  <%# Straight to where the money is actually collected or recorded. %>
+                  <%= link_to manage_money_incoming_payment_path(payment) do %>
+                    <%= render "shared/button", text: "Collect this payment", variant: "secondary", size: "small" %>
+                  <% end %>
+                <% end %>
               </div>
             </div>
           <% end %>
@@ -96,6 +107,14 @@
       <div class="text-2xl font-bold text-gray-900 mt-1"><%= number_to_currency(owed_total) %></div>
       <p class="text-xs text-gray-500 mt-2">Add each contractor to your payout run to pay them to their bank, alongside your performers.</p>
     </div>
+
+    <% if due_to_us_total > 0 %>
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="text-sm text-gray-500">Still owed to you for this show</div>
+        <div class="text-2xl font-bold text-gray-900 mt-1"><%= number_to_currency(due_to_us_total) %></div>
+        <p class="text-xs text-gray-500 mt-2">Ticket revenue you're holding has already been counted against this.</p>
+      </div>
+    <% end %>
 
     <% if @contract %>
       <%= link_to manage_contract_path(@contract), class: "block bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 transition-colors" do %>

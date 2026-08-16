@@ -19,15 +19,18 @@ module Manage
     def show
       @is_third_party = @production.third_party?
       @contract = resolved_contract
-      # Contract payments already logged against this specific show (what we owe /
-      # are owed for it) — a contract show is paid from these, not from casting.
-      @show_contract_payments = @show.contract_payments.includes(contract: :contractor).order(:due_date).to_a
+      # Contract payments that settle this specific show (what we owe / are owed
+      # for it) — a contract show is paid from these, not from casting.
+      @show_contract_payments = contract_payments_for_show
 
       # A revenue-share CONTRACT drives the split regardless of the production's
       # type flag (a contract can be linked to an in-house production too).
       if @contract&.revenue_share?
         setup_contractor_payout
-      elsif @show_contract_payments.any?
+      elsif @show_contract_payments.any? || (@contract && @is_third_party)
+        # A third-party show under a contract is settled on that contract, full
+        # stop. It has no cast of ours to pay, so offering a payout scheme here
+        # is a dead end however the deal happens to be written.
         setup_contract_payout
       else
         setup_performer_payout
@@ -642,6 +645,16 @@ module Manage
     def resolved_contract
       @show.space_rental&.contract || @production.contract ||
         @show.contract_payments.first&.contract
+    end
+
+    # The payments this show settles on. Prefers the ones explicitly linked to
+    # it; a per-event deal that never wrote that link still settles on the
+    # payment falling due the night of the show.
+    def contract_payments_for_show
+      linked = @show.contract_payments.includes(contract: :contractor).order(:due_date).to_a
+      return linked if linked.any?
+
+      @contract ? @contract.payments_covering_show(@show) : []
     end
 
     def setup_performer_payout

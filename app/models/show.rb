@@ -805,11 +805,12 @@ class Show < ApplicationRecord
   def sync_contract_payments
     return if self.class.skip_contract_payment_sync?
 
-    # Sync revenue-share contract payments when show or its financials change
-    # This includes when show is created, updated, destroyed, or its financials are modified
-    contract = space_rental&.contract || production&.contract
-    return unless production&.type_third_party? && contract&.revenue_share?
-
+    # Sync contract payments when the show or its financials change — on create,
+    # update, destroy, or a financials edit. Whether this show's deal settles
+    # from financials at all is the service's call (revenue splits and
+    # minus-fee deals both do), and it reads the contract off the show's own
+    # space rental, so a production carrying several contracts still settles
+    # each show on the one that booked it.
     ContractPaymentSyncService.new(self).call
   end
 

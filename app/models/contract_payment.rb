@@ -59,8 +59,16 @@ class ContractPayment < ApplicationRecord
 
   # Money they owe us that we've agreed to net out of their payout instead of
   # invoicing. Only meaningful on incoming payments.
+  #
+  # It also takes a payout to deduct from. A contract with no outgoing money —
+  # a rental where they only ever pay us — can never net this out (the netting
+  # runs off an outgoing payment joining a run, see ContractorPayoutRunService),
+  # so the charge would sit forever with no pay link and no way to record it.
+  # Treat it as an ordinary invoice instead.
   def deduct_from_payout?
-    direction_incoming? && settlement_method == "payout_deduction"
+    return false unless direction_incoming? && settlement_method == "payout_deduction"
+
+    contract.outgoing_settlement?
   end
 
   # Settled by being netted out of the counterparty's payout run. Display-only

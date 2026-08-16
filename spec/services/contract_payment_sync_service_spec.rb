@@ -256,6 +256,101 @@ RSpec.describe ContractPaymentSyncService, type: :service do
       end
     end
 
+    context "Case 3 when a night sells for less than our fee" do
+      # We sell the tickets and keep a $300 fee. The night took $190, so there's
+      # nothing to hand back and they still owe us the other $110.
+      let(:contract) do
+        create(:contract, :active, organization: organization, draft_data: {
+                 "payment_structure" => "flat_fee",
+                 "payment_config" => {
+                   "flat_fee_direction" => "ticket_revenue_minus_fee",
+                   "flat_fee_amount" => 300,
+                   "flat_fee_basis" => "per_show",
+                   "flat_fee_settlement" => "per_event"
+                 }
+               })
+      end
+      let(:production) do
+        create(:production, organization: organization, production_type: "third_party")
+              .tap { |p| contract.update!(production: p) }
+      end
+      let(:show) { create(:show, production: production, date_and_time: Date.new(2026, 8, 15).to_time) }
+      let!(:settlement) do
+        create(:contract_payment, contract: contract, direction: "outgoing", show: show,
+                                  description: "Ticket revenue less $300.00 fee",
+                                  amount: 0, amount_tbd: true, due_date: Date.new(2026, 8, 15))
+      end
+
+      def shortfall
+        contract.contract_payments.find_by(auto_shortfall: true)
+      end
+
+      it "bills them the part their ticket revenue didn't cover" do
+        create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+
+        described_class.new(show).call
+
+        expect(settlement.reload.amount).to eq(0.0)
+        expect(shortfall).to have_attributes(
+          amount: 110.0, direction: "incoming", status: "pending", show_id: show.id,
+          due_date: Date.new(2026, 8, 15), amount_tbd: false
+        )
+      end
+
+      it "leaves the shortfall collectable rather than waiting on a payout to net it" do
+        create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+
+        described_class.new(show).call
+
+        expect(shortfall.deduct_from_payout?).to be false
+        expect(shortfall.collectable_online?).to be true
+      end
+
+      it "restates the shortfall when the reported revenue changes" do
+        financials = create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+        described_class.new(show).call
+
+        financials.update!(ticket_revenue: 250.0)
+        described_class.new(show.reload).call
+
+        expect(shortfall.reload.amount).to eq(50.0)
+      end
+
+      it "clears the shortfall once the night covers the fee" do
+        financials = create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+        described_class.new(show).call
+        expect(shortfall).to be_present
+
+        financials.update!(ticket_revenue: 500.0)
+        described_class.new(show.reload).call
+
+        expect(shortfall).to be_nil
+        expect(settlement.reload.amount).to eq(200.0) # 500 revenue − 300 fee
+      end
+
+      it "keeps a shortfall they've already paid, even if revenue is restated" do
+        financials = create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+        described_class.new(show).call
+        shortfall.update!(status: "paid", paid_date: Date.current, amount: 110.0)
+
+        financials.update!(ticket_revenue: 500.0)
+        described_class.new(show.reload).call
+
+        expect(shortfall.reload.amount).to eq(110.0)
+        expect(shortfall.status).to eq("paid")
+      end
+
+      it "counts the shortfall as money in, so the fee lands whole in the books" do
+        create(:show_financials, :complete, show: show, ticket_revenue: 190.0, other_revenue: 0.0)
+        described_class.new(show).call
+
+        summary = contract.reload.money_summary
+        # $190 of tickets we're holding plus the $110 they owe = our $300 fee.
+        expect(summary[:money_in]).to eq(300.0)
+        expect(summary[:money_out]).to eq(0.0)
+      end
+    end
+
     context "Case 3 settling weekly on a per-show fee" do
       # Six shows, three a week, $250 a show. We sell; each week we hand back
       # that week's ticket revenue less $750.
