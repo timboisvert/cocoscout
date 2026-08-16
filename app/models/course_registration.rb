@@ -16,6 +16,11 @@ class CourseRegistration < ApplicationRecord
   # credit posts on confirmation and restates itself whenever the amounts
   # change (e.g. the hourly Stripe-fee backfill), the refund debit on refund.
   after_save :sync_org_cash_entries
+  # A registration changing state changes what the course took in and therefore
+  # what anyone is owed from it — a refund, a cancellation, a confirmation all
+  # bring the payout back in line here, whichever path they arrived by (the
+  # manage page, the Stripe webhook, the console).
+  after_save :resync_course_payout, if: -> { saved_change_to_status? || saved_change_to_amount_cents? }
 
   enum :status, {
     pending: "pending",
@@ -120,6 +125,10 @@ class CourseRegistration < ApplicationRecord
   end
 
   private
+
+  def resync_course_payout
+    CoursePayoutCalculator.new(course_offering).resync!
+  end
 
   def cleanup_questionnaire_invitation
     return unless course_offering.questionnaire_id?

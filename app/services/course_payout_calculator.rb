@@ -29,12 +29,46 @@ class CoursePayoutCalculator
     payout = course_offering.course_offering_payout
     return if payout.nil? || payout.paid?
 
+    payout.update!(summary_attributes(compute))
+    payout
+  end
+
+  # Bring the payout back in line with its registrations after one of them
+  # changes — a refund, a cancellation, a confirmation. The revenue summary is
+  # recomputed and every line item that hangs off it is re-derived:
+  #
+  #   * Nothing kept (every registration refunded, or none confirmed yet):
+  #     nobody is owed anything out of money we don't have. Every unpaid line
+  #     item goes, contract or instructor, auto or hand-entered.
+  #   * Money still kept: items the calculator derived from the split (a
+  #     percentage instructor, a contract share) are re-amounted from the new
+  #     net; amounts a person typed in stay as they set them.
+  #
+  # A line item already sitting on an OPEN payout run is pulled off it first so
+  # the run re-totals (PayoutContribution#resettle_item_and_batch); one on a
+  # PAID run is history and is left alone, as is a payout that's been paid.
+  def resync!
+    payout = course_offering.course_offering_payout
+    return if payout.nil? || payout.paid?
+
     result = compute
-    payout.update!(
-      total_revenue_cents: result[:total_revenue_cents],
-      platform_fee_cents: result[:platform_fee_cents],
-      net_revenue_cents: result[:net_revenue_cents]
-    )
+
+    CourseOfferingPayout.transaction do
+      payout.update!(summary_attributes(result))
+
+      if result[:total_revenue_cents].zero?
+        payout.line_items.each { |li| drop_line_item(li) }
+      else
+        payout.line_items.each { |li| rederive_line_item(li, result) }
+      end
+
+      # The org's own remainder rides the run as a contribution sourced from the
+      # payout itself; with the numbers changed it has to be re-added fresh.
+      release_from_open_run(payout)
+
+      payout.update!(total_payout_cents: payout.line_items.reload.sum(:amount_cents))
+    end
+
     payout
   end
 
@@ -45,22 +79,21 @@ class CoursePayoutCalculator
     result = compute
 
     payout.assign_attributes(
-      total_revenue_cents: result[:total_revenue_cents],
-      platform_fee_cents: result[:platform_fee_cents],
-      net_revenue_cents: result[:net_revenue_cents],
-      total_payout_cents: result[:total_payout_cents],
-      status: "calculated",
-      calculated_at: Time.current
+      summary_attributes(result).merge(
+        total_payout_cents: result[:total_payout_cents],
+        status: "calculated",
+        calculated_at: Time.current
+      )
     )
 
     CourseOfferingPayout.transaction do
       payout.save!
-      # Only auto-generate line items when there's a contract
-      if result[:line_items].any?
-        payout.line_items.destroy_all
-        result[:line_items].each do |li_attrs|
-          payout.line_items.create!(li_attrs)
-        end
+      # Regenerate from the deal. When the deal now produces nothing (revenue
+      # gone, or no split configured), the old rows still go — a payout with
+      # nothing to pay must not keep line items saying otherwise.
+      payout.line_items.each { |li| drop_line_item(li) }
+      result[:line_items].each do |li_attrs|
+        payout.line_items.create!(li_attrs)
       end
     end
 
@@ -87,6 +120,67 @@ class CoursePayoutCalculator
   end
 
   private
+
+  def summary_attributes(result)
+    {
+      total_revenue_cents: result[:total_revenue_cents],
+      platform_fee_cents: result[:platform_fee_cents],
+      net_revenue_cents: result[:net_revenue_cents]
+    }
+  end
+
+  # A line item's amount is only ever revised if nothing has moved for it: not
+  # paid by hand, and not on a run that already paid out.
+  def revisable?(line_item)
+    return false if line_item.paid?
+
+    contribution = PayoutContribution.find_by(source: line_item)
+    contribution.nil? || !contribution.payout_batch_item&.paid?
+  end
+
+  def drop_line_item(line_item)
+    return unless revisable?(line_item)
+
+    PayoutContribution.find_by(source: line_item)&.destroy
+    line_item.destroy!
+  end
+
+  # Re-amount a calculator-derived item from the new net; leave a typed-in one.
+  def rederive_line_item(line_item, result)
+    return unless revisable?(line_item)
+
+    return unless auto_derived?(line_item)
+
+    fresh = result[:line_items].find { |attrs| same_line?(attrs, line_item) }
+    if fresh.nil? || fresh[:amount_cents] <= 0
+      drop_line_item(line_item)
+    elsif fresh[:amount_cents] != line_item.amount_cents
+      PayoutContribution.find_by(source: line_item)&.destroy
+      line_item.update!(amount_cents: fresh[:amount_cents], calculation_details: fresh[:calculation_details])
+    end
+  end
+
+  # Items the calculator itself produced carry the split they came from; a
+  # hand-entered instructor amount (pay_instructors) or a manual line does not.
+  def auto_derived?(line_item)
+    details = (line_item.calculation_details || {}).to_h.with_indifferent_access
+    case details["type"]
+    when "contract_revenue_share", "contract_flat_fee" then true
+    when "instructor" then details["payout_type"].present?
+    else false
+    end
+  end
+
+  def same_line?(attrs, line_item)
+    attrs[:payee_type] == line_item.payee_type && attrs[:payee_id] == line_item.payee_id
+  end
+
+  # Pull the payout's own contributions (the org remainder) off an open run.
+  def release_from_open_run(payout)
+    PayoutContribution.where(source: payout).find_each do |contribution|
+      contribution.destroy unless contribution.payout_batch_item&.paid?
+    end
+  end
 
   def compute
     total_revenue_cents = compute_total_revenue

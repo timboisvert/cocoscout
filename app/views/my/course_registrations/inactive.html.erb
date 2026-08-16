@@ -17,9 +17,11 @@
           </svg>
         </div>
       </div>
-      <h2 class="text-xl font-semibold text-slate-900 mb-2">Registration Not Currently Open</h2>
+      <h2 class="text-xl font-semibold text-slate-900 mb-2"><%= @course_offering.cancelled? ? "This Course Has Been Cancelled" : "Registration Not Currently Open" %></h2>
       <p class="text-slate-600 text-sm">
-        <% if @course_offering.draft? %>
+        <% if @course_offering.cancelled? %>
+          This course isn't running. If you were registered, your payment has been refunded.
+        <% elsif @course_offering.draft? %>
           This course has not yet opened for registration. Check back later!
         <% elsif @course_offering.closed? %>
           Registration for this course has closed.

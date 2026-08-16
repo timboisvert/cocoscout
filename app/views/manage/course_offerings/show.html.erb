@@ -15,6 +15,8 @@
       { bg: "bg-blue-100", text: "text-blue-700", label: "Completed" }
     when "archived"
       { bg: "bg-gray-100", text: "text-gray-500", label: "Archived" }
+    when "cancelled"
+      { bg: "bg-red-100", text: "text-red-700", label: "Cancelled" }
     end
 
     confirmed_count = @course_offering.confirmed_registrations_count
@@ -25,12 +27,19 @@
 
   <% delete_course_cid = "confirm-delete-course-#{@course_offering.id}" %>
   <% archive_course_cid = "confirm-archive-course-#{@course_offering.id}" %>
+  <% cancel_course_cid = "confirm-cancel-course-#{@course_offering.id}" %>
   <%
     top_links = [
       { text: "Financials", path: manage_money_production_financials_path(@production) },
       { text: "Edit Course", path: manage_edit_course_offering_path(@course_offering) },
       { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
     ]
+    # A contract-backed run is cancelled through its contract; anything else
+    # that hasn't already been cancelled can be.
+    if !@course_offering.contract_id? && !@course_offering.cancelled? && !@course_offering.archived?
+      top_links << { text: "Cancel Course", type: :button,
+                     data: { controller: "modal", action: "click->modal#open", modal_id: cancel_course_cid } }
+    end
     top_links << { text: @course_offering.archived? ? "Restore" : "Archive", type: :button,
                    data: { controller: "modal", action: "click->modal#open", modal_id: archive_course_cid } }
     unless @course_offering.contract_id?
@@ -60,6 +69,10 @@
           confirm_text: "Archive", url: manage_archive_course_offering_path(@course_offering), method: :post %>
   <% end %>
 
+  <% if !@course_offering.contract_id? && !@course_offering.cancelled? && !@course_offering.archived? %>
+    <%= render "manage/course_offerings/cancel_course_modal", id: cancel_course_cid, offering: @course_offering %>
+  <% end %>
+
   <% unless @course_offering.contract_id? %>
     <%= render "shared/confirm_modal",
           id: delete_course_cid,
@@ -81,6 +94,17 @@
         (a run with paid registrations can't be removed this way).
       </div>
     </div>
+  <% end %>
+
+  <% if @course_offering.cancelled? && (still_paid = @course_offering.course_registrations.confirmed.count).positive? %>
+    <%# A refund Stripe turned down (or the job hasn't run yet) leaves its
+        registration confirmed. Nothing is hidden: it's counted here until it's
+        actually refunded, and can be run again. %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Refunds outstanding",
+          headline: pluralize(still_paid, "registrant") + " still to refund",
+          body: "This course is cancelled, but these refunds haven't gone through yet. If they were just started, give it a moment; otherwise retry.",
+          actions: [ { text: "Retry refunds", path: manage_retry_cancellation_course_offering_path(@course_offering), method: :post } ] %>
   <% end %>
 
   <%# Status bar %>
@@ -381,9 +405,13 @@
       <%# Payout Summary %>
       <%
         payout = @course_offering.course_offering_payout
-        confirmed_revenue = @course_offering.course_registrations.confirmed.sum(:amount_cents)
-        refunded_revenue = @course_offering.course_registrations.refunded.sum(:amount_cents)
-        gross_revenue = confirmed_revenue - refunded_revenue
+        # Live numbers, never the payout's stored snapshot: refunded registrations
+        # already leave the confirmed scope, so what we kept is just the confirmed
+        # sum — refunds are not subtracted a second time.
+        revenue = CoursePayoutCalculator.new(@course_offering).revenue_summary
+        gross_revenue = revenue[:total_revenue_cents]
+        refunded_count = @course_offering.course_registrations.refunded.count
+        owed_cents = payout ? payout.line_items.sum(:amount_cents) : 0
         has_contract = @course_offering.contract&.revenue_share?
       %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -391,7 +419,9 @@
           <span class="text-sm font-medium text-gray-700">Revenue & Payouts</span>
           <% if payout&.paid? %>
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Paid</span>
-          <% elsif payout&.calculated? && payout.line_items.any? %>
+          <% elsif gross_revenue.zero? && refunded_count.positive? %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Refunded — nothing to pay out</span>
+          <% elsif payout&.calculated? && owed_cents.positive? %>
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">Awaiting Payment</span>
           <% end %>
         </div>
@@ -403,16 +433,16 @@
           <% if payout %>
             <div class="flex justify-between text-sm">
               <span class="text-gray-500">Platform Fee (<%= CourseRegistration::PLATFORM_FEE_PERCENTAGE.to_i %>%)</span>
-              <span class="text-gray-900">−<%= payout.formatted_platform_fee %></span>
+              <span class="text-gray-900">−<%= number_to_currency(revenue[:platform_fee_cents] / 100.0) %></span>
             </div>
             <div class="flex justify-between text-sm border-t border-gray-100 pt-2">
               <span class="font-medium text-gray-900">Net to Organization</span>
-              <span class="font-bold text-gray-900"><%= payout.formatted_net_revenue %></span>
+              <span class="font-bold text-gray-900"><%= number_to_currency(revenue[:net_revenue_cents] / 100.0) %></span>
             </div>
-            <% if payout.line_items.any? %>
+            <% if owed_cents.positive? %>
               <div class="flex justify-between text-sm text-gray-500">
                 <span>Owed to others</span>
-                <span class="font-medium text-pink-700"><%= payout.formatted_total_payout %></span>
+                <span class="font-medium text-pink-700"><%= number_to_currency(owed_cents / 100.0) %></span>
               </div>
             <% end %>
             <div class="pt-2">

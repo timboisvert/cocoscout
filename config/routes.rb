@@ -1566,6 +1566,8 @@ Rails.application.routes.draw do
     post "courses/:id/reopen",   to: "course_offerings#reopen",             as: "reopen_course_offering"
     post "courses/:id/archive",  to: "course_offerings#archive",            as: "archive_course_offering"
     post "courses/:id/unarchive", to: "course_offerings#unarchive",         as: "unarchive_course_offering"
+    post "courses/:id/cancel",    to: "course_offerings#cancel_course",     as: "cancel_course_offering"
+    post "courses/:id/retry_cancellation", to: "course_offerings#retry_cancellation", as: "retry_cancellation_course_offering"
     post "courses/:id/add_sessions", to: "course_offerings#add_sessions", as: "course_offering_add_sessions"
     get  "courses/:id/search_instructor",  to: "course_offerings#search_instructor",  as: "course_offering_search_instructor"
     post "courses/:id/update_instructor",  to: "course_offerings#update_instructor",  as: "course_offering_update_instructor"

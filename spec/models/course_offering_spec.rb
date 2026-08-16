@@ -60,5 +60,20 @@ RSpec.describe CourseOffering, type: :model do
       expect(summary[:gross_cents]).to eq(0)
       expect(summary[:net_cents]).to eq(0)
     end
+
+    it "nets to zero even when a payout had been worked out before the refunds" do
+      instructor = create(:person)
+      offering.course_offering_instructors.create!(person: instructor, payout_type: "percentage", payout_percentage: 20)
+      reg = create(:course_registration, course_offering: offering, amount_cents: 4000, cocoscout_fee_cents: 400, status: "confirmed")
+      CoursePayoutCalculator.new(offering).calculate!
+      expect(offering.financials_summary[:payout_cents]).to eq(720)
+
+      reg.refund!
+
+      summary = offering.reload.financials_summary
+      expect(summary[:gross_cents]).to eq(0)
+      expect(summary[:payout_cents]).to eq(0)
+      expect(summary[:net_cents]).to eq(0)
+    end
   end
 end

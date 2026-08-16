@@ -1,0 +1,75 @@
+<%#
+  Cancel Course — confirmation modal.
+
+  Same shape as shared/confirm_modal (pink header, pink confirm, white cancel)
+  but carrying its own form: the "tell registrants" checkbox has to ride along
+  with the confirmation, and shared/confirm_modal only submits fixed params.
+
+  Locals:
+    id       — DOM id, must match the trigger's data-modal-id
+    offering — the CourseOffering
+%>
+<%
+  id = local_assigns.fetch(:id)
+  offering = local_assigns.fetch(:offering)
+  paid_count = offering.course_registrations.confirmed.count
+  pending_count = offering.course_registrations.pending.count
+  session_count = offering.sessions.where(canceled: false).count
+%>
+<div id="<%= id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Cancel this course?</h3>
+      <button type="button"
+              data-action="click->modal#close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%= form_with url: manage_cancel_course_offering_path(offering), method: :post, data: { turbo: false } do %>
+      <div class="px-6 py-5 text-sm text-gray-600 space-y-3">
+        <p><strong class="text-gray-900"><%= offering.title %></strong> won't run. Registration closes and it leaves the directory right away. Then:</p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>
+            <% if paid_count.positive? %>
+              <strong class="text-gray-900"><%= pluralize(paid_count, "paid registration") %></strong> refunded in full through Stripe
+            <% else %>
+              No paid registrations to refund
+            <% end %>
+          </li>
+          <% if pending_count.positive? %>
+            <li><%= pluralize(pending_count, "pending registration") %> removed</li>
+          <% end %>
+          <li>
+            <% if session_count.positive? %>
+              <%= pluralize(session_count, "session") %> cancelled
+            <% else %>
+              No sessions to cancel
+            <% end %>
+          </li>
+          <li>Anything owed to instructors from this course goes away</li>
+        </ul>
+        <label class="flex items-start gap-2 pt-1 cursor-pointer">
+          <%= hidden_field_tag :notify_registrants, "0", id: nil %>
+          <%= check_box_tag :notify_registrants, "1", true,
+                class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <span>Let registrants know by message and email, including their refund</span>
+        </label>
+        <p class="text-xs text-gray-500">This can't be undone. Refunds usually reach cards within 5–10 business days.</p>
+      </div>
+
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+        <%= render "shared/button", text: "Keep course", variant: "secondary", size: "medium", type: :button,
+              data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Cancel Course", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

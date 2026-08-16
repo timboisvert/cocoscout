@@ -123,7 +123,10 @@ def seed_content_templates
       category: "staffing", channel: "message" },
     { key: "staff_schedule_notification", name: "Staff Schedule Notification", subject: "Your work schedule — week of {{week_label}}", body: "<p>{{intro}}</p>{{shifts_list}} See your <a href=\"{{my_shifts_link}}\">My Shifts</a>.", category: "shows", channel: "message" },
     { key: "course_registration_confirmed", name: "Course Registration Confirmed", subject: "You're registered for {{course_title}}!", body: "Hi {{recipient_name}}, your registration for {{course_title}} is confirmed.", category: "courses", channel: "both" },
-    { key: "course_registration_producer_notification", name: "Course Registration Producer Notification", subject: "New registration for {{course_title}}", body: "{{registrant_name}} has registered for {{course_title}}.", category: "courses", channel: "message" }
+    { key: "course_registration_producer_notification", name: "Course Registration Producer Notification", subject: "New registration for {{course_title}}", body: "{{registrant_name}} has registered for {{course_title}}.", category: "courses", channel: "message" },
+    { key: "course_cancelled_registrant", name: "Course Cancelled", subject: "{{course_title}} has been cancelled",
+      body: "<p>Hi {{recipient_name}}, {{course_title}} with {{organization_name}} has been cancelled.</p>{{#refund_amount}}<p>Your {{refund_amount}} has been refunded.</p>{{/refund_amount}}",
+      category: "courses", channel: "both" }
   ]
 
   templates.each do |attrs|

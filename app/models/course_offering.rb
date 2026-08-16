@@ -32,8 +32,13 @@ class CourseOffering < ApplicationRecord
     open: "open",
     closed: "closed",
     completed: "completed",
-    archived: "archived"
+    archived: "archived",
+    # Not happening. Registrants are refunded, sessions cancelled, payouts
+    # dissolved (CourseCancellationJob). Terminal, except for archiving.
+    cancelled: "cancelled"
   }, default: :draft
+
+  belongs_to :cancelled_by_user, class_name: "User", optional: true
 
   validates :short_code, presence: true, uniqueness: true
   validates :title, presence: true
@@ -130,6 +135,7 @@ class CourseOffering < ApplicationRecord
 
   def registration_closed_reason
     return nil if accepting_registrations?
+    return "This course has been cancelled" if cancelled?
     return "Registration is not yet open" unless open?
     return "This course is full" if full?
     return "Registration has not started yet" if opens_at.present? && Time.current < opens_at

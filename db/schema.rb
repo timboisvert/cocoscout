@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_16_130500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -651,6 +651,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_110000) do
   end
 
   create_table "course_offerings", force: :cascade do |t|
+    t.boolean "cancellation_notify_registrants", default: true, null: false
+    t.datetime "cancelled_at"
+    t.bigint "cancelled_by_user_id"
     t.integer "capacity"
     t.datetime "closes_at"
     t.bigint "contract_id"
@@ -686,6 +689,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_110000) do
     t.text "success_text"
     t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.index ["cancelled_by_user_id"], name: "index_course_offerings_on_cancelled_by_user_id"
     t.index ["contract_id"], name: "index_course_offerings_on_contract_id"
     t.index ["created_by_user_id"], name: "index_course_offerings_on_created_by_user_id"
     t.index ["feature_credit_redemption_id"], name: "index_course_offerings_on_feature_credit_redemption_id"
@@ -2980,6 +2984,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_110000) do
   add_foreign_key "course_offerings", "people", column: "instructor_person_id", on_delete: :nullify
   add_foreign_key "course_offerings", "productions"
   add_foreign_key "course_offerings", "questionnaires"
+  add_foreign_key "course_offerings", "users", column: "cancelled_by_user_id"
   add_foreign_key "course_offerings", "users", column: "created_by_user_id"
   add_foreign_key "course_registrations", "course_offerings"
   add_foreign_key "course_registrations", "people"
