@@ -114,6 +114,21 @@ RSpec.describe OrgCashEntry, type: :model do
       expect(described_class.balance_cents(organization)).to eq(3_000)
     end
 
+    it "does not count the drawing item's own committed slice against it (funded-run fallback)" do
+      # A failed item on a funded performer run retrying as an unpinned balance
+      # transfer: it IS the committed money, so it must not need double cover.
+      credit!(4_000)
+      funded = create(:payout_batch, organization: organization, kind: "performer",
+                      status: "partially_paid", funding_status: "succeeded")
+      retrying = funded.items.create!(payee: person, amount_cents: 4_000, status: "failed")
+
+      expect(described_class.available_cents(organization)).to eq(0)
+      expect(described_class.available_cents(organization, except: retrying)).to eq(4_000)
+
+      described_class.debit!(organization: organization, amount_cents: 4_000, source: retrying)
+      expect(described_class.balance_cents(organization)).to eq(0)
+    end
+
     it "never blocks another org's balance from being spent" do
       other_org = create(:organization)
       credit!(1_000)

@@ -65,19 +65,24 @@ class OrgCashEntry < ApplicationRecord
   # performer/staff runs. Their funding credit is in the ledger, but those
   # transfers WILL go out (enforce: false, pinned to the funding charge), so
   # nothing else may spend that slice in the meantime.
-  def self.committed_cents(organization)
-    PayoutBatchItem.joins(:payout_batch)
-                   .where(payout_batches: { organization_id: organization.id,
-                                            funding_status: "succeeded",
-                                            status: %w[funded processing partially_paid] })
-                   .where.not(payout_batches: { kind: "course" })
-                   .where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES)
-                   .sum(:amount_cents)
+  #
+  # `except:` — the item currently drawing, when it's one of these committed
+  # items (a funded-run item falling back to an unpinned balance transfer);
+  # its own slice is what it's spending, not something else spoken for.
+  def self.committed_cents(organization, except: nil)
+    scope = PayoutBatchItem.joins(:payout_batch)
+                           .where(payout_batches: { organization_id: organization.id,
+                                                    funding_status: "succeeded",
+                                                    status: %w[funded processing partially_paid] })
+                           .where.not(payout_batches: { kind: "course" })
+                           .where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES)
+    scope = scope.where.not(id: except.id) if except.is_a?(PayoutBatchItem)
+    scope.sum(:amount_cents)
   end
 
   # What the org can actually spend on an unfunded draw (course runs, refunds).
-  def self.available_cents(organization)
-    balance_cents(organization) - committed_cents(organization)
+  def self.available_cents(organization, except: nil)
+    balance_cents(organization) - committed_cents(organization, except: except)
   end
 
   # Idempotently record (or restate) the entry for a given source — same
@@ -150,7 +155,7 @@ class OrgCashEntry < ApplicationRecord
           source_id: source.id,
           entry_type: entry_type
         ).sum(:amount_cents) : 0
-        available = available_cents(organization) - already_reserved
+        available = available_cents(organization, except: source) - already_reserved
 
         if available < amount_cents
           raise InsufficientFunds.new(available_cents: available, requested_cents: amount_cents)
