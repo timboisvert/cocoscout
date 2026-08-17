@@ -243,7 +243,11 @@ module Manage
         "distribution" => distribution,
         "house_percentage" => @state[:house_percentage],
         "expenses_first" => @state[:expenses_first] ? "1" : "0",
-        "individual_allocations" => Array(@state[:individual_allocations]).each_with_index.to_h { |row, i| [ i.to_s, row.to_h.stringify_keys ] }
+        "individual_allocations" => Array(@state[:individual_allocations]).each_with_index.to_h { |row, i| [ i.to_s, row.to_h.stringify_keys ] },
+        # Per-person exceptions aren't edited here (they live on a show's
+        # customization now), but an older calculation that carries them
+        # keeps them across an edit rather than losing them silently.
+        "performer_overrides" => (@state[:performer_overrides] || {}).to_h
       )
     end
 
@@ -327,6 +331,7 @@ module Manage
       @state[:house_percentage] = alloc.find { |s| s["type"] == "percentage" && s["person_id"].blank? }&.dig("value").to_f
       @state[:individual_allocations] = alloc.select { |s| s["type"] == "percentage" && s["person_id"].present? }
                                              .map { |s| { person_id: s["person_id"], percentage: s["value"], label: s["label"] } }
+      @state[:performer_overrides] = rules["performer_overrides"] || {}
       if duplicate
         @state[:default_production_ids] = []
       else

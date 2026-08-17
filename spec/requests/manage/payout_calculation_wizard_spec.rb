@@ -460,6 +460,15 @@ RSpec.describe "Payout calculation wizard", type: :request do
       expect(PayoutScheme.current_default_for_production(production)).to eq(existing)
     end
 
+    it "keeps an older calculation's per-person exceptions across an edit" do
+      existing.update!(rules: existing.rules.merge("performer_overrides" => { "Person_7" => { "flat_amount" => 100.0 } }))
+
+      get manage_money_payout_calculation_wizard_start_path(id: existing.id)
+      save_it(name: "House split, revised")
+
+      expect(existing.reload.rules["performer_overrides"]).to eq("Person_7" => { "flat_amount" => 100.0 })
+    end
+
     it "unchecking a production on edit leaves it with no calculation" do
       other = create(:production, organization: org, name: "Sunday Sketch")
       existing.make_production_scheme!(production)
