@@ -6,8 +6,9 @@
 # wizard (a whole calculation), or from a show's Customize modal (tonight's
 # amounts laid over the calculation the show inherited).
 #
-#   PayoutRulesBuilder.build(params)                 # => full rules hash
-#   PayoutRulesBuilder.override(base_rules, params)  # => base with tonight's edits on top
+#   PayoutRulesBuilder.build(params)                    # => full rules hash
+#   PayoutRulesBuilder.override(base_rules, params)     # => base with this event's edits on top
+#   PayoutRulesBuilder.same_amount(base_rules, amount)  # => base, but everyone gets one flat amount
 #
 # Rules shape (unchanged from before — PayoutCalculator reads it):
 #   { "allocation" => [ {type: expenses_first} | {type: percentage, value:, label:} |
@@ -64,6 +65,18 @@ class PayoutRulesBuilder
       { "allocation" => allocation, "distribution" => distribution, "performer_overrides" => overrides }
     end
 
+    # "Pay everyone the same amount" for one event: the calculation's rules with
+    # the distribution swapped for a flat amount each — no cut off the top, no
+    # per-person exceptions.
+    def same_amount(base_rules, amount)
+      base = (base_rules || {}).deep_dup.deep_stringify_keys
+      base.merge(
+        "allocation" => [],
+        "distribution" => { "method" => "flat_fee", "flat_amount" => amount.to_f },
+        "performer_overrides" => {}
+      )
+    end
+
     def pool_method?(method)
       POOL_METHODS.include?(method.to_s)
     end
@@ -115,17 +128,18 @@ class PayoutRulesBuilder
         distribution["flat_amount"] = d[:flat_amount].to_f
       when "per_act"
         act_mode = d[:act_mode].to_s
-        act_mode = "schedule" unless PayoutScheme::ACT_MODES.include?(act_mode)
+        act_mode = "tiers" unless PayoutScheme::ACT_MODES.include?(act_mode)
         distribution["act_mode"] = act_mode
 
         case act_mode
         when "simple"
           distribution["per_act_rate"] = d[:per_act_rate].to_f
         when "schedule"
-          # Rows are positional: the first amount is the first act's rate.
-          # Past the end of the list, additional_act_rate applies (blank = those
-          # acts pay nothing). Rows arrive as bare amounts from the form, or as
-          # the stored { act:, amount: } hashes when rebuilt from saved rules.
+          # Legacy shape (the wizard no longer offers it, stored rules still
+          # rebuild). Rows are positional: the first amount is the first act's
+          # rate. Past the end of the list, additional_act_rate applies (blank =
+          # those acts pay nothing). Rows arrive as bare amounts, or as the
+          # stored { act:, amount: } hashes when rebuilt from saved rules.
           rows = d[:act_rates].is_a?(Hash) ? d[:act_rates].values : Array(d[:act_rates])
           distribution["act_rates"] = rows.each_with_index.map do |row, index|
             amount = row.is_a?(Hash) ? row[:amount] : row
@@ -133,7 +147,9 @@ class PayoutRulesBuilder
           end
           distribution["additional_act_rate"] = d[:additional_act_rate].presence&.to_f
         else
-          # "This many acts pays this much"; blank/zero rows dropped, stored sorted.
+          # "This many acts pays this much in total"; blank/zero rows dropped,
+          # stored sorted. Past the last row each further act adds
+          # additional_act_rate (blank = the last row is the ceiling).
           rows = d[:tiers].is_a?(Hash) ? d[:tiers].values : Array(d[:tiers])
           distribution["tiers"] = rows.filter_map do |tier|
             acts = tier[:acts].to_i
@@ -141,6 +157,7 @@ class PayoutRulesBuilder
 
             { "acts" => acts, "amount" => tier[:amount].to_f }
           end.sort_by { |tier| tier["acts"] }
+          distribution["additional_act_rate"] = d[:additional_act_rate].to_f if d[:additional_act_rate].present?
         end
       end
 

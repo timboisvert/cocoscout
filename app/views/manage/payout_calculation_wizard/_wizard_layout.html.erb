@@ -2,10 +2,10 @@
   editing = @state[:editing_id].present?
   page_title = editing ? "Edit #{@state[:name].presence || 'Payout Calculation'}" : "New Payout Calculation"
   step_labels = {
-    name: "Name",
     approach: "How they're paid",
     amounts: "The amounts",
     before: "Before performers are paid",
+    who: "Who uses it",
     review: "Review"
   }
   wizard_steps = steps_for_state.map { |key| { key: key, name: step_labels[key], path: wizard_path(key) } }

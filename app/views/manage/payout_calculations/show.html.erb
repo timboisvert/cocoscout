@@ -115,25 +115,23 @@
         <div class="flex items-center justify-between mb-3">
           <h4 class="font-semibold text-gray-900">Used by</h4>
           <% unless archived %>
-            <%= render "shared/button", text: "Edit…", variant: "secondary", size: "small", type: :button,
+            <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: used_by_cid } %>
           <% end %>
         </div>
 
-        <% if @default_productions.any? || @org_default %>
+        <% if @default_productions.any? %>
           <ul class="space-y-1.5 text-sm">
             <% @default_productions.each do |production| %>
-              <li class="text-gray-700"><%= production.name %></li>
-            <% end %>
-            <% if @org_default %>
-              <li class="text-pink-600 font-medium">Organization default</li>
+              <li>
+                <%= link_to production.name, manage_money_production_payouts_path(production),
+                      class: "text-gray-700 hover:text-pink-600 font-medium" %>
+                <span class="text-xs text-gray-400">· payouts</span>
+              </li>
             <% end %>
           </ul>
-          <% if @org_default %>
-            <p class="mt-3 text-xs text-gray-500">Any production without a calculation of its own uses this one.</p>
-          <% end %>
         <% else %>
-          <p class="text-sm text-gray-500">No production uses this calculation by default. You can still pick it on any show's payout page.</p>
+          <p class="text-sm text-gray-500">No production uses this calculation yet. You can still pick it on any show's payout page.</p>
         <% end %>
       </div>
 
@@ -141,8 +139,7 @@
         <%= render "manage/payout_calculations/used_by_modal",
               id: used_by_cid,
               calculation: @payout_scheme,
-              productions: @pickable_productions,
-              org_default: @org_default %>
+              productions: @pickable_productions %>
       <% end %>
 
       <div class="bg-white rounded-lg border border-gray-200 p-5 space-y-3">

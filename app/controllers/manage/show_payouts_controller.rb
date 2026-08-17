@@ -61,7 +61,7 @@ module Manage
         return
       end
 
-      # The calculation to run (with tonight's customization laid over it):
+      # The calculation to run (with this event's customization laid over it):
       # this show's own, else the default for the show.
       rules = @show_payout.resolved_rules.presence
       per_act = rules.present? && rules.dig("distribution", "method").to_s == "per_act"
@@ -217,22 +217,53 @@ module Manage
       end
     end
 
-    # Tonight's calculation: the amounts (and any exact per-person amounts)
-    # posted from the Customize modal, laid over the calculation the show
-    # started from. Always starts from the calculation, never from an earlier
-    # customization — the modal is prefilled with what's currently overridden,
-    # so what's posted is the whole picture.
+    # This event's customization, posted from the Customize modal: either one
+    # amount for everyone (customize[mode]=same, customize[amount]) or an
+    # amount per payee (customize[mode]=different, customize[amounts][<key>]
+    # keyed like ShowPayout.act_key). Always laid over the calculation the
+    # show started from, never over an earlier customization — the modal is
+    # prefilled with what's currently paid, so what's posted is the whole
+    # picture. When the calculation splits a fixed pot, per-person amounts
+    # have to add back up to it. An already-calculated payout is recalculated
+    # so its line items reflect the change.
     def save_override
-      base_rules = customization_base_rules
+      base_rules = @show_payout.base_rules
       if base_rules.blank?
         redirect_to manage_money_show_payout_path(@show),
                     alert: "Choose a payout calculation for this show before customizing it."
         return
       end
 
-      @show_payout.update!(override_rules: PayoutRulesBuilder.override(base_rules, customization_params))
-      redirect_to manage_money_show_payout_path(@show),
-                  notice: "Tonight's calculation saved."
+      customize = params.fetch(:customize, {}).permit(:mode, :amount, amounts: {})
+      rules = case customize[:mode]
+      when "same"
+        amount = customize[:amount].to_f
+        return redirect_to(manage_money_show_payout_path(@show), alert: "Enter the amount everyone is paid.") if amount.negative? || customize[:amount].blank?
+
+        PayoutRulesBuilder.same_amount(base_rules, amount)
+      when "different"
+        amounts = customize.fetch(:amounts, {}).to_h.select { |_key, value| value.present? }
+        return redirect_to(manage_money_show_payout_path(@show), alert: "Enter an amount for each person.") if amounts.empty?
+
+        if @show_payout.fixed_pot? && (expected = @show_payout.calculated_total)
+          total = amounts.values.sum { |value| value.to_f }.round(2)
+          if (total - expected).abs > 0.01
+            redirect_to manage_money_show_payout_path(@show),
+                        alert: "Adjust the amounts so they add up to #{helpers.number_to_currency(expected)} — this calculation splits a fixed pot, and you entered #{helpers.number_to_currency(total)}."
+            return
+          end
+        end
+
+        overrides = amounts.to_h { |key, value| [ override_key(key), { flat_amount: value } ] }
+        PayoutRulesBuilder.override(base_rules, performer_overrides: overrides)
+      else
+        return redirect_to(manage_money_show_payout_path(@show), alert: "Choose whether everyone is paid the same amount or different amounts.")
+      end
+
+      @show_payout.update!(override_rules: rules)
+      notice = "This event's calculation saved."
+      notice += " #{recalculate_after_customization}" if @show_payout.calculated_at.present?
+      redirect_to manage_money_show_payout_path(@show), notice: notice
     end
 
     def clear_override
@@ -273,13 +304,13 @@ module Manage
       end
     end
 
-    # Back to whatever the production (or the organization) would have given
-    # this show: drop the show's own choice and any customization.
+    # Back to the production's calculation: drop the show's own choice and any
+    # customization.
     def use_default
-      default_scheme = PayoutScheme.default_for_show(@show)
-      @show_payout.update!(payout_scheme: default_scheme, override_rules: nil)
-      notice = if default_scheme
-        "Back to \"#{default_scheme.name}\"#{" — the production's calculation" if default_scheme == PayoutScheme.current_default_for_production(@production, on: show_date)}."
+      production_scheme = PayoutScheme.current_default_for_production(@production, on: show_date)
+      @show_payout.update!(payout_scheme: production_scheme, override_rules: nil)
+      notice = if production_scheme
+        "Back to \"#{production_scheme.name}\" — the production's calculation."
       else
         "This show no longer has a calculation of its own."
       end
@@ -689,11 +720,10 @@ module Manage
     end
 
     # What the "Payout calculation" card and its two modals need: the
-    # calculation this show would inherit, the org's calculations to choose
-    # from, and how many later shows still ride the same one (so a new choice
-    # can carry forward).
+    # production's calculation (what this show gets unless one is chosen for
+    # it), the org's calculations to choose from, and how many later shows
+    # still ride the same one (so a new choice can carry forward).
     def setup_calculation_card
-      @default_scheme = PayoutScheme.default_for_show(@show)
       @production_scheme = PayoutScheme.current_default_for_production(@production, on: show_date)
       @available_schemes = Current.organization.payout_schemes.active.order(:name)
       @future_shows_count = @production.shows
@@ -745,37 +775,30 @@ module Manage
       )
     end
 
-    # What the Customize modal posts. Individual allocations (someone's cut of
-    # the night) aren't editable there, so the calculation's own ride along —
-    # PayoutRulesBuilder rebuilds the allocation list when a house % is posted.
-    def customization_params
-      raw = params.slice(:distribution, :house_percentage, :expenses_first, :performer_overrides).to_unsafe_h
-      cuts = Array(customization_base_rules["allocation"])
-               .select { |step| step["type"] == "percentage" && step["person_id"].present? }
-               .map { |step| { "person_id" => step["person_id"], "percentage" => step["value"], "label" => step["label"] } }
-      raw["individual_allocations"] = cuts.each_with_index.to_h { |cut, i| [ i.to_s, cut ] } if raw.key?("house_percentage") && cuts.any?
-      raw
+    # The Customize modal keys amounts like ShowPayout.act_key ("Person_12",
+    # "Group_3", "guest_45"); PayoutCalculator reads per-person overrides by
+    # bare id ("12") and guests by "guest_45".
+    def override_key(act_key)
+      act_key.to_s.sub(/\A(?:Person|Group)_/, "")
     end
 
-    # The rules a customization starts from: the show's calculation, refined by
-    # the one choice the amounts form can make within an approach (per ticket
-    # with/without a minimum; equal split vs. shares). Never the current
-    # override — customizing again starts over from the calculation.
-    def customization_base_rules
-      @customization_base_rules ||= begin
-        rules = @show_payout.base_rules
-        d = params[:distribution].respond_to?(:to_unsafe_h) ? params[:distribution].to_unsafe_h : {}
-        method = rules.dig("distribution", "method").to_s
-        refined = case method
-        when "per_ticket", "per_ticket_guaranteed"
-          d.key?("guarantee_minimum") ? (d["guarantee_minimum"] == "1" ? "per_ticket_guaranteed" : "per_ticket") : method
-        when "equal", "shares"
-          d.key?("split") ? (d["split"] == "shares" ? "shares" : "equal") : method
-        else
-          method
-        end
-        rules = rules.deep_merge("distribution" => { "method" => refined }) if refined != method && rules.present?
-        rules
+    # A customization saved over an already-calculated payout: run the
+    # calculation again the way `calculate` does, so the line items show the
+    # new amounts. Returns the sentence to add to the notice. Paid lines are
+    # never rebuilt from under anyone — then it's left to a deliberate
+    # recalculation.
+    def recalculate_after_customization
+      return "Some people are already paid, so the amounts weren't recalculated — recalculate when you're ready." if @show_payout.line_items.any?(&:paid?)
+
+      rules = @show_payout.resolved_rules
+      if rules.dig("distribution", "method").to_s == "per_act" && @show.act_based?
+        @show_payout.update!(act_counts: @show.lineup_act_counts)
+      end
+      result = PayoutCalculator.calculate(show: @show, rules: rules, act_counts: @show_payout.act_counts)
+      if result[:success]
+        "Payouts recalculated: #{helpers.number_to_currency(result[:total])} total."
+      else
+        "The payouts couldn't be recalculated (#{result[:error]}) — recalculate when you're ready."
       end
     end
 

@@ -28,6 +28,11 @@
   </div>
 
   <%= form_with url: manage_money_payout_calculation_wizard_save_amounts_path, method: :post, local: true, id: "amounts-form" do |form| %>
+    <% if @legacy_no_pay %>
+      <div class="mb-5 rounded-lg bg-pink-50 border border-pink-200 px-4 py-3 text-sm text-pink-800">
+        This calculation was set up as "not paid". A show nobody is paid for doesn't need a calculation any more — leave the amount at $0 to keep it as it was, or give it a real amount.
+      </div>
+    <% end %>
     <%= render "manage/payout_calculation_wizard/amounts_fields", approach: approach, distribution: @distribution %>
 
     <div class="mt-8 flex justify-between items-center">

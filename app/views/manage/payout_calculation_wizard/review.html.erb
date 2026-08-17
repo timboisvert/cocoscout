@@ -6,6 +6,7 @@
   steps = steps_for_state
   editing = @state[:editing_id].present?
   section_classes = "py-4 border-b border-gray-200 last:border-b-0"
+  input_classes = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-md text-sm shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
   change_link = ->(step) do
     link_to "Change", wizard_path(step), class: "text-sm text-pink-600 hover:text-pink-700 font-medium shrink-0"
   end
@@ -53,24 +54,11 @@
       </svg>
     </div>
     <h2 class="text-xl font-bold text-gray-900 coustard-regular">Does this look right?</h2>
-    <p class="text-gray-600 mt-2">Here's the calculation in plain English. Change anything that isn't right, then save it.</p>
+    <p class="text-gray-600 mt-2">Here's the calculation in plain English. Change anything that isn't right, give it a name, then save it.</p>
   </div>
 
   <%= form_with url: manage_money_payout_calculation_wizard_save_path, method: :post, local: true, id: "review-form" do |form| %>
     <div class="rounded-lg border border-gray-200 divide-y divide-gray-200">
-      <div class="px-4 <%= section_classes %>">
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Name</p>
-            <p class="text-base font-semibold text-gray-900 mt-0.5"><%= @state[:name] %></p>
-            <% if @state[:description].present? %>
-              <p class="text-sm text-gray-600 mt-1"><%= @state[:description] %></p>
-            <% end %>
-          </div>
-          <%= change_link.call(:name) %>
-        </div>
-      </div>
-
       <div class="px-4 <%= section_classes %>">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
@@ -152,22 +140,51 @@
       </ol>
     </div>
 
-    <% if @productions.any? %>
-      <div class="mt-6 pt-6 border-t border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-900">Use as the default for</h3>
-        <p class="text-xs text-gray-500 mt-0.5 mb-3">Every show in a checked production starts from this calculation. You can change a production's calculation any time from its Pay tab.</p>
-        <div class="space-y-2">
-          <% @productions.each do |production| %>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="default_production_ids[]" value="<%= production.id %>"
-                     <%= "checked" if @default_production_ids.include?(production.id) %>
-                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-              <span class="text-sm text-gray-900"><%= production.name %></span>
-            </label>
+    <div class="mt-6 pt-6 border-t border-gray-200">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold text-gray-900">Who uses it</h3>
+          <% if @productions.any? %>
+            <p class="text-sm text-gray-900 mt-1">
+              <%= @productions.map(&:name).to_sentence %>
+              <span class="text-gray-500">— starting <%= @starting_on.present? ? l(Date.iso8601(@starting_on), format: :long) : "now" %></span>
+            </p>
+          <% else %>
+            <p class="text-sm text-gray-600 mt-1">No production yet — pick it from a production's Pay tab whenever you like.</p>
           <% end %>
         </div>
+        <%= change_link.call(:who) %>
       </div>
-    <% end %>
+    </div>
+
+    <div class="mt-6 pt-6 border-t border-gray-200 space-y-5">
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Name
+          <span class="text-pink-500">*</span>
+        </label>
+        <input type="text"
+               name="name"
+               id="name"
+               value="<%= @name %>"
+               placeholder="e.g., Friday door split, $50 flat, Burlesque act pay"
+               required
+               class="<%= input_classes %>">
+        <p class="mt-1.5 text-xs text-gray-500">You'll pick it by this name when you set a production's pay, so name it the way you'd say it out loud. We've suggested one from the calculation.</p>
+      </div>
+
+      <div>
+        <label for="description" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Description
+          <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <textarea name="description"
+                  id="description"
+                  rows="2"
+                  placeholder="A note to yourself about when this one applies…"
+                  class="<%= input_classes %>"><%= @description %></textarea>
+      </div>
+    </div>
 
     <div class="mt-8 flex justify-between items-center">
       <%= link_to wizard_path(steps[steps.index(:review) - 1]), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>

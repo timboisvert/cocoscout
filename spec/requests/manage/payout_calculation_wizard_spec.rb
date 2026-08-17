@@ -20,22 +20,28 @@ RSpec.describe "Payout calculation wizard", type: :request do
     follow_redirect!
   end
 
-  def name_it(name, description: "")
-    post manage_money_payout_calculation_wizard_save_name_path, params: { name: name, description: description }
-    expect(response).to redirect_to(manage_money_payout_calculation_wizard_approach_path)
-  end
-
   def choose(approach)
     post manage_money_payout_calculation_wizard_save_approach_path, params: { approach: approach }
   end
 
+  def pick_who(*production_ids, starting: "now", starting_on: nil)
+    post manage_money_payout_calculation_wizard_save_who_path,
+         params: { default_production_ids: production_ids, starting: starting, starting_on: starting_on }
+    expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
+  end
+
+  def save_it(name:, description: "")
+    post manage_money_payout_calculation_wizard_save_path, params: { name: name, description: description }
+  end
+
   describe "the walk through each approach" do
-    it "flat: name → approach → amounts → review → saved with a flat amount" do
+    it "flat: approach → amounts → who → review → saved with a flat amount and the name from review" do
       start_wizard
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("What should this calculation be called?")
+      expect(response.body).to include("How are performers paid?")
+      # Not paid is no longer an approach — a show nobody pays has no calculation.
+      expect(response.body).not_to include('value="not_paid"')
 
-      name_it("Fifty flat", description: "Everyone gets fifty")
       choose("flat")
       expect(response).to redirect_to(manage_money_payout_calculation_wizard_amounts_path)
 
@@ -44,93 +50,118 @@ RSpec.describe "Payout calculation wizard", type: :request do
       expect(response.body).to include("A flat amount each")
 
       post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { flat_amount: "60" } }
-      # Flat pays no pool, so there is no "before" step.
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
+      # Flat pays no pool, so there is no "before" step; straight on to who uses it.
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_who_path)
+
+      get manage_money_payout_calculation_wizard_who_path
+      expect(response.body).to include("Which productions should use this calculation?")
+      expect(response.body).to include("Friday Cabaret")
+      expect(response.body).to include("None yet")
+      pick_who
 
       get manage_money_payout_calculation_wizard_review_path
-      expect(response.body).to include("Fifty flat")
       expect(response.body).to include("flat per performer")
       expect(response.body).to include("$60.00 each")
       expect(response.body).not_to include("Before performers are paid</p>")
+      # The name field, prefilled with a suggestion read off the calculation.
+      expect(response.body).to include('name="name"')
+      expect(response.body).to include('value="$60 flat per performer"')
+      expect(response.body).to include('name="description"')
 
       expect {
-        post manage_money_payout_calculation_wizard_save_path
+        save_it(name: "Sixty flat", description: "Everyone gets sixty")
       }.to change(PayoutScheme, :count).by(1)
 
       calc = PayoutScheme.order(:id).last
       expect(response).to redirect_to(manage_money_payout_calculation_path(calc))
-      expect(calc.name).to eq("Fifty flat")
-      expect(calc.description).to eq("Everyone gets fifty")
+      expect(calc.name).to eq("Sixty flat")
+      expect(calc.description).to eq("Everyone gets sixty")
       expect(calc.rules["distribution"]).to eq({ "method" => "flat_fee", "flat_amount" => 60.0 })
       expect(calc.rules["allocation"]).to eq([])
       expect(calc.organization).to eq(org)
     end
 
-    it "per act: a schedule of 75 then 50, then 40 for every act after" do
+    it "per act: the same rate for every act is the starter" do
       start_wizard
-      name_it("Act pay")
       choose("per_act")
 
       get manage_money_payout_calculation_wizard_amounts_path
       expect(response.body).to include('name="distribution[act_mode]"')
-      expect(response.body).to include("1st act pays")
-      expect(response.body).to include("2nd act pays")
-      expect(response.body).to include("Add an act")
-      expect(response.body).to include("Add a row")
+      expect(response.body).to match(/value="simple"\s+checked/)
+      expect(response.body).to include('name="distribution[per_act_rate]" value="25"')
+      expect(response.body).to include("A table by how many acts they do")
+      expect(response.body).to include("Each act beyond that")
+      # The positional schedule is gone from the wizard.
+      expect(response.body).not_to include('value="schedule"')
+      expect(response.body).not_to include("distribution[act_rates]")
 
-      post manage_money_payout_calculation_wizard_save_amounts_path, params: {
-        distribution: { act_mode: "schedule", act_rates: [ "75", "50" ], additional_act_rate: "40" }
-      }
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
-
-      # Back to the amounts step: the saved rows come back in order.
-      get manage_money_payout_calculation_wizard_amounts_path
-      expect(response.body).to include('name="distribution[act_rates][]" value="75.0"')
-      expect(response.body).to include('name="distribution[act_rates][]" value="50.0"')
-      expect(response.body).to include('name="distribution[additional_act_rate]" value="40.0"')
-
+      post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { act_mode: "simple", per_act_rate: "30" } }
+      pick_who
       get manage_money_payout_calculation_wizard_review_path
-      expect(response.body).to include("1st act $75.00")
-      expect(response.body).to include("2nd act $50.00")
-      expect(response.body).to include("then $40.00 each")
+      expect(response.body).to include('value="$30 per act"')
 
-      post manage_money_payout_calculation_wizard_save_path
+      save_it(name: "$30 per act")
       calc = PayoutScheme.order(:id).last
-      expect(calc.rules["distribution"]).to eq({
-        "method" => "per_act",
-        "act_mode" => "schedule",
-        "act_rates" => [ { "act" => 1, "amount" => 75.0 }, { "act" => 2, "amount" => 50.0 } ],
-        "additional_act_rate" => 40.0
-      })
+      expect(calc.rules["distribution"]).to eq({ "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 30.0 })
     end
 
-    it "per act: a table of tiers, blank rows dropped and sorted" do
+    it "per act: a table of tiers with a rate for every act beyond it, blank rows dropped and sorted" do
       start_wizard
-      name_it("Act table")
       choose("per_act")
       post manage_money_payout_calculation_wizard_save_amounts_path, params: {
-        distribution: { act_mode: "tiers", tiers: { "0" => { acts: "2", amount: "50" }, "1" => { acts: "1", amount: "25" }, "2" => { acts: "", amount: "" } } }
+        distribution: {
+          act_mode: "tiers",
+          tiers: { "0" => { acts: "2", amount: "125" }, "1" => { acts: "1", amount: "75" }, "2" => { acts: "", amount: "" } },
+          additional_act_rate: "50"
+        }
       }
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_who_path)
 
-      # Back to the amounts step: the table comes back sorted, tiers mode picked.
+      # Back to the amounts step: the table comes back sorted, tiers mode picked, the beyond rate kept.
       get manage_money_payout_calculation_wizard_amounts_path
       expect(response.body).to match(/value="tiers"\s+checked/)
       expect(response.body).to include('name="distribution[tiers][0][acts]" value="1"')
+      expect(response.body).to include('name="distribution[tiers][0][amount]" value="75"')
       expect(response.body).to include('name="distribution[tiers][1][acts]" value="2"')
+      expect(response.body).to include('name="distribution[tiers][1][amount]" value="125"')
+      expect(response.body).to include('name="distribution[additional_act_rate]" value="50"')
 
-      post manage_money_payout_calculation_wizard_save_path
+      pick_who
+      get manage_money_payout_calculation_wizard_review_path
+      expect(response.body).to include("1 act $75.00, 2 acts $125.00, then $50.00 per act")
+      expect(response.body).to include('value="1 act $75, 2 acts $125, then $50 each"')
 
+      save_it(name: "Act table")
       calc = PayoutScheme.order(:id).last
       expect(calc.rules["distribution"]).to eq({
         "method" => "per_act",
         "act_mode" => "tiers",
+        "tiers" => [ { "acts" => 1, "amount" => 75.0 }, { "acts" => 2, "amount" => 125.0 } ],
+        "additional_act_rate" => 50.0
+      })
+      expect(PayoutScheme.act_amount(calc.distribution_config, 4)).to eq(225.0)
+    end
+
+    it "per act: a table without a beyond rate stores no beyond rate" do
+      start_wizard
+      choose("per_act")
+      post manage_money_payout_calculation_wizard_save_amounts_path, params: {
+        distribution: { act_mode: "tiers", tiers: { "0" => { acts: "1", amount: "25" }, "1" => { acts: "2", amount: "50" } }, additional_act_rate: "" }
+      }
+      pick_who
+      get manage_money_payout_calculation_wizard_review_path
+      expect(response.body).to include("1 act $25.00, 2+ acts $50.00")
+
+      save_it(name: "Capped table")
+      calc = PayoutScheme.order(:id).last
+      expect(calc.rules["distribution"]).to eq({
+        "method" => "per_act", "act_mode" => "tiers",
         "tiers" => [ { "acts" => 1, "amount" => 25.0 }, { "acts" => 2, "amount" => 50.0 } ]
       })
     end
 
     it "per ticket with a guaranteed minimum stores the guaranteed method" do
       start_wizard
-      name_it("Door deal")
       choose("per_ticket")
 
       get manage_money_payout_calculation_wizard_amounts_path
@@ -141,19 +172,22 @@ RSpec.describe "Payout calculation wizard", type: :request do
       post manage_money_payout_calculation_wizard_save_amounts_path, params: {
         distribution: { per_ticket_rate: "2.5", guarantee_minimum: "1", minimum: "40" }
       }
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
-      post manage_money_payout_calculation_wizard_save_path
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_who_path)
+      pick_who
+      get manage_money_payout_calculation_wizard_review_path
+      expect(response.body).to include('value="$2.50/ticket, min $40"')
 
+      save_it(name: "Door deal")
       calc = PayoutScheme.order(:id).last
       expect(calc.rules["distribution"]).to eq({ "method" => "per_ticket_guaranteed", "per_ticket_rate" => 2.5, "minimum" => 40.0 })
     end
 
     it "per ticket without the minimum stores plain per_ticket" do
       start_wizard
-      name_it("Door deal, no floor")
       choose("per_ticket")
       post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { per_ticket_rate: "3", minimum: "40" } }
-      post manage_money_payout_calculation_wizard_save_path
+      pick_who
+      save_it(name: "Door deal, no floor")
 
       calc = PayoutScheme.order(:id).last
       expect(calc.rules["distribution"]).to eq({ "method" => "per_ticket", "per_ticket_rate" => 3.0 })
@@ -164,7 +198,6 @@ RSpec.describe "Payout calculation wizard", type: :request do
       org.people << producer
 
       start_wizard
-      name_it("Door split")
       choose("share")
 
       get manage_money_payout_calculation_wizard_amounts_path
@@ -186,15 +219,17 @@ RSpec.describe "Payout calculation wizard", type: :request do
         house_percentage: "40", expenses_first: "1",
         individual_allocations: { "0" => { person_id: producer.id.to_s, percentage: "5", label: "Producer" }, "1" => { person_id: "", percentage: "10", label: "" } }
       }
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_who_path)
+      pick_who
 
       get manage_money_payout_calculation_wizard_review_path
       expect(response.body).to include("Expenses covered first")
       expect(response.body).to include("House keeps 40%")
       expect(response.body).to include("Producer gets 5%")
       expect(response.body).to include("Split by shares")
+      expect(response.body).to include('value="Split by shares"')
 
-      post manage_money_payout_calculation_wizard_save_path
+      save_it(name: "Door split")
       calc = PayoutScheme.order(:id).last
       expect(calc.rules["distribution"]).to eq({ "method" => "shares", "default_shares" => 1.5 })
       expect(calc.rules["allocation"]).to eq([
@@ -205,67 +240,124 @@ RSpec.describe "Payout calculation wizard", type: :request do
       ])
     end
 
-    it "not paid skips amounts and before, and stores no_pay" do
+    it "an even split with a house cut suggests its name from the cut" do
       start_wizard
-      name_it("Rehearsals")
-      choose("not_paid")
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
-
-      # Typing the skipped steps' URLs bounces on to review.
-      get manage_money_payout_calculation_wizard_amounts_path
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
-      get manage_money_payout_calculation_wizard_before_path
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
+      choose("share")
+      post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { split: "equal" } }
+      post manage_money_payout_calculation_wizard_save_before_path, params: { house_percentage: "40" }
+      pick_who
 
       get manage_money_payout_calculation_wizard_review_path
-      expect(response.body).to include("Performers aren&#39;t paid")
-      expect(response.body).not_to include("The amounts</p>")
+      expect(response.body).to include('value="Even split after 40% house"')
+    end
 
-      post manage_money_payout_calculation_wizard_save_path
-      calc = PayoutScheme.order(:id).last
-      expect(calc.rules["distribution"]).to eq({ "method" => "no_pay" })
-      expect(calc.rules["allocation"]).to eq([])
+    it "an unknown approach falls back to the starter rather than not paid" do
+      start_wizard
+      choose("not_paid")
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_amounts_path)
+
+      get manage_money_payout_calculation_wizard_amounts_path
+      expect(response.body).to include('name="distribution[flat_amount]"')
     end
   end
 
-  describe "the name step" do
-    it "insists on a name" do
+  describe "the name on the review step" do
+    before do
       start_wizard
-      post manage_money_payout_calculation_wizard_save_name_path, params: { name: "   " }
+      choose("flat")
+      post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { flat_amount: "50" } }
+      pick_who
+    end
+
+    it "insists on a name" do
+      save_it(name: "   ")
 
       expect(response).to have_http_status(:unprocessable_entity)
       expect(response.body).to include("Give the calculation a name")
+      expect(PayoutScheme.count).to eq(0)
+    end
+
+    it "keeps the name typed when the record itself is invalid" do
+      PayoutScheme.create!(organization: org, name: "Taken", rules: { "distribution" => { "method" => "equal" } })
+
+      save_it(name: "Taken")
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include("Name has already been taken")
+      expect(response.body).to include('value="Taken"')
     end
   end
 
-  describe "defaults" do
-    it "makes the calculation the chosen productions' default" do
-      other = create(:production, organization: org, name: "Sunday Improv")
+  describe "who uses it" do
+    let!(:other) { create(:production, organization: org, name: "Sunday Improv") }
 
+    def flat_through_amounts
       start_wizard
-      name_it("Fifty flat")
       choose("flat")
       post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { flat_amount: "50" } }
+    end
 
-      get manage_money_payout_calculation_wizard_review_path
+    it "makes the calculation the chosen productions' default, starting now" do
+      flat_through_amounts
+
+      get manage_money_payout_calculation_wizard_who_path
       expect(response.body).to include('name="default_production_ids[]"')
       expect(response.body).to include("Friday Cabaret")
       expect(response.body).to include("Sunday Improv")
+      expect(response.body).to include('name="starting" value="now"')
+      expect(response.body).to include('name="starting_on"')
 
-      post manage_money_payout_calculation_wizard_save_path, params: { default_production_ids: [ production.id ] }
+      pick_who(production.id)
+      get manage_money_payout_calculation_wizard_review_path
+      expect(response.body).to include("Who uses it")
+      expect(response.body).to include("Friday Cabaret")
+      expect(response.body).to include("starting now")
+      expect(response.body).not_to include("Sunday Improv")
+
+      save_it(name: "Fifty flat")
 
       calc = PayoutScheme.order(:id).last
       expect(PayoutScheme.current_default_for_production(production)).to eq(calc)
       expect(PayoutScheme.current_default_for_production(other)).to be_nil
     end
 
+    it "shows what a production uses today, and that checking it will switch" do
+      current = PayoutScheme.create!(organization: org, name: "House split", rules: { "distribution" => { "method" => "equal" } })
+      current.make_production_scheme!(production)
+
+      flat_through_amounts
+      get manage_money_payout_calculation_wizard_who_path
+
+      expect(response.body).to include("Currently uses")
+      expect(response.body).to include("House split")
+      expect(response.body).to include("Will switch from House split to this calculation")
+      # Sunday Improv has nothing yet.
+      expect(response.body).to include("None yet")
+    end
+
+    it "can start on a date, leaving earlier shows on what they use today" do
+      old = PayoutScheme.create!(organization: org, name: "House split", rules: { "distribution" => { "method" => "equal" } })
+      old.make_production_scheme!(production)
+      soon = create(:show, production: production, date_and_time: 1.week.from_now)
+      later = create(:show, production: production, date_and_time: 5.weeks.from_now)
+      switch = 3.weeks.from_now.to_date
+
+      flat_through_amounts
+      pick_who(production.id, starting: "date", starting_on: switch.iso8601)
+
+      get manage_money_payout_calculation_wizard_review_path
+      expect(response.body).to include("starting #{I18n.l(switch, format: :long)}")
+
+      save_it(name: "Fifty flat")
+      calc = PayoutScheme.order(:id).last
+      expect(PayoutScheme.default_for_show(soon)).to eq(old)
+      expect(PayoutScheme.default_for_show(later)).to eq(calc)
+    end
+
     it "start?production_id= for an act-based production defaults to per act and preselects it" do
       production.update!(casting_mode: "act_based")
 
       start_wizard(production_id: production.id)
-      name_it("Act pay")
-
-      get manage_money_payout_calculation_wizard_approach_path
       expect(response.body).to include("Recommended")
       # Per act is first and checked.
       body = response.body
@@ -275,10 +367,11 @@ RSpec.describe "Payout calculation wizard", type: :request do
       choose("per_act")
       post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { act_mode: "simple", per_act_rate: "30" } }
 
-      get manage_money_payout_calculation_wizard_review_path
+      get manage_money_payout_calculation_wizard_who_path
       expect(response.body).to match(/value="#{production.id}"\s+checked/)
 
-      post manage_money_payout_calculation_wizard_save_path, params: { default_production_ids: [ production.id ] }
+      pick_who(production.id)
+      save_it(name: "Act pay")
       calc = PayoutScheme.order(:id).last
       expect(calc.rules["distribution"]).to eq({ "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 30.0 })
       expect(PayoutScheme.current_default_for_production(production)).to eq(calc)
@@ -286,20 +379,20 @@ RSpec.describe "Payout calculation wizard", type: :request do
 
     it "honours return_to after saving" do
       start_wizard(return_to: "/manage/money/payouts")
-      name_it("Fifty flat")
       choose("flat")
       post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { flat_amount: "50" } }
-      post manage_money_payout_calculation_wizard_save_path
+      pick_who
+      save_it(name: "Fifty flat")
 
       expect(response).to redirect_to("/manage/money/payouts")
     end
 
     it "ignores a return_to that isn't ours" do
       start_wizard(return_to: "https://evil.example/phish")
-      name_it("Fifty flat")
       choose("flat")
       post manage_money_payout_calculation_wizard_save_amounts_path, params: { distribution: { flat_amount: "50" } }
-      post manage_money_payout_calculation_wizard_save_path
+      pick_who
+      save_it(name: "Fifty flat")
 
       calc = PayoutScheme.order(:id).last
       expect(response).to redirect_to(manage_money_payout_calculation_path(calc))
@@ -322,7 +415,7 @@ RSpec.describe "Payout calculation wizard", type: :request do
       )
     end
 
-    it "start?id= seeds the wizard from the record and lands on review" do
+    it "start?id= seeds the wizard from the record and lands on review with its name" do
       existing.make_production_scheme!(production)
 
       get manage_money_payout_calculation_wizard_start_path(id: existing.id)
@@ -330,25 +423,32 @@ RSpec.describe "Payout calculation wizard", type: :request do
       follow_redirect!
 
       expect(response.body).to include("Edit House split")
+      expect(response.body).to include('value="House split"')
       expect(response.body).to include("The usual")
       expect(response.body).to include("A share of the night&#39;s money")
       expect(response.body).to include("House keeps 30%")
       expect(response.body).to include("Expenses covered first")
-      expect(response.body).to match(/value="#{production.id}"\s+checked/)
+      expect(response.body).to include("Friday Cabaret")
 
       # The seeded state shows in the earlier steps too.
       get manage_money_payout_calculation_wizard_before_path
       expect(response.body).to include('name="house_percentage" value="30"')
       expect(response.body).to match(/name="expenses_first" value="1" checked/)
+
+      # And the production it already serves is checked, with no switch note.
+      get manage_money_payout_calculation_wizard_who_path
+      expect(response.body).to match(/value="#{production.id}"\s+checked/)
+      expect(response.body).to include("Currently uses")
+      expect(response.body).not_to include("Will switch from")
     end
 
     it "saves changes onto the same record" do
       get manage_money_payout_calculation_wizard_start_path(id: existing.id)
-      post manage_money_payout_calculation_wizard_save_name_path, params: { name: "House split, revised" }
       post manage_money_payout_calculation_wizard_save_before_path, params: { house_percentage: "35", expenses_first: "0" }
+      pick_who(production.id)
 
       expect {
-        post manage_money_payout_calculation_wizard_save_path, params: { default_production_ids: [ production.id ] }
+        save_it(name: "House split, revised")
       }.not_to change(PayoutScheme, :count)
 
       existing.reload
@@ -362,15 +462,26 @@ RSpec.describe "Payout calculation wizard", type: :request do
 
     it "start?id=&duplicate=1 copies it into a new calculation" do
       get manage_money_payout_calculation_wizard_start_path(id: existing.id, duplicate: "1")
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_name_path)
-      follow_redirect!
-      expect(response.body).to include("House split (copy)")
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_approach_path)
 
-      post manage_money_payout_calculation_wizard_save_name_path, params: { name: "House split (copy)" }
+      pick_who
+      get manage_money_payout_calculation_wizard_review_path
+      expect(response.body).to include('value="House split (copy)"')
+
       expect {
-        post manage_money_payout_calculation_wizard_save_path
+        save_it(name: "House split (copy)")
       }.to change(PayoutScheme, :count).by(1)
       expect(existing.reload.name).to eq("House split")
+    end
+
+    it "opens a legacy not-paid calculation as a flat $0" do
+      legacy = PayoutScheme.create!(organization: org, name: "Rehearsals", rules: { "allocation" => [], "distribution" => { "method" => "no_pay" } })
+
+      get manage_money_payout_calculation_wizard_start_path(id: legacy.id)
+      get manage_money_payout_calculation_wizard_amounts_path
+
+      expect(response.body).to include('name="distribution[flat_amount]" value="0"')
+      expect(response.body).to include("was set up as \"not paid\"")
     end
 
     it "won't open a calculation from another organization" do
@@ -386,13 +497,13 @@ RSpec.describe "Payout calculation wizard", type: :request do
   describe "cancel" do
     it "clears the wizard and goes back to the calculations list" do
       start_wizard
-      name_it("Half done")
+      choose("per_ticket")
 
       delete manage_money_payout_calculation_wizard_cancel_path
       expect(response).to redirect_to(manage_money_payout_calculations_path)
 
-      get manage_money_payout_calculation_wizard_name_path
-      expect(response.body).not_to include("Half done")
+      get manage_money_payout_calculation_wizard_approach_path
+      expect(response.body).to match(/value="flat"\s+checked/)
     end
   end
 

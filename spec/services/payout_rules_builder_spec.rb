@@ -49,6 +49,24 @@ RSpec.describe PayoutRulesBuilder do
                "tiers" => [ { "acts" => 1, "amount" => 25.0 }, { "acts" => 2, "amount" => 50.0 } ])
     end
 
+    it "keeps the beyond-the-table rate on a tiers table, and leaves it out when blank" do
+      with_rate = described_class.build("method" => "per_act", "distribution" => {
+        "act_mode" => "tiers", "tiers" => { "0" => { "acts" => "1", "amount" => "75" }, "1" => { "acts" => "2", "amount" => "125" } }, "additional_act_rate" => "50"
+      })["distribution"]
+      expect(with_rate).to eq("method" => "per_act", "act_mode" => "tiers",
+                              "tiers" => [ { "acts" => 1, "amount" => 75.0 }, { "acts" => 2, "amount" => 125.0 } ],
+                              "additional_act_rate" => 50.0)
+
+      without = described_class.build("method" => "per_act", "distribution" => {
+        "act_mode" => "tiers", "tiers" => { "0" => { "acts" => "1", "amount" => "75" } }, "additional_act_rate" => ""
+      })["distribution"]
+      expect(without).not_to have_key("additional_act_rate")
+    end
+
+    it "treats an unknown act mode as a tiers table" do
+      expect(described_class.build("method" => "per_act", "distribution" => { "tiers" => [ { "acts" => "1", "amount" => "20" } ] })["distribution"]["act_mode"]).to eq("tiers")
+    end
+
     it "falls back to equal for an unknown approach" do
       expect(described_class.build("method" => "magic")["distribution"]["method"]).to eq("equal")
     end
@@ -84,6 +102,19 @@ RSpec.describe PayoutRulesBuilder do
 
       flat = { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 } }
       expect(described_class.override(flat, "house_percentage" => "30")["allocation"]).to eq([])
+    end
+  end
+
+  describe ".same_amount" do
+    it "pays everyone one flat amount — no cut off the top, no per-person exceptions — and leaves the base alone" do
+      base = { "allocation" => [ { "type" => "percentage", "value" => 50.0 }, { "type" => "remainder" } ],
+               "distribution" => { "method" => "shares", "default_shares" => 1.0 },
+               "performer_overrides" => { "7" => { "flat_amount" => 100.0 } } }
+
+      rules = described_class.same_amount(base, "60")
+
+      expect(rules).to eq("allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 }, "performer_overrides" => {})
+      expect(base["allocation"].size).to eq(2)
     end
   end
 end

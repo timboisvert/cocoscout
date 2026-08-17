@@ -301,7 +301,7 @@
                     <%= render "shared/button", text: "Pay as Originally Planned", variant: "secondary", size: "small", type: :submit %>
                   <% end %>
                 <% end %>
-                <% if @show_payout.payout_scheme || @default_scheme %>
+                <% if @show_payout.payout_scheme || @production_scheme %>
                   <%= render "shared/button", text: "Set custom amounts", variant: "secondary", size: "small", type: :button,
                         data: { controller: "modal", action: "click->modal#open", modal_id: "customize-calculation" } %>
                 <% end %>
@@ -351,64 +351,43 @@
 
       <!-- Payout calculation: what this show's pay is worked out from -->
       <%
-        card_scheme = @show_payout.payout_scheme || @default_scheme
-        inherits_default = card_scheme.present? && @default_scheme.present? && card_scheme.id == @default_scheme.id
-        from_production = inherits_default && @production_scheme.present? && @production_scheme.id == card_scheme.id
-        card_state = if card_scheme.nil?
-          :none
-        elsif @show_payout.has_overrides?
-          :customized
-        elsif inherits_default
-          :inherited
-        else
-          :chosen
-        end
-        can_go_back = @default_scheme.present? && (@show_payout.has_overrides? || !inherits_default)
-        calc_pill = "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-none"
+        # The show's calculation is the production's, or one chosen for this
+        # show — or there is none. Choosing a different one from the
+        # production's is the only case with a way "back".
+        card_scheme = @show_payout.payout_scheme || @production_scheme
+        chosen_here = card_scheme.present? && @production_scheme.present? && card_scheme.id != @production_scheme.id
+        customized = card_scheme.present? && @show_payout.has_overrides?
       %>
       <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-semibold text-gray-900">Payout calculation</h3>
-          <%= link_to "All calculations", manage_money_payout_calculations_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
-        </div>
+        <h3 class="font-semibold text-gray-900 mb-3">Payout calculation</h3>
 
-        <% if card_state == :none %>
+        <% if card_scheme.nil? && !@production.pays_performers? %>
+          <p class="text-sm text-gray-600 mb-3">
+            Performer pay is off for <%= @production.name %> — nobody is paid for its shows.
+            <%= link_to "Turn it on", manage_money_production_payouts_path(@production), class: "text-pink-500 hover:text-pink-600 font-medium" %>
+            on the production's payouts page to choose a calculation.
+          </p>
+        <% elsif card_scheme.nil? %>
           <p class="text-sm text-gray-600 mb-3">This show doesn't have a payout calculation yet. Choose one and we'll work out what everyone is paid.</p>
           <% if @show_payout.can_edit? %>
             <%= render "shared/button", text: "Choose a calculation", variant: "primary", size: "small", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: "choose-calculation" } %>
           <% end %>
         <% else %>
-          <div class="flex items-center gap-2 mb-1">
-            <% case card_state %>
-            <% when :inherited %>
-              <span class="<%= calc_pill %> bg-gray-100 text-gray-600">Inherited</span>
-            <% when :chosen %>
-              <span class="<%= calc_pill %> bg-pink-50 text-pink-600 border border-pink-200">Chosen for this show</span>
-            <% when :customized %>
-              <span class="<%= calc_pill %> bg-pink-500 text-white">Customized</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="text-base font-medium text-gray-900"><%= card_scheme.name %></p>
+            <% if customized %>
+              <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-none bg-pink-500 text-white">Customized for this event</span>
             <% end %>
           </div>
-          <p class="text-sm text-gray-700">
-            <% if card_state == :customized %>
-              Starting from <strong class="text-gray-900"><%= card_scheme.name %></strong>
-            <% else %>
-              Using <strong class="text-gray-900"><%= card_scheme.name %></strong>
-            <% end %>
-            <% if from_production %>
-              &mdash; the production's calculation
-            <% elsif inherits_default %>
-              &mdash; your organization's default
-            <% end %>
-          </p>
-          <% if card_state == :customized %>
+          <p class="text-sm text-gray-500 mt-0.5"><%= card_scheme.rules_summary %></p>
+          <% if customized %>
             <p class="text-sm text-pink-700 mt-1"><%= @show_payout.customization_summary %></p>
           <% end %>
-          <p class="text-sm text-gray-500 mt-1"><%= card_scheme.rules_summary %></p>
 
           <% if @show_payout.can_edit? %>
             <div class="mt-3 flex flex-wrap gap-2">
-              <% if card_state == :customized %>
+              <% if customized %>
                 <%= render "shared/button", text: "Edit customization", variant: "primary", size: "small", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "customize-calculation" } %>
                 <%= form_with url: manage_clear_override_money_show_payout_path(@show), method: :delete, local: true, class: "inline" do %>
@@ -417,14 +396,14 @@
                 <%= render "shared/button", text: "Choose a different calculation", variant: "ghost", size: "small", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "choose-calculation" } %>
               <% else %>
-                <%= render "shared/button", text: "Customize for this show", variant: "primary", size: "small", type: :button,
+                <%= render "shared/button", text: "Customize for this event", variant: "primary", size: "small", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "customize-calculation" } %>
                 <%= render "shared/button", text: "Choose a different calculation", variant: "secondary", size: "small", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "choose-calculation" } %>
               <% end %>
-              <% if can_go_back %>
+              <% if chosen_here %>
                 <%= form_with url: manage_use_default_money_show_payout_path(@show), method: :patch, local: true, class: "inline" do %>
-                  <%= render "shared/button", text: (@production_scheme.present? && @production_scheme.id == @default_scheme.id ? "Back to the production's calculation" : "Back to your organization's default"), variant: "ghost", size: "small", type: :submit %>
+                  <%= render "shared/button", text: "Back to the production's calculation", variant: "ghost", size: "small", type: :submit %>
                 <% end %>
               <% end %>
             </div>
@@ -433,7 +412,7 @@
       </div>
 
       <% if @show_payout.can_edit? %>
-        <%# The two modals the card opens: pick a calculation, or customize tonight's. %>
+        <%# The two modals the card opens: pick a calculation, or customize this event's. %>
         <% scope_fields = nil %>
         <% if @future_shows_count.to_i > 0 %>
           <% scope_fields = capture do %>

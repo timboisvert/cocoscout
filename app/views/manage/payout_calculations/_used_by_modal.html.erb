@@ -1,6 +1,6 @@
 <%#
-  "Used by" editor for a payout calculation — which productions it is the
-  default for, and whether it's the organization default. Inline, hidden,
+  "Used by" editor for a payout calculation — which productions pay their
+  performers with it. Inline, hidden,
   opened by a trigger with data-controller="modal" data-action="click->modal#open"
   and data-modal-id matching `id`. Posts to update_defaults.
   NOTE: keep ERB tags out of this comment.
@@ -9,13 +9,11 @@
     id            (required) DOM id, matches the trigger's data-modal-id
     calculation   (required) the PayoutScheme
     productions   (required) productions to offer as checkboxes
-    org_default   (required) whether the calculation is currently the organization default
 %>
 <%
   id           = local_assigns.fetch(:id)
   calculation  = local_assigns.fetch(:calculation)
   productions  = Array(local_assigns[:productions])
-  org_default  = local_assigns[:org_default]
 %>
 <div id="<%= id %>"
      class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -51,17 +49,7 @@
           <% else %>
             <p class="text-sm text-gray-500">You don't have any productions yet.</p>
           <% end %>
-          <p class="mt-1.5 text-xs text-gray-500">Checked productions pay their performers with this calculation. Unchecking one sends it back to the organization default.</p>
-        </div>
-
-        <div class="pt-4 border-t border-gray-100">
-          <label class="flex items-center gap-2 text-sm cursor-pointer py-1">
-            <input type="checkbox" name="org_level_fallback" value="1"
-                   <%= "checked" if org_default %>
-                   class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-            <span class="text-gray-700 font-medium">Organization default</span>
-          </label>
-          <p class="ml-6 text-xs text-gray-500">Used by any production that doesn't have a calculation of its own. Only one calculation can be the organization default.</p>
+          <p class="mt-1.5 text-xs text-gray-500">Checked productions pay their performers with this calculation. Unchecking one leaves it with no calculation until another is chosen.</p>
         </div>
       </div>
 

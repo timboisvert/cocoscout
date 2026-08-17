@@ -28,6 +28,67 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
     expect(response.body).to include("1 of 3 paid")
   end
 
+  describe "the production page's payout calculation box" do
+    it "says no calculation is chosen yet, and offers the picker and the wizard" do
+      get manage_money_production_payouts_path(production)
+
+      expect(response.body).to include("Pay people for performing in Payout Prod")
+      expect(response.body).to include("No payout calculation chosen yet")
+      expect(response.body).to include("Choose a calculation")
+      expect(response.body).to include("Create a new calculation")
+      expect(response.body).to include(ERB::Util.html_escape(manage_money_payout_calculation_wizard_start_path(production_id: production.id, return_to: manage_money_production_payouts_path(production))))
+      expect(response.body).not_to include("Manage calculations")
+    end
+
+    it "shows the production's calculation and lets you switch it from right here" do
+      calc = PayoutScheme.create!(organization: org, name: "Door Split", rules: { "distribution" => { "method" => "equal" } })
+      other = PayoutScheme.create!(organization: org, name: "Flat Forty", rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 40 } })
+      calc.make_production_scheme!(production)
+
+      get manage_money_production_payouts_path(production)
+      expect(response.body).to include("Door Split")
+      expect(response.body).to include("Change calculation")
+      expect(response.body).to include("View calculation")
+      expect(response.body).to include("Flat Forty") # in the picker
+
+      patch update_pay_manage_production_path(production),
+            params: { performers_paid: "1", payout_scheme_id: other.id, return_to: manage_money_production_payouts_path(production) }
+      expect(response).to redirect_to(manage_money_production_payouts_path(production))
+      expect(PayoutScheme.current_default_for_production(production)).to eq(other)
+    end
+
+    it "hides the calculation and payment-info boxes when performer pay is off" do
+      calc = PayoutScheme.create!(organization: org, name: "Door Split", rules: { "distribution" => { "method" => "equal" } })
+      calc.make_production_scheme!(production)
+
+      patch update_pay_manage_production_path(production),
+            params: { performers_paid: "0", return_to: manage_money_production_payouts_path(production) }
+      expect(response).to redirect_to(manage_money_production_payouts_path(production))
+      expect(production.reload.pays_performers).to be(false)
+      expect(PayoutScheme.current_default_for_production(production)).to be_nil
+
+      get manage_money_production_payouts_path(production)
+      expect(response.body).to include("Performer pay is off")
+      expect(response.body).not_to include("Payout calculation</h3>")
+      expect(response.body).not_to include("Waiting on payment info")
+      expect(response.body).to include("Past payouts") # the calculated show stays visible
+
+      patch update_pay_manage_production_path(production),
+            params: { performers_paid: "1", return_to: manage_money_production_payouts_path(production) }
+      expect(production.reload.pays_performers).to be(true)
+      follow_redirect!
+      expect(response.body).to include("No payout calculation chosen yet")
+    end
+
+    it "shows this production's money by state" do
+      get manage_money_production_payouts_path(production)
+      expect(response.body).to include("Awaiting calculation")
+      expect(response.body).to include("To pay")
+      expect(response.body).to include("In a payout run")
+      expect(response.body).to include("$70.00") # paid tile
+    end
+  end
+
   it "keeps the org page action-focused: Awaiting Payout plus a link to All payouts" do
     get manage_money_payouts_path
     expect(response).to have_http_status(:ok)

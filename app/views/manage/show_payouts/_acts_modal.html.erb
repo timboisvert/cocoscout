@@ -61,8 +61,10 @@
           <div class="mt-1 font-medium text-gray-900"><%= @show_payout.act_rules_description %></div>
           <% if act_mode == "schedule" %>
             <div class="mt-1 text-xs text-gray-500">Each act is paid at its own rate and they add up.</div>
+          <% elsif act_mode == "tiers" && distribution["additional_act_rate"].present? %>
+            <div class="mt-1 text-xs text-gray-500">Each row is the total for that many acts; every act past the last row adds <%= PayoutScheme.act_money(additional_act_rate) %>.</div>
           <% elsif act_mode == "tiers" %>
-            <div class="mt-1 text-xs text-gray-500">The number of acts picks one amount for the night.</div>
+            <div class="mt-1 text-xs text-gray-500">Each row is the total for that many acts; the last row is the most anyone is paid.</div>
           <% end %>
         </div>
 

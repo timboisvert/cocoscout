@@ -16,7 +16,7 @@
       </svg>
     </div>
     <h2 class="text-xl font-bold text-gray-900 coustard-regular">How are performers paid?</h2>
-    <p class="text-gray-600 mt-2">Pick the shape of the deal. You'll put in the actual numbers next.</p>
+    <p class="text-gray-600 mt-2">A payout calculation is how a show's money becomes each performer's pay. Pick the shape of the deal; you'll put in the actual numbers next.</p>
   </div>
 
   <%= form_with url: manage_money_payout_calculation_wizard_save_approach_path, method: :post, local: true, id: "approach-form" do |form| %>
@@ -50,10 +50,7 @@
       <p class="mt-4 text-xs text-gray-500"><%= context_production.name %> casts by acts, so paying by the acts each person performs lines up with its lineup.</p>
     <% end %>
 
-    <div class="mt-8 flex justify-between items-center">
-      <%= link_to wizard_path(:name), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
-        &larr; Back
-      <% end %>
+    <div class="mt-8 flex justify-end">
       <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>

@@ -26,9 +26,12 @@ class ShowPayout < ApplicationRecord
   # production's scheme changes, payouts nobody has calculated yet (no line
   # items, no hand-tuned override) should follow it rather than keep the
   # scheme that happened to resolve on the day the page was first viewed.
-  # `scheme` nil means "resolve the default again for each show".
-  def self.restamp_pending_for_production!(production, scheme)
-    where(show_id: production.shows.select(:id), calculated_at: nil)
+  # `scheme` nil means "resolve the default again for each show". `from` limits
+  # it to shows on or after that date (a dated switch of scheme).
+  def self.restamp_pending_for_production!(production, scheme, from: nil)
+    shows = production.shows
+    shows = shows.where("shows.date_and_time >= ?", from.to_date.beginning_of_day) if from.present?
+    where(show_id: shows.select(:id), calculated_at: nil)
       .where.missing(:line_items)
       .where("override_rules IS NULL OR override_rules = '{}'::jsonb")
       .includes(:show)
@@ -47,7 +50,7 @@ class ShowPayout < ApplicationRecord
     override_rules.present?
   end
 
-  # The calculation tonight's customization started from: this payout's own
+  # The calculation this event's customization started from: this payout's own
   # calculation, or the default for the show when none is pinned.
   def base_scheme
     payout_scheme || PayoutScheme.default_for_show(show)
@@ -57,11 +60,18 @@ class ShowPayout < ApplicationRecord
     (base_scheme&.rules || {}).deep_stringify_keys
   end
 
-  # One line saying what tonight's customization changed against the
-  # calculation it started from — "Flat $60 instead of $50", "House 30%
-  # instead of 40%", "Jane Doe $100, Gigi (guest) $40". nil when there is no
-  # customization. Falls back to "Custom amounts" when the override differs in
-  # some way this can't put into words.
+  # Whether the calculation this event starts from splits a fixed pot of the
+  # night's money (equal / shares). Customized amounts for such a night have to
+  # add back up to that pot — there's no more and no less to hand out.
+  def fixed_pot?
+    PayoutRulesBuilder.pool_method?(base_rules.dig("distribution", "method"))
+  end
+
+  # One line saying what this event's customization changed against the
+  # calculation it started from — "Everyone $60", "Jane Doe $100, Gigi (guest)
+  # $40", or for older customizations "House 30% instead of 40%". nil when
+  # there is no customization. Falls back to "Custom amounts" when the override
+  # differs in some way this can't put into words.
   def customization_summary
     return nil unless has_overrides?
 
@@ -69,15 +79,66 @@ class ShowPayout < ApplicationRecord
     return "Closed as non-paying" if override["closed_as_non_paying"]
 
     base = base_rules
+    people = person_amount_changes(override)
+    # "Pay everyone the same amount": one flat amount, nobody named.
+    if override.dig("distribution", "method").to_s == "flat_fee" && people.blank?
+      return "Everyone #{money(override.dig('distribution', 'flat_amount'))}"
+    end
+
     parts = []
     parts.concat(method_and_amount_changes(base, override))
     # A swapped approach (legacy override) says it all; house/expenses only
     # mean something within the same approach.
     parts.concat(pool_changes(base, override)) unless method_changed?(base, override)
-    people = person_amount_changes(override)
     parts << people if people.present?
 
     parts.presence&.join("; ") || "Custom amounts"
+  end
+
+  # --- What each payee stands to be paid ------------------------------------
+  #
+  # The Customize modal prefills every payee's amount with what they'd get right
+  # now, and checks customized amounts against what the calculation itself would
+  # give. All keyed like `act_key` ("Person_12", "Group_3", "guest_45").
+
+  # What each payee would be paid as things stand: the calculated line items
+  # once the payout has been calculated, otherwise a dry run of the calculation
+  # this event currently resolves to (customization included).
+  def current_amounts
+    return amounts_from_line_items(line_items.to_a) if calculated_at.present? && line_items.exists?
+
+    preview_amounts
+  end
+
+  # What the calculation itself gives each payee, before any customization —
+  # the numbers a customization is measured against.
+  def calculated_amounts
+    has_overrides? ? preview_amounts(base_rules) : current_amounts
+  end
+
+  # The calculation's total for the people cast on this show, or nil when it
+  # can't be worked out yet (no financials, nobody cast).
+  def calculated_total
+    amounts = calculated_amounts
+    return nil if amounts.empty?
+
+    act_payees.sum { |payee| amounts[self.class.act_key(payee)].to_f }.round(2)
+  end
+
+  # Dry run of the calculation: PayoutCalculator.calculate persists line items
+  # (and re-posts the ledger), so it runs inside a transaction that is rolled
+  # back, and only the numbers come out. Empty when it can't run yet.
+  def preview_amounts(rules = resolved_rules)
+    amounts = {}
+    return amounts if rules.blank?
+
+    ActiveRecord::Base.transaction do
+      result = PayoutCalculator.calculate(show: show, rules: rules, act_counts: preview_act_counts)
+      amounts = amounts_from_line_items(result[:line_items].to_a) if result[:success]
+      raise ActiveRecord::Rollback
+    end
+    forget_dry_run!
+    amounts
   end
 
   # --- Act-based pay -------------------------------------------------------
@@ -291,6 +352,43 @@ class ShowPayout < ApplicationRecord
 
     # Any non-paid legacy status becomes awaiting_payout
     self.status = "awaiting_payout"
+  end
+
+  # --- current / preview amounts helpers -------------------------------------
+
+  # Line items → { act_key => amount } for the payees on this show. Someone's
+  # cut off the top (an individual allocation) isn't a payee amount; a guest
+  # line only carries a name, so it's matched back to the guest slot by name.
+  def amounts_from_line_items(items)
+    guests_by_name = act_payees.select { |p| p.is_a?(ShowPersonRoleAssignment) }.index_by(&:guest_name)
+    items.each_with_object({}) do |item, amounts|
+      next if item.is_individual_allocation?
+
+      key = if item.is_guest?
+        guest = guests_by_name[item.guest_name]
+        guest && self.class.act_key(guest)
+      elsif item.payee
+        self.class.act_key(item.payee)
+      end
+      amounts[key] = item.amount.to_f if key
+    end
+  end
+
+  # The act counts a dry run should use — what `calculate` would: the lineup
+  # in an act-based production, otherwise whatever was entered by hand.
+  def preview_act_counts
+    show.act_based? ? show.lineup_act_counts : (act_counts || {})
+  end
+
+  # The dry run wrote calculated_at / total_payout and rebuilt line items on
+  # the in-memory records before the database rolled it all back. Reload this
+  # payout — and the show's copy of it, if that's a different object — so
+  # nothing of the dry run lingers.
+  def forget_dry_run!
+    reload if persisted?
+    association = show.association(:show_payout)
+    other = association.loaded? ? association.target : nil
+    other.reload if other && !other.equal?(self)
   end
 
   # --- customization_summary helpers ----------------------------------------

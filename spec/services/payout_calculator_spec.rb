@@ -258,6 +258,21 @@ RSpec.describe PayoutCalculator do
           expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(50.0)
         end
 
+        it "adds the beyond-the-table rate for each act past the last row when there is one" do
+          with_beyond = rules.deep_dup
+          with_beyond["distribution"]["additional_act_rate"] = 20.0
+
+          result = described_class.calculate(
+            show: show, rules: with_beyond,
+            act_counts: { "Person_#{performer1.id}" => 2, "Person_#{performer2.id}" => 4 }
+          )
+
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(50.0)
+          expect(result[:line_items].find { |li| li.payee == performer2 }.amount.to_f).to eq(90.0)
+          expect(result[:line_items].find { |li| li.payee == performer2 }.calculation_details["breakdown"].first)
+            .to eq("1 act $25.00, 2 acts $50.00, then $20.00 per act")
+        end
+
         it "pays nothing to someone with no acts" do
           result = described_class.calculate(show: show, rules: rules, act_counts: {})
 

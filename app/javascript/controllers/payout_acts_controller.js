@@ -109,13 +109,21 @@ export default class extends Controller {
             return Math.round(total * 100) / 100
         }
 
-        // Tiers read as "N or more acts pays $X" — take the highest one reached.
-        const reached = this.tiersValue
-            .filter(tier => Number(tier.acts) > 0 && Number(tier.acts) <= count)
+        // Tiers: each row is the total for that many acts — take the highest
+        // row reached. Past the last row, every further act adds the beyond
+        // rate (when there is one).
+        const tiers = this.tiersValue
+            .filter(tier => Number(tier.acts) > 0)
             .sort((a, b) => Number(a.acts) - Number(b.acts))
-            .pop()
+        const reached = tiers.filter(tier => Number(tier.acts) <= count).pop()
+        if (!reached) return 0
 
-        return reached ? Math.round(Number(reached.amount) * 100) / 100 : 0
+        let amount = Number(reached.amount)
+        const last = tiers[tiers.length - 1]
+        if (reached === last && count > Number(last.acts)) {
+            amount += this.additionalRateValue * (count - Number(last.acts))
+        }
+        return Math.round(amount * 100) / 100
     }
 
     parseCount(value) {

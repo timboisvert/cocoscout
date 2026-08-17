@@ -1,45 +1,27 @@
 # frozen_string_literal: true
 
-# Join table that declares a payout scheme as the default for a production
-# (or org-wide if production_id is nil) starting from an optional effective_from date.
+# Says a production pays its performers with a payout calculation
+# (PayoutScheme), from an optional effective_from date. A production can have
+# several rows with different dates ("starting on…"); resolving a show picks
+# the latest effective_from on or before the show's date (nil = always).
 #
-# Multiple defaults can coexist with different effective_from dates.
-# When resolving which scheme to use, pick the one with the latest effective_from <= show date.
+# There is no organization-level default: a production without a row has no
+# calculation, and its shows can't be worked out until someone chooses one.
 class PayoutSchemeDefault < ApplicationRecord
   belongs_to :payout_scheme
-  belongs_to :production, optional: true
+  belongs_to :production
 
   validates :payout_scheme_id, presence: true
 
-  # Ensure only one default per production per effective_from date
+  # One row per production per start date.
   validates :effective_from, uniqueness: {
     scope: :production_id,
-    message: "already has a default scheme for this date"
-  }, if: -> { production_id.present? }
-
-  # For org-level defaults (production_id nil): ensure uniqueness per org + effective_from
-  validate :unique_org_level_default, if: -> { production_id.blank? }
+    message: "already has a calculation starting on this date"
+  }
 
   scope :for_production, ->(production) { where(production: production) }
-  scope :org_level, -> { where(production_id: nil) }
   scope :effective_on, ->(date) { where("payout_scheme_defaults.effective_from IS NULL OR payout_scheme_defaults.effective_from <= ?", date) }
   scope :by_effective_date_desc, -> {
     order(Arel.sql("CASE WHEN payout_scheme_defaults.effective_from IS NULL THEN 0 ELSE 1 END DESC, payout_scheme_defaults.effective_from DESC"))
   }
-
-  private
-
-  def unique_org_level_default
-    org_id = payout_scheme&.organization_id
-    return unless org_id
-
-    existing = PayoutSchemeDefault.joins(:payout_scheme)
-      .where(production_id: nil, effective_from: effective_from)
-      .where(payout_schemes: { organization_id: org_id })
-      .where.not(id: id)
-
-    if existing.exists?
-      errors.add(:effective_from, "already has an organization-level default for this date")
-    end
-  end
 end

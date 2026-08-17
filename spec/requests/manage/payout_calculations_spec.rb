@@ -39,18 +39,19 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
       expect(visible_text).not_to match(/scheme/i)
     end
 
-    it "shows a pink pill for each production a calculation is the default for, and one for the organization default" do
+    it "lays the calculations out as cards that say which productions use each one" do
       other = create(:production, organization: org, name: "Sunday Sketch")
       act_calculation.make_production_scheme!(production)
       act_calculation.make_production_scheme!(other)
-      flat_calculation.payout_scheme_defaults.create!(production_id: nil)
 
       get manage_money_payout_calculations_path
 
-      expect(response.body).to include("Default for: Friday Cabaret")
-      expect(response.body).to include("Default for: Sunday Sketch")
-      expect(response.body).to include("Organization default")
-      expect(response.body).not_to include("Organization-wide")
+      expect(response.body).to include("Used by")
+      expect(response.body).to include("Friday Cabaret and Sunday Sketch")
+      expect(response.body).to include("Not used by any production yet") # the flat one
+      expect(response.body).to include("Per act") # approach pill
+      expect(response.body).to include("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")
+      expect(response.body).not_to include("Organization default")
       expect(response.body).not_to include("legacy")
     end
 
@@ -89,7 +90,8 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
       expect(response.body).to include("Used by")
       expect(response.body).to include("Friday Cabaret")
       expect(response.body).to match(/name="production_ids\[\]" value="#{production.id}"\s+checked/)
-      expect(response.body).to include('name="org_level_fallback"')
+      expect(response.body).not_to include('name="org_level_fallback"')
+      expect(response.body).not_to include("Organization default")
       expect(response.body).not_to include('name="effective_from"')
       expect(response.body).to include(manage_update_defaults_money_payout_calculation_path(act_calculation))
       expect(visible_text).not_to match(/scheme/i)
@@ -176,25 +178,6 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
       expect(flat_calculation.reload.default_for_production?(production)).to be(false)
     end
 
-    it "makes it the organization default, replacing whichever calculation held it" do
-      flat_calculation.payout_scheme_defaults.create!(production_id: nil)
-
-      post manage_update_defaults_money_payout_calculation_path(act_calculation), params: { org_level_fallback: "1" }
-
-      expect(act_calculation.reload.org_level_default?).to be(true)
-      expect(flat_calculation.reload.org_level_default?).to be(false)
-      expect(flash[:notice]).to include("organization default")
-    end
-
-    it "steps down as the organization default when the box is unticked" do
-      act_calculation.payout_scheme_defaults.create!(production_id: nil)
-
-      post manage_update_defaults_money_payout_calculation_path(act_calculation), params: {}
-
-      expect(act_calculation.reload.org_level_default?).to be(false)
-      expect(flash[:notice]).to include("no longer the default")
-    end
-
     it "restamps payouts nobody has calculated yet, and leaves calculated ones alone" do
       show = create(:show, production: production, date_and_time: 2.days.ago)
       pending = ShowPayout.create!(show: show, payout_scheme: flat_calculation)
@@ -205,15 +188,6 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
 
       expect(pending.reload.payout_scheme).to eq(act_calculation)
       expect(calculated.reload.payout_scheme).to eq(flat_calculation)
-    end
-
-    it "restamps pending payouts across the organization when the organization default changes" do
-      show = create(:show, production: production, date_and_time: 2.days.ago)
-      pending = ShowPayout.create!(show: show, payout_scheme: flat_calculation)
-
-      post manage_update_defaults_money_payout_calculation_path(act_calculation), params: { org_level_fallback: "1" }
-
-      expect(pending.reload.payout_scheme).to eq(act_calculation)
     end
 
     it "ignores production ids from another organization" do
@@ -269,8 +243,17 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
       expect(PayoutScheme.act_amount(tiered, 2)).to eq(50.0)
     end
 
-    it "pays the top tier above the table" do
+    it "pays the top tier above the table when there is no beyond rate" do
       expect(PayoutScheme.act_amount(tiered, 9)).to eq(50.0)
+      expect(PayoutScheme.act_rules_description(tiered)).to eq("1 act $25.00, 2+ acts $50.00")
+    end
+
+    it "adds the beyond rate for every act past the last row" do
+      beyond = tiered.merge("additional_act_rate" => 15.0)
+      expect(PayoutScheme.act_amount(beyond, 2)).to eq(50.0)
+      expect(PayoutScheme.act_amount(beyond, 3)).to eq(65.0)
+      expect(PayoutScheme.act_amount(beyond, 5)).to eq(95.0)
+      expect(PayoutScheme.act_rules_description(beyond)).to eq("1 act $25.00, 2 acts $50.00, then $15.00 per act")
     end
 
     it "pays nothing below the first tier" do

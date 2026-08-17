@@ -186,11 +186,14 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       expect(PayoutSchemeDefault.for_production(production)).to be_empty
     end
 
-    it "asks for a calculation when paid but none picked" do
+    it "turns performer pay on without a calculation yet, and says to choose one" do
+      production.update!(pays_performers: false)
+
       patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: "" }
 
       expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
-      expect(flash[:alert]).to include("Choose a payout calculation")
+      expect(flash[:notice]).to include("now choose its payout calculation")
+      expect(production.reload.pays_performers).to be(true)
       expect(PayoutSchemeDefault.for_production(production)).to be_empty
     end
 

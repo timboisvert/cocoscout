@@ -329,6 +329,10 @@ RSpec.describe "Production wizard", type: :request do
       get manage_productions_wizard_review_path
 
       expect(response.body).to include("Not paid")
+
+      post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }
+      post manage_productions_wizard_create_path
+      expect(Production.find_by(name: "Velvet Hour").pays_performers).to be(false)
     end
   end
 end

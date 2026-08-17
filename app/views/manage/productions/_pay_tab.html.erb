@@ -12,10 +12,8 @@
   organization = production.organization
   money_available = organization.feature_available?(:money)
   current_calculation = money_available ? PayoutScheme.current_default_for_production(production) : nil
-  performers_paid = current_calculation.present?
+  performers_paid = production.pays_performers?
   calculations = money_available ? organization.payout_schemes.active.order(:name).to_a : []
-  # With no production default, what would a show tonight fall back to?
-  org_fallback = (money_available && !performers_paid) ? PayoutScheme.default_for_show(Show.new(production: production, date_and_time: Time.current)) : nil
   needs_per_act_nudge = money_available && production.act_based? && !PayoutScheme.per_act_scheme_exists_for?(organization)
   shows_using_current = current_calculation ? ShowPayout.where(payout_scheme: current_calculation, show: production.shows).count : 0
   return_to = edit_manage_production_path(production, anchor: "tab-6")
@@ -81,11 +79,7 @@
           <% end %>
         </div>
 
-        <% if !performers_paid && org_fallback %>
-          <p class="mt-4 text-xs text-gray-500">
-            No calculation is set for this production, so its shows fall back to your organization default, <span class="font-medium text-gray-700"><%= org_fallback.name %></span>.
-          </p>
-        <% end %>
+
 
         <div class="mt-6">
           <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>

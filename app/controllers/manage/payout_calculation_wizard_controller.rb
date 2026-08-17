@@ -4,19 +4,22 @@ module Manage
   # The wizard that creates and edits a payout calculation (the PayoutScheme
   # record — shown to users as a "payout calculation").
   #
-  # Steps: name → approach → amounts → before (pool approaches only) → review.
-  # State lives in Rails.cache like the production wizard. Edit re-enters the
-  # same wizard seeded from the record. Optional context carried in state:
-  #   production_id — make the calculation this production's default on save
+  # Steps: approach → amounts → before (pool approaches only) → who → review.
+  # The name comes last, on the review step, prefilled with a suggestion read
+  # off the calculation itself. State lives in Rails.cache like the production
+  # wizard. Edit re-enters the same wizard seeded from the record. Optional
+  # context carried in state:
+  #   production_id — preselect this production on the "who uses it" step
   #   return_to     — where to go after saving (Pay tab, payout page…)
   class PayoutCalculationWizardController < Manage::ManageController
     before_action :ensure_user_is_manager
     before_action :load_state
 
+    # A show that pays nobody simply has no calculation, so "not paid" isn't an
+    # approach here. Legacy no_pay calculations still open (see approach_for_method).
     APPROACHES = {
-      "not_paid" => { method: "no_pay", name: "Not paid", blurb: "Rehearsals, workshops, benefit nights — nobody is paid through CocoScout." },
       "flat" => { method: "flat_fee", name: "A flat amount each", blurb: "Everyone cast gets the same fixed amount, whatever the night takes." },
-      "per_act" => { method: "per_act", name: "By the acts they perform", blurb: "Each person is paid for the number of acts they did — one rate, a rate per act, or a table." },
+      "per_act" => { method: "per_act", name: "By the acts they perform", blurb: "Each person is paid for the number of acts they did — one rate for every act, or a table by how many they do." },
       "per_ticket" => { method: "per_ticket", name: "Per ticket sold", blurb: "A rate for every ticket sold, optionally with a guaranteed minimum." },
       "share" => { method: "equal", name: "A share of the night's money", blurb: "After the house and expenses take theirs, the rest is split — equally or by shares." }
     }.freeze
@@ -27,23 +30,7 @@ module Manage
       @state[:production_id] = context_production&.id
       @state[:return_to] = safe_return_to(params[:return_to])
       save_state
-      redirect_to(@state[:editing_id].present? && params[:duplicate].blank? ? wizard_path(:review) : wizard_path(:name))
-    end
-
-    def name
-      @state[:name] ||= ""
-      @state[:description] ||= ""
-    end
-
-    def save_name
-      @state[:name] = params[:name].to_s.strip
-      @state[:description] = params[:description].to_s.strip
-      if @state[:name].blank?
-        flash.now[:alert] = "Give the calculation a name — that's how you'll pick it from a list."
-        render :name, status: :unprocessable_entity and return
-      end
-      save_state
-      redirect_to next_after(:name)
+      redirect_to(@state[:editing_id].present? && params[:duplicate].blank? ? wizard_path(:review) : wizard_path(:approach))
     end
 
     def approach
@@ -61,8 +48,8 @@ module Manage
     end
 
     def amounts
-      redirect_to next_after(:amounts) and return if current_approach == "not_paid"
       @distribution = @state[:distribution] || starter_distribution(current_approach)
+      @legacy_no_pay = @state[:legacy_no_pay].present?
     end
 
     def save_amounts
@@ -70,6 +57,7 @@ module Manage
       # review) read one shape whether we got here from a post or an edit.
       raw = amounts_from_params
       @state[:distribution] = PayoutRulesBuilder.build("method" => raw["method"], "distribution" => raw)["distribution"]
+      @state.delete(:legacy_no_pay)
       save_state
       redirect_to next_after(:amounts)
     end
@@ -93,14 +81,39 @@ module Manage
       redirect_to next_after(:before)
     end
 
+    def who
+      load_productions
+      @default_production_ids = default_production_ids
+      @starting_on = @state[:starting_on].presence
+    end
+
+    def save_who
+      @state[:default_production_ids] = Current.organization.productions.where(id: Array(params[:default_production_ids]).map(&:to_i)).pluck(:id)
+      @state[:starting_on] = params[:starting] == "date" ? parse_date(params[:starting_on])&.iso8601 : nil
+      save_state
+      redirect_to next_after(:who)
+    end
+
     def review
       @rules = rules_from_state
       @summary_calculation = PayoutScheme.new(rules: @rules)
-      @productions = Current.organization.productions.order(:name).to_a
-      @default_production_ids = Array(@state[:default_production_ids].presence || [ @state[:production_id] ].compact).map(&:to_i)
+      @name = @state[:name].presence || PayoutScheme.suggested_name(@rules)
+      @description = @state[:description].to_s
+      @productions = Current.organization.productions.where(id: default_production_ids).order(:name).to_a
+      @starting_on = @state[:starting_on].presence
     end
 
     def save
+      @state[:name] = params[:name].to_s.strip
+      @state[:description] = params[:description].to_s.strip
+      save_state
+      if @state[:name].blank?
+        flash.now[:alert] = "Give the calculation a name — that's how you'll pick it from a list."
+        review
+        @name = ""
+        render :review, status: :unprocessable_entity and return
+      end
+
       calculation = if @state[:editing_id].present?
         find_calculation(@state[:editing_id])
       else
@@ -108,15 +121,15 @@ module Manage
       end
       calculation.assign_attributes(name: @state[:name], description: @state[:description], rules: rules_from_state)
 
-      chosen_ids = Current.organization.productions.where(id: Array(params[:default_production_ids]).map(&:to_i)).pluck(:id)
+      chosen_ids = Current.organization.productions.where(id: default_production_ids).pluck(:id)
+      starting_on = parse_date(@state[:starting_on])
 
       ActiveRecord::Base.transaction do
         calculation.save!
-        # First calculation an org ever makes is also its org-wide default.
-        calculation.make_default! if Current.organization.payout_schemes.organization_level.count == 1
 
-        productions_now = Current.organization.productions.where(id: chosen_ids)
-        productions_now.find_each { |production| calculation.make_production_scheme!(production) }
+        Current.organization.productions.where(id: chosen_ids).find_each do |production|
+          calculation.make_production_scheme!(production, starting_on: starting_on)
+        end
         # Productions this calculation used to be the default for, now unchecked.
         PayoutSchemeDefault.where(payout_scheme: calculation).where.not(production_id: [ nil ] + chosen_ids)
                            .includes(:production).find_each do |default|
@@ -144,19 +157,19 @@ module Manage
 
     # ---- steps ---------------------------------------------------------------
 
-    STEPS = %i[name approach amounts before review].freeze
+    STEPS = %i[approach amounts before who review].freeze
 
     def steps_for_state
-      steps = [ :name, :approach ]
-      steps << :amounts unless current_approach == "not_paid"
+      steps = [ :approach, :amounts ]
       steps << :before if pool_approach?
+      steps << :who
       steps << :review
     end
     helper_method :steps_for_state
 
     # The next step in this state's sequence. Works for a step the state skips
-    # too (amounts when nobody is paid, before when there's no pool): the first
-    # step in sequence that comes after it.
+    # too (before when there's no pool): the first step in sequence that comes
+    # after it.
     def next_after(step)
       position = STEPS.index(step) || -1
       following = steps_for_state.find { |s| STEPS.index(s) > position }
@@ -188,6 +201,27 @@ module Manage
     end
     helper_method :context_production
 
+    # ---- who uses it -----------------------------------------------------------
+
+    def load_productions
+      @productions = Current.organization.productions.order(:name).to_a
+      @current_calculations = @productions.to_h { |p| [ p.id, PayoutScheme.current_default_for_production(p) ] }
+    end
+
+    # Until the "who" step has been answered, the production the wizard was
+    # opened from (a Pay tab, the production wizard) is preselected.
+    def default_production_ids
+      return Array(@state[:default_production_ids]).map(&:to_i) if @state.key?(:default_production_ids)
+      [ @state[:production_id] ].compact.map(&:to_i)
+    end
+
+    def parse_date(value)
+      return nil if value.blank?
+      Date.iso8601(value.to_s)
+    rescue ArgumentError
+      nil
+    end
+
     # ---- rules -----------------------------------------------------------------
 
     def rules_from_state
@@ -207,7 +241,6 @@ module Manage
     def amounts_from_params
       d = (params[:distribution] || {}).to_unsafe_h
       case current_approach
-      when "flat" then { "method" => "flat_fee", "flat_amount" => d["flat_amount"] }
       when "per_ticket"
         method = d["guarantee_minimum"] == "1" ? "per_ticket_guaranteed" : "per_ticket"
         { "method" => method, "per_ticket_rate" => d["per_ticket_rate"], "minimum" => d["minimum"] }
@@ -217,19 +250,22 @@ module Manage
       when "per_act"
         d.slice("act_mode", "per_act_rate", "act_rates", "additional_act_rate", "tiers").merge("method" => "per_act")
       else
-        { "method" => "no_pay" }
+        { "method" => "flat_fee", "flat_amount" => d["flat_amount"] }
       end
     end
 
     def starter_distribution(approach)
-      preset_key = { "not_paid" => :no_pay, "flat" => :flat_fee, "per_act" => :per_act, "per_ticket" => :per_ticket_guaranteed, "share" => :even_split }[approach]
-      PayoutScheme::PRESETS.dig(preset_key, :rules, :distribution).to_h.deep_stringify_keys
+      case approach
+      when "per_act" then { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 25 }
+      when "per_ticket" then PayoutScheme::PRESETS.dig(:per_ticket_guaranteed, :rules, :distribution).to_h.deep_stringify_keys
+      when "share" then PayoutScheme::PRESETS.dig(:even_split, :rules, :distribution).to_h.deep_stringify_keys
+      else PayoutScheme::PRESETS.dig(:flat_fee, :rules, :distribution).to_h.deep_stringify_keys
+      end
     end
 
     def approach_for_method(method)
       case method.to_s
-      when "no_pay" then "not_paid"
-      when "flat_fee" then "flat"
+      when "no_pay", "flat_fee" then "flat"
       when "per_act" then "per_act"
       when "per_ticket", "per_ticket_guaranteed" then "per_ticket"
       else "share"
@@ -265,12 +301,27 @@ module Manage
       @state[:name] = duplicate ? "#{from.name} (copy)" : from.name
       @state[:description] = from.description
       @state[:approach] = approach_for_method(dist["method"])
-      @state[:distribution] = dist
+      # A legacy "nobody is paid" calculation opens as a flat $0 — the wizard
+      # doesn't offer not-paid any more; a show nobody pays has no calculation.
+      if dist["method"].to_s == "no_pay"
+        @state[:distribution] = { "method" => "flat_fee", "flat_amount" => 0 }
+        @state[:legacy_no_pay] = true
+      else
+        @state[:distribution] = dist
+      end
       @state[:expenses_first] = alloc.any? { |s| s["type"] == "expenses_first" }
       @state[:house_percentage] = alloc.find { |s| s["type"] == "percentage" && s["person_id"].blank? }&.dig("value").to_f
       @state[:individual_allocations] = alloc.select { |s| s["type"] == "percentage" && s["person_id"].present? }
                                              .map { |s| { person_id: s["person_id"], percentage: s["value"], label: s["label"] } }
-      @state[:default_production_ids] = duplicate ? [] : from.payout_scheme_defaults.where.not(production_id: nil).pluck(:production_id)
+      if duplicate
+        @state[:default_production_ids] = []
+      else
+        defaults = from.payout_scheme_defaults.where.not(production_id: nil).to_a
+        @state[:default_production_ids] = defaults.map(&:production_id).uniq
+        # A dated default in the future is a switch still to come; show it.
+        future = defaults.filter_map(&:effective_from).select { |d| d > Date.current }.min
+        @state[:starting_on] = future&.iso8601
+      end
     end
 
     def find_calculation(id)

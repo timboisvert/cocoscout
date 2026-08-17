@@ -248,6 +248,9 @@ module Manage
           genre: @wizard_state[:genre].presence,
           casting_source: @wizard_state[:casting_source] || "talent_pool",
           casting_mode: wizard_casting_mode,
+          # "Will performers be paid?" — only asked on a paid plan; otherwise
+          # the production keeps the default (on) until someone says otherwise.
+          pays_performers: !(pay_step_available? && @wizard_state[:pays_performers] == "no"),
           casting_setup_completed: true
         )
 

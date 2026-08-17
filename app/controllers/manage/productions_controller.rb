@@ -87,35 +87,44 @@ module Manage
     # payout scheme its shows start from. "Paid" is expressed as a production
     # default on the scheme (PayoutSchemeDefault, effective today); "not paid"
     # removes this production's defaults. Pro only — a free org sees the tab locked.
+    # Performer pay for a production: the on/off switch (pays_performers) and,
+    # when on, which payout calculation its shows start from. Posted by the
+    # switch itself (performers_paid only) or by the calculation picker
+    # (performers_paid=1 + payout_scheme_id).
     def update_pay
       unless Current.organization.feature_available?(:money)
-        redirect_to edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}"),
+        redirect_to pay_return_path,
                     alert: "Performer pay is part of CocoScout Pro."
         return
       end
 
       paid = params[:performers_paid] == "1"
-      calculation = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id]) if paid
+      calculation = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id]) if paid && params[:payout_scheme_id].present?
 
-      if paid && calculation.nil?
-        redirect_to edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}"),
-                    alert: "Choose a payout calculation for this production, or turn performer pay off."
+      if paid && params[:payout_scheme_id].present? && calculation.nil?
+        redirect_to pay_return_path, alert: "That payout calculation isn't one of yours."
         return
       end
 
       current = PayoutScheme.current_default_for_production(@production)
       if paid
-        # Only THIS production's defaults are touched (never the calculation's
-        # other productions); the new one reaches back to the production's first
-        # show and restamps payouts nobody has calculated yet, so the choice sticks.
-        calculation.make_production_scheme!(@production) unless current == calculation
-        notice = "Performers on #{@production.name} are paid using #{calculation.name}."
+        @production.update!(pays_performers: true)
+        if calculation
+          # Only THIS production's defaults are touched (never the calculation's
+          # other productions); the new one reaches back to the production's
+          # first show and restamps payouts nobody has calculated yet.
+          calculation.make_production_scheme!(@production) unless current == calculation
+          notice = "Performers on #{@production.name} are paid using #{calculation.name}."
+        else
+          notice = current ? "Performer pay is on for #{@production.name}." : "Performer pay is on for #{@production.name} — now choose its payout calculation."
+        end
       else
+        @production.update!(pays_performers: false)
         PayoutScheme.clear_production_scheme!(@production)
-        notice = "Performers are not paid for #{@production.name}."
+        notice = "Performers aren't paid on #{@production.name}."
       end
 
-      redirect_to edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}"), notice: notice
+      redirect_to pay_return_path, notice: notice
     end
 
     def update_public_key
@@ -399,6 +408,13 @@ module Manage
     # The Pay tab sits after Public Listing (index 6) on the edit page's tab strip.
     def pay_tab_index
       6
+    end
+
+    # Where a pay change goes back to: the page that posted it (a /manage path
+    # in return_to — the production's payouts page, say) or the Pay tab.
+    def pay_return_path
+      candidate = params[:return_to].to_s
+      candidate.start_with?("/manage/") ? candidate : edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}")
     end
 
     # Use callbacks to share common setup or constraints between actions.

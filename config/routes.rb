@@ -1347,14 +1347,14 @@ Rails.application.routes.draw do
 
     scope "money/calculations/wizard", as: "money_payout_calculation_wizard", controller: "payout_calculation_wizard" do
       get "start", action: :start
-      get "name", action: :name
-      post "name", action: :save_name, as: "save_name"
       get "approach", action: :approach
       post "approach", action: :save_approach, as: "save_approach"
       get "amounts", action: :amounts
       post "amounts", action: :save_amounts, as: "save_amounts"
       get "before", action: :before
       post "before", action: :save_before, as: "save_before"
+      get "who", action: :who
+      post "who", action: :save_who, as: "save_who"
       get "review", action: :review
       post "save", action: :save, as: "save"
       delete "cancel", action: :cancel, as: "cancel"
