@@ -65,11 +65,40 @@ module Manage
       source = params[:casting_source] || "talent_pool"
       @wizard_state[:casting_source] = source
       @wizard_state[:casting_enabled] = (source != "none")
+
+      # No casting means no roles, no lineup, nobody to pay: skip straight on.
+      if source == "none"
+        @wizard_state[:casting_mode] = "role_based"
+        @wizard_state[:has_roles] = "no"
+        @wizard_state[:roles] = []
+        @wizard_state[:pays_performers] = "no"
+        @wizard_state.delete(:payout_scheme_id)
+        save_wizard_state
+        redirect_to manage_productions_wizard_shows_path and return
+      end
+
+      save_wizard_state
+      redirect_to manage_productions_wizard_casting_style_path
+    end
+
+    # Step 3b: Casting style - fill named roles, or build a running order of acts?
+    def casting_style
+      @wizard_state[:casting_mode] ||= "role_based"
+    end
+
+    def save_casting_style
+      mode = params[:casting_mode].to_s
+      mode = "role_based" unless Production.casting_modes.key?(mode)
+      # Break rows only make sense in a lineup — drop them if the mode flips back.
+      if mode == "role_based" && @wizard_state[:roles].present?
+        @wizard_state[:roles] = @wizard_state[:roles].reject { |r| (r[:category] || r["category"]) == Role::BREAK_CATEGORY }
+      end
+      @wizard_state[:casting_mode] = mode
       save_wizard_state
       redirect_to manage_productions_wizard_roles_path
     end
 
-    # Step 4: Roles - Define positions to fill
+    # Step 4: Roles - Define positions to fill (or the lineup, in an act-based production)
     def roles
       @wizard_state[:has_roles] ||= nil
       @wizard_state[:roles] ||= []
@@ -84,6 +113,30 @@ module Manage
         @wizard_state[:roles] = parse_roles(params[:roles])
       else
         @wizard_state[:roles] = []
+      end
+
+      save_wizard_state
+      redirect_to(pay_step_available? ? manage_productions_wizard_pay_path : manage_productions_wizard_shows_path)
+    end
+
+    # Step 4b: Pay - will performers be paid? (Money is a paid feature; the step
+    # only exists for orgs that have it.)
+    def pay
+      redirect_to manage_productions_wizard_shows_path and return unless pay_step_available?
+
+      @wizard_state[:pays_performers] ||= "no"
+      load_pay_step_data
+    end
+
+    def save_pay
+      redirect_to manage_productions_wizard_shows_path and return unless pay_step_available?
+
+      @wizard_state[:pays_performers] = params[:pays_performers] == "yes" ? "yes" : "no"
+      scheme_id = params[:payout_scheme_id].presence
+      if @wizard_state[:pays_performers] == "yes" && scheme_id && org_payout_schemes.exists?(id: scheme_id)
+        @wizard_state[:payout_scheme_id] = scheme_id.to_i
+      else
+        @wizard_state.delete(:payout_scheme_id)
       end
 
       save_wizard_state
@@ -167,6 +220,7 @@ module Manage
           description: @wizard_state[:description],
           genre: @wizard_state[:genre].presence,
           casting_source: @wizard_state[:casting_source] || "talent_pool",
+          casting_mode: wizard_casting_mode,
           casting_setup_completed: true
         )
 
@@ -184,17 +238,26 @@ module Manage
           render :review, status: :unprocessable_entity and return
         end
 
-        # Create roles
+        # Create roles (the lineup, in order, for an act-based production —
+        # break rows come through as category "break")
         if @wizard_state[:roles].present?
           @wizard_state[:roles].each_with_index do |role_data, index|
+            category = role_data[:category] || role_data["category"] || "performing"
+            category = "performing" if category == Role::BREAK_CATEGORY && !@production.act_based?
             @production.roles.create!(
               name: role_data[:name] || role_data["name"],
               quantity: (role_data[:quantity] || role_data["quantity"] || 1).to_i,
-              category: role_data[:category] || role_data["category"] || "performing",
+              category: category,
               position: index + 1,
               restricted: false
             )
           end
+        end
+
+        # Pay: make the chosen payout scheme this production's default.
+        if @wizard_state[:pays_performers] == "yes" && @wizard_state[:payout_scheme_id].present?
+          scheme = org_payout_schemes.find_by(id: @wizard_state[:payout_scheme_id])
+          scheme&.add_default_for_production!(@production, effective_from: Date.current)
         end
 
         # Create shows
@@ -254,28 +317,49 @@ module Manage
       "production_wizard:#{Current.user.id}:#{Current.organization.id}"
     end
 
-    def parse_custom_roles(roles_params)
-      return [] if roles_params.blank?
+    # "role_based" or "act_based" — whatever the casting-style step stored,
+    # falling back to roles.
+    def wizard_casting_mode
+      mode = @wizard_state[:casting_mode].to_s
+      Production.casting_modes.key?(mode) ? mode : "role_based"
+    end
 
-      roles_params.values.map do |role|
-        next if role[:name].blank?
-        {
-          name: role[:name],
-          quantity: (role[:quantity] || 1).to_i,
-          category: role[:category] || "performing"
-        }
-      end.compact
+    def act_based_wizard?
+      wizard_casting_mode == "act_based"
+    end
+    helper_method :act_based_wizard?
+
+    # The pay step exists only for orgs with the Money feature, and only when
+    # the production is cast at all.
+    def pay_step_available?
+      @wizard_state[:casting_source] != "none" && Current.organization.feature_available?(:money)
+    end
+    helper_method :pay_step_available?
+
+    def org_payout_schemes
+      Current.organization.payout_schemes.active
+    end
+
+    def load_pay_step_data
+      @payout_schemes = org_payout_schemes.order(:name).to_a
+      @has_per_act_scheme = @payout_schemes.any? { |s| s.rules.is_a?(Hash) && s.rules.dig("distribution", "method") == "per_act" }
     end
 
     def parse_roles(roles_params)
       return [] if roles_params.blank?
 
+      allowed = act_based_wizard? ? Role::CATEGORIES : (Role::CATEGORIES - [ Role::BREAK_CATEGORY ])
+
       roles_params.values.map do |role|
         next if role[:name].blank?
+        category = role[:category].to_s
+        category = "performing" unless allowed.include?(category)
+        # An act (or an intermission) is one thing in the running order.
+        quantity = act_based_wizard? ? 1 : [ (role[:quantity] || 1).to_i, 1 ].max
         {
-          name: role[:name],
-          quantity: (role[:quantity] || 1).to_i,
-          category: role[:category] || "performing"
+          name: role[:name].to_s.strip,
+          quantity: quantity,
+          category: category
         }
       end.compact
     end

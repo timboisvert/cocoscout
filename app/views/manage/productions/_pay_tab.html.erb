@@ -1,0 +1,104 @@
+<%#
+  Pay tab on the production edit page: are performers paid for this
+  production, and which payout scheme do its shows start from? "Paid" is a
+  production-level default on the scheme (PayoutSchemeDefault effective from
+  today); "not paid" clears this production's defaults. Pro only — a free org
+  sees the same card locked.
+
+  Locals:
+    production (required)
+%>
+<%
+  organization = production.organization
+  money_available = organization.feature_available?(:money)
+  current_scheme = money_available ? PayoutScheme.current_default_for_production(production) : nil
+  performers_paid = current_scheme.present?
+  schemes = money_available ? organization.payout_schemes.active.order(:name).to_a : []
+  # With no production default, what would a show tonight fall back to?
+  org_fallback = (money_available && !performers_paid) ? PayoutScheme.default_for_show(Show.new(production: production, date_and_time: Time.current)) : nil
+  needs_per_act_nudge = money_available && production.act_based? && !PayoutScheme.per_act_scheme_exists_for?(organization)
+  input_classes = "w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+%>
+
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-pay-tab>
+  <%= render "shared/card_header", title: "Performer pay" %>
+  <div class="p-6">
+    <% if money_available %>
+      <%= form_with url: update_pay_manage_production_path(production), method: :patch, local: true,
+            data: { controller: "toggle-section" } do |form| %>
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="font-medium text-gray-900">Performers are paid for this production</p>
+            <p class="text-sm text-gray-500 mt-1">A payout scheme decides how each show's money is split among the people cast in it. Every show starts from the production's scheme; you can still change or override it show by show in Money.</p>
+          </div>
+          <%= render "shared/toggle_switch", form: form, field: :performers_paid, checked: performers_paid,
+                data: { toggle_section_target: "toggle", action: "change->toggle-section#toggle" } %>
+        </div>
+
+        <div data-toggle-section-target="content" class="<%= performers_paid ? '' : 'hidden' %> mt-5 ml-4 pl-4 border-l-2 border-pink-200 space-y-3">
+          <% if schemes.any? %>
+            <div>
+              <label for="payout_scheme_id" class="block text-sm font-medium text-gray-700 mb-1">Payout scheme</label>
+              <select name="payout_scheme_id" id="payout_scheme_id" class="<%= input_classes %>">
+                <option value="" <%= "selected" if current_scheme.nil? %>>Choose a scheme…</option>
+                <% schemes.each do |scheme| %>
+                  <option value="<%= scheme.id %>" <%= "selected" if current_scheme&.id == scheme.id %>>
+                    <%= scheme.name %><% if scheme.rules_summary.present? %> — <%= scheme.rules_summary %><% end %>
+                  </option>
+                <% end %>
+              </select>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-700">You don't have any payout schemes yet.</p>
+            <p class="text-sm text-gray-500">
+              <%= link_to "Start from a preset", manage_presets_money_payout_schemes_path(production.act_based? ? { preset: "per_act", production_id: production.id } : {}), target: "_blank", rel: "noopener", class: "text-pink-500 hover:text-pink-600 font-medium" %>
+              (opens in a new tab).
+            </p>
+          <% end %>
+
+          <p class="text-sm text-gray-500">
+            <%= link_to "Manage payout schemes", manage_money_payout_schemes_path, target: "_blank", rel: "noopener", class: "text-pink-500 hover:text-pink-600 font-medium" %>
+            to add or edit schemes.
+          </p>
+
+          <% if needs_per_act_nudge %>
+            <p class="text-sm text-gray-600 flex items-start gap-2">
+              <svg class="w-4 h-4 text-pink-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+              </svg>
+              <span>Act-based productions usually pay per act —
+                <%= link_to "start from the Per-Act preset", manage_presets_money_payout_schemes_path(preset: "per_act", production_id: production.id), target: "_blank", rel: "noopener", class: "text-pink-500 hover:text-pink-600 font-medium" %>.
+              </span>
+            </p>
+          <% end %>
+        </div>
+
+        <% if !performers_paid && org_fallback %>
+          <p class="mt-4 text-xs text-gray-500">
+            No scheme is set for this production, so its shows fall back to your organization default, <span class="font-medium text-gray-700"><%= org_fallback.name %></span>.
+          </p>
+        <% end %>
+
+        <div class="mt-6">
+          <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    <% else %>
+      <%# Locked: same card, Pro treatment %>
+      <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-label="Pro feature"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+        </div>
+        <div class="flex-1">
+          <p class="font-medium text-gray-900">Performers are paid for this production</p>
+          <p class="text-sm text-gray-600 mt-1">Pro feature — performer pay, payout schemes and Stripe payouts are part of CocoScout Pro.</p>
+          <div class="mt-4">
+            <%= render "shared/button", text: "Upgrade to Pro", variant: "primary", size: "medium",
+                  path: manage_billing_upgrade_path(feature: "money"),
+                  data: { action: "click->upgrade-modal#open", upgrade_feature: "money" } %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

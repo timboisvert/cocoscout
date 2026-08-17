@@ -48,6 +48,13 @@ class ShowPersonRoleAssignment < ApplicationRecord
     assignable_id.blank? && guest_name.present?
   end
 
+  # What makes two guest slots the same person: their email, or their name
+  # when no email was given. Used to fold one guest holding several acts into
+  # a single payee.
+  def guest_identity
+    (guest_email.presence || guest_name).to_s.downcase.strip
+  end
+
   # Display name - works for both regular and guest assignments
   def display_name
     guest? ? guest_name : assignable&.name

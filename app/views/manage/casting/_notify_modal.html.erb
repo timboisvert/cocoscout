@@ -58,7 +58,7 @@
           <%= form_with url: manage_casting_show_notify_path(production, show.id), method: :post, class: "px-5 py-4 space-y-4" do |f| %>
             <% unless fully_cast %>
               <p class="text-sm text-gray-600">
-                This show isn't fully cast yet. Choose who to notify now — they'll see their role while you finish casting the rest.
+                This show isn't fully cast yet. Choose who to notify now — they'll see their <%= casting_unit(production) %> while you finish casting the rest.
               </p>
             <% end %>
 
@@ -114,7 +114,7 @@
                       <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Message</label>
                         <%= cast_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
-                        <p class="mt-1 text-xs text-gray-500">Variables like <code class="bg-gray-100 px-1 rounded">{{role_name}}</code>, <code class="bg-gray-100 px-1 rounded">{{shows_list}}</code>, and <code class="bg-gray-100 px-1 rounded">{{production_name}}</code> are personalized per cast member.</p>
+                        <p class="mt-1 text-xs text-gray-500">Variables like <code class="bg-gray-100 px-1 rounded">{{role_name}}</code>, <code class="bg-gray-100 px-1 rounded">{{casting_unit}}</code>, <code class="bg-gray-100 px-1 rounded">{{shows_list}}</code>, and <code class="bg-gray-100 px-1 rounded">{{production_name}}</code> are personalized per cast member.</p>
                       </div>
                     </div>
                   <% end %>

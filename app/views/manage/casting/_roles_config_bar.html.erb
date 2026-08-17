@@ -9,7 +9,10 @@
 <%
   uses_custom = show.use_custom_roles?
   role_count = roles.count
-  total_slots = roles.sum(&:quantity)
+  total_slots = roles.sum(&:total_slots)
+  act_mode = production.act_based?
+  numbers = lineup_numbers(roles)
+  event_word = show.event_type.humanize.downcase
 %>
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden"
      data-controller="casting-settings-modal"
@@ -30,16 +33,28 @@
       <div>
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-gray-900">
-            <% if uses_custom %>
-              Using custom roles for this <%= show.event_type.humanize.downcase %>
+            <% if act_mode %>
+              <% if uses_custom %>
+                Using a custom lineup for this <%= event_word %>
+              <% else %>
+                This <%= event_word %> uses the standard <%= production.name %> lineup
+              <% end %>
+            <% elsif uses_custom %>
+              Using custom roles for this <%= event_word %>
             <% else %>
-              This <%= show.event_type.humanize.downcase %> uses the standard <%= production.name %> roles
+              This <%= event_word %> uses the standard <%= production.name %> roles
             <% end %>
           </span>
         </div>
         <p class="text-xs text-gray-500 mt-0.5">
           <% if roles.any? %>
-            <%= roles.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
+            <% if act_mode %>
+              <%= roles.map { |r| r.break? ? "— #{r.name} —" : "#{numbers[r.id]}. #{r.name}" }.join(", ") %>
+            <% else %>
+              <%= roles.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
+            <% end %>
+          <% elsif act_mode %>
+            No acts in the lineup yet
           <% else %>
             No roles defined
           <% end %>
@@ -50,7 +65,7 @@
     <%# Right: Fixed-width panel with button %>
     <div class="flex-shrink-0 w-40 border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center">
       <%= render "shared/button",
-        text: "Manage Roles",
+        text: act_mode ? "Edit lineup" : "Manage Roles",
         variant: "secondary",
         size: "small",
         icon: "cog-6-tooth",

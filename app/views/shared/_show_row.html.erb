@@ -360,9 +360,16 @@
           roles = cast_summary[:roles] || []
           assignments_by_role = cast_summary[:assignments_by_role] || {}
           cant_make_it_by_assignment = cast_summary[:cant_make_it_by_assignment] || {}
+          # Lineup numbers for "Act 3 · Magic" labels (act-based productions);
+          # pin each role's production to the show's so labelling never queries.
+          roles.each { |r| r.association(:production).target = show.production unless r.association(:production).loaded? }
+          summary_numbers = lineup_numbers(roles)
+          summary_unit_plural = casting_unit(show.production, plural: true)
         %>
         <% roles.each do |role| %>
+          <% next if role.break? %>
           <%
+            role_label = role_display_name(role, summary_numbers)
             assignments_by_slot = cast_assignments_by_slot(role, assignments_by_role[role.id])
             role_quantity = cast_total_slots(role, assignments_by_slot)
           %>
@@ -376,7 +383,7 @@
                 cant_make_it = !is_guest && cant_make_it_by_assignment[[assignable.class.name, assignable.id]].present?
                 headshot = assignable&.safe_headshot_variant(:thumb)
                 slot_label = role_quantity > 1 ? " (slot #{slot_position})" : ""
-                tooltip_text = is_guest ? "#{assignment.guest_name} - #{role.name}#{slot_label}" : "#{assignable.name} - #{role.name}#{slot_label}"
+                tooltip_text = is_guest ? "#{assignment.guest_name} - #{role_label}#{slot_label}" : "#{assignable.name} - #{role_label}#{slot_label}"
                 tooltip_text += " (Can't make it)" if cant_make_it
               %>
               <div class="relative">
@@ -416,7 +423,7 @@
               <%
                 slot_label = role_quantity > 1 ? " (slot #{slot_position})" : ""
               %>
-              <div data-controller="tooltip" data-tooltip-text="<%= role.name %><%= slot_label %> (not assigned)" class="w-10 h-10 rounded-md bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+              <div data-controller="tooltip" data-tooltip-text="<%= role_label %><%= slot_label %> (not assigned)" class="w-10 h-10 rounded-md bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
@@ -425,7 +432,7 @@
           <% end %>
         <% end %>
         <% if roles.empty? && show.casting_enabled? %>
-          <span class="text-sm text-gray-400 pl-2">No roles</span>
+          <span class="text-sm text-gray-400 pl-2">No <%= summary_unit_plural %></span>
         <% end %>
 
         <%# Sign-up Attendees - with separator if casting is enabled %>
@@ -579,7 +586,7 @@
       <div class="flex-shrink-0 ml-4">
         <% role_assignments.each do |ra| %>
           <div class="flex items-center gap-2 text-xs">
-            <span class="text-gray-500">Role:</span>
+            <span class="text-gray-500"><%= casting_unit(show.production, capitalize: true) %>:</span>
             <strong class="text-pink-500"><%= ra[:role_name] %></strong>
             <% if ra[:entity_type] == "Group" %>
               <span class="text-gray-400">(as <%= ra[:entity_name] %>)</span>
@@ -591,7 +598,7 @@
       <%# Legacy support for simple role names array %>
       <div class="flex-shrink-0 ml-4">
         <% roles.each do |role_name| %>
-          <span class="text-xs text-gray-500">Role:</span>
+          <span class="text-xs text-gray-500"><%= casting_unit(show.production, capitalize: true) %>:</span>
           <strong class="text-xs text-pink-500"><%= role_name %></strong>
         <% end %>
       </div>

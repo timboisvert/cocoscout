@@ -275,6 +275,67 @@ RSpec.describe PayoutCalculator do
         end
       end
 
+      context "before any financials are entered" do
+        let(:rules) do
+          {
+            "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 20.0 }
+          }
+        end
+
+        it "still calculates — act pay never reads revenue" do
+          show.show_financials.destroy!
+          show.reload
+
+          result = described_class.calculate(
+            show: show, rules: rules, act_counts: { "Person_#{performer1.id}" => 2, "Person_#{performer2.id}" => 1 }
+          )
+
+          expect(result[:success]).to be true
+          expect(result[:total]).to eq(60.0)
+        end
+
+        it "calculates when the financials are only partly filled in" do
+          show.show_financials.update_columns(data_confirmed: false, ticket_revenue: nil)
+          expect(show.reload.show_financials).not_to be_complete
+
+          result = described_class.calculate(
+            show: show, rules: rules, act_counts: { "Person_#{performer1.id}" => 1 }
+          )
+
+          expect(result[:success]).to be true
+          expect(result[:total]).to eq(20.0)
+        end
+      end
+
+      context "in an act-based production" do
+        let(:production) { create(:production, organization: organization, casting_mode: "act_based") }
+        let(:second_role) { create(:role, production: production, name: "Second Half Magic") }
+        let(:rules) do
+          {
+            "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 20.0 }
+          }
+        end
+
+        before do
+          # Guest Star holds a second act too — one payee, two acts.
+          create(:show_person_role_assignment, show: show, role: second_role, guest_name: "Guest Star", assignable: nil)
+        end
+
+        it "pays a guest in two acts once, for two acts, straight from the lineup" do
+          counts = show.lineup_act_counts
+          expect(counts["guest_#{guest_assignment.id}"]).to eq(2)
+
+          result = described_class.calculate(show: show, rules: rules, act_counts: counts)
+
+          expect(result[:success]).to be true
+          guest_items = result[:line_items].select(&:is_guest?)
+          expect(guest_items.size).to eq(1)
+          expect(guest_items.first.guest_name).to eq("Guest Star")
+          expect(guest_items.first.calculation_details["inputs"]["acts"]).to eq(2)
+          expect(guest_items.first.amount.to_f).to eq(40.0)
+        end
+      end
+
       context "with a rate for each act that adds up" do
         let(:rules) do
           {

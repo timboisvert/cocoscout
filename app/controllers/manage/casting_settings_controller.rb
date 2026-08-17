@@ -4,6 +4,8 @@ module Manage
   # Per-production casting settings, on the shared settings layout: each topic
   # is its own routed section, so only that section's data loads.
   class CastingSettingsController < ManageController
+    include CastingHelper
+
     SECTIONS = %w[source roles talent_pool].freeze
     SECTION_LABELS = {
       "source" => "Casting Source",
@@ -35,11 +37,19 @@ module Manage
 
     def sections
       SECTIONS.map do |key|
-        { key: key, label: SECTION_LABELS[key],
+        { key: key, label: section_label(key),
           path: manage_casting_settings_section_path(production_id: @production, section: key) }
       end
     end
     helper_method :sections
+
+    # The roles section is the "Lineup" in an act-based production.
+    def section_label(key)
+      return casting_structure_label(@production) if key == "roles"
+
+      SECTION_LABELS[key]
+    end
+    helper_method :section_label
 
     def set_section
       @section = params[:section].presence || DEFAULT_SECTION
@@ -98,7 +108,12 @@ module Manage
     end
 
     def casting_settings_params
-      params.require(:production).permit(:casting_source, :default_signup_based_casting, :default_attendance_enabled)
+      permitted = params.require(:production).permit(:casting_source, :casting_mode, :default_signup_based_casting, :default_attendance_enabled)
+      # An unknown mode would raise out of the enum; drop it instead.
+      if permitted.key?(:casting_mode) && !Production.casting_modes.key?(permitted[:casting_mode].to_s)
+        permitted.delete(:casting_mode)
+      end
+      permitted
     end
   end
 end

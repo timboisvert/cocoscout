@@ -313,6 +313,8 @@ class ContentTemplateService
       when /group_name/i then "The Riverside Players"
       when /organization_name/i then "Downtown Arts Center"
       when /role_name/i then "Don Lockwood"
+      when /casting_units/i then "roles"
+      when /casting_unit/i then "role"
       when /recipient_name|inviter_name|sender_name|author_name|talent_name/i then "Sarah Johnson"
       when /requester_name|vacated_by_name|filled_by_name/i then "Michael Chen"
       when /name/i then "Alex Thompson"

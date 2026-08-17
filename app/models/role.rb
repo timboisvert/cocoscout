@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 class Role < ApplicationRecord
-  # Role categories (performing = on stage, technical = backstage/crew)
-  CATEGORIES = %w[performing technical].freeze
+  # Role categories (performing = on stage, technical = backstage/crew,
+  # break = a running-order marker such as an intermission in an act-based
+  # lineup — never cast, never counted)
+  CATEGORIES = %w[performing technical break].freeze
+  BREAK_CATEGORY = "break"
 
   # System role types (for system-managed roles)
   SYSTEM_ROLE_TYPES = %w[attendees].freeze
@@ -26,12 +29,19 @@ class Role < ApplicationRecord
   # Scopes for role categories
   scope :performing, -> { where(category: "performing") }
   scope :technical, -> { where(category: "technical") }
+  # Everything that takes a performer — excludes intermission-style break markers
+  scope :castable, -> { where.not(category: BREAK_CATEGORY) }
+  scope :breaks, -> { where(category: BREAK_CATEGORY) }
 
   # Scopes for system-managed roles
   scope :system_managed, -> { where(system_managed: true) }
 
   validates :name, presence: true
-  validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" }
+  # An act-based lineup may repeat a name ("Magic" in each half); role-based
+  # productions keep one role per name.
+  validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" },
+            unless: -> { production&.act_based? }
+  validate :break_only_in_act_based_production
   validates :quantity, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 100 }
   validates :category, presence: true, inclusion: { in: CATEGORIES }
   validates :system_role_type, inclusion: { in: SYSTEM_ROLE_TYPES, allow_nil: true }
@@ -98,11 +108,78 @@ class Role < ApplicationRecord
     end
   end
 
+  # ---- Act-based lineup support -------------------------------------------
+  #
+  # In an act-based production every Role is an act in the running order.
+  # A "break" is a marker row (intermission) that takes no performer.
+
+  def break?
+    category == BREAK_CATEGORY
+  end
+
+  def castable?
+    !break?
+  end
+
+  def act?
+    production&.act_based?
+  end
+
+  # The roles this one is ordered among: a show's custom lineup or the
+  # production's default lineup. Ordered by the default scope (position).
+  def siblings
+    show_id ? Role.where(show_id: show_id) : Role.where(production_id: production_id, show_id: nil)
+  end
+
+  # Stable identity for matching a role across lineups (production ↔ show,
+  # show ↔ linked show) when names may repeat: the name plus its ordinal among
+  # same-named siblings, so the second "Magic" maps to the second "Magic".
+  # In a role-based production names are unique and the ordinal is always 1.
+  def match_key
+    self.class.match_key_for(self, siblings.to_a)
+  end
+
+  def self.match_key_for(role, sibling_roles)
+    name_key = role.name.to_s.downcase.strip
+    same = sibling_roles.select { |r| r.name.to_s.downcase.strip == name_key }
+    ordinal = same.index { |r| r.id == role.id } || same.size
+    "#{name_key}##{ordinal + 1}"
+  end
+
+  # Match keys for a whole lineup at once (avoids N queries): { key => role }.
+  def self.match_keys_for(roles)
+    list = roles.to_a
+    list.index_by { |r| match_key_for(r, list) }
+  end
+
+  # 1-based running-order number among castable siblings; nil for breaks.
+  def lineup_number
+    self.class.lineup_numbers_for(siblings.to_a)[id]
+  end
+
+  # { role_id => number } for a lineup, breaks omitted (they aren't numbered).
+  def self.lineup_numbers_for(roles)
+    numbers = {}
+    roles.to_a.reject(&:break?).each_with_index { |r, i| numbers[r.id] = i + 1 }
+    numbers
+  end
+
+  # How this role reads to a person: "Act 3 · Magic" in an act-based
+  # production, the plain name otherwise. Pass a precomputed number when
+  # rendering many roles (see CastingHelper#lineup_numbers).
+  def display_name(number: nil)
+    return name unless act?
+    return name if break?
+
+    n = number || lineup_number
+    n ? "Act #{n} · #{name}" : name
+  end
+
   # Multi-person role methods
 
   # Returns the total number of slots for this role
   def total_slots
-    quantity
+    break? ? 0 : quantity
   end
 
   # Returns the number of filled slots for this role in a given show
@@ -121,6 +198,13 @@ class Role < ApplicationRecord
   end
 
   private
+
+  def break_only_in_act_based_production
+    return unless break?
+    return if production&.act_based?
+
+    errors.add(:category, "breaks belong to act-based lineups only")
+  end
 
   def restricted_role_has_eligible_members
     return unless restricted?

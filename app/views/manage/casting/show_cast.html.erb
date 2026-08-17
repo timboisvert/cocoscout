@@ -25,11 +25,17 @@
       show_talent_pool_panel = !is_manual_mode # Show for talent_pool or sign_up modes
       # Talent pool now supports click-to-add (formerly hybrid-only behavior)
       show_click_to_add = true # Always show click-to-add for all modes
+      # "role" or "act" — the word this board uses for the thing being cast
+      unit = casting_unit(@production)
+      unit_plural = casting_unit(@production, plural: true)
+      unit_title = casting_unit(@production, capitalize: true)
+      lineup_nums = lineup_numbers(@roles)
     %>
     <div data-controller="drop-role"
          data-drop-role-show-id-value="<%= @show.id %>"
          data-drop-role-production-id-value="<%= @production.id %>"
          data-drop-role-casting-source-value="<%= casting_source %>"
+         data-drop-role-unit-value="<%= unit %>"
          data-drop-role-click-to-add-value="<%= show_click_to_add %>">
 
     <%
@@ -69,7 +75,7 @@
             <div class="flex-1 min-w-0">
               <div class="mb-2">
                 <span id="progress-label" class="text-sm font-semibold text-gray-900">
-                  <% if fully_cast %>This show is 100% cast<% else %><%= filled_slots %> of <%= total_slots %> roles have been cast<% end %>
+                  <% if fully_cast %>This show is 100% cast<% else %><%= filled_slots %> of <%= total_slots %> <%= unit_plural %> have been cast<% end %>
                 </span>
               </div>
               <div class="w-full bg-gray-200 rounded-full h-2">
@@ -101,10 +107,17 @@
             </svg>
           </div>
           <div>
-            <h3 class="font-semibold text-amber-900">No roles defined</h3>
-            <p class="text-sm text-amber-800 mt-1">
-              Custom roles is enabled for this event, but no roles have been created yet. Configure roles above to start casting.
-            </p>
+            <% if @show.act_based? %>
+              <h3 class="font-semibold text-amber-900">No acts in the lineup</h3>
+              <p class="text-sm text-amber-800 mt-1">
+                This event uses its own lineup, but no acts have been added yet. Edit the lineup above to start casting.
+              </p>
+            <% else %>
+              <h3 class="font-semibold text-amber-900">No roles defined</h3>
+              <p class="text-sm text-amber-800 mt-1">
+                Custom roles is enabled for this event, but no roles have been created yet. Configure roles above to start casting.
+              </p>
+            <% end %>
           </div>
         </div>
       </div>
@@ -305,9 +318,9 @@
                         data-cast-filter-target="roleFilter"
                         data-eligible-by-role='<%= @eligible_by_role_id.to_json %>'
                         class="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-pink-500 focus:ring-pink-500">
-                  <option value="">All Roles</option>
+                  <option value="">All <%= unit_plural.capitalize %></option>
                   <% @restricted_roles.each do |role| %>
-                    <option value="<%= role.id %>"><%= role.name %></option>
+                    <option value="<%= role.id %>"><%= role_display_name(role, lineup_nums) %></option>
                   <% end %>
                 </select>
               </div>
@@ -333,7 +346,7 @@
     <div data-drop-role-target="assignModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->drop-role#closeAssignModal">
       <div class="bg-white w-full rounded-t-2xl max-h-[75vh] flex flex-col" data-action="click->drop-role#stopPropagation" data-controller="mobile-cast-filter">
         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-          <h2 data-modal-title class="text-lg font-semibold text-gray-900">Assign Role</h2>
+          <h2 data-modal-title class="text-lg font-semibold text-gray-900">Assign <%= unit_title %></h2>
           <button type="button" data-action="click->drop-role#closeAssignModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -602,7 +615,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-500">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
-            Not Approved for This Role
+            Not Approved for This <%= unit_title %>
           </h2>
           <button type="button" data-action="click->drop-role#closeRestrictedWarningModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
@@ -614,12 +627,12 @@
         <div class="p-6">
           <p class="text-sm text-gray-600 mb-4">
             <span data-drop-role-target="restrictedWarningPersonName" class="font-medium text-gray-900"></span>
-            is not approved for the role
+            is not approved for <%= "the role" unless @show.act_based? %>
             <span data-drop-role-target="restrictedWarningRoleName" class="font-medium text-gray-900"></span>.
           </p>
 
           <div class="bg-gray-50 rounded-lg p-3 mb-4">
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Approved for this role:</p>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Approved for this <%= unit %>:</p>
             <div data-drop-role-target="restrictedWarningEligibleList" class="text-sm text-gray-700">
               <!-- Filled by JS -->
             </div>
@@ -670,7 +683,7 @@
             </div>
             <div class="text-right">
               <p class="text-xs text-gray-500">to</p>
-              <p class="font-medium text-gray-900" data-drop-role-target="replaceRoleName">Role</p>
+              <p class="font-medium text-gray-900" data-drop-role-target="replaceRoleName"><%= unit_title %></p>
             </div>
           </div>
 
@@ -681,7 +694,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
               </svg>
               <div>
-                <p class="text-sm font-medium text-amber-800">Not eligible for this restricted role</p>
+                <p class="text-sm font-medium text-amber-800">Not eligible for this restricted <%= unit %></p>
                 <p class="text-xs text-amber-600 mt-0.5"><span data-drop-role-target="replaceNewPersonNameWarning">This person</span> isn't on the approved list.</p>
               </div>
             </div>
@@ -715,7 +728,7 @@
           <div class="p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Remove <span data-drop-role-target="vacancyPersonName"></span>?</h3>
             <p class="text-sm text-gray-600 mb-5">
-              Choose how to handle removing <span data-drop-role-target="vacancyPersonName2"></span> from the <span data-drop-role-target="vacancyRoleName"></span> role.
+              Choose how to handle removing <span data-drop-role-target="vacancyPersonName2"></span> from <% if @show.act_based? %><span data-drop-role-target="vacancyRoleName"></span>.<% else %>the <span data-drop-role-target="vacancyRoleName"></span> role.<% end %>
             </p>
             <div class="space-y-3">
               <button type="button"

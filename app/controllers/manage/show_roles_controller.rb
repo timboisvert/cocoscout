@@ -224,16 +224,18 @@ module Manage
         will_copy_roles = false
       end
 
-      # Build role name lookup for target roles
-      target_roles_by_name = target_roles.index_by { |r| r.name.downcase.strip }
+      # Build role lookup for target roles by match_key (name + ordinal, so a
+      # lineup that repeats "Magic" maps each occurrence to its own)
+      target_roles_by_name = Role.match_keys_for(target_roles)
+      source_key_for = Role.match_keys_for(source_roles).invert
 
       # Build migration mappings
       mappings = current_assignments.map do |assignment|
         assignable = assignment.assignable_type == "Person" ? people_by_id[assignment.assignable_id] : groups_by_id[assignment.assignable_id]
         current_role = assignment.role
 
-        # Find matching target role by name (case-insensitive)
-        matched_role = current_role ? target_roles_by_name[current_role.name.downcase.strip] : nil
+        # Find matching target role by match_key (case-insensitive name + ordinal)
+        matched_role = current_role ? target_roles_by_name[source_key_for[current_role] || current_role.match_key] : nil
 
         {
           assignment_id: assignment.id,
@@ -320,7 +322,11 @@ module Manage
         # Determine target roles (reload to get freshly created custom roles)
         target_roles = switching_to == "custom" ? @show.custom_roles.reload : @production.roles.production_roles
         target_roles_by_id = target_roles.index_by(&:id)
-        target_roles_by_name = target_roles.index_by { |r| r.name.downcase.strip }
+        target_roles_by_name = Role.match_keys_for(target_roles)
+        # The roles assignments are coming *from*, keyed the same way
+        source_roles = switching_to == "custom" ? @production.roles.production_roles : @show.custom_roles
+        source_key_for = Role.match_keys_for(source_roles).invert
+        match_key_of = ->(role) { role ? (source_key_for[role] || role.match_key) : nil }
 
         Rails.logger.info "[Migration] switching_to: #{switching_to}"
         Rails.logger.info "[Migration] target_roles count: #{target_roles.count}"
@@ -365,8 +371,8 @@ module Manage
                 assignment.destroy!
               end
             else
-              # No mapping provided - try auto-mapping by role name
-              matched_role = assignment.role ? target_roles_by_name[assignment.role.name.downcase.strip] : nil
+              # No mapping provided - try auto-mapping by role match key
+              matched_role = target_roles_by_name[match_key_of.call(assignment.role)]
               if matched_role
                 assignment.update!(role_id: matched_role.id)
                 people_kept << { assignment: assignment, role: matched_role }
@@ -377,8 +383,8 @@ module Manage
               end
             end
           else
-            # No mapping provided - try auto-mapping by role name
-            role_name = assignment.role&.name&.downcase&.strip
+            # No mapping provided - try auto-mapping by role match key
+            role_name = match_key_of.call(assignment.role)
             matched_role = role_name ? target_roles_by_name[role_name] : nil
             Rails.logger.info "[Migration] Auto-mapping assignment #{assignment_id}: role_name='#{role_name}', matched=#{matched_role.present?}"
             if matched_role
@@ -555,7 +561,13 @@ module Manage
     end
 
     def role_params
-      params.expect(show_role: [ :name, :restricted, :quantity, :category ])
+      permitted = params.expect(show_role: [ :name, :restricted, :quantity, :category ])
+      # A break (intermission marker) only exists in an act-based lineup; a
+      # role-based production quietly gets a performing role instead.
+      if permitted[:category] == Role::BREAK_CATEGORY && !@production.act_based?
+        permitted[:category] = "performing"
+      end
+      permitted
     end
 
     def update_eligible_members(role)
@@ -625,8 +637,10 @@ module Manage
       # Skip the automatic assignment clearing callback - we're handling it manually
       linked_show.skip_assignment_clear_on_role_toggle = true
 
+      linked_source_keys = Role.match_keys_for(linked_show.available_roles).invert
       linked_show.show_person_role_assignments.includes(:role).each do |assignment|
-        matched_role = assignment.role ? target_roles_by_name[assignment.role.name.downcase.strip] : nil
+        source_key = assignment.role ? (linked_source_keys[assignment.role] || assignment.role.match_key) : nil
+        matched_role = source_key ? target_roles_by_name[source_key] : nil
         if matched_role
           assignment.update!(role_id: matched_role.id)
         else

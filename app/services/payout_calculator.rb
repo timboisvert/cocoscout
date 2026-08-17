@@ -37,31 +37,42 @@ class PayoutCalculator
     return { success: false, error: "No rules provided" } unless @rules.present?
 
     financials = @show.show_financials
-    return { success: false, error: "No financial data" } unless financials&.complete?
+    # Act pay never reads revenue, so it can run before anyone enters ticket
+    # numbers; every other method needs the night's financials.
+    unless per_act_rules? || financials&.complete?
+      return { success: false, error: "No financial data" }
+    end
 
-    # Get performers from show assignments (including guests)
-    assignments = @show.show_person_role_assignments.includes(:assignable, :role)
-
-    # Separate regular performers and guest assignments
-    regular_performers = assignments.reject(&:guest?).map(&:assignable).compact.uniq
-    guest_assignments = assignments.select(&:guest?)
+    # Get performers from show assignments (including guests). One entry per
+    # payee — a guest in several acts is folded into one (see Show#pay_cast_assignments).
+    cast = @show.pay_cast_assignments
+    regular_performers = cast[:people]
+    guest_assignments = cast[:guests]
 
     total_performer_count = regular_performers.count + guest_assignments.count
 
     return { success: false, error: "No performers assigned to this show" } if total_performer_count == 0
 
     # Build inputs
-    inputs = {
-      ticket_count: financials.ticket_count.to_i,
-      ticket_revenue: financials.ticket_revenue.to_f,
-      primary_revenue: financials.primary_revenue,
-      other_revenue: financials.calculated_other_revenue,
-      expenses: financials.calculated_expenses,
-      total_revenue: financials.total_revenue,
-      net_revenue: financials.net_revenue,
-      performer_count: total_performer_count,
-      revenue_type: financials.revenue_type
-    }
+    inputs = if financials&.complete?
+      {
+        ticket_count: financials.ticket_count.to_i,
+        ticket_revenue: financials.ticket_revenue.to_f,
+        primary_revenue: financials.primary_revenue,
+        other_revenue: financials.calculated_other_revenue,
+        expenses: financials.calculated_expenses,
+        total_revenue: financials.total_revenue,
+        net_revenue: financials.net_revenue,
+        performer_count: total_performer_count,
+        revenue_type: financials.revenue_type
+      }
+    else
+      {
+        ticket_count: 0, ticket_revenue: 0.0, primary_revenue: 0.0, other_revenue: 0.0,
+        expenses: 0.0, total_revenue: 0.0, net_revenue: 0.0,
+        performer_count: total_performer_count, revenue_type: nil
+      }
+    end
 
     # Get distribution method and overrides
     distribution = @rules["distribution"] || {}
@@ -557,6 +568,10 @@ class PayoutCalculator
     else
       [ PayoutScheme.act_amount(distribution, acts), "#{acts} #{'act'.pluralize(acts)}" ]
     end
+  end
+
+  def per_act_rules?
+    @rules.dig("distribution", "method").to_s == "per_act"
   end
 
   def act_count_for(key)

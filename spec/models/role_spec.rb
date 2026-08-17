@@ -158,4 +158,81 @@ RSpec.describe Role, type: :model do
       end
     end
   end
+
+  describe 'act-based lineups' do
+    let(:act_production) { create(:production, casting_mode: 'act_based') }
+    let(:role_production) { create(:production, casting_mode: 'role_based') }
+
+    describe 'duplicate names' do
+      it 'allows the same act name twice in an act-based production' do
+        create(:role, production: act_production, name: 'Magic', position: 0)
+        second = build(:role, production: act_production, name: 'Magic', position: 1)
+        expect(second).to be_valid
+      end
+
+      it 'still rejects a duplicate role name in a role-based production' do
+        create(:role, production: role_production, name: 'Magic')
+        dup = build(:role, production: role_production, name: 'Magic')
+        expect(dup).not_to be_valid
+        expect(dup.errors[:name]).to include('already exists')
+      end
+    end
+
+    describe 'breaks' do
+      it 'is valid in an act-based production and takes no slots' do
+        brk = build(:role, production: act_production, name: 'Intermission', category: 'break')
+        expect(brk).to be_valid
+        expect(brk).to be_break
+        expect(brk).not_to be_castable
+        expect(brk.total_slots).to eq(0)
+      end
+
+      it 'is invalid in a role-based production' do
+        brk = build(:role, production: role_production, name: 'Intermission', category: 'break')
+        expect(brk).not_to be_valid
+        expect(brk.errors[:category]).to be_present
+      end
+    end
+
+    context 'with a lineup of Magic, Variety, Intermission, Magic' do
+      let!(:magic_one)    { create(:role, production: act_production, name: 'Magic', position: 0) }
+      let!(:variety)      { create(:role, production: act_production, name: 'Variety', position: 1) }
+      let!(:intermission) { create(:role, production: act_production, name: 'Intermission', category: 'break', position: 2) }
+      let!(:magic_two)    { create(:role, production: act_production, name: 'Magic', position: 3) }
+
+      it 'castable excludes breaks; breaks includes only them' do
+        expect(act_production.roles.castable).to contain_exactly(magic_one, variety, magic_two)
+        expect(act_production.roles.breaks).to contain_exactly(intermission)
+      end
+
+      it 'gives the two Magic acts distinct match keys by ordinal' do
+        expect(magic_one.match_key).to eq('magic#1')
+        expect(magic_two.match_key).to eq('magic#2')
+        expect(variety.match_key).to eq('variety#1')
+      end
+
+      it 'numbers the lineup skipping the break' do
+        expect(magic_one.lineup_number).to eq(1)
+        expect(variety.lineup_number).to eq(2)
+        expect(intermission.lineup_number).to be_nil
+        expect(magic_two.lineup_number).to eq(3)
+        expect(Role.lineup_numbers_for(act_production.roles)).to eq(
+          magic_one.id => 1, variety.id => 2, magic_two.id => 3
+        )
+      end
+
+      it 'displays as "Act N · Name" for acts and the plain name for breaks' do
+        expect(magic_one.display_name).to eq('Act 1 · Magic')
+        expect(magic_two.display_name).to eq('Act 3 · Magic')
+        expect(magic_two.display_name(number: 3)).to eq('Act 3 · Magic')
+        expect(intermission.display_name).to eq('Intermission')
+      end
+    end
+
+    it 'displays the plain name in a role-based production' do
+      host = create(:role, production: role_production, name: 'Host')
+      expect(host.display_name).to eq('Host')
+      expect(host.match_key).to eq('host#1')
+    end
+  end
 end

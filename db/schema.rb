@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_130500) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_16_150100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1783,6 +1783,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_130500) do
     t.boolean "auto_create_event_pages", default: true
     t.string "auto_create_event_pages_mode", default: "all"
     t.text "cast_talent_pool_ids"
+    t.string "casting_mode", default: "role_based", null: false
     t.boolean "casting_setup_completed", default: false, null: false
     t.string "casting_source", default: "talent_pool", null: false
     t.string "contact_email"
@@ -1806,6 +1807,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_130500) do
     t.datetime "updated_at", null: false
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
     t.index ["archived_at"], name: "index_productions_on_archived_at"
+    t.index ["casting_mode"], name: "index_productions_on_casting_mode"
     t.index ["casting_source"], name: "index_productions_on_casting_source"
     t.index ["genre"], name: "index_productions_on_genre"
     t.index ["organization_id", "archived_at"], name: "idx_productions_org_archived"
@@ -2009,7 +2011,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_130500) do
     t.string "system_role_type"
     t.datetime "updated_at", null: false
     t.index ["category"], name: "index_roles_on_category"
-    t.index ["production_id", "show_id", "name"], name: "index_roles_on_production_show_name", unique: true
+    t.index ["production_id", "show_id", "name"], name: "index_roles_on_production_show_name"
     t.index ["show_id"], name: "index_roles_on_show_id"
   end
 

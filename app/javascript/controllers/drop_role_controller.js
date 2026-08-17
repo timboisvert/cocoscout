@@ -20,7 +20,19 @@ export default class extends Controller {
         // Vacancy modal targets
         "vacancyModal", "vacancyPersonName", "vacancyPersonName2", "vacancyRoleName"
     ];
-    static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean };
+    static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean, unit: String };
+
+    // The word the board uses for the thing being cast: "role" (default) or
+    // "act" in an act-based production. Only user-visible strings read this;
+    // endpoint names and data attributes keep saying "role".
+    get unit() {
+        return this.hasUnitValue && this.unitValue ? this.unitValue : "role";
+    }
+
+    get unitTitle() {
+        const u = this.unit;
+        return u.charAt(0).toUpperCase() + u.slice(1);
+    }
 
     connect() {
         // Close modal on escape key
@@ -225,7 +237,7 @@ export default class extends Controller {
             return;
         }
 
-        const roleName = roleElement.dataset.roleName || "this role";
+        const roleName = roleElement.dataset.roleName || `this ${this.unit}`;
         const eligibleNames = JSON.parse(roleElement.dataset.eligibleMemberNames || "[]");
         const roleId = roleElement.dataset.roleId;
 
@@ -666,7 +678,7 @@ export default class extends Controller {
         }
 
         if (!roleId) {
-            alert('Please select a role first');
+            alert(`Please select ${this.unit === "act" ? "an" : "a"} ${this.unit} first`);
             return;
         }
 
@@ -735,7 +747,7 @@ export default class extends Controller {
     addGuestDirect(guestName, guestEmail) {
         const roleId = this.currentAssignRoleId;
         if (!roleId) {
-            alert('No role selected');
+            alert(`No ${this.unit} selected`);
             return;
         }
 
@@ -1132,7 +1144,7 @@ export default class extends Controller {
             return;
         }
 
-        const roleName = roleElement.dataset.roleName || "this role";
+        const roleName = roleElement.dataset.roleName || `this ${this.unit}`;
         const roleId = roleElement.dataset.roleId;
         const roleQuantity = parseInt(roleElement.dataset.roleQuantity || "1", 10);
 
@@ -1186,7 +1198,7 @@ export default class extends Controller {
                         </div>
                         <div class="flex-1">
                             <span class="text-sm font-medium text-gray-900 group-hover:text-pink-700">Replace ${assignment.name}</span>
-                            <p class="text-xs text-gray-500">${assignment.name} will be removed from this role</p>
+                            <p class="text-xs text-gray-500">${assignment.name} will be removed from this ${this.unit}</p>
                         </div>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400 group-hover:text-pink-500">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -1202,7 +1214,7 @@ export default class extends Controller {
         if (roleQuantity === 1) {
             this.replaceModalTitleTarget.textContent = "Replace Assignment";
         } else {
-            this.replaceModalTitleTarget.textContent = "Role is Full";
+            this.replaceModalTitleTarget.textContent = `${this.unitTitle} is Full`;
         }
 
         // Show modal
@@ -1534,14 +1546,14 @@ export default class extends Controller {
             if (percentage === 100) {
                 labelElement.textContent = 'This show is 100% cast';
             } else {
-                labelElement.textContent = `${assignment_count} of ${role_count} roles have been cast`;
+                labelElement.textContent = `${assignment_count} of ${role_count} ${this.unit}s have been cast`;
             }
         }
 
         // Update fraction
         const fractionElement = document.getElementById('progress-fraction');
         if (fractionElement) {
-            fractionElement.textContent = `${assignment_count}/${role_count} roles cast`;
+            fractionElement.textContent = `${assignment_count}/${role_count} ${this.unit}s cast`;
             // Update color
             fractionElement.classList.remove('text-green-600', 'text-pink-600');
             fractionElement.classList.add(percentage === 100 ? 'text-green-600' : 'text-pink-600');

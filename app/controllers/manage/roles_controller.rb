@@ -130,7 +130,19 @@ module Manage
 
     # Only allow a list of trusted parameters through.
     def role_params
-      params.expect(role: [ :name, :restricted, :quantity, :category ])
+      permitted = params.expect(role: [ :name, :restricted, :quantity, :category ])
+      # A "break" (intermission) row only exists in an act-based lineup; a
+      # role-based production gets a plain performing role instead. Breaks
+      # take no performer, so they're never restricted and always one slot.
+      if permitted[:category] == Role::BREAK_CATEGORY
+        if @production.act_based?
+          permitted[:restricted] = false
+          permitted[:quantity] = 1
+        else
+          permitted[:category] = "performing"
+        end
+      end
+      permitted
     end
   end
 end

@@ -1,12 +1,26 @@
-<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: 4, step_name: "Roles" } do %>
+<%
+  act_mode = act_based_wizard?
+  input_classes = "px-3 py-2.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  step_name = act_mode ? "Lineup" : "Roles"
+%>
+<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: :roles, step_name: step_name } do %>
   <div class="text-center mb-6">
     <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
       <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        <% if act_mode %>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        <% else %>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        <% end %>
       </svg>
     </div>
-    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Do you have set roles?</h2>
-    <p class="text-gray-600 mt-2">Roles are positions you need to fill for each show — like "Host", "Featured Comic", or "Lead". You can always add or change roles later.</p>
+    <% if act_mode %>
+      <h2 class="text-xl font-bold text-gray-900 coustard-regular">Build your lineup</h2>
+      <p class="text-gray-600 mt-2">The lineup is your running order — the acts in the order they go on, with an intermission wherever you break. Each show starts from this lineup, and you can change it later.</p>
+    <% else %>
+      <h2 class="text-xl font-bold text-gray-900 coustard-regular">Do you have set roles?</h2>
+      <p class="text-gray-600 mt-2">Roles are positions you need to fill for each show — like "Host", "Featured Comic", or "Lead". You can always add or change roles later.</p>
+    <% end %>
   </div>
 
   <%= form_with url: manage_productions_wizard_save_roles_path, method: :post, local: true, id: "roles-form" do |form| %>
@@ -19,8 +33,13 @@
                    <%= "checked" if @wizard_state[:has_roles] == 'no' || @wizard_state[:has_roles].nil? %>
                    class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
             <div class="ml-3">
-              <p class="font-medium text-gray-900">I don't have set roles</p>
-              <p class="text-sm text-gray-500 mt-1">Skip this step and add roles later if needed</p>
+              <% if act_mode %>
+                <p class="font-medium text-gray-900">Not yet</p>
+                <p class="text-sm text-gray-500 mt-1">Skip this step and build the lineup later</p>
+              <% else %>
+                <p class="font-medium text-gray-900">I don't have set roles</p>
+                <p class="text-sm text-gray-500 mt-1">Skip this step and add roles later if needed</p>
+              <% end %>
             </div>
           </div>
         </div>
@@ -34,8 +53,13 @@
                    <%= "checked" if @wizard_state[:has_roles] == 'yes' %>
                    class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
             <div class="ml-3">
-              <p class="font-medium text-gray-900">I have set roles</p>
-              <p class="text-sm text-gray-500 mt-1">Define the roles you need to fill for each show</p>
+              <% if act_mode %>
+                <p class="font-medium text-gray-900">Do you want to set up the lineup now?</p>
+                <p class="text-sm text-gray-500 mt-1">List the acts in running order and drop in an intermission where you break</p>
+              <% else %>
+                <p class="font-medium text-gray-900">I have set roles</p>
+                <p class="text-sm text-gray-500 mt-1">Define the roles you need to fill for each show</p>
+              <% end %>
             </div>
           </div>
         </div>
@@ -43,27 +67,40 @@
 
       <!-- Roles Form (shown when yes is selected) -->
       <div id="roles-form-section" class="<%= @wizard_state[:has_roles] == 'yes' ? '' : 'hidden' %> ml-4 pl-4 border-l-2 border-pink-200">
-        <div id="roles-list" class="space-y-3">
+        <div id="roles-list" class="space-y-3" data-casting-mode="<%= act_mode ? 'act_based' : 'role_based' %>">
           <% roles = @wizard_state[:roles].present? && @wizard_state[:roles].any? ? @wizard_state[:roles] : [{ name: "", quantity: 1, category: "performing" }] %>
           <% roles.each_with_index do |role, index| %>
-            <div class="flex items-center gap-2 role-row">
+            <% role_name = role[:name] || role['name'] %>
+            <% role_category = (role[:category] || role['category'] || 'performing').to_s %>
+            <% role_category = "performing" if role_category == "break" && !act_mode %>
+            <% role_qty = role[:quantity] || role['quantity'] || 1 %>
+            <div class="flex items-center gap-2 role-row" data-category="<%= role_category %>">
+              <% if act_mode %>
+                <span class="lineup-number w-7 shrink-0 text-right text-sm font-medium text-gray-500 tabular-nums" aria-hidden="true"></span>
+              <% end %>
               <input type="text"
                      name="roles[<%= index %>][name]"
-                     value="<%= role[:name] || role['name'] %>"
-                     placeholder="Role name (e.g., Host)"
-                     class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-              <input type="number"
-                     name="roles[<%= index %>][quantity]"
-                     value="<%= role[:quantity] || role['quantity'] || 1 %>"
-                     min="1"
-                     class="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-pink-500 focus:border-pink-500"
-                     title="Number of slots">
+                     value="<%= role_name %>"
+                     placeholder="<%= act_mode ? 'Act name (e.g., Magic)' : 'Role name (e.g., Host)' %>"
+                     class="flex-1 <%= input_classes %> role-name-input">
+              <% unless act_mode %>
+                <input type="number"
+                       name="roles[<%= index %>][quantity]"
+                       value="<%= role_qty %>"
+                       min="1"
+                       class="w-16 text-center <%= input_classes %>"
+                       title="Number of slots">
+              <% end %>
               <select name="roles[<%= index %>][category]"
-                      class="w-28 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-                <option value="performing" <%= "selected" if (role[:category] || role['category'] || 'performing') == "performing" %>>Performing</option>
-                <option value="technical" <%= "selected" if (role[:category] || role['category']) == "technical" %>>Crew / Technical</option>
+                      class="w-32 <%= input_classes %> role-category-select">
+                <option value="performing" <%= "selected" if role_category == "performing" %>>Performing</option>
+                <% if act_mode %>
+                  <option value="break" <%= "selected" if role_category == "break" %>>Intermission</option>
+                <% else %>
+                  <option value="technical" <%= "selected" if role_category == "technical" %>>Crew / Technical</option>
+                <% end %>
               </select>
-              <button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500">
+              <button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500" aria-label="Remove">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -71,14 +108,17 @@
             </div>
           <% end %>
         </div>
-        <button type="button" id="add-role-btn" class="mt-3 text-sm text-pink-500 hover:text-pink-600 font-medium">
-          + Add another role
-        </button>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <%= render "shared/button", text: (act_mode ? "Add another act" : "Add another role"), variant: "secondary", size: "small", type: :button, icon: "plus", data: { wizard_role_action: "add-role" } %>
+          <% if act_mode %>
+            <%= render "shared/button", text: "Add intermission", variant: "secondary", size: "small", type: :button, data: { wizard_role_action: "add-break" } %>
+          <% end %>
+        </div>
       </div>
     </div>
 
     <div class="mt-8 flex justify-between items-center">
-      <%= link_to manage_productions_wizard_casting_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+      <%= link_to manage_productions_wizard_casting_style_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
         ← Back
       <% end %>
       <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
@@ -92,7 +132,10 @@
   const yesRolesOption = document.getElementById('yes-roles-option');
   const rolesFormSection = document.getElementById('roles-form-section');
   const rolesList = document.getElementById('roles-list');
-  const addRoleBtn = document.getElementById('add-role-btn');
+  const addRoleBtn = document.querySelector('[data-wizard-role-action="add-role"]');
+  const addBreakBtn = document.querySelector('[data-wizard-role-action="add-break"]');
+  const actMode = rolesList && rolesList.dataset.castingMode === 'act_based';
+  const inputClasses = <%= input_classes.to_json.html_safe %>;
   let roleIndex = rolesList ? rolesList.querySelectorAll('.role-row').length : 1;
 
   // Handle radio button changes
@@ -114,41 +157,97 @@
     });
   });
 
-  // Add role button
-  if (addRoleBtn) {
-    addRoleBtn.addEventListener('click', function() {
-      const newRow = document.createElement('div');
-      newRow.className = 'flex items-center gap-2 role-row';
-      newRow.innerHTML = `
-        <input type="text" name="roles[${roleIndex}][name]" placeholder="Role name (e.g., Host)" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-        <input type="number" name="roles[${roleIndex}][quantity]" value="1" min="1" class="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-pink-500 focus:border-pink-500" title="Number of slots">
-        <select name="roles[${roleIndex}][category]" class="w-28 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-          <option value="performing">Performing</option>
-          <option value="technical">Crew / Technical</option>
-        </select>
-        <button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      `;
-      rolesList.appendChild(newRow);
-      roleIndex++;
-      attachRemoveHandlers();
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = String(str == null ? '' : str);
+    return d.innerHTML;
+  }
+
+  // Number the acts 1, 2, 3… — intermissions get no number.
+  function renumber() {
+    if (!actMode || !rolesList) return;
+    let n = 0;
+    rolesList.querySelectorAll('.role-row').forEach(row => {
+      const badge = row.querySelector('.lineup-number');
+      const select = row.querySelector('.role-category-select');
+      const isBreak = (select ? select.value : row.dataset.category) === 'break';
+      row.dataset.category = isBreak ? 'break' : 'performing';
+      if (badge) badge.textContent = isBreak ? '' : String(++n);
+      const nameInput = row.querySelector('.role-name-input');
+      if (nameInput) nameInput.placeholder = isBreak ? 'Intermission' : 'Act name (e.g., Magic)';
+      row.classList.toggle('opacity-80', isBreak);
     });
   }
 
-  // Remove role button
-  function attachRemoveHandlers() {
+  function removeButtonHtml() {
+    return `<button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500" aria-label="Remove">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>`;
+  }
+
+  function buildRow(opts) {
+    const name = opts.name || '';
+    const category = opts.category || 'performing';
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 role-row';
+    row.dataset.category = category;
+    if (actMode) {
+      row.innerHTML = `
+        <span class="lineup-number w-7 shrink-0 text-right text-sm font-medium text-gray-500 tabular-nums" aria-hidden="true"></span>
+        <input type="text" name="roles[${roleIndex}][name]" value="${escapeHtml(name)}" placeholder="Act name (e.g., Magic)" class="flex-1 ${inputClasses} role-name-input">
+        <select name="roles[${roleIndex}][category]" class="w-32 ${inputClasses} role-category-select">
+          <option value="performing" ${category === 'performing' ? 'selected' : ''}>Performing</option>
+          <option value="break" ${category === 'break' ? 'selected' : ''}>Intermission</option>
+        </select>
+        ${removeButtonHtml()}`;
+    } else {
+      row.innerHTML = `
+        <input type="text" name="roles[${roleIndex}][name]" value="${escapeHtml(name)}" placeholder="Role name (e.g., Host)" class="flex-1 ${inputClasses} role-name-input">
+        <input type="number" name="roles[${roleIndex}][quantity]" value="1" min="1" class="w-16 text-center ${inputClasses}" title="Number of slots">
+        <select name="roles[${roleIndex}][category]" class="w-32 ${inputClasses} role-category-select">
+          <option value="performing" selected>Performing</option>
+          <option value="technical">Crew / Technical</option>
+        </select>
+        ${removeButtonHtml()}`;
+    }
+    roleIndex++;
+    return row;
+  }
+
+  function appendRow(opts) {
+    const row = buildRow(opts || {});
+    rolesList.appendChild(row);
+    attachRowHandlers();
+    renumber();
+    const focusTarget = row.querySelector('.role-name-input');
+    if (focusTarget && !(opts && opts.name)) focusTarget.focus();
+  }
+
+  if (addRoleBtn) {
+    addRoleBtn.addEventListener('click', function() { appendRow({}); });
+  }
+  if (addBreakBtn) {
+    addBreakBtn.addEventListener('click', function() { appendRow({ name: 'Intermission', category: 'break' }); });
+  }
+
+  // Remove role button + category changes (renumber the lineup)
+  function attachRowHandlers() {
     document.querySelectorAll('.remove-role-btn').forEach(btn => {
       btn.onclick = function() {
         const row = this.closest('.role-row');
         if (rolesList.querySelectorAll('.role-row').length > 1) {
           row.remove();
+          renumber();
         }
       };
     });
+    document.querySelectorAll('.role-category-select').forEach(select => {
+      select.onchange = renumber;
+    });
   }
-  attachRemoveHandlers();
+  attachRowHandlers();
+  renumber();
 })();
 </script>

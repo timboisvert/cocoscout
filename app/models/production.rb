@@ -87,6 +87,15 @@ class Production < ApplicationRecord
     manual: "manual"              # Admin manually adds names/emails
   }, default: :talent_pool, prefix: :casting
 
+  # Casting mode: fill named positions (Host, Performer ×6) or build a running
+  # order of acts (Magic, Clown, Intermission, Magic…) and cast each act. Acts
+  # are Role records either way — the mode changes how casting is presented and
+  # how act-based pay derives each performer's act count.
+  enum :casting_mode, {
+    role_based: "role_based",
+    act_based: "act_based"
+  }, default: :role_based
+
   # Production type: in-house (our production), third-party (renter/contractor), or course (education program)
   enum :production_type, {
     in_house: "in_house",

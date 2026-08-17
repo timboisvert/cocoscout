@@ -1,4 +1,4 @@
-<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: 5, step_name: "Shows" } do %>
+<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: :shows, step_name: "Shows" } do %>
   <div class="text-center mb-6">
     <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
       <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,7 +43,16 @@
     </div>
 
     <div class="mt-8 flex justify-between items-center">
-      <%= link_to manage_productions_wizard_roles_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+      <%
+        shows_back_path = if @wizard_state[:casting_source] == "none"
+          manage_productions_wizard_casting_path
+        elsif pay_step_available?
+          manage_productions_wizard_pay_path
+        else
+          manage_productions_wizard_roles_path
+        end
+      %>
+      <%= link_to shows_back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
         ← Back
       <% end %>
       <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>

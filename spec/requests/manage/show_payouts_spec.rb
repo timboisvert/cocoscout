@@ -159,6 +159,91 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
 
       expect(response.body).to include(%(name="act_counts[Person_#{performer.id}]" value="2"))
     end
+
+    it "sends a show with no scheme at all to the plain schemes list" do
+      payout.update!(payout_scheme: nil)
+      scheme.destroy!
+
+      post manage_calculate_money_show_payout_path(show)
+
+      expect(response).to redirect_to(manage_money_payout_schemes_path)
+    end
+
+    context "in an act-based production (acts are roles in the lineup)" do
+      let!(:role) { create(:role, production: production, name: "Opening Magic") }
+      let!(:second_role) { create(:role, production: production, name: "Closing Magic") }
+      let!(:second_assignment) { create(:show_person_role_assignment, show: show, role: second_role, assignable: performer) }
+      let!(:guest_one) { create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi Guest", assignable: nil) }
+      let!(:guest_two) { create(:show_person_role_assignment, show: show, role: second_role, guest_name: "Gigi Guest", assignable: nil) }
+
+      before { production.update!(casting_mode: "act_based") }
+
+      it "calculates straight from the lineup instead of asking for counts" do
+        post manage_calculate_money_show_payout_path(show)
+
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        payout.reload
+        expect(payout.calculated_at).to be_present
+        expect(payout.act_counts).to eq(
+          "Person_#{performer.id}" => 2,
+          "guest_#{guest_one.id}" => 2
+        )
+        expect(payout.line_items.find_by(payee: performer).amount.to_f).to eq(50.0)
+        guest_lines = payout.line_items.where(is_guest: true)
+        expect(guest_lines.count).to eq(1)
+        expect(guest_lines.first.amount.to_f).to eq(50.0)
+      end
+
+      it "works out per-act pay before any ticket numbers are entered" do
+        financials.destroy!
+        payout.line_items.destroy_all
+
+        post manage_calculate_money_show_payout_path(show)
+
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        expect(payout.reload.calculated_at).to be_present
+        expect(payout.line_items.find_by(payee: performer).amount.to_f).to eq(50.0)
+
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include("Financial data not entered yet")
+        expect(response.body).not_to include("Financial data needed")
+      end
+
+      it "still honours counts adjusted by hand" do
+        post manage_calculate_money_show_payout_path(show),
+             params: { act_counts: { "Person_#{performer.id}" => "1", "guest_#{guest_one.id}" => "2" } }
+
+        expect(payout.reload.act_counts["Person_#{performer.id}"]).to eq(1)
+        expect(payout.line_items.find_by(payee: performer).amount.to_f).to eq(25.0)
+      end
+
+      it "offers to adjust the act counts and prefills them from the lineup" do
+        get manage_money_show_payout_path(show)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("Adjust act counts")
+        expect(response.body).to include("Reset to lineup")
+        expect(response.body).to include("Counted from the lineup — 2 acts")
+        expect(response.body).to include(%(name="act_counts[Person_#{performer.id}]" value="2"))
+        expect(response.body).to include(%(data-lineup-count="2"))
+      end
+
+      it "labels each calculated line as counted from the lineup" do
+        post manage_calculate_money_show_payout_path(show)
+        get manage_money_show_payout_path(show)
+
+        expect(response.body).to include("2 acts (from lineup)")
+      end
+
+      it "sends a show with no scheme to the Per Act preset for this production" do
+        payout.update!(payout_scheme: nil)
+        scheme.destroy!
+
+        post manage_calculate_money_show_payout_path(show)
+
+        expect(response).to redirect_to(manage_presets_money_payout_schemes_path(preset: "per_act", production_id: production.id))
+      end
+    end
   end
 
   describe "marking an in-run line paid another way" do

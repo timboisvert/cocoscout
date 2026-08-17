@@ -61,30 +61,43 @@ module Manage
         return
       end
 
-      # Ensure we have financials
-      unless @show.show_financials&.complete?
+      # Get the scheme to use (with any overrides)
+      # Look for production-level scheme first, then organization-level
+      scheme = @show_payout.payout_scheme || PayoutScheme.default_for_show(@show)
+      rules = @show_payout.override_rules.presence || scheme&.rules
+      per_act = rules.present? && rules.dig("distribution", "method").to_s == "per_act"
+
+      # Ensure we have financials — unless the night pays by acts, which never
+      # reads revenue and shouldn't wait on ticket numbers.
+      unless per_act || @show.show_financials&.complete?
         redirect_to manage_edit_money_show_financials_path(@show),
                     alert: "Please enter financial data before calculating payouts."
         return
       end
 
-      # Get the scheme to use (with any overrides)
-      # Look for production-level scheme first, then organization-level
-      scheme = @show_payout.payout_scheme || PayoutScheme.default_for_show(@show)
-      rules = @show_payout.override_rules.presence || scheme&.rules
-
       unless rules.present?
-        redirect_to manage_money_payout_schemes_path,
-                    alert: "Please create a payout scheme first."
+        # An act-based production almost always wants per-act pay — land them on
+        # that preset rather than a blank list of schemes.
+        if @show.act_based?
+          redirect_to manage_presets_money_payout_schemes_path(preset: "per_act", production_id: @production.id),
+                      alert: "Please create a payout scheme first — act-based productions usually pay per act."
+        else
+          redirect_to manage_money_payout_schemes_path,
+                      alert: "Please create a payout scheme first."
+        end
         return
       end
 
-      # Act-based schemes can't be worked out from the show's data alone — someone
-      # has to say how many acts each person did. Bounce back to the payout page
-      # with the acts modal open, then calculate once the counts come in.
-      if rules.dig("distribution", "method").to_s == "per_act"
+      # Act-based schemes need to know how many acts each person did. In an
+      # act-based production the lineup already says (each act is a role), so
+      # calculate straight from it unless counts were posted by hand. A
+      # role-based show has nothing to derive from: bounce back to the payout
+      # page with the acts modal open and calculate once the counts come in.
+      if per_act
         submitted_act_counts = act_counts_from_params
-        if submitted_act_counts.nil?
+        if submitted_act_counts.nil? && @show.act_based?
+          submitted_act_counts = @show.lineup_act_counts
+        elsif submitted_act_counts.nil?
           redirect_to manage_money_show_payout_path(@show, enter_acts: 1)
           return
         end

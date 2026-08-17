@@ -233,7 +233,10 @@ module Manage
 
       # Use available_roles which respects show.use_custom_roles
       @roles = @show.available_roles.to_a
-      @roles_count = @roles.sum { |r| r.quantity || 1 }  # Total slots, not role count
+      # Every role on this board belongs to @production — pin the association so
+      # per-role mode checks (Role#act?/#display_name) don't each hit the DB.
+      @roles.each { |r| r.association(:production).target = @production }
+      @roles_count = @roles.sum(&:total_slots)  # Total castable slots (breaks count 0), not role count
 
       # Get restricted roles for the filter dropdown
       @restricted_roles = @roles.select(&:restricted?)
@@ -1105,20 +1108,21 @@ module Manage
       # Target needs to use custom roles to match source
       target_show.update!(use_custom_roles: true)
 
-      # Get existing custom roles on target
-      existing_roles = target_show.custom_roles.index_by(&:name)
-      source_role_names = source_roles.map(&:name).to_set
+      # Match roles by match_key (name + ordinal among same-named roles) so an
+      # act-based lineup that repeats "Magic" syncs each occurrence to its own.
+      existing_roles = Role.match_keys_for(target_show.custom_roles.reload)
+      source_by_key = Role.match_keys_for(source_roles)
 
       # Remove custom roles that don't exist in source (and their assignments)
-      existing_roles.each do |name, role|
-        unless source_role_names.include?(name)
+      existing_roles.each do |key, role|
+        unless source_by_key.key?(key)
           role.destroy!
         end
       end
 
       # Add or update roles to match source
-      source_roles.each do |source_role|
-        target_role = existing_roles[source_role.name]
+      source_by_key.each do |key, source_role|
+        target_role = existing_roles[key]
         if target_role
           # Update existing role to match source (including quantity and category)
           target_role.update!(
@@ -1428,7 +1432,7 @@ module Manage
       # The email_body is the template with {{placeholders}} (from the preview editor).
       # Personalize it for this specific recipient by substituting their actual values.
       shows = assignments.map { |a| a[:show] }.uniq.sort_by(&:date_and_time)
-      role_names = assignments.map { |a| a[:role].name }.uniq
+      role_names = assignments.map { |a| a[:role] }.compact.uniq.map(&:display_name).uniq
       dates = shows.map { |s| s.date_and_time.strftime("%B %-d") }.uniq
       show_dates = dates.count > 2 ? "#{dates.first} - #{dates.last}" : dates.join(" & ")
       shows_list = shows.map { |s| "<li>#{s.date_and_time.strftime('%A, %B %-d at %-l:%M %p')}: #{s.display_name}</li>" }.join("\n")
@@ -1438,7 +1442,9 @@ module Manage
         "show_dates" => show_dates,
         "shows_list" => shows_list,
         "role_name" => role_names.join(", "),
-        "role_names" => role_names.join(", ")
+        "role_names" => role_names.join(", "),
+        "casting_unit" => casting_unit_word,
+        "casting_units" => casting_unit_word.pluralize
       }
 
       # Interpolate {{placeholders}} in the body and subject
@@ -1537,9 +1543,10 @@ module Manage
         "<li>#{date}: #{show_name}</li>"
       end.join("\n")
 
-      # Get all unique role names from the show(s)
-      all_roles = all_shows.flat_map { |s| s.show_person_role_assignments.includes(:role).map(&:role) }.uniq
-      role_names = all_roles.map(&:name).uniq
+      # Get all unique role names from the show(s) — "Act 3 · Magic" in an
+      # act-based production, the plain role name otherwise.
+      all_roles = all_shows.flat_map { |s| s.show_person_role_assignments.includes(:role).map(&:role) }.compact.uniq
+      role_names = all_roles.map(&:display_name).uniq
       role_name = role_names.first || "Cast Member"
       role_names_list = role_names.join(", ")
 
@@ -1548,8 +1555,16 @@ module Manage
         show_dates: show_dates,
         shows_list: shows_list,
         role_name: role_name,
-        role_names: role_names_list
+        role_names: role_names_list,
+        casting_unit: casting_unit_word,
+        casting_units: casting_unit_word.pluralize
       }
+    end
+
+    # The word a cast notification uses for what a person was given:
+    # "act" in an act-based production, "role" otherwise.
+    def casting_unit_word
+      @production&.act_based? ? "act" : "role"
     end
 
     # Build sync info comparing this show's cast with linked shows

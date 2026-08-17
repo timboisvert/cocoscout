@@ -15,6 +15,12 @@
   additional_act_rate = PayoutScheme.additional_act_rate(distribution)
   payees = @show_payout.act_payees
   auto_open = params[:enter_acts].present?
+  # In an act-based production the lineup already says how many acts each
+  # person holds — the rows start from that, and a hand-adjusted count can
+  # always be put back to it.
+  from_lineup = @show_payout.counts_acts_from_lineup?
+  lineup_counts = from_lineup ? @show.lineup_act_counts : {}
+  saved_counts = @show_payout.act_counts || {}
 %>
 
 <div data-controller="payout-acts"
@@ -24,7 +30,7 @@
      data-payout-acts-act-rates-value="<%= act_rates.to_json %>"
      data-payout-acts-additional-rate-value="<%= additional_act_rate %>">
 
-  <div data-payout-acts-target="modal"
+  <div data-payout-acts-target="modal" id="payout-acts-modal"
        class="<%= "hidden" unless auto_open %> fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50"
        data-action="click->payout-acts#closeOnBackdrop keydown.esc@window->payout-acts#close">
     <div class="relative top-10 mx-auto mb-16 w-full max-w-2xl shadow-lg rounded-lg bg-white"
@@ -41,9 +47,15 @@
       </div>
 
       <div class="p-5">
-        <p class="text-sm text-gray-600">
-          This show pays by acts. Enter how many acts each person did and we'll apply the scheme's rules.
-        </p>
+        <% if from_lineup %>
+          <p class="text-sm text-gray-600">
+            This show pays by acts, and the lineup already says how many each person holds. Adjust a count here only if the night went differently from the lineup.
+          </p>
+        <% else %>
+          <p class="text-sm text-gray-600">
+            This show pays by acts. Enter how many acts each person did and we'll apply the scheme's rules.
+          </p>
+        <% end %>
         <div class="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
           <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Pay rules</span>
           <div class="mt-1 font-medium text-gray-900"><%= @show_payout.act_rules_description %></div>
@@ -74,6 +86,12 @@
               <span class="text-sm text-gray-600">acts</span>
               <%= render "shared/button", text: "Apply to all", variant: "secondary", size: "small", type: :button,
                     data: { action: "click->payout-acts#applyAll" } %>
+              <% if from_lineup %>
+                <span class="ml-auto">
+                  <%= render "shared/button", text: "Reset to lineup", variant: "outline", size: "small", type: :button,
+                        data: { action: "click->payout-acts#resetToLineup" } %>
+                </span>
+              <% end %>
             </div>
 
             <div class="max-h-[45vh] overflow-y-auto divide-y divide-gray-100">
@@ -83,7 +101,12 @@
                   is_guest = payee.is_a?(ShowPersonRoleAssignment)
                   name = is_guest ? payee.guest_name : payee.name
                   headshot_variant = is_guest ? nil : payee.safe_headshot_variant(:thumb)
-                  count = @show_payout.act_count_for(payee)
+                  lineup_count = lineup_counts[key].to_i
+                  count = if from_lineup
+                    saved_counts.key?(key) ? saved_counts[key].to_i : lineup_count
+                  else
+                    @show_payout.act_count_for(payee)
+                  end
                 %>
                 <div class="flex items-center gap-3 py-2.5">
                   <% if headshot_variant %>
@@ -99,10 +122,14 @@
                     <% if is_guest %>
                       <div class="text-xs text-gray-500">Guest</div>
                     <% end %>
+                    <% if from_lineup %>
+                      <div class="text-xs text-gray-500">Counted from the lineup — <%= pluralize(lineup_count, "act") %></div>
+                    <% end %>
                   </div>
 
                   <input type="number" name="act_counts[<%= key %>]" value="<%= count %>" min="0" step="1"
                          data-payout-acts-target="input"
+                         data-lineup-count="<%= lineup_count %>"
                          data-action="input->payout-acts#update"
                          class="w-20 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
 

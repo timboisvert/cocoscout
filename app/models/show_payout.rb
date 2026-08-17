@@ -74,10 +74,14 @@ class ShowPayout < ApplicationRecord
   # The payees an act-based calculation needs a count for: everyone assigned to
   # the show.
   def act_payees
-    assignments = show.show_person_role_assignments.includes(:assignable, :role).to_a
+    cast = show.pay_cast_assignments
+    cast[:people] + cast[:guests]
+  end
 
-    people = assignments.reject(&:guest?).map(&:assignable).compact.uniq
-    people + assignments.select(&:guest?)
+  # In an act-based production the lineup already says how many acts each
+  # person holds — no one needs to type it in.
+  def counts_acts_from_lineup?
+    show.act_based?
   end
 
   # Status helpers

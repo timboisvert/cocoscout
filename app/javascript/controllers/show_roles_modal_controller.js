@@ -11,7 +11,7 @@ export default class extends Controller {
         "migrationSummary", "migrationSummaryText", "linkedShowsWarning", "linkedShowsText",
         "autoMappableSection", "autoMappableList", "needsDecisionSection", "needsDecisionList",
         "noAssignmentsMessage", "migrationStats", "migrationExecuteButton", "migrationHint",
-        "quantityInput", "categorySelect",
+        "quantityInput", "categorySelect", "roleNameLabel", "restrictedSection",
         "slotChangeModal", "slotChangeTitle", "slotChangeMessage", "slotChangeList",
         "slotChangeStats", "slotChangeExecuteButton"
     ]
@@ -28,7 +28,58 @@ export default class extends Controller {
         toggleUrl: String,
         migrationPreviewUrl: String,
         executeMigrationUrl: String,
-        usingCustomRoles: Boolean
+        usingCustomRoles: Boolean,
+        actBased: Boolean
+    }
+
+    // ---- Casting-mode vocabulary -------------------------------------------
+    // An act-based production calls each entry an "act" and the set a
+    // "lineup"; a role-based one says "role(s)". Only user-visible strings
+    // read these — endpoints and payload keys keep saying "role".
+    get actBased() {
+        return this.hasActBasedValue && this.actBasedValue
+    }
+
+    get unit() {
+        return this.actBased ? "act" : "role"
+    }
+
+    get unitTitle() {
+        return this.actBased ? "Act" : "Role"
+    }
+
+    get units() {
+        return this.actBased ? "acts" : "roles"
+    }
+
+    // 1-based running-order numbers for the current lineup, breaks skipped.
+    lineupNumbers() {
+        const numbers = {}
+        let n = 0
+        this.roles.forEach(role => {
+            if (role.category === "break") return
+            n += 1
+            numbers[role.id] = n
+        })
+        return numbers
+    }
+
+    // Selecting "Break" in the act form hides the fields a break can't use.
+    categoryChanged() {
+        this.updateBreakFieldVisibility()
+    }
+
+    updateBreakFieldVisibility() {
+        if (!this.actBased || !this.hasCategorySelectTarget) return
+        const isBreak = this.categorySelectTarget.value === "break"
+        if (this.hasRestrictedSectionTarget) this.restrictedSectionTarget.classList.toggle("hidden", isBreak)
+        if (isBreak) {
+            this.restrictedCheckboxTarget.checked = false
+            this.updateEligibleMembersVisibility()
+        }
+        if (this.hasRoleNameLabelTarget) {
+            this.roleNameLabelTarget.textContent = isBreak ? "Label" : `${this.unitTitle} Name`
+        }
     }
 
     connect() {
@@ -154,7 +205,9 @@ export default class extends Controller {
         this.roleMappings = {}
 
         // Update subtitle based on direction
-        const direction = data.switching_to === 'custom' ? 'custom roles' : 'production roles'
+        const direction = this.actBased
+            ? (data.switching_to === 'custom' ? "this show's own lineup" : "the production's lineup")
+            : (data.switching_to === 'custom' ? 'custom roles' : 'production roles')
         if (this.hasMigrationSubtitleTarget) {
             this.migrationSubtitleTarget.textContent = `Switching to ${direction}`
         }
@@ -251,9 +304,15 @@ export default class extends Controller {
             ? `<img src="${mapping.headshot_url}" alt="${mapping.assignable_name}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">`
             : `<div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">${mapping.initials}</div>`
 
-        const roleOptions = targetRoles.map(r =>
-            `<option value="${r.id}">${r.name}${r.category !== 'performing' ? ` (${r.category})` : ''}</option>`
-        ).join("")
+        const castable = targetRoles.filter(r => r.category !== 'break')
+        let n = 0
+        const roleOptions = castable.map(r => {
+            if (this.actBased) {
+                n += 1
+                return `<option value="${r.id}">Act ${n} · ${r.name}</option>`
+            }
+            return `<option value="${r.id}">${r.name}${r.category !== 'performing' ? ` (${r.category})` : ''}</option>`
+        }).join("")
 
         return `
             <div class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -262,7 +321,7 @@ export default class extends Controller {
                     <p class="font-medium text-gray-900 truncate">${mapping.assignable_name}</p>
                     <p class="text-sm text-gray-600">
                         Currently: <span class="text-amber-700 font-medium">${mapping.current_role_name}</span>
-                        <span class="text-gray-400 ml-1">(no matching role found)</span>
+                        <span class="text-gray-400 ml-1">(no matching ${this.unit} found)</span>
                     </p>
                 </div>
                 <select class="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white min-w-[140px]"
@@ -270,7 +329,7 @@ export default class extends Controller {
                         data-action="change->show-roles-modal#updateRoleMapping">
                     <option value="remove" selected>Remove from cast</option>
                     <option disabled>──────────</option>
-                    <option value="" disabled>Assign to role:</option>
+                    <option value="" disabled>Assign to ${this.unit}:</option>
                     ${roleOptions}
                 </select>
             </div>
@@ -438,7 +497,8 @@ export default class extends Controller {
         } else {
             this.emptyStateTarget.classList.add("hidden")
             this.rolesListSectionTarget.classList.remove("hidden")
-            this.rolesListTarget.innerHTML = this.roles.map(role => this.roleTemplate(role)).join("")
+            const numbers = this.lineupNumbers()
+            this.rolesListTarget.innerHTML = this.roles.map(role => this.roleTemplate(role, numbers[role.id])).join("")
         }
         // Also update the inline roles list on the edit page
         this.updateInlineRolesList()
@@ -449,9 +509,16 @@ export default class extends Controller {
         if (!this.hasInlineRolesListTarget) return
 
         if (this.roles.length === 0) {
-            this.inlineRolesListTarget.innerHTML = `<p class="text-sm text-gray-500 italic">No custom roles defined yet. Click "Manage Custom Roles" to add some.</p>`
+            this.inlineRolesListTarget.innerHTML = this.actBased
+                ? `<p class="text-sm text-gray-500 italic">No acts in this show's lineup yet. Click "Edit lineup" to add some.</p>`
+                : `<p class="text-sm text-gray-500 italic">No custom roles defined yet. Click "Manage Custom Roles" to add some.</p>`
         } else {
+            const numbers = this.lineupNumbers()
             const rolesHtml = this.roles.map(role => {
+                if (this.actBased && role.category === "break") {
+                    return `<span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium border border-dashed border-gray-300 text-gray-500">— ${role.name} —</span>`
+                }
+                const numberText = this.actBased && numbers[role.id] ? `<span class="mr-1.5 text-pink-600 font-bold">${numbers[role.id]}.</span>` : ""
                 const quantity = role.quantity || 1
                 const quantityText = quantity > 1 ? `<span class="ml-1.5 text-gray-400">x ${quantity}</span>` : ""
                 const restrictedIcon = role.restricted
@@ -459,16 +526,21 @@ export default class extends Controller {
                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                        </svg>`
                     : ""
-                return `<span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800">${role.name}${quantityText}${restrictedIcon}</span>`
+                return `<span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800">${numberText}${role.name}${quantityText}${restrictedIcon}</span>`
             }).join("")
 
             this.inlineRolesListTarget.innerHTML = `<div class="flex flex-wrap gap-2">${rolesHtml}</div>`
         }
     }
 
-    roleTemplate(role) {
+    roleTemplate(role, lineupNumber = null) {
+        if (this.actBased && role.category === "break") return this.breakTemplate(role)
+
         const quantity = role.quantity || 1
         const assignmentsText = `<span class="text-xs text-gray-500">${role.assignments_count || 0}/${quantity} filled</span>`
+        const numberBadge = this.actBased && lineupNumber
+            ? `<span class="flex-shrink-0 w-7 h-7 rounded-md bg-pink-100 text-pink-700 text-sm font-bold flex items-center justify-center" title="Act ${lineupNumber}">${lineupNumber}</span>`
+            : ""
 
         const restrictedBadge = role.restricted
             ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Restricted</span>`
@@ -499,12 +571,13 @@ export default class extends Controller {
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
                         </svg>
                     </span>
+                    ${numberBadge}
                     <div class="flex-1">
                         <div class="font-bold text-md flex items-center">
                             ${role.name}${quantity > 1 ? ` <span class="ml-1 text-sm font-normal text-gray-500">(${quantity} slots)</span>` : ''}
                             ${restrictedBadge}
                         </div>
-                        <div class="flex items-center gap-2 mt-1">
+                        <div class="flex items-center gap-2 mt-1 ${this.actBased ? 'hidden' : ''}">
                             ${categoryBadge}
                         </div>
                         ${eligibleMembers}
@@ -512,9 +585,37 @@ export default class extends Controller {
                     ${assignmentsText}
                     <div class="flex gap-2 items-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <button type="button" data-action="click->show-roles-modal#editRole" data-role-id="${role.id}"
-                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Edit Role</button>
+                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Edit ${this.unitTitle}</button>
                         <button type="button" data-action="click->show-roles-modal#deleteRole" data-role-id="${role.id}"
-                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Delete Role</button>
+                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Delete ${this.unitTitle}</button>
+                    </div>
+                </div>
+            </div>
+        `
+    }
+
+    // An intermission in an act-based lineup: a draggable divider row with
+    // the same edit/delete affordances, but no slots or category.
+    breakTemplate(role) {
+        return `
+            <div class="py-1 bg-white flex cursor-move group relative"
+                 draggable="true"
+                 data-role-id="${role.id}"
+                 data-action="dragstart->show-roles-modal#startDrag dragend->show-roles-modal#endDrag dragover->show-roles-modal#dragOver dragleave->show-roles-modal#dragLeave drop->show-roles-modal#drop">
+                <div class="flex items-center gap-3 w-full">
+                    <span class="text-gray-400 cursor-move" title="Drag to reorder">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
+                        </svg>
+                    </span>
+                    <div class="flex-1 border-t border-dashed border-gray-300"></div>
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">${role.name}</span>
+                    <div class="flex-1 border-t border-dashed border-gray-300"></div>
+                    <div class="flex gap-2 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button type="button" data-action="click->show-roles-modal#editRole" data-role-id="${role.id}"
+                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Edit</button>
+                        <button type="button" data-action="click->show-roles-modal#deleteRole" data-role-id="${role.id}"
+                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Remove</button>
                     </div>
                 </div>
             </div>
@@ -548,32 +649,39 @@ export default class extends Controller {
                 this.roles = data.roles
                 this.renderRoles()
             } else {
-                alert(data.message || "Failed to copy roles")
+                alert(data.message || `Failed to copy ${this.units}`)
             }
         } catch (error) {
             console.error("Failed to copy roles:", error)
-            alert("Failed to copy roles. Please try again.")
+            alert(`Failed to copy ${this.units}. Please try again.`)
         } finally {
             this.hideLoading()
         }
     }
 
     // Show add/edit form
-    showAddForm() {
+    showAddForm(event, { category = "performing", defaultName = "" } = {}) {
         this.editingRoleId = null
-        this.roleNameInputTarget.value = ""
+        this.roleNameInputTarget.value = defaultName
         this.restrictedCheckboxTarget.checked = false
         this.selectedMemberKeys = []
-        this.formTitleTarget.textContent = "Add Role"
-        this.saveButtonTextTarget.textContent = "Add Role"
+        const isBreak = category === "break"
+        this.formTitleTarget.textContent = isBreak ? "Add intermission" : `Add ${this.unitTitle}`
+        this.saveButtonTextTarget.textContent = isBreak ? "Add intermission" : `Add ${this.unitTitle}`
         this.hideRoleNameError()
         this.updateEligibleMembersVisibility()
 
         // Reset quantity and category fields
         if (this.hasQuantityInputTarget) this.quantityInputTarget.value = "1"
-        if (this.hasCategorySelectTarget) this.categorySelectTarget.value = "performing"
+        if (this.hasCategorySelectTarget) this.categorySelectTarget.value = category
+        this.updateBreakFieldVisibility()
 
         this.showForm()
+    }
+
+    // Act-based lineups: add an intermission marker (a break row).
+    showAddBreakForm(event) {
+        this.showAddForm(event, { category: "break", defaultName: "Intermission" })
     }
 
     // Edit existing role
@@ -587,14 +695,16 @@ export default class extends Controller {
         this.roleNameInputTarget.value = role.name
         this.restrictedCheckboxTarget.checked = role.restricted
         this.selectedMemberKeys = role.eligible_member_keys || []
-        this.formTitleTarget.textContent = "Edit Role"
-        this.saveButtonTextTarget.textContent = "Update Role"
+        const isBreak = this.actBased && role.category === "break"
+        this.formTitleTarget.textContent = isBreak ? "Edit intermission" : `Edit ${this.unitTitle}`
+        this.saveButtonTextTarget.textContent = isBreak ? "Update intermission" : `Update ${this.unitTitle}`
         this.hideRoleNameError()
         this.updateEligibleMembersVisibility()
 
         // Populate quantity and category fields
         if (this.hasQuantityInputTarget) this.quantityInputTarget.value = role.quantity || 1
         if (this.hasCategorySelectTarget) this.categorySelectTarget.value = role.category || "performing"
+        this.updateBreakFieldVisibility()
 
         this.showForm()
     }
@@ -707,7 +817,7 @@ export default class extends Controller {
         const name = this.roleNameInputTarget.value.trim()
 
         if (!name) {
-            this.showRoleNameError("Role name is required")
+            this.showRoleNameError(`${this.unitTitle} name is required`)
             return
         }
 
@@ -801,12 +911,12 @@ export default class extends Controller {
                     this.cancelSlotChange()
                     this.hideForm()
                 } else {
-                    const errorMsg = data.error || "Failed to save role"
+                    const errorMsg = data.error || `Failed to save ${this.unit}`
                     this.showRoleNameError(errorMsg)
                 }
             } catch (error) {
                 console.error("Failed to execute slot change:", error)
-                this.showRoleNameError("Failed to save role. Please try again.")
+                this.showRoleNameError(`Failed to save ${this.unit}. Please try again.`)
             }
             return
         }
@@ -835,12 +945,12 @@ export default class extends Controller {
                 }
                 this.hideForm()
             } else {
-                const errorMsg = data.errors ? data.errors.join(", ") : "Failed to save role"
+                const errorMsg = data.errors ? data.errors.join(", ") : `Failed to save ${this.unit}`
                 this.showRoleNameError(errorMsg)
             }
         } catch (error) {
             console.error("Failed to save role:", error)
-            this.showRoleNameError("Failed to save role. Please try again.")
+            this.showRoleNameError(`Failed to save ${this.unit}. Please try again.`)
         }
     }
 
@@ -899,7 +1009,7 @@ export default class extends Controller {
         if (this.hasSlotChangeMessageTarget) {
             this.slotChangeMessageTarget.innerHTML = `
                 <p class="text-gray-700">
-                    You're reducing this role from <strong>${data.current_assignment_count} assigned</strong> to <strong>${data.new_quantity} slots</strong>.
+                    You're reducing this ${this.unit} from <strong>${data.current_assignment_count} assigned</strong> to <strong>${data.new_quantity} slots</strong>.
                 </p>
                 <p class="text-gray-600 mt-1">
                     Select which ${data.new_quantity} ${data.new_quantity === 1 ? 'person' : 'people'} to keep:
@@ -946,7 +1056,7 @@ export default class extends Controller {
         if (this.hasSlotChangeMessageTarget) {
             this.slotChangeMessageTarget.innerHTML = `
                 <p class="text-gray-700">
-                    You're increasing this role from <strong>${data.current_quantity} slots</strong> to <strong>${data.new_quantity} slots</strong>.
+                    You're increasing this ${this.unit} from <strong>${data.current_quantity} slots</strong> to <strong>${data.new_quantity} slots</strong>.
                 </p>
                 <p class="text-gray-600 mt-1">
                     ${data.slots_being_added} new ${data.slots_being_added === 1 ? 'slot' : 'slots'} will be available for casting.
@@ -1086,7 +1196,7 @@ export default class extends Controller {
 
         if (role.assignments_count > 0) {
             this.deleteConfirmMessageTarget.textContent =
-                `This role has ${role.assignments_count} assignment${role.assignments_count > 1 ? 's' : ''}. Deleting it will remove those assignments. Are you sure?`
+                `This ${this.unit} has ${role.assignments_count} assignment${role.assignments_count > 1 ? 's' : ''}. Deleting it will remove those assignments. Are you sure?`
         } else {
             this.deleteConfirmMessageTarget.textContent = `Are you sure you want to delete "${role.name}"?`
         }
@@ -1120,11 +1230,11 @@ export default class extends Controller {
                 this.roles = this.roles.filter(r => r.id !== roleId)
                 this.renderRoles()
             } else {
-                alert(data.message || "Failed to delete role")
+                alert(data.message || `Failed to delete ${this.unit}`)
             }
         } catch (error) {
             console.error("Failed to delete role:", error)
-            alert("Failed to delete role. Please try again.")
+            alert(`Failed to delete ${this.unit}. Please try again.`)
         } finally {
             this.pendingDeleteRoleId = null
         }

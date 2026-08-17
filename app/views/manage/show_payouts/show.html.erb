@@ -2,6 +2,9 @@
 
 <%
   has_financials = @show_financials&.complete?
+  # Per-act pay never reads revenue, so it can be worked out before ticket
+  # numbers are in; every other method waits on complete financials.
+  can_calculate = has_financials || @show_payout.act_based?
   has_line_items = @line_items&.any? || false
   is_calculated = @show_payout.calculated_at.present?
   # When the org has an automatic payout cadence, show the real next run date
@@ -17,7 +20,7 @@
     payout_status = :awaiting_payout
     payout_label = "Awaiting Payout"
     payout_class = "bg-pink-100 text-pink-700"
-  elsif has_financials
+  elsif can_calculate
     payout_status = :ready
     payout_label = "Ready to Calculate"
     payout_class = "bg-gray-100 text-gray-700"
@@ -321,6 +324,14 @@
                 <div class="mt-3">
                   <%= link_to manage_money_show_financials_path(@show) do %>
                     <%= render "shared/button", text: "View & Confirm Financials", variant: "primary", size: "small" %>
+                  <% end %>
+                </div>
+              <% elsif @show_payout.act_based? %>
+                <p class="text-sm text-pink-800 font-medium">Financial data not entered yet</p>
+                <p class="text-sm text-pink-700 mt-1">Per-act pay doesn't need it to calculate, but ticket sales and revenue still feed this show's profit and loss.</p>
+                <div class="mt-3">
+                  <%= link_to manage_money_show_financials_path(@show) do %>
+                    <%= render "shared/button", text: "Enter Financial Data", variant: "secondary", size: "small" %>
                   <% end %>
                 </div>
               <% else %>
@@ -675,7 +686,14 @@
       <% if show_payout_breakdown %>
       <!-- Payout Breakdown -->
       <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <h3 class="font-semibold text-gray-900 mb-3">Payout Breakdown</h3>
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h3 class="font-semibold text-gray-900">Payout Breakdown</h3>
+          <% if @show_payout.act_based? && !@show_payout.paid? %>
+            <%# Act pay: reopen the "How many acts?" modal to adjust a count and recalculate. %>
+            <%= render "shared/button", text: "Adjust act counts", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: "payout-acts-modal" } %>
+          <% end %>
+        </div>
         <% if @show_payout.total_payout %>
           <%
             items = @line_items || []
@@ -907,7 +925,7 @@
                           </div>
                           <%# How the number was arrived at — secondary info, lives under the name. %>
                           <div class="text-xs text-gray-500">
-                            <% items.each_with_index do |li, i| %><%= "; " if i.positive? %><%= li.calculation_explanation %><% end %>
+                            <% items.each_with_index do |li, i| %><%= "; " if i.positive? %><%= li.calculation_explanation %><% if @show.act_based? && li.calculation_details.is_a?(Hash) && (li.calculation_details["inputs"] || {}).key?("acts") %> (from lineup)<% end %><% end %>
                           </div>
                           <%# Show advance information for this person %>
                           <% if item.payee_type == "Person" && @advances_by_person[item.payee_id]&.any? %>
@@ -1193,7 +1211,7 @@
             </div>
           </div>
 
-        <% elsif has_financials %>
+        <% elsif can_calculate %>
           <%
             # Check if show has any performers assigned
             assignments = @show.show_person_role_assignments.includes(:assignable)
@@ -1202,14 +1220,22 @@
           %>
           <div class="text-center py-6">
             <% if has_cast %>
-              <% if @show_payout.act_based? %>
+              <% if @show_payout.act_based? && @show_payout.counts_acts_from_lineup? %>
+                <p class="text-gray-500 mb-3">This show pays by acts. Each person's act count comes straight from the lineup — adjust it only if the night went differently.</p>
+              <% elsif @show_payout.act_based? %>
                 <p class="text-gray-500 mb-3">This show pays by acts. We'll ask how many acts each person did, then work out what they're owed.</p>
               <% else %>
                 <p class="text-gray-500 mb-3">Ready to calculate payouts based on the financial data.</p>
               <% end %>
-              <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true do %>
-                <%= render "shared/button", text: "Calculate Payouts", variant: "primary", size: "medium", type: :submit %>
-              <% end %>
+              <div class="flex flex-wrap items-center justify-center gap-3">
+                <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true do %>
+                  <%= render "shared/button", text: "Calculate Payouts", variant: "primary", size: "medium", type: :submit %>
+                <% end %>
+                <% if @show_payout.act_based? %>
+                  <%= render "shared/button", text: "Adjust act counts", variant: "secondary", size: "medium", type: :button,
+                        data: { controller: "modal", action: "click->modal#open", modal_id: "payout-acts-modal" } %>
+                <% end %>
+              </div>
             <% else %>
               <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left mb-4">
                 <div class="flex gap-3">
@@ -1395,7 +1421,7 @@
                 </svg>
               </button>
             <% end %>
-          <% elsif has_financials %>
+          <% elsif can_calculate %>
             <%# Ready to calculate %>
             <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true, class: "block" do %>
               <button type="submit"

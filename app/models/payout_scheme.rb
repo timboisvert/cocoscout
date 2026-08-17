@@ -82,6 +82,23 @@ class PayoutScheme < ApplicationRecord
       .first
   end
 
+  # The scheme a show of this production would start from today, if the
+  # production has one of its own (org-level fallbacks don't count — this is
+  # "what did someone set up for THIS production").
+  def self.current_default_for_production(production, on: Date.current)
+    PayoutSchemeDefault
+      .for_production(production)
+      .effective_on(on)
+      .by_effective_date_desc
+      .first
+      &.payout_scheme
+  end
+
+  # Does the org have any (non-archived) scheme that pays by acts?
+  def self.per_act_scheme_exists_for?(organization)
+    organization.payout_schemes.active.any?(&:act_based?)
+  end
+
   # Check if this is an organization-level scheme (not tied to a specific production)
   def organization_level?
     production_id.blank?

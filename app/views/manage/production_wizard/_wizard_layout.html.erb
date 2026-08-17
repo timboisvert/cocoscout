@@ -12,24 +12,35 @@
   } %>
 
   <%
-    # Build dynamic steps based on wizard state
+    # Build dynamic steps based on wizard state. Each view names its step by
+    # key (current_step: :roles) so optional steps can come and go without
+    # renumbering. Legacy integer current_step values still map by position.
+    casting_on = @wizard_state[:casting_source] != "none"
     wizard_steps = [
-      { num: 1, name: "Name", path: manage_productions_wizard_path },
-      { num: 2, name: "Logo", path: manage_productions_wizard_logo_path },
-      { num: 3, name: "Casting", path: manage_productions_wizard_casting_path },
-      { num: 4, name: "Roles", path: manage_productions_wizard_roles_path },
-      { num: 5, name: "Shows", path: manage_productions_wizard_shows_path }
+      { key: :name, name: "Name", path: manage_productions_wizard_path },
+      { key: :logo, name: "Logo", path: manage_productions_wizard_logo_path },
+      { key: :casting, name: "Casting", path: manage_productions_wizard_casting_path }
     ]
+
+    if casting_on
+      wizard_steps << { key: :casting_style, name: "Style", path: manage_productions_wizard_casting_style_path }
+      wizard_steps << { key: :roles, name: (act_based_wizard? ? "Lineup" : "Roles"), path: manage_productions_wizard_roles_path }
+      wizard_steps << { key: :pay, name: "Pay", path: manage_productions_wizard_pay_path } if pay_step_available?
+    end
+
+    wizard_steps << { key: :shows, name: "Shows", path: manage_productions_wizard_shows_path }
 
     # Add Schedule step if user said they have shows
     if @wizard_state[:has_shows] == "yes"
-      wizard_steps << { num: 6, name: "Schedule", path: manage_productions_wizard_schedule_path }
-      wizard_steps << { num: 7, name: "Review", path: manage_productions_wizard_review_path }
-    else
-      wizard_steps << { num: 6, name: "Review", path: manage_productions_wizard_review_path }
+      wizard_steps << { key: :schedule, name: "Schedule", path: manage_productions_wizard_schedule_path }
     end
+    wizard_steps << { key: :review, name: "Review", path: manage_productions_wizard_review_path }
 
-    current_index = wizard_steps.index { |s| s[:num] == current_step } || 0
+    current_index = if current_step.is_a?(Integer)
+      current_step - 1
+    else
+      wizard_steps.index { |s| s[:key] == current_step.to_sym } || 0
+    end
   %>
   <%# Full-width step bar, directly below the breadcrumb. %>
   <%= render "shared/wizard_steps", steps: wizard_steps, current_index: current_index %>

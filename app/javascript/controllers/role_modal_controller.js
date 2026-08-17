@@ -3,9 +3,16 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["modal", "form", "title", "nameInput", "methodInput", "submitButton",
         "restrictedCheckbox", "eligiblePeopleSection", "personCheckbox", "searchInput",
-        "quantityInput", "categorySelect"]
+        "quantityInput", "categorySelect", "restrictedSection"]
     static values = {
-        createPath: String
+        createPath: String,
+        // Act-based production: roles are acts in a lineup, and a "break"
+        // category row is an intermission (no performer, no restrictions).
+        actMode: Boolean
+    }
+
+    get unit() {
+        return this.actModeValue ? "Act" : "Role"
     }
 
     connect() {
@@ -26,11 +33,11 @@ export default class extends Controller {
 
     openForNew(event) {
         event.preventDefault()
-        this.titleTarget.textContent = "Add Role"
+        this.titleTarget.textContent = `Add ${this.unit}`
         this.formTarget.reset()
         this.formTarget.action = this.createPathValue || this.element.dataset.createPath
         this.methodInputTarget.value = "post"
-        this.submitButtonTarget.textContent = "Add Role"
+        this.submitButtonTarget.textContent = `Add ${this.unit}`
 
         // Reset restricted toggle and people selection
         if (this.hasRestrictedCheckboxTarget) {
@@ -47,18 +54,33 @@ export default class extends Controller {
         if (this.hasCategorySelectTarget) {
             this.categorySelectTarget.value = "performing"
         }
+        this.categoryChanged()
 
         this.modalTarget.classList.remove("hidden")
+    }
+
+    // Act mode: drop an intermission into the lineup — a break-category role
+    // named "Intermission", ready to save.
+    openForBreak(event) {
+        this.openForNew(event)
+        this.titleTarget.textContent = "Add intermission"
+        this.submitButtonTarget.textContent = "Add intermission"
+        this.nameInputTarget.value = "Intermission"
+        if (this.hasCategorySelectTarget) {
+            this.categorySelectTarget.value = "break"
+        }
+        this.categoryChanged()
     }
 
     openForEdit(event) {
         event.preventDefault()
         const button = event.currentTarget
-        this.titleTarget.textContent = "Edit Role"
+        const isBreak = button.dataset.roleCategory === "break"
+        this.titleTarget.textContent = isBreak ? "Edit intermission" : `Edit ${this.unit}`
         this.nameInputTarget.value = button.dataset.roleName
         this.formTarget.action = button.dataset.updatePath
         this.methodInputTarget.value = "patch"
-        this.submitButtonTarget.textContent = "Update Role"
+        this.submitButtonTarget.textContent = isBreak ? "Update intermission" : `Update ${this.unit}`
 
         // Set restricted toggle and load eligible members
         if (this.hasRestrictedCheckboxTarget) {
@@ -82,8 +104,21 @@ export default class extends Controller {
         if (this.hasCategorySelectTarget) {
             this.categorySelectTarget.value = button.dataset.roleCategory || "performing"
         }
+        this.categoryChanged()
 
         this.modalTarget.classList.remove("hidden")
+    }
+
+    // A break takes no performer: hide the restriction controls and clear them.
+    categoryChanged() {
+        if (!this.hasCategorySelectTarget || !this.hasRestrictedSectionTarget) return
+
+        const isBreak = this.categorySelectTarget.value === "break"
+        this.restrictedSectionTarget.classList.toggle("hidden", isBreak)
+        if (isBreak && this.hasRestrictedCheckboxTarget) {
+            this.restrictedCheckboxTarget.checked = false
+            this.updateEligiblePeopleVisibility()
+        }
     }
 
     toggleRestricted() {

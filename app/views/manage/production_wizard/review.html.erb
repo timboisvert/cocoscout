@@ -1,8 +1,8 @@
 <%
-  # Calculate correct step number based on whether schedule step is included
-  review_step = @wizard_state[:has_shows] == "yes" ? 7 : 6
+  act_mode = act_based_wizard?
+  casting_on = @wizard_state[:casting_source] != "none"
 %>
-<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: review_step, step_name: "Review" } do %>
+<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: :review, step_name: "Review" } do %>
   <div class="text-center mb-6">
     <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
       <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,6 +52,9 @@
           <% if casting_source == 'talent_pool' %>
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Talent Pool</span>
             <span class="text-gray-600 ml-1">— Build a pool of performers and cast them into shows</span>
+          <% elsif casting_source == 'none' %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">No Casting</span>
+            <span class="text-gray-600 ml-1">— These shows don't need performers assigned</span>
           <% else %>
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Manual Entry</span>
             <span class="text-gray-600 ml-1">— Add performers by name or email as needed</span>
@@ -61,28 +64,91 @@
       <%= link_to "Edit", manage_productions_wizard_casting_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
     </div>
 
-    <!-- Roles -->
-    <div class="flex items-start justify-between py-3 border-b border-gray-200">
-      <div>
-        <p class="text-sm font-medium text-gray-500">Roles</p>
-        <% if @wizard_state[:has_roles] == 'yes' && @wizard_state[:roles].present? && @wizard_state[:roles].any? %>
-          <div class="mt-1 flex flex-wrap gap-1">
-            <% @wizard_state[:roles].each do |role| %>
-              <% role_name = role[:name] || role['name'] %>
-              <% role_qty = role[:quantity] || role['quantity'] %>
-              <% if role_name.present? %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
-                  <%= role_name %><% if role_qty.to_i > 1 %> (<%= role_qty %>)<% end %>
-                </span>
-              <% end %>
+    <% if casting_on %>
+      <!-- Casting style -->
+      <div class="flex items-start justify-between py-3 border-b border-gray-200">
+        <div>
+          <p class="text-sm font-medium text-gray-500">Casting Style</p>
+          <p class="text-sm text-gray-900 mt-1">
+            <% if act_mode %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Acts</span>
+              <span class="text-gray-600 ml-1">— Build a running order and cast each act</span>
+            <% else %>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Roles</span>
+              <span class="text-gray-600 ml-1">— Fill named positions for each show</span>
+            <% end %>
+          </p>
+        </div>
+        <%= link_to "Edit", manage_productions_wizard_casting_style_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+      </div>
+
+      <!-- Roles / Lineup -->
+      <div class="flex items-start justify-between py-3 border-b border-gray-200">
+        <div>
+          <p class="text-sm font-medium text-gray-500"><%= act_mode ? "Lineup" : "Roles" %></p>
+          <% if @wizard_state[:has_roles] == 'yes' && @wizard_state[:roles].present? && @wizard_state[:roles].any? %>
+            <% if act_mode %>
+              <ol class="mt-1 space-y-1">
+                <% act_number = 0 %>
+                <% @wizard_state[:roles].each do |role| %>
+                  <% role_name = role[:name] || role['name'] %>
+                  <% next if role_name.blank? %>
+                  <% is_break = (role[:category] || role['category']).to_s == "break" %>
+                  <li class="flex items-center gap-2 text-sm">
+                    <% if is_break %>
+                      <span class="w-6 text-right text-gray-300">—</span>
+                      <span class="text-gray-500 italic"><%= role_name %></span>
+                    <% else %>
+                      <% act_number += 1 %>
+                      <span class="w-6 text-right text-gray-500 font-medium tabular-nums"><%= act_number %></span>
+                      <span class="text-gray-900"><%= role_name %></span>
+                    <% end %>
+                  </li>
+                <% end %>
+              </ol>
+            <% else %>
+              <div class="mt-1 flex flex-wrap gap-1">
+                <% @wizard_state[:roles].each do |role| %>
+                  <% role_name = role[:name] || role['name'] %>
+                  <% role_qty = role[:quantity] || role['quantity'] %>
+                  <% if role_name.present? %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
+                      <%= role_name %><% if role_qty.to_i > 1 %> (<%= role_qty %>)<% end %>
+                    </span>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-sm text-gray-500"><%= act_mode ? "No lineup yet" : "No roles defined yet" %></p>
+          <% end %>
+        </div>
+        <%= link_to "Edit", manage_productions_wizard_roles_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+      </div>
+
+      <% if pay_step_available? %>
+        <!-- Pay -->
+        <div class="flex items-start justify-between py-3 border-b border-gray-200">
+          <div>
+            <p class="text-sm font-medium text-gray-500">Pay</p>
+            <% if @wizard_state[:pays_performers] == "yes" %>
+              <% scheme = @wizard_state[:payout_scheme_id].present? ? Current.organization.payout_schemes.find_by(id: @wizard_state[:payout_scheme_id]) : nil %>
+              <p class="text-sm text-gray-900 mt-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Performers are paid</span>
+                <% if scheme %>
+                  <span class="text-gray-600 ml-1">— <%= scheme.name %> is the default payout scheme</span>
+                <% else %>
+                  <span class="text-gray-600 ml-1">— payout scheme to be set up later</span>
+                <% end %>
+              </p>
+            <% else %>
+              <p class="text-sm text-gray-500 mt-1">Performers are not paid through CocoScout</p>
             <% end %>
           </div>
-        <% else %>
-          <p class="text-sm text-gray-500">No roles defined yet</p>
-        <% end %>
-      </div>
-      <%= link_to "Edit", manage_productions_wizard_roles_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
-    </div>
+          <%= link_to "Edit", manage_productions_wizard_pay_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+        </div>
+      <% end %>
+    <% end %>
 
     <!-- Shows -->
     <div class="flex items-start justify-between py-3 border-b border-gray-200">

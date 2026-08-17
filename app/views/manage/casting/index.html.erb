@@ -13,6 +13,12 @@
     ]
   } %>
 
+  <% if production_needs_per_act_scheme_nudge?(@production) %>
+    <div class="mt-4">
+      <%= render "manage/casting/pay_scheme_nudge", production: @production %>
+    </div>
+  <% end %>
+
   <div class="pt-4 mt-2" data-controller="casting-filter">
     <%= render "shared/filters/filter_bar", filter_groups: [
       {

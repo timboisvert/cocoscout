@@ -215,4 +215,76 @@ RSpec.describe Show, type: :model do
       end
     end
   end
+
+  describe 'act-based lineups' do
+    let(:production) { create(:production, casting_mode: 'act_based') }
+    let(:show) { create(:show, production: production) }
+    let!(:magic1) { create(:role, production: production, name: 'Magic', position: 1) }
+    let!(:variety) { create(:role, production: production, name: 'Variety', position: 2) }
+    let!(:intermission) { create(:role, production: production, name: 'Intermission', category: 'break', position: 3) }
+    let!(:magic2) { create(:role, production: production, name: 'Magic', position: 4) }
+    let(:dancer) { create(:person) }
+    let(:duo) { create(:group) }
+
+    it 'delegates the casting mode to the production' do
+      expect(show).to be_act_based
+      expect(create(:show)).to be_role_based
+    end
+
+    describe '#casting_progress' do
+      it 'does not count break markers as slots' do
+        create(:show_person_role_assignment, show: show, role: magic1, assignable: dancer)
+
+        expect(show.casting_progress).to include(total: 3, filled: 1)
+        expect(show).not_to be_fully_cast
+      end
+    end
+
+    describe '#lineup_act_counts' do
+      it 'counts one act per assignment a performer holds, skipping breaks' do
+        create(:show_person_role_assignment, show: show, role: magic1, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: magic2, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: variety, assignable: duo)
+
+        expect(show.lineup_act_counts).to eq(
+          ShowPayout.act_key(dancer) => 2,
+          ShowPayout.act_key(duo) => 1
+        )
+      end
+
+      it 'folds a guest holding two acts into one payee keyed by their first slot' do
+        first = create(:show_person_role_assignment, show: show, role: magic1, assignable: nil, guest_name: 'Lola', guest_email: 'lola@example.com')
+        create(:show_person_role_assignment, show: show, role: magic2, assignable: nil, guest_name: 'Lola L.', guest_email: 'LOLA@example.com')
+        create(:show_person_role_assignment, show: show, role: variety, assignable: nil, guest_name: 'Rex')
+
+        counts = show.lineup_act_counts
+        expect(counts[ShowPayout.act_key(first)]).to eq(2)
+        expect(counts.values.sum).to eq(3)
+        expect(counts.size).to eq(2)
+      end
+    end
+
+    describe '#pay_cast_assignments' do
+      it 'lists people once and collapses guests in an act-based production' do
+        create(:show_person_role_assignment, show: show, role: magic1, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: magic2, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: magic1, assignable: nil, guest_name: 'Lola')
+        create(:show_person_role_assignment, show: show, role: magic2, assignable: nil, guest_name: 'lola')
+
+        cast = show.pay_cast_assignments
+        expect(cast[:people]).to eq([ dancer ])
+        expect(cast[:guests].size).to eq(1)
+      end
+
+      it 'keeps each guest slot separate in a role-based production' do
+        role_show = create(:show)
+        host = create(:role, production: role_show.production, name: 'Host')
+        mc = create(:role, production: role_show.production, name: 'MC')
+        create(:show_person_role_assignment, show: role_show, role: host, assignable: nil, guest_name: 'Lola')
+        create(:show_person_role_assignment, show: role_show, role: mc, assignable: nil, guest_name: 'Lola')
+
+        expect(role_show.pay_cast_assignments[:guests].size).to eq(2)
+      end
+    end
+  end
 end

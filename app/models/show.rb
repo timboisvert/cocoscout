@@ -89,6 +89,10 @@ class Show < ApplicationRecord
     manual: "manual"              # Admin manually adds names/emails
   }, default: nil, prefix: :casting
 
+  # Casting mode (roles vs acts) is a production-level choice; a show only
+  # tweaks the lineup, never the mode.
+  delegate :act_based?, :role_based?, to: :production, allow_nil: true
+
   # Returns the effective casting source (inheriting from production if not overridden)
   def effective_casting_source
     casting_source || production&.casting_source || "talent_pool"
@@ -295,13 +299,13 @@ class Show < ApplicationRecord
 
   # Check if show is fully cast (all role slots have assignments)
   def fully_cast?
-    total_slots = available_roles.sum(:quantity)
+    total_slots = available_roles.castable.sum(:quantity)
     total_slots == show_person_role_assignments.count
   end
 
   # Returns casting progress for this show
   def casting_progress
-    total_slots = available_roles.sum(:quantity)
+    total_slots = available_roles.castable.sum(:quantity)
     filled_slots = show_person_role_assignments.count
     {
       total: total_slots,
@@ -381,6 +385,41 @@ class Show < ApplicationRecord
       production.updated_at.to_i,
       location&.updated_at&.to_i
     ].compact.join("-"))
+  end
+
+  # ---- Act-based lineup ---------------------------------------------------
+
+  # The cast, one entry per payee, for pay: people/groups once each, plus
+  # guest assignments. In an act-based production a guest holding two acts is
+  # one payee (their first assignment stands in for them); in a role-based one
+  # each guest slot is its own payee, as before.
+  def pay_cast_assignments
+    assignments = show_person_role_assignments.includes(:assignable, :role).to_a
+    assignments = assignments.sort_by { |a| [ a.role&.position || 0, a.id ] }
+    people = assignments.reject(&:guest?).map(&:assignable).compact.uniq
+    guests = assignments.select(&:guest?)
+    guests = guests.uniq(&:guest_identity) if act_based?
+    { people: people, guests: guests }
+  end
+
+  # How many acts each payee holds on this show, keyed by ShowPayout.act_key
+  # (the same key the payout's act_counts uses). Breaks aren't acts. Guests
+  # collapse by identity onto the key of their first assignment.
+  def lineup_act_counts
+    counts = Hash.new(0)
+    guest_keys = {}
+    assignments = show_person_role_assignments.includes(:assignable, :role).to_a
+    assignments.sort_by { |a| [ a.role&.position || 0, a.id ] }.each do |a|
+      next if a.role&.break?
+
+      if a.guest?
+        key = (guest_keys[a.guest_identity] ||= ShowPayout.act_key(a))
+        counts[key] += 1
+      elsif a.assignable
+        counts[ShowPayout.act_key(a.assignable)] += 1
+      end
+    end
+    counts
   end
 
   # Returns the roles available for this show.

@@ -546,8 +546,12 @@ Rails.application.routes.draw do
     post   "/productions/wizard/logo",        to: "production_wizard#save_logo",     as: "productions_wizard_save_logo"
     get    "/productions/wizard/casting",     to: "production_wizard#casting",       as: "productions_wizard_casting"
     post   "/productions/wizard/casting",     to: "production_wizard#save_casting",  as: "productions_wizard_save_casting"
+    get    "/productions/wizard/casting_style", to: "production_wizard#casting_style",      as: "productions_wizard_casting_style"
+    post   "/productions/wizard/casting_style", to: "production_wizard#save_casting_style", as: "productions_wizard_save_casting_style"
     get    "/productions/wizard/roles",       to: "production_wizard#roles",         as: "productions_wizard_roles"
     post   "/productions/wizard/roles",       to: "production_wizard#save_roles",    as: "productions_wizard_save_roles"
+    get    "/productions/wizard/pay",         to: "production_wizard#pay",           as: "productions_wizard_pay"
+    post   "/productions/wizard/pay",         to: "production_wizard#save_pay",      as: "productions_wizard_save_pay"
     get    "/productions/wizard/shows",       to: "production_wizard#shows",         as: "productions_wizard_shows"
     post   "/productions/wizard/shows",       to: "production_wizard#save_shows",    as: "productions_wizard_save_shows"
     get    "/productions/wizard/schedule",    to: "production_wizard#schedule",      as: "productions_wizard_schedule"
@@ -1073,6 +1077,8 @@ Rails.application.routes.draw do
         # Agreement management
         get :agreement_status
         post :send_agreement_reminders
+        # Performer pay (Pay tab): paid or not, and which payout scheme is the default
+        patch :update_pay
       end
 
       # Production documents & handbooks (rich text, per-audience sharing).

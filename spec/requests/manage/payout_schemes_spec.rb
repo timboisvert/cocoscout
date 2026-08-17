@@ -164,6 +164,69 @@ RSpec.describe "Manage::PayoutSchemes", type: :request do
     end
   end
 
+  describe "starting from an act-based production" do
+    let!(:act_production) { create(:production, organization: org, name: "Cabaret Night", casting_mode: "act_based") }
+    let(:other_org_production) { create(:production, casting_mode: "act_based") }
+
+    it "lights up the Per Act preset and pins it to the production" do
+      get manage_presets_money_payout_schemes_path(preset: "per_act", production_id: act_production.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Recommended")
+      expect(response.body).to include("Cabaret Night")
+      expect(response.body).to include(%(name="production_id" id="production_id" value="#{act_production.id}"))
+      # The recommended preset comes first
+      expect(response.body.index('data-preset="per_act"')).to be < response.body.index('data-preset="no_pay"')
+    end
+
+    it "makes the preset scheme the production's default on create" do
+      post manage_create_from_preset_money_payout_schemes_path, params: { preset_key: "per_act", production_id: act_production.id }
+
+      scheme = PayoutScheme.find_by(name: "Per Act")
+      expect(scheme).to be_present
+      expect(response).to redirect_to(manage_edit_money_payout_scheme_path(scheme))
+      expect(PayoutScheme.current_default_for_production(act_production)).to eq(scheme)
+    end
+
+    it "starts a custom scheme from per-act pay for that production" do
+      get manage_new_money_payout_scheme_path(production_id: act_production.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(value="per_act" checked))
+      expect(response.body).to include("This scheme will become the default for")
+      expect(response.body).to include("Cabaret Night")
+    end
+
+    it "does not bias a role-based production toward per-act pay" do
+      get manage_new_money_payout_scheme_path(production_id: production.id)
+
+      expect(response.body).not_to include(%(value="per_act" checked))
+      expect(response.body).not_to include("This scheme will become the default for")
+    end
+
+    it "ignores a production from another organization" do
+      get manage_new_money_payout_scheme_path(production_id: other_org_production.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("This scheme will become the default for")
+
+      post manage_create_from_preset_money_payout_schemes_path, params: { preset_key: "per_act", production_id: other_org_production.id }
+      expect(PayoutScheme.current_default_for_production(other_org_production)).to be_nil
+    end
+
+    it "sets the default when a custom scheme is created from that production" do
+      post manage_money_payout_schemes_path, params: {
+        production_id: act_production.id,
+        payout_scheme: { name: "House Act Pay" },
+        rules: { distribution: { method: "per_act", act_mode: "simple", per_act_rate: "30" } }
+      }
+
+      scheme = PayoutScheme.find_by(name: "House Act Pay")
+      expect(scheme).to be_present
+      expect(PayoutScheme.current_default_for_production(act_production)).to eq(scheme)
+    end
+  end
+
   describe "PayoutScheme.act_amount" do
     let(:tiered) do
       { "act_mode" => "tiers", "tiers" => [ { "acts" => 1, "amount" => 25.0 }, { "acts" => 2, "amount" => 50.0 } ] }

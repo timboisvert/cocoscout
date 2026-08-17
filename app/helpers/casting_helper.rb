@@ -1,4 +1,36 @@
 module CastingHelper
+  # ---- Casting mode vocabulary --------------------------------------------
+  #
+  # A role-based production fills "roles"; an act-based one casts "acts" in a
+  # "lineup". Every view that names the unit goes through these so the words
+  # follow the production's casting_mode.
+
+  # "role" / "roles" / "Role" / "Roles" — or "act" / "acts" / "Act" / "Acts".
+  def casting_unit(production, plural: false, capitalize: false)
+    word = production&.act_based? ? "act" : "role"
+    word = word.pluralize if plural
+    capitalize ? word.capitalize : word
+  end
+
+  # The name of the structure being edited: "Roles" or "Lineup".
+  def casting_structure_label(production)
+    production&.act_based? ? "Lineup" : "Roles"
+  end
+
+  # Running-order numbers for a lineup, { role_id => n }, breaks omitted.
+  # Compute once per page and pass into Role#display_name(number:).
+  def lineup_numbers(roles)
+    Role.lineup_numbers_for(roles)
+  end
+
+  # "Act 3 · Magic" in an act-based production, the plain name otherwise.
+  # Accepts the precomputed lineup_numbers hash to avoid a query per role.
+  def role_display_name(role, numbers = nil)
+    return "" unless role
+
+    role.display_name(number: numbers && numbers[role.id])
+  end
+
   # Maps a role's assignments onto its display slots (1..quantity).
   #
   # Exact in-range positions claim their slot first; everything else

@@ -1,4 +1,9 @@
-<div data-controller="role-modal" data-create-path="<%= manage_create_casting_role_path(@production) %>">
+<%
+  act_mode = @production.act_based?
+  unit = act_mode ? "Act" : "Role"
+  numbers = act_mode ? lineup_numbers(@roles) : {}
+%>
+<div data-controller="role-modal" data-create-path="<%= manage_create_casting_role_path(@production) %>" data-role-modal-act-mode-value="<%= act_mode %>">
   <% if @roles.empty? %>
     <div class="mb-6 p-4 bg-pink-50 border border-pink-200 rounded-lg">
       <div class="flex items-start gap-3">
@@ -8,20 +13,40 @@
           </svg>
         </div>
         <div>
-          <h3 class="font-semibold text-pink-900">Next step: Create your roles</h3>
-          <p class="text-sm text-pink-800 mt-1">
-            Roles define the positions you need to fill for each show — like "Host", "Featured Comic", or "Opener".
-            Each role can have multiple slots if you need more than one person in that position.
-          </p>
+          <% if act_mode %>
+            <h3 class="font-semibold text-pink-900">Next step: Build your lineup</h3>
+            <p class="text-sm text-pink-800 mt-1">
+              The lineup is your running order — the acts in the order they go on, with an intermission wherever you break.
+              Each show starts from this lineup and can rearrange it on the night.
+            </p>
+          <% else %>
+            <h3 class="font-semibold text-pink-900">Next step: Create your roles</h3>
+            <p class="text-sm text-pink-800 mt-1">
+              Roles define the positions you need to fill for each show — like "Host", "Featured Comic", or "Opener".
+              Each role can have multiple slots if you need more than one person in that position.
+            </p>
+          <% end %>
         </div>
       </div>
     </div>
   <% end %>
 
-  <div class="flex items-center justify-between mb-4">
-    <p class="text-sm text-gray-500">Roles represent the parts within your production. For example, "Host" or "Comic 1"</p>
+  <div class="flex items-center justify-between gap-4 mb-4">
+    <% if act_mode %>
+      <div>
+        <h2 class="text-base font-semibold text-gray-900">Lineup</h2>
+        <p class="text-sm text-gray-500">The running order for a show. Acts are numbered; intermissions break up the halves.</p>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500">Roles represent the parts within your production. For example, "Host" or "Comic 1"</p>
+    <% end %>
     <% if current_user_can_manage?(@production) %>
-      <%= render "shared/button", text: "Add Role", variant: "primary", size: "small", type: :button, data: { action: "role-modal#openForNew" } %>
+      <div class="flex items-center gap-2 shrink-0">
+        <% if act_mode %>
+          <%= render "shared/button", text: "Add intermission", variant: "secondary", size: "small", type: :button, data: { action: "role-modal#openForBreak" } %>
+        <% end %>
+        <%= render "shared/button", text: "Add #{unit}", variant: "primary", size: "small", type: :button, data: { action: "role-modal#openForNew" } %>
+      </div>
     <% end %>
   </div>
 
@@ -36,13 +61,27 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
                 </svg>
               </span>
+              <% if act_mode %>
+                <span class="w-7 shrink-0 text-right text-sm font-semibold text-gray-500 tabular-nums">
+                  <%= numbers[role.id] %>
+                </span>
+              <% end %>
               <div class="flex-1">
+                <% if role.break? %>
+                  <div class="flex items-center gap-3">
+                    <span class="flex-1 border-t border-dashed border-gray-300"></span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-gray-500"><%= role.name %></span>
+                    <span class="flex-1 border-t border-dashed border-gray-300"></span>
+                  </div>
+                <% else %>
                 <div class="font-bold text-md flex items-center gap-2">
                   <%= role.name %>
                   <% if role.quantity > 1 %>
                     <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><%= role.quantity %> slots</span>
                   <% end %>
-                  <span class="text-xs font-medium text-gray-500 capitalize"><%= role.category %></span>
+                  <% unless act_mode %>
+                    <span class="text-xs font-medium text-gray-500 capitalize"><%= role.category %></span>
+                  <% end %>
                 </div>
                 <% if role.restricted? %>
                   <div class="flex items-center gap-1 mt-2">
@@ -68,6 +107,7 @@
                 <% else %>
                   <p class="text-xs text-gray-500 mt-1">Available to all talent pool members</p>
                 <% end %>
+                <% end %>
               </div>
               <% if current_user_can_manage?(@production) %>
                 <%
@@ -91,8 +131,8 @@
                 <%# Modal rendered outside the opacity-0 hover container so it stays visible when shown %>
                 <%= render "shared/confirm_modal",
                     id: "confirm-delete-role-#{role.id}",
-                    title: "Delete role?",
-                    message: "Are you sure you want to delete this role?",
+                    title: (role.break? ? "Remove intermission?" : "Delete #{unit.downcase}?"),
+                    message: (role.break? ? "This takes the intermission out of the lineup." : "Are you sure you want to delete this #{unit.downcase}?"),
                     confirm_text: "Delete",
                     url: manage_update_casting_role_path(@production, role),
                     method: :delete %>
@@ -103,9 +143,9 @@
       </div>
     <% else %>
       <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
-        <p class="text-gray-500 text-sm mb-4">No roles have been added yet.</p>
+        <p class="text-gray-500 text-sm mb-4"><%= act_mode ? "The lineup is empty." : "No roles have been added yet." %></p>
         <% if current_user_can_manage?(@production) %>
-          <%= render "shared/button", text: "Add Your First Role", variant: "primary", size: "small", type: :button, data: { action: "role-modal#openForNew" } %>
+          <%= render "shared/button", text: "Add Your First #{unit}", variant: "primary", size: "small", type: :button, data: { action: "role-modal#openForNew" } %>
         <% end %>
       </div>
     <% end %>
@@ -116,7 +156,7 @@
     <div data-role-modal-target="modal" class="<%= @role.errors.any? ? '' : 'hidden' %> fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50" data-action="click->role-modal#close">
       <div class="relative top-10 mx-auto p-5 border w-full max-w-xl shadow-lg rounded-md bg-white mb-10" data-action="click->role-modal#stopPropagation">
         <div class="flex items-center justify-between pb-3 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900" data-role-modal-target="title"><%= @role.persisted? ? 'Edit Role' : 'Add Role' %></h3>
+          <h3 class="text-lg font-semibold text-gray-900" data-role-modal-target="title"><%= @role.persisted? ? "Edit #{unit}" : "Add #{unit}" %></h3>
           <button type="button" class="text-gray-400 hover:text-gray-600 cursor-pointer" data-action="role-modal#close">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -129,28 +169,33 @@
         <%= form_with(url: form_url, scope: :role, method: @role.persisted? ? :patch : :post, authenticity_token: form_authenticity_token, data: { role_modal_target: "form" }) do |form| %>
           <input type="hidden" name="_method" value="<%= @role.persisted? ? 'patch' : 'post' %>" data-role-modal-target="methodInput">
           <div class="mb-4">
-            <%= form.label :name, "Role Name", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <%= form.label :name, "#{unit} Name", class: "block text-sm font-medium text-gray-700 mb-2", data: { role_modal_target: "nameLabel" } %>
             <% if @role.errors[:name].any? %>
               <p class="text-sm text-pink-600 mb-2"><%= @role.errors[:name].first %></p>
             <% end %>
-            <%= form.text_field :name, data: { role_modal_target: "nameInput" }, placeholder: "e.g., Host, Comic", class: ["w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500", @role.errors[:name].any? ? "border-pink-500" : "border-gray-300"] %>
+            <%= form.text_field :name, data: { role_modal_target: "nameInput" }, placeholder: (act_mode ? "e.g., Magic, Aerial" : "e.g., Host, Comic"), class: ["w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500", @role.errors[:name].any? ? "border-pink-500" : "border-gray-300"] %>
           </div>
 
-          <!-- Quantity and Category in a row -->
-          <div class="grid grid-cols-2 gap-4 mb-4">
+          <!-- Quantity and Category in a row (an act is always one thing in the running order, so quantity stays hidden in act mode) -->
+          <div class="grid <%= act_mode ? 'grid-cols-1' : 'grid-cols-2' %> gap-4 mb-4">
+            <% if act_mode %>
+              <%= form.hidden_field :quantity, value: 1, data: { role_modal_target: "quantityInput" } %>
+            <% else %>
+              <div>
+                <%= form.label :quantity, "How many?", class: "block text-sm font-medium text-gray-700 mb-2" %>
+                <%= form.number_field :quantity, min: 1, max: 20, value: @role.quantity || 1, data: { role_modal_target: "quantityInput" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <p class="text-xs text-gray-500 mt-1">e.g., 4 for 4 comics</p>
+              </div>
+            <% end %>
             <div>
-              <%= form.label :quantity, "How many?", class: "block text-sm font-medium text-gray-700 mb-2" %>
-              <%= form.number_field :quantity, min: 1, max: 20, value: @role.quantity || 1, data: { role_modal_target: "quantityInput" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-              <p class="text-xs text-gray-500 mt-1">e.g., 4 for 4 comics</p>
-            </div>
-            <div>
-              <%= form.label :category, "Category", class: "block text-sm font-medium text-gray-700 mb-2" %>
-              <%= form.select :category, [["Performing", "performing"], ["Technical", "technical"]], {}, data: { role_modal_target: "categorySelect" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <%= form.label :category, (act_mode ? "Type" : "Category"), class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <% category_options = act_mode ? [["Performing", "performing"], ["Intermission", "break"]] : [["Performing", "performing"], ["Technical", "technical"]] %>
+              <%= form.select :category, category_options, {}, data: { role_modal_target: "categorySelect", action: "change->role-modal#categoryChanged" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
             </div>
           </div>
 
-          <!-- Restricted toggle -->
-          <div class="mb-4">
+          <!-- Restricted toggle (an intermission takes no performer, so this hides for breaks) -->
+          <div class="mb-4" data-role-modal-target="restrictedSection">
             <label class="flex items-center gap-3 cursor-pointer">
               <%= form.check_box :restricted,
                   class: "sr-only peer",
@@ -198,7 +243,7 @@
 
           <div class="flex justify-end gap-2">
             <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button, data: { action: "role-modal#close" } %>
-            <%= render "shared/button", text: (@role.persisted? ? "Update Role" : "Add Role"), variant: "primary", size: "small", type: :submit, data: { role_modal_target: "submitButton" } %>
+            <%= render "shared/button", text: (@role.persisted? ? "Update #{unit}" : "Add #{unit}"), variant: "primary", size: "small", type: :submit, data: { role_modal_target: "submitButton" } %>
           </div>
         <% end %>
       </div>

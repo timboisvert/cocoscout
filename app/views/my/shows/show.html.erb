@@ -8,6 +8,8 @@
     (a.assignable_type == "Person" && people_ids.include?(a.assignable_id)) ||
     (a.assignable_type == "Group" && group_ids.include?(a.assignable_id))
   end
+  # "Act 3 · Magic" labels in an act-based production, plain role names otherwise
+  cast_numbers = @show.act_based? ? lineup_numbers(@show.available_roles.to_a) : {}
 %>
 
 <div class="w-full" data-controller="contact-production">
@@ -274,7 +276,7 @@
                         <div class="text-sm">
                           <span class="text-gray-700"><%= assignment.assignable.name %></span>
                           <span class="text-gray-400">as</span>
-                          <strong class="text-pink-500"><%= assignment.role.name %></strong>
+                          <strong class="text-pink-500"><%= role_display_name(assignment.role, cast_numbers) %></strong>
                         </div>
                         <% if has_vacancy %>
                           <div class="flex items-center gap-1 mt-1">
@@ -356,7 +358,7 @@
                     <% end %>
                   </p>
                   <p class="text-xs text-gray-500 mt-1">
-                    You were previously cast as <strong><%= my_open_vacancy.role.name %></strong>
+                    You were previously cast as <strong><%= role_display_name(my_open_vacancy.role, cast_numbers) %></strong>
                   </p>
                 </div>
               </div>
@@ -475,7 +477,7 @@
                         </div>
                       <% end %>
                       <div class="text-xs text-center mt-2 font-medium truncate w-full <%= 'text-pink-500' if is_my_person %>"><%= assignment.assignable.name %></div>
-                      <div class="text-xs text-center text-gray-500 truncate w-full"><%= assignment.role&.name %></div>
+                      <div class="text-xs text-center text-gray-500 truncate w-full"><%= role_display_name(assignment.role, cast_numbers) %></div>
                     <% end %>
                   <% elsif assignment.assignable_type == "Group" %>
                     <% is_my_group = group_ids.include?(assignment.assignable_id) %>
@@ -488,7 +490,7 @@
                         </div>
                       <% end %>
                       <div class="text-xs text-center mt-2 font-medium truncate w-full <%= 'text-pink-500' if is_my_group %>"><%= assignment.assignable.name %></div>
-                      <div class="text-xs text-center text-gray-500 truncate w-full"><%= assignment.role&.name %></div>
+                      <div class="text-xs text-center text-gray-500 truncate w-full"><%= role_display_name(assignment.role, cast_numbers) %></div>
                     <% end %>
                   <% end %>
                 <% end %>

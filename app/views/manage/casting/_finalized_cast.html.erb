@@ -6,6 +6,8 @@
   groups_by_id ||= {}
   cancelled_vacancies_by_assignment = show.cant_make_it_vacancies_by_assignment
   cast_members = show.people.distinct.includes(profile_headshots: { image_attachment: :blob })
+  # "Act 3 · Magic" labels in an act-based production; breaks (intermissions) aren't listed
+  finalized_numbers = lineup_numbers(roles)
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -27,9 +29,11 @@
     <%# Compact cast list %>
     <div class="space-y-2 mb-6">
       <% roles.each do |role| %>
+        <% next if role.break? %>
         <%
           assignments = (assignments_by_role_id[role.id] || []).sort_by { |a| a.position || 0 }
           role_quantity = role.quantity || 1
+          role_label = role_display_name(role, finalized_numbers)
         %>
 
         <% if assignments.any? %>
@@ -64,7 +68,7 @@
               <div class="flex-1 min-w-0">
                 <div class="font-medium text-sm truncate"><% if is_guest %><span class="text-gray-900"><%= assignment.guest_name %></span><% else %><%= link_to assignable.name, assignable.is_a?(Person) ? manage_person_path(assignable) : manage_group_path(assignable), class: "text-gray-900 hover:text-pink-600 transition-colors" %><% end %></div>
                 <div class="text-xs text-gray-500">
-                  <%= role.name %>
+                  <%= role_label %>
                   <% if role_quantity > 1 %>
                     <span class="text-gray-400">(#<%= assignment.position || 1 %>)</span>
                   <% end %>
@@ -112,7 +116,7 @@
               <div class="flex-1 min-w-0">
                 <div class="font-medium text-gray-400 text-sm">Not assigned</div>
                 <div class="text-xs text-gray-400">
-                  <%= role.name %>
+                  <%= role_label %>
                   <% if role_quantity > 1 %>
                     <span>(#<%= slot_num + 1 %>)</span>
                   <% end %>

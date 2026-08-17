@@ -20,6 +20,14 @@ module Manage
 
     def new
       @payout_scheme = PayoutScheme.new(organization: Current.organization)
+
+      # Arriving from an act-based production (its Pay tab, the casting nudge or
+      # a payout page with no scheme yet): start from per-act pay and remember
+      # the production so it becomes the default on create.
+      @default_production = biased_production
+      if @default_production
+        @payout_scheme.rules = PayoutScheme::PRESETS[:per_act][:rules].deep_stringify_keys
+      end
     end
 
     def create
@@ -31,9 +39,15 @@ module Manage
         org_level_count = Current.organization.payout_schemes.organization_level.count
         @payout_scheme.make_default! if org_level_count == 1
 
-        redirect_to manage_money_payout_scheme_path(@payout_scheme),
-                    notice: "Payout scheme created successfully."
+        notice = "Payout scheme created successfully."
+        if (production = default_production_from_params)
+          @payout_scheme.add_default_for_production!(production, effective_from: Date.current)
+          notice = "Payout scheme created and set as the default for #{production.name}."
+        end
+
+        redirect_to manage_money_payout_scheme_path(@payout_scheme), notice: notice
       else
+        @default_production = default_production_from_params
         render :new, status: :unprocessable_entity
       end
     end
@@ -113,6 +127,11 @@ module Manage
     # Collection actions for presets
     def presets
       @presets = PayoutScheme::PRESETS
+      # ?preset=per_act (from an act-based production) puts that preset first
+      # and lit up; ?production_id threads through so the scheme becomes that
+      # production's default when it's created.
+      @highlighted_preset = params[:preset].to_s.to_sym if PayoutScheme::PRESETS.key?(params[:preset].to_s.to_sym)
+      @default_production = biased_production
     end
 
     def create_from_preset
@@ -125,8 +144,13 @@ module Manage
         org_level_count = Current.organization.payout_schemes.organization_level.count
         @payout_scheme.make_default! if org_level_count == 1
 
-        redirect_to manage_edit_money_payout_scheme_path(@payout_scheme),
-                    notice: "Created #{@payout_scheme.name}. Customize it below."
+        notice = "Created #{@payout_scheme.name}. Customize it below."
+        if (production = default_production_from_params)
+          @payout_scheme.add_default_for_production!(production, effective_from: Date.current)
+          notice = "Created #{@payout_scheme.name} and made it the default for #{production.name}. Customize it below."
+        end
+
+        redirect_to manage_edit_money_payout_scheme_path(@payout_scheme), notice: notice
       else
         redirect_to manage_money_payout_schemes_path,
                     alert: "Could not create payout scheme from preset."
@@ -146,6 +170,20 @@ module Manage
     end
 
     private
+
+    # The production a preset/new-scheme flow was started from, if it's one of
+    # ours (never a bare Production.find on a URL param).
+    def default_production_from_params
+      return nil if params[:production_id].blank?
+
+      Current.organization.productions.find_by(id: params[:production_id])
+    end
+
+    # Only an act-based production biases the flow toward per-act pay.
+    def biased_production
+      production = default_production_from_params
+      production if production&.act_based?
+    end
 
     def set_payout_scheme
       @payout_scheme = PayoutScheme.where(organization: Current.organization)

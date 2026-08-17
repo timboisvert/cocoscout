@@ -66,6 +66,17 @@ export default class extends Controller {
         this.update()
     }
 
+    // Act-based production: put every row back to what the lineup says
+    // (each input carries its lineup count in data-lineup-count).
+    resetToLineup(event) {
+        if (event) event.preventDefault()
+        this.inputTargets.forEach(input => {
+            if (input.dataset.lineupCount === undefined) return
+            input.value = this.parseCount(input.dataset.lineupCount)
+        })
+        this.update()
+    }
+
     update() {
         let total = 0
 

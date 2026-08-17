@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Controls the casting source selection
 export default class extends Controller {
-    static targets = ["radio", "option"]
+    static targets = ["radio", "option", "modeOption"]
     static values = {
         updateUrl: String
     }
@@ -11,6 +11,7 @@ export default class extends Controller {
         this.submitting = false
         // Update UI to match current selection
         this.updateOptionStyles()
+        this.updateModeStyles()
     }
 
     select(event) {
@@ -21,6 +22,25 @@ export default class extends Controller {
 
         // Auto-save to server
         this.saveSelection(selectedValue)
+    }
+
+    // Casting style (roles vs acts) — same auto-save, its own radio group.
+    selectMode(event) {
+        this.updateModeStyles()
+        this.saveSetting('production[casting_mode]', event.target.value, 'Casting style saved')
+    }
+
+    updateModeStyles() {
+        this.modeOptionTargets.forEach(option => {
+            const radio = option.querySelector('input[type="radio"]')
+            if (radio && radio.checked) {
+                option.classList.remove('border-gray-200')
+                option.classList.add('border-pink-500', 'bg-pink-50')
+            } else {
+                option.classList.remove('border-pink-500', 'bg-pink-50')
+                option.classList.add('border-gray-200')
+            }
+        })
     }
 
     updateOptionStyles() {
@@ -43,7 +63,7 @@ export default class extends Controller {
         this.saveSetting(name, value)
     }
 
-    async saveSetting(name, value) {
+    async saveSetting(name, value, successMessage = 'Settings saved') {
         if (this.submitting) return
         this.submitting = true
 
@@ -64,7 +84,7 @@ export default class extends Controller {
             })
 
             if (response.ok) {
-                this.showNotice('Settings saved')
+                this.showNotice(successMessage)
             } else {
                 console.error('Failed to save setting')
                 this.showError('Failed to save setting')

@@ -2,9 +2,9 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo update_pay]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo update_pay]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay]
 
     def index
       @filter = params[:filter] || "all"
@@ -81,6 +81,48 @@ module Manage
       result = PublicKeyService.validate(proposed_key, entity_type: :production, exclude_entity: @production)
 
       render json: result
+    end
+
+    # Pay tab: whether performers are paid for this production and, if so, which
+    # payout scheme its shows start from. "Paid" is expressed as a production
+    # default on the scheme (PayoutSchemeDefault, effective today); "not paid"
+    # removes this production's defaults. Pro only — a free org sees the tab locked.
+    def update_pay
+      unless Current.organization.feature_available?(:money)
+        redirect_to edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}"),
+                    alert: "Performer pay is part of CocoScout Pro."
+        return
+      end
+
+      paid = params[:performers_paid] == "1"
+      scheme = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id]) if paid
+
+      if paid && scheme.nil?
+        redirect_to edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}"),
+                    alert: "Pick a payout scheme for this production, or turn performer pay off."
+        return
+      end
+
+      current = PayoutScheme.current_default_for_production(@production)
+      production_defaults = PayoutSchemeDefault.for_production(@production)
+                                               .joins(:payout_scheme)
+                                               .where(payout_schemes: { organization_id: Current.organization.id })
+      if paid
+        unless current == scheme
+          # Only THIS production's rows are touched (never the scheme's other
+          # productions). Earlier-dated rows stay so shows already in the books
+          # keep the scheme they had; anything dated today or later would
+          # override the new default, so it goes.
+          production_defaults.where("payout_scheme_defaults.effective_from >= ?", Date.current).destroy_all
+          scheme.add_default_for_production!(@production, effective_from: Date.current)
+        end
+        notice = "Performers on #{@production.name} are paid using #{scheme.name}."
+      else
+        production_defaults.destroy_all
+        notice = "Performers are not paid for #{@production.name}."
+      end
+
+      redirect_to edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}"), notice: notice
     end
 
     def update_public_key
@@ -360,6 +402,11 @@ module Manage
     end
 
     private
+
+    # The Pay tab sits after Public Listing (index 6) on the edit page's tab strip.
+    def pay_tab_index
+      6
+    end
 
     # Use callbacks to share common setup or constraints between actions.
     def set_production
