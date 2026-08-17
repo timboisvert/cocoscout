@@ -275,4 +275,36 @@ RSpec.describe "Manage::PayoutSchemes", type: :request do
       end
     end
   end
+
+  describe "setting a scheme as a production default from the schemes page" do
+    let!(:flat_scheme) do
+      PayoutScheme.create!(organization: org, name: "Flat Fifty",
+                           rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 } })
+    end
+    let!(:act_scheme) do
+      PayoutScheme.create!(organization: org, name: "Act Pay",
+                           rules: { "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 25.0 } })
+    end
+
+    it "restamps payouts nobody has calculated yet, and leaves calculated ones alone" do
+      show = create(:show, production: production, date_and_time: 2.days.ago)
+      pending = ShowPayout.create!(show: show, payout_scheme: flat_scheme)
+      calculated = ShowPayout.create!(show: create(:show, production: production, date_and_time: 5.days.ago),
+                                      payout_scheme: flat_scheme, calculated_at: Time.current)
+
+      post manage_update_defaults_money_payout_scheme_path(act_scheme),
+           params: { production_ids: [ production.id ], effective_from: 1.month.ago.to_date.to_s }
+
+      expect(pending.reload.payout_scheme).to eq(act_scheme)
+      expect(calculated.reload.payout_scheme).to eq(flat_scheme)
+    end
+
+    it "ignores production ids from another organization" do
+      foreign = create(:production, organization: create(:organization))
+
+      post manage_update_defaults_money_payout_scheme_path(act_scheme), params: { production_ids: [ foreign.id ] }
+
+      expect(PayoutSchemeDefault.for_production(foreign)).to be_empty
+    end
+  end
 end

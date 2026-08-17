@@ -3,32 +3,39 @@ module CastingHelper
   #
   # A role-based production fills "roles"; an act-based one casts "acts" in a
   # "lineup". Every view that names the unit goes through these so the words
-  # follow the production's casting_mode.
+  # follow the casting mode. Pass the Show when rendering one event (a show
+  # may override its production's mode) and the Production for
+  # production-wide pages.
 
   # "role" / "roles" / "Role" / "Roles" — or "act" / "acts" / "Act" / "Acts".
-  def casting_unit(production, plural: false, capitalize: false)
-    word = production&.act_based? ? "act" : "role"
+  def casting_unit(context, plural: false, capitalize: false)
+    word = context&.act_based? ? "act" : "role"
     word = word.pluralize if plural
     capitalize ? word.capitalize : word
   end
 
   # The name of the structure being edited: "Roles" or "Lineup".
-  def casting_structure_label(production)
-    production&.act_based? ? "Lineup" : "Roles"
+  def casting_structure_label(context)
+    context&.act_based? ? "Lineup" : "Roles"
   end
 
   # Running-order numbers for a lineup, { role_id => n }, breaks omitted.
-  # Compute once per page and pass into Role#display_name(number:).
-  def lineup_numbers(roles)
+  # Compute once per page and pass into Role#display_name(number:). With
+  # show:, the numbers are for that show — empty when it isn't cast by acts.
+  def lineup_numbers(roles, show: nil)
+    return {} if show && !show.act_based?
+
     Role.lineup_numbers_for(roles)
   end
 
-  # "Act 3 · Magic" in an act-based production, the plain name otherwise.
-  # Accepts the precomputed lineup_numbers hash to avoid a query per role.
-  def role_display_name(role, numbers = nil)
+  # "Act 3 · Magic" in an act-based lineup, the plain name otherwise.
+  # Accepts the precomputed lineup_numbers hash to avoid a query per role,
+  # and show: so a production role read inside an overridden show follows
+  # that show's mode.
+  def role_display_name(role, numbers = nil, show: nil)
     return "" unless role
 
-    role.display_name(number: numbers && numbers[role.id])
+    role.display_name(number: numbers && numbers[role.id], show: show)
   end
 
   # Maps a role's assignments onto its display slots (1..quantity).

@@ -22,6 +22,21 @@ class ShowPayout < ApplicationRecord
   scope :paid, -> { where(status: "paid") }
   scope :not_paid, -> { where.not(status: "paid") }
 
+  # A payout pins its scheme the first time its page is opened. When the
+  # production's scheme changes, payouts nobody has calculated yet (no line
+  # items, no hand-tuned override) should follow it rather than keep the
+  # scheme that happened to resolve on the day the page was first viewed.
+  # `scheme` nil means "resolve the default again for each show".
+  def self.restamp_pending_for_production!(production, scheme)
+    where(show_id: production.shows.select(:id), calculated_at: nil)
+      .where.missing(:line_items)
+      .where("override_rules IS NULL OR override_rules = '{}'::jsonb")
+      .includes(:show)
+      .find_each do |payout|
+        payout.update!(payout_scheme: scheme || PayoutScheme.default_for_show(payout.show))
+      end
+  end
+
   # Get effective rules (override or scheme)
   def effective_rules
     override_rules.presence || payout_scheme&.rules || {}

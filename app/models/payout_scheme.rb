@@ -274,6 +274,40 @@ class PayoutScheme < ApplicationRecord
     )
   end
 
+  # Make this THE scheme for a production — the answer to "which payout scheme
+  # does this production use?" asked from the production wizard or Pay tab.
+  #
+  # Replaces every production-level default the production had (any scheme,
+  # any date) with a single one that reaches back to the production's earliest
+  # show, so nights already on the calendar resolve to it too — a default
+  # "effective today" would silently skip a show that happened last week. It
+  # then restamps show payouts that haven't been worked out yet, because a
+  # payout pins its scheme the first time its page is opened and would
+  # otherwise keep showing whatever the org fallback was that day.
+  def make_production_scheme!(production)
+    transaction do
+      PayoutSchemeDefault.for_production(production).destroy_all
+      payout_scheme_defaults.create!(production_id: production.id,
+                                     effective_from: self.class.production_scheme_start(production))
+      ShowPayout.restamp_pending_for_production!(production, self)
+    end
+  end
+
+  # Clear the production's own scheme so its shows fall back to the org default.
+  def self.clear_production_scheme!(production)
+    transaction do
+      PayoutSchemeDefault.for_production(production).destroy_all
+      ShowPayout.restamp_pending_for_production!(production, nil)
+    end
+  end
+
+  # The date a production-wide scheme takes effect: its first show, or today
+  # if it has none / they're all ahead.
+  def self.production_scheme_start(production)
+    first_show = production.shows.minimum(:date_and_time)&.to_date
+    [ first_show, Date.current ].compact.min
+  end
+
   # Remove a production from this scheme's defaults
   def remove_default_for_production!(production)
     payout_scheme_defaults.where(production_id: production.id).destroy_all

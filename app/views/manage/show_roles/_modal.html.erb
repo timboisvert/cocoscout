@@ -1,8 +1,9 @@
-<%# Modal for managing show-specific custom roles (an act-based production's per-show lineup) %>
+<%# Modal for managing show-specific custom roles (an act-based show's per-show lineup) %>
 <%
-  act_mode = production.act_based?
-  unit = casting_unit(production)
-  unit_title = casting_unit(production, capitalize: true)
+  # The show decides the vocabulary — it may override the production's casting style.
+  act_mode = show.act_based?
+  unit = casting_unit(show)
+  unit_title = casting_unit(show, capitalize: true)
 %>
 <div data-show-roles-modal-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto" data-action="click->show-roles-modal#stopPropagation">

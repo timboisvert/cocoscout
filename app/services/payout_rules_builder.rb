@@ -1,0 +1,178 @@
+# frozen_string_literal: true
+
+# Turns what a manager typed into the rules jsonb a payout calculation runs on.
+#
+# One place for the shape, whether the numbers came from the calculation
+# wizard (a whole calculation), or from a show's Customize modal (tonight's
+# amounts laid over the calculation the show inherited).
+#
+#   PayoutRulesBuilder.build(params)                 # => full rules hash
+#   PayoutRulesBuilder.override(base_rules, params)  # => base with tonight's edits on top
+#
+# Rules shape (unchanged from before — PayoutCalculator reads it):
+#   { "allocation" => [ {type: expenses_first} | {type: percentage, value:, label:} |
+#                       {type: percentage, value:, person_id:, label:} | {type: remainder} ],
+#     "distribution" => { "method" => …, per-method keys },
+#     "performer_overrides" => { "<person_id>" | "guest_<assignment_id>" => { flat_amount:, … } } }
+class PayoutRulesBuilder
+  METHODS = %w[no_pay flat_fee per_act per_ticket per_ticket_guaranteed equal shares].freeze
+  # Only these split a pool of the night's money, so only they have a
+  # "before performers are paid" (house / expenses / someone's cut) step.
+  POOL_METHODS = %w[equal shares].freeze
+
+  class << self
+    def build(params)
+      p = normalize(params)
+      method = p[:method].to_s
+      method = "equal" unless METHODS.include?(method)
+
+      {
+        "allocation" => build_allocation(method, p),
+        "distribution" => build_distribution(method, p),
+        "performer_overrides" => build_performer_overrides(p[:performer_overrides])
+      }
+    end
+
+    # Tonight's changes on top of the calculation the show already has. The
+    # method never changes here (a different approach = choose a different
+    # calculation); amounts, house/expenses (pool methods only) and exact
+    # per-person amounts do. Keys the modal didn't send are kept from the base.
+    def override(base_rules, params)
+      base = (base_rules || {}).deep_dup.deep_stringify_keys
+      p = normalize(params)
+      method = base.dig("distribution", "method").to_s
+      method = "equal" unless METHODS.include?(method)
+
+      distribution = if p[:distribution].present?
+        build_distribution(method, p)
+      else
+        (base["distribution"] || {}).merge("method" => method)
+      end
+
+      allocation = if POOL_METHODS.include?(method) && p.key?(:house_percentage)
+        build_allocation(method, p)
+      else
+        base["allocation"] || []
+      end
+
+      overrides = if p.key?(:performer_overrides)
+        build_performer_overrides(p[:performer_overrides])
+      else
+        base["performer_overrides"] || {}
+      end
+
+      { "allocation" => allocation, "distribution" => distribution, "performer_overrides" => overrides }
+    end
+
+    def pool_method?(method)
+      POOL_METHODS.include?(method.to_s)
+    end
+
+    private
+
+    def normalize(params)
+      hash = params.respond_to?(:to_unsafe_h) ? params.to_unsafe_h : params.to_h
+      hash.deep_symbolize_keys
+    end
+
+    def build_allocation(method, p)
+      return [] unless pool_method?(method)
+
+      allocation = []
+      allocation << { "type" => "expenses_first" } if truthy?(p[:expenses_first])
+
+      house = p[:house_percentage].to_f
+      allocation << { "type" => "percentage", "value" => house, "label" => "House take" } if house.positive?
+
+      each_row(p[:individual_allocations]) do |row|
+        next if row[:person_id].blank? || row[:percentage].blank?
+
+        allocation << {
+          "type" => "percentage",
+          "value" => row[:percentage].to_f,
+          "person_id" => row[:person_id].to_i,
+          "label" => row[:label].presence
+        }
+      end
+
+      allocation << { "type" => "remainder", "label" => "Performer pool" }
+      allocation
+    end
+
+    def build_distribution(method, p)
+      d = p[:distribution] || {}
+      distribution = { "method" => method }
+
+      case method
+      when "shares"
+        distribution["default_shares"] = positive_or(d[:default_shares], 1.0)
+      when "per_ticket"
+        distribution["per_ticket_rate"] = positive_or(d[:per_ticket_rate], 1.0)
+      when "per_ticket_guaranteed"
+        distribution["per_ticket_rate"] = positive_or(d[:per_ticket_rate], 1.0)
+        distribution["minimum"] = d[:minimum].to_f
+      when "flat_fee"
+        distribution["flat_amount"] = d[:flat_amount].to_f
+      when "per_act"
+        act_mode = d[:act_mode].to_s
+        act_mode = "schedule" unless PayoutScheme::ACT_MODES.include?(act_mode)
+        distribution["act_mode"] = act_mode
+
+        case act_mode
+        when "simple"
+          distribution["per_act_rate"] = d[:per_act_rate].to_f
+        when "schedule"
+          # Rows are positional: the first amount is the first act's rate.
+          # Past the end of the list, additional_act_rate applies (blank = those
+          # acts pay nothing).
+          distribution["act_rates"] = Array(d[:act_rates]).each_with_index.map do |amount, index|
+            { "act" => index + 1, "amount" => amount.to_f }
+          end
+          distribution["additional_act_rate"] = d[:additional_act_rate].presence&.to_f
+        else
+          # "This many acts pays this much"; blank/zero rows dropped, stored sorted.
+          rows = d[:tiers].is_a?(Hash) ? d[:tiers].values : Array(d[:tiers])
+          distribution["tiers"] = rows.filter_map do |tier|
+            acts = tier[:acts].to_i
+            next if acts <= 0
+
+            { "acts" => acts, "amount" => tier[:amount].to_f }
+          end.sort_by { |tier| tier["acts"] }
+        end
+      end
+
+      distribution
+    end
+
+    OVERRIDE_KEYS = %w[per_ticket_rate minimum shares flat_amount per_act_rate].freeze
+
+    def build_performer_overrides(overrides)
+      result = {}
+      (overrides || {}).each do |key, data|
+        next if key.blank? || data.blank?
+
+        override = {}
+        OVERRIDE_KEYS.each do |field|
+          value = data[field.to_sym]
+          override[field] = value.to_f if value.present?
+        end
+        result[key.to_s] = override if override.any?
+      end
+      result
+    end
+
+    def each_row(rows, &block)
+      list = rows.is_a?(Hash) ? rows.values : Array(rows)
+      list.each(&block)
+    end
+
+    def positive_or(value, default)
+      f = value.to_f
+      f.positive? ? f : default
+    end
+
+    def truthy?(value)
+      [ true, "1", "true", "on" ].include?(value)
+    end
+  end
+end

@@ -6,8 +6,8 @@
   groups_by_id ||= {}
   cancelled_vacancies_by_assignment = show.cant_make_it_vacancies_by_assignment
   cast_members = show.people.distinct.includes(profile_headshots: { image_attachment: :blob })
-  # "Act 3 · Magic" labels in an act-based production; breaks (intermissions) aren't listed
-  finalized_numbers = lineup_numbers(roles)
+  # "Act 3 · Magic" labels when this show is cast by acts; breaks (intermissions) aren't listed
+  finalized_numbers = lineup_numbers(roles, show: show)
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -33,7 +33,7 @@
         <%
           assignments = (assignments_by_role_id[role.id] || []).sort_by { |a| a.position || 0 }
           role_quantity = role.quantity || 1
-          role_label = role_display_name(role, finalized_numbers)
+          role_label = role_display_name(role, finalized_numbers, show: show)
         %>
 
         <% if assignments.any? %>

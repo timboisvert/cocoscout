@@ -121,7 +121,7 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
     it "lists the draft run under Active Runs" do
       get manage_money_payouts_path
       expect(response.body).to include("Active Runs")
-      expect(response.body).to include("Draft — not submitted yet")
+      expect(response.body).to include("Not submitted")
       expect(response.body).to include(manage_payout_batch_path(batch))
     end
 
@@ -130,8 +130,11 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
       batch.items.create!(payee: create(:person), amount_cents: 2000, status: "paid")
       batch.recalculate_total!
       get manage_money_payouts_path
-      # $70 run total, $20 paid → $50 still waiting on payees.
-      expect(response.body).to include("$50.00 waiting on payees&#39; bank info")
+      # $70 run total, $20 paid → $50 still waiting on payees — the run row
+      # says who it's stuck on, and the Waiting on bank column carries the amount.
+      expect(response.body).to include("Waiting on bank")
+      expect(response.body).to include("1 payee waiting on bank info")
+      expect(response.body).to include("$50.00")
     end
   end
 

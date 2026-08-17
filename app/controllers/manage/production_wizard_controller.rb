@@ -8,6 +8,10 @@ module Manage
     before_action :enforce_free_production_limit, only: %i[name create_production]
     before_action :load_wizard_state
 
+    # How a paying production gets its scheme: pick one the org already has,
+    # start a new one from a preset, or leave it for later.
+    PAY_CHOICES = %w[existing new later].freeze
+
     # Step 1: Name - What's the production called?
     def name
       @wizard_state[:name] ||= ""
@@ -72,7 +76,7 @@ module Manage
         @wizard_state[:has_roles] = "no"
         @wizard_state[:roles] = []
         @wizard_state[:pays_performers] = "no"
-        @wizard_state.delete(:payout_scheme_id)
+        clear_pay_choice
         save_wizard_state
         redirect_to manage_productions_wizard_shows_path and return
       end
@@ -105,15 +109,11 @@ module Manage
     end
 
     def save_roles
-      @wizard_state[:has_roles] = params[:has_roles]
-
-      # Handle roles based on selection
-      if @wizard_state[:has_roles] == "yes"
-        # Parse roles from form
-        @wizard_state[:roles] = parse_roles(params[:roles])
-      else
-        @wizard_state[:roles] = []
-      end
+      # Blank rows are dropped by parse_roles; a "yes" with nothing in it (or an
+      # act-mode lineup left empty) is stored as no roles at all.
+      roles = params[:has_roles] == "yes" ? parse_roles(params[:roles]) : []
+      @wizard_state[:roles] = roles
+      @wizard_state[:has_roles] = roles.any? ? "yes" : "no"
 
       save_wizard_state
       redirect_to(pay_step_available? ? manage_productions_wizard_pay_path : manage_productions_wizard_shows_path)
@@ -132,11 +132,38 @@ module Manage
       redirect_to manage_productions_wizard_shows_path and return unless pay_step_available?
 
       @wizard_state[:pays_performers] = params[:pays_performers] == "yes" ? "yes" : "no"
-      scheme_id = params[:payout_scheme_id].presence
-      if @wizard_state[:pays_performers] == "yes" && scheme_id && org_payout_schemes.exists?(id: scheme_id)
-        @wizard_state[:payout_scheme_id] = scheme_id.to_i
-      else
-        @wizard_state.delete(:payout_scheme_id)
+      clear_pay_choice
+
+      if @wizard_state[:pays_performers] == "yes"
+        choice = params[:pay_choice].to_s
+        choice = "" if choice == "existing" && org_payout_schemes.none?
+        @wizard_state[:pay_choice] = choice if PAY_CHOICES.include?(choice)
+
+        case choice
+        when "existing"
+          scheme_id = params[:payout_scheme_id].presence
+          if scheme_id && org_payout_schemes.exists?(id: scheme_id)
+            @wizard_state[:payout_scheme_id] = scheme_id.to_i
+          else
+            @pay_error = "Choose one of your payout schemes, or set up a new one."
+          end
+        when "new"
+          preset = params[:new_scheme_preset].to_s
+          if new_scheme_preset_keys.include?(preset)
+            @wizard_state[:new_scheme_preset] = preset
+          else
+            @pay_error = "Pick a preset to start the new scheme from."
+          end
+        when "later"
+          # Nothing more to store — the scheme gets picked in Money afterwards.
+        else
+          @pay_error = "Tell us whether to use an existing scheme or set up a new one."
+        end
+      end
+
+      if @pay_error
+        load_pay_step_data
+        render :pay, status: :unprocessable_entity and return
       end
 
       save_wizard_state
@@ -213,6 +240,7 @@ module Manage
         render :review, status: :unprocessable_entity and return
       end
 
+      new_scheme = nil
       ActiveRecord::Base.transaction do
         # Create the production
         @production = Current.organization.productions.new(
@@ -254,12 +282,6 @@ module Manage
           end
         end
 
-        # Pay: make the chosen payout scheme this production's default.
-        if @wizard_state[:pays_performers] == "yes" && @wizard_state[:payout_scheme_id].present?
-          scheme = org_payout_schemes.find_by(id: @wizard_state[:payout_scheme_id])
-          scheme&.add_default_for_production!(@production, effective_from: Date.current)
-        end
-
         # Create shows
         if @wizard_state[:shows].present?
           @wizard_state[:shows].each do |show_data|
@@ -275,6 +297,11 @@ module Manage
             )
           end
         end
+
+        # Pay: give the production its payout scheme — an existing one, or a
+        # fresh one from a preset whose amounts get set right after this.
+        # (After the shows, so the scheme reaches back to the first night.)
+        new_scheme = apply_wizard_pay_choice!
       end
 
       # Clear wizard state
@@ -287,7 +314,12 @@ module Manage
       # Turn on the "here's what to do next" panel on the manage home page.
       Current.user.activate_guide!(:production_next_steps)
 
-      redirect_to manage_path, notice: "#{@production.name} has been created!"
+      if new_scheme
+        redirect_to manage_edit_money_payout_scheme_path(new_scheme),
+                    notice: "#{@production.name} is ready — now set the amounts for its #{new_scheme.name} scheme."
+      else
+        redirect_to manage_path, notice: "#{@production.name} has been created!"
+      end
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.message
       render :review, status: :unprocessable_entity
@@ -340,9 +372,55 @@ module Manage
       Current.organization.payout_schemes.active
     end
 
+    # Presets a new scheme can start from — every preset but "no pay", which
+    # is the No answer, not a scheme.
+    def new_scheme_presets
+      presets = PayoutScheme::PRESETS.except(:no_pay)
+      # An act-based production almost always pays per act: lead with it.
+      if act_based_wizard? && presets.key?(:per_act)
+        presets = { per_act: presets[:per_act] }.merge(presets.except(:per_act))
+      end
+      presets
+    end
+    helper_method :new_scheme_presets
+
+    def new_scheme_preset_keys
+      new_scheme_presets.keys.map(&:to_s)
+    end
+
+    def clear_pay_choice
+      @wizard_state.delete(:pay_choice)
+      @wizard_state.delete(:payout_scheme_id)
+      @wizard_state.delete(:new_scheme_preset)
+    end
+
     def load_pay_step_data
       @payout_schemes = org_payout_schemes.order(:name).to_a
-      @has_per_act_scheme = @payout_schemes.any? { |s| s.rules.is_a?(Hash) && s.rules.dig("distribution", "method") == "per_act" }
+    end
+
+    # Runs inside the create transaction. Returns the newly created scheme
+    # (so create can send them off to set its amounts) or nil.
+    def apply_wizard_pay_choice!
+      return nil unless @wizard_state[:pays_performers] == "yes"
+
+      case @wizard_state[:pay_choice]
+      when "existing"
+        scheme = org_payout_schemes.find_by(id: @wizard_state[:payout_scheme_id])
+        scheme&.make_production_scheme!(@production)
+        nil
+      when "new"
+        preset_key = @wizard_state[:new_scheme_preset].to_s
+        return nil unless new_scheme_preset_keys.include?(preset_key)
+
+        scheme = PayoutScheme.create_from_preset(Current.organization, preset_key)
+        raise ActiveRecord::RecordInvalid, scheme unless scheme&.persisted?
+
+        # Mirror payout_schemes#create_from_preset: the org's first scheme is
+        # also its org-level default.
+        scheme.make_default! if Current.organization.payout_schemes.organization_level.count == 1
+        scheme.make_production_scheme!(@production)
+        scheme
+      end
     end
 
     def parse_roles(roles_params)

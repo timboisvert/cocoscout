@@ -214,16 +214,32 @@ module Manage
       # too so the state boxes up top always have a matching row on this page.
       @active_runs = Current.organization.payout_batches
                             .where(status: PayoutBatchService::UNSETTLED_BATCH_STATUSES)
+                            .includes(items: :payee)
                             .recent.to_a
+      # Each active run's money by payee state (paid / ready / waiting on bank),
+      # so the list says what a partially-paid run is actually stuck on.
+      @active_run_breakdowns = @active_runs.to_h { |r| [ r.id, r.money_by_item_state ] }
 
       # Money-by-state totals for the summary boxes, split by what still has to
       # happen to it. Summed from the same runs the Active Runs list renders —
       # a partially paid run counts only its unpaid remainder.
+      drafts = @active_runs.select { |r| r.status == "draft" }
+      partials = @active_runs.select { |r| r.status == "partially_paid" }
       @run_state_cents = {
-        draft: @active_runs.select { |r| r.status == "draft" }.sum(&:total_cents),
+        draft: drafts.sum(&:total_cents),
         funding: @active_runs.select { |r| %w[funding funded processing].include?(r.status) }.sum(&:total_cents),
-        waiting: @active_runs.select { |r| r.status == "partially_paid" }
-                             .sum { |r| r.total_cents - r.paid_total_cents }
+        waiting: partials.sum { |r| r.total_cents - @active_run_breakdowns[r.id][:paid][:cents] }
+      }
+      # The "why" under those boxes: how much of the draft/waiting money is
+      # blocked on a payee with no bank, vs. payable the moment someone acts.
+      sum_state = ->(runs, state, key) { runs.sum { |r| @active_run_breakdowns[r.id][state][key] } }
+      @run_state_detail = {
+        draft_nobank_cents: sum_state.call(drafts, :waiting, :cents),
+        draft_nobank_people: sum_state.call(drafts, :waiting, :count),
+        waiting_nobank_cents: sum_state.call(partials, :waiting, :cents),
+        waiting_nobank_people: sum_state.call(partials, :waiting, :count),
+        waiting_ready_cents: sum_state.call(partials, :ready, :cents),
+        waiting_ready_people: sum_state.call(partials, :ready, :count)
       }
 
       # Payouts blocked on the payee: people owed money who haven't set up

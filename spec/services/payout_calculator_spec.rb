@@ -113,6 +113,18 @@ RSpec.describe PayoutCalculator do
         # 50 tickets * $2 = $100 per person, but minimum is $150
         expect(result[:line_items].first[:amount]).to eq(150.0)
       end
+
+      it "pays a guest by the same per-ticket rule instead of re-splitting the pool" do
+        guest = create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil)
+
+        result = described_class.calculate(show: show, rules: rules)
+
+        expect(result[:success]).to be true
+        amounts = show.show_payout.line_items.reload.map { |li| [ li.is_guest?, li.amount.to_f ] }
+        expect(amounts).to all(satisfy { |(_, amount)| amount == 150.0 })
+        expect(show.show_payout.line_items.find_by(is_guest: true, guest_name: "Gigi").calculation_details["formula"]).to include("Minimum")
+        expect(guest).to be_persisted
+      end
     end
 
     context "with flat_fee distribution" do

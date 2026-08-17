@@ -48,7 +48,7 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
 
       get edit_manage_production_path(production)
 
-      expect(response.body).to include(%(<option value="#{flat_scheme.id}" selected>))
+      expect(response.body).to match(/<option value="#{flat_scheme.id}" selected[^>]*>Flat Fifty</)
     end
 
     it "nudges an act-based production toward the Per-Act preset when the org has no per-act scheme" do
@@ -100,6 +100,46 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       expect(default.payout_scheme).to eq(flat_scheme)
       expect(default.effective_from).to eq(Date.current)
       expect(PayoutScheme.current_default_for_production(production)).to eq(flat_scheme)
+    end
+
+    it "reaches back to the production's first show, so a night that already happened resolves to it" do
+      past_show = create(:show, production: production, date_and_time: 3.weeks.ago)
+      create(:show, production: production, date_and_time: 1.week.from_now)
+
+      patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: act_scheme.id }
+
+      default = PayoutSchemeDefault.for_production(production).first
+      expect(default.effective_from).to eq(3.weeks.ago.to_date)
+      expect(PayoutScheme.default_for_show(past_show)).to eq(act_scheme)
+    end
+
+    it "restamps payouts nobody has calculated yet, so the choice sticks on the payout page" do
+      # An earlier visit pinned this show's payout to the org fallback...
+      show = create(:show, production: production, date_and_time: 2.days.ago)
+      pending = ShowPayout.create!(show: show, payout_scheme: flat_scheme)
+      # ...while a calculated show, and one with a hand-tuned override, keep theirs.
+      calculated = ShowPayout.create!(show: create(:show, production: production, date_and_time: 5.days.ago),
+                                      payout_scheme: flat_scheme, calculated_at: Time.current)
+      overridden = ShowPayout.create!(show: create(:show, production: production, date_and_time: 4.days.ago),
+                                      payout_scheme: flat_scheme, override_rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 10 } })
+
+      patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: act_scheme.id }
+
+      expect(pending.reload.payout_scheme).to eq(act_scheme)
+      expect(calculated.reload.payout_scheme).to eq(flat_scheme)
+      expect(overridden.reload.payout_scheme).to eq(flat_scheme)
+
+      get manage_money_show_payout_path(show)
+      expect(response.body).to include("Act Pay")
+    end
+
+    it "shows the Pro pill and the picker with the current scheme's summary" do
+      act_scheme.make_production_scheme!(production)
+
+      get edit_manage_production_path(production)
+      expect(response.body).to include("Pro feature")
+      expect(response.body).to include("pay-scheme-picker")
+      expect(response.body).to include("pick another to switch every show")
     end
 
     it "switches schemes without touching the scheme's other productions" do

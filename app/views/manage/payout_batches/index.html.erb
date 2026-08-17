@@ -16,64 +16,72 @@
 
   <% org = Current.organization %>
 
-  <%# ---- Money by lifecycle state: where every dollar currently sits.
-      Draft → Funding → Waiting on payees → Paid out, echoing the badge colors. %>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <%# ---- Money by what still has to happen to it, across every run.
+      Ready (you can act) · Funding (moving by itself) · Waiting on bank
+      (blocked on the payee) · Paid out — plus Returned only when it's non-zero. %>
+  <% show_returned = @money_by_state[:returned].positive? %>
+  <div class="grid grid-cols-2 <%= show_returned ? "lg:grid-cols-5" : "lg:grid-cols-4" %> gap-4 mb-6">
     <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-xs text-gray-500 uppercase tracking-wide">In draft</div>
-      <div class="mt-1 text-2xl font-bold text-gray-900 tabular-nums"><%= number_to_currency(@money_by_state[:draft] / 100.0) %></div>
-      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@runs_by_state[:draft], "open run") %> · not submitted yet</div>
+      <div class="text-xs text-gray-500 uppercase tracking-wide">Ready to pay</div>
+      <div class="mt-1 text-2xl font-bold text-pink-600 tabular-nums"><%= number_to_currency(@money_by_state[:ready] / 100.0) %></div>
+      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@counts_by_state[:ready], "payee") %> · fund the draft or pay remaining</div>
     </div>
     <div class="bg-white rounded-lg border border-gray-200 p-4">
       <div class="text-xs text-gray-500 uppercase tracking-wide">Funding</div>
       <div class="mt-1 text-2xl font-bold text-amber-700 tabular-nums"><%= number_to_currency(@money_by_state[:funding] / 100.0) %></div>
-      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@runs_by_state[:funding], "run") %> · ACH clearing, pays out automatically</div>
+      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@counts_by_state[:funding], "run") %> · ACH clearing, pays out automatically</div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-xs text-gray-500 uppercase tracking-wide">Waiting on payees</div>
+    <div class="bg-white rounded-lg border <%= @money_by_state[:waiting].positive? ? "border-blue-200" : "border-gray-200" %> p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide">Waiting on bank info</div>
       <div class="mt-1 text-2xl font-bold text-blue-700 tabular-nums"><%= number_to_currency(@money_by_state[:waiting] / 100.0) %></div>
-      <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@runs_by_state[:waiting], "partially paid run") %> · funded, needs their bank info</div>
+      <div class="text-xs text-gray-400 mt-0.5">
+        <% if @counts_by_state[:waiting].positive? %>
+          <%= pluralize(@counts_by_state[:waiting], "payee") %> across <%= pluralize(@counts_by_state[:waiting_runs], "run") %> · can't be paid until they connect
+        <% else %>
+          nobody's holding anything up
+        <% end %>
+      </div>
     </div>
     <div class="bg-white rounded-lg border border-gray-200 p-4">
       <div class="text-xs text-gray-500 uppercase tracking-wide">Paid out</div>
       <div class="mt-1 text-2xl font-bold text-green-700 tabular-nums"><%= number_to_currency(@money_by_state[:paid] / 100.0) %></div>
-      <div class="text-xs text-gray-400 mt-0.5">all time, across every run</div>
+      <div class="text-xs text-gray-400 mt-0.5">all time · <%= pluralize(@counts_by_state[:paid], "completed run") %></div>
     </div>
+    <% if show_returned %>
+      <div class="bg-white rounded-lg border border-red-200 p-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Returned by bank</div>
+        <div class="mt-1 text-2xl font-bold text-red-700 tabular-nums"><%= number_to_currency(@money_by_state[:returned] / 100.0) %></div>
+        <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@counts_by_state[:returned], "payment") %> · owed again, payee must fix their bank</div>
+      </div>
+    <% end %>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <%# ---- Main: active runs (need attention or in motion), then history. ---- %>
-    <div class="lg:col-span-2 space-y-6">
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
-          <h2 class="font-semibold text-gray-900">Active runs</h2>
+    <%# ---- Main: active runs (need attention or in motion), then history. Each
+        row carries the same money-state columns as the boxes above, so a
+        partially-paid run says right here what it's waiting on. ---- %>
+    <div class="lg:col-span-2 space-y-8">
+      <div>
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Active runs</h2>
           <%= link_to "New run", manage_new_payout_batch_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
         </div>
 
         <% if @active_batches.any? %>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Run</th>
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Total</th>
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Payees</th>
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold hidden sm:table-cell">Started by</th>
-                  <th class="px-3 sm:px-4 py-2.5"></th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <% @active_batches.each do |batch| %>
-                  <%= render "manage/payout_batches/run_row", batch: batch %>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+          <%
+            active_cols = run_state_columns(@active_batches.map { |b| @run_breakdowns[b.id] })
+            active_labels = [ "Total" ] + active_cols.map { |c| Manage::PayoutBatchesHelper::RUN_STATE_COLUMNS[c][:label] }
+            active_min = { 2 => "min-w-[480px]", 3 => "min-w-[560px]", 4 => "min-w-[700px]", 5 => "min-w-[820px]" }[active_labels.size] || "min-w-[820px]"
+          %>
+          <%= render layout: "shared/slim_list", locals: { label: "Run", columns: active_labels, min_width: active_min } do %>
+            <% @active_batches.each do |batch| %>
+              <%= render "manage/payout_batches/run_row", batch: batch, breakdown: @run_breakdowns[batch.id], columns: active_cols %>
+            <% end %>
+          <% end %>
         <% elsif @completed_batches.any? %>
-          <div class="p-6 text-center text-sm text-gray-500">Nothing in motion — every run is settled.</div>
+          <div class="bg-white border border-gray-200 rounded-lg p-6 text-center text-sm text-gray-500">Nothing in motion — every run is settled.</div>
         <% else %>
-          <div class="p-8 text-center">
+          <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
             <p class="text-gray-600 mb-4">No payout runs yet.</p>
             <div class="inline-block">
               <%= render "shared/button", text: "Run your first payout", variant: "primary", size: "medium", path: manage_new_payout_batch_path %>
@@ -83,29 +91,18 @@
       </div>
 
       <% if @completed_batches.any? %>
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-200">
-            <h2 class="font-semibold text-gray-900">Completed runs</h2>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Run</th>
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap">Status</th>
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Total</th>
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold text-right whitespace-nowrap">Payees</th>
-                  <th class="px-3 sm:px-4 py-2.5 font-semibold hidden sm:table-cell">Started by</th>
-                  <th class="px-3 sm:px-4 py-2.5"></th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <% @completed_batches.each do |batch| %>
-                  <%= render "manage/payout_batches/run_row", batch: batch %>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+        <div>
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Completed runs</h2>
+          <%
+            done_cols = run_state_columns(@completed_batches.map { |b| @run_breakdowns[b.id] })
+            done_labels = [ "Total" ] + done_cols.map { |c| Manage::PayoutBatchesHelper::RUN_STATE_COLUMNS[c][:label] }
+            done_min = { 2 => "min-w-[480px]", 3 => "min-w-[560px]", 4 => "min-w-[700px]", 5 => "min-w-[820px]" }[done_labels.size] || "min-w-[820px]"
+          %>
+          <%= render layout: "shared/slim_list", locals: { label: "Run", columns: done_labels, min_width: done_min } do %>
+            <% @completed_batches.each do |batch| %>
+              <%= render "manage/payout_batches/run_row", batch: batch, breakdown: @run_breakdowns[batch.id], columns: done_cols %>
+            <% end %>
+          <% end %>
         </div>
       <% end %>
     </div>
@@ -140,7 +137,7 @@
       <% end %>
 
       <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
-        <p class="text-xs text-gray-500">A run's money moves in one direction: <span class="font-medium text-gray-700">draft</span> (building it up) → <span class="font-medium text-amber-700">funding</span> (ACH debit clearing) → <span class="font-medium text-blue-700">waiting on payees</span> (funded; pays each payee as they connect a bank) → <span class="font-medium text-green-700">paid out</span>.</p>
+        <p class="text-xs text-gray-500">Each payee's money on a run is either <span class="font-medium text-pink-700">ready to pay</span> (bank connected — fund the draft, or pay remaining on a funded run), <span class="font-medium text-blue-700">waiting on bank info</span> (funded or not, it can't move until they connect), or <span class="font-medium text-green-700">paid</span>. A run is done when nothing is left in the first two.</p>
       </div>
     </aside>
   </div>

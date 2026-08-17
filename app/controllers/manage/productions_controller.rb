@@ -104,21 +104,14 @@ module Manage
       end
 
       current = PayoutScheme.current_default_for_production(@production)
-      production_defaults = PayoutSchemeDefault.for_production(@production)
-                                               .joins(:payout_scheme)
-                                               .where(payout_schemes: { organization_id: Current.organization.id })
       if paid
-        unless current == scheme
-          # Only THIS production's rows are touched (never the scheme's other
-          # productions). Earlier-dated rows stay so shows already in the books
-          # keep the scheme they had; anything dated today or later would
-          # override the new default, so it goes.
-          production_defaults.where("payout_scheme_defaults.effective_from >= ?", Date.current).destroy_all
-          scheme.add_default_for_production!(@production, effective_from: Date.current)
-        end
+        # Only THIS production's defaults are touched (never the scheme's other
+        # productions); the new one reaches back to the production's first show
+        # and restamps payouts nobody has calculated yet, so the choice sticks.
+        scheme.make_production_scheme!(@production) unless current == scheme
         notice = "Performers on #{@production.name} are paid using #{scheme.name}."
       else
-        production_defaults.destroy_all
+        PayoutScheme.clear_production_scheme!(@production)
         notice = "Performers are not paid for #{@production.name}."
       end
 

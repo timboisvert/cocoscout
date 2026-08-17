@@ -1432,7 +1432,9 @@ module Manage
       # The email_body is the template with {{placeholders}} (from the preview editor).
       # Personalize it for this specific recipient by substituting their actual values.
       shows = assignments.map { |a| a[:show] }.uniq.sort_by(&:date_and_time)
-      role_names = assignments.map { |a| a[:role] }.compact.uniq.map(&:display_name).uniq
+      # Label each role in the show it was given for (a show may override the
+      # production's casting style).
+      role_names = assignments.map { |a| a[:role]&.display_name(show: a[:show]) }.compact.uniq
       dates = shows.map { |s| s.date_and_time.strftime("%B %-d") }.uniq
       show_dates = dates.count > 2 ? "#{dates.first} - #{dates.last}" : dates.join(" & ")
       shows_list = shows.map { |s| "<li>#{s.date_and_time.strftime('%A, %B %-d at %-l:%M %p')}: #{s.display_name}</li>" }.join("\n")
@@ -1543,10 +1545,11 @@ module Manage
         "<li>#{date}: #{show_name}</li>"
       end.join("\n")
 
-      # Get all unique role names from the show(s) — "Act 3 · Magic" in an
-      # act-based production, the plain role name otherwise.
-      all_roles = all_shows.flat_map { |s| s.show_person_role_assignments.includes(:role).map(&:role) }.compact.uniq
-      role_names = all_roles.map(&:display_name).uniq
+      # Get all unique role names from the show(s) — "Act 3 · Magic" when the
+      # show is cast by acts, the plain role name otherwise.
+      role_names = all_shows.flat_map do |s|
+        s.show_person_role_assignments.includes(:role).map(&:role).compact.uniq.map { |r| r.display_name(show: s) }
+      end.uniq
       role_name = role_names.first || "Cast Member"
       role_names_list = role_names.join(", ")
 
@@ -1562,9 +1565,10 @@ module Manage
     end
 
     # The word a cast notification uses for what a person was given:
-    # "act" in an act-based production, "role" otherwise.
+    # "act" when the show is cast by acts, "role" otherwise. The show's
+    # effective mode wins (it may override the production's).
     def casting_unit_word
-      @production&.act_based? ? "act" : "role"
+      (@show || @production)&.act_based? ? "act" : "role"
     end
 
     # Build sync info comparing this show's cast with linked shows

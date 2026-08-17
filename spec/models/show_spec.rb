@@ -231,6 +231,43 @@ RSpec.describe Show, type: :model do
       expect(create(:show)).to be_role_based
     end
 
+    describe '#effective_casting_mode (per-show override, nil inherits)' do
+      it 'inherits the production mode when nothing is set' do
+        expect(show.casting_mode).to be_nil
+        expect(show.effective_casting_mode).to eq('act_based')
+        expect(show.uses_custom_casting_mode?).to be(false)
+      end
+
+      it 'lets one show in a role-based production cast by acts' do
+        role_show = create(:show)
+        role_show.update!(casting_mode: 'act_based')
+        expect(role_show.effective_casting_mode).to eq('act_based')
+        expect(role_show).to be_act_based
+        expect(role_show.uses_custom_casting_mode?).to be(true)
+        expect(role_show.production).to be_role_based
+      end
+
+      it 'lets one show in an act-based production cast by roles' do
+        show.update!(casting_mode: 'role_based')
+        expect(show).to be_role_based
+        expect(show).not_to be_act_based
+        expect(production).to be_act_based
+      end
+
+      it 'treats an empty string as "inherit"' do
+        show.update!(casting_mode: 'role_based')
+        show.update!(casting_mode: '')
+        expect(show.reload.casting_mode).to be_nil
+        expect(show).to be_act_based
+      end
+
+      it 'rejects an unknown mode' do
+        show.casting_mode = 'vibes'
+        expect(show).not_to be_valid
+        expect(show.errors[:casting_mode]).to be_present
+      end
+    end
+
     describe '#casting_progress' do
       it 'does not count break markers as slots' do
         create(:show_person_role_assignment, show: show, role: magic1, assignable: dancer)

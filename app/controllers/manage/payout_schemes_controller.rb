@@ -102,7 +102,10 @@ module Manage
     end
 
     def update_defaults
-      production_ids = Array(params[:production_ids]).map(&:to_i).reject(&:zero?)
+      # Only this org's productions — ids come straight from the form.
+      production_ids = Current.organization.productions
+                              .where(id: Array(params[:production_ids]).map(&:to_i).reject(&:zero?))
+                              .pluck(:id)
       effective_from = params[:effective_from].presence&.to_date
       org_level_fallback = params[:org_level_fallback] == "1"
 
@@ -119,6 +122,11 @@ module Manage
         @payout_scheme.payout_scheme_defaults.destroy_all
         notice = "#{@payout_scheme.name} is no longer a default for any production"
       end
+
+      # Payouts nobody has calculated yet follow the new default instead of the
+      # scheme pinned when their page was first opened.
+      restamp_scope = org_level_fallback ? Current.organization.productions : Current.organization.productions.where(id: production_ids)
+      restamp_scope.find_each { |production| ShowPayout.restamp_pending_for_production!(production, nil) }
 
       notice += " (effective #{effective_from.strftime('%-d %B %Y')})" if effective_from.present?
       redirect_to manage_money_payout_scheme_path(@payout_scheme), notice: notice
@@ -198,101 +206,16 @@ module Manage
       base_params.merge(rules: rules)
     end
 
+    # The form posts flat params (method, distribution[...], house_percentage,
+    # expenses_first, individual_allocations, performer_overrides); the builder
+    # owns the jsonb shape.
     def build_rules_from_params
-      rules_params = params[:rules] || {}
-      distribution_params = rules_params[:distribution] || {}
-
-      method = distribution_params[:method] || "equal"
-
-      # Build allocation
-      allocation = []
-      if params[:expenses_first] == "1"
-        allocation << { "type" => "expenses_first" }
-      end
-      if params[:house_percentage].present? && params[:house_percentage].to_f > 0
-        allocation << { "type" => "percentage", "value" => params[:house_percentage].to_f, "label" => "House take" }
-      end
-
-      # Add individual allocations (percentage to specific people)
-      individual_allocations_params = rules_params[:individual_allocations] || {}
-      individual_allocations_params.each do |_index, alloc_data|
-        next if alloc_data[:person_id].blank? || alloc_data[:percentage].blank?
-
-        allocation << {
-          "type" => "percentage",
-          "value" => alloc_data[:percentage].to_f,
-          "person_id" => alloc_data[:person_id].to_i,
-          "label" => alloc_data[:label].presence || nil
-        }
-      end
-
-      allocation << { "type" => "remainder", "label" => "Performer pool" }
-
-      # Build distribution
-      distribution = { "method" => method }
-
-      case method
-      when "shares"
-        distribution["default_shares"] = distribution_params[:default_shares]&.to_f || 1.0
-      when "per_ticket"
-        distribution["per_ticket_rate"] = distribution_params[:per_ticket_rate]&.to_f || 1.0
-      when "per_ticket_guaranteed"
-        distribution["per_ticket_rate"] = distribution_params[:per_ticket_rate]&.to_f || 1.0
-        distribution["minimum"] = distribution_params[:minimum]&.to_f || 0
-      when "flat_fee"
-        distribution["flat_amount"] = distribution_params[:flat_amount]&.to_f || 0
-      when "per_act"
-        act_mode = distribution_params[:act_mode].to_s
-        act_mode = "schedule" unless PayoutScheme::ACT_MODES.include?(act_mode)
-        distribution["act_mode"] = act_mode
-
-        case act_mode
-        when "simple"
-          distribution["per_act_rate"] = distribution_params[:per_act_rate]&.to_f || 0
-        when "schedule"
-          # What each act is worth, in order — the rows are positional, so the
-          # first amount is the first act's rate. Plus what every act past the
-          # end of the list is worth (blank means those acts pay nothing).
-          distribution["act_rates"] = Array(distribution_params[:act_rates])
-            .each_with_index
-            .map { |amount, index| { "act" => index + 1, "amount" => amount.to_f } }
-          distribution["additional_act_rate"] =
-            distribution_params[:additional_act_rate].presence&.to_f
-        else
-          # Each row is "this many acts pays this much"; blank/zero rows are dropped
-          # and the table is stored sorted so lookups can walk it in order.
-          distribution["tiers"] = Array(distribution_params[:tiers]&.values)
-            .filter_map do |tier|
-              acts = tier[:acts].to_i
-              next if acts <= 0
-
-              { "acts" => acts, "amount" => tier[:amount].to_f }
-            end
-            .sort_by { |tier| tier["acts"] }
-        end
-      end
-
-      # Build performer overrides
-      performer_overrides = {}
-      overrides_params = rules_params[:performer_overrides] || {}
-      overrides_params.each do |person_id, override_data|
-        next if person_id.blank?
-
-        override = {}
-        override["per_ticket_rate"] = override_data[:per_ticket_rate].to_f if override_data[:per_ticket_rate].present?
-        override["minimum"] = override_data[:minimum].to_f if override_data[:minimum].present?
-        override["shares"] = override_data[:shares].to_f if override_data[:shares].present?
-        override["flat_amount"] = override_data[:flat_amount].to_f if override_data[:flat_amount].present?
-        override["per_act_rate"] = override_data[:per_act_rate].to_f if override_data[:per_act_rate].present?
-
-        performer_overrides[person_id.to_s] = override if override.any?
-      end
-
-      {
-        "allocation" => allocation,
-        "distribution" => distribution,
-        "performer_overrides" => performer_overrides
-      }
+      rules_params = params[:rules].respond_to?(:to_unsafe_h) ? params[:rules].to_unsafe_h : {}
+      PayoutRulesBuilder.build(
+        params.to_unsafe_h.slice("expenses_first", "house_percentage")
+              .merge("method" => rules_params.dig("distribution", "method"))
+              .merge(rules_params.slice("distribution", "individual_allocations", "performer_overrides"))
+      )
     end
   end
 end

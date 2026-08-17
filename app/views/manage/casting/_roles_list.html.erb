@@ -34,11 +34,12 @@
 
   role_count = roles.size
 
-  # Act-based productions render the running order as one numbered lineup
+  # Act-based shows render the running order as one numbered lineup
   # (breaks are intermission dividers); role-based ones group by category.
-  act_mode = production.act_based?
-  unit = casting_unit(production)
-  numbers = lineup_numbers(roles)
+  # The show decides — it may override the production's casting style.
+  act_mode = show.act_based?
+  unit = casting_unit(show)
+  numbers = lineup_numbers(roles, show: show)
   if act_mode
     roles_by_category = { "lineup" => roles }
     category_order = ["lineup"]
@@ -140,7 +141,7 @@
 
       <%
         # What this row is called in modals/toasts: "Act 3 · Magic" or the role name
-        role_label = role_display_name(role, numbers)
+        role_label = role_display_name(role, numbers, show: show)
         assignments = assignments_by_role_id[role.id] || []
         assignments_by_slot = cast_assignments_by_slot(role, assignments)
         total_slots = cast_total_slots(role, assignments_by_slot)

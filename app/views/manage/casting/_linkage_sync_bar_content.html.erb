@@ -27,7 +27,7 @@
             <%= linked_shows.count %> linked <%= "event".pluralize(linked_shows.count) %> out of sync
           </span>
           <p class="text-xs text-gray-500 mt-0.5">
-            <%= production.act_based? ? "Lineup" : "Roles" %> or cast assignments differ from this event
+            <%= show.act_based? ? "Lineup" : "Roles" %> or cast assignments differ from this event
           </p>
         </div>
       </div>
@@ -43,7 +43,7 @@
         <%= render "shared/confirm_modal",
             id: "confirm-sync-linked-#{show.id}",
             title: "Sync linked events?",
-            message: "This will copy this event's #{production.act_based? ? 'lineup' : 'roles'} and cast to all #{linked_shows.count} linked events, replacing their current #{production.act_based? ? 'lineup' : 'roles'} and assignments. Continue?",
+            message: "This will copy this event's #{show.act_based? ? 'lineup' : 'roles'} and cast to all #{linked_shows.count} linked events, replacing their current #{show.act_based? ? 'lineup' : 'roles'} and assignments. Continue?",
             confirm_text: "Sync Now",
             url: manage_casting_show_copy_to_linked_path(production, show_id: show.id),
             method: :post %>

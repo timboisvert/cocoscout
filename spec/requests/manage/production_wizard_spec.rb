@@ -212,16 +212,16 @@ RSpec.describe "Production wizard", type: :request do
       expect(response.body).to include("Will performers be paid for this production?")
     end
 
-    it "points at the presets page when the org has no schemes" do
+    it "offers only 'set up a new one' when the org has no schemes" do
       set_up_org(pro: true)
       walk_to_pay
       get manage_productions_wizard_pay_path
 
-      expect(response.body).to include("don't have any payout schemes yet")
-      expect(response.body).to include(manage_presets_money_payout_schemes_path)
+      expect(response.body).not_to include('data-card-value="existing"')
+      expect(response.body).to include('data-card-value="new"')
     end
 
-    it "nudges an act-based production toward the Per-Act preset" do
+    it "recommends the Per-Act preset for an act-based production" do
       org = set_up_org(pro: true)
       create(:payout_scheme, organization: org, production: nil, name: "Even split")
       post manage_productions_wizard_save_name_path, params: { name: "Velvet Hour" }
@@ -231,8 +231,8 @@ RSpec.describe "Production wizard", type: :request do
       post manage_productions_wizard_save_roles_path, params: { has_roles: "no" }
       get manage_productions_wizard_pay_path
 
-      expect(response.body).to include("usually pay per act")
-      expect(response.body).to include(manage_presets_money_payout_schemes_path(preset: "per_act"))
+      expect(response.body).to include("Recommended")
+      expect(response.body).to match(/name="new_scheme_preset" value="per_act" checked/)
     end
 
     it "makes the chosen scheme the new production's default" do
@@ -244,7 +244,7 @@ RSpec.describe "Production wizard", type: :request do
       expect(response.body).to include("Door split")
       expect(response.body).not_to include("Not ours")
 
-      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", payout_scheme_id: scheme.id }
+      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", pay_choice: "existing", payout_scheme_id: scheme.id }
       expect(response).to redirect_to(manage_productions_wizard_shows_path)
 
       get manage_productions_wizard_review_path

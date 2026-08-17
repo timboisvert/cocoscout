@@ -26,7 +26,8 @@
         item_partial: "manage/staffing/timesheets/approved_calendar_entry",
         can_go_next: @current_month < Date.current.beginning_of_month,
         empty_text: "No approved hours this month.",
-        min_cell: "min-h-[96px]" %>
+        min_cell: "min-h-[96px]",
+        mobile_show_past: true %>
 
   <p class="text-xs text-gray-500 -mt-4">
     Click an approved entry to correct the hours (which sends it back for review) or send it back to the approval queue.

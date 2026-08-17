@@ -197,60 +197,61 @@
         sections below: "To pay" is the Awaiting Payout money not yet in a run;
         the other three split the Active Runs money by lifecycle stage, so a
         partially paid run counts only its unpaid remainder. %>
+    <% d = @run_state_detail %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-8">
       <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
         <div class="text-sm text-gray-500 sm:mb-1">To pay</div>
         <div class="text-lg sm:text-2xl font-semibold text-pink-600 tabular-nums"><%= number_to_currency(@todo.payouts.amounts[:to_pay].to_f) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">owed, not in a run yet</div>
       </div>
       <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
         <div class="text-sm text-gray-500 sm:mb-1">In draft</div>
         <div class="text-lg sm:text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@run_state_cents[:draft] / 100.0) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">
+          <% if d[:draft_nobank_people].positive? %>
+            <span class="text-blue-600 font-medium"><%= number_to_currency(d[:draft_nobank_cents] / 100.0) %></span> of it for <%= pluralize(d[:draft_nobank_people], "payee") %> with no bank
+          <% else %>
+            not submitted yet
+          <% end %>
+        </div>
       </div>
       <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
         <div class="text-sm text-gray-500 sm:mb-1">Funding</div>
         <div class="text-lg sm:text-2xl font-semibold text-amber-600 tabular-nums"><%= number_to_currency(@run_state_cents[:funding] / 100.0) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">ACH clearing, pays out automatically</div>
       </div>
       <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
         <div class="text-sm text-gray-500 sm:mb-1">Waiting on payees</div>
         <div class="text-lg sm:text-2xl font-semibold text-blue-600 tabular-nums"><%= number_to_currency(@run_state_cents[:waiting] / 100.0) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">
+          <% if @run_state_cents[:waiting].positive? %>
+            <% bits = [] %>
+            <% bits << "#{number_to_currency(d[:waiting_nobank_cents] / 100.0)} · #{pluralize(d[:waiting_nobank_people], 'payee')} with no bank" if d[:waiting_nobank_people].positive? %>
+            <% bits << "#{number_to_currency(d[:waiting_ready_cents] / 100.0)} ready — pay remaining" if d[:waiting_ready_people].positive? %>
+            <%= bits.join(" · ") %>
+          <% else %>
+            funded runs, nobody left unpaid
+          <% end %>
+        </div>
       </div>
     </div>
 
     <%# Active runs — drafts still being assembled, plus submitted money moving
         through funding/transfers. Each state box above sums rows from here. %>
     <% if @active_runs.any? %>
+      <%
+        # Same money-state columns as the Payout Runs page: paid / ready to pay /
+        # waiting on bank (only the ones with money in them), so a partially
+        # paid run says right here what it's stuck on.
+        run_cols = run_state_columns(@active_run_breakdowns.values)
+        run_col_labels = [ "Total" ] + run_cols.map { |c| Manage::PayoutBatchesHelper::RUN_STATE_COLUMNS[c][:label] }
+        run_min_width = { 2 => "min-w-[480px]", 3 => "min-w-[560px]", 4 => "min-w-[700px]", 5 => "min-w-[820px]" }[run_col_labels.size] || "min-w-[820px]"
+      %>
       <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Active Runs</h3>
       <div class="mb-8">
-        <%= render layout: "shared/slim_list", locals: { label: "Payout run", columns: [ "Amount" ], min_width: "min-w-[360px]" } do %>
+        <%= render layout: "shared/slim_list", locals: { label: "Payout run", columns: run_col_labels, min_width: run_min_width } do %>
           <% @active_runs.each do |run| %>
-            <%
-              waiting_cents = run.status == "partially_paid" ? run.total_cents - run.paid_total_cents : run.total_cents
-              next_try = run.next_auto_retry_at
-              retry_label = if next_try
-                              when_text = if next_try.to_date == Date.current then "today"
-                                          elsif next_try.to_date == Date.current + 1 then "tomorrow"
-                                          else next_try.strftime("%b %-d")
-                                          end
-                                " · retrying #{when_text} #{next_try.strftime('%-l:%M%P')}"
-              end
-              subtitle = case run.status
-                         when "draft" then "Draft — not submitted yet"
-                         when "partially_paid" then "#{number_to_currency(waiting_cents / 100.0)} waiting on payees' bank info#{retry_label}"
-                         else "ACH clearing — pays out automatically"
-                         end
-              badge_color = case run.status
-                            when "draft" then "gray"
-                            when "partially_paid" then "blue"
-                            else "amber"
-                            end
-            %>
-            <%= render "shared/slim_list_row",
-                  title: "#{run.kind_label} · #{run.created_at.strftime('%b %-d')}",
-                  subtitle: subtitle,
-                  badge: { text: run.display_status, color: badge_color },
-                  href: manage_payout_batch_path(run),
-                  col_labels: [ "Amount" ],
-                  cells: [ { value: number_to_currency(run.total_cents / 100.0), class: "text-gray-900 font-medium" } ] %>
+            <%= render "manage/payout_batches/run_row", batch: run, breakdown: @active_run_breakdowns[run.id], columns: run_cols %>
           <% end %>
         <% end %>
       </div>

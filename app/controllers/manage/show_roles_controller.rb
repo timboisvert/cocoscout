@@ -563,8 +563,9 @@ module Manage
     def role_params
       permitted = params.expect(show_role: [ :name, :restricted, :quantity, :category ])
       # A break (intermission marker) only exists in an act-based lineup; a
-      # role-based production quietly gets a performing role instead.
-      if permitted[:category] == Role::BREAK_CATEGORY && !@production.act_based?
+      # role-based show quietly gets a performing role instead. The show's
+      # effective mode decides (it may override the production's).
+      if permitted[:category] == Role::BREAK_CATEGORY && !@show.act_based?
         permitted[:category] = "performing"
       end
       permitted

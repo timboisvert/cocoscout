@@ -89,9 +89,33 @@ class Show < ApplicationRecord
     manual: "manual"              # Admin manually adds names/emails
   }, default: nil, prefix: :casting
 
-  # Casting mode (roles vs acts) is a production-level choice; a show only
-  # tweaks the lineup, never the mode.
-  delegate :act_based?, :role_based?, to: :production, allow_nil: true
+  # Casting mode (roles vs acts) is a production-level choice that a show may
+  # override for one night (a variety night inside a play's run, or a scripted
+  # evening inside a showcase). nil means "inherit from production".
+  validates :casting_mode, inclusion: { in: Production.casting_modes.keys }, allow_nil: true
+
+  # Empty string from a form select/JSON means "inherit", never a mode.
+  def casting_mode=(value)
+    super(value.presence)
+  end
+
+  # The mode this show is actually cast in: its own override, else the production's.
+  def effective_casting_mode
+    casting_mode.presence || production&.casting_mode || "role_based"
+  end
+
+  def act_based?
+    effective_casting_mode == "act_based"
+  end
+
+  def role_based?
+    !act_based?
+  end
+
+  # Does this show override the production's casting style?
+  def uses_custom_casting_mode?
+    casting_mode.present?
+  end
 
   # Returns the effective casting source (inheriting from production if not overridden)
   def effective_casting_source
@@ -653,6 +677,10 @@ class Show < ApplicationRecord
   # Copy all production roles to this show's custom roles
   def copy_roles_from_production!
     production.roles.production_roles.each do |role|
+      # Intermission markers only belong in an act-based lineup; a show cast
+      # by roles (overriding an act-based production) leaves them behind.
+      next if role.break? && !act_based?
+
       # For restricted roles, get the eligibilities to copy
       eligibilities_to_copy = role.restricted? ? role.role_eligibilities.to_a : []
 

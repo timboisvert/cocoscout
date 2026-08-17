@@ -112,6 +112,12 @@ class PayoutCalculator
       per_person_amount = 0
       adjusted_line_items = result[:line_items]
       guest_line_items = calculate_guest_payouts_per_act(guest_assignments, distribution, overrides)
+    when "per_ticket", "per_ticket_guaranteed"
+      # Per-ticket pay is rate × tickets for each person — nothing is shared,
+      # so guests are worked out the same way and nobody's line is re-split.
+      per_person_amount = 0
+      adjusted_line_items = result[:line_items]
+      guest_line_items = calculate_guest_payouts_per_ticket(guest_assignments, inputs, distribution, overrides)
     when "no_pay"
       # No pay: everyone gets $0
       per_person_amount = 0
@@ -658,6 +664,46 @@ class PayoutCalculator
         calculation_details: {
           formula: formula,
           inputs: { performer_pool: pool, performer_count: count },
+          breakdown: [ "Guest performer: #{format_currency(amount)}" ]
+        }
+      }
+    end
+  end
+
+  # Guests on a per-ticket night: rate × tickets, honouring the minimum on the
+  # guaranteed variant and any per-guest rate/minimum/flat override.
+  def calculate_guest_payouts_per_ticket(guest_assignments, inputs, distribution, overrides = {})
+    return [] if guest_assignments.empty?
+
+    guaranteed = distribution["method"] == "per_ticket_guaranteed"
+    ticket_count = inputs[:ticket_count]
+
+    guest_assignments.map do |assignment|
+      override = overrides["guest_#{assignment.id}"] || {}
+      rate = override["per_ticket_rate"]&.to_f || distribution["per_ticket_rate"].to_f
+      minimum = guaranteed ? (override["minimum"]&.to_f || distribution["minimum"].to_f) : 0
+      amount = if override["flat_amount"].present?
+        override["flat_amount"].to_f
+      else
+        [ rate * ticket_count, minimum ].max
+      end
+
+      formula = if override["flat_amount"].present?
+        "Custom amount"
+      elsif guaranteed && rate * ticket_count < minimum
+        "Minimum #{format_currency(minimum)} (#{ticket_count} × #{format_currency(rate)} = #{format_currency(rate * ticket_count)})"
+      else
+        "#{ticket_count} tickets × #{format_currency(rate)}"
+      end
+
+      {
+        guest_name: assignment.guest_name,
+        guest_assignment_id: assignment.id,
+        amount: amount.round(2),
+        shares: nil,
+        calculation_details: {
+          formula: formula,
+          inputs: { ticket_count: ticket_count, rate: rate, minimum: minimum },
           breakdown: [ "Guest performer: #{format_currency(amount)}" ]
         }
       }

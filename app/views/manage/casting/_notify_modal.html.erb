@@ -58,7 +58,7 @@
           <%= form_with url: manage_casting_show_notify_path(production, show.id), method: :post, class: "px-5 py-4 space-y-4" do |f| %>
             <% unless fully_cast %>
               <p class="text-sm text-gray-600">
-                This show isn't fully cast yet. Choose who to notify now — they'll see their <%= casting_unit(production) %> while you finish casting the rest.
+                This show isn't fully cast yet. Choose who to notify now — they'll see their <%= casting_unit(show) %> while you finish casting the rest.
               </p>
             <% end %>
 

@@ -40,12 +40,12 @@
         {
           entity: entity,
           role_assignments: assignments.map { |a|
-            # "Act 3 · Magic" in an act-based production, the plain role name
-            # otherwise. Pin the role's production to the show's (already loaded)
-            # so the mode check doesn't query per role.
+            # "Act 3 · Magic" when this show is cast by acts, the plain role
+            # name otherwise. Pin the role's production to the show's (already
+            # loaded) so the mode check doesn't query per role.
             role = a[:assignment].role
             role.association(:production).target = show.production unless role.association(:production).loaded?
-            { role_name: role.display_name, entity_name: entity.name }
+            { role_name: role.display_name(show: show), entity_name: entity.name }
           }
         }
       end
