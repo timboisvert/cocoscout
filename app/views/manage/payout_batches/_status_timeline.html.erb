@@ -1,11 +1,83 @@
-<%# Horizontal status stepper for a payout run. Local: batch. %>
-<% steps = batch.timeline_steps %>
-<div class="rounded-lg border border-gray-200 bg-white p-5 mb-6">
-  <div class="flex items-center justify-between gap-3 mb-4">
-    <span class="inline-flex items-center rounded-full bg-pink-50 border border-pink-200 px-2.5 py-0.5 text-xs font-semibold text-pink-700"><%= batch.kind_label %></span>
-    <%= render "manage/payout_batches/status_badge", status: batch.status %>
-  </div>
+<%#
+  A payout run's current state, then its lifecycle stepper.
 
+  The state box (eyebrow / big line / one plain-English line, tinted by state)
+  is THE place the page says where the run is and what that means; the stepper
+  under it shows where that sits in draft → funding → funded → paying → paid.
+
+  Locals:
+    batch:      PayoutBatch (required)
+    breakdown:  PayoutBatch#money_by_item_state (optional — makes the partially
+                paid description say how much is paid / ready / waiting)
+%>
+<%
+  steps = batch.timeline_steps
+  breakdown = local_assigns[:breakdown]
+  next_try = batch.next_auto_retry_at
+  next_try_text = if next_try
+                    day = if next_try.to_date == Date.current then "today"
+                          elsif next_try.to_date == Date.current + 1 then "tomorrow"
+                          else next_try.strftime("%a, %b %-d")
+                          end
+                    "#{day} at #{next_try.strftime('%-l:%M%P')}"
+                  end
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+
+  headline, description, tint, eyebrow_color =
+    case batch.status
+    when "draft"
+      [ "Draft — not submitted",
+        "Nothing has been debited yet. Fund & pay when you're ready; payees with a connected bank are paid as soon as the funding clears, and anyone without one waits on this run until they connect.",
+        "bg-gray-50 border-gray-300", "text-gray-500" ]
+    when "funding"
+      [ "Funding — ACH clearing",
+        "We're debiting #{money.call(batch.total_cents)} from your bank. Payouts go out to each payee automatically the moment it lands — usually 2–4 business days. Nothing to do.",
+        "bg-amber-50 border-amber-200", "text-amber-700" ]
+    when "funded"
+      [ "Funded — about to pay",
+        "The debit landed and #{money.call(batch.total_cents)} is in. Transfers to each payee's bank are going out now.",
+        "bg-amber-50 border-amber-200", "text-amber-700" ]
+    when "processing"
+      [ "Paying out",
+        "Transfers are going out to each payee right now. This usually finishes within a minute.",
+        "bg-amber-50 border-amber-200", "text-amber-700" ]
+    when "partially_paid"
+      parts = []
+      if breakdown
+        parts << "#{money.call(breakdown[:paid][:cents])} is paid to #{pluralize(breakdown[:paid][:count], 'payee')}" if breakdown[:paid][:count].positive?
+        parts << "#{money.call(breakdown[:waiting][:cents])} is waiting on #{pluralize(breakdown[:waiting][:count], 'payee')} who #{breakdown[:waiting][:count] == 1 ? "hasn't" : "haven't"} connected a bank" if breakdown[:waiting][:count].positive?
+        parts << "#{money.call(breakdown[:ready][:cents])} is ready to pay now" if breakdown[:ready][:count].positive?
+      end
+      body = "Funded, but not everyone is paid yet."
+      body += " #{parts.to_sentence.upcase_first}." if parts.any?
+      body += " We retry automatically — next #{next_try_text} — and the moment anyone connects." if next_try_text
+      [ "Partially paid", body, "bg-blue-50 border-blue-200", "text-blue-700" ]
+    when "completed"
+      [ "Paid — everyone's been paid",
+        "All #{money.call(batch.total_cents)} went out#{" · completed #{batch.completed_at.strftime('%b %-d, %Y')}" if batch.completed_at}. Nothing left to do.",
+        "bg-green-50 border-green-200", "text-green-700" ]
+    when "failed"
+      [ batch.funding_status == "failed" ? "Failed — funding didn't go through" : "Failed — transfers didn't go through",
+        batch.funding_status == "failed" ? "The bank debit failed, so nobody was paid. Check the funding source and start a new run." : "The funding landed but the transfers failed. Check the payments below for what went wrong.",
+        "bg-red-50 border-red-200", "text-red-700" ]
+    when "canceled"
+      [ "Canceled", "This run was canceled; nothing was paid from it.", "bg-gray-50 border-gray-300", "text-gray-500" ]
+    else
+      [ batch.display_status, "", "bg-gray-50 border-gray-300", "text-gray-500" ]
+    end
+%>
+
+<%# The state itself: label, one big line, one line of what it means. %>
+<div class="rounded-lg border p-5 mb-4 <%= tint %>">
+  <div class="text-xs font-semibold uppercase tracking-wider <%= eyebrow_color %>">Current state</div>
+  <div class="text-2xl font-bold text-gray-900 mt-0.5"><%= headline %></div>
+  <% if description.present? %>
+    <p class="text-sm text-gray-700 mt-1 max-w-3xl"><%= description %></p>
+  <% end %>
+</div>
+
+<%# Where that sits in the run's lifecycle. %>
+<div class="rounded-lg border border-gray-200 bg-white p-5 mb-6">
   <div class="overflow-x-auto">
     <div class="flex items-start min-w-[30rem]">
       <% steps.each_with_index do |step, i| %>

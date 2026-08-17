@@ -27,7 +27,7 @@
     links: []
   } %>
 
-  <%= render "manage/payout_batches/status_timeline", batch: @batch %>
+  <%= render "manage/payout_batches/status_timeline", batch: @batch, breakdown: @breakdown %>
 
   <%# ---- Where every dollar on this run sits. Each box is a filter on the
       payments list below — click "Waiting on bank info" and you're looking at
