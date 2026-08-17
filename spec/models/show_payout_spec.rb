@@ -82,6 +82,78 @@ RSpec.describe ShowPayout do
     end
   end
 
+  describe "#customization_summary" do
+    let(:organization) { create(:organization) }
+    let(:production) { create(:production, organization: organization) }
+    let(:show) { create(:show, production: production) }
+    let(:scheme) do
+      PayoutScheme.create!(
+        organization: organization, name: "House Split",
+        rules: {
+          "allocation" => [ { "type" => "percentage", "value" => 40.0, "label" => "House take" }, { "type" => "remainder" } ],
+          "distribution" => { "method" => "shares", "default_shares" => 1.0 },
+          "performer_overrides" => {}
+        }
+      )
+    end
+    let(:payout) { create(:show_payout, show: show, payout_scheme: scheme) }
+
+    it "is nil without a customization" do
+      expect(payout.customization_summary).to be_nil
+    end
+
+    it "spells out a changed house take and expenses-first" do
+      payout.update!(override_rules: scheme.rules.deep_merge("allocation" => [ { "type" => "expenses_first" }, { "type" => "percentage", "value" => 30.0 }, { "type" => "remainder" } ]))
+      expect(payout.customization_summary).to eq("House 30% instead of 40%; Expenses covered first")
+    end
+
+    it "spells out changed shares" do
+      payout.update!(override_rules: scheme.rules.deep_merge("distribution" => { "default_shares" => 2.0 }))
+      expect(payout.customization_summary).to eq("2 shares each instead of 1")
+    end
+
+    it "spells out a changed flat amount" do
+      scheme.update!(rules: { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 } })
+      payout.update!(override_rules: { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 } })
+      expect(payout.customization_summary).to eq("Flat $60 instead of $50")
+    end
+
+    it "spells out per-ticket rate and minimum changes" do
+      scheme.update!(rules: { "distribution" => { "method" => "per_ticket_guaranteed", "per_ticket_rate" => 1.0, "minimum" => 25.0 } })
+      payout.update!(override_rules: { "distribution" => { "method" => "per_ticket_guaranteed", "per_ticket_rate" => 1.5, "minimum" => 30.0 } })
+      expect(payout.customization_summary).to eq("$1.50/ticket instead of $1; Minimum $30 instead of $25")
+    end
+
+    it "spells out a changed act schedule" do
+      scheme.update!(rules: { "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 25.0 } })
+      payout.update!(override_rules: { "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 30.0 } })
+      expect(payout.customization_summary).to eq("$30.00 per act instead of $25.00 per act")
+    end
+
+    it "names the people given exact amounts, guests included" do
+      jane = create(:person, name: "Jane Doe")
+      role = create(:role, production: production)
+      gigi = create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil)
+      payout.update!(override_rules: scheme.rules.merge("performer_overrides" => { jane.id.to_s => { "flat_amount" => 100.0 }, "guest_#{gigi.id}" => { "flat_amount" => 40.0 } }))
+      expect(payout.customization_summary).to eq("Jane Doe $100, Gigi (guest) $40")
+    end
+
+    it "says when the approach itself was swapped (legacy overrides)" do
+      payout.update!(override_rules: { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 } })
+      expect(payout.customization_summary).to eq("Flat amount each instead of split by shares")
+    end
+
+    it "labels a show closed as non-paying" do
+      payout.update!(override_rules: { "distribution" => { "method" => "no_pay" }, "closed_as_non_paying" => true })
+      expect(payout.customization_summary).to eq("Closed as non-paying")
+    end
+
+    it "falls back to a generic line when nothing it can name differs" do
+      payout.update!(override_rules: scheme.rules)
+      expect(payout.customization_summary).to eq("Custom amounts")
+    end
+  end
+
   describe "status methods" do
     describe "#awaiting_payout?" do
       it "returns true when status is awaiting_payout" do

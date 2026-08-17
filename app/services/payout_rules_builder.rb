@@ -124,8 +124,11 @@ class PayoutRulesBuilder
         when "schedule"
           # Rows are positional: the first amount is the first act's rate.
           # Past the end of the list, additional_act_rate applies (blank = those
-          # acts pay nothing).
-          distribution["act_rates"] = Array(d[:act_rates]).each_with_index.map do |amount, index|
+          # acts pay nothing). Rows arrive as bare amounts from the form, or as
+          # the stored { act:, amount: } hashes when rebuilt from saved rules.
+          rows = d[:act_rates].is_a?(Hash) ? d[:act_rates].values : Array(d[:act_rates])
+          distribution["act_rates"] = rows.each_with_index.map do |row, index|
+            amount = row.is_a?(Hash) ? row[:amount] : row
             { "act" => index + 1, "amount" => amount.to_f }
           end
           distribution["additional_act_rate"] = d[:additional_act_rate].presence&.to_f

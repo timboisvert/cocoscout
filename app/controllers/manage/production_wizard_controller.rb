@@ -8,9 +8,14 @@ module Manage
     before_action :enforce_free_production_limit, only: %i[name create_production]
     before_action :load_wizard_state
 
-    # How a paying production gets its scheme: pick one the org already has,
-    # start a new one from a preset, or leave it for later.
+    # How a paying production gets its payout calculation: pick one the org
+    # already has, set up a new one right after the production is created, or
+    # leave it for later.
     PAY_CHOICES = %w[existing new later].freeze
+
+    # Marker returned by apply_wizard_pay_choice! when the calculation is to be
+    # built in the payout-calculation wizard once the production exists.
+    NEW_CALCULATION = :new_calculation
 
     # Step 1: Name - What's the production called?
     def name
@@ -136,28 +141,22 @@ module Manage
 
       if @wizard_state[:pays_performers] == "yes"
         choice = params[:pay_choice].to_s
-        choice = "" if choice == "existing" && org_payout_schemes.none?
+        choice = "" if choice == "existing" && org_payout_calculations.none?
         @wizard_state[:pay_choice] = choice if PAY_CHOICES.include?(choice)
 
         case choice
         when "existing"
-          scheme_id = params[:payout_scheme_id].presence
-          if scheme_id && org_payout_schemes.exists?(id: scheme_id)
-            @wizard_state[:payout_scheme_id] = scheme_id.to_i
+          calculation_id = params[:payout_scheme_id].presence
+          if calculation_id && org_payout_calculations.exists?(id: calculation_id)
+            @wizard_state[:payout_scheme_id] = calculation_id.to_i
           else
-            @pay_error = "Choose one of your payout schemes, or set up a new one."
+            @pay_error = "Choose one of your payout calculations, or set up a new one."
           end
-        when "new"
-          preset = params[:new_scheme_preset].to_s
-          if new_scheme_preset_keys.include?(preset)
-            @wizard_state[:new_scheme_preset] = preset
-          else
-            @pay_error = "Pick a preset to start the new scheme from."
-          end
-        when "later"
-          # Nothing more to store — the scheme gets picked in Money afterwards.
+        when "new", "later"
+          # Nothing more to store: "new" sends them into the calculation wizard
+          # right after create; "later" leaves it for the production's Pay tab.
         else
-          @pay_error = "Tell us whether to use an existing scheme or set up a new one."
+          @pay_error = "Tell us whether to use an existing calculation or set up a new one."
         end
       end
 
@@ -240,7 +239,7 @@ module Manage
         render :review, status: :unprocessable_entity and return
       end
 
-      new_scheme = nil
+      pay_outcome = nil
       ActiveRecord::Base.transaction do
         # Create the production
         @production = Current.organization.productions.new(
@@ -298,10 +297,10 @@ module Manage
           end
         end
 
-        # Pay: give the production its payout scheme — an existing one, or a
-        # fresh one from a preset whose amounts get set right after this.
-        # (After the shows, so the scheme reaches back to the first night.)
-        new_scheme = apply_wizard_pay_choice!
+        # Pay: give the production its payout calculation — an existing one now,
+        # or a new one built in the calculation wizard right after this.
+        # (After the shows, so the calculation reaches back to the first night.)
+        pay_outcome = apply_wizard_pay_choice!
       end
 
       # Clear wizard state
@@ -314,9 +313,12 @@ module Manage
       # Turn on the "here's what to do next" panel on the manage home page.
       Current.user.activate_guide!(:production_next_steps)
 
-      if new_scheme
-        redirect_to manage_edit_money_payout_scheme_path(new_scheme),
-                    notice: "#{@production.name} is ready — now set the amounts for its #{new_scheme.name} scheme."
+      if pay_outcome == NEW_CALCULATION
+        redirect_to manage_money_payout_calculation_wizard_start_path(
+                      production_id: @production.id,
+                      return_to: edit_manage_production_path(@production, anchor: "tab-6")
+                    ),
+                    notice: "#{@production.name} is ready — now set up how its performers are paid."
       else
         redirect_to manage_path, notice: "#{@production.name} has been created!"
       end
@@ -368,58 +370,32 @@ module Manage
     end
     helper_method :pay_step_available?
 
-    def org_payout_schemes
+    def org_payout_calculations
       Current.organization.payout_schemes.active
-    end
-
-    # Presets a new scheme can start from — every preset but "no pay", which
-    # is the No answer, not a scheme.
-    def new_scheme_presets
-      presets = PayoutScheme::PRESETS.except(:no_pay)
-      # An act-based production almost always pays per act: lead with it.
-      if act_based_wizard? && presets.key?(:per_act)
-        presets = { per_act: presets[:per_act] }.merge(presets.except(:per_act))
-      end
-      presets
-    end
-    helper_method :new_scheme_presets
-
-    def new_scheme_preset_keys
-      new_scheme_presets.keys.map(&:to_s)
     end
 
     def clear_pay_choice
       @wizard_state.delete(:pay_choice)
       @wizard_state.delete(:payout_scheme_id)
-      @wizard_state.delete(:new_scheme_preset)
     end
 
     def load_pay_step_data
-      @payout_schemes = org_payout_schemes.order(:name).to_a
+      @payout_calculations = org_payout_calculations.order(:name).to_a
     end
 
-    # Runs inside the create transaction. Returns the newly created scheme
-    # (so create can send them off to set its amounts) or nil.
+    # Runs inside the create transaction. Makes an existing calculation the
+    # production's own; returns NEW_CALCULATION when one is to be built in the
+    # calculation wizard right after create; nil otherwise.
     def apply_wizard_pay_choice!
       return nil unless @wizard_state[:pays_performers] == "yes"
 
       case @wizard_state[:pay_choice]
       when "existing"
-        scheme = org_payout_schemes.find_by(id: @wizard_state[:payout_scheme_id])
-        scheme&.make_production_scheme!(@production)
+        calculation = org_payout_calculations.find_by(id: @wizard_state[:payout_scheme_id])
+        calculation&.make_production_scheme!(@production)
         nil
       when "new"
-        preset_key = @wizard_state[:new_scheme_preset].to_s
-        return nil unless new_scheme_preset_keys.include?(preset_key)
-
-        scheme = PayoutScheme.create_from_preset(Current.organization, preset_key)
-        raise ActiveRecord::RecordInvalid, scheme unless scheme&.persisted?
-
-        # Mirror payout_schemes#create_from_preset: the org's first scheme is
-        # also its org-level default.
-        scheme.make_default! if Current.organization.payout_schemes.organization_level.count == 1
-        scheme.make_production_scheme!(@production)
-        scheme
+        NEW_CALCULATION
       end
     end
 

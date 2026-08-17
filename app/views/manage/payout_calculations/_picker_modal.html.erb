@@ -1,0 +1,107 @@
+<%#
+  "Choose a payout calculation" — the one list-picker used by the production
+  Pay tab, a show's payout page and its empty state. Inline, hidden, opened by
+  a trigger with data-controller="modal" data-action="click->modal#open"
+  data-modal-id matching `id`. Pink header, radio rows (name + plain summary),
+  optional extra fields (e.g. "just this show / future shows too"), one pink
+  submit. NOTE: keep ERB tags out of this comment.
+
+  Locals:
+    id             (required) DOM id, matches the trigger's data-modal-id
+    url            (required) where the pick is posted
+    method         form method (default :patch)
+    calculations   the org's active PayoutScheme records (required)
+    current        the currently applied calculation, or nil (rendered as "current")
+    field_name     param name for the picked id (default "payout_scheme_id")
+    title          heading (default "Choose a payout calculation")
+    intro          one line above the list (optional)
+    confirm_text   submit label (default "Use this calculation")
+    hidden_fields  hash of hidden inputs to submit (optional)
+    create_path    if given, a "Create a new calculation" link is offered
+    extra_fields   HTML (capture block) rendered below the list, e.g. scope radios
+%>
+<%
+  id            = local_assigns.fetch(:id)
+  url           = local_assigns.fetch(:url)
+  method        = local_assigns[:method] || :patch
+  calculations  = Array(local_assigns[:calculations])
+  current       = local_assigns[:current]
+  field_name    = local_assigns[:field_name] || "payout_scheme_id"
+  title         = local_assigns[:title] || "Choose a payout calculation"
+  intro         = local_assigns[:intro]
+  confirm_text  = local_assigns[:confirm_text] || "Use this calculation"
+  hidden_fields = local_assigns[:hidden_fields] || {}
+  create_path   = local_assigns[:create_path]
+  extra_fields  = local_assigns[:extra_fields]
+%>
+<div id="<%= id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden flex flex-col max-h-[90vh]"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white"><%= title %></h3>
+      <button type="button" data-action="click->modal#close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%= form_with url: url, method: method, local: true, class: "contents", id: "#{id}-form" do %>
+      <% hidden_fields.each do |k, v| %>
+        <%= hidden_field_tag k, v, id: nil %>
+      <% end %>
+
+      <div class="px-6 py-5 overflow-y-auto space-y-3">
+        <% if intro.present? %>
+          <p class="text-sm text-gray-600"><%= intro %></p>
+        <% end %>
+
+        <% if calculations.any? %>
+          <div class="space-y-2" role="radiogroup">
+            <% calculations.each do |calculation| %>
+              <% is_current = current && current.id == calculation.id %>
+              <label class="flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors <%= is_current ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-pink-300' %>">
+                <input type="radio" name="<%= field_name %>" value="<%= calculation.id %>" <%= "checked" if is_current %>
+                       class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                <span class="min-w-0 flex-1">
+                  <span class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900"><%= calculation.name %></span>
+                    <% if is_current %>
+                      <span class="text-[9px] font-bold uppercase tracking-wide text-pink-600 bg-white border border-pink-200 rounded px-1 py-0.5 leading-none">Current</span>
+                    <% end %>
+                  </span>
+                  <% summary = calculation.rules_summary %>
+                  <% if summary.present? %>
+                    <span class="block text-sm text-gray-500 mt-0.5"><%= summary %></span>
+                  <% end %>
+                </span>
+              </label>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-700">You don't have any payout calculations yet.</p>
+        <% end %>
+
+        <% if create_path %>
+          <p class="text-sm">
+            <%= link_to "Create a new calculation", create_path, class: "text-pink-500 hover:text-pink-600 font-medium" %>
+            <span class="text-gray-500">— a short wizard, and you'll come straight back here.</span>
+          </p>
+        <% end %>
+
+        <%= extra_fields if extra_fields.present? %>
+      </div>
+
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <% if calculations.any? %>
+          <%= render "shared/button", text: confirm_text, variant: "primary", size: "medium", type: :submit %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

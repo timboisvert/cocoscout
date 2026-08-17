@@ -1,15 +1,11 @@
 <%
   pays = @wizard_state[:pays_performers].presence || "no"
-  has_schemes = @payout_schemes.any?
-  presets = new_scheme_presets
-  # Which way to get the scheme: what they picked, else the sensible start —
-  # an existing scheme when the org has any, otherwise a new one.
-  choice = @wizard_state[:pay_choice].presence || (has_schemes ? "existing" : "new")
-  choice = "new" if choice == "existing" && !has_schemes
+  has_calculations = @payout_calculations.any?
+  # Which way to get the calculation: what they picked, else the sensible
+  # start — an existing calculation when the org has any, otherwise a new one.
+  choice = @wizard_state[:pay_choice].presence || (has_calculations ? "existing" : "new")
+  choice = "new" if choice == "existing" && !has_calculations
   chosen_id = @wizard_state[:payout_scheme_id]
-  # In act mode the recommended preset is already picked; otherwise they choose.
-  chosen_preset = @wizard_state[:new_scheme_preset].presence || (act_based_wizard? ? "per_act" : nil)
-  input_classes = "w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
   card_on = "border-pink-500 bg-pink-50"
   card_off = "border-gray-200 bg-gray-50"
   radio_classes = "mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500"
@@ -22,7 +18,7 @@
       </svg>
     </div>
     <h2 class="text-xl font-bold text-gray-900 coustard-regular">Will performers be paid for this production?</h2>
-    <p class="text-gray-600 mt-2">A payout scheme decides how each show's money is split among the people cast in it. You can set this up or change it any time in Money.</p>
+    <p class="text-gray-600 mt-2">A payout calculation decides how each show's money is split among the people cast in it. You can set this up or change it any time on the production's Pay tab.</p>
   </div>
 
   <%= form_with url: manage_productions_wizard_save_pay_path, method: :post, local: true, id: "pay-form" do |form| %>
@@ -51,76 +47,62 @@
             <input type="radio" name="pays_performers" value="yes" <%= "checked" if pays == 'yes' %> class="<%= radio_classes %>">
             <div class="ml-3">
               <p class="font-medium text-gray-900">Yes</p>
-              <p class="text-sm text-gray-500 mt-1">Every show starts from a payout scheme — pick one or set one up</p>
+              <p class="text-sm text-gray-500 mt-1">Every show starts from a payout calculation — pick one or set one up</p>
             </div>
           </div>
         </div>
       </label>
 
-      <!-- How to get the scheme (shown when yes is selected) -->
+      <!-- How to get the calculation (shown when yes is selected) -->
       <div id="pay-choice-section" class="<%= pays == 'yes' ? '' : 'hidden' %> ml-4 pl-4 border-l-2 border-pink-200 space-y-3">
-        <p class="text-sm font-medium text-gray-700">Which payout scheme should its shows start from?</p>
+        <p class="text-sm font-medium text-gray-700">Which payout calculation should its shows start from?</p>
 
-        <% if has_schemes %>
-          <!-- Existing scheme -->
+        <% if has_calculations %>
+          <!-- Existing calculation -->
           <label class="block cursor-pointer">
             <div data-radio-card="pay_choice" data-card-value="existing" class="p-4 rounded-lg border-2 transition-colors <%= choice == 'existing' ? card_on : card_off %> hover:border-pink-300">
               <div class="flex items-start">
                 <input type="radio" name="pay_choice" value="existing" <%= "checked" if choice == 'existing' %> class="<%= radio_classes %>">
                 <div class="ml-3">
-                  <p class="font-medium text-gray-900">Use an existing scheme</p>
-                  <p class="text-sm text-gray-500 mt-1">One of your organization's payout schemes</p>
+                  <p class="font-medium text-gray-900">Use an existing calculation</p>
+                  <p class="text-sm text-gray-500 mt-1">One of your organization's payout calculations</p>
                 </div>
               </div>
             </div>
           </label>
-          <div id="existing-scheme-section" class="<%= choice == 'existing' ? '' : 'hidden' %> ml-4 pl-4 border-l-2 border-pink-200 space-y-2">
-            <label for="payout_scheme_id" class="block text-sm font-medium text-gray-700">Payout scheme</label>
-            <select name="payout_scheme_id" id="payout_scheme_id" class="<%= input_classes %>">
-              <option value="" data-summary="" <%= "selected" if chosen_id.blank? %>>Choose a scheme…</option>
-              <% @payout_schemes.each do |scheme| %>
-                <option value="<%= scheme.id %>" data-summary="<%= scheme.rules_summary %>" <%= "selected" if chosen_id.to_s == scheme.id.to_s %>><%= scheme.name %></option>
-              <% end %>
-            </select>
-            <p id="payout-scheme-summary" class="text-sm text-gray-600 min-h-[1.25rem]"><%= chosen_id.present? ? @payout_schemes.find { |s| s.id.to_s == chosen_id.to_s }&.rules_summary : "" %></p>
-          </div>
-        <% end %>
-
-        <!-- New scheme from a preset -->
-        <label class="block cursor-pointer">
-          <div data-radio-card="pay_choice" data-card-value="new" class="p-4 rounded-lg border-2 transition-colors <%= choice == 'new' ? card_on : card_off %> hover:border-pink-300">
-            <div class="flex items-start">
-              <input type="radio" name="pay_choice" value="new" <%= "checked" if choice == 'new' %> class="<%= radio_classes %>">
-              <div class="ml-3">
-                <p class="font-medium text-gray-900">Set up a new scheme</p>
-                <p class="text-sm text-gray-500 mt-1">Start from a preset. You'll set the amounts on the next screen.</p>
-              </div>
-            </div>
-          </div>
-        </label>
-        <div id="new-scheme-section" class="<%= choice == 'new' ? '' : 'hidden' %> ml-4 pl-4 border-l-2 border-pink-200">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <% presets.each do |key, preset| %>
-              <% recommended = act_based_wizard? && key == :per_act %>
+          <div id="existing-calculation-section" class="<%= choice == 'existing' ? '' : 'hidden' %> ml-4 pl-4 border-l-2 border-pink-200 space-y-2" role="radiogroup" aria-label="Payout calculation">
+            <% @payout_calculations.each do |calculation| %>
+              <% picked = chosen_id.to_s == calculation.id.to_s %>
               <label class="block cursor-pointer">
-                <div data-radio-card="new_scheme_preset" data-card-value="<%= key %>" class="h-full p-3 rounded-lg border-2 transition-colors <%= chosen_preset.to_s == key.to_s ? card_on : card_off %> hover:border-pink-300">
+                <div data-radio-card="payout_scheme_id" data-card-value="<%= calculation.id %>" class="p-3 rounded-lg border-2 transition-colors <%= picked ? card_on : card_off %> hover:border-pink-300">
                   <div class="flex items-start">
-                    <input type="radio" name="new_scheme_preset" value="<%= key %>" <%= "checked" if chosen_preset.to_s == key.to_s %> class="<%= radio_classes %>">
+                    <input type="radio" name="payout_scheme_id" value="<%= calculation.id %>" <%= "checked" if picked %> class="<%= radio_classes %>">
                     <div class="ml-3 min-w-0">
-                      <p class="font-medium text-gray-900 text-sm flex items-center gap-2 flex-wrap">
-                        <span><%= preset[:name] %></span>
-                        <% if recommended %>
-                          <span class="text-[9px] font-bold uppercase tracking-wide text-pink-600 bg-pink-50 border border-pink-200 rounded px-1 py-0.5 leading-none">Recommended</span>
-                        <% end %>
-                      </p>
-                      <p class="text-xs text-gray-500 mt-1"><%= preset[:description] %></p>
+                      <p class="font-medium text-gray-900 text-sm"><%= calculation.name %></p>
+                      <% summary = calculation.rules_summary %>
+                      <% if summary.present? %>
+                        <p class="text-xs text-gray-500 mt-0.5"><%= summary %></p>
+                      <% end %>
                     </div>
                   </div>
                 </div>
               </label>
             <% end %>
           </div>
-        </div>
+        <% end %>
+
+        <!-- New calculation, built right after create -->
+        <label class="block cursor-pointer">
+          <div data-radio-card="pay_choice" data-card-value="new" class="p-4 rounded-lg border-2 transition-colors <%= choice == 'new' ? card_on : card_off %> hover:border-pink-300">
+            <div class="flex items-start">
+              <input type="radio" name="pay_choice" value="new" <%= "checked" if choice == 'new' %> class="<%= radio_classes %>">
+              <div class="ml-3">
+                <p class="font-medium text-gray-900">Set up a new one</p>
+                <p class="text-sm text-gray-500 mt-1">You'll build it in a short wizard right after the production is created — it becomes this production's calculation.</p>
+              </div>
+            </div>
+          </div>
+        </label>
 
         <!-- Decide later -->
         <label class="block cursor-pointer">
@@ -129,7 +111,7 @@
               <input type="radio" name="pay_choice" value="later" <%= "checked" if choice == 'later' %> class="<%= radio_classes %>">
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-900">Decide later</p>
-                <p class="text-xs text-gray-500 mt-0.5">Pick a scheme in Money once the production exists</p>
+                <p class="text-xs text-gray-500 mt-0.5">Pick a calculation on the production's Pay tab once it exists</p>
               </div>
             </div>
           </div>
@@ -152,8 +134,7 @@
   const OFF = ['border-gray-200', 'bg-gray-50'];
   const sections = {
     'pay-choice-section': () => checkedValue('pays_performers') === 'yes',
-    'existing-scheme-section': () => checkedValue('pay_choice') === 'existing',
-    'new-scheme-section': () => checkedValue('pay_choice') === 'new'
+    'existing-calculation-section': () => checkedValue('pay_choice') === 'existing'
   };
 
   function checkedValue(name) {
@@ -171,25 +152,15 @@
   }
 
   function refresh() {
-    ['pays_performers', 'pay_choice', 'new_scheme_preset'].forEach(paintCards);
+    ['pays_performers', 'pay_choice', 'payout_scheme_id'].forEach(paintCards);
     Object.keys(sections).forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle('hidden', !sections[id]());
     });
   }
 
-  document.querySelectorAll('input[name="pays_performers"], input[name="pay_choice"], input[name="new_scheme_preset"]').forEach(radio => {
+  document.querySelectorAll('input[name="pays_performers"], input[name="pay_choice"], input[name="payout_scheme_id"]').forEach(radio => {
     radio.addEventListener('change', refresh);
   });
-
-  // Live description of the selected existing scheme.
-  const schemeSelect = document.getElementById('payout_scheme_id');
-  const schemeSummary = document.getElementById('payout-scheme-summary');
-  if (schemeSelect && schemeSummary) {
-    schemeSelect.addEventListener('change', function() {
-      const opt = this.options[this.selectedIndex];
-      schemeSummary.textContent = opt ? (opt.dataset.summary || '') : '';
-    });
-  }
 })();
 </script>

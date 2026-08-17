@@ -29,7 +29,8 @@ module Manage
       "manage/contract_wizard" => :contracts,
       "manage/contract_documents" => :contracts,
       "manage/contractors" => :contracts,
-      "manage/payout_schemes" => :money,
+      "manage/payout_calculations" => :money,
+      "manage/payout_calculation_wizard" => :money,
       "manage/payout_batches" => :money,
       "manage/advances" => :money,
       # Reports
@@ -68,7 +69,7 @@ module Manage
         description: "Money turns show financials, contracts, advances, and payouts into a single system that always ties out — and pays performers straight to their bank. No more spreadsheets, guesswork, or wondering who still needs to get paid. Built by performers and producers who were tired of paying to move their own money.",
         capabilities: [
           { title: "Show & production financials", body: "Record ticket and other revenue per show and watch it roll up by production and time period." },
-          { title: "Performer payouts", body: "Build reusable payout schemes, calculate each performer's split automatically, and pay them straight to their bank in one click." },
+          { title: "Performer payouts", body: "Set up payout calculations once, work out each performer's split automatically, and pay them straight to their bank in one click." },
           { title: "Fair, per-active pricing", body: "Just $3/month per performer — and only in months you actually pay them. Unlimited payout runs included; a performer you don't pay that month costs nothing." },
           { title: "Contracts & advances", body: "Track third-party contracts and revenue shares, and issue performer advances that recover automatically from future payouts." }
         ],

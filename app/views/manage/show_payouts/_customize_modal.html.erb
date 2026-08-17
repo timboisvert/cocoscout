@@ -1,0 +1,135 @@
+<%#
+  Customize tonight's calculation — the show payout page's modal for changing
+  the amounts of the calculation this show inherited, or naming exact amounts
+  for specific people. Everything the modal doesn't touch (the approach, who
+  gets a cut off the top) stays as calculated. Inline, hidden, opened by a
+  trigger with data-controller="modal" data-action="click->modal#open"
+  data-modal-id="customize-calculation". NOTE: keep ERB tags out of this comment.
+
+  Expects: @show, @show_payout (its base_scheme is the calculation started from).
+%>
+<%
+  modal_id = "customize-calculation"
+  base_scheme = @show_payout.base_scheme
+  base_rules = @show_payout.base_rules
+  # Prefill from what's currently customized so a second edit shows tonight's
+  # numbers — the save still starts over from the calculation itself.
+  current_rules = @show_payout.has_overrides? ? @show_payout.override_rules.deep_stringify_keys : base_rules
+  distribution = current_rules["distribution"] || {}
+  method = distribution["method"].to_s
+  approach = case method
+    when "no_pay" then "not_paid"
+    when "flat_fee" then "flat"
+    when "per_act" then "per_act"
+    when "per_ticket", "per_ticket_guaranteed" then "per_ticket"
+    else "share"
+  end
+  pool_method = PayoutRulesBuilder.pool_method?(method)
+  allocation = Array(current_rules["allocation"])
+  house_step = allocation.find { |s| s["type"] == "percentage" && s["person_id"].blank? }
+  house_percentage = house_step ? house_step["value"].to_f : 0.0
+  house_percentage = house_percentage.to_i if house_percentage == house_percentage.to_i
+  expenses_first = allocation.any? { |s| s["type"] == "expenses_first" }
+  performer_overrides = current_rules["performer_overrides"] || {}
+  payees = @show_payout.act_payees
+  input_classes = "px-3 py-2.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+%>
+<div id="<%= modal_id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Customize tonight's calculation</h3>
+      <button type="button" data-action="click->modal#close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%= form_with url: manage_save_override_money_show_payout_path(@show), method: :patch, local: true, class: "contents", id: "#{modal_id}-form" do %>
+      <div class="px-6 py-5 overflow-y-auto space-y-6">
+        <p class="text-sm text-gray-600">
+          Starting from <strong class="text-gray-900"><%= base_scheme&.name || "the calculation this show uses" %></strong>.
+          Change the amounts, or set exact amounts for specific people; everything else stays as calculated.
+          Want a different approach? Choose a different calculation instead.
+        </p>
+
+        <section>
+          <h4 class="text-sm font-semibold text-gray-900 mb-3">Adjust the amounts</h4>
+          <% if approach == "not_paid" %>
+            <p class="text-sm text-gray-600">This calculation doesn't pay anyone. To pay someone tonight anyway, set their exact amount below.</p>
+          <% else %>
+            <%= render "manage/payout_calculation_wizard/amounts_fields", approach: approach, distribution: distribution %>
+          <% end %>
+
+          <% if pool_method %>
+            <div class="mt-5 pt-5 border-t border-gray-200 space-y-4">
+              <div>
+                <label for="customize_house_percentage" class="block text-sm font-medium text-gray-900 mb-1.5">The house keeps</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="customize_house_percentage" name="house_percentage" value="<%= house_percentage %>" min="0" max="100" step="0.5" class="w-24 <%= input_classes %>">
+                  <span class="text-gray-500">%</span>
+                </div>
+              </div>
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input type="hidden" name="expenses_first" value="0">
+                <input type="checkbox" name="expenses_first" value="1" <%= "checked" if expenses_first %>
+                       class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <span class="text-sm text-gray-900">Cover the show's expenses first</span>
+              </label>
+            </div>
+          <% end %>
+        </section>
+
+        <section>
+          <h4 class="text-sm font-semibold text-gray-900 mb-1">Exact amounts for specific people</h4>
+          <p class="text-xs text-gray-500 mb-3">Leave someone blank and they're paid as calculated.</p>
+          <% if payees.empty? %>
+            <p class="text-sm text-gray-500">Nobody is cast on this show yet.</p>
+          <% else %>
+            <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+              <% payees.each do |payee| %>
+                <%
+                  is_guest = payee.is_a?(ShowPersonRoleAssignment)
+                  key = is_guest ? "guest_#{payee.id}" : payee.id.to_s
+                  name = is_guest ? payee.guest_name : payee.name
+                  headshot_variant = is_guest ? nil : payee.safe_headshot_variant(:thumb)
+                  current_amount = performer_overrides.dig(key, "flat_amount")
+                %>
+                <div class="flex items-center gap-3 px-3 py-2.5 bg-white">
+                  <% if headshot_variant %>
+                    <%= image_tag headshot_variant, alt: name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                  <% else %>
+                    <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+                      <%= is_guest ? name.to_s.split.map(&:first).first(2).join.upcase : payee.initials %>
+                    </div>
+                  <% end %>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 truncate"><%= name %></div>
+                    <% if is_guest %>
+                      <div class="text-xs text-gray-500">Guest</div>
+                    <% end %>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-gray-500">$</span>
+                    <input type="number" name="performer_overrides[<%= key %>][flat_amount]" value="<%= current_amount %>"
+                           min="0" step="0.01" placeholder="As calculated" class="w-32 <%= input_classes %>">
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </section>
+      </div>
+
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Save tonight's calculation", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

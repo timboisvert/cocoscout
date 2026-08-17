@@ -119,21 +119,27 @@ class PayoutCalculator
       adjusted_line_items = result[:line_items]
       guest_line_items = calculate_guest_payouts_per_ticket(guest_assignments, inputs, distribution, overrides)
     when "no_pay"
-      # No pay: everyone gets $0
+      # No pay: everyone gets $0 — unless tonight's customization names an
+      # exact amount for someone.
       per_person_amount = 0
       adjusted_line_items = result[:line_items]
       guest_line_items = guest_assignments.map do |assignment|
-        {
-          guest_name: assignment.guest_name,
-          guest_assignment_id: assignment.id,
-          amount: 0,
-          shares: nil,
-          calculation_details: {
-            formula: "No pay (non-revenue event)",
-            inputs: {},
-            breakdown: [ "Non-revenue: $0.00" ]
+        override = overrides["guest_#{assignment.id}"] || {}
+        if override["flat_amount"].present?
+          custom_amount_item(override["flat_amount"]).merge(guest_name: assignment.guest_name, guest_assignment_id: assignment.id)
+        else
+          {
+            guest_name: assignment.guest_name,
+            guest_assignment_id: assignment.id,
+            amount: 0,
+            shares: nil,
+            calculation_details: {
+              formula: "No pay (non-revenue event)",
+              inputs: {},
+              breakdown: [ "Non-revenue: $0.00" ]
+            }
           }
-        }
+        end
       end
     else
       # Pool-based methods: divide pool by total performers (including guests)
@@ -144,9 +150,12 @@ class PayoutCalculator
       end
 
       # Adjust regular performer line items if there are guests
-      # (they need to share the pool with guests)
+      # (they need to share the pool with guests). A person given an exact
+      # amount for tonight keeps it — the re-split is for everyone else.
       adjusted_line_items = if guest_assignments.any? && regular_performers.any?
         result[:line_items].map do |item|
+          next item if custom_amount_for(overrides, item[:payee]).present?
+
           calc_details = item[:calculation_details] || {}
           existing_inputs = calc_details[:inputs] || calc_details["inputs"] || {}
           item.merge(
@@ -298,7 +307,7 @@ class PayoutCalculator
     when "per_act"
       distribute_per_act(performers, distribution, overrides, breakdown)
     when "no_pay"
-      distribute_no_pay(performers, breakdown)
+      distribute_no_pay(performers, overrides, breakdown)
     else
       return { error: "Unknown distribution method: #{method}" }
     end
@@ -384,12 +393,12 @@ class PayoutCalculator
     breakdown << "Performer pool: #{format_currency(pool)} ÷ #{performers.count} = #{format_currency(per_person)} each"
 
     performers.map do |performer|
-      override = overrides[performer.id.to_s] || {}
-      amount = override["flat_amount"] || per_person
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer, shares: 1) if custom
 
       {
         payee: performer,
-        amount: amount.round(2),
+        amount: per_person.round(2),
         shares: 1,
         calculation_details: {
           formula: "#{format_currency(pool)} ÷ #{performers.count} performers",
@@ -418,6 +427,9 @@ class PayoutCalculator
     performers.map do |performer|
       override = overrides[performer.id.to_s] || {}
       shares = override["shares"]&.to_f || default_shares
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer, shares: shares) if custom
+
       amount = per_share * shares
 
       {
@@ -444,6 +456,9 @@ class PayoutCalculator
 
     performers.map do |performer|
       override = overrides[performer.id.to_s] || {}
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer) if custom
+
       custom_rate = override["per_ticket_rate"]&.to_f || rate
       amount = custom_rate * ticket_count
 
@@ -473,6 +488,9 @@ class PayoutCalculator
 
     performers.map do |performer|
       override = overrides[performer.id.to_s] || {}
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer) if custom
+
       custom_rate = override["per_ticket_rate"]&.to_f || rate
       custom_min = override["minimum"]&.to_f || minimum
       calculated_amount = custom_rate * ticket_count
@@ -502,17 +520,17 @@ class PayoutCalculator
     breakdown << "Flat fee: #{format_currency(flat_amount)} per performer"
 
     performers.map do |performer|
-      override = overrides[performer.id.to_s] || {}
-      amount = override["flat_amount"]&.to_f || flat_amount
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer) if custom
 
       {
         payee: performer,
-        amount: amount.round(2),
+        amount: flat_amount.round(2),
         shares: nil,
         calculation_details: {
           formula: "Flat fee",
-          inputs: { flat_amount: amount },
-          breakdown: [ "Fixed: #{format_currency(amount)}" ]
+          inputs: { flat_amount: flat_amount },
+          breakdown: [ "Fixed: #{format_currency(flat_amount)}" ]
         }
       }
     end
@@ -528,6 +546,9 @@ class PayoutCalculator
     performers.map do |performer|
       acts = act_count_for(ShowPayout.act_key(performer))
       override = overrides[performer.id.to_s] || {}
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom, inputs: { acts: acts }).merge(payee: performer) if custom
+
       amount, formula = per_act_amount_and_formula(distribution, override, acts)
 
       {
@@ -550,6 +571,11 @@ class PayoutCalculator
     guest_assignments.map do |assignment|
       acts = act_count_for(ShowPayout.act_key(assignment))
       override = overrides["guest_#{assignment.id}"] || {}
+      if override["flat_amount"].present?
+        next custom_amount_item(override["flat_amount"], inputs: { acts: acts })
+               .merge(guest_name: assignment.guest_name, guest_assignment_id: assignment.id)
+      end
+
       amount, formula = per_act_amount_and_formula(distribution, override, acts)
 
       {
@@ -588,10 +614,13 @@ class PayoutCalculator
     PayoutScheme.act_rules_description(distribution)
   end
 
-  def distribute_no_pay(performers, breakdown)
+  def distribute_no_pay(performers, overrides, breakdown)
     breakdown << "No pay: Non-revenue event"
 
     performers.map do |performer|
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer) if custom
+
       {
         payee: performer,
         amount: 0,
@@ -615,7 +644,7 @@ class PayoutCalculator
       amount = override["flat_amount"]&.to_f || flat_amount
 
       formula = if override["flat_amount"].present?
-        "Custom flat fee"
+        "Custom amount"
       else
         "Flat fee"
       end
@@ -712,6 +741,29 @@ class PayoutCalculator
 
   # (Advances are no longer deducted at calc time — they net on the payout ledger
   # via AdvancePayoutService. The old apply_advance_deductions was removed.)
+
+  # An exact amount set for one payee tonight (performer_overrides["<id>"]
+  # ["flat_amount"]) beats whatever the method would have worked out for them,
+  # whichever method that is. nil when they're paid as calculated.
+  def custom_amount_for(overrides, payee)
+    return nil if payee.nil?
+
+    value = (overrides[payee.id.to_s] || {})["flat_amount"]
+    value.present? ? value.to_f : nil
+  end
+
+  def custom_amount_item(amount, inputs: {})
+    amount = amount.to_f.round(2)
+    {
+      amount: amount,
+      shares: nil,
+      calculation_details: {
+        formula: "Custom amount",
+        inputs: inputs.merge(flat_amount: amount, custom: true),
+        breakdown: [ "Set for this show: #{format_currency(amount)}" ]
+      }
+    }
+  end
 
   def format_currency(amount)
     "$#{'%.2f' % amount}"

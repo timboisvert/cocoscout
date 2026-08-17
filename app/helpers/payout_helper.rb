@@ -3,8 +3,8 @@
 module PayoutHelper
   # Should this production be nudged to set up per-act pay? Only when it casts
   # by acts, the org can pay performers at all (Pro), and nobody has picked a
-  # payout scheme for it yet.
-  def production_needs_per_act_scheme_nudge?(production)
+  # payout calculation for it yet.
+  def production_needs_per_act_calculation_nudge?(production)
     return false unless production&.act_based?
     return false unless production.organization&.feature_available?(:money)
 

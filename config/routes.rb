@@ -1335,21 +1335,37 @@ Rails.application.routes.draw do
     post "money/expense_items/:id/upload_receipt", to: "expense_items#upload_receipt", as: "upload_receipt_expense_item"
     delete "money/expense_items/:id/remove_receipt", to: "expense_items#remove_receipt", as: "remove_receipt_expense_item"
 
-    # Payout schemes - explicitly named for manage_production_money_payout_scheme(s)_path pattern
-    get "money/schemes", to: "payout_schemes#index", as: "money_payout_schemes"
-    post "money/schemes", to: "payout_schemes#create"
-    get "money/schemes/new", to: "payout_schemes#new", as: "new_money_payout_scheme"
-    get "money/schemes/presets", to: "payout_schemes#presets", as: "presets_money_payout_schemes"
-    post "money/schemes/create_from_preset", to: "payout_schemes#create_from_preset", as: "create_from_preset_money_payout_schemes"
-    get "money/schemes/:id", to: "payout_schemes#show", as: "money_payout_scheme"
-    get "money/schemes/:id/edit", to: "payout_schemes#edit", as: "edit_money_payout_scheme"
-    patch "money/schemes/:id", to: "payout_schemes#update"
-    put "money/schemes/:id", to: "payout_schemes#update"
-    delete "money/schemes/:id", to: "payout_schemes#destroy"
-    post "money/schemes/:id/make_default", to: "payout_schemes#make_default", as: "make_default_money_payout_scheme"
-    post "money/schemes/:id/update_defaults", to: "payout_schemes#update_defaults", as: "update_defaults_money_payout_scheme"
-    post "money/schemes/:id/archive", to: "payout_schemes#archive", as: "archive_money_payout_scheme"
-    post "money/schemes/:id/unarchive", to: "payout_schemes#unarchive", as: "unarchive_money_payout_scheme"
+    # Payout calculations (PayoutScheme records — "payout calculations" to users).
+    # Creating/editing goes through the wizard; the pages here list, show,
+    # archive and set which productions use a calculation.
+    get "money/calculations", to: "payout_calculations#index", as: "money_payout_calculations"
+    get "money/calculations/:id", to: "payout_calculations#show", as: "money_payout_calculation"
+    delete "money/calculations/:id", to: "payout_calculations#destroy"
+    post "money/calculations/:id/update_defaults", to: "payout_calculations#update_defaults", as: "update_defaults_money_payout_calculation"
+    post "money/calculations/:id/archive", to: "payout_calculations#archive", as: "archive_money_payout_calculation"
+    post "money/calculations/:id/unarchive", to: "payout_calculations#unarchive", as: "unarchive_money_payout_calculation"
+
+    scope "money/calculations/wizard", as: "money_payout_calculation_wizard", controller: "payout_calculation_wizard" do
+      get "start", action: :start
+      get "name", action: :name
+      post "name", action: :save_name, as: "save_name"
+      get "approach", action: :approach
+      post "approach", action: :save_approach, as: "save_approach"
+      get "amounts", action: :amounts
+      post "amounts", action: :save_amounts, as: "save_amounts"
+      get "before", action: :before
+      post "before", action: :save_before, as: "save_before"
+      get "review", action: :review
+      post "save", action: :save, as: "save"
+      delete "cancel", action: :cancel, as: "cancel"
+    end
+
+    # Old "payout scheme" URLs (bookmarks, emails) land on their new homes.
+    get "money/schemes", to: redirect("/manage/money/calculations")
+    get "money/schemes/new", to: redirect("/manage/money/calculations/wizard/start")
+    get "money/schemes/presets", to: redirect("/manage/money/calculations/wizard/start")
+    get "money/schemes/:id", to: redirect("/manage/money/calculations/%{id}")
+    get "money/schemes/:id/edit", to: redirect("/manage/money/calculations/wizard/start?id=%{id}")
 
     # Production expenses (amortized costs spread across shows)
     # Nested under /money/financials/:production_id/expenses
@@ -1500,11 +1516,13 @@ Rails.application.routes.draw do
     post "money/shows/:id/payouts/add_to_run", to: "show_payouts#add_to_payout_run", as: "add_to_run_money_show_payout"
     post "money/shows/:id/payouts/promote_guest", to: "show_payouts#promote_guest", as: "promote_guest_money_show_payout"
     post "money/shows/:id/payouts/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
-    get "money/shows/:id/payouts/override", to: "show_payouts#override", as: "override_money_show_payout"
+    # Tonight's calculation: customize the amounts (override), pick a different
+    # calculation for this show (and optionally its future shows), or go back
+    # to the production's own.
     patch "money/shows/:id/payouts/save_override", to: "show_payouts#save_override", as: "save_override_money_show_payout"
     delete "money/shows/:id/payouts/clear_override", to: "show_payouts#clear_override", as: "clear_override_money_show_payout"
-    get "money/shows/:id/payouts/change_scheme", to: "show_payouts#change_scheme", as: "change_scheme_money_show_payout"
-    patch "money/shows/:id/payouts/apply_scheme_change", to: "show_payouts#apply_scheme_change", as: "apply_scheme_change_money_show_payout"
+    patch "money/shows/:id/payouts/apply_choice", to: "show_payouts#apply_choice", as: "apply_choice_money_show_payout"
+    patch "money/shows/:id/payouts/use_default", to: "show_payouts#use_default", as: "use_default_money_show_payout"
     post "money/shows/:id/payouts/line_items/:line_item_id/mark_paid", to: "show_payouts#mark_line_item_paid", as: "mark_line_item_paid_money_show_payout"
     delete "money/shows/:id/payouts/line_items/:line_item_id/mark_paid", to: "show_payouts#unmark_line_item_paid", as: "unmark_line_item_paid_money_show_payout"
     delete "money/shows/:id/payouts/line_items/:line_item_id/remove_from_run", to: "show_payouts#remove_from_run", as: "remove_line_item_from_run_money_show_payout"

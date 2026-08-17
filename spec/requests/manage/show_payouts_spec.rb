@@ -80,7 +80,213 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
     expect(nobank.reload.in_payout_run?).to be(false)
   end
 
-  describe "an act-based payout scheme" do
+  describe "the Payout calculation card" do
+    let!(:cast_role) { create(:role, production: production) }
+    let!(:jane) { create(:person, name: "Jane Doe") }
+    let!(:jack) { create(:person, name: "Jack Sprat") }
+    let!(:jane_cast) { create(:show_person_role_assignment, show: show, role: cast_role, assignable: jane) }
+    let!(:jack_cast) { create(:show_person_role_assignment, show: show, role: cast_role, assignable: jack) }
+    let!(:gigi_cast) { create(:show_person_role_assignment, show: show, role: cast_role, guest_name: "Gigi Guest", assignable: nil) }
+    let!(:house_split) do
+      PayoutScheme.create!(
+        organization: org, name: "House Split",
+        rules: {
+          "allocation" => [ { "type" => "percentage", "value" => 40.0, "label" => "House take" }, { "type" => "remainder", "label" => "Performer pool" } ],
+          "distribution" => { "method" => "shares", "default_shares" => 1.0 },
+          "performer_overrides" => {}
+        }
+      )
+    end
+    let!(:flat_fifty) do
+      PayoutScheme.create!(organization: org, name: "Flat Fifty",
+                           rules: { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 }, "performer_overrides" => {} })
+    end
+
+    before do
+      financials.update!(ticket_count: 100, ticket_revenue: 1000, expenses: 0)
+      payout.line_items.destroy_all
+      payout.update!(calculated_at: nil, total_payout: nil)
+    end
+
+    context "when the show inherits the production's calculation" do
+      before do
+        house_split.make_production_scheme!(production)
+        payout.update!(payout_scheme: house_split)
+      end
+
+      it "says so, and offers to customize or choose another" do
+        get manage_money_show_payout_path(show)
+
+        expect(response.body).to include("Payout calculation")
+        expect(response.body).to include("Inherited")
+        expect(response.body).to include("House Split").and include("the production's calculation")
+        expect(response.body).to include("Customize for this show")
+        expect(response.body).to include("Choose a different calculation")
+        expect(response.body).not_to include("Back to the production")
+        expect(response.body).not_to include("Payout Scheme")
+      end
+
+      it "picks a different calculation for just this show" do
+        later = create(:show, production: production, event_type: :show, date_and_time: 3.days.from_now)
+        later_payout = ShowPayout.create!(show: later, status: "awaiting_payout", payout_scheme: house_split)
+
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include("choose-calculation")
+        expect(response.body).to include("1 later show uses the same calculation")
+
+        patch manage_apply_choice_money_show_payout_path(show), params: { payout_scheme_id: flat_fifty.id, apply_to_future: "0" }
+
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        expect(payout.reload.payout_scheme).to eq(flat_fifty)
+        expect(later_payout.reload.payout_scheme).to eq(house_split)
+        follow_redirect!
+        expect(response.body).to include("Chosen for this show")
+        expect(response.body).to include("Back to the production&#39;s calculation")
+      end
+
+      it "carries the choice to this show and every later show still on the same calculation" do
+        later = create(:show, production: production, event_type: :show, date_and_time: 3.days.from_now)
+        later_payout = ShowPayout.create!(show: later, status: "awaiting_payout", payout_scheme: house_split)
+        other = create(:show, production: production, event_type: :show, date_and_time: 5.days.from_now)
+        other_payout = ShowPayout.create!(show: other, status: "awaiting_payout", payout_scheme: flat_fifty)
+
+        patch manage_apply_choice_money_show_payout_path(show), params: { payout_scheme_id: flat_fifty.id, apply_to_future: "1" }
+
+        expect(payout.reload.payout_scheme).to eq(flat_fifty)
+        expect(later_payout.reload.payout_scheme).to eq(flat_fifty)
+        expect(other_payout.reload.payout_scheme).to eq(flat_fifty)
+        expect(flash[:notice]).to include("2 shows")
+      end
+
+      it "goes back to the production's calculation and drops the customization" do
+        payout.update!(payout_scheme: flat_fifty, override_rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 } })
+
+        patch manage_use_default_money_show_payout_path(show)
+
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        payout.reload
+        expect(payout.payout_scheme).to eq(house_split)
+        expect(payout.override_rules).to be_nil
+      end
+
+      it "customizes the amounts and keeps the house take and the approach" do
+        patch manage_save_override_money_show_payout_path(show),
+              params: { distribution: { split: "shares", default_shares: "2" }, house_percentage: "30", expenses_first: "0" }
+
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        rules = payout.reload.override_rules
+        expect(rules.dig("distribution", "method")).to eq("shares")
+        expect(rules.dig("distribution", "default_shares")).to eq(2.0)
+        expect(rules["allocation"]).to include(a_hash_including("type" => "percentage", "value" => 30.0))
+        expect(rules["allocation"]).to include(a_hash_including("type" => "remainder"))
+
+        follow_redirect!
+        expect(response.body).to include("Customized")
+        expect(response.body).to include("Starting from")
+        expect(response.body).to include("2 shares each instead of 1; House 30% instead of 40%")
+        expect(response.body).to include("Edit customization").and include("Remove customization")
+        expect(response.body).to include("Back to the production&#39;s calculation")
+      end
+
+      it "keeps someone's cut off the top when the house take is changed" do
+        producer = create(:person, name: "Pat Producer")
+        house_split.update!(rules: house_split.rules.merge("allocation" => [
+          { "type" => "percentage", "value" => 40.0, "label" => "House take" },
+          { "type" => "percentage", "value" => 5.0, "person_id" => producer.id, "label" => "Producer" },
+          { "type" => "remainder", "label" => "Performer pool" }
+        ]))
+
+        patch manage_save_override_money_show_payout_path(show), params: { house_percentage: "20" }
+
+        allocation = payout.reload.override_rules["allocation"]
+        expect(allocation).to include(a_hash_including("type" => "percentage", "value" => 20.0, "label" => "House take"))
+        expect(allocation).to include(a_hash_including("type" => "percentage", "value" => 5.0, "person_id" => producer.id))
+      end
+
+      it "sets exact amounts for specific people, including a guest, and the calculation honours them" do
+        patch manage_save_override_money_show_payout_path(show),
+              params: { performer_overrides: { jane.id.to_s => { flat_amount: "100" }, "guest_#{gigi_cast.id}" => { flat_amount: "40" }, jack.id.to_s => { flat_amount: "" } } }
+
+        rules = payout.reload.override_rules
+        expect(rules.dig("distribution", "method")).to eq("shares")
+        expect(rules["allocation"]).to include(a_hash_including("type" => "percentage", "value" => 40.0))
+        expect(rules["performer_overrides"]).to eq(jane.id.to_s => { "flat_amount" => 100.0 }, "guest_#{gigi_cast.id}" => { "flat_amount" => 40.0 })
+
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include("Jane Doe $100, Gigi Guest (guest) $40")
+
+        post manage_calculate_money_show_payout_path(show)
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        expect(payout.line_items.find_by(payee: jane).amount.to_f).to eq(100.0)
+        expect(payout.line_items.find_by(payee: jane).calculation_details["formula"]).to eq("Custom amount")
+        expect(payout.line_items.find_by(is_guest: true, guest_name: "Gigi Guest").amount.to_f).to eq(40.0)
+        # Jack is paid as calculated: the pool (60% of $1000) split three ways.
+        expect(payout.line_items.find_by(payee: jack).amount.to_f).to eq(200.0)
+      end
+
+      it "prefills the customize modal with tonight's amounts but starts over from the calculation on save" do
+        payout.update!(override_rules: { "allocation" => [], "distribution" => { "method" => "shares", "default_shares" => 3.0 },
+                                          "performer_overrides" => { jane.id.to_s => { "flat_amount" => 75.0 } } })
+
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include(%(name="performer_overrides[#{jane.id}][flat_amount]" value="75.0"))
+        expect(response.body).to include(%(id="distribution_default_shares" name="distribution[default_shares]" value="3.0"))
+
+        # Saving only a house % brings the calculation's own default_shares back.
+        patch manage_save_override_money_show_payout_path(show), params: { house_percentage: "10", performer_overrides: { jane.id.to_s => { flat_amount: "" } } }
+        rules = payout.reload.override_rules
+        expect(rules.dig("distribution", "default_shares")).to eq(1.0)
+        expect(rules["performer_overrides"]).to eq({})
+        expect(rules["allocation"]).to include(a_hash_including("value" => 10.0))
+      end
+
+      it "removes the customization" do
+        payout.update!(override_rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 } })
+
+        delete manage_clear_override_money_show_payout_path(show)
+
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        expect(payout.reload.override_rules).to be_nil
+        expect(flash[:notice]).to include("Customization removed")
+      end
+    end
+
+    context "when the show inherits the organization's default" do
+      before do
+        house_split.set_as_default_for!(production_ids: [])
+        payout.update!(payout_scheme: house_split)
+      end
+
+      it "credits the organization" do
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include("Inherited")
+        expect(response.body).to include("your organization's default")
+      end
+    end
+
+    context "when no calculation resolves" do
+      before { payout.update!(payout_scheme: nil) }
+
+      it "offers the picker with a create link" do
+        get manage_money_show_payout_path(show)
+
+        expect(response.body).to include("doesn't have a payout calculation yet")
+        expect(response.body).to include("Choose a calculation")
+        expect(response.body).to include("choose-calculation")
+        expect(response.body).to include("Create a new calculation")
+        expect(response.body).to include(CGI.escapeHTML(manage_money_payout_calculation_wizard_start_path(production_id: production.id, return_to: manage_money_show_payout_path(show))))
+        expect(response.body).not_to include("customize-calculation")
+      end
+
+      it "won't customize what isn't there" do
+        patch manage_save_override_money_show_payout_path(show), params: { performer_overrides: { jane.id.to_s => { flat_amount: "10" } } }
+        expect(payout.reload.override_rules).to be_nil
+        expect(flash[:alert]).to include("Choose a payout calculation")
+      end
+    end
+  end
+
+  describe "an act-based payout calculation" do
     let!(:role) { create(:role, production: production) }
     let!(:performer) { create(:person, name: "Acty Ada") }
     let!(:assignment) { create(:show_person_role_assignment, show: show, role: role, assignable: performer) }
@@ -160,13 +366,13 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
       expect(response.body).to include(%(name="act_counts[Person_#{performer.id}]" value="2"))
     end
 
-    it "sends a show with no scheme at all to the plain schemes list" do
+    it "sends a show with no calculation at all to the plain calculations list" do
       payout.update!(payout_scheme: nil)
       scheme.destroy!
 
       post manage_calculate_money_show_payout_path(show)
 
-      expect(response).to redirect_to(manage_money_payout_schemes_path)
+      expect(response).to redirect_to(manage_money_payout_calculations_path)
     end
 
     context "in an act-based production (acts are roles in the lineup)" do
@@ -235,13 +441,13 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
         expect(response.body).to include("2 acts (from lineup)")
       end
 
-      it "sends a show with no scheme to the Per Act preset for this production" do
+      it "sends a show with no calculation to the Per Act preset for this production" do
         payout.update!(payout_scheme: nil)
         scheme.destroy!
 
         post manage_calculate_money_show_payout_path(show)
 
-        expect(response).to redirect_to(manage_presets_money_payout_schemes_path(preset: "per_act", production_id: production.id))
+        expect(response).to redirect_to(manage_money_payout_calculation_wizard_start_path(preset: "per_act", production_id: production.id))
       end
     end
   end
@@ -367,7 +573,7 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
   end
 
   describe "a line item calculated to nothing owed ($0)" do
-    # A custom scheme (or a fully-offset advance) can leave a payee owed nothing.
+    # A custom calculation (or a fully-offset advance) can leave a payee owed nothing.
     let!(:li_zero) do
       ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Zero Zoe"), amount: 0)
     end

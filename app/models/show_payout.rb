@@ -47,6 +47,39 @@ class ShowPayout < ApplicationRecord
     override_rules.present?
   end
 
+  # The calculation tonight's customization started from: this payout's own
+  # calculation, or the default for the show when none is pinned.
+  def base_scheme
+    payout_scheme || PayoutScheme.default_for_show(show)
+  end
+
+  def base_rules
+    (base_scheme&.rules || {}).deep_stringify_keys
+  end
+
+  # One line saying what tonight's customization changed against the
+  # calculation it started from — "Flat $60 instead of $50", "House 30%
+  # instead of 40%", "Jane Doe $100, Gigi (guest) $40". nil when there is no
+  # customization. Falls back to "Custom amounts" when the override differs in
+  # some way this can't put into words.
+  def customization_summary
+    return nil unless has_overrides?
+
+    override = override_rules.deep_stringify_keys
+    return "Closed as non-paying" if override["closed_as_non_paying"]
+
+    base = base_rules
+    parts = []
+    parts.concat(method_and_amount_changes(base, override))
+    # A swapped approach (legacy override) says it all; house/expenses only
+    # mean something within the same approach.
+    parts.concat(pool_changes(base, override)) unless method_changed?(base, override)
+    people = person_amount_changes(override)
+    parts << people if people.present?
+
+    parts.presence&.join("; ") || "Custom amounts"
+  end
+
   # --- Act-based pay -------------------------------------------------------
   #
   # An act-based scheme can't be calculated from the show's data alone: someone
@@ -258,5 +291,106 @@ class ShowPayout < ApplicationRecord
 
     # Any non-paid legacy status becomes awaiting_payout
     self.status = "awaiting_payout"
+  end
+
+  # --- customization_summary helpers ----------------------------------------
+
+  METHOD_LABELS = {
+    "no_pay" => "Not paid", "flat_fee" => "Flat amount each", "per_act" => "Paid by acts",
+    "per_ticket" => "Per ticket", "per_ticket_guaranteed" => "Per ticket with a minimum",
+    "equal" => "Split equally", "shares" => "Split by shares"
+  }.freeze
+
+  def method_changed?(base, override)
+    from_method = base.dig("distribution", "method").to_s
+    from_method.present? && from_method != override.dig("distribution", "method").to_s
+  end
+
+  def method_and_amount_changes(base, override)
+    from = base["distribution"] || {}
+    to = override["distribution"] || {}
+    from_method = from["method"].to_s
+    to_method = to["method"].to_s
+    changes = []
+
+    if method_changed?(base, override)
+      changes << "#{METHOD_LABELS.fetch(to_method, to_method.humanize)} instead of #{METHOD_LABELS.fetch(from_method, from_method.humanize).downcase}"
+      return changes
+    end
+
+    case to_method
+    when "flat_fee"
+      changes << "Flat #{money(to['flat_amount'])} instead of #{money(from['flat_amount'])}" if differs?(from["flat_amount"], to["flat_amount"])
+    when "per_ticket", "per_ticket_guaranteed"
+      changes << "#{money(to['per_ticket_rate'])}/ticket instead of #{money(from['per_ticket_rate'])}" if differs?(from["per_ticket_rate"], to["per_ticket_rate"])
+      changes << "Minimum #{money(to['minimum'])} instead of #{money(from['minimum'])}" if to_method == "per_ticket_guaranteed" && differs?(from["minimum"], to["minimum"])
+    when "shares"
+      changes << "#{number(to['default_shares'])} shares each instead of #{number(from['default_shares'])}" if differs?(from["default_shares"], to["default_shares"])
+    when "per_act"
+      from_desc = PayoutScheme.act_rules_description(from)
+      to_desc = PayoutScheme.act_rules_description(to)
+      changes << "#{to_desc} instead of #{from_desc}" if from_desc != to_desc
+    end
+
+    changes
+  end
+
+  # House take and expenses-first for the pool methods.
+  def pool_changes(base, override)
+    changes = []
+    from_house = house_percentage(base)
+    to_house = house_percentage(override)
+    changes << "House #{number(to_house)}% instead of #{number(from_house)}%" if differs?(from_house, to_house)
+
+    from_expenses = expenses_first?(base)
+    to_expenses = expenses_first?(override)
+    if from_expenses != to_expenses
+      changes << (to_expenses ? "Expenses covered first" : "Expenses no longer covered first")
+    end
+    changes
+  end
+
+  # "Jane Doe $100, Gigi (guest) $40" for every exact per-person amount.
+  def person_amount_changes(override)
+    overrides = override["performer_overrides"] || {}
+    named = overrides.filter_map do |key, data|
+      amount = data.is_a?(Hash) ? data["flat_amount"] : nil
+      next if amount.blank?
+
+      "#{override_payee_name(key)} #{money(amount)}"
+    end
+    named.join(", ")
+  end
+
+  def override_payee_name(key)
+    key = key.to_s
+    if key.start_with?("guest_")
+      assignment = show.show_person_role_assignments.find_by(id: key.delete_prefix("guest_"))
+      "#{assignment&.guest_name.presence || 'Guest'} (guest)"
+    else
+      Person.find_by(id: key)&.name || Group.find_by(id: key)&.name || "Person ##{key}"
+    end
+  end
+
+  def house_percentage(rules)
+    step = Array(rules["allocation"]).find { |s| s["type"] == "percentage" && s["person_id"].blank? }
+    step ? step["value"].to_f : 0.0
+  end
+
+  def expenses_first?(rules)
+    Array(rules["allocation"]).any? { |s| s["type"] == "expenses_first" }
+  end
+
+  def differs?(from, to)
+    from.to_f.round(4) != to.to_f.round(4)
+  end
+
+  def money(amount)
+    "$#{'%.2f' % amount.to_f}".delete_suffix(".00")
+  end
+
+  def number(value)
+    f = value.to_f
+    f == f.to_i ? f.to_i.to_s : f.to_s
   end
 end

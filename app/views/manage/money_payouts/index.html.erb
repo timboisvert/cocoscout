@@ -4,7 +4,7 @@
   payouts_actions = [
     { icon: "dollar-sign", text: "Payout Runs", description: "Pay connected banks at once", path: manage_payout_batches_path },
     { icon: "banknotes", text: "Advances", description: "Pre-show payments", path: manage_money_advances_path },
-    { icon: "puzzle-piece", text: "Payout Schemes", description: "Configure calculation rules", path: manage_money_payout_schemes_path }
+    { icon: "puzzle-piece", text: "Payout Calculations", description: "How performers are paid", path: manage_money_payout_calculations_path }
   ]
 %>
 
@@ -19,7 +19,7 @@
       ],
       text: @production.name,
       links: [
-        { text: "Manage Schemes", path: manage_money_payout_schemes_path }
+        { text: "Manage calculations", path: manage_money_payout_calculations_path }
       ]
     } %>
 

@@ -579,4 +579,51 @@ RSpec.describe PayoutCalculator do
       expect(result[:line_items].size).to eq(3)
     end
   end
+
+  # An exact amount set for one person tonight (performer_overrides["<id>"]
+  # ["flat_amount"]) wins under every method — for cast and for guests.
+  describe "an exact per-person amount" do
+    let!(:guest) { create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil) }
+    let(:overrides) { { performer1.id.to_s => { "flat_amount" => 99.0 }, "guest_#{guest.id}" => { "flat_amount" => 11.0 } } }
+
+    before do
+      create(:show_financials, :complete, show: show, ticket_count: 100, ticket_revenue: 900.0, expenses: 0.0)
+      create(:show_payout, show: show)
+    end
+
+    # act_counts may key performer2 as "Person_PERF2" — ids aren't known when
+    # the shared examples below are declared.
+    def amounts_for(distribution, act_counts: {})
+      act_counts = act_counts.transform_keys { |k| k.sub("PERF2", performer2.id.to_s) }
+      result = described_class.calculate(show: show, rules: { "distribution" => distribution, "performer_overrides" => overrides }, act_counts: act_counts)
+      expect(result[:success]).to be(true), result[:error]
+      items = show.show_payout.line_items.reload
+      {
+        custom: items.find_by(payee: performer1),
+        other: items.find_by(payee: performer2),
+        guest: items.find_by(is_guest: true)
+      }
+    end
+
+    shared_examples "honours the exact amounts" do |distribution, other_amount, act_counts: {}|
+      it "under #{distribution['method']}" do
+        items = amounts_for(distribution, act_counts: act_counts)
+        expect(items[:custom].amount.to_f).to eq(99.0)
+        expect(items[:custom].calculation_details["formula"]).to eq("Custom amount")
+        expect(items[:guest].amount.to_f).to eq(11.0)
+        expect(items[:guest].calculation_details["formula"]).to eq("Custom amount")
+        expect(items[:other].amount.to_f).to eq(other_amount)
+        expect(items[:other].calculation_details["formula"]).not_to eq("Custom amount")
+      end
+    end
+
+    include_examples "honours the exact amounts", { "method" => "equal" }, 300.0
+    include_examples "honours the exact amounts", { "method" => "shares", "default_shares" => 1.0 }, 300.0
+    include_examples "honours the exact amounts", { "method" => "per_ticket", "per_ticket_rate" => 2.0 }, 200.0
+    include_examples "honours the exact amounts", { "method" => "per_ticket_guaranteed", "per_ticket_rate" => 1.0, "minimum" => 150.0 }, 150.0
+    include_examples "honours the exact amounts", { "method" => "flat_fee", "flat_amount" => 50.0 }, 50.0
+    include_examples "honours the exact amounts", { "method" => "no_pay" }, 0.0
+    include_examples "honours the exact amounts", { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 20.0 }, 40.0,
+                     act_counts: { "Person_PERF2" => 2 }
+  end
 end

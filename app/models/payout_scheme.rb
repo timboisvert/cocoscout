@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# A payout calculation — shown to users as "payout calculation" everywhere; the
+# class and table keep their original name. Its `rules` jsonb (allocation +
+# distribution + performer_overrides, built by PayoutRulesBuilder) is what
+# PayoutCalculator runs for a show. Created/edited through
+# Manage::PayoutCalculationWizardController.
 class PayoutScheme < ApplicationRecord
   belongs_to :organization, optional: true
   belongs_to :production, optional: true
@@ -519,6 +524,8 @@ class PayoutScheme < ApplicationRecord
       parts << "$#{distribution_config['flat_amount']} flat per performer"
     when "per_act"
       parts << "Paid by acts (#{act_rules_description})"
+    when "no_pay"
+      parts << "Performers aren't paid"
     end
 
     parts.join(" → ")

@@ -95,21 +95,21 @@ module Manage
       end
 
       paid = params[:performers_paid] == "1"
-      scheme = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id]) if paid
+      calculation = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id]) if paid
 
-      if paid && scheme.nil?
+      if paid && calculation.nil?
         redirect_to edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}"),
-                    alert: "Pick a payout scheme for this production, or turn performer pay off."
+                    alert: "Choose a payout calculation for this production, or turn performer pay off."
         return
       end
 
       current = PayoutScheme.current_default_for_production(@production)
       if paid
-        # Only THIS production's defaults are touched (never the scheme's other
-        # productions); the new one reaches back to the production's first show
-        # and restamps payouts nobody has calculated yet, so the choice sticks.
-        scheme.make_production_scheme!(@production) unless current == scheme
-        notice = "Performers on #{@production.name} are paid using #{scheme.name}."
+        # Only THIS production's defaults are touched (never the calculation's
+        # other productions); the new one reaches back to the production's first
+        # show and restamps payouts nobody has calculated yet, so the choice sticks.
+        calculation.make_production_scheme!(@production) unless current == calculation
+        notice = "Performers on #{@production.name} are paid using #{calculation.name}."
       else
         PayoutScheme.clear_production_scheme!(@production)
         notice = "Performers are not paid for #{@production.name}."

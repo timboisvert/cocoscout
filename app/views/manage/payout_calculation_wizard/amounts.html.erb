@@ -1,0 +1,40 @@
+<%
+  approach = current_approach
+  approach_name = Manage::PayoutCalculationWizardController::APPROACHES.dig(approach, :name)
+  heading = {
+    "flat" => "How much is the flat amount?",
+    "per_ticket" => "How much per ticket?",
+    "share" => "How is the pool split?",
+    "per_act" => "What does each act pay?"
+  }[approach] || "The amounts"
+  intro = {
+    "flat" => "Everyone cast is paid this for the night.",
+    "per_ticket" => "Each performer earns this on every ticket the show sells.",
+    "share" => "Once the house, expenses and anyone with a cut are taken care of, this is how what's left reaches the performers.",
+    "per_act" => "You'll enter how many acts each person did when you work out a show's payout; this decides what those acts are worth."
+  }[approach]
+%>
+<%= render layout: "manage/payout_calculation_wizard/wizard_layout", locals: { current_step: :amounts, step_name: "The amounts" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular"><%= heading %></h2>
+    <p class="text-gray-600 mt-2">
+      <span class="font-medium text-gray-800"><%= approach_name %></span><% if intro.present? %> — <%= intro %><% end %>
+    </p>
+  </div>
+
+  <%= form_with url: manage_money_payout_calculation_wizard_save_amounts_path, method: :post, local: true, id: "amounts-form" do |form| %>
+    <%= render "manage/payout_calculation_wizard/amounts_fields", approach: approach, distribution: @distribution %>
+
+    <div class="mt-8 flex justify-between items-center">
+      <%= link_to wizard_path(:approach), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        &larr; Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

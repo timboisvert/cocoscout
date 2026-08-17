@@ -1582,7 +1582,7 @@ class DemoSeeder
         )
       end
 
-      puts "  Created payout schemes and financials"
+      puts "  Created payout calculations and financials"
     end
 
     def create_show_financials(show, payout_scheme, past: true)
@@ -1681,7 +1681,7 @@ class DemoSeeder
       puts "Talent Pool Members: #{TalentPoolMembership.joins(talent_pool: :production).where(productions: { organization_id: @org.id }).count}"
       puts "\nSign-up Forms: #{SignUpForm.joins(:production).where(productions: { organization_id: @org.id }).count}"
       puts "Audition Cycles: #{AuditionCycle.joins(:production).where(productions: { organization_id: @org.id }).count}"
-      puts "\nPayout Schemes: #{@org.payout_schemes.count + PayoutScheme.joins(:production).where(productions: { organization_id: @org.id }).count}"
+      puts "\nPayout Calculations: #{@org.payout_schemes.count + PayoutScheme.joins(:production).where(productions: { organization_id: @org.id }).count}"
       puts "Show Payouts: #{ShowPayout.joins(show: :production).where(productions: { organization_id: @org.id }).count}"
       puts "\n" + "=" * 60
     end

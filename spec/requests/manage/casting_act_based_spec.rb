@@ -201,14 +201,18 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
     context "on a Pro org" do
       let!(:org) { create(:organization, :pro, owner: owner) }
 
-      it "nudges an act-based production that has no payout scheme yet" do
+      it "nudges an act-based production that has no payout calculation yet, into the calculation wizard" do
         get manage_casting_production_path(production)
         expect(response).to have_http_status(:ok)
         expect(response.body).to include("Pay by act?")
         expect(response.body).to include("Set up per-act pay")
+        expect(response.body).to include(ERB::Util.html_escape(manage_money_payout_calculation_wizard_start_path(
+          production_id: production.id, return_to: manage_casting_production_path(production)
+        )))
+        expect(response.body).not_to include("preset=per_act")
       end
 
-      it "goes quiet once a scheme is the production's default" do
+      it "goes quiet once a calculation is the production's default" do
         scheme = PayoutScheme.create!(organization: org, name: "Act Pay",
                                       rules: { "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 40 } })
         scheme.add_default_for_production!(production, effective_from: Date.current)

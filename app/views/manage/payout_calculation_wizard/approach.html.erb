@@ -1,0 +1,60 @@
+<%
+  chosen = @state[:approach].presence || current_approach
+  approaches = Manage::PayoutCalculationWizardController::APPROACHES
+  recommend_per_act = context_production&.act_based?
+  ordered_keys = recommend_per_act ? [ "per_act" ] + (approaches.keys - [ "per_act" ]) : approaches.keys
+  card_on = "border-pink-500 bg-pink-50"
+  # radio_card#select swaps the border and adds/removes bg-pink-50 only, so the
+  # off state carries no background of its own.
+  card_off = "border-gray-200"
+%>
+<%= render layout: "manage/payout_calculation_wizard/wizard_layout", locals: { current_step: :approach, step_name: "How they're paid" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">How are performers paid?</h2>
+    <p class="text-gray-600 mt-2">Pick the shape of the deal. You'll put in the actual numbers next.</p>
+  </div>
+
+  <%= form_with url: manage_money_payout_calculation_wizard_save_approach_path, method: :post, local: true, id: "approach-form" do |form| %>
+    <div class="space-y-3" data-controller="radio-card">
+      <% ordered_keys.each do |key| %>
+        <% approach = approaches[key] %>
+        <% selected = chosen == key %>
+        <label class="block cursor-pointer">
+          <div data-radio-card-target="card" class="p-4 rounded-lg border-2 transition-colors <%= selected ? card_on : card_off %> hover:border-pink-300">
+            <div class="flex items-start">
+              <input type="radio" name="approach" value="<%= key %>"
+                     <%= "checked" if selected %>
+                     data-action="change->radio-card#select"
+                     class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div class="ml-3 min-w-0">
+                <p class="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                  <span><%= approach[:name] %></span>
+                  <% if recommend_per_act && key == "per_act" %>
+                    <span class="text-[9px] font-bold uppercase tracking-wide text-pink-600 bg-pink-50 border border-pink-200 rounded px-1 py-0.5 leading-none">Recommended</span>
+                  <% end %>
+                </p>
+                <p class="text-sm text-gray-500 mt-1"><%= approach[:blurb] %></p>
+              </div>
+            </div>
+          </div>
+        </label>
+      <% end %>
+    </div>
+
+    <% if recommend_per_act %>
+      <p class="mt-4 text-xs text-gray-500"><%= context_production.name %> casts by acts, so paying by the acts each person performs lines up with its lineup.</p>
+    <% end %>
+
+    <div class="mt-8 flex justify-between items-center">
+      <%= link_to wizard_path(:name), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        &larr; Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,83 @@
+<% content_for :title, "Payout Calculations" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path]
+    ],
+    text: @show_archived ? "Archived Payout Calculations" : "Payout Calculations",
+    links: @show_archived ? [
+      { text: "Active calculations", path: manage_money_payout_calculations_path }
+    ] : [
+      { text: "New calculation", path: manage_money_payout_calculation_wizard_start_path }
+    ]
+  } %>
+
+  <% if @payout_schemes.any? %>
+    <div class="space-y-2">
+      <% @payout_schemes.each do |calculation| %>
+        <% defaults = calculation.payout_scheme_defaults %>
+        <% default_productions = defaults.map(&:production).compact.uniq.sort_by { |p| p.name.to_s.downcase } %>
+        <% org_default = defaults.any? { |d| d.production_id.nil? } %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors flex items-center justify-between gap-4">
+          <%= link_to manage_money_payout_calculation_path(calculation), class: "flex-1 min-w-0" do %>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="font-semibold text-gray-900"><%= calculation.name %></h3>
+              <% if @show_archived %>
+                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">Archived</span>
+              <% else %>
+                <% if org_default %>
+                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-700">Organization default</span>
+                <% end %>
+                <% default_productions.each do |production| %>
+                  <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-700">Default for: <%= production.name %></span>
+                <% end %>
+              <% end %>
+            </div>
+            <% if calculation.description.present? %>
+              <p class="text-sm text-gray-600 mt-1"><%= calculation.description %></p>
+            <% end %>
+            <p class="text-sm text-gray-500 mt-2"><%= calculation.rules_summary %></p>
+          <% end %>
+          <% if @show_archived %>
+            <%= form_with url: manage_unarchive_money_payout_calculation_path(calculation), method: :post, local: true do %>
+              <%= render "shared/button", text: "Restore", variant: "secondary", size: "small", type: :submit %>
+            <% end %>
+          <% else %>
+            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <% if !@show_archived && @archived_count > 0 %>
+      <div class="mt-6 text-center">
+        <%= link_to manage_money_payout_calculations_path(archived: 1), class: "text-sm text-gray-500 hover:text-gray-700" do %>
+          View <%= @archived_count %> archived <%= "calculation".pluralize(@archived_count) %>
+        <% end %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <% if @show_archived %>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No archived calculations</h3>
+        <p class="text-gray-600 mb-4">You haven't archived any payout calculations.</p>
+        <%= link_to manage_money_payout_calculations_path do %>
+          <%= render "shared/button", text: "Active calculations", variant: "secondary", size: "medium" %>
+        <% end %>
+      <% else %>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No payout calculations yet</h3>
+        <p class="text-gray-600 mb-4">A payout calculation is how a show's money is turned into what each performer is paid — a flat fee, a per-act rate, a share of the door. Set one up and choose which productions use it.</p>
+        <%= link_to manage_money_payout_calculation_wizard_start_path do %>
+          <%= render "shared/button", text: "New calculation", variant: "primary", size: "medium" %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
