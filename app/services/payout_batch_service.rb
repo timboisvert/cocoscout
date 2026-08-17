@@ -224,7 +224,8 @@ class PayoutBatchService
   def self.process!(batch)
     batch.update!(status: "processing")
 
-    source_charge, source_remaining = funding_charge_for(batch)
+    source_charge, source_remaining, source_group = funding_charge_for(batch)
+    transfer_group = "org_#{batch.organization_id}"
 
     batch.items.pending.find_each do |item|
       # No connected bank yet: a transfer would just fail. Leave the item
@@ -235,14 +236,22 @@ class PayoutBatchService
         amount: item.amount_cents,
         currency: "usd",
         destination: item.payee.stripe_account_id,
-        transfer_group: "org_#{batch.organization_id}",
+        transfer_group: transfer_group,
         metadata: { payout_batch_item_id: item.id, organization_id: batch.organization_id }
       }
       # Draw on the funding charge itself, not the platform's available balance
       # (see funding_charge_for). Falls back to the balance when the charge's
       # transferable capacity can't cover this item (credit-funded slices).
       use_source = source_charge.present? && item.amount_cents <= source_remaining
-      params[:source_transaction] = source_charge if use_source
+      if use_source
+        params[:source_transaction] = source_charge
+        # A charge-pinned transfer inherits the charge's transfer_group, and
+        # Stripe rejects an explicit one that differs ("You cannot use
+        # transfer_group if the source_transaction already has one set").
+        # Funding charges from before PaymentIntents carried a group can be
+        # stamped with something else — inherit rather than fail the payee.
+        params.delete(:transfer_group) if source_group.present? && source_group != transfer_group
+      end
 
       # Reserve the money on the org's cash ledger before touching Stripe.
       # Charge-pinned transfers can't be blocked (Stripe guarantees the charge
@@ -292,8 +301,9 @@ class PayoutBatchService
     batch
   end
 
-  # The Stripe charge that funded this run, plus how much of it is still
-  # transferable: [charge_id, remaining_cents].
+  # The Stripe charge that funded this run, how much of it is still
+  # transferable, and the transfer_group already stamped on it (nil if none):
+  # [charge_id, remaining_cents, charge_transfer_group].
   #
   # Transfers created with source_transaction draw on that specific charge
   # rather than the platform's available balance, which closes two races that
@@ -308,17 +318,18 @@ class PayoutBatchService
   # (e.g. the credit-funded slice of a run) fall back to the plain balance.
   # Best-effort: if Stripe can't tell us, transfers proceed the old way.
   def self.funding_charge_for(batch)
-    return [ nil, 0 ] if batch.funding_payment_intent_id.blank?
+    return [ nil, 0, nil ] if batch.funding_payment_intent_id.blank?
 
-    intent = Stripe::PaymentIntent.retrieve(batch.funding_payment_intent_id)
+    intent = Stripe::PaymentIntent.retrieve(id: batch.funding_payment_intent_id, expand: [ "latest_charge" ])
     charge = intent.latest_charge
     charge_id = charge.is_a?(String) ? charge : charge&.id
-    return [ nil, 0 ] if charge_id.blank?
+    return [ nil, 0, nil ] if charge_id.blank?
 
-    [ charge_id, intent.amount - batch.items.paid.sum(:amount_cents) ]
+    charge_group = charge.is_a?(String) ? nil : charge.try(:transfer_group)
+    [ charge_id, intent.amount - batch.items.paid.sum(:amount_cents), charge_group ]
   rescue Stripe::StripeError => e
     Rails.logger.warn("[PayoutBatchService] no funding charge for batch #{batch.id}: #{e.message}")
-    [ nil, 0 ]
+    [ nil, 0, nil ]
   end
 
   # A funded run stays open until every person in it is paid: all paid →

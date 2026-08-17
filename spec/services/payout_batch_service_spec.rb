@@ -71,7 +71,7 @@ RSpec.describe PayoutBatchService do
     it "ties each transfer to the funding charge, so settled-but-unavailable (or swept) funds still pay" do
       captured = []
       allow(Stripe::Transfer).to receive(:create) { |params, _opts| captured << params; double("transfer", id: "tr_src") }
-      allow(Stripe::PaymentIntent).to receive(:retrieve).with("pi_ach")
+      allow(Stripe::PaymentIntent).to receive(:retrieve).with(hash_including(id: "pi_ach"))
         .and_return(double("pi", amount: 5000, latest_charge: "py_funding"))
 
       batch = PayoutBatchService.build_for(organization: org)
@@ -79,7 +79,42 @@ RSpec.describe PayoutBatchService do
       PayoutBatchService.process!(batch)
 
       expect(captured.first[:source_transaction]).to eq("py_funding")
+      expect(captured.first[:transfer_group]).to eq("org_#{org.id}")
       expect(batch.items.first.reload.status).to eq("paid")
+    end
+
+    it "inherits the charge's transfer_group when a legacy funding charge is stamped with a different one" do
+      # Stripe rejects an explicit transfer_group on a source_transaction whose
+      # charge already carries a different group — the Aug 2026 "You cannot use
+      # transfer_group if the source_transaction already has one set" failures.
+      captured = []
+      allow(Stripe::Transfer).to receive(:create) { |params, _opts| captured << params; double("transfer", id: "tr_legacy") }
+      legacy_charge = double("charge", id: "py_legacy", transfer_group: "org_999")
+      allow(Stripe::PaymentIntent).to receive(:retrieve).with(hash_including(id: "pi_legacy"))
+        .and_return(double("pi", amount: 5000, latest_charge: legacy_charge))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_legacy")
+      PayoutBatchService.process!(batch)
+
+      expect(captured.first[:source_transaction]).to eq("py_legacy")
+      expect(captured.first).not_to have_key(:transfer_group)
+      expect(batch.items.first.reload.status).to eq("paid")
+    end
+
+    it "keeps an explicit transfer_group when the funding charge already carries the same one" do
+      captured = []
+      allow(Stripe::Transfer).to receive(:create) { |params, _opts| captured << params; double("transfer", id: "tr_same") }
+      charge = double("charge", id: "py_same", transfer_group: "org_#{org.id}")
+      allow(Stripe::PaymentIntent).to receive(:retrieve)
+        .and_return(double("pi", amount: 5000, latest_charge: charge))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_payment_intent_id: "pi_same")
+      PayoutBatchService.process!(batch)
+
+      expect(captured.first[:source_transaction]).to eq("py_same")
+      expect(captured.first[:transfer_group]).to eq("org_#{org.id}")
     end
 
     it "falls back to a plain balance transfer when the funding charge can't cover an item" do
