@@ -199,12 +199,13 @@
         partially paid run counts only its unpaid remainder. %>
     <% d = @run_state_detail %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-8">
-      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+      <%# Each box wears its state's color while it holds money; empty ones stay quiet. %>
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @todo.payouts.amounts[:to_pay].to_f.positive? ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">To pay</div>
         <div class="text-lg sm:text-2xl font-semibold text-pink-600 tabular-nums"><%= number_to_currency(@todo.payouts.amounts[:to_pay].to_f) %></div>
         <div class="hidden sm:block text-xs text-gray-400 mt-0.5">owed, not in a run yet</div>
       </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @run_state_cents[:draft].positive? ? "bg-gray-50 border-gray-300" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">In draft</div>
         <div class="text-lg sm:text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@run_state_cents[:draft] / 100.0) %></div>
         <div class="hidden sm:block text-xs text-gray-400 mt-0.5">
@@ -215,12 +216,12 @@
           <% end %>
         </div>
       </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @run_state_cents[:funding].positive? ? "bg-amber-50 border-amber-200" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">Funding</div>
         <div class="text-lg sm:text-2xl font-semibold text-amber-600 tabular-nums"><%= number_to_currency(@run_state_cents[:funding] / 100.0) %></div>
         <div class="hidden sm:block text-xs text-gray-400 mt-0.5">ACH clearing, pays out automatically</div>
       </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @run_state_cents[:waiting].positive? ? "bg-blue-50 border-blue-200" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">Waiting on payees</div>
         <div class="text-lg sm:text-2xl font-semibold text-blue-600 tabular-nums"><%= number_to_currency(@run_state_cents[:waiting] / 100.0) %></div>
         <div class="hidden sm:block text-xs text-gray-400 mt-0.5">

@@ -21,17 +21,17 @@
       (blocked on the payee) · Paid out — plus Returned only when it's non-zero. %>
   <% show_returned = @money_by_state[:returned].positive? %>
   <div class="grid grid-cols-2 <%= show_returned ? "lg:grid-cols-5" : "lg:grid-cols-4" %> gap-4 mb-6">
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
+    <div class="rounded-lg border p-4 <%= @money_by_state[:ready].positive? ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200" %>">
       <div class="text-xs text-gray-500 uppercase tracking-wide">Ready to pay</div>
       <div class="mt-1 text-2xl font-bold text-pink-600 tabular-nums"><%= number_to_currency(@money_by_state[:ready] / 100.0) %></div>
       <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@counts_by_state[:ready], "payee") %> · fund the draft or pay remaining</div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
+    <div class="rounded-lg border p-4 <%= @money_by_state[:funding].positive? ? "bg-amber-50 border-amber-200" : "bg-white border-gray-200" %>">
       <div class="text-xs text-gray-500 uppercase tracking-wide">Funding</div>
       <div class="mt-1 text-2xl font-bold text-amber-700 tabular-nums"><%= number_to_currency(@money_by_state[:funding] / 100.0) %></div>
       <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@counts_by_state[:funding], "run") %> · ACH clearing, pays out automatically</div>
     </div>
-    <div class="bg-white rounded-lg border <%= @money_by_state[:waiting].positive? ? "border-blue-200" : "border-gray-200" %> p-4">
+    <div class="rounded-lg border p-4 <%= @money_by_state[:waiting].positive? ? "bg-blue-50 border-blue-200" : "bg-white border-gray-200" %>">
       <div class="text-xs text-gray-500 uppercase tracking-wide">Waiting on bank info</div>
       <div class="mt-1 text-2xl font-bold text-blue-700 tabular-nums"><%= number_to_currency(@money_by_state[:waiting] / 100.0) %></div>
       <div class="text-xs text-gray-400 mt-0.5">
@@ -42,13 +42,13 @@
         <% end %>
       </div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
+    <div class="rounded-lg border p-4 <%= @money_by_state[:paid].positive? ? "bg-green-50 border-green-200" : "bg-white border-gray-200" %>">
       <div class="text-xs text-gray-500 uppercase tracking-wide">Paid out</div>
       <div class="mt-1 text-2xl font-bold text-green-700 tabular-nums"><%= number_to_currency(@money_by_state[:paid] / 100.0) %></div>
       <div class="text-xs text-gray-400 mt-0.5">all time · <%= pluralize(@counts_by_state[:paid], "completed run") %></div>
     </div>
     <% if show_returned %>
-      <div class="bg-white rounded-lg border border-red-200 p-4">
+      <div class="rounded-lg border border-red-200 bg-red-50 p-4">
         <div class="text-xs text-gray-500 uppercase tracking-wide">Returned by bank</div>
         <div class="mt-1 text-2xl font-bold text-red-700 tabular-nums"><%= number_to_currency(@money_by_state[:returned] / 100.0) %></div>
         <div class="text-xs text-gray-400 mt-0.5"><%= pluralize(@counts_by_state[:returned], "payment") %> · owed again, payee must fix their bank</div>
@@ -56,11 +56,11 @@
     <% end %>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
     <%# ---- Main: active runs (need attention or in motion), then history. Each
         row carries the same money-state columns as the boxes above, so a
         partially-paid run says right here what it's waiting on. ---- %>
-    <div class="lg:col-span-2 space-y-8">
+    <div class="lg:col-span-3 space-y-8">
       <div>
         <div class="flex items-center justify-between gap-3 mb-3">
           <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Active runs</h2>

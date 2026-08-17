@@ -34,23 +34,23 @@
       exactly the payees holding the run up. ---- %>
   <%
     boxes = [
-      { state: nil,       label: "Total",  cents: @batch.total_cents, count: @items.size, color: "text-gray-900", ring: "ring-gray-300",
+      { state: nil,       label: "Total",  cents: @batch.total_cents, count: @items.size, color: "text-gray-900", ring: "ring-gray-300", tint: "bg-white border-gray-200",
         note: "#{pluralize(@items.size, 'payee')} · #{remaining_cents.positive? ? "#{number_to_currency(remaining_cents / 100.0)} still to pay" : "everyone paid"}" },
-      { state: :paid,     label: "Paid",   cents: @breakdown[:paid][:cents], count: @breakdown[:paid][:count], color: "text-green-700", ring: "ring-green-300",
+      { state: :paid,     label: "Paid",   cents: @breakdown[:paid][:cents], count: @breakdown[:paid][:count], color: "text-green-700", ring: "ring-green-300", tint: "bg-green-50 border-green-200",
         note: @breakdown[:paid][:count].positive? ? "#{pluralize(@breakdown[:paid][:count], 'payee')} · transferred" : "nobody yet" },
-      { state: :ready,    label: in_flight ? "Paying" : "Ready to pay", cents: @breakdown[:ready][:cents], count: @breakdown[:ready][:count], color: in_flight ? "text-amber-700" : "text-pink-600", ring: in_flight ? "ring-amber-300" : "ring-pink-300",
+      { state: :ready,    label: in_flight ? "Paying" : "Ready to pay", cents: @breakdown[:ready][:cents], count: @breakdown[:ready][:count], color: in_flight ? "text-amber-700" : "text-pink-600", ring: in_flight ? "ring-amber-300" : "ring-pink-300", tint: in_flight ? "bg-amber-50 border-amber-200" : "bg-pink-50 border-pink-200",
         note: if @breakdown[:ready][:count].zero? then "nobody waiting on you"
               elsif in_flight then "#{pluralize(@breakdown[:ready][:count], 'payee')} · goes out once funding clears"
               elsif @batch.open? then "#{pluralize(@breakdown[:ready][:count], 'payee')} · bank connected, fund the run to pay"
               else "#{pluralize(@breakdown[:ready][:count], 'payee')} · bank connected, pay remaining"
               end },
-      { state: :waiting,  label: "Waiting on bank info", cents: @breakdown[:waiting][:cents], count: @breakdown[:waiting][:count], color: "text-blue-700", ring: "ring-blue-300",
+      { state: :waiting,  label: "Waiting on bank info", cents: @breakdown[:waiting][:cents], count: @breakdown[:waiting][:count], color: "text-blue-700", ring: "ring-blue-300", tint: "bg-blue-50 border-blue-200",
         note: if @breakdown[:waiting][:count].zero? then "everyone has a bank connected"
               else "#{pluralize(@breakdown[:waiting][:count], 'payee')} #{@breakdown[:waiting][:count] == 1 ? "hasn't" : "haven't"} connected — can't be paid yet"
               end }
     ]
     if @breakdown[:returned][:count].positive?
-      boxes << { state: :returned, label: "Returned by bank", cents: @breakdown[:returned][:cents], count: @breakdown[:returned][:count], color: "text-red-700", ring: "ring-red-300",
+      boxes << { state: :returned, label: "Returned by bank", cents: @breakdown[:returned][:cents], count: @breakdown[:returned][:count], color: "text-red-700", ring: "ring-red-300", tint: "bg-red-50 border-red-200",
                  note: "#{pluralize(@breakdown[:returned][:count], 'payment')} bounced · owed again" }
     end
   %>
@@ -58,7 +58,9 @@
     <% boxes.each do |box| %>
       <% active = @state_filter == box[:state] %>
       <% clickable = box[:state].nil? || box[:count].positive? %>
-      <% classes = "block rounded-lg border bg-white p-4 transition #{active ? "border-transparent ring-2 #{box[:ring]}" : "border-gray-200"} #{clickable ? "hover:bg-gray-50" : "opacity-60"}" %>
+      <%# The box wears its state's color while it holds money; empty states stay quiet. %>
+      <% tint = box[:count].positive? ? box[:tint] : "bg-white border-gray-200" %>
+      <% classes = "block rounded-lg border p-4 transition #{tint} #{active ? "ring-2 #{box[:ring]}" : ""} #{clickable ? "hover:shadow-sm" : "opacity-60"}" %>
       <% content = capture do %>
         <div class="text-xs text-gray-500 uppercase tracking-wide"><%= box[:label] %></div>
         <div class="mt-1 text-xl sm:text-2xl font-bold tabular-nums <%= box[:color] %>"><%= number_to_currency(box[:cents] / 100.0) %></div>
