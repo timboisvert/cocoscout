@@ -235,7 +235,7 @@ module Manage
         current_role = assignment.role
 
         # Find matching target role by match_key (case-insensitive name + ordinal)
-        matched_role = current_role ? target_roles_by_name[source_key_for[current_role] || current_role.match_key] : nil
+        matched_role = current_role ? match_target(target_roles_by_name, source_key_for[current_role] || current_role.match_key) : nil
 
         {
           assignment_id: assignment.id,
@@ -314,9 +314,12 @@ module Manage
         # Skip the automatic assignment clearing callback - we're handling it manually
         @show.skip_assignment_clear_on_role_toggle = true
 
-        # If switching to custom and no custom roles exist, copy from production first
+        # If switching to custom and no custom roles exist, copy from production
+        # first; the copy says which custom role each production role became
+        # (several acts may fold into one role on a role-based show).
+        copied_from = {}
         if switching_to == "custom" && @show.custom_roles.empty?
-          @show.copy_roles_from_production!
+          copied_from = @show.copy_roles_from_production!
         end
 
         # Determine target roles (reload to get freshly created custom roles)
@@ -327,6 +330,7 @@ module Manage
         source_roles = switching_to == "custom" ? @production.roles.production_roles : @show.custom_roles
         source_key_for = Role.match_keys_for(source_roles).invert
         match_key_of = ->(role) { role ? (source_key_for[role] || role.match_key) : nil }
+        auto_target_for = ->(role) { role && (copied_from[role.id] || match_target(target_roles_by_name, match_key_of.call(role))) }
 
         Rails.logger.info "[Migration] switching_to: #{switching_to}"
         Rails.logger.info "[Migration] target_roles count: #{target_roles.count}"
@@ -335,6 +339,7 @@ module Manage
         # Get current assignments
         current_assignments = @show.show_person_role_assignments.includes(:role).index_by(&:id)
         Rails.logger.info "[Migration] current_assignments count: #{current_assignments.count}"
+        role_before_of = current_assignments.transform_values(&:role_id)
 
         # Build a mapping index from provided params
         mappings_by_assignment_id = role_mappings.index_by { |m| m[:assignment_id].to_i }
@@ -372,7 +377,7 @@ module Manage
               end
             else
               # No mapping provided - try auto-mapping by role match key
-              matched_role = target_roles_by_name[match_key_of.call(assignment.role)]
+              matched_role = auto_target_for.call(assignment.role)
               if matched_role
                 assignment.update!(role_id: matched_role.id)
                 people_kept << { assignment: assignment, role: matched_role }
@@ -385,7 +390,7 @@ module Manage
           else
             # No mapping provided - try auto-mapping by role match key
             role_name = match_key_of.call(assignment.role)
-            matched_role = role_name ? target_roles_by_name[role_name] : nil
+            matched_role = auto_target_for.call(assignment.role)
             Rails.logger.info "[Migration] Auto-mapping assignment #{assignment_id}: role_name='#{role_name}', matched=#{matched_role.present?}"
             if matched_role
               assignment.update!(role_id: matched_role.id)
@@ -400,6 +405,8 @@ module Manage
         end
 
         Rails.logger.info "[Migration] After processing: kept=#{people_kept.count}, removed=#{people_removed.count}"
+
+        reslot_folded_roles!(copied_from, role_before_of)
 
         # Update the use_custom_roles flag
         @show.update!(use_custom_roles: switching_to == "custom")
@@ -641,7 +648,7 @@ module Manage
       linked_source_keys = Role.match_keys_for(linked_show.available_roles).invert
       linked_show.show_person_role_assignments.includes(:role).each do |assignment|
         source_key = assignment.role ? (linked_source_keys[assignment.role] || assignment.role.match_key) : nil
-        matched_role = source_key ? target_roles_by_name[source_key] : nil
+        matched_role = match_target(target_roles_by_name, source_key, show: linked_show)
         if matched_role
           assignment.update!(role_id: matched_role.id)
         else
@@ -658,6 +665,33 @@ module Manage
       end
 
       linked_show.update!(casting_finalized_at: nil) if linked_show.casting_finalized?
+    end
+
+    # Several acts of the production's lineup may have folded into one role of
+    # the show's copy ("Dancer ×3"); the people who held them now share that
+    # role, so seat them in slots 1..n in running order.
+    def reslot_folded_roles!(copied_from, role_before_of)
+      copied_from.group_by { |_source_id, target| target }.each do |target, pairs|
+        next unless pairs.size > 1
+
+        rank = pairs.map(&:first).each_with_index.to_h
+        seated = @show.show_person_role_assignments.where(role_id: target.id).to_a
+        # An assignment that came from one of the folded acts sorts by that
+        # act's place in the running order; anything else goes after.
+        seated.sort_by { |a| [ rank.fetch(role_before_of[a.id], rank.size), a.position, a.id ] }
+              .each_with_index { |a, i| a.update_columns(position: i + 1) unless a.position == i + 1 }
+      end
+    end
+
+    # Look a source role's match key up in the target lineup. A role-based
+    # lineup holds one role per name, so "dancer#2" (the second Dancer act of
+    # an act lineup) lands on the target's only Dancer — the "Dancer ×3" that
+    # Show#copy_roles_from_production! folded the acts into.
+    def match_target(target_roles_by_name, key, show: @show)
+      return nil if key.nil?
+
+      target_roles_by_name[key] ||
+        (show.role_based? ? target_roles_by_name[key.sub(/#\d+\z/, "#1")] : nil)
     end
 
     # Build a human-readable message about the migration result

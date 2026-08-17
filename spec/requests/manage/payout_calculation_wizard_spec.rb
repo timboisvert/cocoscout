@@ -473,6 +473,53 @@ RSpec.describe "Payout calculation wizard", type: :request do
       expect(PayoutScheme.current_default_for_production(production)).to be_nil
     end
 
+    it "unchecking a production on edit takes only this calculation's rows, leaving another's history in place" do
+      other_calc = PayoutScheme.create!(organization: org, name: "Old flat", rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 40 } })
+      create(:show, production: production, date_and_time: 3.weeks.ago)
+      other_calc.make_production_scheme!(production) # reaches back three weeks
+      existing.make_production_scheme!(production)   # from today
+
+      get manage_money_payout_calculation_wizard_start_path(id: existing.id)
+      pick_who
+      save_it(name: existing.name)
+
+      expect(PayoutSchemeDefault.for_production(production).map(&:payout_scheme)).to eq([ other_calc ])
+      expect(PayoutScheme.current_default_for_production(production)).to eq(other_calc)
+    end
+
+    it "a rename that never opens the who step leaves the productions' history and scheduled switches alone" do
+      other_calc = PayoutScheme.create!(organization: org, name: "Old flat", rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 40 } })
+      later_calc = PayoutScheme.create!(organization: org, name: "Next year", rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 60 } })
+      create(:show, production: production, date_and_time: 3.weeks.ago)
+      other_calc.make_production_scheme!(production)                                   # history, three weeks back
+      existing.make_production_scheme!(production)                                     # today
+      later_calc.make_production_scheme!(production, starting_on: 6.weeks.from_now.to_date) # scheduled switch
+      before = PayoutSchemeDefault.for_production(production).order(:effective_from).map { |r| [ r.payout_scheme_id, r.effective_from ] }
+
+      get manage_money_payout_calculation_wizard_start_path(id: existing.id)
+      save_it(name: "House split (renamed)")
+
+      expect(existing.reload.name).to eq("House split (renamed)")
+      after = PayoutSchemeDefault.for_production(production).order(:effective_from).map { |r| [ r.payout_scheme_id, r.effective_from ] }
+      expect(after).to eq(before)
+      expect(after.size).to eq(3)
+    end
+
+    it "re-saving with the who step visited doesn't rewrite a production that already used it" do
+      later_calc = PayoutScheme.create!(organization: org, name: "Next year", rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 60 } })
+      create(:show, production: production, date_and_time: 3.weeks.ago)
+      existing.make_production_scheme!(production)                                     # reaches back three weeks
+      later_calc.make_production_scheme!(production, starting_on: 6.weeks.from_now.to_date) # scheduled switch
+      before = PayoutSchemeDefault.for_production(production).order(:effective_from).map { |r| [ r.payout_scheme_id, r.effective_from ] }
+
+      get manage_money_payout_calculation_wizard_start_path(id: existing.id)
+      pick_who(production.id)
+      save_it(name: existing.name)
+
+      after = PayoutSchemeDefault.for_production(production).order(:effective_from).map { |r| [ r.payout_scheme_id, r.effective_from ] }
+      expect(after).to eq(before)
+    end
+
     it "start?id=&duplicate=1 copies it into a new calculation" do
       get manage_money_payout_calculation_wizard_start_path(id: existing.id, duplicate: "1")
       expect(response).to redirect_to(manage_money_payout_calculation_wizard_approach_path)

@@ -3,7 +3,7 @@
 require "rails_helper"
 
 RSpec.describe PayoutScheme do
-  let(:organization) { create(:organization) }
+  let(:organization) { create(:organization, :pro) }
   let(:production) { create(:production, organization: organization) }
   let(:flat_rules) { { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 }, "performer_overrides" => {} } }
   let(:old_scheme) { described_class.create!(organization: organization, name: "Old", rules: flat_rules) }
@@ -19,12 +19,42 @@ RSpec.describe PayoutScheme do
 
     before { old_scheme.make_production_scheme!(production) }
 
-    it "with no date, replaces the production's scheme back to its first show and restamps every pending payout" do
+    it "with no date and history in place, takes over from today and keeps the earlier scheme for the shows before" do
+      new_scheme.make_production_scheme!(production)
+
+      defaults = PayoutSchemeDefault.for_production(production).order(:effective_from)
+      expect(defaults.map(&:payout_scheme)).to eq([ old_scheme, new_scheme ])
+      expect(defaults.first.effective_from).to eq(past_show.date_and_time.to_date)
+      expect(defaults.last.effective_from).to eq(Date.current)
+
+      expect(described_class.default_for_show(past_show)).to eq(old_scheme)
+      expect(described_class.default_for_show(soon_show)).to eq(new_scheme)
+      expect(past_payout.reload.payout_scheme).to eq(old_scheme)
+      expect(soon_payout.reload.payout_scheme).to eq(new_scheme)
+      expect(later_payout.reload.payout_scheme).to eq(new_scheme)
+    end
+
+    it "with no date and no history, reaches back to the production's first show and restamps every pending payout" do
+      PayoutSchemeDefault.for_production(production).destroy_all
+
       new_scheme.make_production_scheme!(production)
 
       expect(PayoutSchemeDefault.for_production(production).pluck(:payout_scheme_id)).to eq([ new_scheme.id ])
       expect(PayoutSchemeDefault.for_production(production).first.effective_from).to eq(past_show.date_and_time.to_date)
       expect([ past_payout, soon_payout, later_payout ].map { |p| p.reload.payout_scheme }).to all(eq(new_scheme))
+    end
+
+    it "with no date, drops switches scheduled for later (any scheme) and its own rows, but not other schemes' history" do
+      third = described_class.create!(organization: organization, name: "Third", rules: flat_rules)
+      third.make_production_scheme!(production, starting_on: 2.weeks.from_now.to_date)
+      new_scheme.make_production_scheme!(production, starting_on: 4.weeks.from_now.to_date)
+
+      new_scheme.make_production_scheme!(production)
+
+      defaults = PayoutSchemeDefault.for_production(production).order(:effective_from)
+      expect(defaults.map(&:payout_scheme)).to eq([ old_scheme, new_scheme ])
+      expect(defaults.last.effective_from).to eq(Date.current)
+      expect(described_class.current_default_for_production(production, on: 5.weeks.from_now.to_date)).to eq(new_scheme)
     end
 
     it "with a date, leaves earlier shows on the old scheme and switches from that date on" do
@@ -61,6 +91,86 @@ RSpec.describe PayoutScheme do
       new_scheme.make_production_scheme!(production, starting_on: 3.weeks.from_now.to_date)
 
       expect(later_payout.reload.payout_scheme).to eq(old_scheme)
+    end
+  end
+
+  describe "#stop_covering!" do
+    let!(:show) { create(:show, production: production, date_and_time: 1.week.from_now) }
+    let!(:pending) { create(:show_payout, show: show, payout_scheme: nil, calculated_at: nil) }
+
+    it "removes only this scheme's rows and leaves the production on what remains" do
+      create(:show, production: production, date_and_time: 3.weeks.ago)
+      old_scheme.make_production_scheme!(production) # reaches back three weeks
+      new_scheme.make_production_scheme!(production) # from today
+      pending.update!(payout_scheme: new_scheme)
+
+      new_scheme.stop_covering!(production)
+
+      expect(PayoutSchemeDefault.for_production(production).map(&:payout_scheme)).to eq([ old_scheme ])
+      expect(described_class.current_default_for_production(production)).to eq(old_scheme)
+      expect(pending.reload.payout_scheme).to eq(old_scheme)
+    end
+
+    it "leaves the production with nothing, and its pending payouts unstamped, when it was the only one" do
+      new_scheme.make_production_scheme!(production)
+      expect(pending.reload.payout_scheme).to eq(new_scheme)
+
+      new_scheme.stop_covering!(production)
+
+      expect(PayoutSchemeDefault.for_production(production)).to be_empty
+      expect(described_class.current_default_for_production(production)).to be_nil
+      expect(pending.reload.payout_scheme).to be_nil
+    end
+
+    it "does not touch the scheme's rows on other productions" do
+      other = create(:production, organization: organization)
+      new_scheme.make_production_scheme!(production)
+      new_scheme.make_production_scheme!(other)
+
+      new_scheme.stop_covering!(production)
+
+      expect(described_class.current_default_for_production(other)).to eq(new_scheme)
+    end
+  end
+
+  describe "when the production doesn't pay performers" do
+    let!(:show) { create(:show, production: production, date_and_time: 1.week.from_now) }
+
+    before do
+      new_scheme.make_production_scheme!(production)
+      production.update!(pays_performers: false)
+    end
+
+    it "resolves to no calculation even though the rows are kept" do
+      expect(PayoutSchemeDefault.for_production(production).count).to eq(1)
+      expect(described_class.default_for_show(show)).to be_nil
+      expect(described_class.current_default_for_production(production)).to be_nil
+      expect(described_class.current_defaults_for_productions([ production ])).to eq({ production.id => nil })
+    end
+
+    it "still shows the kept calculation when asked to include paused pay" do
+      expect(described_class.current_default_for_production(production, include_paused: true)).to eq(new_scheme)
+    end
+
+    it "resolves again once pay is back on" do
+      production.update!(pays_performers: true)
+      expect(described_class.default_for_show(show)).to eq(new_scheme)
+      expect(described_class.current_default_for_production(production)).to eq(new_scheme)
+    end
+  end
+
+  describe ".current_defaults_for_productions" do
+    it "answers for every production in one query, picking the row in effect today" do
+      other = create(:production, organization: organization)
+      bare = create(:production, organization: organization)
+      old_scheme.make_production_scheme!(production)
+      new_scheme.make_production_scheme!(production, starting_on: 2.weeks.from_now.to_date)
+      new_scheme.make_production_scheme!(other)
+
+      result = nil
+      # The rows, then their schemes — not one lookup per production.
+      expect(count_queries { result = described_class.current_defaults_for_productions([ production, other, bare ]) }).to eq(2)
+      expect(result).to eq({ production.id => old_scheme, other.id => new_scheme, bare.id => nil })
     end
   end
 

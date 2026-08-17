@@ -14,7 +14,9 @@
 #   { "allocation" => [ {type: expenses_first} | {type: percentage, value:, label:} |
 #                       {type: percentage, value:, person_id:, label:} | {type: remainder} ],
 #     "distribution" => { "method" => …, per-method keys },
-#     "performer_overrides" => { "<person_id>" | "guest_<assignment_id>" => { flat_amount:, … } } }
+#     "performer_overrides" => { "Person_<id>" | "Group_<id>" | "guest_<assignment_id>" => { flat_amount:, … } } }
+#   (performer_overrides are keyed like ShowPayout.act_key; older rules keyed a
+#   person by bare id, which PayoutCalculator still reads — for a Person only.)
 class PayoutRulesBuilder
   METHODS = %w[no_pay flat_fee per_act per_ticket per_ticket_guaranteed equal shares].freeze
   # Only these split a pool of the night's money, so only they have a

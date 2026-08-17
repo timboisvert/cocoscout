@@ -69,15 +69,21 @@ RSpec.describe "Manage::MoneyPayouts", type: :request do
 
       get manage_money_production_payouts_path(production)
       expect(response.body).to include("Performer pay is off")
+      expect(response.body).to include("the calculation the production kept")
+      # The switch is the shared toggle: an unchecked checkbox named performers_paid that auto-submits.
+      expect(response.body).to match(/<input class="sr-only peer" data-action="change-&gt;auto-submit#submit" type="checkbox" value="1" name="performers_paid" id="performers_paid" \/>/)
       expect(response.body).not_to include("Payout calculation</h3>")
       expect(response.body).not_to include("Waiting on payment info")
       expect(response.body).to include("Past payouts") # the calculated show stays visible
 
+      # Back on: the calculation it kept is in force again.
       patch update_pay_manage_production_path(production),
             params: { performers_paid: "1", return_to: manage_money_production_payouts_path(production) }
       expect(production.reload.pays_performers).to be(true)
+      expect(PayoutScheme.current_default_for_production(production)).to eq(calc)
       follow_redirect!
-      expect(response.body).to include("No payout calculation chosen yet")
+      expect(response.body).to include("Door Split")
+      expect(response.body).not_to include("No payout calculation chosen yet")
     end
 
     it "shows this production's money by state" do

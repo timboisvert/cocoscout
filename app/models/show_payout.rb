@@ -125,20 +125,34 @@ class ShowPayout < ApplicationRecord
     act_payees.sum { |payee| amounts[self.class.act_key(payee)].to_f }.round(2)
   end
 
-  # Dry run of the calculation: PayoutCalculator.calculate persists line items
-  # (and re-posts the ledger), so it runs inside a transaction that is rolled
-  # back, and only the numbers come out. Empty when it can't run yet.
+  # Dry run of the calculation: the numbers PayoutCalculator would persist,
+  # without persisting anything (no line items, no ledger, no calculated_at).
+  # Empty when it can't run yet. Memoized per rules + act counts, since a page
+  # asks for the same dry run more than once.
   def preview_amounts(rules = resolved_rules)
-    amounts = {}
-    return amounts if rules.blank?
+    return {} if rules.blank?
 
-    ActiveRecord::Base.transaction do
-      result = PayoutCalculator.calculate(show: show, rules: rules, act_counts: preview_act_counts)
-      amounts = amounts_from_line_items(result[:line_items].to_a) if result[:success]
-      raise ActiveRecord::Rollback
+    act_counts = preview_act_counts
+    @preview_amounts ||= {}
+    @preview_amounts[[ rules, act_counts ]] ||= begin
+      result = PayoutCalculator.calculate(show: show, rules: rules, act_counts: act_counts, persist: false)
+      result[:success] ? amounts_from_line_items(result[:line_items]) : {}
     end
-    forget_dry_run!
-    amounts
+  end
+
+  # The exact amount this event's customization names for a payee, if any —
+  # keyed like `act_key`; an older customization keyed a person by bare id.
+  def override_amount_for(payee)
+    overrides = (override_rules || {}).deep_stringify_keys["performer_overrides"] || {}
+    override = overrides[self.class.act_key(payee)]
+    override = overrides[payee.id.to_s] if override.nil? && payee.is_a?(Person)
+    amount = override.is_a?(Hash) ? override["flat_amount"] : nil
+    amount.presence&.to_f
+  end
+
+  def reload(*)
+    @preview_amounts = nil
+    super
   end
 
   # --- Act-based pay -------------------------------------------------------
@@ -356,39 +370,48 @@ class ShowPayout < ApplicationRecord
 
   # --- current / preview amounts helpers -------------------------------------
 
-  # Line items → { act_key => amount } for the payees on this show. Someone's
-  # cut off the top (an individual allocation) isn't a payee amount; a guest
-  # line only carries a name, so it's matched back to the guest slot by name.
+  # Lines → { act_key => amount } for the payees on this show. Takes saved
+  # ShowPayoutLineItems or the hashes a dry run returns. Someone's cut off the
+  # top (an individual allocation) isn't a payee amount. A guest line is keyed
+  # by the guest slot it was paid for (two guests can share a name); a line
+  # saved before that was recorded falls back to matching the name.
   def amounts_from_line_items(items)
-    guests_by_name = act_payees.select { |p| p.is_a?(ShowPersonRoleAssignment) }.index_by(&:guest_name)
-    items.each_with_object({}) do |item, amounts|
-      next if item.is_individual_allocation?
+    guests = act_payees.select { |p| p.is_a?(ShowPersonRoleAssignment) }
+    guest_ids = guests.map(&:id).to_set
+    guests_by_name = guests.reverse.index_by(&:guest_name) # first slot with the name wins
 
-      key = if item.is_guest?
-        guest = guests_by_name[item.guest_name]
-        guest && self.class.act_key(guest)
-      elsif item.payee
-        self.class.act_key(item.payee)
+    items.each_with_object({}) do |item, amounts|
+      line = item.is_a?(ShowPayoutLineItem) ? line_item_fields(item) : item
+      next if line[:is_individual_allocation]
+
+      key = if line[:is_guest]
+        guest_id = line[:guest_assignment_id].to_i
+        guest_id = guests_by_name[line[:guest_name]]&.id unless guest_ids.include?(guest_id)
+        guest_id && "guest_#{guest_id}"
+      elsif line[:payee]
+        self.class.act_key(line[:payee])
       end
-      amounts[key] = item.amount.to_f if key
+      amounts[key] = line[:amount].to_f if key
     end
+  end
+
+  # A saved line item as the hash a dry run would have returned for it.
+  def line_item_fields(item)
+    details = item.calculation_details.is_a?(Hash) ? item.calculation_details : {}
+    {
+      payee: item.payee,
+      is_guest: item.is_guest?,
+      guest_name: item.guest_name,
+      guest_assignment_id: details["guest_assignment_id"],
+      is_individual_allocation: item.is_individual_allocation?,
+      amount: item.amount
+    }
   end
 
   # The act counts a dry run should use — what `calculate` would: the lineup
   # in an act-based production, otherwise whatever was entered by hand.
   def preview_act_counts
     show.act_based? ? show.lineup_act_counts : (act_counts || {})
-  end
-
-  # The dry run wrote calculated_at / total_payout and rebuilt line items on
-  # the in-memory records before the database rolled it all back. Reload this
-  # payout — and the show's copy of it, if that's a different object — so
-  # nothing of the dry run lingers.
-  def forget_dry_run!
-    reload if persisted?
-    association = show.association(:show_payout)
-    other = association.loaded? ? association.target : nil
-    other.reload if other && !other.equal?(self)
   end
 
   # --- customization_summary helpers ----------------------------------------
@@ -451,22 +474,39 @@ class ShowPayout < ApplicationRecord
   # "Jane Doe $100, Gigi (guest) $40" for every exact per-person amount.
   def person_amount_changes(override)
     overrides = override["performer_overrides"] || {}
+    return "" if overrides.blank?
+
+    # In cast order (jsonb doesn't keep the order the keys were written in);
+    # anyone no longer cast comes last.
+    cast = act_payees.index_by { |p| self.class.act_key(p) }
+    order = cast.keys.each_with_index.to_h
     named = overrides.filter_map do |key, data|
       amount = data.is_a?(Hash) ? data["flat_amount"] : nil
       next if amount.blank?
 
-      "#{override_payee_name(key)} #{money(amount)}"
+      legacy_key = key.to_s.match?(/\A\d+\z/) ? "Person_#{key}" : key.to_s
+      [ order.fetch(legacy_key, order.size), "#{override_payee_name(key, cast)} #{money(amount)}" ]
     end
-    named.join(", ")
+    named.sort_by.with_index { |(position, _), index| [ position, index ] }.map(&:last).join(", ")
   end
 
-  def override_payee_name(key)
+  # Who a performer_overrides key names: "guest_45" is a guest slot on this
+  # show, "Person_12" / "Group_3" someone cast on it or one of the org's own
+  # people or groups. An older customization keyed a person by bare id ("12").
+  # Never a bare Person.find_by — the lookup stays within the show's org.
+  def override_payee_name(key, cast = act_payees.index_by { |p| self.class.act_key(p) })
     key = key.to_s
+    organization = show.production.organization
+
     if key.start_with?("guest_")
-      assignment = show.show_person_role_assignments.find_by(id: key.delete_prefix("guest_"))
+      assignment = cast[key] || show.show_person_role_assignments.find_by(id: key.delete_prefix("guest_"))
       "#{assignment&.guest_name.presence || 'Guest'} (guest)"
+    elsif key.start_with?("Group_")
+      id = key.delete_prefix("Group_")
+      (cast[key] || organization.groups.find_by(id: id))&.name || "Group ##{id}"
     else
-      Person.find_by(id: key)&.name || Group.find_by(id: key)&.name || "Person ##{key}"
+      id = key.delete_prefix("Person_")
+      (cast["Person_#{id}"] || organization.people.find_by(id: id))&.name || "Person ##{id}"
     end
   end
 

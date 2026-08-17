@@ -11,6 +11,8 @@ module Manage
   # context carried in state:
   #   production_id — preselect this production on the "who uses it" step
   #   return_to     — where to go after saving (Pay tab, payout page…)
+  #   who_visited   — the "who uses it" step was answered this session; only
+  #                   then does saving change which productions use it
   class PayoutCalculationWizardController < Manage::ManageController
     before_action :ensure_user_is_manager
     before_action :load_state
@@ -90,6 +92,9 @@ module Manage
     def save_who
       @state[:default_production_ids] = Current.organization.productions.where(id: Array(params[:default_production_ids]).map(&:to_i)).pluck(:id)
       @state[:starting_on] = params[:starting] == "date" ? parse_date(params[:starting_on])&.iso8601 : nil
+      # Only a visit to this step may change who uses the calculation on save;
+      # an edit that goes straight to review leaves the productions alone.
+      @state[:who_visited] = true
       save_state
       redirect_to next_after(:who)
     end
@@ -121,21 +126,9 @@ module Manage
       end
       calculation.assign_attributes(name: @state[:name], description: @state[:description], rules: rules_from_state)
 
-      chosen_ids = Current.organization.productions.where(id: default_production_ids).pluck(:id)
-      starting_on = parse_date(@state[:starting_on])
-
       ActiveRecord::Base.transaction do
         calculation.save!
-
-        Current.organization.productions.where(id: chosen_ids).find_each do |production|
-          calculation.make_production_scheme!(production, starting_on: starting_on)
-        end
-        # Productions this calculation used to be the default for, now unchecked.
-        # (No NULLs in the NOT IN list — SQL would match nothing.)
-        PayoutSchemeDefault.where(payout_scheme: calculation).where.not(production_id: chosen_ids)
-                           .includes(:production).find_each do |default|
-          PayoutScheme.clear_production_scheme!(default.production) if default.production
-        end
+        apply_who_uses_it!(calculation) if @state[:who_visited] || @state[:editing_id].blank?
       end
 
       return_to = @state[:return_to]
@@ -206,7 +199,24 @@ module Manage
 
     def load_productions
       @productions = Current.organization.productions.order(:name).to_a
-      @current_calculations = @productions.to_h { |p| [ p.id, PayoutScheme.current_default_for_production(p) ] }
+      @current_calculations = PayoutScheme.current_defaults_for_productions(@productions)
+    end
+
+    # Productions newly checked on the who step start using the calculation
+    # (from the chosen date, or now); newly unchecked ones stop. Productions
+    # that were already using it are left exactly as they were — their rows,
+    # dates and history aren't rewritten by a rename or a rule change.
+    def apply_who_uses_it!(calculation)
+      chosen_ids = Current.organization.productions.where(id: default_production_ids).pluck(:id)
+      already_ids = calculation.payout_scheme_defaults.distinct.pluck(:production_id)
+      starting_on = parse_date(@state[:starting_on])
+
+      Current.organization.productions.where(id: chosen_ids - already_ids).find_each do |production|
+        calculation.make_production_scheme!(production, starting_on: starting_on)
+      end
+      Current.organization.productions.where(id: already_ids - chosen_ids).find_each do |production|
+        calculation.stop_covering!(production)
+      end
     end
 
     # Until the "who" step has been answered, the production the wizard was
@@ -255,13 +265,16 @@ module Manage
       end
     end
 
+    # The numbers each approach starts from on the amounts step.
+    STARTER_DISTRIBUTIONS = {
+      "flat" => { "method" => "flat_fee", "flat_amount" => 50.0 },
+      "per_act" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 25 },
+      "per_ticket" => { "method" => "per_ticket_guaranteed", "per_ticket_rate" => 1.0, "minimum" => 25.0 },
+      "share" => { "method" => "equal" }
+    }.freeze
+
     def starter_distribution(approach)
-      case approach
-      when "per_act" then { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 25 }
-      when "per_ticket" then PayoutScheme::PRESETS.dig(:per_ticket_guaranteed, :rules, :distribution).to_h.deep_stringify_keys
-      when "share" then PayoutScheme::PRESETS.dig(:even_split, :rules, :distribution).to_h.deep_stringify_keys
-      else PayoutScheme::PRESETS.dig(:flat_fee, :rules, :distribution).to_h.deep_stringify_keys
-      end
+      (STARTER_DISTRIBUTIONS[approach] || STARTER_DISTRIBUTIONS["flat"]).deep_dup
     end
 
     def approach_for_method(method)

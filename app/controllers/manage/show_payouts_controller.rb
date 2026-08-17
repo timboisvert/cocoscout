@@ -249,22 +249,23 @@ module Manage
           end
         end
 
-        overrides = amounts.to_h { |key, value| [ override_key(key), { flat_amount: value } ] }
+        # Keyed like ShowPayout.act_key, the same way the modal posted them —
+        # PayoutCalculator reads them by that key.
+        overrides = amounts.to_h { |key, value| [ key.to_s, { flat_amount: value } ] }
         PayoutRulesBuilder.override(base_rules, performer_overrides: overrides)
       else
         return redirect_to(manage_money_show_payout_path(@show), alert: "Choose whether everyone is paid the same amount or different amounts.")
       end
 
       @show_payout.update!(override_rules: rules)
-      notice = "This event's calculation saved."
-      notice += " #{recalculate_after_customization}" if @show_payout.calculated_at.present?
-      redirect_to manage_money_show_payout_path(@show), notice: notice
+      redirect_to manage_money_show_payout_path(@show),
+                  notice: with_recalculation_note("This event's calculation saved.")
     end
 
     def clear_override
       @show_payout.update!(override_rules: nil)
       redirect_to manage_money_show_payout_path(@show),
-                  notice: "Customization removed. This show pays as calculated."
+                  notice: with_recalculation_note("Customization removed. This show pays as calculated.")
     end
 
     # Pick a different calculation for this show — and, if asked, for every
@@ -278,24 +279,25 @@ module Manage
       end
 
       if params[:apply_to_future] == "1"
-        current_scheme_id = @show_payout.payout_scheme_id
-        shows_to_update = @production.shows
-          .where("date_and_time >= ?", @show.date_and_time)
-          .includes(:show_payout)
-          .select { |s| s.show_payout&.payout_scheme_id == current_scheme_id }
+        # This show and every later one on the same calculation — including
+        # shows whose payout page was never opened (no payout row yet): they
+        # get their row now, so "all future shows" really covers them.
+        payouts = shows_on_this_calculation(from: @show.date_and_time, inclusive: true).map do |show|
+          next @show_payout if show.id == @show.id
 
-        updated_count = 0
-        shows_to_update.each do |show|
-          show.show_payout.update!(payout_scheme: new_scheme, override_rules: nil)
-          updated_count += 1
+          show.show_payout || show.create_show_payout!(status: "awaiting_payout", payout_scheme: new_scheme)
+        end
+        payouts.each do |payout|
+          payout.update!(payout_scheme: new_scheme, override_rules: nil)
+          recalculate_if_calculated(payout) unless payout.equal?(@show_payout)
         end
 
         redirect_to manage_money_show_payout_path(@show),
-                    notice: "Now using \"#{new_scheme.name}\" for #{helpers.pluralize(updated_count, 'show')}."
+                    notice: with_recalculation_note("Now using \"#{new_scheme.name}\" for #{helpers.pluralize(payouts.size, 'show')}.")
       else
         @show_payout.update!(payout_scheme: new_scheme, override_rules: nil)
         redirect_to manage_money_show_payout_path(@show),
-                    notice: "Now using \"#{new_scheme.name}\" for this show."
+                    notice: with_recalculation_note("Now using \"#{new_scheme.name}\" for this show.")
       end
     end
 
@@ -309,7 +311,7 @@ module Manage
       else
         "This show no longer has a calculation of its own."
       end
-      redirect_to manage_money_show_payout_path(@show), notice: notice
+      redirect_to manage_money_show_payout_path(@show), notice: with_recalculation_note(notice)
     end
 
     def mark_line_item_paid
@@ -721,10 +723,24 @@ module Manage
     def setup_calculation_card
       @production_scheme = PayoutScheme.current_default_for_production(@production, on: show_date)
       @available_schemes = Current.organization.payout_schemes.active.order(:name)
-      @future_shows_count = @production.shows
-        .where("date_and_time > ?", @show.date_and_time)
-        .where(id: ShowPayout.where(payout_scheme_id: @show_payout.payout_scheme_id).select(:show_id))
-        .count
+      @future_shows_count = shows_on_this_calculation(from: @show.date_and_time, inclusive: false).size
+    end
+
+    # The production's shows from a date on that ride the same calculation as
+    # this one. A show whose payout page was never opened has no payout row
+    # yet; it's on whatever the production's calculation is for its date —
+    # which may be none at all, same as this show when it has none.
+    def shows_on_this_calculation(from:, inclusive:)
+      current_scheme_id = @show_payout.payout_scheme_id
+      shows = @production.shows.includes(:show_payout)
+      shows = inclusive ? shows.where("date_and_time >= ?", from) : shows.where("date_and_time > ?", from)
+      shows.select do |show|
+        if show.show_payout
+          show.show_payout.payout_scheme_id == current_scheme_id
+        else
+          PayoutScheme.default_for_show(show)&.id == current_scheme_id
+        end
+      end
     end
 
     # Third-party revenue-share shows are settled through the Contracts system now
@@ -770,31 +786,37 @@ module Manage
       )
     end
 
-    # The Customize modal keys amounts like ShowPayout.act_key ("Person_12",
-    # "Group_3", "guest_45"); PayoutCalculator reads per-person overrides by
-    # bare id ("12") and guests by "guest_45".
-    def override_key(act_key)
-      act_key.to_s.sub(/\A(?:Person|Group)_/, "")
-    end
-
-    # A customization saved over an already-calculated payout: run the
+    # A change to how this show pays (a customization saved or removed, a
+    # different calculation chosen) after it was already calculated: run the
     # calculation again the way `calculate` does, so the line items show the
-    # new amounts. Returns the sentence to add to the notice. Paid lines are
-    # never rebuilt from under anyone — then it's left to a deliberate
+    # new amounts. Returns a sentence for the notice, or nil when there was
+    # nothing calculated to redo. Paid lines are never rebuilt from under
+    # anyone — the amounts already paid stay, and it's left to a deliberate
     # recalculation.
-    def recalculate_after_customization
-      return "Some people are already paid, so the amounts weren't recalculated — recalculate when you're ready." if @show_payout.line_items.any?(&:paid?)
+    def recalculate_if_calculated(payout = @show_payout)
+      return nil if payout.calculated_at.blank?
+      return "Some people are already paid, so the amounts weren't recalculated — what's been paid stays as it is." if payout.line_items.any?(&:paid?)
 
-      rules = @show_payout.resolved_rules
-      if rules.dig("distribution", "method").to_s == "per_act" && @show.act_based?
-        @show_payout.update!(act_counts: @show.lineup_act_counts)
+      show = payout.show
+      rules = payout.resolved_rules
+      if rules.blank?
+        return "The payouts weren't recalculated — this show has no calculation now."
       end
-      result = PayoutCalculator.calculate(show: @show, rules: rules, act_counts: @show_payout.act_counts)
+
+      if rules.dig("distribution", "method").to_s == "per_act" && show.act_based?
+        payout.update!(act_counts: show.lineup_act_counts)
+      end
+      result = PayoutCalculator.calculate(show: show, rules: rules, act_counts: payout.act_counts)
       if result[:success]
         "Payouts recalculated: #{helpers.number_to_currency(result[:total])} total."
       else
         "The payouts couldn't be recalculated (#{result[:error]}) — recalculate when you're ready."
       end
+    end
+
+    # A notice with the recalculation's outcome added, when there was one.
+    def with_recalculation_note(notice)
+      [ notice, recalculate_if_calculated ].compact.join(" ")
     end
 
     def show_date

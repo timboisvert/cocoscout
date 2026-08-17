@@ -256,6 +256,103 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       expect(variety_night).to be_role_based
     end
 
+    context "when the overridden night has its own act lineup and goes back to roles" do
+      let!(:people) { (1..3).map { |i| create(:person, name: "Magician #{i}").tap { |p| org.people << p } } }
+
+      before do
+        variety_night.update!(use_custom_roles: true)
+        %w[Magic Magic Intermission Magic Aerial].each_with_index do |name, i|
+          create(:role, production: production, show: variety_night, name: name, position: i,
+                        category: name == "Intermission" ? "break" : "performing")
+        end
+        acts = variety_night.custom_roles.reload.to_a
+        create(:show_person_role_assignment, show: variety_night, role: acts[0], assignable: people[0])
+        create(:show_person_role_assignment, show: variety_night, role: acts[1], assignable: people[1])
+        create(:show_person_role_assignment, show: variety_night, role: acts[3], assignable: people[2])
+      end
+
+      it "folds same-named acts into one role, drops the intermission, and later role edits and reorders no longer fail" do
+        patch manage_show_path(production, variety_night),
+              params: { show: { casting_mode: "" } }.to_json,
+              headers: { "CONTENT_TYPE" => "application/json", "ACCEPT" => "application/json" }
+        expect(response).to have_http_status(:see_other)
+
+        variety_night.reload
+        expect(variety_night).to be_role_based
+        lineup = variety_night.custom_roles.to_a
+        expect(lineup.map { |r| [ r.name, r.quantity, r.category ] }).to eq([ [ "Magic", 3, "performing" ], [ "Aerial", 1, "performing" ] ])
+        magic, aerial = lineup
+        cast = variety_night.show_person_role_assignments.reload.where(role: magic)
+        expect(cast.map(&:assignable)).to match_array(people)
+        expect(cast.map(&:position)).to contain_exactly(1, 2, 3)
+
+        # a slot change on the merged role saves (one role per name again)
+        patch manage_update_show_role_path(production, variety_night, magic),
+              params: { show_role: { name: "Magic", quantity: 4, category: "performing" } }, as: :json
+        expect(response).to have_http_status(:ok)
+        expect(magic.reload.quantity).to eq(4)
+
+        # and a reorder sticks (no leftover break to trip validation)
+        post manage_reorder_show_roles_path(production, variety_night), params: { role_ids: [ aerial.id, magic.id ] }, as: :json
+        expect(response).to have_http_status(:ok)
+        expect(variety_night.custom_roles.reload.map(&:name)).to eq(%w[Aerial Magic])
+      end
+
+      it "does the same when the night is pinned to roles rather than cleared" do
+        patch manage_show_path(production, variety_night),
+              params: { show: { casting_mode: "role_based", event_type: "show", date_and_time: variety_night.date_and_time.iso8601 } }
+        expect(response).to have_http_status(:see_other)
+
+        expect(variety_night.reload.casting_mode).to eq("role_based")
+        expect(variety_night.custom_roles.map { |r| [ r.name, r.quantity ] }).to eq([ [ "Magic", 3 ], [ "Aerial", 1 ] ])
+        expect(variety_night.custom_roles.breaks).to be_empty
+      end
+    end
+  end
+
+  describe "a show pinned to roles inside an act-based production" do
+    let!(:act_production) { create(:production, organization: org, name: "Variety Hour", casting_mode: "act_based") }
+    let!(:role_night) { create(:show, production: act_production, casting_mode: "role_based", date_and_time: 5.days.from_now) }
+    let!(:acts) do
+      %w[Dancer Dancer Dancer Intermission Host].each_with_index.map do |name, i|
+        create(:role, production: act_production, name: name, position: i, category: name == "Intermission" ? "break" : "performing")
+      end
+    end
+    let!(:people) { (1..3).map { |i| create(:person, name: "Dancer #{i}").tap { |p| org.people << p } } }
+
+    it "copies the production's lineup as roles without raising: the Dancer acts become Dancer ×3, no intermission" do
+      post manage_copy_from_production_show_roles_path(act_production, role_night), as: :json
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["success"]).to be(true)
+      expect(body["roles"].map { |r| [ r["name"], r["quantity"] ] }).to eq([ [ "Dancer", 3 ], [ "Host", 1 ] ])
+      expect(role_night.reload).to be_use_custom_roles
+    end
+
+    it "keeps everyone cast when it moves to its own lineup: each Dancer act's person takes a slot of Dancer ×3" do
+      people.each_with_index { |p, i| create(:show_person_role_assignment, show: role_night, role: acts[i], assignable: p) }
+      create(:show_person_role_assignment, show: role_night, role: acts[4], assignable: performer)
+
+      get manage_migration_preview_show_roles_path(act_production, role_night, switching_to: "custom")
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["needs_decision_count"]).to eq(0)
+
+      post manage_execute_migration_show_roles_path(act_production, role_night),
+           params: { switching_to: "custom", role_mappings: [] }, as: :json
+      expect(response).to have_http_status(:ok)
+
+      role_night.reload
+      expect(role_night).to be_use_custom_roles
+      dancer, host = role_night.custom_roles.to_a
+      expect([ dancer.name, dancer.quantity, host.name ]).to eq([ "Dancer", 3, "Host" ])
+      cast = role_night.show_person_role_assignments.reload
+      expect(cast.size).to eq(4)
+      expect(cast.where(role: dancer).map(&:assignable)).to match_array(people)
+      expect(cast.where(role: dancer).map(&:position)).to contain_exactly(1, 2, 3)
+      expect(cast.find_by(assignable: performer).role).to eq(host)
+    end
+
     it "offers the casting-style select on the edit screen and saves it" do
       get edit_manage_production_show_path(production, plain_night)
       expect(response).to have_http_status(:ok)

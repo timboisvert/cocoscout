@@ -163,6 +163,45 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
         expect(flash[:notice]).to include("2 shows")
       end
 
+      it "carries the choice to later shows whose payout page was never opened, even when nothing was chosen yet" do
+        # The production has no calculation; this show's payout is on none either.
+        PayoutSchemeDefault.where(production: production).destroy_all
+        payout.update!(payout_scheme: nil)
+        never_opened = create(:show, production: production, event_type: :show, date_and_time: 4.days.from_now)
+        expect(never_opened.show_payout).to be_nil
+
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include("1 later show uses the same calculation")
+
+        patch manage_apply_choice_money_show_payout_path(show), params: { payout_scheme_id: flat_fifty.id, apply_to_future: "1" }
+
+        expect(response).to redirect_to(manage_money_show_payout_path(show))
+        expect(payout.reload.payout_scheme).to eq(flat_fifty)
+        expect(never_opened.reload.show_payout&.payout_scheme).to eq(flat_fifty)
+        expect(flash[:notice]).to include("2 shows")
+      end
+
+      it "recalculates an already-calculated payout when a different calculation is chosen" do
+        post manage_calculate_money_show_payout_path(show)
+        expect(payout.reload.line_items.find_by(payee: jane).amount.to_f).to eq(200.0)
+
+        patch manage_apply_choice_money_show_payout_path(show), params: { payout_scheme_id: flat_fifty.id, apply_to_future: "0" }
+
+        expect(flash[:notice]).to include("recalculated").and include("$150.00")
+        expect(payout.reload.line_items.map { |li| li.amount.to_f }).to all(eq(50.0))
+      end
+
+      it "recalculates when going back to the production's calculation" do
+        payout.update!(payout_scheme: flat_fifty)
+        post manage_calculate_money_show_payout_path(show)
+        expect(payout.reload.line_items.find_by(payee: jane).amount.to_f).to eq(50.0)
+
+        patch manage_use_default_money_show_payout_path(show)
+
+        expect(flash[:notice]).to include("recalculated").and include("$600.00")
+        expect(payout.reload.line_items.find_by(payee: jane).amount.to_f).to eq(200.0)
+      end
+
       it "hides Choose and Back while customized — only edit or remove the customization" do
         payout.update!(payout_scheme: flat_fifty, override_rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 } })
 
@@ -281,7 +320,7 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
           expect(rules.dig("distribution", "method")).to eq("shares")
           expect(rules["allocation"]).to include(a_hash_including("type" => "percentage", "value" => 40.0))
           expect(rules["performer_overrides"]).to eq(
-            jane.id.to_s => { "flat_amount" => 300.0 }, jack.id.to_s => { "flat_amount" => 200.0 }, "guest_#{gigi_cast.id}" => { "flat_amount" => 100.0 }
+            "Person_#{jane.id}" => { "flat_amount" => 300.0 }, "Person_#{jack.id}" => { "flat_amount" => 200.0 }, "guest_#{gigi_cast.id}" => { "flat_amount" => 100.0 }
           )
 
           get manage_money_show_payout_path(show)
@@ -301,7 +340,7 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
                 params: { customize: { mode: "different", amounts: { "Person_#{jane.id}" => "100", "Person_#{jack.id}" => "50", "guest_#{gigi_cast.id}" => "50" } } }
 
           expect(flash[:alert]).to be_nil
-          expect(payout.reload.override_rules["performer_overrides"]).to include(jane.id.to_s => { "flat_amount" => 100.0 })
+          expect(payout.reload.override_rules["performer_overrides"]).to include("Person_#{jane.id}" => { "flat_amount" => 100.0 })
         end
 
         it "recalculates an already-calculated payout so the lines reflect it" do
@@ -337,6 +376,73 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
           expect(response).to redirect_to(manage_money_show_payout_path(show))
           expect(payout.reload.override_rules).to be_nil
           expect(flash[:notice]).to include("Customization removed")
+        end
+
+        it "recalculates an already-calculated payout when the customization is removed" do
+          patch manage_save_override_money_show_payout_path(show), params: { customize: { mode: "same", amount: "60" } }
+          post manage_calculate_money_show_payout_path(show)
+          expect(payout.reload.line_items.map { |li| li.amount.to_f }).to all(eq(60.0))
+
+          delete manage_clear_override_money_show_payout_path(show)
+
+          expect(flash[:notice]).to include("Customization removed").and include("recalculated").and include("$600.00")
+          payout.reload
+          expect(payout.line_items.find_by(payee: jane).amount.to_f).to eq(200.0)
+          expect(payout.line_items.find_by(is_guest: true).amount.to_f).to eq(200.0)
+          expect(payout.total_payout.to_f).to eq(600.0)
+        end
+
+        it "leaves the lines alone once someone is paid, and says so" do
+          patch manage_save_override_money_show_payout_path(show), params: { customize: { mode: "same", amount: "60" } }
+          post manage_calculate_money_show_payout_path(show)
+          payout.reload.line_items.find_by(payee: jane).update_columns(manually_paid: true)
+
+          delete manage_clear_override_money_show_payout_path(show)
+
+          expect(flash[:notice]).to include("already paid").and include("stays")
+          expect(payout.reload.line_items.find_by(payee: jane).amount.to_f).to eq(60.0)
+        end
+
+        it "pays a group and a person their own amounts (never mixing up who is #N)" do
+          band = create(:group, name: "The Band")
+          create(:show_person_role_assignment, show: show, role: cast_role, assignable: band)
+
+          get manage_money_show_payout_path(show)
+          expect(response.body).to include(%(name="customize[amounts][Group_#{band.id}]"))
+
+          patch manage_save_override_money_show_payout_path(show),
+                params: { customize: { mode: "different", amounts: { "Person_#{jane.id}" => "50", "Person_#{jack.id}" => "50", "guest_#{gigi_cast.id}" => "100", "Group_#{band.id}" => "400" } } }
+          expect(flash[:alert]).to be_nil
+          expect(payout.reload.override_rules["performer_overrides"]).to include("Group_#{band.id}" => { "flat_amount" => 400.0 })
+
+          post manage_calculate_money_show_payout_path(show)
+          expect(payout.line_items.find_by(payee: band).amount.to_f).to eq(400.0)
+          expect(payout.line_items.find_by(payee: jane).amount.to_f).to eq(50.0)
+
+          get manage_money_show_payout_path(show)
+          expect(response.body).to include("The Band $400")
+        end
+
+        it "tells two guests with the same name apart" do
+          gigi_two = create(:show_person_role_assignment, show: show, role: cast_role, guest_name: "Gigi Guest", assignable: nil)
+
+          get manage_money_show_payout_path(show)
+          # 60% of $1000 split four ways
+          expect(response.body).to include(%(name="customize[amounts][guest_#{gigi_cast.id}]" value="150.00"))
+          expect(response.body).to include(%(name="customize[amounts][guest_#{gigi_two.id}]" value="150.00"))
+          expect(response.body).to include("calculated $600.00")
+
+          patch manage_save_override_money_show_payout_path(show),
+                params: { customize: { mode: "different", amounts: { "Person_#{jane.id}" => "200", "Person_#{jack.id}" => "200", "guest_#{gigi_cast.id}" => "180", "guest_#{gigi_two.id}" => "20" } } }
+          expect(flash[:alert]).to be_nil
+
+          post manage_calculate_money_show_payout_path(show)
+          amounts = payout.reload.line_items.where(is_guest: true).map { |li| [ li.calculation_details["guest_assignment_id"], li.amount.to_f ] }.to_h
+          expect(amounts).to eq(gigi_cast.id => 180.0, gigi_two.id => 20.0)
+
+          get manage_money_show_payout_path(show)
+          expect(response.body).to include(%(name="customize[amounts][guest_#{gigi_cast.id}]" value="180.00"))
+          expect(response.body).to include(%(name="customize[amounts][guest_#{gigi_two.id}]" value="20.00"))
         end
       end
     end

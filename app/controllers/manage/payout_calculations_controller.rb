@@ -20,7 +20,8 @@ module Manage
     def show
       @show_payouts = @payout_scheme.show_payouts.includes(:show).order("shows.date_and_time DESC").limit(10)
       @defaults = @payout_scheme.payout_scheme_defaults.includes(:production).to_a
-      @default_productions = @defaults.map(&:production).compact.sort_by { |production| production.name.to_s.downcase }
+      @default_productions = @defaults.map(&:production).compact.uniq.sort_by { |production| production.name.to_s.downcase }
+      @default_production_ids = @default_productions.map(&:id)
       # The modal offers every active production, plus any inactive one this
       # calculation still covers (so it can be unticked rather than vanish).
       @pickable_productions = (Current.organization.productions.active.to_a + @default_productions)
@@ -45,9 +46,10 @@ module Manage
     end
 
     # "Used by" — which productions pay their performers with this calculation.
-    # Checked productions get it as their calculation; unchecked ones it used
-    # to cover are left with none. Payouts nobody has calculated yet follow the
-    # change (the model helpers restamp them).
+    # Newly checked productions get it as their calculation from now on;
+    # unchecked ones it used to cover lose only THIS calculation's rows (any
+    # other calculation's history stays). Payouts nobody has calculated yet
+    # follow the change (the model helpers restamp them).
     def update_defaults
       # Only this org's productions — ids come straight from the form.
       wanted_ids = Array(params[:production_ids]).map(&:to_i).reject(&:zero?)
@@ -64,7 +66,7 @@ module Manage
         # Already-covered productions keep their row (and its start date).
         checked.reject { |production| already.include?(production.id) }
                .each { |production| @payout_scheme.make_production_scheme!(production) }
-        dropped.each { |production| PayoutScheme.clear_production_scheme!(production) }
+        dropped.each { |production| @payout_scheme.stop_covering!(production) }
       end
 
       redirect_to manage_money_payout_calculation_path(@payout_scheme),

@@ -24,4 +24,11 @@ class PayoutSchemeDefault < ApplicationRecord
   scope :by_effective_date_desc, -> {
     order(Arel.sql("CASE WHEN payout_scheme_defaults.effective_from IS NULL THEN 0 ELSE 1 END DESC, payout_scheme_defaults.effective_from DESC"))
   }
+
+  # The row in effect on a date out of an already-loaded set (one production's
+  # rows) — the same pick as effective_on + by_effective_date_desc, in Ruby.
+  def self.in_effect_on(rows, on)
+    rows.select { |row| row.effective_from.nil? || row.effective_from <= on }
+        .max_by { |row| row.effective_from ? [ 1, row.effective_from ] : [ 0, Date.new(1) ] }
+  end
 end

@@ -103,15 +103,36 @@ RSpec.describe "Manage::CastingSettings", type: :request do
         expect(response.body).not_to include("slots</span>")
       end
 
-      it "switching back to roles keeps every act as a role and every assignment in place" do
+      it "switching back to roles folds the Dancer acts into Dancer ×3 again, everyone in a slot, and role edits work" do
         patch manage_casting_settings_path(production), params: { production: { casting_mode: "act_based" } }
-        roles_after_split = production.roles.production_roles.reload.map { |r| [ r.id, r.name, r.position ] }
+        expect(production.roles.production_roles.reload.count).to eq(4)
 
         patch manage_casting_settings_path(production), params: { production: { casting_mode: "role_based" } }
 
         expect(production.reload).to be_role_based
-        expect(production.roles.production_roles.reload.map { |r| [ r.id, r.name, r.position ] }).to eq(roles_after_split)
-        expect(show.show_person_role_assignments.reload.count).to eq(4)
+        lineup = production.roles.production_roles.reload
+        expect(lineup.map { |r| [ r.id, r.name, r.position, r.quantity ] }).to eq([ [ dancer.id, "Dancer", 0, 3 ], [ host.id, "Host", 1, 1 ] ])
+        cast = show.show_person_role_assignments.reload.includes(:role)
+        expect(cast.size).to eq(4)
+        expect(cast.select { |a| a.role_id == dancer.id }.map(&:position)).to contain_exactly(1, 2, 3)
+        expect(cast.select { |a| a.role_id == dancer.id }.map(&:assignable)).to match_array(people)
+
+        # a role-based lineup holds one role per name, so renaming and reordering validate again
+        patch manage_update_casting_role_path(production, dancer), params: { role: { name: "Dancer", quantity: 3, category: "performing" } }
+        expect(response).to redirect_to(manage_casting_settings_section_path(production_id: production, section: "roles"))
+        expect(flash[:alert]).to be_nil
+        expect(flash[:notice]).to eq("Role was successfully updated")
+      end
+
+      it "an act lineup whose repeated names aren't in a row gets suffixed names back in role mode" do
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "act_based" } }
+        production.roles.production_roles.reload.find_by(position: 1).update_columns(name: "Solo")
+        expect(production.roles.production_roles.reload.map(&:name)).to eq(%w[Dancer Solo Dancer Host])
+
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "role_based" } }
+
+        expect(production.roles.production_roles.reload.map { |r| [ r.name, r.quantity ] }).to eq([ [ "Dancer", 1 ], [ "Solo", 1 ], [ "Dancer (2)", 1 ], [ "Host", 1 ] ])
+        expect(production.roles.production_roles.reload).to all(be_valid)
       end
 
       it "does not touch the lineup when the mode is saved unchanged" do

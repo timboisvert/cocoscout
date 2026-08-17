@@ -83,14 +83,13 @@ module Manage
       render json: result
     end
 
-    # Pay tab: whether performers are paid for this production and, if so, which
-    # payout scheme its shows start from. "Paid" is expressed as a production
-    # default on the scheme (PayoutSchemeDefault, effective today); "not paid"
-    # removes this production's defaults. Pro only — a free org sees the tab locked.
     # Performer pay for a production: the on/off switch (pays_performers) and,
     # when on, which payout calculation its shows start from. Posted by the
     # switch itself (performers_paid only) or by the calculation picker
-    # (performers_paid=1 + payout_scheme_id).
+    # (performers_paid=1 + payout_scheme_id). Turning the switch off is not
+    # destructive: the production keeps its calculation rows, they just don't
+    # resolve while pay is off; turning it back on picks them up again. Pro
+    # only — a free org sees the tab locked.
     def update_pay
       unless Current.organization.feature_available?(:money)
         redirect_to pay_return_path,
@@ -106,21 +105,31 @@ module Manage
         return
       end
 
-      current = PayoutScheme.current_default_for_production(@production)
       if paid
+        was_off = !@production.pays_performers?
         @production.update!(pays_performers: true)
-        if calculation
-          # Only THIS production's defaults are touched (never the calculation's
-          # other productions); the new one reaches back to the production's
-          # first show and restamps payouts nobody has calculated yet.
-          calculation.make_production_scheme!(@production) unless current == calculation
-          notice = "Performers on #{@production.name} are paid using #{calculation.name}."
+        current = PayoutScheme.current_default_for_production(@production)
+        if calculation && current != calculation
+          # Only THIS production's rows are touched (never the calculation's
+          # other productions); pending payouts follow the switch.
+          calculation.make_production_scheme!(@production)
+        elsif was_off
+          # Back on: the rows it kept resolve again; payouts nobody has
+          # calculated yet pick them back up.
+          ShowPayout.restamp_pending_for_production!(@production, nil)
+        end
+        notice = if calculation
+          "Performers on #{@production.name} are paid using #{calculation.name}."
+        elsif current
+          "Performer pay is on for #{@production.name}."
         else
-          notice = current ? "Performer pay is on for #{@production.name}." : "Performer pay is on for #{@production.name} — now choose its payout calculation."
+          "Performer pay is on for #{@production.name} — now choose its payout calculation."
         end
       else
+        # Off pauses pay: rows stay for when it's turned back on; payouts
+        # nobody has calculated yet let go of the calculation.
         @production.update!(pays_performers: false)
-        PayoutScheme.clear_production_scheme!(@production)
+        ShowPayout.restamp_pending_for_production!(@production, nil)
         notice = "Performers aren't paid on #{@production.name}."
       end
 

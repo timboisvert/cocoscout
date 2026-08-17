@@ -1,9 +1,10 @@
 <%#
   Pay tab on the production edit page: are performers paid for this
-  production, and which payout calculation do its shows start from? "Paid" is
-  a production-level default on the calculation (PayoutSchemeDefault effective
-  from today); "not paid" clears this production's defaults. Pro only — a free
-  org sees the same card locked. NOTE: keep ERB tags out of this comment.
+  production, and which payout calculation do its shows start from? The
+  calculation is a production-level row on it (PayoutSchemeDefault); the
+  switch (pays_performers) only pauses pay — the row is kept and shown here
+  so turning it back on resumes with it. Pro only — a free org sees the same
+  card locked. NOTE: keep ERB tags out of this comment.
 
   Locals:
     production (required)
@@ -11,7 +12,7 @@
 <%
   organization = production.organization
   money_available = organization.feature_available?(:money)
-  current_calculation = money_available ? PayoutScheme.current_default_for_production(production) : nil
+  current_calculation = money_available ? PayoutScheme.current_default_for_production(production, include_paused: true) : nil
   performers_paid = production.pays_performers?
   calculations = money_available ? organization.payout_schemes.active.order(:name).to_a : []
   needs_per_act_nudge = money_available && production.act_based? && !PayoutScheme.per_act_scheme_exists_for?(organization)
@@ -35,7 +36,7 @@
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="font-medium text-gray-900">Performers are paid for this production</p>
-            <p class="text-sm text-gray-500 mt-1">A payout calculation decides how each show's money is split among the people cast in it. Every show starts from the production's calculation; you can still change or override it show by show in Money.</p>
+            <p class="text-sm text-gray-500 mt-1">A payout calculation decides how each show's money is split among the people cast in it. Every show starts from the production's calculation; you can still change or override it show by show in Money. Turning this off pauses performer pay; the calculation is kept for when you turn it back on.</p>
           </div>
           <%= render "shared/toggle_switch", form: form, field: :performers_paid, checked: performers_paid,
                 data: { toggle_section_target: "toggle", action: "change->toggle-section#toggle" } %>

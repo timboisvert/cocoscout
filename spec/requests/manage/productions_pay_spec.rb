@@ -177,13 +177,46 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       expect(PayoutScheme.current_default_for_production(other)).to eq(flat_scheme)
     end
 
-    it "removes the production's defaults when performers aren't paid" do
-      flat_scheme.add_default_for_production!(production)
+    it "keeps A's past-dated row and dates C from today when the production has history" do
+      past = create(:show, production: production, date_and_time: 3.weeks.ago)
+      flat_scheme.make_production_scheme!(production) # reaches back to the past show
+
+      patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: act_scheme.id }
+
+      rows = PayoutSchemeDefault.for_production(production).order(:effective_from)
+      expect(rows.map { |r| [ r.payout_scheme, r.effective_from ] }).to eq([ [ flat_scheme, past.date_and_time.to_date ], [ act_scheme, Date.current ] ])
+      expect(PayoutScheme.default_for_show(past)).to eq(flat_scheme)
+      expect(PayoutScheme.current_default_for_production(production)).to eq(act_scheme)
+    end
+
+    it "turning pay off pauses it: the calculation rows stay, nothing resolves, pending payouts let go" do
+      pending = ShowPayout.create!(show: create(:show, production: production, date_and_time: 2.days.ago), payout_scheme: nil)
+      calculated = ShowPayout.create!(show: create(:show, production: production, date_and_time: 5.days.ago),
+                                      payout_scheme: flat_scheme, calculated_at: Time.current)
+      flat_scheme.make_production_scheme!(production) # reaches back to the first show
+      expect(pending.reload.payout_scheme).to eq(flat_scheme)
 
       patch update_pay_manage_production_path(production), params: { performers_paid: "0" }
 
       expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
-      expect(PayoutSchemeDefault.for_production(production)).to be_empty
+      expect(production.reload.pays_performers).to be(false)
+      expect(PayoutSchemeDefault.for_production(production).map(&:payout_scheme)).to eq([ flat_scheme ])
+      expect(PayoutScheme.current_default_for_production(production)).to be_nil
+      expect(pending.reload.payout_scheme).to be_nil
+      expect(calculated.reload.payout_scheme).to eq(flat_scheme)
+
+      # The tab still shows the kept calculation, and the copy says it's paused, not removed.
+      get edit_manage_production_path(production)
+      expect(response.body).to include("Current calculation")
+      expect(response.body).to include("Flat Fifty")
+      expect(response.body).to include("the calculation is kept for when you turn it back on")
+
+      # Back on: the same calculation resolves again and pending payouts pick it up.
+      patch update_pay_manage_production_path(production), params: { performers_paid: "1" }
+      expect(production.reload.pays_performers).to be(true)
+      expect(PayoutScheme.current_default_for_production(production)).to eq(flat_scheme)
+      expect(pending.reload.payout_scheme).to eq(flat_scheme)
+      expect(flash[:notice]).to eq("Performer pay is on for Friday Variety.")
     end
 
     it "turns performer pay on without a calculation yet, and says to choose one" do

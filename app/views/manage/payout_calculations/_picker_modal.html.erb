@@ -12,7 +12,6 @@
     method         form method (default :patch)
     calculations   the org's active PayoutScheme records (required)
     current        the currently applied calculation, or nil (rendered as "current")
-    field_name     param name for the picked id (default "payout_scheme_id")
     title          heading (default "Choose a payout calculation")
     intro          one line above the list (optional)
     confirm_text   submit label (default "Use this calculation")
@@ -26,7 +25,6 @@
   method        = local_assigns[:method] || :patch
   calculations  = Array(local_assigns[:calculations])
   current       = local_assigns[:current]
-  field_name    = local_assigns[:field_name] || "payout_scheme_id"
   title         = local_assigns[:title] || "Choose a payout calculation"
   intro         = local_assigns[:intro]
   confirm_text  = local_assigns[:confirm_text] || "Use this calculation"
@@ -65,7 +63,7 @@
             <% calculations.each do |calculation| %>
               <% is_current = current && current.id == calculation.id %>
               <label class="flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors <%= is_current ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-pink-300' %>">
-                <input type="radio" name="<%= field_name %>" value="<%= calculation.id %>" <%= "checked" if is_current %>
+                <input type="radio" name="payout_scheme_id" value="<%= calculation.id %>" <%= "checked" if is_current %>
                        class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
                 <span class="min-w-0 flex-1">
                   <span class="flex items-center gap-2">

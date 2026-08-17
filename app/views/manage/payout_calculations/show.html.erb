@@ -139,7 +139,8 @@
         <%= render "manage/payout_calculations/used_by_modal",
               id: used_by_cid,
               calculation: @payout_scheme,
-              productions: @pickable_productions %>
+              productions: @pickable_productions,
+              checked_ids: @default_production_ids %>
       <% end %>
 
       <div class="bg-white rounded-lg border border-gray-200 p-5 space-y-3">

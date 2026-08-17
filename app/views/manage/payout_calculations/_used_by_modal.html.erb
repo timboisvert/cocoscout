@@ -9,11 +9,13 @@
     id            (required) DOM id, matches the trigger's data-modal-id
     calculation   (required) the PayoutScheme
     productions   (required) productions to offer as checkboxes
+    checked_ids   (required) ids of the productions that use it today
 %>
 <%
   id           = local_assigns.fetch(:id)
   calculation  = local_assigns.fetch(:calculation)
   productions  = Array(local_assigns[:productions])
+  checked_ids  = Array(local_assigns[:checked_ids])
 %>
 <div id="<%= id %>"
      class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -40,7 +42,7 @@
               <% productions.each do |production| %>
                 <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1.5 rounded">
                   <input type="checkbox" name="production_ids[]" value="<%= production.id %>"
-                         <%= "checked" if calculation.default_for_production?(production) %>
+                         <%= "checked" if checked_ids.include?(production.id) %>
                          class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
                   <span class="text-gray-700"><%= production.name %></span>
                 </label>

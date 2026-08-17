@@ -323,5 +323,46 @@ RSpec.describe Show, type: :model do
         expect(role_show.pay_cast_assignments[:guests].size).to eq(2)
       end
     end
+
+    describe '#copy_roles_from_production! (copies in the show\'s own shape)' do
+      let!(:magic3) { create(:role, production: production, name: 'Magic', position: 5) }
+
+      it 'copies an act-based show\'s lineup as is, break included, and says which copy came from which' do
+        copied_from = show.copy_roles_from_production!
+
+        copies = show.custom_roles.reload
+        expect(copies.map { |r| [ r.name, r.category, r.quantity ] })
+          .to eq([ [ 'Magic', 'performing', 1 ], [ 'Variety', 'performing', 1 ], [ 'Intermission', 'break', 1 ], [ 'Magic', 'performing', 1 ], [ 'Magic', 'performing', 1 ] ])
+        expect(copied_from.keys).to eq([ magic1.id, variety.id, intermission.id, magic2.id, magic3.id ])
+        expect(copied_from.values.map(&:id)).to eq(copies.map(&:id))
+      end
+
+      it 'copies role-shaped for a show pinned to roles: adjacent same-named acts fold into one role, breaks go, other repeats get a suffix' do
+        show.update!(casting_mode: 'role_based')
+
+        copied_from = nil
+        expect { copied_from = show.copy_roles_from_production! }.not_to raise_error
+
+        copies = show.custom_roles.reload
+        expect(copies.map { |r| [ r.name, r.quantity, r.position ] }).to eq([ [ 'Magic', 1, 0 ], [ 'Variety', 1, 1 ], [ 'Magic (2)', 2, 2 ] ])
+        expect(copies).to all(be_valid)
+        expect(copied_from[magic1.id]).to eq(copies[0])
+        expect(copied_from[variety.id]).to eq(copies[1])
+        expect(copied_from[magic2.id]).to eq(copies[2])
+        expect(copied_from[magic3.id]).to eq(copies[2])
+        expect(copied_from).not_to have_key(intermission.id)
+      end
+
+      it 'copies a role-based production\'s roles unchanged' do
+        role_show = create(:show)
+        host = create(:role, production: role_show.production, name: 'Host', quantity: 2, position: 3)
+        mc = create(:role, production: role_show.production, name: 'MC', position: 7)
+
+        copied_from = role_show.copy_roles_from_production!
+
+        expect(role_show.custom_roles.reload.map { |r| [ r.name, r.quantity ] }).to eq([ [ 'Host', 2 ], [ 'MC', 1 ] ])
+        expect(copied_from.keys).to eq([ host.id, mc.id ])
+      end
+    end
   end
 end

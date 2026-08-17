@@ -160,7 +160,7 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
       expect(flash[:notice]).to include("Friday Cabaret")
     end
 
-    it "clears productions that were unchecked so they fall back to the organization default" do
+    it "leaves unchecked productions with no calculation when this was their only one" do
       act_calculation.make_production_scheme!(production)
       act_calculation.make_production_scheme!(other)
 
@@ -170,6 +170,17 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
       expect(PayoutScheme.current_default_for_production(other)).to eq(act_calculation)
     end
 
+    it "unchecking takes only this calculation's rows — another calculation's history on the production stays" do
+      create(:show, production: production, date_and_time: 3.weeks.ago)
+      flat_calculation.make_production_scheme!(production) # reaches back three weeks
+      act_calculation.make_production_scheme!(production)  # from today
+
+      post manage_update_defaults_money_payout_calculation_path(act_calculation), params: { production_ids: [] }
+
+      expect(PayoutSchemeDefault.for_production(production).map(&:payout_scheme)).to eq([ flat_calculation ])
+      expect(PayoutScheme.current_default_for_production(production)).to eq(flat_calculation)
+    end
+
     it "takes over a production from another calculation" do
       flat_calculation.make_production_scheme!(production)
 
@@ -177,6 +188,19 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
 
       expect(PayoutScheme.current_default_for_production(production)).to eq(act_calculation)
       expect(flat_calculation.reload.default_for_production?(production)).to be(false)
+    end
+
+    it "takes over from today when the production has history, keeping the earlier calculation for the shows before" do
+      past = create(:show, production: production, date_and_time: 3.weeks.ago)
+      flat_calculation.make_production_scheme!(production) # reaches back three weeks
+
+      post manage_update_defaults_money_payout_calculation_path(act_calculation), params: { production_ids: [ production.id ] }
+
+      rows = PayoutSchemeDefault.for_production(production).order(:effective_from)
+      expect(rows.map(&:payout_scheme)).to eq([ flat_calculation, act_calculation ])
+      expect(rows.last.effective_from).to eq(Date.current)
+      expect(PayoutScheme.default_for_show(past)).to eq(flat_calculation)
+      expect(PayoutScheme.current_default_for_production(production)).to eq(act_calculation)
     end
 
     it "restamps payouts nobody has calculated yet, and leaves calculated ones alone" do

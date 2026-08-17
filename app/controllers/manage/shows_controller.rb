@@ -1601,14 +1601,19 @@ module Manage
 
     private
 
-    # Save a show; if that flipped it from roles to acts (its casting_mode
-    # override, from the casting settings modal or the edit screen), reshape
-    # its lineup so multi-person roles become one act per person, cast kept.
+    # Save a show; if that flipped its casting mode (its casting_mode override,
+    # from the casting settings modal or the edit screen), reshape its lineup:
+    # roles → acts makes multi-person roles one act per person; acts → roles
+    # folds same-named runs back into one role and drops breaks. Cast kept.
     def update_show_converting_lineup(show, attrs)
       was_act_based = show.act_based?
       return false unless show.update(attrs)
 
-      CastingModeConverter.to_acts_for_show!(show) if !was_act_based && show.act_based?
+      if !was_act_based && show.act_based?
+        CastingModeConverter.to_acts_for_show!(show)
+      elsif was_act_based && show.role_based?
+        CastingModeConverter.to_roles_for_show!(show)
+      end
       true
     end
 

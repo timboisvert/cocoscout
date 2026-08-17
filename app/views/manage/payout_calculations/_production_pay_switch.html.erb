@@ -1,9 +1,10 @@
 <%#
   "Pay people for performing in this production" — the on/off switch that
-  decides whether a production has performer pay at all. Off = no payout
-  calculation, no payment-setup reminders, nothing to work out. The switch
-  posts straight to productions#update_pay and comes back to return_to.
-  NOTE: keep ERB tags out of this comment.
+  decides whether a production has performer pay at all. Off pauses pay: no
+  calculation resolves, no payment-setup reminders, nothing to work out — but
+  the production keeps the calculation it chose for when it's turned back on.
+  The switch posts straight to productions#update_pay and comes back to
+  return_to. NOTE: keep ERB tags out of this comment.
 
   Locals:
     production (required)
@@ -22,16 +23,15 @@
       <h3 class="font-semibold text-gray-900">Pay people for performing in <%= production.name %></h3>
       <p class="text-sm text-gray-500 mt-0.5">
         <% if on %>
-          Shows are worked out with the production's payout calculation below and paid through payout runs. Turning this off removes the calculation; shows already calculated keep their numbers.
+          Shows are worked out with the production's payout calculation below and paid through payout runs. Turning this off pauses performer pay; the calculation is kept for when you turn it back on, and shows already calculated keep their numbers.
         <% else %>
-          Performer pay is off — nobody is paid for these shows, and there's no calculation to set up. Turn it on to choose one.
+          Performer pay is off — nobody is paid for these shows. Turn it back on to pay them with the calculation the production kept.
         <% end %>
       </p>
     </div>
-    <label class="relative inline-flex items-center cursor-pointer shrink-0">
-      <%= hidden_field_tag :performers_paid, "0", id: nil %>
-      <%= check_box_tag :performers_paid, "1", on, class: "sr-only peer", id: "pays-performers-#{production.id}", data: { action: "change->auto-submit#submit" } %>
-      <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-    </label>
+    <div class="shrink-0">
+      <%= render "shared/toggle_switch", form: form, field: :performers_paid, checked: on,
+            data: { action: "change->auto-submit#submit" } %>
+    </div>
   <% end %>
 </div>

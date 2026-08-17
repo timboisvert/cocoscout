@@ -27,11 +27,10 @@
     base_rules.dig("distribution", "flat_amount")
   end
   payees = @show_payout.act_payees
-  # What each person is paid as things stand (customization included), and what
-  # the calculation itself would give — the total the amounts are checked against.
+  # What each person is paid as things stand (customization included), and the
+  # calculation's own total — what the amounts are checked against.
   current_amounts = @show_payout.current_amounts
-  calculated_amounts = @show_payout.has_overrides? ? @show_payout.preview_amounts(base_rules) : current_amounts
-  expected_total = calculated_amounts.empty? ? nil : payees.sum { |p| calculated_amounts[ShowPayout.act_key(p)].to_f }.round(2)
+  expected_total = @show_payout.calculated_total
   fixed_pot = @show_payout.fixed_pot?
   input_classes = "px-3 py-2.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 tabular-nums"
   row_classes = "flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors hover:border-pink-300"
@@ -108,8 +107,7 @@
                       key = ShowPayout.act_key(payee)
                       name = is_guest ? payee.guest_name : payee.name
                       headshot_variant = is_guest ? nil : payee.safe_headshot_variant(:thumb)
-                      override_key = key.sub(/\A(?:Person|Group)_/, "")
-                      value = performer_overrides.dig(override_key, "flat_amount") || current_amounts[key]
+                      value = @show_payout.override_amount_for(payee) || current_amounts[key]
                     %>
                     <div class="flex items-center gap-3 px-3 py-2.5 bg-white">
                       <% if headshot_variant %>
