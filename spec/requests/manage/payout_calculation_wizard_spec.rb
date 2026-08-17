@@ -460,6 +460,19 @@ RSpec.describe "Payout calculation wizard", type: :request do
       expect(PayoutScheme.current_default_for_production(production)).to eq(existing)
     end
 
+    it "unchecking a production on edit leaves it with no calculation" do
+      other = create(:production, organization: org, name: "Sunday Sketch")
+      existing.make_production_scheme!(production)
+      existing.make_production_scheme!(other)
+
+      get manage_money_payout_calculation_wizard_start_path(id: existing.id)
+      pick_who(other.id)
+      save_it(name: existing.name)
+
+      expect(PayoutScheme.current_default_for_production(other)).to eq(existing)
+      expect(PayoutScheme.current_default_for_production(production)).to be_nil
+    end
+
     it "start?id=&duplicate=1 copies it into a new calculation" do
       get manage_money_payout_calculation_wizard_start_path(id: existing.id, duplicate: "1")
       expect(response).to redirect_to(manage_money_payout_calculation_wizard_approach_path)

@@ -163,6 +163,21 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
         expect(flash[:notice]).to include("2 shows")
       end
 
+      it "hides Choose and Back while customized — only edit or remove the customization" do
+        payout.update!(payout_scheme: flat_fifty, override_rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 } })
+
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include("Edit customization")
+        expect(response.body).to include("Remove customization")
+        expect(response.body).not_to include("Choose a different calculation")
+        expect(response.body).not_to include("Back to the production")
+
+        delete manage_clear_override_money_show_payout_path(show)
+        get manage_money_show_payout_path(show)
+        expect(response.body).to include("Choose a different calculation")
+        expect(response.body).to include("Back to the production")
+      end
+
       it "goes back to the production's calculation and drops the customization" do
         payout.update!(payout_scheme: flat_fifty, override_rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 } })
 
@@ -441,13 +456,14 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
       expect(response.body).to include(%(name="act_counts[Person_#{performer.id}]" value="2"))
     end
 
-    it "sends a show with no calculation at all to the plain calculations list" do
+    it "sends a show with no calculation to the production's payouts page, where one is chosen" do
       payout.update!(payout_scheme: nil)
       scheme.destroy!
 
       post manage_calculate_money_show_payout_path(show)
 
-      expect(response).to redirect_to(manage_money_payout_calculations_path)
+      expect(response).to redirect_to(manage_money_production_payouts_path(production))
+      expect(flash[:alert]).to include("performers are paid first")
     end
 
     context "in an act-based production (acts are roles in the lineup)" do
@@ -516,13 +532,13 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
         expect(response.body).to include("2 acts (from lineup)")
       end
 
-      it "sends a show with no calculation to the Per Act preset for this production" do
+      it "sends a show with no calculation to the production's payouts page too" do
         payout.update!(payout_scheme: nil)
         scheme.destroy!
 
         post manage_calculate_money_show_payout_path(show)
 
-        expect(response).to redirect_to(manage_money_payout_calculation_wizard_start_path(preset: "per_act", production_id: production.id))
+        expect(response).to redirect_to(manage_money_production_payouts_path(production))
       end
     end
   end

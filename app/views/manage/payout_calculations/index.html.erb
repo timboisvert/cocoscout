@@ -47,12 +47,22 @@
             <% end %>
           <% end %>
           <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
-            <div class="text-xs text-gray-500 min-w-0">
+            <div class="text-xs text-gray-500 min-w-0 flex-1">
               <% if used_by.any? %>
-                <span class="text-gray-700 font-medium">Used by</span>
-                <%= used_by.map(&:name).to_sentence %>
+                <%# Closed by default — the count is the headline; open it for the names. %>
+                <details class="group">
+                  <summary class="cursor-pointer list-none flex items-center gap-1 text-gray-700 font-medium hover:text-pink-600">
+                    <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    Used by <%= pluralize(used_by.size, "production") %>
+                  </summary>
+                  <ul class="mt-2 space-y-1 pl-4">
+                    <% used_by.each do |production| %>
+                      <li><%= link_to production.name, manage_money_production_payouts_path(production), class: "text-gray-700 hover:text-pink-600" %></li>
+                    <% end %>
+                  </ul>
+                </details>
               <% else %>
-                Not used by any production yet
+                Not used by any production
               <% end %>
             </div>
             <% if @show_archived %>

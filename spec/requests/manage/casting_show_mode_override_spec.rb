@@ -57,7 +57,8 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       get manage_casting_show_cast_path(production, variety_night)
       expect(response.body).to include("Override the production's casting style for this event")
       expect(response.body).to include('name="show[casting_mode]"')
-      expect(response.body).to include("Switching only changes how casting is presented for this event")
+      expect(response.body).to include("Assignments are kept either way")
+      expect(response.body).to include("this event gets its own lineup so the production's roles stay as they are")
     end
   end
 
@@ -87,12 +88,14 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       variety_night.finalize_casting!
       plain_night.finalize_casting!
 
+      # A person's own assignments read "Magic (Act 1)" on the act-mode night
       get my_show_path(variety_night)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Act 1 · Magic")
+      expect(response.body).to include("Magic (Act 1)")
 
       get my_show_path(plain_night)
       expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("(Act 1)")
       expect(response.body).not_to include("Act 1 · Magic")
     end
 
@@ -103,7 +106,7 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       }
       msg = Message.order(:created_at).last
       expect(msg.subject).to eq("Your act")
-      expect(msg.body.to_plain_text).to include("Act 1 · Magic")
+      expect(msg.body.to_plain_text).to include("Magic (Act 1)")
 
       post manage_casting_show_notify_path(production, plain_night), params: {
         assignable_keys: [ "Person:#{performer.id}" ],
@@ -194,6 +197,54 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       expect(response).to have_http_status(:see_other)
       expect(plain_night.reload.casting_mode).to eq("act_based")
       expect(plain_night).to be_act_based
+    end
+
+    context "when the production has multi-person roles cast for the coming weeks" do
+      let!(:dancer) { create(:role, production: production, name: "Dancer", quantity: 3, position: 3) }
+      let!(:people) { (1..3).map { |i| create(:person, name: "Dancer #{i}").tap { |p| org.people << p } } }
+
+      before do
+        people.each_with_index do |p, i|
+          create(:show_person_role_assignment, show: plain_night, role: dancer, assignable: p, position: i + 1)
+          create(:show_person_role_assignment, show: variety_night, role: dancer, assignable: p, position: i + 1)
+        end
+        create(:show_person_role_assignment, show: plain_night, role: magic, assignable: performer)
+        ShowCastNotification.create!(show: plain_night, role: dancer, assignable: people[1], notified_at: 1.day.ago, notification_type: :cast)
+      end
+
+      it "gives the overriding show its own act lineup with its cast kept, and leaves its siblings and the production's roles alone" do
+        patch manage_show_path(production, plain_night),
+              params: { show: { casting_mode: "act_based" } }.to_json,
+              headers: { "CONTENT_TYPE" => "application/json", "ACCEPT" => "application/json" }
+        expect(response).to have_http_status(:see_other)
+
+        plain_night.reload
+        expect(plain_night).to be_act_based
+        expect(plain_night).to be_use_custom_roles
+        expect(plain_night.custom_roles.map(&:name)).to eq(%w[Magic Variety Aerial Dancer Dancer Dancer])
+        expect(plain_night.custom_roles.map(&:quantity)).to all(eq(1))
+
+        cast = plain_night.show_person_role_assignments.reload.includes(:role)
+        expect(cast.size).to eq(4)
+        expect(cast.map(&:role_id)).to all(be_in(plain_night.custom_roles.map(&:id)))
+        expect(cast.group_by(&:role_id).values.map(&:size)).to all(eq(1))
+        expect(cast.find { |a| a.assignable == performer }.role.name).to eq("Magic")
+        second_dancer_act = cast.find { |a| a.assignable == people[1] }.role
+        expect(ShowCastNotification.find_by(show: plain_night, assignable: people[1]).role_id).to eq(second_dancer_act.id)
+
+        # the production's roles and the other show: exactly as they were
+        expect(dancer.reload.quantity).to eq(3)
+        expect(production.roles.production_roles.reload.map(&:name)).to eq(%w[Magic Variety Aerial Dancer])
+        expect(variety_night.reload).not_to be_use_custom_roles
+        expect(variety_night.show_person_role_assignments.reload.map(&:role_id)).to all(eq(dancer.id))
+        expect(variety_night.show_person_role_assignments.map(&:position)).to contain_exactly(1, 2, 3)
+
+        # and the board reads as a numbered lineup
+        get manage_casting_show_cast_path(production, plain_night)
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('data-role-name="Act 4 · Dancer"')
+        expect(response.body).to include('data-role-name="Act 6 · Dancer"')
+      end
     end
 
     it "clears the override back to inherit when sent an empty string" do

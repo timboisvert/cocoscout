@@ -505,7 +505,7 @@ module Manage
           updated_count = 0
 
           @show.recurrence_group.each do |show|
-            updated_count += 1 if show.update(update_params)
+            updated_count += 1 if update_show_converting_lineup(show, update_params)
           end
 
           # Date/time is per-occurrence (series-wide reschedules go through the
@@ -546,7 +546,7 @@ module Manage
           return
         end
 
-        if @show.update(update_params)
+        if update_show_converting_lineup(@show, update_params)
           redirect_to manage_show_path(@production, @show),
                       notice: "#{@show.event_type.titleize} was successfully updated",
                       status: :see_other
@@ -1600,6 +1600,17 @@ module Manage
     end
 
     private
+
+    # Save a show; if that flipped it from roles to acts (its casting_mode
+    # override, from the casting settings modal or the edit screen), reshape
+    # its lineup so multi-person roles become one act per person, cast kept.
+    def update_show_converting_lineup(show, attrs)
+      was_act_based = show.act_based?
+      return false unless show.update(attrs)
+
+      CastingModeConverter.to_acts_for_show!(show) if !was_act_based && show.act_based?
+      true
+    end
 
     def parse_param_datetime(value)
       return nil if value.blank?

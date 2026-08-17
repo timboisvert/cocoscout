@@ -59,6 +59,11 @@
             No roles defined
           <% end %>
         </p>
+        <p class="text-xs mt-1">
+          <%= link_to "Production casting settings", manage_casting_settings_path(production),
+                class: "text-pink-600 hover:text-pink-700 hover:underline",
+                title: "How #{production.name} casts: roles or acts, where the cast comes from, the standard #{act_mode ? 'lineup' : 'roles'}" %>
+        </p>
       </div>
     </div>
 

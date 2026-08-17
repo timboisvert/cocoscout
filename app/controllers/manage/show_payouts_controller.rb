@@ -75,15 +75,10 @@ module Manage
       end
 
       unless rules.present?
-        # An act-based production almost always wants per-act pay — land them on
-        # that preset rather than a blank list of calculations.
-        if @show.act_based?
-          redirect_to manage_money_payout_calculation_wizard_start_path(preset: "per_act", production_id: @production.id),
-                      alert: "Please create a payout calculation first — act-based productions usually pay per act."
-        else
-          redirect_to manage_money_payout_calculations_path,
-                      alert: "Please create a payout calculation first."
-        end
+        # No calculation for this show: the production chooses one on its
+        # payouts page (or the show picks its own from the card here).
+        redirect_to manage_money_production_payouts_path(@production),
+                    alert: "Choose how #{@production.name}'s performers are paid first — then this show can be worked out."
         return
       end
 

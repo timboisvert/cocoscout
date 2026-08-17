@@ -12,7 +12,9 @@
     - show_production: Show production name in details line (default: false)
     - show_location: Show location/online indicator (default: true)
     - roles: Array of role names to display (default: nil) - legacy, use role_assignments instead
-    - role_assignments: Array of hashes with {role_name:, entity_type:, entity_id:, entity_name:} for detailed display
+    - role_assignments: Array of hashes with {role_name:, entity_type:, entity_id:, entity_name:} for detailed display.
+      role_name is a display label: the role's name, or on a show cast by acts a grouped act
+      label from CastingHelper#act_assignment_labels ("Magic (Act 3)", "2 acts as Magic (Acts 1 and 3)")
     - entity: Single entity (Person/Group) for right panel display
     - availability: Availability object for buttons (default: nil)
     - entity_key: Entity key for Stimulus data attribute (default: nil)
@@ -226,7 +228,7 @@
             <% role_assigns.each do |ra| %>
               <div class="text-sm flex items-center gap-1">
                 <span class="text-gray-700"><%= ra[:entity_name] %></span>
-                <span class="text-gray-400">as</span>
+                <span class="text-gray-400"><%= cast_as_word(ra[:role_name]) %></span>
                 <strong class="text-pink-500"><%= ra[:role_name] %></strong>
               </div>
             <% end %>
@@ -261,7 +263,7 @@
         <% role_assignments.each do |ra| %>
           <div class="text-sm flex items-center gap-1">
             <span class="text-gray-700"><%= ra[:entity_name] %></span>
-            <span class="text-gray-400">as</span>
+            <span class="text-gray-400"><%= cast_as_word(ra[:role_name]) %></span>
             <strong class="text-pink-500"><%= ra[:role_name] %></strong>
           </div>
         <% end %>

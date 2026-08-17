@@ -21,7 +21,12 @@ module Manage
     def show; end
 
     def update
+      was_act_based = @production.act_based?
       if @production.update(casting_settings_params)
+        # Roles → acts reshapes the lineup (Dancer ×5 becomes five Dancer acts,
+        # cast kept); acts → roles needs nothing, acts are already single-slot roles.
+        CastingModeConverter.to_acts!(@production) if !was_act_based && @production.act_based?
+
         respond_to do |format|
           format.html { redirect_to manage_casting_settings_path(@production), notice: "Casting settings updated." }
           format.turbo_stream { head :ok }

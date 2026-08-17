@@ -19,7 +19,8 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
   let!(:intermission) { create(:role, production: production, name: "Intermission", category: "break", position: 2) }
   let!(:magic_two) { create(:role, production: production, name: "Magic", position: 3) }
 
-  let!(:performer) { create(:person, user: create(:user)).tap { |p| org.people << p } }
+  let(:performer_user) { create(:user, password: password) }
+  let!(:performer) { create(:person, user: performer_user).tap { |p| org.people << p } }
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
@@ -80,7 +81,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       create(:show_person_role_assignment, show: show, role: magic_two, assignable: performer)
     end
 
-    it "fills casting_unit with 'act' and role_names with the numbered acts" do
+    it "fills casting_unit with 'act' and role_names with the person's acts, same-named acts grouped" do
       post manage_casting_show_notify_path(production, show), params: {
         assignable_keys: [ "Person:#{performer.id}" ],
         cast_email_draft: {
@@ -92,7 +93,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       msg = Message.order(:created_at).last
       expect(msg).to be_present
       expect(msg.subject).to eq("Your act in #{production.name}")
-      expect(msg.body.to_plain_text).to include("Your acts: Act 1 · Magic, Act 3 · Magic")
+      expect(msg.body.to_plain_text).to include("Your acts: 2 acts as Magic (Acts 1 and 3)")
     end
 
     it "uses the act vocabulary in a removed-from-cast notice too" do
@@ -109,7 +110,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       msg = Message.order(:created_at).last
       expect(msg.subject).to eq("Change to your act")
       # Both of their acts were "Magic"; the notice names whichever was notified last
-      expect(msg.body.to_plain_text).to match(/Released: Act [13] · Magic/)
+      expect(msg.body.to_plain_text).to match(/Released: Magic \(Act [13]\)/)
     end
   end
 
@@ -147,9 +148,40 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(response.body).to include("Act 1 · Magic")
       expect(response.body).not_to include("Intermission")
 
+      # The performer's page lists people, not slots: their two acts group
       get my_show_path(show)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Act 3 · Magic")
+      expect(response.body).to include("2 acts as Magic (Acts 1 and 3)")
+      expect(response.body).not_to include("Act 3 · Magic")
+    end
+
+    it "names the person once on the cast card's can't-make-it line, both acts grouped" do
+      create(:role_vacancy, show: show, role: magic_one, vacated_by: performer, vacated_at: Time.current)
+      create(:role_vacancy, show: show, role: magic_two, vacated_by: performer, vacated_at: Time.current)
+
+      get manage_casting_production_path(production)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("#{performer.name} in 2 acts as Magic (Acts 1 and 3)")
+    end
+
+    it "groups a person's same-named acts wherever their assignments are listed" do
+      # A different act too, so the grouped and single forms sit side by side
+      create(:show_person_role_assignment, show: show, role: variety, assignable: performer)
+
+      # The Finalize & Notify picker: one line per person, all their acts
+      get manage_casting_show_cast_path(production, show)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("2 acts as Magic (Acts 1 and 3), Variety (Act 2)")
+      expect(response.body).to include("0 of 1 notified")
+
+      # The performer's own list of shows
+      show.finalize_casting!
+      post handle_signin_path, params: { email_address: performer_user.email_address, password: password }
+      get my_shows_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("2 acts as Magic (Acts 1 and 3)")
+      expect(response.body).to include("Variety (Act 2)")
+      expect(response.body).not_to include("Act 3 · Magic")
     end
   end
 

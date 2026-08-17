@@ -136,7 +136,7 @@
             </label>
           </div>
           <p class="text-xs text-gray-500 mt-3">
-            Switching only changes how casting is presented for this event and how per-act pay counts acts. Assignments are kept.
+            Assignments are kept either way. Switching this event to acts turns each multi-person role into one act per person (Dancer ×5 becomes five Dancer acts, cast kept); if any of the production's roles holds more than one person, this event gets its own lineup so the production's roles stay as they are — rename the acts there afterwards.
           </p>
         </div>
       </div>
@@ -413,7 +413,11 @@
     </div>
 
     <%# Footer %>
-    <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end flex-shrink-0">
+    <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between gap-4 flex-shrink-0">
+      <p class="text-xs text-gray-500">
+        Change how the whole production casts (roles or acts, source, lineup) in
+        <%= link_to "Casting Settings", manage_casting_settings_path(production), class: "text-pink-600 hover:text-pink-700 hover:underline font-medium" %>
+      </p>
       <%= render "shared/button",
           text: "Done",
           variant: "primary",

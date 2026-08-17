@@ -8,6 +8,7 @@
   ],
   sections: sections,
   current: @section,
+  intro: "#{@production.name} casts by #{@production.act_based? ? 'acts' : 'roles'}.",
   width: "max-w-4xl"
 } do %>
   <%= render "manage/casting_settings/sections/#{@section}" %>

@@ -131,7 +131,8 @@ module Manage
           calculation.make_production_scheme!(production, starting_on: starting_on)
         end
         # Productions this calculation used to be the default for, now unchecked.
-        PayoutSchemeDefault.where(payout_scheme: calculation).where.not(production_id: [ nil ] + chosen_ids)
+        # (No NULLs in the NOT IN list — SQL would match nothing.)
+        PayoutSchemeDefault.where(payout_scheme: calculation).where.not(production_id: chosen_ids)
                            .includes(:production).find_each do |default|
           PayoutScheme.clear_production_scheme!(default.production) if default.production
         end

@@ -38,6 +38,21 @@ module CastingHelper
     role.display_name(number: numbers && numbers[role.id], show: show)
   end
 
+  # How one person's assignments read when listed together: in an act-based
+  # show same-named acts group — "Magic (Act 3)", "2 acts as Magic (Acts 1
+  # and 3)" — while a role-based show lists the distinct role names. Takes
+  # assignments (or roles); pass the show's precomputed lineup_numbers when
+  # labelling many people at once. See ActAssignmentLabeler.
+  def act_assignment_labels(assignments, show:, numbers: nil)
+    ActAssignmentLabeler.labels(assignments, show: show, numbers: numbers)
+  end
+
+  # The word between a name and one of those labels: "Tim as Magic (Act 3)",
+  # "Tim in 2 acts as Magic (Acts 1 and 3)".
+  def cast_as_word(label)
+    ActAssignmentLabeler.connector(label)
+  end
+
   # Maps a role's assignments onto its display slots (1..quantity).
   #
   # Exact in-range positions claim their slot first; everything else

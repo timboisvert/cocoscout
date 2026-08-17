@@ -1433,8 +1433,11 @@ module Manage
       # Personalize it for this specific recipient by substituting their actual values.
       shows = assignments.map { |a| a[:show] }.uniq.sort_by(&:date_and_time)
       # Label each role in the show it was given for (a show may override the
-      # production's casting style).
-      role_names = assignments.map { |a| a[:role]&.display_name(show: a[:show]) }.compact.uniq
+      # production's casting style); on an act-based show a person's
+      # same-named acts group ("2 acts as Magic (Acts 1 and 3)").
+      role_names = assignments.group_by { |a| a[:show] }.flat_map do |show, show_assignments|
+        ActAssignmentLabeler.labels(show_assignments.map { |a| a[:role] }, show: show)
+      end.uniq
       dates = shows.map { |s| s.date_and_time.strftime("%B %-d") }.uniq
       show_dates = dates.count > 2 ? "#{dates.first} - #{dates.last}" : dates.join(" & ")
       shows_list = shows.map { |s| "<li>#{s.date_and_time.strftime('%A, %B %-d at %-l:%M %p')}: #{s.display_name}</li>" }.join("\n")
@@ -1545,10 +1548,15 @@ module Manage
         "<li>#{date}: #{show_name}</li>"
       end.join("\n")
 
-      # Get all unique role names from the show(s) — "Act 3 · Magic" when the
-      # show is cast by acts, the plain role name otherwise.
+      # Every label the cast holds across the show(s), for the preview: plain
+      # role names, or on an act-based show the grouped act labels a person
+      # would see ("Magic (Act 3)", "2 acts as Magic (Acts 1 and 3)").
       role_names = all_shows.flat_map do |s|
-        s.show_person_role_assignments.includes(:role).map(&:role).compact.uniq.map { |r| r.display_name(show: s) }
+        assignments = s.show_person_role_assignments.includes(:role).to_a
+        numbers = Role.lineup_numbers_for(s.available_roles.to_a)
+        assignments.group_by { |a| [ a.assignable_type, a.assignable_id ] }.values.flat_map do |mine|
+          ActAssignmentLabeler.labels(mine.map(&:role), show: s, numbers: numbers)
+        end
       end.uniq
       role_name = role_names.first || "Cast Member"
       role_names_list = role_names.join(", ")

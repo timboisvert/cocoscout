@@ -46,9 +46,10 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
 
       get manage_money_payout_calculations_path
 
-      expect(response.body).to include("Used by")
-      expect(response.body).to include("Friday Cabaret and Sunday Sketch")
-      expect(response.body).to include("Not used by any production yet") # the flat one
+      expect(response.body).to include("Used by 2 productions")
+      expect(response.body).to include("<details")
+      expect(response.body).to include(manage_money_production_payouts_path(production))
+      expect(response.body).to include("Not used by any production") # the flat one
       expect(response.body).to include("Per act") # approach pill
       expect(response.body).to include("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")
       expect(response.body).not_to include("Organization default")

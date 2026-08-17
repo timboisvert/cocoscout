@@ -393,15 +393,13 @@
                 <%= form_with url: manage_clear_override_money_show_payout_path(@show), method: :delete, local: true, class: "inline" do %>
                   <%= render "shared/button", text: "Remove customization", variant: "secondary", size: "small", type: :submit %>
                 <% end %>
-                <%= render "shared/button", text: "Choose a different calculation", variant: "ghost", size: "small", type: :button,
-                      data: { controller: "modal", action: "click->modal#open", modal_id: "choose-calculation" } %>
               <% else %>
                 <%= render "shared/button", text: "Customize for this event", variant: "primary", size: "small", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "customize-calculation" } %>
                 <%= render "shared/button", text: "Choose a different calculation", variant: "secondary", size: "small", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "choose-calculation" } %>
               <% end %>
-              <% if chosen_here %>
+              <% if chosen_here && !customized %>
                 <%= form_with url: manage_use_default_money_show_payout_path(@show), method: :patch, local: true, class: "inline" do %>
                   <%= render "shared/button", text: "Back to the production's calculation", variant: "ghost", size: "small", type: :submit %>
                 <% end %>
