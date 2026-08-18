@@ -471,13 +471,16 @@ RSpec.describe "Payout calculation wizard", type: :request do
       )
     end
 
-    it "start?id= seeds the wizard from the record and lands on review with its name" do
+    it "start?id= seeds the wizard from the record and walks it from the first step, prefilled" do
       existing.make_production_scheme!(production)
 
       get manage_money_payout_calculation_wizard_start_path(id: existing.id)
-      expect(response).to redirect_to(manage_money_payout_calculation_wizard_review_path)
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_approach_path)
       follow_redirect!
+      expect(response.body).to include("Edit House split")
+      expect(response.body).to match(/value="share"\s+checked/)
 
+      get manage_money_payout_calculation_wizard_review_path
       expect(response.body).to include("Edit House split")
       expect(response.body).to include('value="House split"')
       expect(response.body).to include("The usual")

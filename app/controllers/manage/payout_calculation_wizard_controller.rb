@@ -32,7 +32,9 @@ module Manage
       @state[:production_id] = context_production&.id
       @state[:return_to] = safe_return_to(params[:return_to])
       save_state
-      redirect_to(@state[:editing_id].present? && params[:duplicate].blank? ? wizard_step_link(:review) : wizard_step_link(:approach))
+      # An edit walks the same steps from the top, prefilled — the review page
+      # is where it ends, not where it starts.
+      redirect_to wizard_step_link(:approach)
     end
 
     def approach
