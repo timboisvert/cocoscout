@@ -135,6 +135,22 @@ RSpec.describe MoneyTodoService do
       expect(service.payouts.items.first[:name]).to eq(production.name)
     end
 
+    # A show that's happened is due now; a contract payment is due when its date
+    # says so. The box headlines the first kind plus the near-dated second kind,
+    # and leaves a payment months out to the small-print total.
+    it "splits 'to pay' into what's due this week and what's just owed" do
+      contract = create(:contract, organization: org, production: create(:production, organization: org))
+      contract.contract_payments.create!(description: "Soon", amount: 100, direction: "outgoing",
+                                         due_date: 3.days.from_now.to_date)
+      contract.contract_payments.create!(description: "Halloween", amount: 2_000, direction: "outgoing",
+                                         due_date: (MoneyTodoService::DUE_SOON_HORIZON + 1.day).from_now.to_date)
+
+      section = service.payouts
+
+      expect(section.amounts[:to_pay]).to eq(80.0 + 100 + 2_000)
+      expect(section.due_soon_amount).to eq(80.0 + 100)
+    end
+
     it "never leaks another organization's payouts" do
       other_org = create(:organization, owner: create(:user))
       other_show = create(:show, production: create(:production, organization: other_org),

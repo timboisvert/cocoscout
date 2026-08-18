@@ -25,9 +25,17 @@ class MoneyTodoService
   # whatever the horizon.
   INCOMING_HORIZON = 30.days
 
+  # How far ahead "to pay" looks when it says what's due right now. Money
+  # already earned — a show that's happened, a course that's run — is due the
+  # moment it's calculated; a contract payment is due once its date lands
+  # inside this window (or it never had one). Everything else is owed, but
+  # later, and a box that headlines a payment six months out isn't a to-do.
+  DUE_SOON_HORIZON = 7.days
+
   # count/amount describe everything; items is what's rendered (possibly fewer).
+  # due_soon_amount is the slice of amounts[:to_pay] inside DUE_SOON_HORIZON.
   Section = Struct.new(:count, :amount, :amounts, :columns, :items,
-                       :overdue_count, :overdue_amount, keyword_init: true) do
+                       :overdue_count, :overdue_amount, :due_soon_amount, keyword_init: true) do
     def any? = count.to_i.positive?
     def truncated? = count.to_i > items.size
   end
@@ -131,6 +139,7 @@ class MoneyTodoService
       Section.new(count: items.size,
                   amount: items.sum { |i| i[:amount].to_f },
                   amounts: totals,
+                  due_soon_amount: items.sum { |i| i[:due_soon].to_f },
                   columns: columns,
                   items: row_limit ? items.first(row_limit) : items)
     end
@@ -231,6 +240,8 @@ class MoneyTodoService
       { name: production.name, kind: :production,
         amount: amounts[:to_pay] + amounts[:in_draft] + amounts[:in_flight],
         amounts: amounts,
+        # The show has happened; whatever's untouched is due now.
+        due_soon: amounts[:to_pay],
         subtitle: parts.join(" · "),
         # The oldest show still owing somebody — how long this has been waiting.
         due_on: shows.map(&:date_and_time).min&.to_date,
@@ -266,6 +277,8 @@ class MoneyTodoService
 
       { name: offering.title, kind: :course, amount: amount,
         amounts: { to_pay: amount, paid: paid.sum(&:amount_cents) / 100.0 },
+        # Instructor pay exists once the run's been settled — due now.
+        due_soon: amount,
         subtitle: subtitle,
         due_on: first_sessions[offering.id]&.to_date,
         href: manage_course_offering_payout_path(offering) }
@@ -287,6 +300,10 @@ class MoneyTodoService
       paid_payments = outgoing.select(&:status_paid?)
       amounts = by_col.transform_values { |ps| ps.sum { |p| p.amount.to_f } }
       amounts[:paid] = paid_payments.sum { |p| p.amount.to_f }
+      # Of the untouched money, only what's due inside the horizon (or carries
+      # no date at all) is due now — a payment for a show next spring is owed,
+      # not overdue.
+      due_soon = (by_col[:to_pay] || []).select { |p| due_soon?(p.due_date) }.sum { |p| p.amount.to_f }
 
       parts = [ "#{pending.count} contract #{'payment'.pluralize(pending.count)} due" ]
       due = pending.filter_map(&:due_date).min
@@ -300,12 +317,18 @@ class MoneyTodoService
 
       items << { name: contract.contractor_name, kind: :contract, amount: amount,
                  amounts: amounts,
+                 due_soon: due_soon,
                  subtitle: parts.join(" · "),
                  # The soonest thing owed, which is what the subtitle already says.
                  due_on: due,
                  href: manage_contract_path(contract) }
     end
     items
+  end
+
+  # A dateless payment is due now — better to headline it than to hide it.
+  def due_soon?(due_date)
+    due_date.nil? || due_date <= Date.current + DUE_SOON_HORIZON
   end
 
   # Production rows link once the column set is known — the accordion carries it

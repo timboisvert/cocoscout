@@ -251,16 +251,32 @@
     <div class="mb-6"><%= render "shared/module_actions", actions: payouts_actions %></div>
 
     <%# Money by state — what still has to happen to it. The same numbers as the
-        sections below: "To pay" is the Awaiting Payout money not yet in a run;
-        the other three split the Active Runs money by lifecycle stage, so a
-        partially paid run counts only its unpaid remainder. %>
+        sections below: "To pay" headlines the Awaiting Payout money not yet in
+        a run that's due now or inside the week — a contract payment six months
+        out is owed, but it isn't today's job, so it only shows in the small
+        print total. The other three split the Active Runs money by lifecycle
+        stage, so a partially paid run counts only its unpaid remainder. %>
     <% d = @run_state_detail %>
+    <%
+      to_pay_all = @todo.payouts.amounts[:to_pay].to_f
+      to_pay_soon = @todo.payouts.due_soon_amount.to_f
+      to_pay_later = to_pay_all - to_pay_soon
+      horizon_days = (MoneyTodoService::DUE_SOON_HORIZON / 1.day).to_i
+    %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-8">
       <%# Each box wears its state's color while it holds money; empty ones stay quiet. %>
-      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @todo.payouts.amounts[:to_pay].to_f.positive? ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200" %>">
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= to_pay_soon.positive? ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">To pay</div>
-        <div class="text-lg sm:text-2xl font-semibold text-pink-600 tabular-nums"><%= number_to_currency(@todo.payouts.amounts[:to_pay].to_f) %></div>
-        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">owed, not in a run yet</div>
+        <div class="text-lg sm:text-2xl font-semibold text-pink-600 tabular-nums"><%= number_to_currency(to_pay_soon) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">
+          <% if to_pay_later > 0.004 %>
+            due in the next <%= horizon_days %> days · <span class="font-medium text-gray-500"><%= number_to_currency(to_pay_all) %></span> owed in all
+          <% elsif to_pay_soon.positive? %>
+            due in the next <%= horizon_days %> days · nothing due later
+          <% else %>
+            nothing owed outside a run
+          <% end %>
+        </div>
       </div>
       <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @run_state_cents[:draft].positive? ? "bg-gray-50 border-gray-300" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">In draft</div>
