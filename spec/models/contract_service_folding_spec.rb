@@ -39,12 +39,27 @@ RSpec.describe "Contract services fold into the event's payment", type: :model d
     expect(contract.contract_payments.where("description LIKE 'Booth Tech%'")).to be_empty
   end
 
-  it "keeps a deduction-settled service as its own row (it nets against the payout instead)" do
+  it "treats 'taken out of their payout' as a direct charge on a deal where they pay us — there's no payout to take it from" do
     contract = build_contract(services: [ booth_tech.merge("settlement" => "payout_deduction") ])
     contract.activate!
 
-    expect(contract.contract_payments.find_by(description: "Oct 10 event").amount.to_f).to eq(350.0)
-    expect(contract.contract_payments.find_by(description: "Booth Tech — Oct 10, 2026")).to be_present
+    payment = contract.contract_payments.find_by(description: "Oct 10 event")
+    expect(payment.amount.to_f).to eq(400.0)
+    expect(payment.folded_services_summary).to eq("incl. Booth Tech $50.00")
+    expect(contract.contract_payments.where("description LIKE 'Booth Tech%'")).to be_empty
+    expect(contract.can_net_services_from_payout?).to be(false)
+  end
+
+  it "keeps a real deduction as its own row when the deal pays them (it nets against that payout)" do
+    outgoing = [ { "description" => "Oct 10 settlement", "amount" => 500.0, "direction" => "outgoing", "due_date" => oct10.to_date.to_s } ]
+    contract = build_contract(services: [ booth_tech.merge("settlement" => "payout_deduction") ], payments: outgoing)
+    contract.activate!
+
+    expect(contract.can_net_services_from_payout?).to be(true)
+    expect(contract.contract_payments.find_by(description: "Oct 10 settlement").amount.to_f).to eq(500.0)
+    deduction = contract.contract_payments.find_by(description: "Booth Tech — Oct 10, 2026")
+    expect(deduction).to be_present
+    expect(deduction.deduct_from_payout?).to be(true)
   end
 
   it "folds a once-per-contract service into the last payment on the schedule" do
@@ -116,12 +131,28 @@ RSpec.describe "Contract services fold into the event's payment", type: :model d
       expect(described_class.run(contract_ids: [ contract.id ]).folded).to eq(0)
     end
 
-    it "leaves paid rows, run-committed rows and deduction rows alone" do
+    it "folds a stored 'payout deduction' row that has no payout to net against (a they-pay-us deal)" do
       contract = build_contract(services: [ booth_tech.merge("settlement" => "payout_deduction") ])
+      contract.activate!
+      # Recreate the old shape: the deduction row billed beside the rent.
+      payment = contract.contract_payments.find_by(description: "Oct 10 event")
+      payment.update!(amount: 350.0, components: [])
+      contract.contract_payments.create!(description: "Booth Tech — Oct 10, 2026", amount: 50.0, direction: "incoming",
+                                         settlement_method: "payout_deduction", due_date: oct10.to_date, show_id: payment.show_id)
+
+      result = described_class.run(contract_ids: [ contract.id ])
+      expect(result.folded).to eq(1)
+      expect(payment.reload.amount.to_f).to eq(400.0)
+      expect(contract.contract_payments.count).to eq(2)
+    end
+
+    it "leaves a real deduction (a deal that pays them) alone" do
+      outgoing = [ { "description" => "Oct 10 settlement", "amount" => 500.0, "direction" => "outgoing", "due_date" => oct10.to_date.to_s } ]
+      contract = build_contract(services: [ booth_tech.merge("settlement" => "payout_deduction") ], payments: outgoing)
       contract.activate!
       result = described_class.run(contract_ids: [ contract.id ])
       expect(result.folded).to eq(0)
-      expect(contract.contract_payments.count).to eq(3)
+      expect(contract.contract_payments.count).to eq(2)
     end
   end
 end

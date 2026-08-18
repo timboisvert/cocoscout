@@ -42,6 +42,12 @@ RSpec.describe "Per-event contract services" do
   end
 
   describe "#bill_services! with a per-event line" do
+    # A deduction only exists on a deal that pays them — give this one an
+    # outgoing settlement to net against.
+    before do
+      contract.contract_payments.create!(description: "Oct 16 settlement", amount: 500.0, direction: "outgoing", due_date: oct16.to_date)
+    end
+
     let(:line) do
       { "name" => "Booth Tech", "unit" => "hourly", "unit_price" => 25.0,
         "direction" => "incoming", "settlement" => "payout_deduction", "per_event" => true,
@@ -56,8 +62,8 @@ RSpec.describe "Per-event contract services" do
       expect { contract.bill_services!([ line ]) }
         .to change { contract.contract_payments.count }.by(2)
 
-      first = contract.contract_payments.find_by(due_date: oct16.to_date)
-      expect(first.description).to eq("Booth Tech — Oct 16, 2026")
+      first = contract.contract_payments.find_by(description: "Booth Tech — Oct 16, 2026")
+      expect(first.due_date).to eq(oct16.to_date)
       expect(first.amount.to_f).to eq(50.0) # 2 hrs × $25
       expect(first.settlement_method).to eq("payout_deduction")
       expect(first).to be_direction_incoming
@@ -70,8 +76,8 @@ RSpec.describe "Per-event contract services" do
 
       contract.bill_services!([ line ])
 
-      expect(contract.contract_payments.find_by(due_date: oct16.to_date).show_id).to eq(show.id)
-      expect(contract.contract_payments.find_by(due_date: oct17.to_date).show_id).to be_nil
+      expect(contract.contract_payments.find_by(description: "Booth Tech — Oct 16, 2026").show_id).to eq(show.id)
+      expect(contract.contract_payments.find_by(description: "Booth Tech — Oct 17, 2026").show_id).to be_nil
     end
 
     it "bills a flat per-event service at its price per event" do

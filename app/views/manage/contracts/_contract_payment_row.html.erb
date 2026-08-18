@@ -223,7 +223,7 @@
               <%= link_to manage_money_incoming_payment_path(payment) do %>
                 <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
               <% end %>
-              <% if contract.contractor.present? %>
+              <% if contract.contractor.present? && contract.outgoing_settlement? %>
                 <%= button_to settlement_manage_contract_contract_payment_path(contract, payment, settlement_method: "payout_deduction"),
                       method: :patch, form_class: "inline-block",
                       title: "Stop collecting this — net it out of their payout instead" do %>

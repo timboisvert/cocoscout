@@ -10,8 +10,8 @@
 # generated the old way: every pending, uncommitted, direct service row with a
 # pending direct payment of the deal on the same show/date (or, for a
 # once-per-contract service, the last such payment) is folded in and the row
-# removed. Paid rows, rows in a payout run, deduction-settled rows and rows
-# with nothing to fold into are left alone. Idempotent.
+# removed. Paid rows, rows in a payout run, rows that really do net against a
+# payout, and rows with nothing to fold into are left alone. Idempotent.
 class ServicePaymentFoldBackfill
   Result = Struct.new(:contracts_touched, :folded, :left_alone, :log, keyword_init: true)
 
@@ -36,7 +36,10 @@ class ServicePaymentFoldBackfill
       touched = false
       contract.contract_payments.status_pending.by_due_date.to_a.each do |row|
         next unless contract.service_charge?(row)
-        next if row.in_payout_run? || row.settlement_method != "direct" || row.includes_services?
+        # A "deduct from payout" row on a deal that never pays them anything is
+        # a direct charge in all but name (ContractPayment#deduct_from_payout?
+        # already says so) — it folds too. A real deduction stays put.
+        next if row.in_payout_run? || row.deduct_from_payout? || row.includes_services?
 
         service = services.detect { |s| row.description == s["name"] || row.description.to_s.start_with?("#{s['name']} — ") }
         per_event = row.description != service["name"]

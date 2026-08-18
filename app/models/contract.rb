@@ -550,9 +550,11 @@ class Contract < ApplicationRecord
 
     Array(services).each do |service|
       direction = service["direction"].presence || "incoming"
-      # "Taken out of their payout" only makes sense for money they owe us;
-      # outgoing services are always paid directly.
-      settlement = direction == "incoming" ? (service["settlement"].presence || "direct") : "direct"
+      # "Taken out of their payout" only makes sense for money they owe us on a
+      # deal that pays them something; outgoing services, and any service on a
+      # deal where money only comes in, are paid directly.
+      settlement = service["settlement"].presence || "direct"
+      settlement = "direct" unless direction == "incoming" && settlement == "payout_deduction" && can_net_services_from_payout?
 
       if service["per_event"] && service["events"].present?
         Array(service["events"]).each do |event|
@@ -1501,6 +1503,17 @@ class Contract < ApplicationRecord
   def outgoing_settlement?
     rows = contract_payments.loaded? ? contract_payments.to_a : contract_payments.direction_outgoing.status_pending.to_a
     rows.any? { |p| p.direction_outgoing? && p.status_pending? && (p.amount_tbd? || p.amount.to_f.positive?) }
+  end
+
+  # Can a service they owe us be netted out of a payout at all? Only when this
+  # deal sends money their way — a live outgoing payment, or a deal configured
+  # to pay them (before activation, when no payments exist yet). On a deal
+  # where money only ever comes in, "taken out of their payout" settles nothing;
+  # such a service is a direct charge and folds into the event's payment.
+  def can_net_services_from_payout?
+    outgoing_settlement? ||
+      settlement_direction == "outgoing" ||
+      (draft_payments rescue []).any? { |p| p["direction"] == "outgoing" }
   end
 
   def settlement_cadence_label

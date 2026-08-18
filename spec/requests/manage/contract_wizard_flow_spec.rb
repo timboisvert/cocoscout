@@ -47,12 +47,21 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
     expect(response.body).not_to include(">Tech<")
   end
 
-  it "a fresh service line defaults its settlement to the payout deduction" do
+  it "a fresh service line defaults its settlement to the payout deduction when the deal pays them" do
     org.contract_service_options.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly", default_direction: "incoming")
+    contract.update!(draft_data: contract.draft_data.merge("payment_config" => { "flat_fee_direction" => "outgoing" }))
 
     get manage_tech_contract_wizard_path(contract)
     settlement_select = response.body[/<select[^>]*\[settlement\].*?<\/select>/m]
     expect(settlement_select).to include(%(selected="selected" value="payout_deduction"))
+  end
+
+  it "offers no settlement choice on a deal where they pay us — the service is a direct charge folded into the event's payment" do
+    org.contract_service_options.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly", default_direction: "incoming")
+
+    get manage_tech_contract_wizard_path(contract)
+    expect(response.body).not_to include("Taken out of their payout")
+    expect(response.body).to include(%(name="services[0][settlement]" value="direct"))
   end
 
   it "reorders the redirect chain: schedule → financials → services → documents → review" do
