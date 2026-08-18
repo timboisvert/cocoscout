@@ -12,13 +12,10 @@
   if contract.respond_to?(:revenue_share?) && contract.revenue_share?
     type_label = "Revenue share (you keep #{contract.revenue_share_percentage.to_i}%)"
     value = "TBD"
-    range = contract.respond_to?(:projected_our_revenue_range) ? contract.projected_our_revenue_range : nil
-    projection = range ? "#{number_to_currency(range[:low])}–#{number_to_currency(range[:high])} projected" : nil
   else
     type_label = "Flat fee"
     fee = contract.flat_fee_amount
     value = fee.to_f.positive? ? number_to_currency(fee) : "TBD"
-    projection = nil
   end
 %>
 <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
@@ -39,9 +36,7 @@
     </div>
     <div class="flex gap-2 text-sm">
       <dt class="w-28 flex-shrink-0 text-gray-500">Contract value</dt>
-      <dd class="text-gray-900 tabular-nums">
-        <%= value %><% if projection %> <span class="text-gray-500">(<%= projection %>)</span><% end %>
-      </dd>
+      <dd class="text-gray-900 tabular-nums"><%= value %></dd>
     </div>
   </dl>
   <%= link_to "View contract →", manage_contract_path(contract), data: { turbo_frame: "_top" }, class: "inline-block mt-2 text-sm font-medium text-pink-600 hover:text-pink-700" %>

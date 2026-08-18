@@ -166,54 +166,8 @@
         </div>
       </div>
 
-      <%# Ticketing %>
-      <% tiers = (@ticketing["tiers"] || []) %>
-      <% discounts = Contract.ticketing_discounts(@ticketing) %>
-      <% if tiers.any? || discounts.any? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Ticketing" %>
-          <div class="p-4">
-            <% if tiers.any? %>
-              <ul class="divide-y divide-gray-100">
-                <% tiers.each do |tier| %>
-                  <li class="flex items-center justify-between py-2 text-sm">
-                    <span class="text-gray-900"><%= tier["name"] %></span>
-                    <span class="font-medium text-gray-900"><%= number_to_currency(tier["price"]) %></span>
-                  </li>
-                <% end %>
-              </ul>
-            <% end %>
-            <% discounts.each do |discount| %>
-              <p class="text-sm text-gray-600 mt-3">
-                Discount <span class="font-medium text-gray-900"><%= discount["code"] %></span>:
-                <%= discount["amount_type"] == "percent" ? "#{discount["amount"]}% off" : "#{number_to_currency(discount["amount"])} off" %>
-                <%= discount["applies_to"] == "specific" ? "(#{(discount["tier_names"] || []).join(", ")})" : "(all tickets)" %>
-              </p>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
-
-      <%# Tech %>
-      <% if @tech["provider"].present? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Tech" %>
-          <div class="p-4 text-sm">
-            <% if @tech["provider"] == "us" %>
-              <p class="text-gray-900">
-                We provide tech:
-                <span class="font-medium"><%= @tech["hours"] %> hr × <%= number_to_currency(@tech["hourly_rate"]) %>
-                = <%= number_to_currency(@tech["hours"].to_f * @tech["hourly_rate"].to_f) %></span>
-              </p>
-              <p class="text-gray-600 mt-1">
-                <%= @tech["payment_method"] == "from_cut" ? "Taken out of their cut" : "Paid in cash" %>
-              </p>
-            <% else %>
-              <p class="text-gray-900">Contractor provides their own tech.</p>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
+      <%# The deal as written — direction, pricing, ticketing, services %>
+      <%= render "contract_terms", contract: @contract %>
 
       <%# Bookings %>
       <div class="border border-gray-200 rounded-lg overflow-hidden">
@@ -284,11 +238,6 @@
             <% end %>
           </div>
         </div>
-      <% end %>
-
-      <%# Revenue Projection - only for revenue share contracts %>
-      <% if @contract.revenue_share? %>
-        <%= render "revenue_projection_card", contract: @contract %>
       <% end %>
 
       <%# Associated Productions %>

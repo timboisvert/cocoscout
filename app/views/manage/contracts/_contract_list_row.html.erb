@@ -91,19 +91,12 @@
       <%# Panel 4 (25%): Value & Payment Status %>
       <div class="w-full lg:w-1/4 px-4 py-3 border-t lg:border-t-0 lg:border-l border-gray-200 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none flex flex-col justify-center">
         <%# Ticket-based deals with real activity show actuals — made vs cost, not
-            a single net or a projection. %>
+            a single net. %>
         <% actuals = !is_draft && (is_revenue_share || contract.ticket_revenue_minus_fee?) ? contract.money_display : nil %>
         <% if actuals && (actuals[:made] > 0 || actuals[:cost] > 0) %>
           <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Actuals</div>
           <div class="text-sm font-medium <%= actuals[:net] >= 0 ? 'text-green-600' : 'text-red-600' %> tabular-nums"><%= number_to_currency(actuals[:net]) %> net</div>
           <div class="text-[10px] text-gray-500">in <%= number_to_currency(actuals[:made], precision: 0) %> · out <%= number_to_currency(actuals[:cost], precision: 0) %></div>
-        <% elsif is_revenue_share && contract.has_revenue_projection? %>
-          <div class="text-[10px] text-pink-400 uppercase tracking-wide mb-1">Projection</div>
-          <% our_range = contract.projected_our_revenue_range %>
-          <div class="text-sm font-medium text-pink-600">
-            <%= number_to_currency(our_range[:low], precision: 0) %> - <%= number_to_currency(our_range[:high], precision: 0) %>
-          </div>
-          <div class="text-[10px] text-pink-500"><%= our_share %>% of estimated sales</div>
         <% elsif is_revenue_share %>
           <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
           <div class="text-sm font-medium text-gray-900"><%= our_share %>/<%= their_share %> Revenue Share</div>

@@ -1427,7 +1427,7 @@ class Contract < ApplicationRecord
     end
   end
 
-  # Revenue projection helpers. These read the v2 settlement_basis, which falls
+  # Settlement-basis predicates. These read the v2 settlement_basis, which falls
   # back to the legacy payment_structure — so old and migrated contracts both work.
   def revenue_share?
     settlement_basis == "revenue_share"
@@ -1691,46 +1691,6 @@ class Contract < ApplicationRecord
     when "revenue_minus_fee" then "org"     # we sell, keep a fee, pay them the rest
     when "revenue_share" then "contractor"  # legacy rev-share was generated as incoming (they pay us)
     end
-  end
-
-  def has_revenue_projection?
-    revenue_projections.present? && revenue_projections["scenarios"].present?
-  end
-
-  def revenue_projection_scenario(name = "default")
-    return nil unless has_revenue_projection?
-    revenue_projections["scenarios"]&.find { |s| s["name"] == name }
-  end
-
-  def set_revenue_projection(ticket_price_low:, ticket_price_high:, tickets_sold_low:, tickets_sold_high:, notes: nil, scenario_name: "default")
-    scenarios = (revenue_projections["scenarios"] || []).reject { |s| s["name"] == scenario_name }
-    scenarios << {
-      "name" => scenario_name,
-      "ticket_price_low" => ticket_price_low.to_f,
-      "ticket_price_high" => ticket_price_high.to_f,
-      "tickets_sold_low" => tickets_sold_low.to_i,
-      "tickets_sold_high" => tickets_sold_high.to_i,
-      "notes" => notes,
-      "updated_at" => Time.current.iso8601
-    }
-    update!(revenue_projections: revenue_projections.merge("scenarios" => scenarios))
-  end
-
-  def projected_gross_revenue_range(scenario_name = "default")
-    scenario = revenue_projection_scenario(scenario_name)
-    return nil unless scenario
-
-    low = scenario["ticket_price_low"].to_f * scenario["tickets_sold_low"].to_i
-    high = scenario["ticket_price_high"].to_f * scenario["tickets_sold_high"].to_i
-    { low: low, high: high }
-  end
-
-  def projected_our_revenue_range(scenario_name = "default")
-    gross = projected_gross_revenue_range(scenario_name)
-    return nil unless gross && revenue_share_percentage
-
-    share = revenue_share_percentage / 100.0
-    { low: (gross[:low] * share).round(2), high: (gross[:high] * share).round(2) }
   end
 
   def total_received_payments

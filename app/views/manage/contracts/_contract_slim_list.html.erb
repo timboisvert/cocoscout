@@ -55,10 +55,6 @@
         value_label = number_to_currency(actuals[:net])
         value_class = actuals[:net] >= 0 ? "text-green-600" : "text-red-600"
         value_sub = "in #{number_to_currency(actuals[:made], precision: 0)} · out #{number_to_currency(actuals[:cost], precision: 0)}"
-      elsif is_revenue_share && contract.has_revenue_projection?
-        our_range = contract.projected_our_revenue_range
-        value_label = "#{number_to_currency(our_range[:low], precision: 0)}–#{number_to_currency(our_range[:high], precision: 0)}"
-        value_class = "text-pink-600"
       elsif is_revenue_share
         value_label = "#{our_share}% of sales"
         value_class = "text-gray-900"

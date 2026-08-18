@@ -44,13 +44,7 @@
       <div class="text-sm text-gray-500 mb-1"><%= Date.current.year %> Contracts</div>
       <div class="text-2xl font-semibold <%= (@contracts_made - @contracts_cost) >= 0 ? 'text-gray-900' : 'text-red-600' %> tabular-nums"><%= number_to_currency(@contracts_made - @contracts_cost) %></div>
       <div class="text-xs text-gray-500">made <%= number_to_currency(@contracts_made, precision: 0) %> · cost <%= number_to_currency(@contracts_cost, precision: 0) %></div>
-      <% if @has_projections %>
-        <div class="text-xs text-pink-600 mt-1">
-          + <%= number_to_currency(@projected_revenue_low, precision: 0) %> - <%= number_to_currency(@projected_revenue_high, precision: 0) %> projected
-        </div>
-      <% else %>
-        <div class="text-xs text-gray-500">contracts starting this year</div>
-      <% end %>
+      <div class="text-xs text-gray-500">contracts starting this year</div>
     </div>
   </div>
 
