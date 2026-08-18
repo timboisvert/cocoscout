@@ -51,6 +51,60 @@ class ContractPayment < ApplicationRecord
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }
   scope :by_due_date, -> { order(:due_date) }
 
+  # --- Folded service charges ---------------------------------------------------
+  # A per-event service they pay us for (a booth tech on the night) is billed
+  # INSIDE that event's payment, not beside it: "$350 rent + $50 booth tech" is
+  # one $400 payment with one pay link. `components` remembers what was folded
+  # in — [{ "kind" => "service", "name" => "Booth Tech", "amount" => 50.0,
+  # "billed_for" => "2026-10-10" }] — so the row can say "incl. Booth Tech $50"
+  # and an amendment can unfold and re-bill exactly what it added.
+
+  def service_components
+    Array(components).select { |c| c["kind"] == "service" }
+  end
+
+  def components_total
+    service_components.sum { |c| c["amount"].to_f }.round(2)
+  end
+
+  # The payment's own amount before the services folded into it.
+  def base_amount
+    (amount.to_f - components_total).round(2)
+  end
+
+  def includes_services?
+    service_components.any?
+  end
+
+  # "incl. Booth Tech $50.00" / "incl. Booth Tech $50.00 and Sound $25.00"
+  def folded_services_summary
+    return nil unless includes_services?
+
+    parts = service_components.map { |c| "#{c['name']} #{ActiveSupport::NumberHelper.number_to_currency(c['amount'].to_f)}" }
+    "incl. #{parts.to_sentence}"
+  end
+
+  # Fold a service charge into this payment: the amount grows, the component is
+  # remembered. Only for a pending payment nobody has collected or committed.
+  def fold_service!(name:, amount:, billed_for: nil)
+    raise ArgumentError, "can't fold into a settled payment" unless status_pending? && !in_payout_run?
+
+    update!(amount: (self.amount.to_f + amount.to_f).round(2),
+            components: Array(components) + [ { "kind" => "service", "name" => name, "amount" => amount.to_f.round(2), "billed_for" => billed_for&.to_s }.compact ])
+  end
+
+  # Take service charges back out (an amendment re-billing them). Returns the
+  # amount removed.
+  def unfold_services!(names)
+    names = Array(names).map(&:to_s)
+    keep, drop = Array(components).partition { |c| c["kind"] != "service" || !names.include?(c["name"].to_s) }
+    removed = drop.sum { |c| c["amount"].to_f }.round(2)
+    return 0.0 if drop.empty?
+
+    update!(amount: (amount.to_f - removed).round(2), components: keep)
+    removed
+  end
+
   # Check if this payment amount is to be determined (e.g., revenue share)
   def amount_tbd?
     amount_tbd

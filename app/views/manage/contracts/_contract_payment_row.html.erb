@@ -105,6 +105,13 @@
           <%= payment.description.presence || "Payment" %><%= " and #{number_to_currency(deduction_total)} services" if deductions.any? %>
           <span class="text-gray-400"><%= is_incoming ? "(they pay us)" : "(we pay them)" %></span>
         </div>
+        <% if payment.includes_services? %>
+          <%# Services they pay for on this event ride inside this one payment —
+              one amount, one pay link — not a second row to chase. %>
+          <div class="text-xs text-gray-500 mt-0.5">
+            <%= number_to_currency(payment.base_amount) %> <%= payment.folded_services_summary %>
+          </div>
+        <% end %>
 
         <% if deductions.any? %>
           <%# Netted out of this payment when it settles — never invoiced, so

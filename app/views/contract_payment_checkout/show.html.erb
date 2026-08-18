@@ -19,6 +19,9 @@
       <div class="px-6 py-8 text-center border-b border-gray-100">
         <div class="text-sm text-gray-500"><%= @payment.description.presence || "Amount due" %></div>
         <div class="mt-1 text-4xl font-bold text-gray-900 tabular-nums"><%= number_to_currency(@payment.amount) %></div>
+        <% if @payment.includes_services? %>
+          <div class="mt-1 text-xs text-gray-500"><%= number_to_currency(@payment.base_amount) %> <%= @payment.folded_services_summary %></div>
+        <% end %>
         <div class="mt-2 text-sm <%= @payment.overdue? ? 'text-pink-600 font-medium' : 'text-gray-500' %>">
           <% if @payment.overdue? %>
             Was due <%= @payment.due_date.strftime("%B %-d, %Y") %>

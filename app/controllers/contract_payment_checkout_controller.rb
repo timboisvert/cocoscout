@@ -30,7 +30,8 @@ class ContractPaymentCheckoutController < ApplicationController
           unit_amount: @payment.amount_cents,
           product_data: {
             name: @payment.description.presence || "Contract payment",
-            description: "#{@organization.name} — #{@contract.production_name.presence || @contract.contractor_name}"
+            description: [ "#{@organization.name} — #{@contract.production_name.presence || @contract.contractor_name}",
+                           @payment.folded_services_summary ].compact.join(" · ")
           }
         }
       } ],
