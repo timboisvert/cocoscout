@@ -275,7 +275,7 @@ RSpec.describe ContractPaymentSyncService, type: :service do
         create(:production, organization: organization, production_type: "third_party")
               .tap { |p| contract.update!(production: p) }
       end
-      let(:show) { create(:show, production: production, date_and_time: Date.new(2026, 8, 15).to_time) }
+      let(:show) { create(:show, production: production, date_and_time: Time.zone.local(2026, 8, 15, 20)) }
       let!(:settlement) do
         create(:contract_payment, contract: contract, direction: "outgoing", show: show,
                                   description: "Ticket revenue less $300.00 fee",
