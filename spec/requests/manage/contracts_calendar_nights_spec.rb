@@ -85,7 +85,7 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
                                                             "flat_fee_basis" => "per_show", "flat_fee_settlement" => "per_event" } })
     end
 
-    it "reads as our fee when the night cleared it, and doesn't spell out TBD for a night still ahead" do
+    it "reads as our fee when the night cleared it, and puts no money on a night still ahead" do
       past_show = create(:show, production: production, date_and_time: past_at)
       create(:contract_payment, contract: contract, direction: "outgoing", show: past_show,
                                 description: "Ticket revenue less $300.00 fee", amount: 500, due_date: past_at.to_date)
@@ -102,7 +102,47 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
 
       get manage_contracts_path(month: month_param(future_at.to_date))
       expect(response.body).not_to include("TBD")
-      expect(response.body).to include("Settles after the show")
+      expect(response.body).not_to include("Settles after the show")
+    end
+  end
+
+  context "a booking still ahead" do
+    let!(:contract) do
+      create(:contract, :active, organization: org, production: production, contractor_name: "Dan",
+                        draft_data: { "payment_structure" => "flat_fee",
+                                      "payment_config" => { "flat_fee_direction" => "incoming", "flat_fee_amount" => 60,
+                                                            "flat_fee_basis" => "per_show", "flat_fee_settlement" => "per_event" } })
+    end
+
+    it "shows the rental alone — the fee due that night and the settlement stay off the card until the day comes" do
+      rental = create(:space_rental, contract: contract, starts_at: future_at)
+      future_show = create(:show, production: production, date_and_time: future_at, space_rental: rental)
+      create(:contract_payment, contract: contract, direction: "incoming", show: future_show,
+                                description: "Flat fee", amount: 60, due_date: future_at.to_date)
+      create(:contract_payment, contract: contract, direction: "outgoing", show: future_show,
+                                description: "Settlement", amount: 0, amount_tbd: true, due_date: future_at.to_date)
+      # A deposit due on a day that hasn't come stays off the calendar too
+      create(:contract_payment, contract: contract, direction: "incoming",
+                                description: "Deposit", amount: 500, due_date: future_at.to_date)
+
+      get manage_contracts_path(month: month_param(future_at.to_date))
+      expect(response.body).to include("Space rental")
+      expect(response.body).not_to include("+$60")
+      expect(response.body).not_to include("$500")
+      expect(response.body).not_to include("TBD")
+      expect(response.body).not_to include("Settles after the show")
+    end
+
+    it "shows the fee on the card once the night has come, but never spells out TBD" do
+      rental = create(:space_rental, contract: contract, starts_at: past_at)
+      create(:contract_payment, contract: contract, direction: "incoming",
+                                description: "Rent", amount: 60, due_date: past_at.to_date)
+      create(:contract_payment, contract: contract, direction: "outgoing",
+                                description: "Settlement", amount: 0, amount_tbd: true, due_date: past_at.to_date)
+
+      get manage_contracts_path(month: month_param(past_at.to_date))
+      expect(response.body).to include("+$60")
+      expect(response.body).not_to include("TBD")
     end
   end
 end

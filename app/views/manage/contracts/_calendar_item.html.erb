@@ -77,20 +77,20 @@
     path = contract ? manage_contract_path(contract) : "#"
     rental_payments = item[:payments] || []
     rental_nights = item[:nights] || []
-    has_late = rental_payments.any?(&:overdue?) || rental_nights.any? { |n| n[:late] }
+    has_late = rental_payments.any? { |p| p.overdue? && !(p.amount_tbd? && p.amount.to_f == 0) } || rental_nights.any? { |n| n[:late] }
   %>
   <%= link_to path, class: "block mb-1" do %>
     <div class="text-xs px-1.5 py-1 rounded border transition-colors <%= has_late ? 'bg-blue-100 text-blue-800 border-red-400 hover:bg-blue-200' : 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200' %>">
       <div class="font-semibold"><%= item[:at].strftime("%-l:%M%p").downcase %><% if renter.present? %> · <%= renter %><% end %></div>
       <div class="truncate text-[10px]"><%= location %></div>
-      <% rental_payments.each do |payment| %>
+      <%# A settlement that hasn't been worked out yet has no amount to put on the card. %>
+      <% rental_payments.reject { |p| p.amount_tbd? && p.amount.to_f == 0 }.each do |payment| %>
         <%
           incoming = payment.direction_incoming?
           late = payment.overdue?
-          amount = payment.amount_tbd? && payment.amount.to_f == 0 ? "TBD" : number_to_currency(payment.amount, precision: 0)
         %>
         <div class="flex items-center justify-between gap-1 mt-0.5 font-semibold <%= late ? 'text-red-600' : (incoming ? 'text-green-700' : 'text-red-700') %>">
-          <span><%= incoming ? "+" : "−" %><%= amount %></span>
+          <span><%= incoming ? "+" : "−" %><%= number_to_currency(payment.amount, precision: 0) %></span>
           <% if late %><span class="text-[9px] font-bold uppercase">Late</span><% end %>
         </div>
       <% end %>

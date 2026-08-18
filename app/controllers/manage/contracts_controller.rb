@@ -73,11 +73,14 @@ module Manage
         end
       end
 
+      # Money only appears on days that have arrived: what a past night made,
+      # what fell due and whether it's late. Days still ahead carry the booking
+      # alone — no "+$60" or "−TBD" on a show that hasn't happened.
       payments = ContractPayment
         .joins(:contract)
         .includes(:contract)
         .where(contracts: { organization_id: Current.organization.id, status: "active" })
-        .where(due_date: month_start..month_end)
+        .where(due_date: month_start..[ month_end, Date.current ].min)
         .to_a
         .reject { |p| absorbed_payment_ids.include?(p.id) }
 
