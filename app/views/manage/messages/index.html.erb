@@ -3,15 +3,12 @@
 <div class="w-full pb-8" data-controller="message-density">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Production Messages",
-    links: [
-      {
-        text: "Send a Message",
-        icon: "envelope",
-        type: :button,
-        any_manage_access: true,
+  <%
+    # The big module header, like Casting and Courses. "Send a Message" opens
+    # the compose modal (a JS action, so its href is a no-op); "Mark All Read"
+    # posts via Turbo and wears the unread count as its badge.
+    messages_actions = [
+      { icon: "mail", text: "Send a Message", description: "To a person, group, talent pool, or a whole production", path: "#",
         data: {
           controller: "compose-message",
           action: "click->compose-message#openWithSteps",
@@ -27,11 +24,16 @@
               { id: p.id, name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : "", initials: p.initials }
             }
           }.to_json : "{}"
-        }
-      },
-      { icon: "check", text: "Mark All Read", path: mark_all_read_manage_messages_path, method: :post, disabled: @unread_count == 0, any_manage_access: true }
+        } },
+      { icon: "check", text: "Mark All Read", badge: @unread_count,
+        description: @unread_count.to_i.positive? ? "#{pluralize(@unread_count, 'unread message')}" : "You're all caught up",
+        path: mark_all_read_manage_messages_path, data: { turbo_method: :post } }
     ]
-  } %>
+  %>
+  <%= render "shared/module_header",
+    title: "Messages",
+    actions: messages_actions
+  %>
 
   <%
     messages_guide_body = <<~HTML.html_safe
