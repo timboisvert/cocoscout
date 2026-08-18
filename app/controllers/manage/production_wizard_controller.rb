@@ -17,6 +17,10 @@ module Manage
     # built in the payout-calculation wizard once the production exists.
     NEW_CALCULATION = :new_calculation
 
+    # Ceiling on how many shows one repeating series can seed — two years of
+    # weekly. The UI asks for an end date; this only stops a runaway.
+    MAX_SERIES_SHOWS = 104
+
     # Step 1: Name - What's the production called?
     def name
       @wizard_state[:name] ||= ""
@@ -219,7 +223,7 @@ module Manage
         @wizard_state[:recurring_week_ordinal] = params[:recurring][:week_ordinal]
         @wizard_state[:recurring_time] = params[:recurring][:time]
         @wizard_state[:recurring_start_date] = params[:recurring][:start_date]
-        @wizard_state[:recurring_count] = params[:recurring][:count].to_i
+        @wizard_state[:recurring_end_date] = params[:recurring][:end_date]
       else
         # Parse single show from form
         @wizard_state[:shows] = parse_shows(params[:shows])
@@ -497,7 +501,9 @@ module Manage
       week_ordinal = recurring_params[:week_ordinal].to_i
       time_str = recurring_params[:time] || "20:00"
       start_date = Date.parse(recurring_params[:start_date]) rescue Date.current
-      count = (recurring_params[:count] || 8).to_i.clamp(1, 104)
+      # "Until" — the last date the series can fall on. MAX_SERIES_SHOWS is a
+      # backstop against a daily-ish frequency and a far-off date, not a UI.
+      end_date = RecurrenceEndDate.parse(recurring_params[:end_date]) || RecurrenceEndDate.default_for(start_date)
 
       shows = []
 
@@ -514,7 +520,7 @@ module Manage
         current_date = target
       end
 
-      count.times do
+      while current_date <= end_date && shows.size < MAX_SERIES_SHOWS
         datetime = Time.zone.parse("#{current_date} #{time_str}")
         shows << { date_and_time: datetime.strftime("%Y-%m-%dT%H:%M") }
 

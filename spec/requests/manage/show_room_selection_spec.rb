@@ -59,7 +59,7 @@ RSpec.describe "Show room selection", type: :request do
         event_frequency: "recurring",
         recurrence_start_datetime: "2027-06-04T20:00",
         recurrence_pattern: "weekly",
-        recurrence_end_type: "3_months"
+        recurrence_end_date: "2027-09-04"
       }
       post manage_shows_wizard_save_location_path(production), params: {
         is_online: "false", location_id: location.id, location_space_id: main_stage.id

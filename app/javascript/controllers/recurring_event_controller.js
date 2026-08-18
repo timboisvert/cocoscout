@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["singleFields", "recurringFields", "submitButton", "patternSelect", "customEndDateField", "eventTypeSelect", "monthlyWeekFields"]
+    static targets = ["singleFields", "recurringFields", "submitButton", "patternSelect", "eventTypeSelect", "monthlyWeekFields"]
 
     connect() {
         this.updateButtonText()
@@ -118,19 +118,6 @@ export default class extends Controller {
             this.monthlyWeekFieldsTarget.classList.remove("hidden")
         } else {
             this.monthlyWeekFieldsTarget.classList.add("hidden")
-        }
-    }
-
-    toggleCustomEndDate(event) {
-        if (!this.hasCustomEndDateFieldTarget) return
-
-        const durationType = event.target.value
-        if (durationType === "custom") {
-            this.customEndDateFieldTarget.classList.remove("hidden")
-            this.enableFields(this.customEndDateFieldTarget)
-        } else {
-            this.customEndDateFieldTarget.classList.add("hidden")
-            this.disableFields(this.customEndDateFieldTarget)
         }
     }
 

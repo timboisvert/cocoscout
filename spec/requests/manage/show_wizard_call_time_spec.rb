@@ -58,7 +58,7 @@ RSpec.describe "Show wizard — cast call time", type: :request do
       event_frequency: "recurring",
       recurrence_start_datetime: start.strftime("%Y-%m-%dT%H:%M"),
       recurrence_pattern: "weekly",
-      recurrence_end_type: "3_months",
+      recurrence_end_date: (Date.current + 3.months).to_s,
       call_time_enabled: "1",
       call_time_offset_minutes: "60"
     )

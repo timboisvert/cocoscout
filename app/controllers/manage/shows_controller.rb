@@ -397,7 +397,7 @@ module Manage
 
       extend_through = compute_extend_through_date
       if extend_through.nil?
-        render json: { error: params[:extend_duration] == "custom" ? "Please select a valid custom end date." : "Invalid duration." }, status: :unprocessable_entity
+        render json: { error: "Pick a date after #{@last_show.date_and_time.strftime('%B %-d, %Y')}." }, status: :unprocessable_entity
         return
       end
 
@@ -492,7 +492,7 @@ module Manage
           # Just update properties on all events in the group
           update_params = show_params.except(:recurrence_edit_scope, :date_and_time,
                                              :recurrence_pattern, :recurrence_start_datetime,
-                                             :recurrence_end_type, :recurrence_custom_end_date)
+                                             :recurrence_end_date, :recurrence_end_type, :recurrence_custom_end_date)
 
           # Handle poster removal for all events in the group
           if update_params[:remove_poster] == "1"
@@ -521,8 +521,8 @@ module Manage
       else
         # Update only this occurrence (remove from recurrence group if editing date/time)
         update_params = show_params.except(:recurrence_edit_scope, :recurrence_pattern,
-                                           :recurrence_start_datetime, :recurrence_end_type,
-                                           :recurrence_custom_end_date)
+                                           :recurrence_start_datetime, :recurrence_end_date,
+                                           :recurrence_end_type, :recurrence_custom_end_date)
 
         # Keep the show in its recurrence group even if date/time changes.
         # Users can remove a show from the series explicitly if needed.
@@ -689,23 +689,12 @@ module Manage
       # Parse new recurrence parameters - use Time.zone.parse to respect application timezone
       start_datetime = Time.zone.parse(params[:show][:recurrence_start_datetime])
       pattern = params[:show][:recurrence_pattern]
-      end_type = params[:show][:recurrence_end_type]
 
-      # Calculate end date based on duration
-      end_date = case end_type
-      when "3_months"
-                   start_datetime.to_date + 3.months
-      when "6_months"
-                   start_datetime.to_date + 6.months
-      when "12_months"
-                   start_datetime.to_date + 12.months
-      when "end_of_year"
-                   Date.new(start_datetime.year, 12, 31)
-      when "custom"
-                   Date.parse(params[:show][:recurrence_custom_end_date])
-      else
-                   start_datetime.to_date + 6.months # default
-      end
+      # "Until" — a date (the retired preset menu still resolves to one).
+      end_date = RecurrenceEndDate.resolve(start_datetime, end_date: params[:show][:recurrence_end_date],
+                                                           end_type: params[:show][:recurrence_end_type],
+                                                           custom: params[:show][:recurrence_custom_end_date]) ||
+                 RecurrenceEndDate.default_for(start_datetime)
 
       datetimes = []
       current_datetime = start_datetime
@@ -1724,7 +1713,7 @@ module Manage
     # Only allow a list of trusted parameters through.
     def show_params
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :production_id, :location_id, :location_space_id,
-                                               :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
+                                               :event_frequency, :recurrence_pattern, :recurrence_end_date, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :casting_mode, :is_online, :online_location_info,
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,
                                                show_links_attributes: %i[id url text _destroy])
@@ -1824,28 +1813,14 @@ module Manage
       Rails.logger.info "[Shows] Sent cancellation: #{messages_sent} messages, #{emails_sent} emails"
     end
 
+    # "Add more events until" — a date after the last show. nil when the date
+    # is missing, unparseable, or not after the series' current end.
     def compute_extend_through_date
-      last_show = @last_show
-      case params[:extend_duration]
-      when "3_months"
-        last_show.date_and_time.to_date + 3.months
-      when "6_months"
-        last_show.date_and_time.to_date + 6.months
-      when "12_months"
-        last_show.date_and_time.to_date + 12.months
-      when "end_of_year"
-        end_of_year = Date.new(last_show.date_and_time.year, 12, 31)
-        end_of_year <= last_show.date_and_time.to_date ? Date.new(last_show.date_and_time.year + 1, 12, 31) : end_of_year
-      when "custom"
-        return nil if params[:custom_end_date].blank?
-        begin
-          Date.parse(params[:custom_end_date])
-        rescue Date::Error
-          nil
-        end
-      else
-        last_show.date_and_time.to_date + 3.months
-      end
+      last_on = @last_show.date_and_time.to_date
+      through = RecurrenceEndDate.resolve(last_on, end_date: params[:extend_until],
+                                                    end_type: params[:extend_duration],
+                                                    custom: params[:custom_end_date])
+      through if through && through > last_on
     end
 
     # Infer recurrence pattern from a series of shows

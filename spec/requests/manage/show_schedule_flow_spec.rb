@@ -47,7 +47,7 @@ RSpec.describe "Show schedule flow", type: :request do
         recurrence_edit_scope: "all",
         recurrence_pattern: "biweekly",
         recurrence_start_datetime: 1.week.from_now.change(hour: 20).strftime("%Y-%m-%dT%H:%M"),
-        recurrence_end_type: "3_months"
+        recurrence_end_date: (Date.current + 3.months).to_s
       }
     }
 

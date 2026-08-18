@@ -88,8 +88,7 @@ RSpec.describe "Deleting shows under revenue-share contracts", type: :request do
           recurrence_edit_scope: "all",
           recurrence_pattern: "weekly",
           recurrence_start_datetime: start.iso8601,
-          recurrence_end_type: "custom",
-          recurrence_custom_end_date: (start + 2.weeks).to_date.iso8601
+          recurrence_end_date: (start + 2.weeks).to_date.iso8601
         }
       }
 

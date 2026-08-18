@@ -113,26 +113,14 @@
               <input type="hidden" name="recurrence_group_id" value="<%= @recurrence_group_id %>">
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Add more events through:</label>
-                <select name="extend_duration" required
-                        data-action="change->recurring-series-modal#toggleCustomDate"
-                        data-recurring-series-modal-target="durationSelect"
-                        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
-                  <option value="3_months">3 more months (until <%= (@last_show.date_and_time.to_date + 3.months).strftime("%B %Y") %>)</option>
-                  <option value="6_months">6 more months (until <%= (@last_show.date_and_time.to_date + 6.months).strftime("%B %Y") %>)</option>
-                  <option value="12_months">12 more months (until <%= (@last_show.date_and_time.to_date + 12.months).strftime("%B %Y") %>)</option>
-                  <option value="end_of_year">End of <%= @last_show.date_and_time.year %></option>
-                  <option value="custom">Custom end date...</option>
-                </select>
-              </div>
-
-              <div data-recurring-series-modal-target="customDateField" class="hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Custom end date:</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Add more events until</label>
                 <input type="date"
-                       name="custom_end_date"
+                       name="extend_until" required
                        min="<%= (@last_show.date_and_time.to_date + 1.day).to_s %>"
-                       value="<%= (@last_show.date_and_time.to_date + 3.months).to_s %>"
-                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
+                       value="<%= RecurrenceEndDate.default_for(@last_show.date_and_time).to_s %>"
+                       data-action="change->recurring-series-modal#extendDateChanged"
+                       class="w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
+                <p class="text-xs text-gray-500 mt-1">The series currently ends <%= @last_show.date_and_time.strftime("%B %-d, %Y") %>.</p>
               </div>
 
               <div class="flex justify-end pt-2">
@@ -276,18 +264,9 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Ends</label>
-                  <select name="show[recurrence_end_type]" data-action="change->recurring-series-modal#toggleRebuildCustomDate" data-recurring-series-modal-target="rebuildEndType" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
-                    <option value="3_months">In 3 months</option>
-                    <option value="6_months" selected>In 6 months</option>
-                    <option value="12_months">In 12 months</option>
-                    <option value="end_of_year">End of <%= Date.current.year %></option>
-                    <option value="custom">Specific date…</option>
-                  </select>
-                </div>
-                <div data-recurring-series-modal-target="rebuildCustomDate" class="hidden">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">End date</label>
-                  <input type="date" name="show[recurrence_custom_end_date]" min="<%= Date.current.to_s %>"
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Until</label>
+                  <input type="date" name="show[recurrence_end_date]" required
+                         value="<%= @last_show.date_and_time.to_date.to_s %>"
                          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
                 </div>
               </div>

@@ -404,7 +404,7 @@ RSpec.describe "Production wizard", type: :request do
       walk_to_schedule
       post manage_productions_wizard_save_schedule_path, params: {
         schedule_type: "repeating",
-        recurring: { frequency: "weekly", day_of_week: "5", time: "21:00", start_date: "2026-10-01", count: "3" },
+        recurring: { frequency: "weekly", day_of_week: "5", time: "21:00", start_date: "2026-10-01", end_date: "2026-10-17" },
         details: { event_type: "show", duration_minutes: "120", is_online: "false", location_id: location.id, location_space_id: space.id }
       }
       post manage_productions_wizard_create_path

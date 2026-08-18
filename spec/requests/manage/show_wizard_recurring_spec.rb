@@ -34,7 +34,7 @@ RSpec.describe "Show wizard — recurring series", type: :request do
       duration_minutes: "120",
       recurrence_start_datetime: "2026-06-04T20:00",
       recurrence_pattern: "monthly_week",
-      recurrence_end_type: "3_months"
+      recurrence_end_date: "2026-09-04"
     }.merge(extra)
     post manage_shows_wizard_save_location_path(production), params: { is_online: "false", location_id: location.id }
     post manage_shows_wizard_save_details_path(production), params: { secondary_name: "" }

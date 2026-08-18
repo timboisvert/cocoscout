@@ -89,9 +89,16 @@ module Manage
       @wizard_state[:date_and_time] = params[:date_and_time]
       @wizard_state[:duration_minutes] = params[:duration_minutes].presence&.to_i
       @wizard_state[:recurrence_pattern] = params[:recurrence_pattern]
-      @wizard_state[:recurrence_end_type] = params[:recurrence_end_type]
       @wizard_state[:recurrence_start_datetime] = params[:recurrence_start_datetime]
-      @wizard_state[:recurrence_custom_end_date] = params[:recurrence_custom_end_date]
+      # "Until" — a date. Older callers may still send the preset menu; both
+      # resolve to one stored date so the rest of the wizard only knows dates.
+      if @wizard_state[:recurrence_start_datetime].present?
+        start = Time.zone.parse(@wizard_state[:recurrence_start_datetime]) rescue nil
+        resolved = start && RecurrenceEndDate.resolve(start, end_date: params[:recurrence_end_date],
+                                                             end_type: params[:recurrence_end_type],
+                                                             custom: params[:recurrence_custom_end_date])
+        @wizard_state[:recurrence_end_date] = resolved&.iso8601
+      end
       @wizard_state[:recurrence_week_ordinal] = params[:recurrence_week_ordinal]
       @wizard_state[:recurrence_weekday] = params[:recurrence_weekday]
       # Optional cast call time, as minutes before each event's start.
@@ -112,8 +119,12 @@ module Manage
           flash.now[:alert] = "Please select a repeat pattern"
           render :schedule, status: :unprocessable_entity and return
         end
-        if @wizard_state[:recurrence_end_type].blank?
-          flash.now[:alert] = "Please select a duration"
+        if @wizard_state[:recurrence_end_date].blank?
+          flash.now[:alert] = "Please choose the date the series runs until"
+          render :schedule, status: :unprocessable_entity and return
+        end
+        if Date.parse(@wizard_state[:recurrence_end_date]) < Time.zone.parse(@wizard_state[:recurrence_start_datetime]).to_date
+          flash.now[:alert] = "The series can't end before it starts"
           render :schedule, status: :unprocessable_entity and return
         end
       end
@@ -247,22 +258,7 @@ module Manage
     def create_recurring_events
       start_datetime = Time.zone.parse(@wizard_state[:recurrence_start_datetime])
       pattern = @wizard_state[:recurrence_pattern]
-      end_type = @wizard_state[:recurrence_end_type]
-
-      end_date = case end_type
-      when "3_months"
-        start_datetime.to_date + 3.months
-      when "6_months"
-        start_datetime.to_date + 6.months
-      when "12_months"
-        start_datetime.to_date + 12.months
-      when "end_of_year"
-        Date.new(start_datetime.year, 12, 31)
-      when "custom"
-        Date.parse(@wizard_state[:recurrence_custom_end_date])
-      else
-        start_datetime.to_date + 3.months
-      end
+      end_date = RecurrenceEndDate.parse(@wizard_state[:recurrence_end_date]) || RecurrenceEndDate.default_for(start_datetime)
 
       dates = generate_recurring_dates(start_datetime, pattern, end_date,
                                        week_ordinal: @wizard_state[:recurrence_week_ordinal],

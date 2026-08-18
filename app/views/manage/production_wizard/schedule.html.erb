@@ -110,15 +110,12 @@
                      class="<%= input_cls %>">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Number of Shows</label>
-              <input type="number"
-                     name="recurring[count]"
-                     value="<%= @wizard_state[:recurring_count] || 8 %>"
-                     min="1"
-                     max="104"
-                     step="1"
+              <label class="block text-sm font-medium text-gray-700 mb-1">Until</label>
+              <input type="date"
+                     name="recurring[end_date]"
+                     value="<%= @wizard_state[:recurring_end_date].presence || RecurrenceEndDate.default_for(Date.current).to_s %>"
                      class="<%= input_cls %>">
-              <p class="text-xs text-gray-500 mt-1">Enter any number from 1 to 104</p>
+              <p class="text-xs text-gray-500 mt-1">The last date the series can fall on. You can extend it later.</p>
             </div>
             <div id="recurring-week-ordinal-row" class="hidden">
               <label class="block text-sm font-medium text-gray-700 mb-1">Which Week of Month</label>

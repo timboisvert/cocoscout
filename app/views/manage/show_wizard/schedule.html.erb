@@ -86,25 +86,12 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Duration</label>
-        <select name="recurrence_end_type"
-                class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-96"
-                data-action="change->recurring-event#toggleCustomEndDate">
-          <option value="">Select duration</option>
-          <option value="3_months" <%= "selected" if @wizard_state[:recurrence_end_type] == "3_months" %>>3 Months</option>
-          <option value="6_months" <%= "selected" if @wizard_state[:recurrence_end_type] == "6_months" %>>6 Months</option>
-          <option value="12_months" <%= "selected" if @wizard_state[:recurrence_end_type] == "12_months" %>>12 Months</option>
-          <option value="end_of_year" <%= "selected" if @wizard_state[:recurrence_end_type] == "end_of_year" %>>Until End of <%= Date.current.year %></option>
-          <option value="custom" <%= "selected" if @wizard_state[:recurrence_end_type] == "custom" %>>Until Specific Date</option>
-        </select>
-      </div>
-
-      <div data-recurring-event-target="customEndDateField" class="<%= 'hidden' unless @wizard_state[:recurrence_end_type] == 'custom' %>">
-        <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Until</label>
         <input type="date"
-               name="recurrence_custom_end_date"
-               value="<%= @wizard_state[:recurrence_custom_end_date] %>"
+               name="recurrence_end_date"
+               value="<%= @wizard_state[:recurrence_end_date].presence || RecurrenceEndDate.default_for(Date.current).to_s %>"
                class="block shadow-sm rounded-lg border border-gray-400 px-3 py-2 w-full sm:w-64">
+        <p class="text-xs text-gray-500 mt-1">The last date the series can fall on. You can extend it later.</p>
       </div>
     </div>
 

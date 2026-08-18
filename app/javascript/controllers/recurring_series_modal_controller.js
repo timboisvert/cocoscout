@@ -2,11 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = [
-        "durationSelect", "customDateField", "extendForm", "previewContainer", "previewList",
+        "extendForm", "previewContainer", "previewList",
         "previewCount", "previewThrough", "previewError", "previewButton", "confirmForm",
         "rescheduleForm", "reschedulePreviewButton", "rescheduleError", "reschedulePreviewContainer",
-        "rescheduleList", "rescheduleRemoving", "rescheduleAdding", "rescheduleConfirmForm",
-        "rebuildEndType", "rebuildCustomDate"
+        "rescheduleList", "rescheduleRemoving", "rescheduleAdding", "rescheduleConfirmForm"
     ]
     static values = { previewUrl: String, extendUrl: String, previewRescheduleUrl: String, rescheduleUrl: String }
 
@@ -27,19 +26,9 @@ export default class extends Controller {
         event.stopPropagation()
     }
 
-    toggleCustomDate() {
-        if (!this.hasDurationSelectTarget || !this.hasCustomDateFieldTarget) return
-
-        const isCustom = this.durationSelectTarget.value === 'custom'
-        this.customDateFieldTarget.classList.toggle('hidden', !isCustom)
-
-        // Reset preview when changing duration
+    // A new "until" date invalidates whatever preview was showing.
+    extendDateChanged() {
         this.hidePreview()
-    }
-
-    toggleRebuildCustomDate() {
-        if (!this.hasRebuildEndTypeTarget || !this.hasRebuildCustomDateTarget) return
-        this.rebuildCustomDateTarget.classList.toggle('hidden', this.rebuildEndTypeTarget.value !== 'custom')
     }
 
     async previewExtend(event) {
