@@ -12,7 +12,9 @@
     - show_production: Show production name in details line (default: false)
     - show_location: Show location/online indicator (default: true)
     - roles: Array of role names to display (default: nil) - legacy, use role_assignments instead
-    - role_assignments: Array of hashes with {role_name:, entity_type:, entity_id:, entity_name:} for detailed display
+    - role_assignments: Array of hashes with {role_name:, entity_type:, entity_id:, entity_name:} for detailed display.
+      role_name is a display label: the role's name, or on a show cast by acts a grouped act
+      label from CastingHelper#act_assignment_labels ("Magic (Act 3)", "2 acts as Magic (Acts 1 and 3)")
     - entity: Single entity (Person/Group) for right panel display
     - availability: Availability object for buttons (default: nil)
     - entity_key: Entity key for Stimulus data attribute (default: nil)
@@ -226,7 +228,7 @@
             <% role_assigns.each do |ra| %>
               <div class="text-sm flex items-center gap-1">
                 <span class="text-gray-700"><%= ra[:entity_name] %></span>
-                <span class="text-gray-400">as</span>
+                <span class="text-gray-400"><%= cast_as_word(ra[:role_name]) %></span>
                 <strong class="text-pink-500"><%= ra[:role_name] %></strong>
               </div>
             <% end %>
@@ -261,7 +263,7 @@
         <% role_assignments.each do |ra| %>
           <div class="text-sm flex items-center gap-1">
             <span class="text-gray-700"><%= ra[:entity_name] %></span>
-            <span class="text-gray-400">as</span>
+            <span class="text-gray-400"><%= cast_as_word(ra[:role_name]) %></span>
             <strong class="text-pink-500"><%= ra[:role_name] %></strong>
           </div>
         <% end %>
@@ -360,16 +362,17 @@
           roles = cast_summary[:roles] || []
           assignments_by_role = cast_summary[:assignments_by_role] || {}
           cant_make_it_by_assignment = cast_summary[:cant_make_it_by_assignment] || {}
-          # Lineup numbers for "Act 3 · Magic" labels (act-based productions);
+          # Lineup numbers for "Act 3 · Magic" labels (act-based shows — the
+          # show's effective mode, which may override the production's);
           # pin each role's production to the show's so labelling never queries.
           roles.each { |r| r.association(:production).target = show.production unless r.association(:production).loaded? }
-          summary_numbers = lineup_numbers(roles)
-          summary_unit_plural = casting_unit(show.production, plural: true)
+          summary_numbers = lineup_numbers(roles, show: show)
+          summary_unit_plural = casting_unit(show, plural: true)
         %>
         <% roles.each do |role| %>
           <% next if role.break? %>
           <%
-            role_label = role_display_name(role, summary_numbers)
+            role_label = role_display_name(role, summary_numbers, show: show)
             assignments_by_slot = cast_assignments_by_slot(role, assignments_by_role[role.id])
             role_quantity = cast_total_slots(role, assignments_by_slot)
           %>
@@ -586,7 +589,7 @@
       <div class="flex-shrink-0 ml-4">
         <% role_assignments.each do |ra| %>
           <div class="flex items-center gap-2 text-xs">
-            <span class="text-gray-500"><%= casting_unit(show.production, capitalize: true) %>:</span>
+            <span class="text-gray-500"><%= casting_unit(show, capitalize: true) %>:</span>
             <strong class="text-pink-500"><%= ra[:role_name] %></strong>
             <% if ra[:entity_type] == "Group" %>
               <span class="text-gray-400">(as <%= ra[:entity_name] %>)</span>
@@ -598,7 +601,7 @@
       <%# Legacy support for simple role names array %>
       <div class="flex-shrink-0 ml-4">
         <% roles.each do |role_name| %>
-          <span class="text-xs text-gray-500"><%= casting_unit(show.production, capitalize: true) %>:</span>
+          <span class="text-xs text-gray-500"><%= casting_unit(show, capitalize: true) %>:</span>
           <strong class="text-xs text-pink-500"><%= role_name %></strong>
         <% end %>
       </div>

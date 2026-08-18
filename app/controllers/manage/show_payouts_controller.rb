@@ -6,8 +6,8 @@ module Manage
     before_action :set_show_payout, only: [
       :show, :update,
       :calculate, :mark_paid, :reopen, :add_to_payout_run, :remove_from_run,
-      :override, :save_override, :clear_override,
-      :change_scheme, :apply_scheme_change,
+      :save_override, :clear_override,
+      :apply_choice, :use_default,
       :mark_line_item_paid, :unmark_line_item_paid,
       :mark_all_offline, :send_payment_reminders,
       :close_as_non_paying,
@@ -29,8 +29,8 @@ module Manage
         setup_contractor_payout
       elsif @show_contract_payments.any? || (@contract && @is_third_party)
         # A third-party show under a contract is settled on that contract, full
-        # stop. It has no cast of ours to pay, so offering a payout scheme here
-        # is a dead end however the deal happens to be written.
+        # stop. It has no cast of ours to pay, so offering a payout calculation
+        # here is a dead end however the deal happens to be written.
         setup_contract_payout
       else
         setup_performer_payout
@@ -61,10 +61,9 @@ module Manage
         return
       end
 
-      # Get the scheme to use (with any overrides)
-      # Look for production-level scheme first, then organization-level
-      scheme = @show_payout.payout_scheme || PayoutScheme.default_for_show(@show)
-      rules = @show_payout.override_rules.presence || scheme&.rules
+      # The calculation to run (with this event's customization laid over it):
+      # this show's own, else the default for the show.
+      rules = @show_payout.resolved_rules.presence
       per_act = rules.present? && rules.dig("distribution", "method").to_s == "per_act"
 
       # Ensure we have financials — unless the night pays by acts, which never
@@ -76,19 +75,14 @@ module Manage
       end
 
       unless rules.present?
-        # An act-based production almost always wants per-act pay — land them on
-        # that preset rather than a blank list of schemes.
-        if @show.act_based?
-          redirect_to manage_presets_money_payout_schemes_path(preset: "per_act", production_id: @production.id),
-                      alert: "Please create a payout scheme first — act-based productions usually pay per act."
-        else
-          redirect_to manage_money_payout_schemes_path,
-                      alert: "Please create a payout scheme first."
-        end
+        # No calculation for this show: the production chooses one on its
+        # payouts page (or the show picks its own from the card here).
+        redirect_to manage_money_production_payouts_path(@production),
+                    alert: "Choose how #{@production.name}'s performers are paid first — then this show can be worked out."
         return
       end
 
-      # Act-based schemes need to know how many acts each person did. In an
+      # Act-based calculations need to know how many acts each person did. In an
       # act-based production the lineup already says (each act is a role), so
       # calculate straight from it unless counts were posted by hand. A
       # role-based show has nothing to derive from: bounce back to the payout
@@ -218,70 +212,106 @@ module Manage
       end
     end
 
-    def override
-      @default_scheme = PayoutScheme.default_for_show(@show)
-      @current_rules = @show_payout.override_rules.presence || @default_scheme&.rules || {}
-
-      if turbo_frame_request?
-        render partial: "manage/show_payouts/override_modal"
-      else
-        # Redirect back to show page - modal-only feature
-        redirect_to manage_money_show_payout_path(@show)
-      end
-    end
-
+    # This event's customization, posted from the Customize modal: either one
+    # amount for everyone (customize[mode]=same, customize[amount]) or an
+    # amount per payee (customize[mode]=different, customize[amounts][<key>]
+    # keyed like ShowPayout.act_key). Always laid over the calculation the
+    # show started from, never over an earlier customization — the modal is
+    # prefilled with what's currently paid, so what's posted is the whole
+    # picture. When the calculation splits a fixed pot, per-person amounts
+    # have to add back up to it. An already-calculated payout is recalculated
+    # so its line items reflect the change.
     def save_override
-      rules = build_override_rules
+      base_rules = @show_payout.base_rules
+      if base_rules.blank?
+        redirect_to manage_money_show_payout_path(@show),
+                    alert: "Choose a payout calculation for this show before customizing it."
+        return
+      end
+
+      customize = params.fetch(:customize, {}).permit(:mode, :amount, amounts: {})
+      rules = case customize[:mode]
+      when "same"
+        amount = customize[:amount].to_f
+        return redirect_to(manage_money_show_payout_path(@show), alert: "Enter the amount everyone is paid.") if amount.negative? || customize[:amount].blank?
+
+        PayoutRulesBuilder.same_amount(base_rules, amount)
+      when "different"
+        amounts = customize.fetch(:amounts, {}).to_h.select { |_key, value| value.present? }
+        return redirect_to(manage_money_show_payout_path(@show), alert: "Enter an amount for each person.") if amounts.empty?
+
+        if @show_payout.fixed_pot? && (expected = @show_payout.calculated_total)
+          total = amounts.values.sum { |value| value.to_f }.round(2)
+          if (total - expected).abs > 0.01
+            redirect_to manage_money_show_payout_path(@show),
+                        alert: "Adjust the amounts so they add up to #{helpers.number_to_currency(expected)} — this calculation splits a fixed pot, and you entered #{helpers.number_to_currency(total)}."
+            return
+          end
+        end
+
+        # Keyed like ShowPayout.act_key, the same way the modal posted them —
+        # PayoutCalculator reads them by that key.
+        overrides = amounts.to_h { |key, value| [ key.to_s, { flat_amount: value } ] }
+        PayoutRulesBuilder.override(base_rules, performer_overrides: overrides)
+      else
+        return redirect_to(manage_money_show_payout_path(@show), alert: "Choose whether everyone is paid the same amount or different amounts.")
+      end
+
       @show_payout.update!(override_rules: rules)
       redirect_to manage_money_show_payout_path(@show),
-                  notice: "Custom rules saved for this show."
+                  notice: with_recalculation_note("This event's calculation saved.")
     end
 
     def clear_override
       @show_payout.update!(override_rules: nil)
       redirect_to manage_money_show_payout_path(@show),
-                  notice: "Custom rules cleared. Using default scheme."
+                  notice: with_recalculation_note("Customization removed. This show pays as calculated.")
     end
 
-    def change_scheme
-      # Include both production-level and organization-level schemes
-      @available_schemes = PayoutScheme.where(organization: Current.organization)
-                                       .order(:name)
-      @current_scheme = @show_payout.payout_scheme
-      @future_shows_count = @production.shows
-        .where("date_and_time > ?", @show.date_and_time)
-        .where(id: ShowPayout.where(payout_scheme: @current_scheme).select(:show_id))
-        .count
-    end
+    # Pick a different calculation for this show — and, if asked, for every
+    # later show of the production still on the same calculation. A fresh
+    # choice drops any customization: it was written against the old one.
+    def apply_choice
+      new_scheme = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id])
+      unless new_scheme
+        redirect_to manage_money_show_payout_path(@show), alert: "Pick a payout calculation to use."
+        return
+      end
 
-    def apply_scheme_change
-      # Find scheme from organization (includes both org-level and production-level)
-      new_scheme = PayoutScheme.where(organization: Current.organization)
-                               .find(params[:payout_scheme_id])
-      apply_to_future = params[:apply_to_future] == "1"
+      if params[:apply_to_future] == "1"
+        # This show and every later one on the same calculation — including
+        # shows whose payout page was never opened (no payout row yet): they
+        # get their row now, so "all future shows" really covers them.
+        payouts = shows_on_this_calculation(from: @show.date_and_time, inclusive: true).map do |show|
+          next @show_payout if show.id == @show.id
 
-      if apply_to_future
-        # Find all shows on or after this one that currently use the same scheme
-        current_scheme = @show_payout.payout_scheme
-        shows_to_update = @production.shows
-          .where("date_and_time >= ?", @show.date_and_time)
-          .includes(:show_payout)
-          .select { |s| s.show_payout&.payout_scheme_id == current_scheme&.id }
-
-        updated_count = 0
-        shows_to_update.each do |show|
-          show.show_payout.update!(payout_scheme: new_scheme, override_rules: nil)
-          updated_count += 1
+          show.show_payout || show.create_show_payout!(status: "awaiting_payout", payout_scheme: new_scheme)
+        end
+        payouts.each do |payout|
+          payout.update!(payout_scheme: new_scheme, override_rules: nil)
+          recalculate_if_calculated(payout) unless payout.equal?(@show_payout)
         end
 
         redirect_to manage_money_show_payout_path(@show),
-                    notice: "Payout scheme changed to \"#{new_scheme.name}\" for #{updated_count} show#{"s" if updated_count != 1}."
+                    notice: with_recalculation_note("Now using \"#{new_scheme.name}\" for #{helpers.pluralize(payouts.size, 'show')}.")
       else
-        # Clear any custom overrides when changing scheme
         @show_payout.update!(payout_scheme: new_scheme, override_rules: nil)
         redirect_to manage_money_show_payout_path(@show),
-                    notice: "Payout scheme changed to \"#{new_scheme.name}\" for this show."
+                    notice: with_recalculation_note("Now using \"#{new_scheme.name}\" for this show.")
       end
+    end
+
+    # Back to the production's calculation: drop the show's own choice and any
+    # customization.
+    def use_default
+      production_scheme = PayoutScheme.current_default_for_production(@production, on: show_date)
+      @show_payout.update!(payout_scheme: production_scheme, override_rules: nil)
+      notice = if production_scheme
+        "Back to \"#{production_scheme.name}\" — the production's calculation."
+      else
+        "This show no longer has a calculation of its own."
+      end
+      redirect_to manage_money_show_payout_path(@show), notice: with_recalculation_note(notice)
     end
 
     def mark_line_item_paid
@@ -524,9 +554,7 @@ module Manage
         return
       end
 
-      # Determine amount to pay - use the rules if available, otherwise $0
-      scheme = @show_payout.payout_scheme || PayoutScheme.default_for_show(@show)
-      rules = @show_payout.override_rules.presence || scheme&.rules
+      # Amount to pay: what was posted, otherwise $0
       amount = params[:amount]&.to_f || 0
 
       # If payout was paid, reopen it
@@ -673,6 +701,7 @@ module Manage
     def setup_performer_payout
       @line_items = @show_payout.line_items.by_amount
       @show_financials = @show.show_financials
+      setup_calculation_card
 
       # Load advances related to this show's performers
       person_ids = @line_items.where(payee_type: "Person").pluck(:payee_id).compact
@@ -684,6 +713,33 @@ module Manage
       (@show_advances + @general_advances).each do |advance|
         @advances_by_person[advance.person_id] ||= []
         @advances_by_person[advance.person_id] << advance
+      end
+    end
+
+    # What the "Payout calculation" card and its two modals need: the
+    # production's calculation (what this show gets unless one is chosen for
+    # it), the org's calculations to choose from, and how many later shows
+    # still ride the same one (so a new choice can carry forward).
+    def setup_calculation_card
+      @production_scheme = PayoutScheme.current_default_for_production(@production, on: show_date)
+      @available_schemes = Current.organization.payout_schemes.active.order(:name)
+      @future_shows_count = shows_on_this_calculation(from: @show.date_and_time, inclusive: false).size
+    end
+
+    # The production's shows from a date on that ride the same calculation as
+    # this one. A show whose payout page was never opened has no payout row
+    # yet; it's on whatever the production's calculation is for its date —
+    # which may be none at all, same as this show when it has none.
+    def shows_on_this_calculation(from:, inclusive:)
+      current_scheme_id = @show_payout.payout_scheme_id
+      shows = @production.shows.includes(:show_payout)
+      shows = inclusive ? shows.where("date_and_time >= ?", from) : shows.where("date_and_time > ?", from)
+      shows.select do |show|
+        if show.show_payout
+          show.show_payout.payout_scheme_id == current_scheme_id
+        else
+          PayoutScheme.default_for_show(show)&.id == current_scheme_id
+        end
       end
     end
 
@@ -708,7 +764,7 @@ module Manage
                   .find(params[:id])
       @production = @show.production
 
-      # Find default scheme for this show's date
+      # The calculation the show starts on: the default for its date
       default_scheme = PayoutScheme.default_for_show(@show)
 
       @show_payout = @show.show_payout || @show.create_show_payout!(
@@ -730,51 +786,41 @@ module Manage
       )
     end
 
-    def override_rules_params
-      params.require(:override_rules).permit(
-        distribution: [ :method, :per_ticket_rate, :minimum, :flat_amount ],
-        performer_overrides: {}
-      )
+    # A change to how this show pays (a customization saved or removed, a
+    # different calculation chosen) after it was already calculated: run the
+    # calculation again the way `calculate` does, so the line items show the
+    # new amounts. Returns a sentence for the notice, or nil when there was
+    # nothing calculated to redo. Paid lines are never rebuilt from under
+    # anyone — the amounts already paid stay, and it's left to a deliberate
+    # recalculation.
+    def recalculate_if_calculated(payout = @show_payout)
+      return nil if payout.calculated_at.blank?
+      return "Some people are already paid, so the amounts weren't recalculated — what's been paid stays as it is." if payout.line_items.any?(&:paid?)
+
+      show = payout.show
+      rules = payout.resolved_rules
+      if rules.blank?
+        return "The payouts weren't recalculated — this show has no calculation now."
+      end
+
+      if rules.dig("distribution", "method").to_s == "per_act" && show.act_based?
+        payout.update!(act_counts: show.lineup_act_counts)
+      end
+      result = PayoutCalculator.calculate(show: show, rules: rules, act_counts: payout.act_counts)
+      if result[:success]
+        "Payouts recalculated: #{helpers.number_to_currency(result[:total])} total."
+      else
+        "The payouts couldn't be recalculated (#{result[:error]}) — recalculate when you're ready."
+      end
     end
 
-    def build_override_rules
-      rules_params = params[:override_rules] || {}
-      distribution_params = rules_params[:distribution] || {}
-      method = distribution_params[:method] || "per_ticket_guaranteed"
+    # A notice with the recalculation's outcome added, when there was one.
+    def with_recalculation_note(notice)
+      [ notice, recalculate_if_calculated ].compact.join(" ")
+    end
 
-      # Build distribution
-      distribution = { "method" => method }
-
-      case method
-      when "per_ticket_guaranteed"
-        distribution["per_ticket_rate"] = distribution_params[:per_ticket_rate]&.to_f || 1.0
-        distribution["minimum"] = distribution_params[:minimum]&.to_f || 0
-      when "flat_fee"
-        distribution["flat_amount"] = distribution_params[:flat_amount]&.to_f || 0
-      when "custom"
-        # Custom per-person: use flat_fee method with all amounts in performer_overrides
-        distribution = { "method" => "flat_fee", "flat_amount" => 0 }
-      end
-
-      # Build performer overrides
-      performer_overrides = {}
-      overrides_params = rules_params[:performer_overrides] || {}
-      overrides_params.each do |person_id, override_data|
-        next if person_id.blank?
-
-        override = {}
-        override["per_ticket_rate"] = override_data[:per_ticket_rate].to_f if override_data[:per_ticket_rate].present?
-        override["minimum"] = override_data[:minimum].to_f if override_data[:minimum].present?
-        override["flat_amount"] = override_data[:flat_amount].to_f if override_data[:flat_amount].present?
-
-        performer_overrides[person_id.to_s] = override if override.any?
-      end
-
-      {
-        "allocation" => [],
-        "distribution" => distribution,
-        "performer_overrides" => performer_overrides
-      }
+    def show_date
+      @show.date_and_time&.to_date || Date.current
     end
 
     # Convert indexed hash params (from dynamic form) to arrays of hashes

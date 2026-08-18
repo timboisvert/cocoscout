@@ -1500,12 +1500,12 @@ class DemoSeeder
     def create_financials_and_payouts
       puts "\nSetting up financials and payouts..."
 
-      # Create payout schemes
+      # Create payout calculations (each production picks its own below —
+      # there is no organization-level default)
       @standard_payout = PayoutScheme.create!(
         organization: @org,
         name: "Standard Equal Split",
         description: "Equal distribution among all performers after expenses",
-        is_default: true,
         rules: {
           allocation: [
             { type: "fixed_expense", amount: 100, description: "Venue fee" },
@@ -1553,6 +1553,8 @@ class DemoSeeder
       # Add financials to past shows and some upcoming
       [ @marriage_material, @awkward_dinner, @last_call ].each do |production|
         scheme = production == @marriage_material ? @mm_payout : @standard_payout
+        # The production's own calculation, reaching back to its first show.
+        scheme.make_production_scheme!(production)
 
         production.shows.where("date_and_time < ?", Time.current).each do |show|
           create_show_financials(show, scheme)
@@ -1582,7 +1584,7 @@ class DemoSeeder
         )
       end
 
-      puts "  Created payout schemes and financials"
+      puts "  Created payout calculations and financials"
     end
 
     def create_show_financials(show, payout_scheme, past: true)
@@ -1681,7 +1683,7 @@ class DemoSeeder
       puts "Talent Pool Members: #{TalentPoolMembership.joins(talent_pool: :production).where(productions: { organization_id: @org.id }).count}"
       puts "\nSign-up Forms: #{SignUpForm.joins(:production).where(productions: { organization_id: @org.id }).count}"
       puts "Audition Cycles: #{AuditionCycle.joins(:production).where(productions: { organization_id: @org.id }).count}"
-      puts "\nPayout Schemes: #{@org.payout_schemes.count + PayoutScheme.joins(:production).where(productions: { organization_id: @org.id }).count}"
+      puts "\nPayout Calculations: #{@org.payout_schemes.count + PayoutScheme.joins(:production).where(productions: { organization_id: @org.id }).count}"
       puts "Show Payouts: #{ShowPayout.joins(show: :production).where(productions: { organization_id: @org.id }).count}"
       puts "\n" + "=" * 60
     end

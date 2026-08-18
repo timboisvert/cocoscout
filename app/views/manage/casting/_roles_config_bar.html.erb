@@ -10,8 +10,8 @@
   uses_custom = show.use_custom_roles?
   role_count = roles.count
   total_slots = roles.sum(&:total_slots)
-  act_mode = production.act_based?
-  numbers = lineup_numbers(roles)
+  act_mode = show.act_based?
+  numbers = lineup_numbers(roles, show: show)
   event_word = show.event_type.humanize.downcase
 %>
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden"
@@ -58,6 +58,11 @@
           <% else %>
             No roles defined
           <% end %>
+        </p>
+        <p class="text-xs mt-1">
+          <%= link_to "Production casting settings", manage_casting_settings_path(production),
+                class: "text-pink-600 hover:text-pink-700 hover:underline",
+                title: "How #{production.name} casts: roles or acts, where the cast comes from, the standard #{act_mode ? 'lineup' : 'roles'}" %>
         </p>
       </div>
     </div>

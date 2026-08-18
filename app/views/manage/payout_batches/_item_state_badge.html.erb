@@ -1,0 +1,19 @@
+<%#
+  Badge for one payee's line on a run: the derived money state (see
+  PayoutBatch.item_state), not the raw item status — "Waiting on bank info"
+  says why, where "Pending" only said that. Locals: item, batch
+%>
+<%
+  state = PayoutBatch.item_state(item)
+  in_flight = %w[funding funded processing].include?(batch.status)
+  label, cls = case state
+               when :paid     then [ "Paid", "bg-green-100 text-green-700" ]
+               when :returned then [ "Returned by bank", "bg-red-100 text-red-700" ]
+               when :waiting  then [ "Waiting on bank info", "bg-blue-100 text-blue-700" ]
+               else in_flight ? [ "Paying", "bg-amber-100 text-amber-700" ] : [ "Ready to pay", "bg-pink-100 text-pink-700" ]
+               end
+%>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap <%= cls %>"><%= label %></span>
+<% if item.status == "failed" %>
+  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide bg-red-50 text-red-600 whitespace-nowrap" title="<%= item.error %>">Transfer failed</span>
+<% end %>

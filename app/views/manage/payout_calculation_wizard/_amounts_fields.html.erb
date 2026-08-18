@@ -1,0 +1,213 @@
+<%#
+  The amounts for one payout approach — the wizard's "The amounts" step and the
+  show-level Customize modal both render this. Self-contained: it carries its own
+  Stimulus controller (payout-calculation-amounts) and posts distribution[...]
+  fields in the shape Manage::PayoutCalculationWizardController#amounts_from_params
+  and PayoutRulesBuilder expect.
+
+  Locals:
+    approach      one of flat | per_ticket | share | per_act (the wizard's approach
+                  keys). Optional when distribution carries a method.
+    distribution  hash in the stored rules shape (string or symbol keys):
+                  method, flat_amount, per_ticket_rate, minimum, default_shares,
+                  act_mode (simple | tiers), per_act_rate, tiers [{acts, amount}],
+                  additional_act_rate. A legacy "schedule" (act_rates) shows as
+                  the tiers table it adds up to.
+%>
+<%
+  dist = (local_assigns[:distribution] || {}).to_h.deep_stringify_keys
+  method = dist["method"].to_s
+  approach = local_assigns[:approach].presence&.to_s || case method
+    when "flat_fee" then "flat"
+    when "per_act" then "per_act"
+    when "per_ticket", "per_ticket_guaranteed" then "per_ticket"
+    else "share"
+  end
+
+  input_classes = "px-3 py-2.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  money_input = "w-28 #{input_classes}"
+  radio_classes = "mt-0.5 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  option_card = "flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-gray-50 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50"
+  row_classes = "flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg"
+
+  flat_amount = dist["flat_amount"].presence || 50
+  per_ticket_rate = dist["per_ticket_rate"].presence || 1
+  guarantee = method == "per_ticket_guaranteed" || dist["minimum"].present?
+  minimum = dist["minimum"].presence || 25
+  split = method == "shares" ? "shares" : "equal"
+  default_shares = dist["default_shares"].presence || 1
+
+  act_mode = dist["act_mode"].to_s
+  per_act_rate = dist["per_act_rate"].presence || 25
+  additional_act_rate = dist["additional_act_rate"]
+  if act_mode == "schedule"
+    # Legacy positional schedule: "1st act $75, 2nd $50, then $40 each" is the
+    # tiers table 1 act $75, 2 acts $125, then $40 per act — show it as that.
+    running = 0
+    act_tiers = PayoutScheme.act_rates(dist).each_with_index.map do |row, index|
+      running += row["amount"].to_f
+      { "acts" => index + 1, "amount" => running }
+    end
+    act_mode = "tiers"
+  else
+    act_tiers = Array(dist["tiers"]).select { |row| row.is_a?(Hash) }
+  end
+  act_mode = "simple" unless act_mode == "tiers"
+  act_tiers = [ { "acts" => 1, "amount" => 75 }, { "acts" => 2, "amount" => 125 }, { "acts" => 3, "amount" => 175 } ] if act_tiers.empty?
+  act_tiers = act_tiers.map { |t| t.transform_values { |v| v.is_a?(Float) && v == v.to_i ? v.to_i : v } }
+  additional_act_rate = additional_act_rate.to_i if additional_act_rate.is_a?(Float) && additional_act_rate == additional_act_rate.to_i
+
+  # The x that removes a tier row. Same button in the rendered rows and in the
+  # <template> the controller clones for new ones.
+  remove_button = ->(action) do
+    render "shared/button", text: "", variant: "ghost", size: "small", type: :button, icon: "x-mark",
+           title: "Remove this row", classes: "ml-auto text-gray-400 hover:text-red-500",
+           data: { action: "click->payout-calculation-amounts##{action}" }
+  end
+%>
+<div data-controller="payout-calculation-amounts" data-approach="<%= approach %>" class="space-y-5">
+  <% case approach %>
+  <% when "flat" %>
+    <div>
+      <label for="distribution_flat_amount" class="block text-sm font-medium text-gray-900 mb-1.5">Each performer is paid</label>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">$</span>
+        <input type="number" id="distribution_flat_amount" name="distribution[flat_amount]" value="<%= flat_amount %>" min="0" step="0.01" class="<%= money_input %>">
+        <span class="text-sm text-gray-600">for the night</span>
+      </div>
+      <p class="mt-1.5 text-xs text-gray-500">The same amount for everyone cast, whatever the night takes. You can still change one person's amount on the night.</p>
+    </div>
+
+  <% when "per_ticket" %>
+    <div>
+      <label for="distribution_per_ticket_rate" class="block text-sm font-medium text-gray-900 mb-1.5">For every ticket sold, each performer is paid</label>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">$</span>
+        <input type="number" id="distribution_per_ticket_rate" name="distribution[per_ticket_rate]" value="<%= per_ticket_rate %>" min="0.01" step="0.01" class="<%= money_input %>">
+      </div>
+      <p class="mt-1.5 text-xs text-gray-500">Sell 80 tickets at $1 a ticket and everyone cast is paid $80.</p>
+    </div>
+
+    <div class="pt-2">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" name="distribution[guarantee_minimum]" value="1" <%= "checked" if guarantee %>
+               data-action="change->payout-calculation-amounts#toggleMinimum"
+               class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+        <span class="text-sm text-gray-900">Guarantee a minimum</span>
+      </label>
+      <div data-payout-calculation-amounts-target="minimumPanel" class="<%= guarantee ? '' : 'hidden' %> mt-3 ml-6">
+        <label for="distribution_minimum" class="block text-sm font-medium text-gray-900 mb-1.5">Nobody is paid less than</label>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500">$</span>
+          <input type="number" id="distribution_minimum" name="distribution[minimum]" value="<%= minimum %>" min="0" step="1" class="<%= money_input %>">
+        </div>
+        <p class="mt-1.5 text-xs text-gray-500">On a quiet night the minimum applies instead of the per-ticket total.</p>
+      </div>
+    </div>
+
+  <% when "share" %>
+    <div>
+      <p class="block text-sm font-medium text-gray-900 mb-2">How is the performers' pool divided?</p>
+      <div class="space-y-2">
+        <label class="<%= option_card %>">
+          <input type="radio" name="distribution[split]" value="equal" <%= "checked" if split == "equal" %>
+                 data-action="change->payout-calculation-amounts#updateSplit" class="<%= radio_classes %>">
+          <div>
+            <div class="font-medium text-gray-900">Equally</div>
+            <div class="text-sm text-gray-500">Everyone cast gets the same slice.</div>
+          </div>
+        </label>
+        <label class="<%= option_card %>">
+          <input type="radio" name="distribution[split]" value="shares" <%= "checked" if split == "shares" %>
+                 data-action="change->payout-calculation-amounts#updateSplit" class="<%= radio_classes %>">
+          <div>
+            <div class="font-medium text-gray-900">By shares</div>
+            <div class="text-sm text-gray-500">A lead might hold 2 shares and the ensemble 1 each. You set each person's shares on the night.</div>
+          </div>
+        </label>
+      </div>
+      <div data-payout-calculation-amounts-target="sharesPanel" class="<%= split == 'shares' ? '' : 'hidden' %> mt-3 ml-1">
+        <label for="distribution_default_shares" class="block text-sm font-medium text-gray-900 mb-1.5">Shares each person starts with</label>
+        <input type="number" id="distribution_default_shares" name="distribution[default_shares]" value="<%= default_shares %>" min="0.5" step="0.5" class="w-24 <%= input_classes %>">
+      </div>
+    </div>
+
+  <% when "per_act" %>
+    <div>
+      <p class="block text-sm font-medium text-gray-900 mb-2">How is act pay worked out?</p>
+      <div class="space-y-2">
+        <label class="<%= option_card %>">
+          <input type="radio" name="distribution[act_mode]" value="simple" <%= "checked" if act_mode == "simple" %>
+                 data-action="change->payout-calculation-amounts#updateActMode" class="<%= radio_classes %>">
+          <div>
+            <div class="font-medium text-gray-900">The same rate for every act</div>
+            <div class="text-sm text-gray-500">$25 an act, so two acts pays $50 and three pays $75.</div>
+          </div>
+        </label>
+        <label class="<%= option_card %>">
+          <input type="radio" name="distribution[act_mode]" value="tiers" <%= "checked" if act_mode == "tiers" %>
+                 data-action="change->payout-calculation-amounts#updateActMode" class="<%= radio_classes %>">
+          <div>
+            <div class="font-medium text-gray-900">A table by how many acts they do</div>
+            <div class="text-sm text-gray-500">One act pays $75, two acts $125, three $175 — each row is the total for that many acts.</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div data-payout-calculation-amounts-target="perActSimple" class="<%= act_mode == 'simple' ? '' : 'hidden' %>">
+      <label for="distribution_per_act_rate" class="block text-sm font-medium text-gray-900 mb-1.5">Every act pays</label>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">$</span>
+        <input type="number" id="distribution_per_act_rate" name="distribution[per_act_rate]" value="<%= per_act_rate %>" min="0" step="0.01" class="<%= money_input %>">
+      </div>
+    </div>
+
+    <div data-payout-calculation-amounts-target="perActTiers" class="<%= act_mode == 'tiers' ? '' : 'hidden' %>">
+      <p class="block text-sm font-medium text-gray-900 mb-1">Act table</p>
+      <p class="text-xs text-gray-500 mb-3">Each row is the total someone is paid for doing that many acts.</p>
+
+      <div data-payout-calculation-amounts-target="actTiersList" class="space-y-2">
+        <% act_tiers.each_with_index do |tier, index| %>
+          <div class="<%= row_classes %>" data-payout-calculation-amounts-target="actTierRow">
+            <input type="number" name="distribution[tiers][<%= index %>][acts]" value="<%= tier['acts'] %>" min="1" step="1"
+                   data-payout-calculation-amounts-target="actTierActs"
+                   data-action="input->payout-calculation-amounts#relabelActTiers"
+                   class="w-20 <%= input_classes %>">
+            <span class="text-sm text-gray-600 whitespace-nowrap w-16" data-payout-calculation-amounts-target="actTierLabel"><%= "act".pluralize(tier['acts'].to_i) %> &rarr;</span>
+            <span class="text-gray-500">$</span>
+            <input type="number" name="distribution[tiers][<%= index %>][amount]" value="<%= tier['amount'] %>" min="0" step="0.01" class="<%= money_input %>">
+            <%= remove_button.call("removeActTier") %>
+          </div>
+        <% end %>
+      </div>
+      <template data-payout-calculation-amounts-target="actTierTemplate">
+        <div class="<%= row_classes %>" data-payout-calculation-amounts-target="actTierRow">
+          <input type="number" name="distribution[tiers][__INDEX__][acts]" value="1" min="1" step="1"
+                 data-payout-calculation-amounts-target="actTierActs"
+                 data-action="input->payout-calculation-amounts#relabelActTiers"
+                 class="w-20 <%= input_classes %>">
+          <span class="text-sm text-gray-600 whitespace-nowrap w-16" data-payout-calculation-amounts-target="actTierLabel">acts &rarr;</span>
+          <span class="text-gray-500">$</span>
+          <input type="number" name="distribution[tiers][__INDEX__][amount]" value="0" min="0" step="0.01" class="<%= money_input %>">
+          <%= remove_button.call("removeActTier") %>
+        </div>
+      </template>
+
+      <div class="mt-3">
+        <%= render "shared/button", text: "Add a row", variant: "secondary", size: "small", type: :button, icon: "plus",
+              data: { action: "click->payout-calculation-amounts#addActTier" } %>
+      </div>
+
+      <div class="mt-4 pt-4 border-t border-gray-200">
+        <label for="distribution_additional_act_rate" class="block text-sm font-medium text-gray-900 mb-1.5">Each act beyond that</label>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500">$</span>
+          <input type="number" id="distribution_additional_act_rate" name="distribution[additional_act_rate]" value="<%= additional_act_rate %>" min="0" step="0.01" placeholder="0.00" class="<%= money_input %>">
+          <span class="text-sm text-gray-600">per act</span>
+        </div>
+        <p class="mt-1.5 text-xs text-gray-500">Added for every act past the last row. Leave it blank if the last row is the most anyone is paid.</p>
+      </div>
+    </div>
+  <% end %>
+</div>

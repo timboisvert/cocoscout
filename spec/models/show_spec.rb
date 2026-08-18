@@ -231,6 +231,43 @@ RSpec.describe Show, type: :model do
       expect(create(:show)).to be_role_based
     end
 
+    describe '#effective_casting_mode (per-show override, nil inherits)' do
+      it 'inherits the production mode when nothing is set' do
+        expect(show.casting_mode).to be_nil
+        expect(show.effective_casting_mode).to eq('act_based')
+        expect(show.uses_custom_casting_mode?).to be(false)
+      end
+
+      it 'lets one show in a role-based production cast by acts' do
+        role_show = create(:show)
+        role_show.update!(casting_mode: 'act_based')
+        expect(role_show.effective_casting_mode).to eq('act_based')
+        expect(role_show).to be_act_based
+        expect(role_show.uses_custom_casting_mode?).to be(true)
+        expect(role_show.production).to be_role_based
+      end
+
+      it 'lets one show in an act-based production cast by roles' do
+        show.update!(casting_mode: 'role_based')
+        expect(show).to be_role_based
+        expect(show).not_to be_act_based
+        expect(production).to be_act_based
+      end
+
+      it 'treats an empty string as "inherit"' do
+        show.update!(casting_mode: 'role_based')
+        show.update!(casting_mode: '')
+        expect(show.reload.casting_mode).to be_nil
+        expect(show).to be_act_based
+      end
+
+      it 'rejects an unknown mode' do
+        show.casting_mode = 'vibes'
+        expect(show).not_to be_valid
+        expect(show.errors[:casting_mode]).to be_present
+      end
+    end
+
     describe '#casting_progress' do
       it 'does not count break markers as slots' do
         create(:show_person_role_assignment, show: show, role: magic1, assignable: dancer)
@@ -284,6 +321,47 @@ RSpec.describe Show, type: :model do
         create(:show_person_role_assignment, show: role_show, role: mc, assignable: nil, guest_name: 'Lola')
 
         expect(role_show.pay_cast_assignments[:guests].size).to eq(2)
+      end
+    end
+
+    describe '#copy_roles_from_production! (copies in the show\'s own shape)' do
+      let!(:magic3) { create(:role, production: production, name: 'Magic', position: 5) }
+
+      it 'copies an act-based show\'s lineup as is, break included, and says which copy came from which' do
+        copied_from = show.copy_roles_from_production!
+
+        copies = show.custom_roles.reload
+        expect(copies.map { |r| [ r.name, r.category, r.quantity ] })
+          .to eq([ [ 'Magic', 'performing', 1 ], [ 'Variety', 'performing', 1 ], [ 'Intermission', 'break', 1 ], [ 'Magic', 'performing', 1 ], [ 'Magic', 'performing', 1 ] ])
+        expect(copied_from.keys).to eq([ magic1.id, variety.id, intermission.id, magic2.id, magic3.id ])
+        expect(copied_from.values.map(&:id)).to eq(copies.map(&:id))
+      end
+
+      it 'copies role-shaped for a show pinned to roles: adjacent same-named acts fold into one role, breaks go, other repeats get a suffix' do
+        show.update!(casting_mode: 'role_based')
+
+        copied_from = nil
+        expect { copied_from = show.copy_roles_from_production! }.not_to raise_error
+
+        copies = show.custom_roles.reload
+        expect(copies.map { |r| [ r.name, r.quantity, r.position ] }).to eq([ [ 'Magic', 1, 0 ], [ 'Variety', 1, 1 ], [ 'Magic (2)', 2, 2 ] ])
+        expect(copies).to all(be_valid)
+        expect(copied_from[magic1.id]).to eq(copies[0])
+        expect(copied_from[variety.id]).to eq(copies[1])
+        expect(copied_from[magic2.id]).to eq(copies[2])
+        expect(copied_from[magic3.id]).to eq(copies[2])
+        expect(copied_from).not_to have_key(intermission.id)
+      end
+
+      it 'copies a role-based production\'s roles unchanged' do
+        role_show = create(:show)
+        host = create(:role, production: role_show.production, name: 'Host', quantity: 2, position: 3)
+        mc = create(:role, production: role_show.production, name: 'MC', position: 7)
+
+        copied_from = role_show.copy_roles_from_production!
+
+        expect(role_show.custom_roles.reload.map { |r| [ r.name, r.quantity ] }).to eq([ [ 'Host', 2 ], [ 'MC', 1 ] ])
+        expect(copied_from.keys).to eq([ host.id, mc.id ])
       end
     end
   end

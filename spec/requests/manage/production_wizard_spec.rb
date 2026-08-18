@@ -212,30 +212,57 @@ RSpec.describe "Production wizard", type: :request do
       expect(response.body).to include("Will performers be paid for this production?")
     end
 
-    it "points at the presets page when the org has no schemes" do
+    it "offers only 'set up a new one' and 'decide later' when the org has no calculations" do
       set_up_org(pro: true)
       walk_to_pay
       get manage_productions_wizard_pay_path
 
-      expect(response.body).to include("don't have any payout schemes yet")
-      expect(response.body).to include(manage_presets_money_payout_schemes_path)
+      expect(response.body).not_to include('data-card-value="existing"')
+      expect(response.body).to include('data-card-value="new"')
+      expect(response.body).to include('data-card-value="later"')
+      expect(response.body).to include("You'll build it in a short wizard right after the production is created")
+      expect(response.body).not_to include("new_scheme_preset")
+      expect(response.body).not_to include("Recommended")
+      expect(response.body).not_to include("payout scheme")
     end
 
-    it "nudges an act-based production toward the Per-Act preset" do
+    it "lists the org's calculations as radio cards, not a select" do
       org = set_up_org(pro: true)
-      create(:payout_scheme, organization: org, production: nil, name: "Even split")
-      post manage_productions_wizard_save_name_path, params: { name: "Velvet Hour" }
-      post manage_productions_wizard_save_logo_path, params: { skip: "true" }
-      post manage_productions_wizard_save_casting_path, params: { casting_source: "talent_pool" }
-      post manage_productions_wizard_save_casting_style_path, params: { casting_mode: "act_based" }
-      post manage_productions_wizard_save_roles_path, params: { has_roles: "no" }
+      create(:payout_scheme, organization: org, production: nil, name: "Door split")
+      walk_to_pay
       get manage_productions_wizard_pay_path
 
-      expect(response.body).to include("usually pay per act")
-      expect(response.body).to include(manage_presets_money_payout_schemes_path(preset: "per_act"))
+      expect(response.body).to include('data-card-value="existing"')
+      expect(response.body).to include("Use an existing calculation")
+      expect(response.body).to include("Door split")
+      expect(response.body).to match(/<input type="radio" name="payout_scheme_id" value="\d+"/)
+      expect(response.body).not_to include("<select")
     end
 
-    it "makes the chosen scheme the new production's default" do
+    it "sends them into the calculation wizard for the new production when they choose to set up a new one" do
+      set_up_org(pro: true)
+      walk_to_pay
+
+      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", pay_choice: "new" }
+      expect(response).to redirect_to(manage_productions_wizard_shows_path)
+
+      get manage_productions_wizard_review_path
+      expect(response.body).to include("New calculation — set up right after creating")
+
+      post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }
+      post manage_productions_wizard_create_path
+
+      production = Production.find_by(name: "Velvet Hour")
+      expect(production).to be_present
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_start_path(
+        production_id: production.id, return_to: edit_manage_production_path(production, anchor: "tab-6")
+      ))
+      expect(flash[:notice]).to include("now set up how its performers are paid")
+      expect(PayoutScheme.where(organization: production.organization)).to be_empty
+      expect(PayoutSchemeDefault.where(production_id: production.id)).to be_empty
+    end
+
+    it "makes the chosen calculation the new production's default" do
       org = set_up_org(pro: true)
       scheme = create(:payout_scheme, organization: org, production: nil, name: "Door split")
       other_org_scheme = create(:payout_scheme, name: "Not ours")
@@ -244,28 +271,32 @@ RSpec.describe "Production wizard", type: :request do
       expect(response.body).to include("Door split")
       expect(response.body).not_to include("Not ours")
 
-      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", payout_scheme_id: scheme.id }
+      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", pay_choice: "existing", payout_scheme_id: scheme.id }
       expect(response).to redirect_to(manage_productions_wizard_shows_path)
 
       get manage_productions_wizard_review_path
-      expect(response.body).to include("Door split")
+      expect(response.body).to include("Existing calculation: Door split")
 
       post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }
       post manage_productions_wizard_create_path
 
       production = Production.find_by(name: "Velvet Hour")
+      expect(response).to redirect_to(manage_path)
       default = PayoutSchemeDefault.find_by(production_id: production.id)
       expect(default.payout_scheme).to eq(scheme)
       expect(default.effective_from).to eq(Date.current)
       expect(other_org_scheme.payout_scheme_defaults).to be_empty
     end
 
-    it "ignores a scheme from another organization" do
+    it "ignores a calculation from another organization" do
       set_up_org(pro: true)
       other_org_scheme = create(:payout_scheme, name: "Not ours")
       walk_to_pay
 
-      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", payout_scheme_id: other_org_scheme.id }
+      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", pay_choice: "existing", payout_scheme_id: other_org_scheme.id }
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include("or set up a new one")
+
       post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }
       post manage_productions_wizard_create_path
 
@@ -273,16 +304,35 @@ RSpec.describe "Production wizard", type: :request do
       expect(PayoutSchemeDefault.where(production_id: production.id)).to be_empty
     end
 
-    it "lets them say yes and set the scheme up later" do
+    it "lets them say yes and decide later" do
       set_up_org(pro: true)
       walk_to_pay
-      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", payout_scheme_id: "" }
+      post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", pay_choice: "later" }
+      expect(response).to redirect_to(manage_productions_wizard_shows_path)
+
+      get manage_productions_wizard_review_path
+      expect(response.body).to include("Decide later")
+
       post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }
       post manage_productions_wizard_create_path
 
       production = Production.find_by(name: "Velvet Hour")
       expect(production).to be_present
+      expect(response).to redirect_to(manage_path)
       expect(PayoutSchemeDefault.where(production_id: production.id)).to be_empty
+    end
+
+    it "shows 'Not paid' on review when performers aren't paid" do
+      set_up_org(pro: true)
+      walk_to_pay
+      post manage_productions_wizard_save_pay_path, params: { pays_performers: "no" }
+      get manage_productions_wizard_review_path
+
+      expect(response.body).to include("Not paid")
+
+      post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }
+      post manage_productions_wizard_create_path
+      expect(Production.find_by(name: "Velvet Hour").pays_performers).to be(false)
     end
   end
 end

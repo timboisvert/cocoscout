@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# A payout calculation — shown to users as "payout calculation" everywhere; the
+# class and table keep their original name. Its `rules` jsonb (allocation +
+# distribution + performer_overrides, built by PayoutRulesBuilder) is what
+# PayoutCalculator runs for a show. Created/edited through
+# Manage::PayoutCalculationWizardController.
 class PayoutScheme < ApplicationRecord
   belongs_to :organization, optional: true
   belongs_to :production, optional: true
@@ -13,11 +18,9 @@ class PayoutScheme < ApplicationRecord
   validates :name, uniqueness: { scope: :organization_id }, if: -> { organization_id.present? && production_id.blank? }
   validates :name, uniqueness: { scope: :production_id }, if: -> { production_id.present? }
 
-  scope :default_first, -> { order(is_default: :desc, created_at: :asc) }
   scope :organization_level, -> { where(production_id: nil) }
   scope :production_level, -> { where.not(production_id: nil) }
   scope :for_organization, ->(org) { where(organization: org) }
-  scope :defaults, -> { where(is_default: true) }
   scope :effective_on, ->(date) { where("payout_schemes.effective_from IS NULL OR payout_schemes.effective_from <= ?", date) }
   scope :archived, -> { where.not(archived_at: nil) }
   scope :active, -> { where(archived_at: nil) }
@@ -34,58 +37,28 @@ class PayoutScheme < ApplicationRecord
     update!(archived_at: nil)
   end
 
-  # Find the default scheme for a given show using the payout_scheme_defaults join table
-  # Priority:
-  # 1. Production-specific default with effective_from <= show date (most recent effective_from)
-  # 2. Organization-level default (production_id nil) with effective_from <= show date
+  # The calculation a show starts from: the one its production chose (the row
+  # in effect on the show's date). There is no organization-level fallback —
+  # a production that hasn't chosen one has none, and a production whose
+  # performer pay is switched off resolves to none even if it kept its rows.
   def self.default_for_show(show)
+    return nil unless show.production&.pays_performers?
+
     show_date = show.date_and_time&.to_date || Date.current
-    production = show.production
-    organization = production.organization
-
-    # Try production-specific defaults first (via join table)
-    production_default = PayoutSchemeDefault
-      .for_production(production)
+    PayoutSchemeDefault
+      .for_production(show.production)
       .effective_on(show_date)
       .by_effective_date_desc
       .first
       &.payout_scheme
-
-    return production_default if production_default
-
-    # Fall back to organization-level defaults (production_id nil in join table)
-    org_default = PayoutSchemeDefault
-      .org_level
-      .joins(:payout_scheme)
-      .where(payout_schemes: { organization_id: organization.id })
-      .effective_on(show_date)
-      .by_effective_date_desc
-      .first
-      &.payout_scheme
-
-    return org_default if org_default
-
-    # Legacy fallback: check is_default flag on schemes (for migration period)
-    legacy_production_default = production.payout_schemes
-      .defaults
-      .effective_on(show_date)
-      .order(Arel.sql("CASE WHEN payout_schemes.effective_from IS NULL THEN 0 ELSE 1 END DESC, payout_schemes.effective_from DESC"))
-      .first
-
-    return legacy_production_default if legacy_production_default
-
-    organization.payout_schemes
-      .organization_level
-      .defaults
-      .effective_on(show_date)
-      .order(Arel.sql("CASE WHEN payout_schemes.effective_from IS NULL THEN 0 ELSE 1 END DESC, payout_schemes.effective_from DESC"))
-      .first
   end
 
-  # The scheme a show of this production would start from today, if the
-  # production has one of its own (org-level fallbacks don't count — this is
-  # "what did someone set up for THIS production").
-  def self.current_default_for_production(production, on: Date.current)
+  # The calculation this production has chosen as of a date (nil if none, or
+  # if the production doesn't pay performers — pass include_paused: true to
+  # see the one it keeps while pay is switched off, e.g. on the Pay tab).
+  def self.current_default_for_production(production, on: Date.current, include_paused: false)
+    return nil unless production && (include_paused || production.pays_performers?)
+
     PayoutSchemeDefault
       .for_production(production)
       .effective_on(on)
@@ -94,14 +67,24 @@ class PayoutScheme < ApplicationRecord
       &.payout_scheme
   end
 
+  # The same answer for many productions in one query: { production_id =>
+  # PayoutScheme or nil }, the row in effect on `on` picked in Ruby.
+  def self.current_defaults_for_productions(productions, on: Date.current)
+    productions = Array(productions)
+    rows = PayoutSchemeDefault.where(production_id: productions.map(&:id))
+                              .includes(:payout_scheme)
+                              .group_by(&:production_id)
+    productions.to_h do |production|
+      next [ production.id, nil ] unless production.pays_performers?
+
+      row = PayoutSchemeDefault.in_effect_on(rows[production.id] || [], on)
+      [ production.id, row&.payout_scheme ]
+    end
+  end
+
   # Does the org have any (non-archived) scheme that pays by acts?
   def self.per_act_scheme_exists_for?(organization)
     organization.payout_schemes.active.any?(&:act_based?)
-  end
-
-  # Check if this is an organization-level scheme (not tied to a specific production)
-  def organization_level?
-    production_id.blank?
   end
 
   private
@@ -113,153 +96,6 @@ class PayoutScheme < ApplicationRecord
   end
 
   public
-
-  # Preset templates for quick setup
-  PRESETS = {
-    no_pay: {
-      name: "No Pay",
-      description: "Non-revenue events with no performer payouts (rehearsals, workshops, etc.)",
-      rules: {
-        allocation: [],
-        distribution: { method: "no_pay" },
-        performer_overrides: {}
-      }
-    },
-    even_split: {
-      name: "Even Split (50/50)",
-      description: "Split revenue evenly between house and performers, then divide equally among performers.",
-      rules: {
-        allocation: [
-          { type: "percentage", value: 50, to: "house" },
-          { type: "remainder", to: "performers" }
-        ],
-        distribution: { method: "equal" },
-        performer_overrides: {}
-      }
-    },
-    per_ticket: {
-      name: "Per-Ticket Rate",
-      description: "Pay each performer a fixed amount per ticket sold.",
-      rules: {
-        allocation: [
-          { type: "remainder", to: "available" }
-        ],
-        distribution: { method: "per_ticket", per_ticket_rate: 1.0 },
-        performer_overrides: {}
-      }
-    },
-    per_ticket_guaranteed: {
-      name: "Per-Ticket with Minimum",
-      description: "Pay per ticket with a guaranteed minimum payout per performer.",
-      rules: {
-        allocation: [
-          { type: "remainder", to: "available" }
-        ],
-        distribution: { method: "per_ticket_guaranteed", per_ticket_rate: 1.0, minimum: 25.0 },
-        performer_overrides: {}
-      }
-    },
-    per_act: {
-      name: "Per Act",
-      description: "Pay each performer by how many acts they did that night. You enter the act counts when you calculate the payout.",
-      rules: {
-        allocation: [],
-        distribution: {
-          method: "per_act",
-          act_mode: "schedule",
-          act_rates: [
-            { act: 1, amount: 75.0 },
-            { act: 2, amount: 50.0 }
-          ],
-          additional_act_rate: 50.0
-        },
-        performer_overrides: {}
-      }
-    },
-    flat_fee: {
-      name: "Flat Fee",
-      description: "Pay each performer a fixed amount regardless of ticket sales.",
-      rules: {
-        allocation: [],
-        distribution: { method: "flat_fee", flat_amount: 50.0 },
-        performer_overrides: {}
-      }
-    },
-    share_based: {
-      name: "Share-Based Split",
-      description: "Divide performer pool by configurable shares per person.",
-      rules: {
-        allocation: [
-          { type: "percentage", value: 40, to: "house" },
-          { type: "remainder", to: "performers" }
-        ],
-        distribution: { method: "shares", default_shares: 1.0 },
-        performer_overrides: {}
-      }
-    }
-  }.freeze
-
-  # Create a scheme from preset for a production (legacy) or organization
-  def self.create_from_preset(owner, preset_key)
-    preset = PRESETS[preset_key.to_sym]
-    return nil unless preset
-
-    if owner.is_a?(Organization)
-      PayoutScheme.create(
-        organization: owner,
-        name: preset[:name],
-        description: preset[:description],
-        rules: preset[:rules]
-      )
-    else
-      # Legacy production-level support
-      PayoutScheme.create(
-        production: owner,
-        organization: owner.organization,
-        name: preset[:name],
-        description: preset[:description],
-        rules: preset[:rules]
-      )
-    end
-  end
-
-  def self.preset_options
-    PRESETS.map { |key, preset| [ preset[:name], key ] }
-  end
-
-  # Make this scheme the default for specific productions
-  # @param production_ids [Array<Integer>] - production IDs to set as default for (empty = org-level fallback)
-  # @param effective_from [Date, nil] - optional date when this default takes effect
-  def set_as_default_for!(production_ids: [], effective_from: nil)
-    transaction do
-      # Remove existing defaults for this scheme
-      payout_scheme_defaults.destroy_all
-
-      if production_ids.empty?
-        # Org-level fallback - clear conflicting org-level defaults
-        PayoutSchemeDefault
-          .org_level
-          .joins(:payout_scheme)
-          .where(payout_schemes: { organization_id: organization_id })
-          .where(effective_from: effective_from)
-          .destroy_all
-
-        # Create org-level default
-        payout_scheme_defaults.create!(production_id: nil, effective_from: effective_from)
-      else
-        # Production-specific defaults
-        production_ids.each do |prod_id|
-          # Clear conflicting defaults for this production/date combo
-          PayoutSchemeDefault
-            .where(production_id: prod_id, effective_from: effective_from)
-            .destroy_all
-
-          # Create the new default
-          payout_scheme_defaults.create!(production_id: prod_id, effective_from: effective_from)
-        end
-      end
-    end
-  end
 
   # Add a production to this scheme's defaults (keeps existing)
   def add_default_for_production!(production, effective_from: nil)
@@ -274,42 +110,72 @@ class PayoutScheme < ApplicationRecord
     )
   end
 
-  # Remove a production from this scheme's defaults
-  def remove_default_for_production!(production)
-    payout_scheme_defaults.where(production_id: production.id).destroy_all
+  # Make this THE scheme for a production — the answer to "which payout
+  # calculation does this production use?" asked from the production wizard,
+  # the Pay tab, the "used by" modal or the calculation wizard.
+  #
+  # With no starting_on it takes over from now on: whatever the production
+  # used before today stays on record for the shows before it (its history and
+  # any other calculation's earlier-dated rows are kept), any switch dated
+  # today or later — including this calculation's own rows — is replaced by
+  # one row. If that leaves the production with no history at all, the row
+  # reaches back to the production's earliest show, so nights already on the
+  # calendar resolve to it too; otherwise it's dated today. Then it restamps
+  # show payouts that haven't been worked out yet from that date on, because a
+  # payout pins its calculation the first time its page is opened.
+  #
+  # With a starting_on date the switch is dated: whatever the production used
+  # before that date stays in place for the shows before it; only rows dated
+  # on or after starting_on are replaced, and only pending payouts for shows
+  # on or after it are restamped.
+  def make_production_scheme!(production, starting_on: nil)
+    transaction do
+      rows = PayoutSchemeDefault.for_production(production)
+      if starting_on.present?
+        starting_on = starting_on.to_date
+        rows.where("effective_from >= ?", starting_on).destroy_all
+        effective_from = starting_on
+      else
+        rows.where("effective_from >= ?", Date.current).or(rows.where(payout_scheme_id: id)).destroy_all
+        effective_from = rows.exists? ? Date.current : self.class.production_scheme_start(production)
+      end
+      payout_scheme_defaults.create!(production_id: production.id, effective_from: effective_from)
+      ShowPayout.restamp_pending_for_production!(production, self, from: effective_from)
+    end
+  end
+
+  # This calculation stops covering a production (it was unchecked on the
+  # "who uses it" list): only ITS rows for the production go — another
+  # calculation's history and scheduled switches stay. Payouts nobody has
+  # calculated yet follow whatever the production resolves to now (which may
+  # be nothing).
+  def stop_covering!(production)
+    transaction do
+      payout_scheme_defaults.where(production_id: production.id).destroy_all
+      ShowPayout.restamp_pending_for_production!(production, nil)
+    end
+  end
+
+  # Drop every calculation the production has, any date — its shows have none
+  # until another is chosen. Reserved for deliberate wipes; the performer-pay
+  # switch keeps the rows and only flips Production#pays_performers.
+  def self.clear_production_scheme!(production)
+    transaction do
+      PayoutSchemeDefault.for_production(production).destroy_all
+      ShowPayout.restamp_pending_for_production!(production, nil)
+    end
+  end
+
+  # The date a production-wide scheme takes effect: its first show, or today
+  # if it has none / they're all ahead.
+  def self.production_scheme_start(production)
+    first_show = production.shows.minimum(:date_and_time)&.to_date
+    [ first_show, Date.current ].compact.min
   end
 
   # Check if this scheme is default for a given production (at any date)
   def default_for_production?(production)
     payout_scheme_defaults.where(production_id: production.id).exists?
-  end
-
-  # Check if this is the org-level fallback default
-  def org_level_default?
-    payout_scheme_defaults.org_level.exists?
-  end
-
-  # Legacy compatibility: mark this scheme as the default (uses old is_default flag)
-  # Deprecated: Use set_as_default_for! instead
-  def make_default!
-    transaction do
-      scope = if organization_level?
-                PayoutScheme.where(organization_id: organization_id, production_id: nil)
-      else
-                PayoutScheme.where(production_id: production_id)
-      end
-
-      # Only unmark conflicting defaults (same effective_from)
-      conflicting = scope.where.not(id: id).where(is_default: true)
-      if effective_from.present?
-        conflicting = conflicting.where(effective_from: effective_from)
-      else
-        conflicting = conflicting.where(effective_from: nil)
-      end
-
-      conflicting.update_all(is_default: false)
-      update!(is_default: true)
-    end
   end
 
   # Get allocation steps
@@ -339,11 +205,14 @@ class PayoutScheme < ApplicationRecord
   # "per_act" carries an act_mode saying which one this scheme means:
   #
   #   simple   — every act is worth the same ($25/act, so two acts pays $50)
-  #   schedule — each act is worth its own amount and they add up: the first
-  #              act pays $75, the second $50, and every act after that pays
-  #              the "additional" rate. Two acts pays $125.
-  #   tiers    — the act count picks one total for the night, it doesn't add
-  #              up: 1 act pays $25, 2 or more pays $50.
+  #   tiers    — a table by how many acts they did, each row the TOTAL for
+  #              that many acts: 1 act pays $75, 2 acts pays $125. Past the
+  #              last row, every further act adds additional_act_rate (blank
+  #              means the last row is the ceiling).
+  #   schedule — legacy: each act worth its own amount and they add up (the
+  #              first act $75, the second $50, then the "additional" rate).
+  #              Still calculated for stored rules; the wizard no longer
+  #              offers it — a tiers table says the same thing.
   #
   # The act counts themselves aren't part of the scheme — they're entered per
   # show at calculation time and stored on ShowPayout#act_counts.
@@ -369,8 +238,16 @@ class PayoutScheme < ApplicationRecord
       tail = additional_act_rate(distribution)
       (1..count).sum { |n| rates[n - 1] ? rates[n - 1]["amount"].to_f : tail }.round(2)
     else
-      tier = act_tiers(distribution).select { |t| t["acts"].to_i <= count }.last
-      tier ? tier["amount"].to_f.round(2) : 0.0
+      tiers = act_tiers(distribution)
+      tier = tiers.select { |t| t["acts"].to_i <= count }.last
+      return 0.0 unless tier
+
+      amount = tier["amount"].to_f
+      # Past the last row, each further act adds the beyond rate (if any).
+      if tier.equal?(tiers.last) && count > tier["acts"].to_i && distribution["additional_act_rate"].present?
+        amount += additional_act_rate(distribution) * (count - tier["acts"].to_i)
+      end
+      amount.round(2)
     end
   end
 
@@ -396,14 +273,16 @@ class PayoutScheme < ApplicationRecord
       .sort_by { |row| row["act"] }
   end
 
-  # What every act past the end of the schedule is worth. Blank means those
-  # acts add nothing, which is a real choice ("we only pay for two").
+  # What every act past the end of the schedule / the last tier row is worth.
+  # Blank means those acts add nothing, which is a real choice ("we only pay
+  # for two").
   def self.additional_act_rate(distribution)
     (distribution || {}).deep_stringify_keys["additional_act_rate"].to_f
   end
 
-  # "1st act $75.00, 2nd act $50.00, then $50.00 each" / "1 act $25.00, 2+ acts
-  # $50.00" / "$25.00 per act"
+  # "$25.00 per act" / "1 act $75.00, 2 acts $125.00, then $50.00 per act" /
+  # "1 act $25.00, 2+ acts $50.00" (no beyond rate) / legacy schedule "1st act
+  # $75.00, 2nd act $50.00, then $50.00 each"
   def self.act_rules_description(distribution)
     distribution = (distribution || {}).deep_stringify_keys
 
@@ -421,16 +300,62 @@ class PayoutScheme < ApplicationRecord
       rows = act_tiers(distribution)
       return "No act tiers set" if rows.empty?
 
-      rows.each_with_index.map do |tier, index|
+      beyond = distribution["additional_act_rate"].present?
+      parts = rows.each_with_index.map do |tier, index|
         acts = tier["acts"].to_i
-        label = index == rows.length - 1 ? "#{acts}+ acts" : "#{acts} #{'act'.pluralize(acts)}"
+        last = index == rows.length - 1
+        label = last && !beyond ? "#{acts}+ acts" : "#{acts} #{'act'.pluralize(acts)}"
         "#{label} #{act_money(tier['amount'])}"
-      end.join(", ")
+      end
+      parts << "then #{act_money(distribution['additional_act_rate'])} per act" if beyond
+      parts.join(", ")
     end
   end
 
   def self.act_money(amount)
     "$#{'%.2f' % amount.to_f}"
+  end
+
+  # A name for a calculation nobody has named yet, read off its rules — what
+  # the wizard offers on the review step. Short, the way you'd say it out
+  # loud: "$25 per act", "$50 flat per performer", "Even split after 40% house".
+  def self.suggested_name(rules)
+    rules = (rules || {}).deep_stringify_keys
+    dist = rules["distribution"] || {}
+    # "$25", "$2.50" — whole dollars lose the cents, anything else keeps two.
+    money = ->(amount) { amount.to_f == amount.to_f.to_i ? "$#{amount.to_f.to_i}" : "$#{'%.2f' % amount.to_f}" }
+    percent = ->(value) { ActiveSupport::NumberHelper.number_to_rounded(value.to_f, strip_insignificant_zeros: true, precision: 2) }
+
+    case dist["method"].to_s
+    when "flat_fee"
+      "#{money.call(dist['flat_amount'])} flat per performer"
+    when "per_ticket"
+      "#{money.call(dist['per_ticket_rate'])}/ticket"
+    when "per_ticket_guaranteed"
+      "#{money.call(dist['per_ticket_rate'])}/ticket, min #{money.call(dist['minimum'])}"
+    when "per_act"
+      case dist["act_mode"].to_s
+      when "simple"
+        "#{money.call(dist['per_act_rate'])} per act"
+      when "schedule"
+        rows = act_rates(dist)
+        parts = rows.map { |row| "#{row['act'].ordinalize} act #{money.call(row['amount'])}" }
+        parts << "then #{money.call(dist['additional_act_rate'])} each" if dist["additional_act_rate"].present?
+        parts.presence&.join(", ") || "Paid by acts"
+      else
+        rows = act_tiers(dist)
+        parts = rows.map { |tier| "#{tier['acts']} #{'act'.pluralize(tier['acts'].to_i)} #{money.call(tier['amount'])}" }
+        parts << "then #{money.call(dist['additional_act_rate'])} each" if dist["additional_act_rate"].present?
+        parts.presence&.join(", ") || "Paid by acts"
+      end
+    when "shares"
+      "Split by shares"
+    when "no_pay"
+      "Not paid"
+    else
+      house = Array(rules["allocation"]).find { |s| s["type"] == "percentage" && s["person_id"].blank? }
+      house && house["value"].to_f.positive? ? "Even split after #{percent.call(house['value'])}% house" : "Even split"
+    end
   end
 
   def act_tiers
@@ -485,6 +410,8 @@ class PayoutScheme < ApplicationRecord
       parts << "$#{distribution_config['flat_amount']} flat per performer"
     when "per_act"
       parts << "Paid by acts (#{act_rules_description})"
+    when "no_pay"
+      parts << "Performers aren't paid"
     end
 
     parts.join(" → ")

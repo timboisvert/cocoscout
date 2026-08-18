@@ -4,17 +4,24 @@
 #
 # Usage:
 #   result = PayoutCalculator.calculate(show: show, rules: rules)
-#   # => { success: true, total: 250.0, line_items: [...] }
+#   # => { success: true, total: 250.0, line_items: [ShowPayoutLineItem, ...] }
+#
+#   dry_run = PayoutCalculator.calculate(show: show, rules: rules, persist: false)
+#   # => { success: true, total: 250.0, line_items: [{ payee:, amount:, ... }, ...] }
 #
 #   preview = PayoutCalculator.preview(rules: rules, financials: { ticket_count: 50, ... }, performer_count: 4)
 #   # => { success: true, total: 200.0, per_person: 50.0, breakdown: [...] }
 #
+# performer_overrides are keyed like ShowPayout.act_key: "Person_12" /
+# "Group_3" for cast, "guest_45" for a guest slot. A bare "12" (written by
+# older customizations) still finds Person 12 — and only a Person.
 class PayoutCalculator
   class << self
-    # Calculate and persist payouts for a show.
-    # act_counts is only used by act-based schemes: { "Person_12" => 2, "guest_9" => 1 }
-    def calculate(show:, rules:, act_counts: {})
-      new(show: show, rules: rules, act_counts: act_counts).calculate
+    # Calculate payouts for a show and, unless persist: false, rebuild its
+    # line items from them. act_counts is only used by act-based schemes:
+    # { "Person_12" => 2, "guest_9" => 1 }
+    def calculate(show:, rules:, act_counts: {}, persist: true)
+      new(show: show, rules: rules, act_counts: act_counts, persist: persist).calculate
     end
 
     # Preview calculation without persisting (for UI feedback)
@@ -23,15 +30,20 @@ class PayoutCalculator
     end
   end
 
-  def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil, act_counts: {})
+  def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil, act_counts: {}, persist: true)
     @show = show
     @rules = rules&.deep_stringify_keys || {}
     @preview_financials = preview_financials
     @preview_performer_count = preview_performer_count
     @act_counts = (act_counts || {}).stringify_keys
+    @persist = persist
+    @guest_assignments = []
   end
 
-  # Calculate and persist payouts
+  # Work out every payee's amount and, unless this is a dry run, persist them
+  # as the show payout's line items. A dry run returns the same numbers as
+  # plain hashes and touches nothing — no line items, no ledger, no
+  # calculated_at.
   def calculate
     return { success: false, error: "No show provided" } unless @show
     return { success: false, error: "No rules provided" } unless @rules.present?
@@ -48,6 +60,9 @@ class PayoutCalculator
     cast = @show.pay_cast_assignments
     regular_performers = cast[:people]
     guest_assignments = cast[:guests]
+    # The pool methods share the night's money with the guests too, so the
+    # distribution step needs to know they're there.
+    @guest_assignments = guest_assignments
 
     total_performer_count = regular_performers.count + guest_assignments.count
 
@@ -112,25 +127,44 @@ class PayoutCalculator
       per_person_amount = 0
       adjusted_line_items = result[:line_items]
       guest_line_items = calculate_guest_payouts_per_act(guest_assignments, distribution, overrides)
+    when "per_ticket", "per_ticket_guaranteed"
+      # Per-ticket pay is rate × tickets for each person — nothing is shared,
+      # so guests are worked out the same way and nobody's line is re-split.
+      per_person_amount = 0
+      adjusted_line_items = result[:line_items]
+      guest_line_items = calculate_guest_payouts_per_ticket(guest_assignments, inputs, distribution, overrides)
     when "no_pay"
-      # No pay: everyone gets $0
+      # No pay: everyone gets $0 — unless tonight's customization names an
+      # exact amount for someone.
       per_person_amount = 0
       adjusted_line_items = result[:line_items]
       guest_line_items = guest_assignments.map do |assignment|
-        {
-          guest_name: assignment.guest_name,
-          guest_assignment_id: assignment.id,
-          amount: 0,
-          shares: nil,
-          calculation_details: {
-            formula: "No pay (non-revenue event)",
-            inputs: {},
-            breakdown: [ "Non-revenue: $0.00" ]
+        override = override_for(overrides, assignment)
+        if override["flat_amount"].present?
+          custom_amount_item(override["flat_amount"]).merge(guest_name: assignment.guest_name, guest_assignment_id: assignment.id)
+        else
+          {
+            guest_name: assignment.guest_name,
+            guest_assignment_id: assignment.id,
+            amount: 0,
+            shares: nil,
+            calculation_details: {
+              formula: "No pay (non-revenue event)",
+              inputs: {},
+              breakdown: [ "Non-revenue: $0.00" ]
+            }
           }
-        }
+        end
       end
+    when "shares"
+      # Shares: distribute_shares already counted the guests into the total
+      # (default_shares each), so the cast lines stand; the guests are paid
+      # their shares of the same pool.
+      per_person_amount = 0
+      adjusted_line_items = result[:line_items]
+      guest_line_items = calculate_guest_payouts_shares(guest_assignments, distribution, overrides, result[:performer_pool], regular_performers)
     else
-      # Pool-based methods: divide pool by total performers (including guests)
+      # Equal split: the pool is divided per head, guests included.
       per_person_amount = if total_performer_count > 0 && result[:performer_pool]
         (result[:performer_pool] / total_performer_count).round(2)
       else
@@ -138,9 +172,12 @@ class PayoutCalculator
       end
 
       # Adjust regular performer line items if there are guests
-      # (they need to share the pool with guests)
+      # (they need to share the pool with guests). A person given an exact
+      # amount for tonight keeps it — the re-split is for everyone else.
       adjusted_line_items = if guest_assignments.any? && regular_performers.any?
         result[:line_items].map do |item|
+          next item if custom_amount_for(overrides, item[:payee]).present?
+
           calc_details = item[:calculation_details] || {}
           existing_inputs = calc_details[:inputs] || calc_details["inputs"] || {}
           item.merge(
@@ -167,48 +204,42 @@ class PayoutCalculator
       )
     end
 
+    # Every line as a hash, the way a line item will be built from it: cast
+    # lines, guest lines (flagged, keyed by the guest slot) and anyone's cut
+    # off the top (flagged as an individual allocation).
+    line_item_hashes =
+      adjusted_line_items +
+      guest_line_items.map { |item| item.merge(is_guest: true) } +
+      individual_allocation_items.map { |item| item.merge(is_individual_allocation: true) }
+    total = line_item_hashes.sum { |i| i[:amount] }
+
+    return { success: true, total: total, line_items: line_item_hashes } unless @persist
+
     # Persist line items
     payout = @show.show_payout
     ActiveRecord::Base.transaction do
       # Clear existing line items (also clears advance recoveries via dependent: :destroy)
       payout.line_items.destroy_all
 
-      # Create line items for regular performers
-      adjusted_line_items.each do |item|
-        line_item = payout.line_items.create!(
+      line_item_hashes.each do |item|
+        # A guest has no record of their own; the slot they were paid for
+        # rides along in the details so the line can be matched back to it.
+        details = item[:calculation_details] || {}
+        details = details.merge(guest_assignment_id: item[:guest_assignment_id]) if item[:is_guest]
+
+        payout.line_items.create!(
           payee: item[:payee],
+          is_guest: item[:is_guest] || false,
+          guest_name: item[:guest_name],
           amount: item[:amount],
           shares: item[:shares],
-          calculation_details: item[:calculation_details]
+          calculation_details: details,
+          is_individual_allocation: item[:is_individual_allocation] || false
         )
-
         # Advances are no longer deducted at calc time — earnings post gross and
         # advances net against them on the payout ledger (see AdvancePayoutService).
       end
 
-      # Create line items for guests
-      guest_line_items.each do |item|
-        payout.line_items.create!(
-          is_guest: true,
-          guest_name: item[:guest_name],
-          amount: item[:amount],
-          shares: item[:shares],
-          calculation_details: item[:calculation_details]
-        )
-      end
-
-      # Create line items for individual allocations (e.g., producer percentages)
-      individual_allocation_items.each do |item|
-        payout.line_items.create!(
-          payee: item[:payee],
-          amount: item[:amount],
-          shares: item[:shares],
-          calculation_details: item[:calculation_details],
-          is_individual_allocation: true
-        )
-      end
-
-      total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] } + individual_allocation_items.sum { |i| i[:amount] }
       payout.update!(
         calculated_at: Time.current,
         total_payout: total
@@ -218,7 +249,6 @@ class PayoutCalculator
       payout.sync_earnings_to_ledger!
     end
 
-    total = adjusted_line_items.sum { |i| i[:amount] } + guest_line_items.sum { |i| i[:amount] } + individual_allocation_items.sum { |i| i[:amount] }
     { success: true, total: total, line_items: payout.line_items.reload }
   rescue => e
     Rails.logger.error "PayoutCalculator error: #{e.message}"
@@ -292,7 +322,7 @@ class PayoutCalculator
     when "per_act"
       distribute_per_act(performers, distribution, overrides, breakdown)
     when "no_pay"
-      distribute_no_pay(performers, breakdown)
+      distribute_no_pay(performers, overrides, breakdown)
     else
       return { error: "Unknown distribution method: #{method}" }
     end
@@ -378,12 +408,12 @@ class PayoutCalculator
     breakdown << "Performer pool: #{format_currency(pool)} ÷ #{performers.count} = #{format_currency(per_person)} each"
 
     performers.map do |performer|
-      override = overrides[performer.id.to_s] || {}
-      amount = override["flat_amount"] || per_person
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer, shares: 1) if custom
 
       {
         payee: performer,
-        amount: amount.round(2),
+        amount: per_person.round(2),
         shares: 1,
         calculation_details: {
           formula: "#{format_currency(pool)} ÷ #{performers.count} performers",
@@ -394,24 +424,29 @@ class PayoutCalculator
     end
   end
 
+  # Shares: the pool is split by everyone's shares — the cast's (their own
+  # override or default_shares each) and any guests' (default_shares each, or
+  # their slot's override). Guests are paid their part in
+  # calculate_guest_payouts_shares from the same split.
   def distribute_shares(pool, performers, distribution, overrides, breakdown)
     return [] if performers.empty?
 
-    default_shares = distribution["default_shares"].to_f || 1.0
+    split = shares_split(pool, performers, distribution, overrides)
+    total_shares = split[:total_shares]
+    per_share = split[:per_share]
 
-    # Calculate total shares
-    total_shares = performers.sum do |performer|
-      override = overrides[performer.id.to_s] || {}
-      override["shares"]&.to_f || default_shares
+    guest_count = @guest_assignments.count
+    breakdown << if guest_count.positive?
+      "Performer pool: #{format_currency(pool)}, Total shares: #{total_shares} (including #{guest_count} #{'guest'.pluralize(guest_count)})"
+    else
+      "Performer pool: #{format_currency(pool)}, Total shares: #{total_shares}"
     end
 
-    breakdown << "Performer pool: #{format_currency(pool)}, Total shares: #{total_shares}"
-
-    per_share = total_shares > 0 ? pool / total_shares : 0
-
     performers.map do |performer|
-      override = overrides[performer.id.to_s] || {}
-      shares = override["shares"]&.to_f || default_shares
+      shares = shares_for(overrides, performer, distribution)
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer, shares: shares) if custom
+
       amount = per_share * shares
 
       {
@@ -437,7 +472,10 @@ class PayoutCalculator
     breakdown << "#{ticket_count} tickets × #{format_currency(rate)}/ticket = #{format_currency(per_person)} per performer"
 
     performers.map do |performer|
-      override = overrides[performer.id.to_s] || {}
+      override = override_for(overrides, performer)
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer) if custom
+
       custom_rate = override["per_ticket_rate"]&.to_f || rate
       amount = custom_rate * ticket_count
 
@@ -466,7 +504,10 @@ class PayoutCalculator
     breakdown << "#{ticket_count} tickets × #{format_currency(rate)} = #{format_currency(calculated)}, min #{format_currency(minimum)} → #{format_currency(per_person)} per performer"
 
     performers.map do |performer|
-      override = overrides[performer.id.to_s] || {}
+      override = override_for(overrides, performer)
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer) if custom
+
       custom_rate = override["per_ticket_rate"]&.to_f || rate
       custom_min = override["minimum"]&.to_f || minimum
       calculated_amount = custom_rate * ticket_count
@@ -496,17 +537,17 @@ class PayoutCalculator
     breakdown << "Flat fee: #{format_currency(flat_amount)} per performer"
 
     performers.map do |performer|
-      override = overrides[performer.id.to_s] || {}
-      amount = override["flat_amount"]&.to_f || flat_amount
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer) if custom
 
       {
         payee: performer,
-        amount: amount.round(2),
+        amount: flat_amount.round(2),
         shares: nil,
         calculation_details: {
           formula: "Flat fee",
-          inputs: { flat_amount: amount },
-          breakdown: [ "Fixed: #{format_currency(amount)}" ]
+          inputs: { flat_amount: flat_amount },
+          breakdown: [ "Fixed: #{format_currency(flat_amount)}" ]
         }
       }
     end
@@ -521,7 +562,10 @@ class PayoutCalculator
 
     performers.map do |performer|
       acts = act_count_for(ShowPayout.act_key(performer))
-      override = overrides[performer.id.to_s] || {}
+      override = override_for(overrides, performer)
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom, inputs: { acts: acts }).merge(payee: performer) if custom
+
       amount, formula = per_act_amount_and_formula(distribution, override, acts)
 
       {
@@ -543,7 +587,12 @@ class PayoutCalculator
 
     guest_assignments.map do |assignment|
       acts = act_count_for(ShowPayout.act_key(assignment))
-      override = overrides["guest_#{assignment.id}"] || {}
+      override = override_for(overrides, assignment)
+      if override["flat_amount"].present?
+        next custom_amount_item(override["flat_amount"], inputs: { acts: acts })
+               .merge(guest_name: assignment.guest_name, guest_assignment_id: assignment.id)
+      end
+
       amount, formula = per_act_amount_and_formula(distribution, override, acts)
 
       {
@@ -582,10 +631,13 @@ class PayoutCalculator
     PayoutScheme.act_rules_description(distribution)
   end
 
-  def distribute_no_pay(performers, breakdown)
+  def distribute_no_pay(performers, overrides, breakdown)
     breakdown << "No pay: Non-revenue event"
 
     performers.map do |performer|
+      custom = custom_amount_for(overrides, performer)
+      next custom_amount_item(custom).merge(payee: performer) if custom
+
       {
         payee: performer,
         amount: 0,
@@ -605,11 +657,11 @@ class PayoutCalculator
 
     guest_assignments.map do |assignment|
       # Check for guest-specific override (keyed as "guest_#{assignment.id}")
-      override = overrides["guest_#{assignment.id}"] || {}
+      override = override_for(overrides, assignment)
       amount = override["flat_amount"]&.to_f || flat_amount
 
       formula = if override["flat_amount"].present?
-        "Custom flat fee"
+        "Custom amount"
       else
         "Flat fee"
       end
@@ -639,7 +691,7 @@ class PayoutCalculator
 
     guest_assignments.map do |assignment|
       # Check for guest-specific override (keyed as "guest_#{assignment.id}")
-      override = overrides["guest_#{assignment.id}"] || {}
+      override = override_for(overrides, assignment)
       amount = override["flat_amount"]&.to_f || per_person
 
       formula = if override["flat_amount"].present?
@@ -664,8 +716,127 @@ class PayoutCalculator
     end
   end
 
+  # Guests on a per-ticket night: rate × tickets, honouring the minimum on the
+  # guaranteed variant and any per-guest rate/minimum/flat override.
+  def calculate_guest_payouts_per_ticket(guest_assignments, inputs, distribution, overrides = {})
+    return [] if guest_assignments.empty?
+
+    guaranteed = distribution["method"] == "per_ticket_guaranteed"
+    ticket_count = inputs[:ticket_count]
+
+    guest_assignments.map do |assignment|
+      override = override_for(overrides, assignment)
+      rate = override["per_ticket_rate"]&.to_f || distribution["per_ticket_rate"].to_f
+      minimum = guaranteed ? (override["minimum"]&.to_f || distribution["minimum"].to_f) : 0
+      amount = if override["flat_amount"].present?
+        override["flat_amount"].to_f
+      else
+        [ rate * ticket_count, minimum ].max
+      end
+
+      formula = if override["flat_amount"].present?
+        "Custom amount"
+      elsif guaranteed && rate * ticket_count < minimum
+        "Minimum #{format_currency(minimum)} (#{ticket_count} × #{format_currency(rate)} = #{format_currency(rate * ticket_count)})"
+      else
+        "#{ticket_count} tickets × #{format_currency(rate)}"
+      end
+
+      {
+        guest_name: assignment.guest_name,
+        guest_assignment_id: assignment.id,
+        amount: amount.round(2),
+        shares: nil,
+        calculation_details: {
+          formula: formula,
+          inputs: { ticket_count: ticket_count, rate: rate, minimum: minimum },
+          breakdown: [ "Guest performer: #{format_currency(amount)}" ]
+        }
+      }
+    end
+  end
+
   # (Advances are no longer deducted at calc time — they net on the payout ledger
   # via AdvancePayoutService. The old apply_advance_deductions was removed.)
+
+  # Guests on a shares night: their shares of the same split the cast was paid
+  # from (see shares_split), or an exact amount set for their slot.
+  def calculate_guest_payouts_shares(guest_assignments, distribution, overrides, pool, performers)
+    return [] if guest_assignments.empty?
+
+    split = shares_split(pool.to_f, performers, distribution, overrides)
+    total_shares = split[:total_shares]
+    per_share = split[:per_share]
+
+    guest_assignments.map do |assignment|
+      shares = shares_for(overrides, assignment, distribution)
+      override = override_for(overrides, assignment)
+      if override["flat_amount"].present?
+        next custom_amount_item(override["flat_amount"]).merge(guest_name: assignment.guest_name, guest_assignment_id: assignment.id, shares: shares)
+      end
+
+      amount = per_share * shares
+      {
+        guest_name: assignment.guest_name,
+        guest_assignment_id: assignment.id,
+        amount: amount.round(2),
+        shares: shares,
+        calculation_details: {
+          formula: "#{format_currency(pool)} × (#{shares} ÷ #{total_shares} shares)",
+          inputs: { pool: pool, shares: shares, total_shares: total_shares },
+          breakdown: [ "Guest performer: #{shares} shares × #{format_currency(per_share)}/share = #{format_currency(amount)}" ]
+        }
+      }
+    end
+  end
+
+  # The shares split of a pool between the cast and the guests on the show:
+  # everyone's shares added up, and what one share is worth.
+  def shares_split(pool, performers, distribution, overrides)
+    total_shares = (performers + @guest_assignments).sum { |payee| shares_for(overrides, payee, distribution) }
+    per_share = total_shares > 0 ? pool / total_shares : 0
+    { total_shares: total_shares, per_share: per_share }
+  end
+
+  # How many shares a payee holds: their override's, else the calculation's
+  # default_shares (guests included).
+  def shares_for(overrides, payee, distribution)
+    default_shares = distribution["default_shares"].to_f || 1.0
+    override_for(overrides, payee)["shares"]&.to_f || default_shares
+  end
+
+  # A payee's entry in performer_overrides, keyed like ShowPayout.act_key
+  # ("Person_12", "Group_3", "guest_45"). Older customizations wrote a bare
+  # person id ("12"); that still finds a Person — never a Group, so Person 7
+  # and Group 7 can't be mixed up. {} when they have none.
+  def override_for(overrides, payee)
+    return {} if payee.nil? || overrides.blank?
+
+    override = overrides[ShowPayout.act_key(payee)]
+    override = overrides[payee.id.to_s] if override.nil? && payee.is_a?(Person)
+    override || {}
+  end
+
+  # An exact amount set for one payee tonight (performer_overrides[act_key]
+  # ["flat_amount"]) beats whatever the method would have worked out for them,
+  # whichever method that is. nil when they're paid as calculated.
+  def custom_amount_for(overrides, payee)
+    value = override_for(overrides, payee)["flat_amount"]
+    value.present? ? value.to_f : nil
+  end
+
+  def custom_amount_item(amount, inputs: {})
+    amount = amount.to_f.round(2)
+    {
+      amount: amount,
+      shares: nil,
+      calculation_details: {
+        formula: "Custom amount",
+        inputs: inputs.merge(flat_amount: amount, custom: true),
+        breakdown: [ "Set for this show: #{format_currency(amount)}" ]
+      }
+    }
+  end
 
   def format_currency(amount)
     "$#{'%.2f' % amount}"

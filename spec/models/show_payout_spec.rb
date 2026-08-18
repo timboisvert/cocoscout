@@ -82,6 +82,254 @@ RSpec.describe ShowPayout do
     end
   end
 
+  describe "#customization_summary" do
+    let(:organization) { create(:organization) }
+    let(:production) { create(:production, organization: organization) }
+    let(:show) { create(:show, production: production) }
+    let(:scheme) do
+      PayoutScheme.create!(
+        organization: organization, name: "House Split",
+        rules: {
+          "allocation" => [ { "type" => "percentage", "value" => 40.0, "label" => "House take" }, { "type" => "remainder" } ],
+          "distribution" => { "method" => "shares", "default_shares" => 1.0 },
+          "performer_overrides" => {}
+        }
+      )
+    end
+    let(:payout) { create(:show_payout, show: show, payout_scheme: scheme) }
+
+    it "is nil without a customization" do
+      expect(payout.customization_summary).to be_nil
+    end
+
+    it "spells out a changed house take and expenses-first" do
+      payout.update!(override_rules: scheme.rules.deep_merge("allocation" => [ { "type" => "expenses_first" }, { "type" => "percentage", "value" => 30.0 }, { "type" => "remainder" } ]))
+      expect(payout.customization_summary).to eq("House 30% instead of 40%; Expenses covered first")
+    end
+
+    it "spells out changed shares" do
+      payout.update!(override_rules: scheme.rules.deep_merge("distribution" => { "default_shares" => 2.0 }))
+      expect(payout.customization_summary).to eq("2 shares each instead of 1")
+    end
+
+    it "says everyone is paid the same amount when one flat amount replaces the calculation" do
+      payout.update!(override_rules: PayoutRulesBuilder.same_amount(scheme.rules, 60))
+      expect(payout.customization_summary).to eq("Everyone $60")
+    end
+
+    it "says the same for a flat amount laid over a flat calculation" do
+      scheme.update!(rules: { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 } })
+      payout.update!(override_rules: { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 60.0 } })
+      expect(payout.customization_summary).to eq("Everyone $60")
+    end
+
+    it "spells out per-ticket rate and minimum changes" do
+      scheme.update!(rules: { "distribution" => { "method" => "per_ticket_guaranteed", "per_ticket_rate" => 1.0, "minimum" => 25.0 } })
+      payout.update!(override_rules: { "distribution" => { "method" => "per_ticket_guaranteed", "per_ticket_rate" => 1.5, "minimum" => 30.0 } })
+      expect(payout.customization_summary).to eq("$1.50/ticket instead of $1; Minimum $30 instead of $25")
+    end
+
+    it "spells out a changed act schedule" do
+      scheme.update!(rules: { "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 25.0 } })
+      payout.update!(override_rules: { "distribution" => { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 30.0 } })
+      expect(payout.customization_summary).to eq("$30.00 per act instead of $25.00 per act")
+    end
+
+    it "names the people given exact amounts, guests included" do
+      jane = create(:person, name: "Jane Doe")
+      organization.people << jane
+      role = create(:role, production: production)
+      create(:show_person_role_assignment, show: show, role: role, assignable: jane)
+      gigi = create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil)
+      payout.update!(override_rules: scheme.rules.merge("performer_overrides" => { "Person_#{jane.id}" => { "flat_amount" => 100.0 }, "guest_#{gigi.id}" => { "flat_amount" => 40.0 } }))
+      expect(payout.customization_summary).to eq("Jane Doe $100, Gigi (guest) $40")
+    end
+
+    it "names a group and a person by their own keys, and an older bare-id key as a person" do
+      role = create(:role, production: production)
+      band = create(:group, name: "The Band")
+      solo = create(:person, name: "Solo Sam")
+      create(:show_person_role_assignment, show: show, role: role, assignable: band)
+      organization.people << solo
+      payout.update!(override_rules: scheme.rules.merge("performer_overrides" => { "Group_#{band.id}" => { "flat_amount" => 80.0 }, solo.id.to_s => { "flat_amount" => 20.0 } }))
+      expect(payout.customization_summary).to eq("The Band $80, Solo Sam $20")
+    end
+
+    it "never names someone from another organization" do
+      stranger = create(:person, name: "Stranger Steve")
+      create(:organization).people << stranger
+      payout.update!(override_rules: scheme.rules.merge("performer_overrides" => { "Person_#{stranger.id}" => { "flat_amount" => 10.0 } }))
+      expect(payout.customization_summary).to eq("Person ##{stranger.id} $10")
+    end
+
+    it "says when the approach itself was swapped (legacy overrides)" do
+      payout.update!(override_rules: { "allocation" => [], "distribution" => { "method" => "per_ticket", "per_ticket_rate" => 2.0 } })
+      expect(payout.customization_summary).to eq("Per ticket instead of split by shares")
+    end
+
+    it "names each person paid their own amount, and only them" do
+      jane = create(:person, name: "Jane Doe")
+      jack = create(:person, name: "Jack Sprat")
+      organization.people << jane << jack
+      payout.update!(override_rules: PayoutRulesBuilder.override(scheme.rules, performer_overrides: { "Person_#{jane.id}" => { flat_amount: "100" }, "Person_#{jack.id}" => { flat_amount: "40" } }))
+      expect(payout.customization_summary).to eq("Jane Doe $100, Jack Sprat $40")
+    end
+
+    it "labels a show closed as non-paying" do
+      payout.update!(override_rules: { "distribution" => { "method" => "no_pay" }, "closed_as_non_paying" => true })
+      expect(payout.customization_summary).to eq("Closed as non-paying")
+    end
+
+    it "falls back to a generic line when nothing it can name differs" do
+      payout.update!(override_rules: scheme.rules)
+      expect(payout.customization_summary).to eq("Custom amounts")
+    end
+  end
+
+  describe "what each payee stands to be paid" do
+    let(:organization) { create(:organization) }
+    let(:production) { create(:production, organization: organization) }
+    let(:show) { create(:show, production: production) }
+    let(:role) { create(:role, production: production) }
+    let!(:jane) { create(:person, name: "Jane Doe") }
+    let!(:jack) { create(:person, name: "Jack Sprat") }
+    let!(:jane_cast) { create(:show_person_role_assignment, show: show, role: role, assignable: jane) }
+    let!(:jack_cast) { create(:show_person_role_assignment, show: show, role: role, assignable: jack) }
+    let!(:gigi_cast) { create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil) }
+    let!(:financials) { create(:show_financials, :complete, show: show, ticket_count: 100, ticket_revenue: 1000, expenses: 0) }
+    let(:scheme) do
+      PayoutScheme.create!(
+        organization: organization, name: "House Split",
+        rules: {
+          "allocation" => [ { "type" => "percentage", "value" => 40.0, "label" => "House take" }, { "type" => "remainder" } ],
+          "distribution" => { "method" => "shares", "default_shares" => 1.0 },
+          "performer_overrides" => {}
+        }
+      )
+    end
+    let!(:payout) { create(:show_payout, show: show, payout_scheme: scheme, status: "awaiting_payout") }
+
+    describe "#preview_amounts" do
+      it "dry-runs the calculation, keyed by act key, and leaves no trace of it" do
+        amounts = payout.preview_amounts
+
+        expect(amounts).to eq("Person_#{jane.id}" => 200.0, "Person_#{jack.id}" => 200.0, "guest_#{gigi_cast.id}" => 200.0)
+        expect(payout.line_items).to be_empty
+        expect(payout.calculated_at).to be_nil
+        expect(payout.total_payout.to_f).to eq(0.0)
+        expect(ShowPayoutLineItem.where(show_payout: payout)).to be_empty
+        expect(PayoutLedgerEntry.where(payee: jane)).to be_empty
+        expect(show.reload.show_payout.calculated_at).to be_nil
+      end
+
+      it "runs whichever rules it's given (the customization, or the calculation underneath)" do
+        payout.update!(override_rules: PayoutRulesBuilder.same_amount(scheme.rules, 60))
+
+        expect(payout.preview_amounts.values).to all(eq(60.0))
+        expect(payout.preview_amounts(payout.base_rules).values).to all(eq(200.0))
+      end
+
+      it "is empty when the calculation can't run yet" do
+        financials.update!(data_confirmed: false, ticket_revenue: nil)
+        show.reload
+        expect(payout.preview_amounts).to eq({})
+      end
+
+      it "persists nothing even inside an outer transaction (where a rollback would be a no-op)" do
+        amounts = nil
+        ActiveRecord::Base.transaction do
+          amounts = payout.preview_amounts
+        end
+
+        expect(amounts.values).to all(eq(200.0))
+        expect(ShowPayoutLineItem.where(show_payout: payout)).to be_empty
+        expect(payout.reload.calculated_at).to be_nil
+        expect(payout.total_payout.to_f).to eq(0.0)
+        expect(PayoutLedgerEntry.where(payee: jane)).to be_empty
+      end
+
+      it "gives the same numbers as a real calculation" do
+        previewed = payout.preview_amounts
+        result = PayoutCalculator.calculate(show: show, rules: scheme.rules, act_counts: {})
+        expect(result[:success]).to be(true)
+
+        expect(payout.reload.current_amounts).to eq(previewed)
+      end
+
+      it "keys two guests who share a name by their own slots" do
+        gigi_two = create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil)
+
+        amounts = payout.preview_amounts
+        expect(amounts.keys).to include("guest_#{gigi_cast.id}", "guest_#{gigi_two.id}")
+        expect(amounts.values).to all(eq(150.0)) # 60% of $1000 split four ways
+        expect(payout.calculated_total).to eq(600.0)
+      end
+    end
+
+    describe "#current_amounts and #calculated_total" do
+      it "reads the calculated line items once the payout is calculated" do
+        payout.line_items.create!(payee: jane, amount: 111)
+        payout.line_items.create!(payee: jack, amount: 222)
+        payout.line_items.create!(is_guest: true, guest_name: "Gigi", amount: 267)
+        payout.line_items.create!(payee: create(:person, name: "Producer"), amount: 50, is_individual_allocation: true)
+        payout.update!(calculated_at: Time.current, total_payout: 650)
+
+        expect(payout.current_amounts).to eq("Person_#{jane.id}" => 111.0, "Person_#{jack.id}" => 222.0, "guest_#{gigi_cast.id}" => 267.0)
+        expect(payout.calculated_total).to eq(600.0)
+      end
+
+      it "measures a customization against the calculation underneath it" do
+        payout.update!(override_rules: PayoutRulesBuilder.same_amount(scheme.rules, 60))
+
+        expect(payout.current_amounts.values).to all(eq(60.0))
+        expect(payout.calculated_total).to eq(600.0)
+      end
+
+      it "reads calculated guest lines by the slot they were paid for, two Gigis and all" do
+        gigi_two = create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil)
+        PayoutCalculator.calculate(show: show, rules: scheme.rules, act_counts: {})
+        payout.reload
+        # Both Gigi lines carry the slot they were paid for; nudge the second
+        # one so the two can be told apart by amount.
+        second_line = payout.line_items.where(is_guest: true).find { |li| li.calculation_details["guest_assignment_id"] == gigi_two.id }
+        second_line.update!(amount: 10)
+
+        amounts = payout.reload.current_amounts
+        expect(amounts["guest_#{gigi_cast.id}"]).to eq(150.0)
+        expect(amounts["guest_#{gigi_two.id}"]).to eq(10.0)
+        expect(payout.calculated_total).to eq(460.0)
+      end
+
+      it "keeps a person and a group that share an id apart" do
+        # Force the same id on a Person and a Group so a bare-id key would collide.
+        shared_id = [ Person.maximum(:id).to_i, Group.maximum(:id).to_i ].max + 1
+        person = create(:person, id: shared_id, name: "Person Pat")
+        group = create(:group, id: shared_id, name: "Group Gee")
+        create(:show_person_role_assignment, show: show, role: role, assignable: group)
+        show.show_person_role_assignments.where(assignable: [ jane, jack ]).destroy_all
+        gigi_cast.destroy!
+        create(:show_person_role_assignment, show: show, role: role, assignable: person)
+        show.reload
+
+        payout.update!(override_rules: PayoutRulesBuilder.override(scheme.rules, performer_overrides: {
+          "Person_#{shared_id}" => { flat_amount: "100" }, "Group_#{shared_id}" => { flat_amount: "500" }
+        }))
+
+        expect(payout.current_amounts).to eq("Person_#{shared_id}" => 100.0, "Group_#{shared_id}" => 500.0)
+        expect(payout.override_amount_for(person)).to eq(100.0)
+        expect(payout.override_amount_for(group)).to eq(500.0)
+      end
+    end
+
+    describe "#fixed_pot?" do
+      it "is true for equal and shares, false for a flat amount" do
+        expect(payout.fixed_pot?).to be(true)
+        scheme.update!(rules: { "allocation" => [], "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 } })
+        expect(payout.reload.fixed_pot?).to be(false)
+      end
+    end
+  end
+
   describe "status methods" do
     describe "#awaiting_payout?" do
       it "returns true when status is awaiting_payout" do

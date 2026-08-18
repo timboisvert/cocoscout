@@ -1,4 +1,4 @@
-<% content_for :title, "Roles" %>
+<% content_for :title, "Roles & Acts" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -7,35 +7,48 @@
     breadcrumbs: [
       ["Casting", manage_casting_path]
     ],
-    text: "Roles",
+    text: "Roles & Acts",
     links: []
   } %>
+
+  <p class="text-sm text-gray-600 max-w-2xl -mt-2 mb-5">
+    Choose a production to manage its roles or lineup and casting settings.
+  </p>
 
   <% if @productions.any? %>
     <div class="space-y-1">
       <% @productions.each do |production| %>
+        <% act_based = production.act_based? %>
         <%= link_to manage_casting_settings_section_path(production_id: production, section: "roles"), class: "flex flex-col md:flex-row md:items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
-          <%# Left Section: Production Logo + Name %>
+          <%# Left Section: Production Logo + Name + how it casts %>
           <div class="w-full md:w-1/2 flex items-center gap-4 md:pr-4">
             <div class="flex-shrink-0">
               <%= render "shared/production_image", production: production, width: "w-12", initials_class: "text-sm" %>
             </div>
             <span class="font-medium text-gray-900"><%= production.name %></span>
+            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset <%= act_based ? 'bg-purple-50 text-purple-700 ring-purple-600/10' : 'bg-gray-50 text-gray-600 ring-gray-500/10' %>"
+                  title="<%= act_based ? 'Casts by acts: a running order one performer can hold several of' : 'Casts by roles: positions to fill' %>">
+              <%= act_based ? "Acts" : "Roles" %>
+            </span>
           </div>
 
-          <%# Right Section: Role Badges %>
+          <%# Right Section: the roles, or the lineup in running order %>
           <div class="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-gray-200 mt-2 md:mt-0 pt-2 md:pt-0 md:pl-4 flex items-center">
-            <% roles = production.roles.order(:name) %>
+            <% roles = act_based ? production.roles.to_a : production.roles.sort_by { |r| r.name.to_s.downcase } %>
             <% if roles.any? %>
               <div class="flex items-center gap-1.5 flex-wrap">
                 <% roles.each do |role| %>
-                  <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                    <%= role.name %><% if role.quantity.to_i > 1 %> x<%= role.quantity %><% end %>
-                  </span>
+                  <% if role.break? %>
+                    <span class="inline-flex items-center px-1 text-xs text-gray-400">— <%= role.name %> —</span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                      <%= role.name %><% if role.quantity.to_i > 1 %> x<%= role.quantity %><% end %>
+                    </span>
+                  <% end %>
                 <% end %>
               </div>
             <% else %>
-              <span class="text-sm text-gray-400">No roles</span>
+              <span class="text-sm text-gray-400"><%= act_based ? "No acts in the lineup yet" : "No roles" %></span>
             <% end %>
           </div>
         <% end %>
@@ -43,7 +56,7 @@
     </div>
   <% else %>
     <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-      <p class="text-gray-600">No productions found. Create a production first to set up roles.</p>
+      <p class="text-gray-600">No productions found. Create a production first to set up roles or a lineup.</p>
     </div>
   <% end %>
 </div>

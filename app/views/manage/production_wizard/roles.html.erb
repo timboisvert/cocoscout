@@ -25,50 +25,52 @@
 
   <%= form_with url: manage_productions_wizard_save_roles_path, method: :post, local: true, id: "roles-form" do |form| %>
     <div class="space-y-4">
-      <!-- No roles option -->
-      <label class="block cursor-pointer">
-        <div id="no-roles-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:has_roles] == 'no' || @wizard_state[:has_roles].nil? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
-          <div class="flex items-start">
-            <input type="radio" name="has_roles" value="no"
-                   <%= "checked" if @wizard_state[:has_roles] == 'no' || @wizard_state[:has_roles].nil? %>
-                   class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
-            <div class="ml-3">
-              <% if act_mode %>
-                <p class="font-medium text-gray-900">Not yet</p>
-                <p class="text-sm text-gray-500 mt-1">Skip this step and build the lineup later</p>
-              <% else %>
+      <% if act_mode %>
+        <%# Act mode: the lineup editor is the whole step — no yes/no first. %>
+        <input type="hidden" name="has_roles" value="yes">
+      <% else %>
+        <!-- No roles option -->
+        <label class="block cursor-pointer">
+          <div id="no-roles-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:has_roles] == 'no' || @wizard_state[:has_roles].nil? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+            <div class="flex items-start">
+              <input type="radio" name="has_roles" value="no"
+                     <%= "checked" if @wizard_state[:has_roles] == 'no' || @wizard_state[:has_roles].nil? %>
+                     class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div class="ml-3">
                 <p class="font-medium text-gray-900">I don't have set roles</p>
                 <p class="text-sm text-gray-500 mt-1">Skip this step and add roles later if needed</p>
-              <% end %>
+              </div>
             </div>
           </div>
-        </div>
-      </label>
+        </label>
 
-      <!-- Has roles option -->
-      <label class="block cursor-pointer">
-        <div id="yes-roles-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:has_roles] == 'yes' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
-          <div class="flex items-start">
-            <input type="radio" name="has_roles" value="yes"
-                   <%= "checked" if @wizard_state[:has_roles] == 'yes' %>
-                   class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
-            <div class="ml-3">
-              <% if act_mode %>
-                <p class="font-medium text-gray-900">Do you want to set up the lineup now?</p>
-                <p class="text-sm text-gray-500 mt-1">List the acts in running order and drop in an intermission where you break</p>
-              <% else %>
+        <!-- Has roles option -->
+        <label class="block cursor-pointer">
+          <div id="yes-roles-option" class="p-4 rounded-lg border-2 transition-colors <%= @wizard_state[:has_roles] == 'yes' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+            <div class="flex items-start">
+              <input type="radio" name="has_roles" value="yes"
+                     <%= "checked" if @wizard_state[:has_roles] == 'yes' %>
+                     class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <div class="ml-3">
                 <p class="font-medium text-gray-900">I have set roles</p>
                 <p class="text-sm text-gray-500 mt-1">Define the roles you need to fill for each show</p>
-              <% end %>
+              </div>
             </div>
           </div>
-        </div>
-      </label>
+        </label>
+      <% end %>
 
-      <!-- Roles Form (shown when yes is selected) -->
-      <div id="roles-form-section" class="<%= @wizard_state[:has_roles] == 'yes' ? '' : 'hidden' %> ml-4 pl-4 border-l-2 border-pink-200">
+      <!-- Roles form: always open in act mode; behind "yes" in role mode -->
+      <div id="roles-form-section" class="<%= act_mode ? '' : "#{@wizard_state[:has_roles] == 'yes' ? '' : 'hidden'} ml-4 pl-4 border-l-2 border-pink-200" %>">
         <div id="roles-list" class="space-y-3" data-casting-mode="<%= act_mode ? 'act_based' : 'role_based' %>">
-          <% roles = @wizard_state[:roles].present? && @wizard_state[:roles].any? ? @wizard_state[:roles] : [{ name: "", quantity: 1, category: "performing" }] %>
+          <%
+            blank_row = { name: "", quantity: 1, category: "performing" }
+            roles = if @wizard_state[:roles].present? && @wizard_state[:roles].any?
+              @wizard_state[:roles]
+            else
+              act_mode ? [ blank_row, blank_row ] : [ blank_row ]
+            end
+          %>
           <% roles.each_with_index do |role, index| %>
             <% role_name = role[:name] || role['name'] %>
             <% role_category = (role[:category] || role['category'] || 'performing').to_s %>
@@ -124,6 +126,14 @@
       <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
+
+  <% if act_mode %>
+    <%# The escape hatch — its own form (forms can't nest) that says "no lineup". %>
+    <%= form_with url: manage_productions_wizard_save_roles_path, method: :post, local: true, id: "skip-lineup-form", class: "mt-2" do %>
+      <input type="hidden" name="has_roles" value="no">
+      <%= render "shared/button", text: "Skip for now — build the lineup later", variant: "ghost", size: "small", type: :submit, classes: "text-gray-500" %>
+    <% end %>
+  <% end %>
 <% end %>
 
 <script>
@@ -138,8 +148,8 @@
   const inputClasses = <%= input_classes.to_json.html_safe %>;
   let roleIndex = rolesList ? rolesList.querySelectorAll('.role-row').length : 1;
 
-  // Handle radio button changes
-  document.querySelectorAll('input[name="has_roles"]').forEach(radio => {
+  // Handle radio button changes (role mode only — act mode has no yes/no cards)
+  document.querySelectorAll('input[type="radio"][name="has_roles"]').forEach(radio => {
     radio.addEventListener('change', function() {
       if (this.value === 'yes') {
         rolesFormSection.classList.remove('hidden');

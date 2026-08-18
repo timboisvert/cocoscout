@@ -37,15 +37,16 @@
       assignments_by_entity = row[:assignments].group_by { |a| [a[:type], a[:entity]&.id] }
       entity_assignments = assignments_by_entity.map do |(_type, _id), assignments|
         entity = assignments.first[:entity]
+        # One line per label: plain role names, or on a show cast by acts the
+        # grouped act labels ("Magic (Act 3)", "2 acts as Magic (Acts 1 and
+        # 3)"). Pin each role's production to the show's (already loaded) so
+        # the mode check doesn't query per role.
+        roles = assignments.map { |a| a[:assignment].role }.compact
+        roles.each { |r| r.association(:production).target = show.production unless r.association(:production).loaded? }
         {
           entity: entity,
-          role_assignments: assignments.map { |a|
-            # "Act 3 · Magic" in an act-based production, the plain role name
-            # otherwise. Pin the role's production to the show's (already loaded)
-            # so the mode check doesn't query per role.
-            role = a[:assignment].role
-            role.association(:production).target = show.production unless role.association(:production).loaded?
-            { role_name: role.display_name, entity_name: entity.name }
+          role_assignments: act_assignment_labels(roles, show: show).map { |label|
+            { role_name: label, entity_name: entity.name }
           }
         }
       end

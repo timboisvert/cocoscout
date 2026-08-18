@@ -29,6 +29,10 @@
         classes, the rest render as attributes
     - max_desktop_items: Integer — cap tiles per desktop day cell, with a
         "+N more" line for the rest (default: no cap; mobile always shows all)
+    - mobile_show_past: Boolean — the mobile day list normally starts at today
+        when viewing the current month (forward-looking calendars: shifts,
+        availability). Pass true for retrospective calendars (approved hours,
+        payments) so past days aren't dropped (default false)
 %>
 <%
   current_month = local_assigns[:current_month]
@@ -47,6 +51,7 @@
   mobile_item_partial = local_assigns[:mobile_item_partial] || item_partial
   cell_attrs  = local_assigns[:cell_attrs]
   max_desktop_items = local_assigns[:max_desktop_items]
+  mobile_show_past  = local_assigns.fetch(:mobile_show_past, false)
 
   month_start_date = current_month.to_date
   month_end_date   = current_month.end_of_month.to_date
@@ -142,7 +147,7 @@
   <%# Mobile list: only days that have items %>
   <div class="md:hidden p-4 space-y-3">
     <% any_items = false %>
-    <% mobile_start = is_current_month ? Date.current : month_start_date %>
+    <% mobile_start = (is_current_month && !mobile_show_past) ? Date.current : month_start_date %>
     <% current_date = mobile_start %>
     <% while current_date <= month_end_date %>
       <% day_items = items_by_date[current_date] || [] %>

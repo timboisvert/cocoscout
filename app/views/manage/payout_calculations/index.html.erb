@@ -1,0 +1,105 @@
+<% content_for :title, "Payout Calculations" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path]
+    ],
+    text: @show_archived ? "Archived Payout Calculations" : "Payout Calculations",
+    links: @show_archived ? [
+      { text: "Active calculations", path: manage_money_payout_calculations_path }
+    ] : [
+      { text: "New calculation", path: manage_money_payout_calculation_wizard_start_path }
+    ]
+  } %>
+
+  <% if @payout_schemes.any? %>
+    <%# One card per calculation — a payout "card", not a table row. %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <% @payout_schemes.each do |calculation| %>
+        <%
+          used_by = calculation.payout_scheme_defaults.map(&:production).compact.uniq.sort_by { |p| p.name.to_s.downcase }
+          method = calculation.distribution_method.to_s
+          approach_label, approach_classes = case method
+          when "per_act" then [ "Per act", "bg-pink-100 text-pink-700" ]
+          when "flat_fee" then [ "Flat amount", "bg-gray-100 text-gray-700" ]
+          when "per_ticket", "per_ticket_guaranteed" then [ "Per ticket", "bg-blue-50 text-blue-700" ]
+          when "equal" then [ "Even split", "bg-amber-50 text-amber-700" ]
+          when "shares" then [ "Per share", "bg-amber-50 text-amber-700" ]
+          when "no_pay" then [ "Not paid", "bg-gray-100 text-gray-500" ]
+          else [ nil, nil ]
+          end
+        %>
+        <div class="bg-white rounded-lg border border-gray-200 hover:border-pink-300 transition-colors flex flex-col overflow-hidden">
+          <%= link_to manage_money_payout_calculation_path(calculation), class: "flex-1 p-5 block" do %>
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="font-semibold text-gray-900 leading-snug"><%= calculation.name %></h3>
+              <% if @show_archived %>
+                <span class="shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">Archived</span>
+              <% elsif approach_label %>
+                <span class="shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium <%= approach_classes %>"><%= approach_label %></span>
+              <% end %>
+            </div>
+            <p class="text-sm text-gray-600 mt-2 leading-relaxed"><%= calculation.rules_summary %></p>
+            <% if calculation.description.present? %>
+              <p class="text-xs text-gray-500 mt-2"><%= calculation.description %></p>
+            <% end %>
+          <% end %>
+          <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
+            <div class="text-xs text-gray-500 min-w-0 flex-1">
+              <% if used_by.any? %>
+                <%# Closed by default — the count is the headline; open it for the names. %>
+                <details class="group">
+                  <summary class="cursor-pointer list-none flex items-center gap-1 text-gray-700 font-medium hover:text-pink-600">
+                    <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    Used by <%= pluralize(used_by.size, "production") %>
+                  </summary>
+                  <ul class="mt-2 space-y-1 pl-4">
+                    <% used_by.each do |production| %>
+                      <li><%= link_to production.name, manage_money_production_payouts_path(production), class: "text-gray-700 hover:text-pink-600" %></li>
+                    <% end %>
+                  </ul>
+                </details>
+              <% else %>
+                Not used by any production
+              <% end %>
+            </div>
+            <% if @show_archived %>
+              <%= form_with url: manage_unarchive_money_payout_calculation_path(calculation), method: :post, local: true, class: "shrink-0" do %>
+                <%= render "shared/button", text: "Restore", variant: "secondary", size: "small", type: :submit %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <% if !@show_archived && @archived_count > 0 %>
+      <div class="mt-6 text-center">
+        <%= link_to manage_money_payout_calculations_path(archived: 1), class: "text-sm text-gray-500 hover:text-gray-700" do %>
+          View <%= @archived_count %> archived <%= "calculation".pluralize(@archived_count) %>
+        <% end %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <% if @show_archived %>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No archived calculations</h3>
+        <p class="text-gray-600 mb-4">You haven't archived any payout calculations.</p>
+        <%= link_to manage_money_payout_calculations_path do %>
+          <%= render "shared/button", text: "Active calculations", variant: "secondary", size: "medium" %>
+        <% end %>
+      <% else %>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No payout calculations yet</h3>
+        <p class="text-gray-600 mb-4">A payout calculation is how a show's money is turned into what each performer is paid — a flat fee, a per-act rate, a share of the door. Set one up and choose which productions use it.</p>
+        <%= link_to manage_money_payout_calculation_wizard_start_path do %>
+          <%= render "shared/button", text: "New calculation", variant: "primary", size: "medium" %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

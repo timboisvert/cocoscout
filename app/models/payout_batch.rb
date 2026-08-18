@@ -131,6 +131,51 @@ class PayoutBatch < ApplicationRecord
     today > Time.zone.now ? today : today + 1.day
   end
 
+  # --- Money by payee state ---------------------------------------------------
+  # Where each dollar on the run sits right now, judged per payee. This is the
+  # answer to "why isn't this run done?" — a run's status says "partially paid",
+  # the item states say "$250 of it is Ned, who hasn't connected a bank".
+  #
+  #   :paid     — transferred.
+  #   :ready    — payable the moment the run is funded / "Pay remaining" runs:
+  #               the payee has a connected bank. A failed transfer with a
+  #               connected bank counts here too (the next pass retries it);
+  #               it just carries its error.
+  #   :waiting  — can't be paid yet: the payee has no connected bank.
+  #   :returned — paid, then the payee's bank sent it back.
+  ITEM_STATES = %i[ready waiting paid returned].freeze
+
+  ITEM_STATE_LABELS = {
+    ready: "Ready to pay",
+    waiting: "Waiting on bank info",
+    paid: "Paid",
+    returned: "Returned by bank"
+  }.freeze
+
+  def self.item_state(item)
+    case item.status
+    when "paid" then :paid
+    when "returned" then :returned
+    else
+      payee = item.payee
+      payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts? ? :ready : :waiting
+    end
+  end
+
+  # { state => { cents:, count: } } for every state (zeros included), so
+  # callers can lay out fixed boxes/columns without nil checks. Preload
+  # `items: :payee` when calling this across many runs, or hand in an
+  # already-loaded array of this run's items.
+  def money_by_item_state(loaded_items = items)
+    out = ITEM_STATES.index_with { { cents: 0, count: 0 } }
+    loaded_items.each do |item|
+      bucket = out[self.class.item_state(item)]
+      bucket[:cents] += item.amount_cents
+      bucket[:count] += 1
+    end
+    out
+  end
+
   def recalculate_total!
     update!(total_cents: items.sum(:amount_cents))
   end

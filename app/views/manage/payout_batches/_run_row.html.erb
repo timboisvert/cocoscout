@@ -1,23 +1,60 @@
-<%# One run in the payout-runs tables (active + completed share this). Locals: batch %>
-<tr class="hover:bg-gray-50">
-  <td class="px-3 sm:px-4 py-2.5 whitespace-nowrap">
-    <%= link_to batch.created_at.strftime("%b %-d, %Y"), manage_payout_batch_path(batch), class: "text-pink-600 hover:text-pink-700 font-medium" %>
-    <div class="text-xs text-gray-500 mt-0.5"><%= batch.kind_label %><%= " · open" if batch.open? %></div>
-  </td>
-  <td class="px-3 sm:px-4 py-2.5 whitespace-nowrap"><%= render "manage/payout_batches/status_badge", status: batch.status %></td>
-  <td class="px-3 sm:px-4 py-2.5 text-right tabular-nums whitespace-nowrap"><%= number_to_currency(batch.total_cents / 100.0) %></td>
-  <td class="px-3 sm:px-4 py-2.5 text-right tabular-nums"><%= batch.items.size %></td>
-  <td class="px-3 sm:px-4 py-2.5 text-gray-600 hidden sm:table-cell"><%= batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled" %></td>
-  <td class="px-3 sm:px-4 py-2.5 text-right">
-    <% if batch.status == "draft" %>
-      <% dcid = "confirm-discard-#{batch.id}" %>
-      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= dcid %>"
-              class="text-xs text-gray-500 hover:text-red-600 cursor-pointer bg-transparent border-0 whitespace-nowrap">Discard</button>
-      <%= render "shared/confirm_modal", id: dcid,
-            title: "Discard this draft run?",
-            message: "This removes the run and puts everything on it back where it came from — staff hours return to the unpaid pool, and tips, bonuses and other typed-in amounts land back in the Pay People draft. This can't be undone.",
-            confirm_text: "Discard run",
-            url: manage_payout_batch_path(batch), method: :delete %>
-    <% end %>
-  </td>
-</tr>
+<%#
+  One payout run as a slim-list row, with a column per money state (paid /
+  ready / waiting on bank / returned) so the list itself says why a run is
+  where it is. Rendered inside a shared/slim_list whose columns are
+  run_state_columns(...) — pass the same `columns`.
+
+  Locals:
+    batch:     PayoutBatch
+    breakdown: PayoutBatch#money_by_item_state for this run
+    columns:   Array<Symbol> of RUN_STATE_COLUMNS keys the list is showing
+%>
+<%
+  col_meta = Manage::PayoutBatchesHelper::RUN_STATE_COLUMNS
+  col_labels = [ "Total" ] + columns.map { |c| col_meta[c][:label] }
+  starter = batch.created_by&.person&.name || batch.created_by&.email_address || "Scheduled"
+
+  # One line on what's holding the run up (or that nothing is).
+  waiting = breakdown[:waiting]
+  ready = breakdown[:ready]
+  next_try = batch.next_auto_retry_at
+  when_text = if next_try
+                if next_try.to_date == Date.current then "today"
+                elsif next_try.to_date == Date.current + 1 then "tomorrow"
+                else next_try.strftime("%b %-d")
+                end
+              end
+  hold_up = case batch.status
+            when "draft"
+              if waiting[:count].positive?
+                "Not submitted · #{pluralize(waiting[:count], 'payee')} #{waiting[:count] == 1 ? 'has' : 'have'} no bank yet"
+              else
+                "Not submitted yet"
+              end
+            when "partially_paid"
+              parts = []
+              parts << "#{pluralize(waiting[:count], 'payee')} waiting on bank info" if waiting[:count].positive?
+              parts << "#{pluralize(ready[:count], 'payee')} ready — pay remaining" if ready[:count].positive?
+              parts << "retrying #{when_text} #{next_try.strftime('%-l:%M%P')}" if next_try
+              parts.any? ? parts.join(" · ") : "Funded, finishing up"
+            when "funding", "funded", "processing" then "ACH clearing — pays out automatically"
+            when "completed" then "Everyone paid#{" · #{batch.completed_at.strftime('%b %-d')}" if batch.completed_at}"
+            when "failed" then "Funding failed"
+            when "canceled" then "Canceled"
+            end
+  badge_color = case batch.status
+                when "completed" then "green"
+                when "failed", "canceled" then "red"
+                when "processing", "funding", "funded" then "amber"
+                when "partially_paid" then "blue"
+                else "gray"
+                end
+%>
+<%= render "shared/slim_list_row",
+      title: "#{batch.created_at.strftime('%b %-d, %Y')} · #{batch.kind_label}",
+      subtitle: "#{hold_up} · #{starter}",
+      badge: { text: batch.display_status, color: badge_color },
+      href: manage_payout_batch_path(batch),
+      col_labels: col_labels,
+      cells: [ { value: number_to_currency(batch.total_cents / 100.0), class: "text-gray-900 font-semibold" } ] +
+             columns.map { |c| run_state_cell(breakdown[c], c) } %>

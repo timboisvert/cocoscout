@@ -8,6 +8,15 @@ module Manage
     before_action :enforce_free_production_limit, only: %i[name create_production]
     before_action :load_wizard_state
 
+    # How a paying production gets its payout calculation: pick one the org
+    # already has, set up a new one right after the production is created, or
+    # leave it for later.
+    PAY_CHOICES = %w[existing new later].freeze
+
+    # Marker returned by apply_wizard_pay_choice! when the calculation is to be
+    # built in the payout-calculation wizard once the production exists.
+    NEW_CALCULATION = :new_calculation
+
     # Step 1: Name - What's the production called?
     def name
       @wizard_state[:name] ||= ""
@@ -72,7 +81,7 @@ module Manage
         @wizard_state[:has_roles] = "no"
         @wizard_state[:roles] = []
         @wizard_state[:pays_performers] = "no"
-        @wizard_state.delete(:payout_scheme_id)
+        clear_pay_choice
         save_wizard_state
         redirect_to manage_productions_wizard_shows_path and return
       end
@@ -105,15 +114,11 @@ module Manage
     end
 
     def save_roles
-      @wizard_state[:has_roles] = params[:has_roles]
-
-      # Handle roles based on selection
-      if @wizard_state[:has_roles] == "yes"
-        # Parse roles from form
-        @wizard_state[:roles] = parse_roles(params[:roles])
-      else
-        @wizard_state[:roles] = []
-      end
+      # Blank rows are dropped by parse_roles; a "yes" with nothing in it (or an
+      # act-mode lineup left empty) is stored as no roles at all.
+      roles = params[:has_roles] == "yes" ? parse_roles(params[:roles]) : []
+      @wizard_state[:roles] = roles
+      @wizard_state[:has_roles] = roles.any? ? "yes" : "no"
 
       save_wizard_state
       redirect_to(pay_step_available? ? manage_productions_wizard_pay_path : manage_productions_wizard_shows_path)
@@ -132,11 +137,32 @@ module Manage
       redirect_to manage_productions_wizard_shows_path and return unless pay_step_available?
 
       @wizard_state[:pays_performers] = params[:pays_performers] == "yes" ? "yes" : "no"
-      scheme_id = params[:payout_scheme_id].presence
-      if @wizard_state[:pays_performers] == "yes" && scheme_id && org_payout_schemes.exists?(id: scheme_id)
-        @wizard_state[:payout_scheme_id] = scheme_id.to_i
-      else
-        @wizard_state.delete(:payout_scheme_id)
+      clear_pay_choice
+
+      if @wizard_state[:pays_performers] == "yes"
+        choice = params[:pay_choice].to_s
+        choice = "" if choice == "existing" && org_payout_calculations.none?
+        @wizard_state[:pay_choice] = choice if PAY_CHOICES.include?(choice)
+
+        case choice
+        when "existing"
+          calculation_id = params[:payout_scheme_id].presence
+          if calculation_id && org_payout_calculations.exists?(id: calculation_id)
+            @wizard_state[:payout_scheme_id] = calculation_id.to_i
+          else
+            @pay_error = "Choose one of your payout calculations, or set up a new one."
+          end
+        when "new", "later"
+          # Nothing more to store: "new" sends them into the calculation wizard
+          # right after create; "later" leaves it for the production's Pay tab.
+        else
+          @pay_error = "Tell us whether to use an existing calculation or set up a new one."
+        end
+      end
+
+      if @pay_error
+        load_pay_step_data
+        render :pay, status: :unprocessable_entity and return
       end
 
       save_wizard_state
@@ -213,6 +239,7 @@ module Manage
         render :review, status: :unprocessable_entity and return
       end
 
+      pay_outcome = nil
       ActiveRecord::Base.transaction do
         # Create the production
         @production = Current.organization.productions.new(
@@ -221,6 +248,9 @@ module Manage
           genre: @wizard_state[:genre].presence,
           casting_source: @wizard_state[:casting_source] || "talent_pool",
           casting_mode: wizard_casting_mode,
+          # "Will performers be paid?" — only asked on a paid plan; otherwise
+          # the production keeps the default (on) until someone says otherwise.
+          pays_performers: !(pay_step_available? && @wizard_state[:pays_performers] == "no"),
           casting_setup_completed: true
         )
 
@@ -254,12 +284,6 @@ module Manage
           end
         end
 
-        # Pay: make the chosen payout scheme this production's default.
-        if @wizard_state[:pays_performers] == "yes" && @wizard_state[:payout_scheme_id].present?
-          scheme = org_payout_schemes.find_by(id: @wizard_state[:payout_scheme_id])
-          scheme&.add_default_for_production!(@production, effective_from: Date.current)
-        end
-
         # Create shows
         if @wizard_state[:shows].present?
           @wizard_state[:shows].each do |show_data|
@@ -275,6 +299,11 @@ module Manage
             )
           end
         end
+
+        # Pay: give the production its payout calculation — an existing one now,
+        # or a new one built in the calculation wizard right after this.
+        # (After the shows, so the calculation reaches back to the first night.)
+        pay_outcome = apply_wizard_pay_choice!
       end
 
       # Clear wizard state
@@ -287,7 +316,15 @@ module Manage
       # Turn on the "here's what to do next" panel on the manage home page.
       Current.user.activate_guide!(:production_next_steps)
 
-      redirect_to manage_path, notice: "#{@production.name} has been created!"
+      if pay_outcome == NEW_CALCULATION
+        redirect_to manage_money_payout_calculation_wizard_start_path(
+                      production_id: @production.id,
+                      return_to: edit_manage_production_path(@production, anchor: "tab-6")
+                    ),
+                    notice: "#{@production.name} is ready — now set up how its performers are paid."
+      else
+        redirect_to manage_path, notice: "#{@production.name} has been created!"
+      end
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.message
       render :review, status: :unprocessable_entity
@@ -336,13 +373,33 @@ module Manage
     end
     helper_method :pay_step_available?
 
-    def org_payout_schemes
+    def org_payout_calculations
       Current.organization.payout_schemes.active
     end
 
+    def clear_pay_choice
+      @wizard_state.delete(:pay_choice)
+      @wizard_state.delete(:payout_scheme_id)
+    end
+
     def load_pay_step_data
-      @payout_schemes = org_payout_schemes.order(:name).to_a
-      @has_per_act_scheme = @payout_schemes.any? { |s| s.rules.is_a?(Hash) && s.rules.dig("distribution", "method") == "per_act" }
+      @payout_calculations = org_payout_calculations.order(:name).to_a
+    end
+
+    # Runs inside the create transaction. Makes an existing calculation the
+    # production's own; returns NEW_CALCULATION when one is to be built in the
+    # calculation wizard right after create; nil otherwise.
+    def apply_wizard_pay_choice!
+      return nil unless @wizard_state[:pays_performers] == "yes"
+
+      case @wizard_state[:pay_choice]
+      when "existing"
+        calculation = org_payout_calculations.find_by(id: @wizard_state[:payout_scheme_id])
+        calculation&.make_production_scheme!(@production)
+        nil
+      when "new"
+        NEW_CALCULATION
+      end
     end
 
     def parse_roles(roles_params)

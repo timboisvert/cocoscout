@@ -89,9 +89,33 @@ class Show < ApplicationRecord
     manual: "manual"              # Admin manually adds names/emails
   }, default: nil, prefix: :casting
 
-  # Casting mode (roles vs acts) is a production-level choice; a show only
-  # tweaks the lineup, never the mode.
-  delegate :act_based?, :role_based?, to: :production, allow_nil: true
+  # Casting mode (roles vs acts) is a production-level choice that a show may
+  # override for one night (a variety night inside a play's run, or a scripted
+  # evening inside a showcase). nil means "inherit from production".
+  validates :casting_mode, inclusion: { in: Production.casting_modes.keys }, allow_nil: true
+
+  # Empty string from a form select/JSON means "inherit", never a mode.
+  def casting_mode=(value)
+    super(value.presence)
+  end
+
+  # The mode this show is actually cast in: its own override, else the production's.
+  def effective_casting_mode
+    casting_mode.presence || production&.casting_mode || "role_based"
+  end
+
+  def act_based?
+    effective_casting_mode == "act_based"
+  end
+
+  def role_based?
+    !act_based?
+  end
+
+  # Does this show override the production's casting style?
+  def uses_custom_casting_mode?
+    casting_mode.present?
+  end
 
   # Returns the effective casting source (inheriting from production if not overridden)
   def effective_casting_source
@@ -650,9 +674,26 @@ class Show < ApplicationRecord
 
   public
 
-  # Copy all production roles to this show's custom roles
+  # Copy the production's roles to this show's custom roles, in this show's
+  # own shape. An act-based show copies the lineup as is. A show cast by roles
+  # (its own, or overriding an act-based production) needs one role per name:
+  # intermission markers are left behind, a run of adjacent look-alike acts
+  # ("Dancer, Dancer, Dancer") becomes one "Dancer ×3", and any name that
+  # still repeats gets a " (2)" suffix.
+  # Returns { production_role_id => custom_role } — every source role of a
+  # merged run maps to the one role it folded into.
   def copy_roles_from_production!
-    production.roles.production_roles.each do |role|
+    source_roles = production.roles.production_roles.to_a
+    runs = if act_based?
+      source_roles.map { |role| [ role ] }
+    else
+      CastingModeConverter.mergeable_runs(source_roles) # drops breaks
+    end
+
+    taken_names = Set.new
+    copied_from = {}
+    runs.each_with_index do |run, index|
+      role = run.first
       # For restricted roles, get the eligibilities to copy
       eligibilities_to_copy = role.restricted? ? role.role_eligibilities.to_a : []
 
@@ -661,12 +702,12 @@ class Show < ApplicationRecord
       should_be_restricted = role.restricted? && eligibilities_to_copy.any?
 
       new_role = custom_roles.new(
-        name: role.name,
-        position: role.position,
+        name: act_based? ? role.name : CastingModeConverter.unique_name(role.name, taken_names),
+        position: act_based? ? role.position : index,
         restricted: should_be_restricted,
         production: production,
         # Multi-person and category fields
-        quantity: role.quantity,
+        quantity: run.sum(&:quantity),
         category: role.category
       )
 
@@ -686,7 +727,10 @@ class Show < ApplicationRecord
           )
         end
       end
+
+      run.each { |source| copied_from[source.id] = new_role }
     end
+    copied_from
   end
 
   # Get vacancies where the person can't make this show but is still cast.

@@ -1,0 +1,196 @@
+<%
+  calc = @summary_calculation
+  approach = current_approach
+  approach_info = Manage::PayoutCalculationWizardController::APPROACHES[approach]
+  dist = calc.distribution_config || {}
+  steps = steps_for_state
+  editing = @state[:editing_id].present?
+  section_classes = "py-4 border-b border-gray-200 last:border-b-0"
+  input_classes = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-md text-sm shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  change_link = ->(step) do
+    link_to "Change", wizard_path(step), class: "text-sm text-pink-600 hover:text-pink-700 font-medium shrink-0"
+  end
+
+  # Plain-English bullets for how the money moves, in the order it happens.
+  how_it_works = []
+  calc.allocation_steps.each do |step|
+    case step["type"]
+    when "expenses_first"
+      how_it_works << "The show's expenses are covered first."
+    when "percentage"
+      if step["person_id"].present?
+        person = Person.find_by(id: step["person_id"])
+        label = step["label"].presence || person&.name || "Person ##{step['person_id']}"
+        how_it_works << "#{label} gets #{number_with_precision(step['value'], strip_insignificant_zeros: true)}% off the top."
+      else
+        how_it_works << "The house keeps #{number_with_precision(step['value'], strip_insignificant_zeros: true)}%."
+      end
+    end
+  end
+  case calc.distribution_method
+  when "equal"
+    how_it_works << "What's left is split equally among everyone cast."
+  when "shares"
+    how_it_works << "What's left is split by shares — each person starts with #{number_with_precision(dist['default_shares'] || 1, strip_insignificant_zeros: true)}, and you can change anyone's shares on the night."
+  when "per_ticket"
+    how_it_works << "Each performer is paid #{number_to_currency(dist['per_ticket_rate'])} for every ticket the show sells."
+  when "per_ticket_guaranteed"
+    how_it_works << "Each performer is paid #{number_to_currency(dist['per_ticket_rate'])} for every ticket the show sells."
+    how_it_works << "Nobody is paid less than #{number_to_currency(dist['minimum'])}, however the night goes."
+  when "flat_fee"
+    how_it_works << "Each performer is paid #{number_to_currency(dist['flat_amount'])} flat, whatever the night takes."
+  when "per_act"
+    how_it_works << "Each performer is paid by the acts they did — #{calc.act_rules_description}."
+    how_it_works << "You enter the act counts when you work out each show's payout."
+  when "no_pay"
+    how_it_works << "Nobody is paid through CocoScout for these shows."
+  end
+%>
+<%= render layout: "manage/payout_calculation_wizard/wizard_layout", locals: { current_step: :review, step_name: "Review" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Does this look right?</h2>
+    <p class="text-gray-600 mt-2">Here's the calculation in plain English. Change anything that isn't right, give it a name, then save it.</p>
+  </div>
+
+  <%= form_with url: manage_money_payout_calculation_wizard_save_path, method: :post, local: true, id: "review-form" do |form| %>
+    <div class="rounded-lg border border-gray-200 divide-y divide-gray-200">
+      <div class="px-4 <%= section_classes %>">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">How they're paid</p>
+            <p class="text-sm font-medium text-gray-900 mt-0.5"><%= approach_info[:name] %></p>
+            <p class="text-sm text-gray-600 mt-0.5"><%= calc.rules_summary %></p>
+          </div>
+          <%= change_link.call(:approach) %>
+        </div>
+      </div>
+
+      <% if steps.include?(:amounts) %>
+        <div class="px-4 <%= section_classes %>">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-500">The amounts</p>
+              <p class="text-sm text-gray-900 mt-0.5">
+                <% case calc.distribution_method %>
+                <% when "flat_fee" %>
+                  <%= number_to_currency(dist["flat_amount"]) %> each
+                <% when "per_ticket" %>
+                  <%= number_to_currency(dist["per_ticket_rate"]) %> per ticket, no minimum
+                <% when "per_ticket_guaranteed" %>
+                  <%= number_to_currency(dist["per_ticket_rate"]) %> per ticket, at least <%= number_to_currency(dist["minimum"]) %>
+                <% when "equal" %>
+                  Split equally
+                <% when "shares" %>
+                  Split by shares, <%= number_with_precision(dist["default_shares"] || 1, strip_insignificant_zeros: true) %> each to start
+                <% when "per_act" %>
+                  <%= calc.act_rules_description %>
+                <% end %>
+              </p>
+            </div>
+            <%= change_link.call(:amounts) %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if steps.include?(:before) %>
+        <div class="px-4 <%= section_classes %>">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Before performers are paid</p>
+              <% off_the_top = calc.allocation_steps.reject { |s| s["type"] == "remainder" } %>
+              <% if off_the_top.empty? %>
+                <p class="text-sm text-gray-900 mt-0.5">Nothing comes off the top — performers share it all.</p>
+              <% else %>
+                <ul class="text-sm text-gray-900 mt-0.5 space-y-0.5">
+                  <% off_the_top.each do |step| %>
+                    <li>
+                      <% if step["type"] == "expenses_first" %>
+                        Expenses covered first
+                      <% elsif step["person_id"].present? %>
+                        <% person = Person.find_by(id: step["person_id"]) %>
+                        <%= step["label"].presence || person&.name || "Person ##{step['person_id']}" %> gets <%= number_with_precision(step["value"], strip_insignificant_zeros: true) %>%
+                      <% else %>
+                        House keeps <%= number_with_precision(step["value"], strip_insignificant_zeros: true) %>%
+                      <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              <% end %>
+            </div>
+            <%= change_link.call(:before) %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-6">
+      <h3 class="text-sm font-semibold text-gray-900 mb-2">How it works</h3>
+      <ol class="space-y-2">
+        <% how_it_works.each_with_index do |line, i| %>
+          <li class="flex items-start gap-2 text-sm text-gray-700">
+            <span class="flex-shrink-0 w-5 h-5 rounded-full bg-pink-100 text-pink-700 flex items-center justify-center text-xs font-medium mt-0.5"><%= i + 1 %></span>
+            <span><%= line %></span>
+          </li>
+        <% end %>
+      </ol>
+    </div>
+
+    <div class="mt-6 pt-6 border-t border-gray-200">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold text-gray-900">Who uses it</h3>
+          <% if @productions.any? %>
+            <p class="text-sm text-gray-900 mt-1">
+              <%= @productions.map(&:name).to_sentence %>
+              <span class="text-gray-500">— starting <%= @starting_on.present? ? l(Date.iso8601(@starting_on), format: :long) : "now" %></span>
+            </p>
+          <% else %>
+            <p class="text-sm text-gray-600 mt-1">No production yet — pick it from a production's Pay tab whenever you like.</p>
+          <% end %>
+        </div>
+        <%= change_link.call(:who) %>
+      </div>
+    </div>
+
+    <div class="mt-6 pt-6 border-t border-gray-200 space-y-5">
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Name
+          <span class="text-pink-500">*</span>
+        </label>
+        <input type="text"
+               name="name"
+               id="name"
+               value="<%= @name %>"
+               placeholder="e.g., Friday door split, $50 flat, Burlesque act pay"
+               required
+               class="<%= input_classes %>">
+        <p class="mt-1.5 text-xs text-gray-500">You'll pick it by this name when you set a production's pay, so name it the way you'd say it out loud. We've suggested one from the calculation.</p>
+      </div>
+
+      <div>
+        <label for="description" class="block text-sm font-medium text-gray-900 mb-1.5">
+          Description
+          <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <textarea name="description"
+                  id="description"
+                  rows="2"
+                  placeholder="A note to yourself about when this one applies…"
+                  class="<%= input_classes %>"><%= @description %></textarea>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-between items-center">
+      <%= link_to wizard_path(steps[steps.index(:review) - 1]), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        &larr; Back
+      <% end %>
+      <%= render "shared/button", text: (editing ? "Save changes" : "Save calculation"), variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

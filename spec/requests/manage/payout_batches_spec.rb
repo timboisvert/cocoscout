@@ -128,6 +128,31 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
       expect(org.payout_balance_cents_for(not_ready)).to eq(0)
     end
 
+    it "shows the run's money by payee state, and filters the payments list by it" do
+      get manage_payout_batch_path(batch)
+      # State boxes: $40 ready (Rita has a bank), $25 waiting (Ned doesn't).
+      expect(response.body).to include("Ready to pay").and include("Waiting on bank info")
+      expect(response.body).to include("$40.00").and include("$25.00")
+      expect(response.body).to include("1 payee hasn&#39;t connected")
+      # The box / filter link for the waiting slice.
+      expect(response.body).to include(manage_payout_batch_path(batch, state: :waiting))
+
+      get manage_payout_batch_path(batch, state: :waiting)
+      expect(response.body).to include("Nobank Ned")
+      # Rita's payment row is filtered out (her name still appears nowhere else on a draft run).
+      expect(response.body).not_to include("Ready Rita")
+    end
+
+    it "lists what each run is waiting on in the runs index" do
+      post manage_fund_payout_batch_path(batch)
+      get manage_payout_batches_path
+      expect(response.body).to include("Waiting on bank")
+      expect(response.body).to include("1 payee waiting on bank info")
+      expect(response.body).to include("$25.00")
+      # The top box says how much is stuck on missing bank info, and on how many people.
+      expect(response.body).to include("1 payee across 1 run")
+    end
+
     it "refuses pay_remaining on an unfunded run" do
       post manage_pay_remaining_payout_batch_path(batch)
       expect(response).to redirect_to(manage_payout_batch_path(batch))

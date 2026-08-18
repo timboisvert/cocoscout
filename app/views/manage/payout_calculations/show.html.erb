@@ -1,0 +1,191 @@
+<% content_for :title, "#{@payout_scheme.name} - Payout Calculation" %>
+<% archived = @payout_scheme.archived? %>
+<% deletable = @payout_scheme.show_payouts.paid.none? %>
+<% used_by_cid = "used-by-#{@payout_scheme.id}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Payout Calculations", manage_money_payout_calculations_path]
+    ],
+    text: @payout_scheme.name,
+    links: archived ? [] : [
+      { text: "Edit", path: manage_money_payout_calculation_wizard_start_path(id: @payout_scheme) }
+    ]
+  } %>
+
+  <% if archived %>
+    <div class="mb-4 flex items-center gap-3">
+      <span class="inline-flex items-center rounded-md px-3 py-1 text-sm font-medium bg-gray-100 text-gray-700">Archived</span>
+      <%= form_with url: manage_unarchive_money_payout_calculation_path(@payout_scheme), method: :post, local: true do %>
+        <%= render "shared/button", text: "Restore", variant: "secondary", size: "small", type: :submit %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <%# Main column %>
+    <div class="lg:col-span-2 space-y-6">
+
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h2 class="text-xl font-semibold text-gray-900"><%= @payout_scheme.name %></h2>
+        <% if @payout_scheme.description.present? %>
+          <p class="text-gray-600 mt-1"><%= @payout_scheme.description %></p>
+        <% end %>
+        <p class="text-sm text-gray-500 mt-3"><%= @payout_scheme.rules_summary %></p>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-3">How it works</h3>
+        <ul class="space-y-2 text-sm text-gray-600 list-disc pl-5">
+          <% @payout_scheme.allocation_steps.each do |step| %>
+            <% case step["type"] %>
+            <% when "flat" %>
+              <li>The house takes <span class="font-medium text-gray-900"><%= number_to_currency(step["amount"]) %></span> off the top.</li>
+            <% when "percentage" %>
+              <% if step["person_id"].present? %>
+                <% person = Person.find_by(id: step["person_id"]) %>
+                <% label = step["label"].presence || person&.name || "Person ##{step['person_id']}" %>
+                <li><span class="font-medium text-gray-900"><%= label %></span> gets <span class="font-medium text-gray-900"><%= step["value"] %>%</span> of revenue.</li>
+              <% else %>
+                <li>The house keeps <span class="font-medium text-gray-900"><%= step["value"] %>%</span> of revenue.</li>
+              <% end %>
+            <% when "expenses_first" %>
+              <li>Expenses are covered before anyone is paid.</li>
+            <% when "remainder" %>
+              <li>What's left goes to the <span class="font-medium text-gray-900">performers</span>.</li>
+            <% end %>
+          <% end %>
+
+          <% case @payout_scheme.distribution_method %>
+          <% when "equal" %>
+            <li>Performers split it <span class="font-medium text-gray-900">equally</span>.</li>
+          <% when "shares" %>
+            <li>Performers split it by <span class="font-medium text-gray-900">shares</span> (<%= @payout_scheme.distribution_config["default_shares"] || 1 %> share per person unless you change it).</li>
+          <% when "per_ticket" %>
+            <li>Each performer is paid <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["per_ticket_rate"]) %></span> per ticket sold.</li>
+          <% when "per_ticket_guaranteed" %>
+            <li>Each performer is paid <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["per_ticket_rate"]) %></span> per ticket sold, with a minimum of <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["minimum"]) %></span>.</li>
+          <% when "flat_fee" %>
+            <li>Each performer is paid a flat <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["flat_amount"]) %></span>.</li>
+          <% when "per_act" %>
+            <li>Each performer is paid by how many acts they did: <span class="font-medium text-gray-900"><%= @payout_scheme.act_rules_description %></span>.</li>
+            <li>The night's lineup sets the act counts; you can adjust them on the show's payout page.</li>
+          <% when "no_pay" %>
+            <li>Performers aren't paid for shows using this calculation.</li>
+          <% end %>
+        </ul>
+
+        <% if @payout_scheme.performer_overrides.present? && @payout_scheme.performer_overrides.any? %>
+          <p class="mt-4 text-xs text-gray-500">This calculation carries per-person exceptions from before; edit them on a show's payout page.</p>
+        <% end %>
+      </div>
+
+      <% if @show_payouts.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4">Recent shows using this calculation</h3>
+          <div class="space-y-2">
+            <% @show_payouts.each do |sp| %>
+              <%= link_to manage_money_show_payout_path(sp.show), class: "block p-3 rounded hover:bg-gray-50 transition-colors" do %>
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-900"><%= show_display_name(sp.show) %></span>
+                  <span class="text-sm <%= sp.display_status_class %> px-2 py-0.5 rounded"><%= sp.display_status_label %></span>
+                </div>
+                <div class="text-sm text-gray-500 mt-1">
+                  <%= sp.show.date_and_time.strftime("%l:%M %p").strip %>
+                  <% if sp.total_payout %>
+                    · <%= number_to_currency(sp.total_payout) %>
+                  <% end %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+    </div>
+
+    <%# Sidebar %>
+    <div class="space-y-4">
+
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-semibold text-gray-900">Used by</h4>
+          <% unless archived %>
+            <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: used_by_cid } %>
+          <% end %>
+        </div>
+
+        <% if @default_productions.any? %>
+          <ul class="space-y-1.5 text-sm">
+            <% @default_productions.each do |production| %>
+              <li>
+                <%= link_to production.name, manage_money_production_payouts_path(production),
+                      class: "text-gray-700 hover:text-pink-600 font-medium" %>
+                <span class="text-xs text-gray-400">· payouts</span>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-sm text-gray-500">No production uses this calculation yet. You can still pick it on any show's payout page.</p>
+        <% end %>
+      </div>
+
+      <% unless archived %>
+        <%= render "manage/payout_calculations/used_by_modal",
+              id: used_by_cid,
+              calculation: @payout_scheme,
+              productions: @pickable_productions,
+              checked_ids: @default_production_ids %>
+      <% end %>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-5 space-y-3">
+        <h4 class="font-semibold text-gray-900">Actions</h4>
+        <% unless archived %>
+          <%= link_to manage_money_payout_calculation_wizard_start_path(id: @payout_scheme), class: "block" do %>
+            <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", classes: "w-full" %>
+          <% end %>
+          <%= link_to manage_money_payout_calculation_wizard_start_path(id: @payout_scheme, duplicate: 1), class: "block" do %>
+            <%= render "shared/button", text: "Duplicate", variant: "secondary", size: "small", classes: "w-full" %>
+          <% end %>
+
+          <% archive_cid = "confirm-archive-calculation-#{@payout_scheme.id}" %>
+          <%= render "shared/button", text: "Archive", variant: "ghost", size: "small", classes: "w-full text-gray-600", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: archive_cid } %>
+          <%= render "shared/confirm_modal",
+                id: archive_cid,
+                title: "Archive this calculation?",
+                message: "It leaves your list of calculations and can't be picked for new shows. Payouts already worked out with it are kept, and you can restore it any time.",
+                confirm_text: "Archive",
+                url: manage_archive_money_payout_calculation_path(@payout_scheme),
+                method: :post %>
+        <% else %>
+          <%= form_with url: manage_unarchive_money_payout_calculation_path(@payout_scheme), method: :post, local: true do %>
+            <%= render "shared/button", text: "Restore", variant: "secondary", size: "small", classes: "w-full", type: :submit %>
+          <% end %>
+        <% end %>
+
+        <% if deletable %>
+          <% delete_cid = "confirm-delete-calculation-#{@payout_scheme.id}" %>
+          <%= render "shared/button", text: "Delete", variant: "ghost", size: "small", classes: "w-full text-pink-600", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: delete_cid } %>
+          <%= render "shared/confirm_modal",
+                id: delete_cid,
+                title: "Delete this calculation?",
+                message: "This can't be undone. Shows that were using it will fall back to their production's default.",
+                confirm_text: "Delete",
+                url: manage_money_payout_calculation_path(@payout_scheme),
+                method: :delete %>
+        <% else %>
+          <p class="text-xs text-gray-500 text-center">This calculation has paid people, so it can be archived but not deleted.</p>
+        <% end %>
+      </div>
+
+    </div>
+
+  </div>
+</div>

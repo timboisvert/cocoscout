@@ -19,8 +19,8 @@
   end
   roles_count = roles.size
   total_slots = roles.sum(&:total_slots)  # breaks (intermissions) take no one
-  # "Act 3 · Magic" labels in an act-based production; plain names otherwise
-  lineup_nums = lineup_numbers(roles)
+  # "Act 3 · Magic" labels when this show is cast by acts; plain names otherwise
+  lineup_nums = lineup_numbers(roles, show: show)
   people_by_id = local_assigns[:people_by_id] || @people_by_id || {}
   groups_by_id = local_assigns[:groups_by_id] || @groups_by_id || {}
 
@@ -68,7 +68,7 @@
     show.id,
     show.updated_at.to_i,
     show.use_custom_roles?,
-    production.casting_mode,
+    show.effective_casting_mode,
     assignments_max&.to_i,
     roles_max&.to_i,
     total_slots,
@@ -165,7 +165,7 @@
             <% next if role.break? %>
             <%
               role_quantity = role.quantity || 1
-              role_label = role_display_name(role, lineup_nums)
+              role_label = role_display_name(role, lineup_nums, show: show)
               role_assignments = show.show_person_role_assignments.select { |a| a.role_id == role.id }.sort_by { |a| a.position || 0 }
               role_open_vacancies = (open_vacancies_by_role[role.id] || []).dup  # dup so we can shift
             %>
@@ -298,11 +298,13 @@
         </div>
 
         <%# Show "Can't make it" warning if any cast members have vacancies %>
-        <% cant_make_it_list = [] %>
-        <% roles.each do |role| %>
-          <% role_assignments = show.show_person_role_assignments.select { |a| a.role_id == role.id } %>
-          <% role_assignments.each do |assignment| %>
-            <%
+        <%
+          # One entry per person, naming everything they hold: "Tim (Host)" on a
+          # role-based show; "Tim as Magic (Act 3)" / "Tim in 2 acts as Magic
+          # (Acts 1 and 3)" on one cast by acts.
+          cant_make_it_by_person = {}
+          roles.each do |role|
+            show.show_person_role_assignments.select { |a| a.role_id == role.id }.each do |assignment|
               next if assignment.guest? # Guests don't have vacancies
               assignable = if assignment.assignable_type == "Person"
                 people_by_id[assignment.assignable_id] || assignment.assignable
@@ -310,13 +312,20 @@
                 groups_by_id[assignment.assignable_id] || assignment.assignable
               end
               next unless assignable # Skip if assignable was deleted
-              vacancy = cancelled_vacancies[[role.id, assignable.class.name, assignable.id]]
-              if vacancy
-                cant_make_it_list << { name: assignable.name, role: role_display_name(role, lineup_nums), vacancy: vacancy }
-              end
-            %>
-          <% end %>
-        <% end %>
+              next unless cancelled_vacancies[[role.id, assignable.class.name, assignable.id]]
+
+              (cant_make_it_by_person[assignable] ||= []) << role
+            end
+          end
+          cant_make_it_list = cant_make_it_by_person.map do |assignable, held_roles|
+            labels = act_assignment_labels(held_roles, show: show, numbers: lineup_nums)
+            if show.act_based?
+              labels.map { |label| "#{assignable.name} #{cast_as_word(label)} #{label}" }.join(", ")
+            else
+              "#{assignable.name} (#{labels.join(', ')})"
+            end
+          end
+        %>
         <% if cant_make_it_list.any? %>
           <div class="mt-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded-md">
             <div class="flex items-center gap-1.5 text-amber-700">
@@ -325,7 +334,7 @@
               </svg>
               <span class="text-xs font-medium">Can't make it:</span>
               <span class="text-xs">
-                <%= cant_make_it_list.map { |item| "#{item[:name]} (#{item[:role]})" }.join(", ") %>
+                <%= cant_make_it_list.join(", ") %>
               </span>
             </div>
           </div>
@@ -340,7 +349,7 @@
               next unless role
               vacancy = vacancies.first
               vacated_by = vacancy&.vacated_by
-              needs_replacement_list << { name: vacated_by&.name || "Someone", role: role_display_name(role, lineup_nums) }
+              needs_replacement_list << { name: vacated_by&.name || "Someone", role: role_display_name(role, lineup_nums, show: show) }
             end
           %>
           <% if needs_replacement_list.any? %>

@@ -25,11 +25,12 @@
       show_talent_pool_panel = !is_manual_mode # Show for talent_pool or sign_up modes
       # Talent pool now supports click-to-add (formerly hybrid-only behavior)
       show_click_to_add = true # Always show click-to-add for all modes
-      # "role" or "act" — the word this board uses for the thing being cast
-      unit = casting_unit(@production)
-      unit_plural = casting_unit(@production, plural: true)
-      unit_title = casting_unit(@production, capitalize: true)
-      lineup_nums = lineup_numbers(@roles)
+      # "role" or "act" — the word this board uses for the thing being cast.
+      # The show decides (it may override the production's casting style).
+      unit = casting_unit(@show)
+      unit_plural = casting_unit(@show, plural: true)
+      unit_title = casting_unit(@show, capitalize: true)
+      lineup_nums = lineup_numbers(@roles, show: @show)
     %>
     <div data-controller="drop-role"
          data-drop-role-show-id-value="<%= @show.id %>"
@@ -320,7 +321,7 @@
                         class="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-pink-500 focus:ring-pink-500">
                   <option value="">All <%= unit_plural.capitalize %></option>
                   <% @restricted_roles.each do |role| %>
-                    <option value="<%= role.id %>"><%= role_display_name(role, lineup_nums) %></option>
+                    <option value="<%= role.id %>"><%= role_display_name(role, lineup_nums, show: @show) %></option>
                   <% end %>
                 </select>
               </div>

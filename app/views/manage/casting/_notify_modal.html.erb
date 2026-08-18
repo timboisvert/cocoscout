@@ -19,8 +19,11 @@
   can_finalize = local_assigns.fetch(:can_finalize, fully_cast)
 
   notified_keys = show.notified_assignable_keys
-  notifiable = show.show_person_role_assignments.includes(:assignable).reject(&:guest?).select(&:assignable)
+  notifiable = show.show_person_role_assignments.includes(:assignable, :role).reject(&:guest?).select(&:assignable)
   unnotified_assignments = notifiable.reject { |a| notified_keys.include?([ a.assignable_type, a.assignable_id ]) }
+  # Counts are of people/groups, not assignments: someone holding two acts is one recipient.
+  notifiable_count = notifiable.map { |a| [ a.assignable_type, a.assignable_id ] }.uniq.size
+  unnotified_count = unnotified_assignments.map { |a| [ a.assignable_type, a.assignable_id ] }.uniq.size
   removed_members = show.removed_cast_members
   has_removed = removed_members.any?
   has_work = unnotified_assignments.any? || has_removed
@@ -49,7 +52,7 @@
             <div>
               <h3 class="text-base font-semibold text-gray-900">Finalize &amp; Notify</h3>
               <p class="text-xs text-gray-500">
-                <%= notified_keys.size %> of <%= notifiable.size %> notified<%= fully_cast ? " · fully cast" : " · #{filled_slots} of #{total_slots} cast" %>
+                <%= notified_keys.size %> of <%= notifiable_count %> notified<%= fully_cast ? " · fully cast" : " · #{filled_slots} of #{total_slots} cast" %>
               </p>
             </div>
             <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button, data: { action: "click->modal#close" } %>
@@ -58,7 +61,7 @@
           <%= form_with url: manage_casting_show_notify_path(production, show.id), method: :post, class: "px-5 py-4 space-y-4" do |f| %>
             <% unless fully_cast %>
               <p class="text-sm text-gray-600">
-                This show isn't fully cast yet. Choose who to notify now — they'll see their <%= casting_unit(production) %> while you finish casting the rest.
+                This show isn't fully cast yet. Choose who to notify now — they'll see their <%= casting_unit(show) %> while you finish casting the rest.
               </p>
             <% end %>
 
@@ -69,7 +72,7 @@
                     <button type="button" class="py-2 px-1 text-sm font-medium border-b-2 border-pink-500 text-pink-600 cursor-pointer"
                             data-tabs-target="tab" data-action="click->tabs#select" data-index="0">
                       Notify Cast
-                      <span class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-pink-100 text-pink-600"><%= unnotified_assignments.size %></span>
+                      <span class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-pink-100 text-pink-600"><%= unnotified_count %></span>
                     </button>
                     <button type="button" class="py-2 px-1 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 cursor-pointer"
                             data-tabs-target="tab" data-action="click->tabs#select" data-index="1">
@@ -86,11 +89,18 @@
                   <div class="mb-3">
                     <p class="text-xs font-medium text-gray-700 mb-2">Who to notify (uncheck anyone you're not ready to tell):</p>
                     <div class="space-y-1.5">
-                      <% unnotified_assignments.each do |assignment| %>
-                        <% member = assignment.assignable %>
+                      <%
+                        # One line per person or group, whatever they hold: on a show
+                        # cast by acts, "2 acts as Magic (Acts 1 and 3)" rather than a
+                        # line per act.
+                        notify_numbers = lineup_numbers(show.available_roles.to_a, show: show)
+                        unnotified_by_member = unnotified_assignments.group_by { |a| [ a.assignable_type, a.assignable_id ] }
+                      %>
+                      <% unnotified_by_member.each do |(assignable_type, assignable_id), member_assignments| %>
+                        <% member = member_assignments.first.assignable %>
                         <% next unless member %>
                         <label class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400">
-                          <input type="checkbox" name="assignable_keys[]" value="<%= assignment.assignable_type %>:<%= assignment.assignable_id %>" checked
+                          <input type="checkbox" name="assignable_keys[]" value="<%= assignable_type %>:<%= assignable_id %>" checked
                                  class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
                           <% headshot_variant = member.respond_to?(:safe_headshot_variant) ? member.safe_headshot_variant(:thumb) : nil %>
                           <% if headshot_variant %>
@@ -99,7 +109,7 @@
                             <div class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500"><%= member.name.first.upcase %></div>
                           <% end %>
                           <span class="text-sm text-gray-800"><%= member.name %></span>
-                          <span class="text-xs text-gray-400 ml-auto"><%= assignment.role&.name %></span>
+                          <span class="text-xs text-gray-400 ml-auto"><%= act_assignment_labels(member_assignments, show: show, numbers: notify_numbers).join(", ") %></span>
                         </label>
                       <% end %>
                     </div>

@@ -132,17 +132,23 @@
           <div>
             <p class="text-sm font-medium text-gray-500">Pay</p>
             <% if @wizard_state[:pays_performers] == "yes" %>
-              <% scheme = @wizard_state[:payout_scheme_id].present? ? Current.organization.payout_schemes.find_by(id: @wizard_state[:payout_scheme_id]) : nil %>
+              <%
+                pay_choice = @wizard_state[:pay_choice].to_s
+                calculation = pay_choice == "existing" && @wizard_state[:payout_scheme_id].present? ? Current.organization.payout_schemes.find_by(id: @wizard_state[:payout_scheme_id]) : nil
+                pay_detail = if calculation
+                  "Existing calculation: #{calculation.name}"
+                elsif pay_choice == "new"
+                  "New calculation — set up right after creating"
+                else
+                  "Decide later"
+                end
+              %>
               <p class="text-sm text-gray-900 mt-1">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Performers are paid</span>
-                <% if scheme %>
-                  <span class="text-gray-600 ml-1">— <%= scheme.name %> is the default payout scheme</span>
-                <% else %>
-                  <span class="text-gray-600 ml-1">— payout scheme to be set up later</span>
-                <% end %>
+                <span class="text-gray-600 ml-1"><%= pay_detail %></span>
               </p>
             <% else %>
-              <p class="text-sm text-gray-500 mt-1">Performers are not paid through CocoScout</p>
+              <p class="text-sm text-gray-500 mt-1">Not paid</p>
             <% end %>
           </div>
           <%= link_to "Edit", manage_productions_wizard_pay_path, class: "text-sm text-pink-500 hover:text-pink-600" %>

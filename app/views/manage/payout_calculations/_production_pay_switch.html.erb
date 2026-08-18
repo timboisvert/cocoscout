@@ -1,0 +1,37 @@
+<%#
+  "Pay people for performing in this production" — the on/off switch that
+  decides whether a production has performer pay at all. Off pauses pay: no
+  calculation resolves, no payment-setup reminders, nothing to work out — but
+  the production keeps the calculation it chose for when it's turned back on.
+  The switch posts straight to productions#update_pay and comes back to
+  return_to. NOTE: keep ERB tags out of this comment.
+
+  Locals:
+    production (required)
+    return_to  (required)
+%>
+<%
+  production = local_assigns.fetch(:production)
+  return_to  = local_assigns.fetch(:return_to)
+  on = production.pays_performers?
+%>
+<div class="mb-6 bg-white rounded-lg border <%= on ? 'border-gray-200' : 'border-pink-200' %> p-5">
+  <%= form_with url: update_pay_manage_production_path(production), method: :patch, local: true,
+        data: { controller: "auto-submit" }, class: "flex items-center justify-between gap-4" do |form| %>
+    <%= hidden_field_tag :return_to, return_to, id: nil %>
+    <div>
+      <h3 class="font-semibold text-gray-900">Pay people for performing in <%= production.name %></h3>
+      <p class="text-sm text-gray-500 mt-0.5">
+        <% if on %>
+          Shows are worked out with the production's payout calculation below and paid through payout runs. Turning this off pauses performer pay; the calculation is kept for when you turn it back on, and shows already calculated keep their numbers.
+        <% else %>
+          Performer pay is off — nobody is paid for these shows. Turn it back on to pay them with the calculation the production kept.
+        <% end %>
+      </p>
+    </div>
+    <div class="shrink-0">
+      <%= render "shared/toggle_switch", form: form, field: :performers_paid, checked: on,
+            data: { action: "change->auto-submit#submit" } %>
+    </div>
+  <% end %>
+</div>

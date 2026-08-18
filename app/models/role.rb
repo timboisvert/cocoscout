@@ -38,9 +38,10 @@ class Role < ApplicationRecord
 
   validates :name, presence: true
   # An act-based lineup may repeat a name ("Magic" in each half); role-based
-  # productions keep one role per name.
+  # lineups keep one role per name. A show's custom lineup follows the show's
+  # effective mode (it may override the production's).
   validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" },
-            unless: -> { production&.act_based? }
+            unless: :act?
   validate :break_only_in_act_based_production
   validates :quantity, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 100 }
   validates :category, presence: true, inclusion: { in: CATEGORIES }
@@ -121,8 +122,16 @@ class Role < ApplicationRecord
     !break?
   end
 
-  def act?
-    production&.act_based?
+  # Is this role an act? A show's custom role follows that show's effective
+  # casting mode (which may override the production's); a production role
+  # follows the production — unless it's being read inside a specific show
+  # (pass show:), in which case that show's mode decides. Callers with many
+  # roles should preload :show / :production so this doesn't query per role.
+  def act?(show: nil)
+    context = show || (show_id ? self.show : nil)
+    return context.act_based? if context
+
+    production&.act_based? || false
   end
 
   # The roles this one is ordered among: a show's custom lineup or the
@@ -153,7 +162,11 @@ class Role < ApplicationRecord
   end
 
   # 1-based running-order number among castable siblings; nil for breaks.
-  def lineup_number
+  # Pass show: when a production role is being read inside one show, so a
+  # production lineup rendered on an act-mode night is numbered.
+  def lineup_number(show: nil)
+    return nil unless act?(show: show)
+
     self.class.lineup_numbers_for(siblings.to_a)[id]
   end
 
@@ -165,13 +178,14 @@ class Role < ApplicationRecord
   end
 
   # How this role reads to a person: "Act 3 · Magic" in an act-based
-  # production, the plain name otherwise. Pass a precomputed number when
-  # rendering many roles (see CastingHelper#lineup_numbers).
-  def display_name(number: nil)
-    return name unless act?
+  # lineup, the plain name otherwise. Pass a precomputed number when
+  # rendering many roles (see CastingHelper#lineup_numbers), and show: when
+  # rendering inside a specific show so its casting-mode override applies.
+  def display_name(number: nil, show: nil)
+    return name unless act?(show: show)
     return name if break?
 
-    n = number || lineup_number
+    n = number || lineup_number(show: show)
     n ? "Act #{n} · #{name}" : name
   end
 
@@ -201,7 +215,7 @@ class Role < ApplicationRecord
 
   def break_only_in_act_based_production
     return unless break?
-    return if production&.act_based?
+    return if act?
 
     errors.add(:category, "breaks belong to act-based lineups only")
   end

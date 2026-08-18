@@ -11,26 +11,42 @@ module Manage
       # Active = anything short of fully done: drafts being built, runs funding/
       # paying, partially-paid runs waiting on people, and failed runs needing
       # attention. Completed (and the rare canceled) runs are history below.
-      runs = organization.payout_batches.recent.includes(:created_by)
+      runs = organization.payout_batches.recent.includes(:created_by, items: :payee)
       @active_batches = runs.where.not(status: %w[completed canceled]).to_a
       @completed_batches = runs.where(status: %w[completed canceled]).limit(50).to_a
 
-      # How much money sits in each lifecycle state, across ALL runs (not just
-      # the 50 listed). Partially-paid runs split: the unpaid remainder is
-      # "waiting on people", the paid slice counts toward paid-out.
-      all = organization.payout_batches
-      items = PayoutBatchItem.joins(:payout_batch).where(payout_batches: { organization_id: organization.id })
+      # Each listed run's money by payee state — the columns that say WHY a run
+      # is partially paid ("$250 waiting on Ned's bank"), not just that it is.
+      @run_breakdowns = (@active_batches + @completed_batches).to_h { |b| [ b.id, b.money_by_item_state ] }
+
+      # Where every dollar across ALL runs sits, by what has to happen to it:
+      #   ready    — payable now: in a draft (fund the run) or a funded,
+      #              partially-paid run (Pay remaining). Something YOU can do.
+      #   funding  — ACH clearing on submitted runs; pays out by itself.
+      #   waiting  — funded or drafted, but the payee has no bank yet. Nothing
+      #              you can do but nudge them.
+      #   paid     — all time.
+      #   returned — paid and bounced back by the payee's bank (rare).
+      # Ready/waiting come from the loaded active runs (there's no cap on those);
+      # the rest are sums over every run the org has ever made.
+      all_items = PayoutBatchItem.joins(:payout_batch).where(payout_batches: { organization_id: organization.id })
+      funding_stage = %w[funding funded processing]
+      settling = @active_batches.reject { |b| funding_stage.include?(b.status) }
+      sum_state = ->(state, key) { settling.sum { |b| @run_breakdowns[b.id][state][key] } }
       @money_by_state = {
-        draft: all.where(status: "draft").sum(:total_cents),
-        funding: all.where(status: %w[funding funded processing]).sum(:total_cents),
-        waiting: items.where(payout_batches: { status: "partially_paid" }).where.not(status: "paid").sum(:amount_cents),
-        paid: items.where(status: "paid").sum(:amount_cents)
+        ready: sum_state.call(:ready, :cents),
+        funding: organization.payout_batches.where(status: funding_stage).sum(:total_cents),
+        waiting: sum_state.call(:waiting, :cents),
+        paid: all_items.where(status: "paid").sum(:amount_cents),
+        returned: all_items.where(status: "returned").sum(:amount_cents)
       }
-      @runs_by_state = {
-        draft: all.where(status: "draft").count,
-        funding: all.where(status: %w[funding funded processing]).count,
-        waiting: all.where(status: "partially_paid").count,
-        paid: all.where(status: "completed").count
+      @counts_by_state = {
+        ready: sum_state.call(:ready, :count),
+        funding: @active_batches.count { |b| funding_stage.include?(b.status) },
+        waiting: sum_state.call(:waiting, :count),
+        waiting_runs: settling.count { |b| @run_breakdowns[b.id][:waiting][:count].positive? },
+        paid: organization.payout_batches.where(status: "completed").count,
+        returned: all_items.where(status: "returned").count
       }
     end
 
@@ -59,22 +75,26 @@ module Manage
 
     def show
       @batch = organization.payout_batches.find(params[:id])
+      @items = @batch.items.includes(:payee, payout_contributions: :source).order(:created_at).to_a
+
+      # Every dollar on the run, by payee state (paid / ready / waiting on bank /
+      # returned) — the boxes up top, and the list filter below.
+      @breakdown = @batch.money_by_item_state(@items)
+      @state_filter = params[:state].to_s.to_sym.presence_in(PayoutBatch::ITEM_STATES)
+      @visible_items = @state_filter ? @items.select { |i| PayoutBatch.item_state(i) == @state_filter } : @items
+
       # Payees who can't be paid yet (no connected bank): in an open run they're
       # a pre-funding warning; in a funded, partially-paid run they're who the
       # run is still waiting on.
       @not_ready_items = if @batch.open? || @batch.status == "partially_paid"
-        @batch.items.includes(:payee).pending.reject do |item|
-          item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
-        end
+        @items.select { |i| PayoutBatch.item_state(i) == :waiting }
       else
         []
       end
       # Unpaid items whose payee has since become payable (connected a bank, or
       # a failed transfer worth retrying) — what "Pay remaining" would send.
-      @payable_remaining_items = if @batch.status == "partially_paid" && @batch.funding_status == "succeeded"
-        @batch.items.includes(:payee).where(status: %w[pending failed]).select do |item|
-          item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
-        end
+      @payable_remaining_items = if @batch.status == "partially_paid" && (@batch.funding_status == "succeeded" || @batch.skips_funding?)
+        @items.select { |i| PayoutBatch.item_state(i) == :ready }
       else
         []
       end

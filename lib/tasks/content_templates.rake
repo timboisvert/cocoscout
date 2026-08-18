@@ -94,8 +94,8 @@ namespace :content_templates do
 
   module ActAwareCastingTemplates
     NEW_VARIABLES = [
-      { "name" => "role_name", "description" => "What they were cast as — the role name, or \"Act 3 · Magic\" in an act-based production" },
-      { "name" => "role_names", "description" => "All of their roles/acts across the linked shows, comma-separated" },
+      { "name" => "role_name", "description" => "What they were cast as — the role name, or \"Magic (Act 3)\" in an act-based production" },
+      { "name" => "role_names", "description" => "All of their roles/acts across the linked shows, comma-separated; same-named acts group as \"2 acts as Magic (Acts 1 and 3)\"" },
       { "name" => "casting_unit", "description" => "The word for the thing they were given: \"role\", or \"act\" in an act-based production" },
       { "name" => "casting_units", "description" => "Plural of casting_unit: \"roles\" or \"acts\"" }
     ].freeze
@@ -111,12 +111,24 @@ namespace :content_templates do
           </ul>
           <p>Please let us know if you have any scheduling conflicts or questions.</p>
         HTML
-        new_body: <<~HTML
+        # An earlier default of this task; still rewritten, so a body that was
+        # never customised keeps following the current wording.
+        prior_defaults: [ <<~HTML ],
           <p>You have been cast for {{production_name}}:</p>
           <ul>
           {{shows_list}}
           </ul>
           <p>Your {{casting_unit}} assignment: {{role_names}}</p>
+          <p>Please let us know if you have any scheduling conflicts or questions.</p>
+        HTML
+        # "You're cast in:" reads the same for roles and for grouped acts
+        # ("2 acts as Magic (Acts 1 and 3)").
+        new_body: <<~HTML
+          <p>You have been cast for {{production_name}}:</p>
+          <ul>
+          {{shows_list}}
+          </ul>
+          <p>You're cast in: {{role_names}}</p>
           <p>Please let us know if you have any scheduling conflicts or questions.</p>
         HTML
       },
@@ -159,9 +171,11 @@ namespace :content_templates do
           lines << "created"
         elsif spec[:new_body].nil?
           lines << "body unchanged (no new default)"
-        elsif normalize(template.body) == normalize(spec[:seeded_body])
+        elsif normalize(template.body) == normalize(default_body)
+          lines << "body already current"
+        elsif default_bodies(spec).any? { |body| normalize(template.body) == normalize(body) }
           template.body = default_body
-          lines << "body updated (was the seeded default)"
+          lines << "body updated (was a default)"
         else
           lines << "body left as is (customised)"
         end
@@ -179,6 +193,12 @@ namespace :content_templates do
 
     def normalize(html)
       html.to_s.gsub(/\s+/, " ").strip
+    end
+
+    # Every wording this task (or the original seed) has ever installed; a
+    # body matching one of them was never customised and may be rewritten.
+    def default_bodies(spec)
+      [ spec[:seeded_body], *Array(spec[:prior_defaults]) ]
     end
 
     # Adds any variable not already present (by name); keeps existing entries

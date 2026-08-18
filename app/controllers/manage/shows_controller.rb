@@ -462,6 +462,7 @@ module Manage
           online_location_info: @last_show.online_location_info,
           casting_enabled: @last_show.casting_enabled,
           casting_source: @last_show.casting_source,
+          casting_mode: @last_show.casting_mode,
           public_profile_visible: @last_show.public_profile_visible,
           date_and_time: datetime,
           recurrence_group_id: @recurrence_group_id,
@@ -504,7 +505,7 @@ module Manage
           updated_count = 0
 
           @show.recurrence_group.each do |show|
-            updated_count += 1 if show.update(update_params)
+            updated_count += 1 if update_show_converting_lineup(show, update_params)
           end
 
           # Date/time is per-occurrence (series-wide reschedules go through the
@@ -545,7 +546,7 @@ module Manage
           return
         end
 
-        if @show.update(update_params)
+        if update_show_converting_lineup(@show, update_params)
           redirect_to manage_show_path(@production, @show),
                       notice: "#{@show.event_type.titleize} was successfully updated",
                       status: :see_other
@@ -667,6 +668,8 @@ module Manage
       else
         params[:show][:casting_source] || @show.casting_source
       end
+      # Casting style override (roles vs acts); "" means inherit from production
+      casting_mode = params[:show].key?(:casting_mode) ? params[:show][:casting_mode].presence : @show.casting_mode
       # Preserve call time settings
       call_time = params[:show][:call_time].presence || @show.call_time
       call_time_enabled = params[:show][:call_time_enabled].nil? ? @show.call_time_enabled : params[:show][:call_time_enabled]
@@ -753,6 +756,7 @@ module Manage
           online_location_info: online_location_info,
           casting_enabled: casting_enabled,
           casting_source: casting_source,
+          casting_mode: casting_mode,
           call_time: call_time,
           call_time_enabled: call_time_enabled,
           public_profile_visible: public_profile_visible,
@@ -1580,6 +1584,7 @@ module Manage
           online_location_info: template_show.online_location_info,
           casting_enabled: template_show.casting_enabled,
           casting_source: template_show.casting_source,
+          casting_mode: template_show.casting_mode,
           public_profile_visible: template_show.public_profile_visible,
           date_and_time: datetime,
           recurrence_group_id: @recurrence_group_id,
@@ -1595,6 +1600,22 @@ module Manage
     end
 
     private
+
+    # Save a show; if that flipped its casting mode (its casting_mode override,
+    # from the casting settings modal or the edit screen), reshape its lineup:
+    # roles → acts makes multi-person roles one act per person; acts → roles
+    # folds same-named runs back into one role and drops breaks. Cast kept.
+    def update_show_converting_lineup(show, attrs)
+      was_act_based = show.act_based?
+      return false unless show.update(attrs)
+
+      if !was_act_based && show.act_based?
+        CastingModeConverter.to_acts_for_show!(show)
+      elsif was_act_based && show.role_based?
+        CastingModeConverter.to_roles_for_show!(show)
+      end
+      true
+    end
 
     def parse_param_datetime(value)
       return nil if value.blank?
@@ -1704,7 +1725,7 @@ module Manage
     def show_params
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :production_id, :location_id, :location_space_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
-                                               :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :is_online, :online_location_info,
+                                               :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :casting_mode, :is_online, :online_location_info,
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,
                                                show_links_attributes: %i[id url text _destroy])
 

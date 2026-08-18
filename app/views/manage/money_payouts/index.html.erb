@@ -4,7 +4,7 @@
   payouts_actions = [
     { icon: "dollar-sign", text: "Payout Runs", description: "Pay connected banks at once", path: manage_payout_batches_path },
     { icon: "banknotes", text: "Advances", description: "Pre-show payments", path: manage_money_advances_path },
-    { icon: "puzzle-piece", text: "Payout Schemes", description: "Configure calculation rules", path: manage_money_payout_schemes_path }
+    { icon: "puzzle-piece", text: "Payout Calculations", description: "How performers are paid", path: manage_money_payout_calculations_path }
   ]
 %>
 
@@ -18,50 +18,94 @@
         ["Payouts", manage_money_payouts_path]
       ],
       text: @production.name,
-      links: [
-        { text: "Manage Schemes", path: manage_money_payout_schemes_path }
-      ]
+      links: []
     } %>
 
+    <%# Does this production pay performers at all? Off hides everything that
+        only matters when it does. %>
+    <%= render "manage/payout_calculations/production_pay_switch",
+          production: @production,
+          return_to: manage_money_production_payouts_path(@production) %>
 
-    <%# Payment Setup Section %>
-    <div class="mb-6 bg-white rounded-lg border border-gray-200 p-5" data-controller="show-toggle qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
-      <div class="flex items-center justify-between mb-3">
-        <div>
-          <h3 class="font-semibold text-gray-900">Payment Setup</h3>
-          <p class="text-sm text-gray-500 mt-0.5">
-            <% if @missing_payment_info.any? %>
-              <%= @missing_payment_info.count %> talent pool <%= "member".pluralize(@missing_payment_info.count) %> haven't set up their payment info
-            <% else %>
-              All talent pool members have payment info configured
-            <% end %>
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <%= render "shared/button", text: "QR Code", variant: "outline", size: "small", icon: "qr-code", data: { action: "click->qr-code#open" } %>
+    <% if @production.pays_performers? %>
+    <%# Money by state for this production — the same idea as the all-productions
+        page, limited to these shows. %>
+    <% to_pay = [ @total_awaiting_payout.to_f - @total_awaiting_in_run.to_f, 0 ].max %>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
+      <div class="rounded-lg border p-3 sm:p-5 <%= @needs_calculation_count.positive? ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200" %>">
+        <div class="text-sm text-gray-500 sm:mb-1">Awaiting calculation</div>
+        <div class="text-lg sm:text-2xl font-semibold text-pink-600 tabular-nums"><%= @needs_calculation_count %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5"><%= "show".pluralize(@needs_calculation_count) %> already happened, not worked out yet</div>
+      </div>
+      <div class="rounded-lg border p-3 sm:p-5 <%= to_pay.positive? ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200" %>">
+        <div class="text-sm text-gray-500 sm:mb-1">To pay</div>
+        <div class="text-lg sm:text-2xl font-semibold text-pink-600 tabular-nums"><%= number_to_currency(to_pay) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">owed, not in a run yet</div>
+      </div>
+      <div class="rounded-lg border p-3 sm:p-5 <%= @total_awaiting_in_run.to_f.positive? ? "bg-amber-50 border-amber-200" : "bg-white border-gray-200" %>">
+        <div class="text-sm text-gray-500 sm:mb-1">In a payout run</div>
+        <div class="text-lg sm:text-2xl font-semibold text-amber-600 tabular-nums"><%= number_to_currency(@total_awaiting_in_run.to_f) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">on its way</div>
+      </div>
+      <div class="rounded-lg border p-3 sm:p-5 bg-white border-gray-200">
+        <div class="text-sm text-gray-500 sm:mb-1">Paid</div>
+        <div class="text-lg sm:text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@total_paid.to_f) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">to <%= pluralize(@paid_people_count.to_i, "payee") %> across <%= pluralize(@paid_shows_count.to_i, "show") %></div>
+      </div>
+    </div>
+
+    <%# Which calculation this production's shows start from — set it here;
+        a show can choose or customize its own on its payout page. %>
+    <%= render "manage/payout_calculations/production_calculation_card",
+          production: @production,
+          return_to: manage_money_production_payouts_path(@production) %>
+
+    <%# Waiting on payment info — people owed (or about to be owed) who
+        can't be paid until they set up their payment info. %>
+    <div class="mb-6 bg-white rounded-lg border <%= @missing_payment_info.any? ? 'border-blue-200' : 'border-gray-200' %> p-5" data-controller="show-toggle qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>">
+      <div class="mb-3">
+        <h3 class="font-semibold text-gray-900">
           <% if @missing_payment_info.any? %>
-            <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "small", icon: "mail", data: { action: "click->modal#open", "modal-id": "notify-modal" } %>
+            Waiting on payment info
+          <% else %>
+            Payment info
           <% end %>
-        </div>
+        </h3>
+        <p class="text-sm text-gray-500 mt-0.5">
+          <% if @missing_payment_info.any? %>
+            <span class="font-semibold text-gray-900"><%= @missing_payment_info.count %></span> talent pool <%= "member".pluralize(@missing_payment_info.count) %> can't be paid until they set up their payment info.
+          <% else %>
+            Everyone in the talent pool has set up their payment info.
+          <% end %>
+        </p>
       </div>
 
       <% if @missing_payment_info.any? %>
-        <button type="button" data-action="click->show-toggle#toggle" class="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
-          <svg data-show-toggle-target="icon" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
-          Show names
-        </button>
-        <div data-show-toggle-target="content" class="hidden mt-3 pt-3 border-t border-gray-100">
-          <div class="flex flex-wrap gap-1.5">
-            <% @missing_payment_info.each do |person| %>
-              <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                <%= person.name %>
-              </span>
-            <% end %>
-          </div>
+        <div class="flex flex-wrap gap-1.5 mb-3">
+          <% @missing_payment_info.first(12).each do |person| %>
+            <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"><%= person.name %></span>
+          <% end %>
+          <% if @missing_payment_info.count > 12 %>
+            <button type="button" data-action="click->show-toggle#toggle" class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs cursor-pointer hover:bg-gray-200">+<%= @missing_payment_info.count - 12 %> more</button>
+          <% end %>
         </div>
+        <% if @missing_payment_info.count > 12 %>
+          <div data-show-toggle-target="content" class="hidden mb-3">
+            <div class="flex flex-wrap gap-1.5">
+              <% @missing_payment_info.drop(12).each do |person| %>
+                <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"><%= person.name %></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
       <% end %>
+
+      <div class="flex flex-wrap gap-2">
+        <% if @missing_payment_info.any? %>
+          <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "small", icon: "mail", data: { action: "click->modal#open", "modal-id": "notify-modal" } %>
+        <% end %>
+        <%= render "shared/button", text: "QR Code", variant: "secondary", size: "small", icon: "qr-code", data: { action: "click->qr-code#open" } %>
+      </div>
 
       <%# QR Code Modal %>
       <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
@@ -183,6 +227,19 @@
       </div>
     </div>
 
+    <% else %>
+      <%# Performer pay is off. Anything already worked out stays visible as history. %>
+      <% past = @all_payout_shows.select { |s| s.show_payout&.calculated_at } %>
+      <% if past.any? %>
+        <div class="pt-2">
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Past payouts</h3>
+          <%= render layout: "shared/slim_list", locals: { label: "Show", columns: [ "Awaiting", "Paid" ] } do %>
+            <%= render "manage/money_payouts/payout_show_rows", shows: past %>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+
   <% else %>
     <%# All Productions View — breadcrumb like the financials page, then just the
         three action buttons (no big title / description). %>
@@ -197,60 +254,62 @@
         sections below: "To pay" is the Awaiting Payout money not yet in a run;
         the other three split the Active Runs money by lifecycle stage, so a
         partially paid run counts only its unpaid remainder. %>
+    <% d = @run_state_detail %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-8">
-      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+      <%# Each box wears its state's color while it holds money; empty ones stay quiet. %>
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @todo.payouts.amounts[:to_pay].to_f.positive? ? "bg-pink-50 border-pink-200" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">To pay</div>
         <div class="text-lg sm:text-2xl font-semibold text-pink-600 tabular-nums"><%= number_to_currency(@todo.payouts.amounts[:to_pay].to_f) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">owed, not in a run yet</div>
       </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @run_state_cents[:draft].positive? ? "bg-gray-50 border-gray-300" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">In draft</div>
         <div class="text-lg sm:text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@run_state_cents[:draft] / 100.0) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">
+          <% if d[:draft_nobank_people].positive? %>
+            <span class="text-blue-600 font-medium"><%= number_to_currency(d[:draft_nobank_cents] / 100.0) %></span> of it for <%= pluralize(d[:draft_nobank_people], "payee") %> with no bank
+          <% else %>
+            not submitted yet
+          <% end %>
+        </div>
       </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @run_state_cents[:funding].positive? ? "bg-amber-50 border-amber-200" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">Funding</div>
         <div class="text-lg sm:text-2xl font-semibold text-amber-600 tabular-nums"><%= number_to_currency(@run_state_cents[:funding] / 100.0) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">ACH clearing, pays out automatically</div>
       </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-3 sm:p-5 flex items-center justify-between sm:block">
+      <div class="rounded-lg border p-3 sm:p-5 flex items-center justify-between sm:block <%= @run_state_cents[:waiting].positive? ? "bg-blue-50 border-blue-200" : "bg-white border-gray-200" %>">
         <div class="text-sm text-gray-500 sm:mb-1">Waiting on payees</div>
         <div class="text-lg sm:text-2xl font-semibold text-blue-600 tabular-nums"><%= number_to_currency(@run_state_cents[:waiting] / 100.0) %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5">
+          <% if @run_state_cents[:waiting].positive? %>
+            <% bits = [] %>
+            <% bits << "#{number_to_currency(d[:waiting_nobank_cents] / 100.0)} · #{pluralize(d[:waiting_nobank_people], 'payee')} with no bank" if d[:waiting_nobank_people].positive? %>
+            <% bits << "#{number_to_currency(d[:waiting_ready_cents] / 100.0)} ready — pay remaining" if d[:waiting_ready_people].positive? %>
+            <%= bits.join(" · ") %>
+          <% else %>
+            funded runs, nobody left unpaid
+          <% end %>
+        </div>
       </div>
     </div>
 
     <%# Active runs — drafts still being assembled, plus submitted money moving
         through funding/transfers. Each state box above sums rows from here. %>
     <% if @active_runs.any? %>
+      <%
+        # Same money-state columns as the Payout Runs page: paid / ready to pay /
+        # waiting on bank (only the ones with money in them), so a partially
+        # paid run says right here what it's stuck on.
+        run_cols = run_state_columns(@active_run_breakdowns.values)
+        run_col_labels = [ "Total" ] + run_cols.map { |c| Manage::PayoutBatchesHelper::RUN_STATE_COLUMNS[c][:label] }
+        run_min_width = { 2 => "min-w-[480px]", 3 => "min-w-[560px]", 4 => "min-w-[700px]", 5 => "min-w-[820px]" }[run_col_labels.size] || "min-w-[820px]"
+      %>
       <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Active Runs</h3>
       <div class="mb-8">
-        <%= render layout: "shared/slim_list", locals: { label: "Payout run", columns: [ "Amount" ], min_width: "min-w-[360px]" } do %>
+        <%= render layout: "shared/slim_list", locals: { label: "Payout run", columns: run_col_labels, min_width: run_min_width } do %>
           <% @active_runs.each do |run| %>
-            <%
-              waiting_cents = run.status == "partially_paid" ? run.total_cents - run.paid_total_cents : run.total_cents
-              next_try = run.next_auto_retry_at
-              retry_label = if next_try
-                              when_text = if next_try.to_date == Date.current then "today"
-                                          elsif next_try.to_date == Date.current + 1 then "tomorrow"
-                                          else next_try.strftime("%b %-d")
-                                          end
-                                " · retrying #{when_text} #{next_try.strftime('%-l:%M%P')}"
-              end
-              subtitle = case run.status
-                         when "draft" then "Draft — not submitted yet"
-                         when "partially_paid" then "#{number_to_currency(waiting_cents / 100.0)} waiting on payees' bank info#{retry_label}"
-                         else "ACH clearing — pays out automatically"
-                         end
-              badge_color = case run.status
-                            when "draft" then "gray"
-                            when "partially_paid" then "blue"
-                            else "amber"
-                            end
-            %>
-            <%= render "shared/slim_list_row",
-                  title: "#{run.kind_label} · #{run.created_at.strftime('%b %-d')}",
-                  subtitle: subtitle,
-                  badge: { text: run.display_status, color: badge_color },
-                  href: manage_payout_batch_path(run),
-                  col_labels: [ "Amount" ],
-                  cells: [ { value: number_to_currency(run.total_cents / 100.0), class: "text-gray-900 font-medium" } ] %>
+            <%= render "manage/payout_batches/run_row", batch: run, breakdown: @active_run_breakdowns[run.id], columns: run_cols %>
           <% end %>
         <% end %>
       </div>

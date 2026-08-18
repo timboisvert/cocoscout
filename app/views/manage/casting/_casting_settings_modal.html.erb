@@ -7,12 +7,14 @@
     - production: The Production object
 %>
 <%
-  # Act-based productions call the thing being cast an "act" and the set of
-  # them a "lineup"; role-based ones keep "role(s)". Role mode is unchanged.
-  act_mode = production.act_based?
-  unit = casting_unit(production)
-  unit_plural = casting_unit(production, plural: true)
-  custom_numbers = lineup_numbers(show.custom_roles)
+  # Act-based shows call the thing being cast an "act" and the set of them a
+  # "lineup"; role-based ones keep "role(s)". The show's effective mode decides
+  # (it may override the production's). Role mode is unchanged.
+  act_mode = show.act_based?
+  unit = casting_unit(show)
+  unit_plural = casting_unit(show, plural: true)
+  custom_numbers = lineup_numbers(show.custom_roles, show: show)
+  production_mode_label = production.act_based? ? "Acts" : "Roles"
 %>
 <div data-casting-settings-modal-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" data-action="click->casting-settings-modal#stopPropagation">
@@ -79,6 +81,63 @@
               <option value="manual" <%= 'selected' if show.casting_source == 'manual' %>>Manual Entry</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <%# Section 2b: Casting Style Override (roles vs acts) %>
+      <div class="pt-6 border-t border-gray-200">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-700">Override the production's casting style for this event</p>
+            <p class="text-xs text-gray-500 mt-1">
+              By default, this event is cast the way <%= production.name %> is (<strong><%= production_mode_label %></strong>).
+              Enable to cast this event by <%= production.act_based? ? "roles" : "acts" %> instead.
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-4">
+            <input type="checkbox"
+                   <%= "checked" if show.uses_custom_casting_mode? %>
+                   class="sr-only peer accent-pink-500"
+                   data-casting-settings-modal-target="castingModeOverrideCheckbox"
+                   data-action="change->casting-settings-modal#toggleCastingModeOverride">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          </label>
+        </div>
+
+        <%# Casting Style radio cards %>
+        <div data-casting-settings-modal-target="castingModeOptions" class="<%= show.uses_custom_casting_mode? ? '' : 'hidden' %> ml-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <p class="text-sm font-medium text-gray-700 mb-3">Casting Style for This Event</p>
+          <div class="space-y-3">
+            <label data-casting-settings-modal-target="castingModeOption" class="flex items-start gap-3 p-3 bg-white border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors <%= show.casting_mode == 'role_based' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>">
+              <input type="radio"
+                     name="show[casting_mode]"
+                     value="role_based"
+                     <%= 'checked' if show.casting_mode == 'role_based' %>
+                     data-casting-settings-modal-target="castingModeRadio"
+                     data-action="change->casting-settings-modal#updateCastingMode"
+                     class="h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer">
+              <div class="flex-1">
+                <span class="block text-sm font-medium text-gray-900">Roles</span>
+                <span class="block text-xs text-gray-500 mt-0.5">Fill named positions: Host, Performer ×6, Stage Manager.</span>
+              </div>
+            </label>
+            <label data-casting-settings-modal-target="castingModeOption" class="flex items-start gap-3 p-3 bg-white border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors <%= show.casting_mode == 'act_based' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>">
+              <input type="radio"
+                     name="show[casting_mode]"
+                     value="act_based"
+                     <%= 'checked' if show.casting_mode == 'act_based' %>
+                     data-casting-settings-modal-target="castingModeRadio"
+                     data-action="change->casting-settings-modal#updateCastingMode"
+                     class="h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer">
+              <div class="flex-1">
+                <span class="block text-sm font-medium text-gray-900">Acts</span>
+                <span class="block text-xs text-gray-500 mt-0.5">Build a running order — Magic, Clown, Intermission, Aerial — and cast each act. Performers can hold more than one act.</span>
+              </div>
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">
+            Assignments are kept either way. Switching this event to acts turns each multi-person role into one act per person (Dancer ×5 becomes five Dancer acts, cast kept); if any of the production's roles holds more than one person, this event gets its own lineup so the production's roles stay as they are — rename the acts there afterwards. Switching back to roles merges same-named acts in a row into one role again (five Dancer acts become Dancer ×5, cast kept) and drops intermissions.
+          </p>
         </div>
       </div>
 
@@ -354,7 +413,11 @@
     </div>
 
     <%# Footer %>
-    <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end flex-shrink-0">
+    <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between gap-4 flex-shrink-0">
+      <p class="text-xs text-gray-500">
+        Change how the whole production casts (roles or acts, source, lineup) in
+        <%= link_to "Casting Settings", manage_casting_settings_path(production), class: "text-pink-600 hover:text-pink-700 hover:underline font-medium" %>
+      </p>
       <%= render "shared/button",
           text: "Done",
           variant: "primary",

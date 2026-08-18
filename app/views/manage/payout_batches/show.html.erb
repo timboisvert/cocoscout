@@ -1,5 +1,20 @@
 <% content_for :title, "Payout Run" %>
 
+<%
+  # Human "when" for the next automatic retry, shared by a few lines below.
+  next_try = @batch.next_auto_retry_at
+  next_try_text = if next_try
+                    day = if next_try.to_date == Date.current then "today"
+                          elsif next_try.to_date == Date.current + 1 then "tomorrow"
+                          else next_try.strftime("%a, %b %-d")
+                          end
+                    "#{day} at #{next_try.strftime('%-l:%M%P')}"
+                  end
+  in_flight = %w[funding funded processing].include?(@batch.status)
+  remaining_cents = @batch.total_cents - @breakdown[:paid][:cents]
+  state_path = ->(state) { state ? manage_payout_batch_path(@batch, state: state) : manage_payout_batch_path(@batch) }
+%>
+
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
@@ -8,273 +23,380 @@
       ["Money", manage_money_index_path],
       ["Payout Runs", manage_payout_batches_path]
     ],
-    text: @batch.created_at.strftime("%b %-d, %Y"),
+    text: "#{@batch.kind_label} · #{@batch.created_at.strftime("%b %-d, %Y")}",
     links: []
   } %>
 
-  <div class="max-w-3xl">
-    <%= render "manage/payout_batches/status_timeline", batch: @batch %>
+  <%= render "manage/payout_batches/status_timeline", batch: @batch, breakdown: @breakdown %>
 
-    <div class="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-6">
-      <div class="rounded-lg border border-gray-200 bg-white p-4">
-        <div class="text-xs text-gray-500 uppercase tracking-wide">Total</div>
-        <div class="mt-1 text-xl font-bold text-gray-900 tabular-nums"><%= number_to_currency(@batch.total_cents / 100.0) %></div>
-      </div>
-      <div class="rounded-lg border border-gray-200 bg-white p-4">
-        <div class="text-xs text-gray-500 uppercase tracking-wide">Paid so far</div>
-        <div class="mt-1 text-xl font-bold text-gray-900 tabular-nums"><%= number_to_currency(@batch.paid_total_cents / 100.0) %></div>
-      </div>
-      <div class="rounded-lg border border-gray-200 bg-white p-4">
-        <div class="text-xs text-gray-500 uppercase tracking-wide">Funding</div>
-        <div class="mt-1 text-sm font-medium text-gray-900"><%= @batch.funding_status&.titleize || "—" %></div>
-      </div>
-    </div>
-
-    <% if @batch.status == "funding" %>
-      <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        We're collecting the funds for this run. Payouts to each payee go out automatically once it clears.
-        <% if Rails.env.development? %>
-          <%# Dev has no Stripe webhooks unless you run `stripe listen` — this
-              fakes the payment_intent.succeeded event so the run can advance. %>
-          <div class="mt-3">
-            <%= button_to manage_simulate_funding_payout_batch_path(@batch), method: :post, class: "inline-block" do %>
-              <%= render "shared/button", text: "Dev: simulate funding cleared", variant: "secondary", size: "small", type: :submit %>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
+  <%# ---- Where every dollar on this run sits. Each box is a filter on the
+      payments list below — click "Waiting on bank info" and you're looking at
+      exactly the payees holding the run up. ---- %>
+  <%
+    boxes = [
+      { state: nil,       label: "Total",  cents: @batch.total_cents, count: @items.size, color: "text-gray-900", ring: "ring-gray-300", tint: "bg-white border-gray-200",
+        note: "#{pluralize(@items.size, 'payee')} · #{remaining_cents.positive? ? "#{number_to_currency(remaining_cents / 100.0)} still to pay" : "everyone paid"}" },
+      { state: :paid,     label: "Paid",   cents: @breakdown[:paid][:cents], count: @breakdown[:paid][:count], color: "text-green-700", ring: "ring-green-300", tint: "bg-green-50 border-green-200",
+        note: @breakdown[:paid][:count].positive? ? "#{pluralize(@breakdown[:paid][:count], 'payee')} · transferred" : "nobody yet" },
+      { state: :ready,    label: in_flight ? "Paying" : "Ready to pay", cents: @breakdown[:ready][:cents], count: @breakdown[:ready][:count], color: in_flight ? "text-amber-700" : "text-pink-600", ring: in_flight ? "ring-amber-300" : "ring-pink-300", tint: in_flight ? "bg-amber-50 border-amber-200" : "bg-pink-50 border-pink-200",
+        note: if @breakdown[:ready][:count].zero? then "nobody waiting on you"
+              elsif in_flight then "#{pluralize(@breakdown[:ready][:count], 'payee')} · goes out once funding clears"
+              elsif @batch.open? then "#{pluralize(@breakdown[:ready][:count], 'payee')} · bank connected, fund the run to pay"
+              else "#{pluralize(@breakdown[:ready][:count], 'payee')} · bank connected, pay remaining"
+              end },
+      { state: :waiting,  label: "Waiting on bank info", cents: @breakdown[:waiting][:cents], count: @breakdown[:waiting][:count], color: "text-blue-700", ring: "ring-blue-300", tint: "bg-blue-50 border-blue-200",
+        note: if @breakdown[:waiting][:count].zero? then "everyone has a bank connected"
+              else "#{pluralize(@breakdown[:waiting][:count], 'payee')} #{@breakdown[:waiting][:count] == 1 ? "hasn't" : "haven't"} connected — can't be paid yet"
+              end }
+    ]
+    if @breakdown[:returned][:count].positive?
+      boxes << { state: :returned, label: "Returned by bank", cents: @breakdown[:returned][:cents], count: @breakdown[:returned][:count], color: "text-red-700", ring: "ring-red-300", tint: "bg-red-50 border-red-200",
+                 note: "#{pluralize(@breakdown[:returned][:count], 'payment')} bounced · owed again" }
+    end
+  %>
+  <div class="grid grid-cols-2 <%= boxes.size == 5 ? "lg:grid-cols-5" : "lg:grid-cols-4" %> gap-3 sm:gap-4 mb-6">
+    <% boxes.each do |box| %>
+      <% active = @state_filter == box[:state] %>
+      <% clickable = box[:state].nil? || box[:count].positive? %>
+      <%# The box wears its state's color while it holds money; empty states stay quiet. %>
+      <% tint = box[:count].positive? ? box[:tint] : "bg-white border-gray-200" %>
+      <% classes = "block rounded-lg border p-4 transition #{tint} #{active ? "ring-2 #{box[:ring]}" : ""} #{clickable ? "hover:shadow-sm" : "opacity-60"}" %>
+      <% content = capture do %>
+        <div class="text-xs text-gray-500 uppercase tracking-wide"><%= box[:label] %></div>
+        <div class="mt-1 text-xl sm:text-2xl font-bold tabular-nums <%= box[:color] %>"><%= number_to_currency(box[:cents] / 100.0) %></div>
+        <div class="text-xs text-gray-400 mt-0.5"><%= box[:note] %></div>
+      <% end %>
+      <% if clickable %>
+        <%= link_to content, state_path.call(box[:state]), class: classes, data: { turbo_action: "replace" } %>
+      <% else %>
+        <div class="<%= classes %>"><%= content %></div>
+      <% end %>
     <% end %>
+  </div>
 
-    <% if @not_ready_items.any? %>
-      <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-amber-900"><%= pluralize(@not_ready_items.size, "payee") %> <%= @not_ready_items.size == 1 ? "hasn't" : "haven't" %> connected a bank yet</p>
-            <% if @batch.status == "partially_paid" %>
-              <p class="text-xs text-amber-800 mt-0.5">Their money is already funded and waiting on this run. You don't have to do anything — we pay each payee automatically as soon as they connect a bank.</p>
-              <% next_try = @batch.next_auto_retry_at %>
-              <% if next_try %>
-                <p class="text-xs text-amber-800 mt-1 flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  Next automatic attempt
-                  <strong><%= next_try.to_date == Date.current ? "today" : (next_try.to_date == Date.current + 1 ? "tomorrow" : next_try.strftime("%a, %b %-d")) %>
-                    at <%= next_try.strftime("%-l:%M%P") %></strong>
-                  <span class="text-amber-700">— or the moment they connect, whichever comes first.</span>
-                </p>
-              <% end %>
-            <% else %>
-              <p class="text-xs text-amber-800 mt-0.5">You can still pay the run — the full amount is funded up front, we pay everyone who's ready, and each remaining payee's money waits on this run until they connect a bank.</p>
-            <% end %>
-            <div class="mt-2 flex flex-wrap gap-1.5">
-              <% @not_ready_items.each do |item| %>
-                <span class="inline-flex items-center gap-1 rounded-md bg-white/60 border border-amber-200 px-2 py-0.5 text-xs text-amber-900">
-                  <%= item.payee&.name %> · <%= number_to_currency(item.amount_cents / 100.0) %>
-                </span>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <%# ---- Sidebar (first in DOM so the next-step card leads on phones):
+        what to do next, then the run's particulars. ---- %>
+    <aside class="space-y-6 lg:order-2">
+      <%# Next step — one card, whichever applies. %>
+      <% if @batch.status == "funding" %>
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-5">
+          <h2 class="text-sm font-semibold text-amber-900">Funding in progress</h2>
+          <p class="text-sm text-amber-800 mt-1">We're collecting the funds for this run. Payouts to each payee go out automatically once it clears.</p>
+          <% if Rails.env.development? %>
+            <%# Dev has no Stripe webhooks unless you run `stripe listen` — this
+                fakes the payment_intent.succeeded event so the run can advance. %>
+            <div class="mt-3">
+              <%= button_to manage_simulate_funding_payout_batch_path(@batch), method: :post, class: "inline-block" do %>
+                <%= render "shared/button", text: "Dev: simulate funding cleared", variant: "secondary", size: "small", type: :submit %>
               <% end %>
             </div>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
-    <%# Funded, partially paid: the remaining money is sitting on this run.
-        "Pay remaining" transfers to whoever has become ready since last pass. %>
-    <% if @batch.status == "partially_paid" %>
-      <div class="mb-6 rounded-lg border border-pink-200 bg-pink-50 p-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <% remaining_cents = @batch.total_cents - @batch.paid_total_cents %>
-          <p class="text-sm font-medium text-gray-900"><%= number_to_currency(remaining_cents / 100.0) %> still to pay on this run — already funded</p>
-          <% next_try = @batch.next_auto_retry_at %>
-          <% if @payable_remaining_items.any? %>
-            <p class="text-xs text-gray-600 mt-0.5">
-              <%= pluralize(@payable_remaining_items.size, "payee") %> <%= @payable_remaining_items.size == 1 ? "is" : "are" %> ready now (<%= @payable_remaining_items.map { |i| i.payee&.name }.join(", ") %>).
-              <% if next_try %>
-                We'll send it automatically <%= next_try.to_date == Date.current ? "today" : (next_try.to_date == Date.current + 1 ? "tomorrow" : next_try.strftime("%a, %b %-d")) %>
-                at <%= next_try.strftime("%-l:%M%P") %>, or hit the button to send it now.
-              <% end %>
-            </p>
-          <% else %>
-            <p class="text-xs text-gray-600 mt-0.5">
-              No one new is ready yet.
-              <% if next_try %>
-                We check automatically every morning — next
-                <%= next_try.to_date == Date.current ? "today" : (next_try.to_date == Date.current + 1 ? "tomorrow" : next_try.strftime("%a, %b %-d")) %>
-                at <%= next_try.strftime("%-l:%M%P") %> — and the moment anyone connects a bank.
-              <% end %>
-            </p>
           <% end %>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
+      <% elsif @batch.status == "partially_paid" %>
+        <%# Funded, partially paid: the remaining money is sitting on this run.
+            "Pay remaining" transfers to whoever has become ready since last pass. %>
+        <div class="rounded-lg border border-pink-200 bg-pink-50 p-5">
+          <h2 class="text-sm font-semibold text-gray-900"><%= number_to_currency(remaining_cents / 100.0) %> still to pay on this run</h2>
+          <p class="text-xs text-gray-600 mt-1">Already funded — no new money is debited.</p>
           <% if @payable_remaining_items.any? %>
-            <% pay_remaining_cid = "confirm-pay-remaining" %>
-            <%= render "shared/button", text: "Pay remaining", variant: "primary", size: "medium", type: :button,
-                  data: { controller: "modal", action: "click->modal#open", modal_id: pay_remaining_cid } %>
-            <%= render "shared/confirm_modal", id: pay_remaining_cid,
-                  title: "Pay the remaining payees?",
-                  message: "Send #{number_to_currency(@payable_remaining_items.sum(&:amount_cents) / 100.0)} to #{pluralize(@payable_remaining_items.size, 'payee')} from this run's already-funded balance? No new money is debited.",
-                  confirm_text: "Pay remaining",
-                  url: manage_pay_remaining_payout_batch_path(@batch),
-                  method: :post %>
+            <p class="text-sm text-gray-800 mt-3">
+              <span class="font-medium"><%= pluralize(@payable_remaining_items.size, "payee") %> <%= @payable_remaining_items.size == 1 ? "is" : "are" %> ready now</span>
+              (<%= @payable_remaining_items.map { |i| i.payee&.name }.join(", ") %>).
+              <% if next_try_text %>We'll send it automatically <%= next_try_text %>, or send it now.<% end %>
+            </p>
+            <div class="mt-3">
+              <% pay_remaining_cid = "confirm-pay-remaining" %>
+              <%= render "shared/button", text: "Pay remaining", variant: "primary", size: "medium", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: pay_remaining_cid } %>
+              <%= render "shared/confirm_modal", id: pay_remaining_cid,
+                    title: "Pay the remaining payees?",
+                    message: "Send #{number_to_currency(@payable_remaining_items.sum(&:amount_cents) / 100.0)} to #{pluralize(@payable_remaining_items.size, 'payee')} from this run's already-funded balance? No new money is debited.",
+                    confirm_text: "Pay remaining",
+                    url: manage_pay_remaining_payout_batch_path(@batch),
+                    method: :post %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-700 mt-3">
+              No one new is ready yet.
+              <% if next_try_text %>We check automatically every morning — next <%= next_try_text %> — and the moment anyone connects a bank.<% end %>
+            </p>
           <% end %>
           <% if Rails.env.development? %>
             <%# Simulated funding never put money in the test balance — this
                 tops it up (bypass-pending test charge) and retries. %>
-            <%= button_to manage_simulate_funding_payout_batch_path(@batch), method: :post, class: "inline-block" do %>
-              <%= render "shared/button", text: "Dev: top up test balance & retry", variant: "secondary", size: "small", type: :submit %>
+            <div class="mt-3">
+              <%= button_to manage_simulate_funding_payout_batch_path(@batch), method: :post, class: "inline-block" do %>
+                <%= render "shared/button", text: "Dev: top up test balance & retry", variant: "secondary", size: "small", type: :submit %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% elsif @batch.open? && @items.any? %>
+        <div class="rounded-lg border border-pink-200 bg-pink-50 p-5">
+          <h2 class="text-sm font-semibold text-gray-900">
+            <% if @breakdown[:ready][:count].positive? %>
+              Ready to pay <%= pluralize(@breakdown[:ready][:count], "payee") %> · <%= number_to_currency(@breakdown[:ready][:cents] / 100.0) %>
+            <% else %>
+              Fund this run · <%= number_to_currency(@batch.total_cents / 100.0) %>
+            <% end %>
+          </h2>
+          <p class="text-xs text-gray-600 mt-1">We debit your bank via ACH, then pay each payee to their connected bank.</p>
+          <% if @breakdown[:waiting][:count].positive? %>
+            <p class="text-xs text-gray-600 mt-1">The full <%= number_to_currency(@batch.total_cents / 100.0) %> is funded up front; the <%= number_to_currency(@breakdown[:waiting][:cents] / 100.0) %> for payees without a bank waits on this run until they connect.</p>
+          <% end %>
+          <% earliest, latest = estimated_deposit_window %>
+          <p class="text-xs font-medium text-gray-800 mt-2">
+            Fund &amp; pay today → most payees see deposits by <%= l(latest, format: :long) %>
+            <span class="font-normal text-gray-400">(≈2–4 business days — an estimate)</span>
+          </p>
+          <div class="mt-3">
+            <% if Current.organization.funding_payment_method_id.present? %>
+              <% fund_pay_cid = "confirm-fund-pay-batch" %>
+              <%= render "shared/button", text: "Fund & pay run", variant: "primary", size: "medium", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: fund_pay_cid } %>
+              <%
+                # Available funding credit shrinks the debit — say so up front, or
+                # the smaller bank charge reads as a mistake.
+                fund_credit_cents = PayoutFundingCredit.available_cents(Current.organization)
+                fund_credit_applied = [ fund_credit_cents, @batch.total_cents ].min
+                fund_debit_cents = @batch.total_cents - fund_credit_applied
+                fund_message = if fund_credit_applied.positive? && fund_debit_cents.positive?
+                  "Fund and pay this run? We'll apply your #{number_to_currency(fund_credit_applied / 100.0)} funding credit and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
+                elsif fund_credit_applied.positive?
+                  "Fund and pay this run? Your #{number_to_currency(fund_credit_applied / 100.0)} funding credit covers it entirely — no bank debit."
+                else
+                  "Fund and pay this run? We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank."
+                end
+              %>
+              <%= render "shared/confirm_modal", id: fund_pay_cid,
+                    title: "Fund and pay this run?",
+                    message: fund_message,
+                    confirm_text: "Fund & pay run",
+                    url: manage_fund_payout_batch_path(@batch),
+                    method: :post %>
+            <% else %>
+              <%= render "shared/button", text: "Connect a bank account first", variant: "primary", size: "small",
+                    path: manage_connect_payout_funding_path(return_to: manage_payout_batch_path(@batch)), method: :post, form: { data: { turbo: false } } %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Who's holding it up, by name — and when we'll try them again. %>
+      <% if @not_ready_items.any? %>
+        <div class="rounded-lg border border-blue-200 bg-blue-50 p-5">
+          <h2 class="text-sm font-semibold text-blue-900"><%= pluralize(@not_ready_items.size, "payee") %> <%= @not_ready_items.size == 1 ? "hasn't" : "haven't" %> connected a bank</h2>
+          <p class="text-xs text-blue-800 mt-1">
+            <% if @batch.status == "partially_paid" %>
+              Their <%= number_to_currency(@breakdown[:waiting][:cents] / 100.0) %> is funded and waiting on this run. We pay each of them automatically the moment they connect.
+              <% if next_try_text %>Next automatic attempt <strong><%= next_try_text %></strong>.<% end %>
+            <% else %>
+              Their <%= number_to_currency(@breakdown[:waiting][:cents] / 100.0) %> will wait on this run after you fund it, and go out automatically once they connect.
+            <% end %>
+          </p>
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <% @not_ready_items.each do |item| %>
+              <span class="inline-flex items-center gap-1 rounded-md bg-white/70 border border-blue-200 px-2 py-0.5 text-xs text-blue-900">
+                <%= item.payee&.name %> · <%= number_to_currency(item.amount_cents / 100.0) %>
+              </span>
+            <% end %>
+          </div>
+          <div class="mt-3">
+            <%= link_to "Show just these payments", state_path.call(:waiting), class: "text-xs font-medium text-blue-700 hover:text-blue-900 underline", data: { turbo_action: "replace" } %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# The run's particulars. %>
+      <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <h2 class="text-sm font-semibold text-gray-900 mb-3">About this run</h2>
+        <dl class="space-y-2 text-sm">
+          <div class="flex justify-between gap-3">
+            <dt class="text-gray-500">Kind</dt>
+            <dd class="text-gray-900 text-right"><%= @batch.kind_label %></dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-gray-500">Status</dt>
+            <dd class="text-right"><%= render "manage/payout_batches/status_badge", status: @batch.status %></dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-gray-500">Started by</dt>
+            <dd class="text-gray-900 text-right"><%= @batch.created_by&.person&.name || @batch.created_by&.email_address || "Scheduled" %></dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-gray-500">Created</dt>
+            <dd class="text-gray-900 text-right"><%= @batch.created_at.strftime("%b %-d, %Y · %-l:%M%P") %></dd>
+          </div>
+          <% if @batch.payday %>
+            <div class="flex justify-between gap-3">
+              <dt class="text-gray-500">Payday</dt>
+              <dd class="text-gray-900 text-right"><%= @batch.payday.strftime("%b %-d, %Y") %></dd>
+            </div>
+          <% end %>
+          <% unless @batch.skips_funding? %>
+            <div class="flex justify-between gap-3">
+              <dt class="text-gray-500">Funding</dt>
+              <dd class="text-gray-900 text-right"><%= @batch.funding_status&.titleize || "Not started" %></dd>
+            </div>
+          <% end %>
+          <% if @batch.completed_at %>
+            <div class="flex justify-between gap-3">
+              <dt class="text-gray-500">Completed</dt>
+              <dd class="text-gray-900 text-right"><%= @batch.completed_at.strftime("%b %-d, %Y") %></dd>
+            </div>
+          <% end %>
+          <% if next_try_text %>
+            <div class="flex justify-between gap-3">
+              <dt class="text-gray-500">Next auto attempt</dt>
+              <dd class="text-gray-900 text-right"><%= next_try_text %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    </aside>
+
+    <%# ---- Main: the payments, filterable by state. ---- %>
+    <div class="lg:col-span-2 lg:order-1">
+      <%
+        filter_defs = [ [ nil, "All", @items.size ] ] +
+                      PayoutBatch::ITEM_STATES.filter_map { |s|
+                        n = @breakdown[s][:count]
+                        next if n.zero?
+                        label = (s == :ready && in_flight) ? "Paying" : PayoutBatch::ITEM_STATE_LABELS[s]
+                        [ s, label, n ]
+                      }
+      %>
+      <% if filter_defs.size > 2 %>
+        <%= render "shared/filters/filter_bar",
+              bare: true,
+              filter_groups: [
+                {
+                  label: "Show",
+                  filters: filter_defs.map { |state, label, n|
+                    { text: "#{label} (#{n})", path: state_path.call(state), active: @state_filter == state }
+                  }
+                }
+              ] %>
+      <% end %>
+
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
+          <h3 class="font-semibold text-gray-900">
+            <% if @state_filter %>
+              <%= (@state_filter == :ready && in_flight) ? "Paying" : PayoutBatch::ITEM_STATE_LABELS[@state_filter] %>
+              <span class="text-gray-400 font-normal">· <%= pluralize(@visible_items.size, "payment") %></span>
+            <% else %>
+              Payments <span class="text-gray-400 font-normal">· <%= pluralize(@items.size, "payee") %></span>
+            <% end %>
+          </h3>
+          <span class="text-sm font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@visible_items.sum(&:amount_cents) / 100.0) %></span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% if @visible_items.empty? %>
+            <div class="px-5 py-8 text-center text-sm text-gray-500">No payments in this state.</div>
+          <% end %>
+          <% @visible_items.each do |item| %>
+            <% contributions = item.payout_contributions.to_a %>
+            <% if contributions.any? %>
+              <%# Click a payee to expand what they're being paid for. %>
+              <details class="group">
+                <summary class="px-5 py-3 flex items-center justify-between gap-4 cursor-pointer list-none hover:bg-gray-50">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <span class="text-gray-900 truncate"><%= item.payee&.name %></span>
+                    <span class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></span>
+                  </div>
+                  <div class="flex items-center gap-3 flex-shrink-0">
+                    <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
+                    <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch %>
+                  </div>
+                </summary>
+                <% if item.error.present? %>
+                  <div class="px-5 pb-2 pl-11 text-xs text-red-600"><%= item.error %></div>
+                <% end %>
+                <div class="bg-gray-50 border-t border-gray-100 px-5 py-1.5 pl-11">
+                  <% contributions.each do |c| %>
+                    <% source_path = payout_contribution_source_path(c) %>
+                    <% worksheet = c.worksheet_entries %>
+                    <div class="py-1.5 text-sm">
+                      <div class="flex items-center justify-between gap-4">
+                        <% if worksheet.any? %>
+                          <%# Trace tips/cash-tips back to the days they came from. %>
+                          <details class="group/ws min-w-0">
+                            <summary class="flex items-center gap-1.5 min-w-0 cursor-pointer list-none <%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> hover:text-pink-600">
+                              <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 transition-transform group-open/ws:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                              <span class="truncate"><%= c.label %></span>
+                              <span class="text-[11px] text-gray-400 flex-shrink-0"><%= pluralize(worksheet.size, "day") %></span>
+                            </summary>
+                            <div class="mt-1 ml-5 space-y-0.5">
+                              <% worksheet.each do |w| %>
+                                <div class="flex items-center justify-between gap-4 text-xs text-gray-500">
+                                  <span><%= w["date"].present? ? l(Date.parse(w["date"]), format: :long) : "No date" %></span>
+                                  <span class="tabular-nums"><%= number_to_currency(w["amount_cents"].to_i / 100.0) %></span>
+                                </div>
+                              <% end %>
+                            </div>
+                          </details>
+                        <% elsif source_path %>
+                          <%# Trace back to what created this payment (show, advance, contract, course). %>
+                          <%= link_to source_path, class: "group/trace flex items-center gap-1.5 min-w-0 text-gray-600 hover:text-pink-600" do %>
+                            <span class="truncate group-hover/trace:underline"><%= c.label %></span>
+                            <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover/trace:text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                          <% end %>
+                        <% else %>
+                          <span class="<%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> truncate"><%= c.label %></span>
+                        <% end %>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                          <% if c.excluded_from_payout %>
+                            <span class="text-[10px] font-medium uppercase tracking-wide text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">Recorded · not paid</span>
+                            <span class="text-gray-400 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
+                          <% else %>
+                            <span class="text-gray-800 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </details>
+            <% else %>
+              <div class="px-5 py-3 flex items-center justify-between gap-4">
+                <div class="min-w-0">
+                  <span class="text-gray-900"><%= item.payee&.name %></span>
+                  <% if item.error.present? %>
+                    <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
+                  <% end %>
+                </div>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                  <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
+                  <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch %>
+                </div>
+              </div>
             <% end %>
           <% end %>
         </div>
       </div>
-    <% end %>
 
-    <% if @batch.open? && @batch.items.any? %>
-      <div class="mb-6 rounded-lg border border-pink-200 bg-pink-50 p-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p class="text-sm font-medium text-gray-900">Ready to pay <%= pluralize(@batch.items.count, "payee") %> · <%= number_to_currency(@batch.total_cents / 100.0) %></p>
-          <p class="text-xs text-gray-600 mt-0.5">We debit your bank via ACH, then pay each payee to their connected bank.</p>
-          <% earliest, latest = estimated_deposit_window %>
-          <p class="text-xs font-medium text-gray-800 mt-1">
-            Fund &amp; pay today → most staff see deposits by <%= l(latest, format: :long) %>
-            <span class="font-normal text-gray-400">(≈2–4 business days — an estimate)</span>
+      <%# Discard lives quietly at the very bottom — a draft run that hasn't been funded. %>
+      <% if @batch.status == "draft" %>
+        <% discard_cid = "confirm-discard-batch" %>
+        <div class="mt-10 pt-6 border-t border-gray-100 text-center">
+          <p class="text-xs text-gray-400 max-w-md mx-auto">
+            Nothing here has been funded yet. Discarding removes this draft run and returns any pulled-in staff hours to what's waiting to be paid.
           </p>
+          <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= discard_cid %>"
+                  class="mt-2 text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer bg-transparent border-0">
+            Discard this draft run
+          </button>
         </div>
-        <% if Current.organization.funding_payment_method_id.present? %>
-          <% fund_pay_cid = "confirm-fund-pay-batch" %>
-          <%= render "shared/button", text: "Fund & pay run", variant: "primary", size: "medium", type: :button,
-                data: { controller: "modal", action: "click->modal#open", modal_id: fund_pay_cid } %>
-          <%
-            # Available funding credit shrinks the debit — say so up front, or
-            # the smaller bank charge reads as a mistake.
-            fund_credit_cents = PayoutFundingCredit.available_cents(Current.organization)
-            fund_credit_applied = [ fund_credit_cents, @batch.total_cents ].min
-            fund_debit_cents = @batch.total_cents - fund_credit_applied
-            fund_message = if fund_credit_applied.positive? && fund_debit_cents.positive?
-              "Fund and pay this run? We'll apply your #{number_to_currency(fund_credit_applied / 100.0)} funding credit and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
-            elsif fund_credit_applied.positive?
-              "Fund and pay this run? Your #{number_to_currency(fund_credit_applied / 100.0)} funding credit covers it entirely — no bank debit."
-            else
-              "Fund and pay this run? We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank."
-            end
-          %>
-          <%= render "shared/confirm_modal", id: fund_pay_cid,
-                title: "Fund and pay this run?",
-                message: fund_message,
-                confirm_text: "Fund & pay run",
-                url: manage_fund_payout_batch_path(@batch),
-                method: :post %>
-        <% else %>
-          <%= render "shared/button", text: "Connect a bank account first", variant: "primary", size: "small",
-                path: manage_connect_payout_funding_path(return_to: manage_payout_batch_path(@batch)), method: :post, form: { data: { turbo: false } } %>
-        <% end %>
-      </div>
-    <% end %>
-
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div class="px-5 py-4 border-b border-gray-200">
-        <h3 class="font-semibold text-gray-900">Payments</h3>
-      </div>
-      <div class="divide-y divide-gray-100">
-        <% @batch.items.includes(:payee, payout_contributions: :source).each do |item| %>
-          <% contributions = item.payout_contributions.to_a %>
-          <% if contributions.any? %>
-            <%# Click a payee to expand what they're being paid for. %>
-            <details class="group">
-              <summary class="px-5 py-3 flex items-center justify-between gap-4 cursor-pointer list-none hover:bg-gray-50">
-                <div class="flex items-center gap-2 min-w-0">
-                  <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                  <span class="text-gray-900 truncate"><%= item.payee&.name %></span>
-                  <span class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></span>
-                </div>
-                <div class="flex items-center gap-3 flex-shrink-0">
-                  <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
-                  <%= render "manage/payout_batches/status_badge", status: item.status %>
-                </div>
-              </summary>
-              <% if item.error.present? %>
-                <div class="px-5 pb-2 pl-11 text-xs text-red-600"><%= item.error %></div>
-              <% end %>
-              <div class="bg-gray-50 border-t border-gray-100 px-5 py-1.5 pl-11">
-                <% contributions.each do |c| %>
-                  <% source_path = payout_contribution_source_path(c) %>
-                  <% worksheet = c.worksheet_entries %>
-                  <div class="py-1.5 text-sm">
-                    <div class="flex items-center justify-between gap-4">
-                      <% if worksheet.any? %>
-                        <%# Trace tips/cash-tips back to the days they came from. %>
-                        <details class="group/ws min-w-0">
-                          <summary class="flex items-center gap-1.5 min-w-0 cursor-pointer list-none <%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> hover:text-pink-600">
-                            <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 transition-transform group-open/ws:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            <span class="truncate"><%= c.label %></span>
-                            <span class="text-[11px] text-gray-400 flex-shrink-0"><%= pluralize(worksheet.size, "day") %></span>
-                          </summary>
-                          <div class="mt-1 ml-5 space-y-0.5">
-                            <% worksheet.each do |w| %>
-                              <div class="flex items-center justify-between gap-4 text-xs text-gray-500">
-                                <span><%= w["date"].present? ? l(Date.parse(w["date"]), format: :long) : "No date" %></span>
-                                <span class="tabular-nums"><%= number_to_currency(w["amount_cents"].to_i / 100.0) %></span>
-                              </div>
-                            <% end %>
-                          </div>
-                        </details>
-                      <% elsif source_path %>
-                        <%# Trace back to what created this payment (show, advance, contract, course). %>
-                        <%= link_to source_path, class: "group/trace flex items-center gap-1.5 min-w-0 text-gray-600 hover:text-pink-600" do %>
-                          <span class="truncate group-hover/trace:underline"><%= c.label %></span>
-                          <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover/trace:text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        <% end %>
-                      <% else %>
-                        <span class="<%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> truncate"><%= c.label %></span>
-                      <% end %>
-                      <div class="flex items-center gap-2 flex-shrink-0">
-                        <% if c.excluded_from_payout %>
-                          <span class="text-[10px] font-medium uppercase tracking-wide text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">Recorded · not paid</span>
-                          <span class="text-gray-400 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
-                        <% else %>
-                          <span class="text-gray-800 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
-                        <% end %>
-                      </div>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            </details>
-          <% else %>
-            <div class="px-5 py-3 flex items-center justify-between gap-4">
-              <div class="min-w-0">
-                <span class="text-gray-900"><%= item.payee&.name %></span>
-                <% if item.error.present? %>
-                  <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
-                <% end %>
-              </div>
-              <div class="flex items-center gap-3 flex-shrink-0">
-                <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
-                <%= render "manage/payout_batches/status_badge", status: item.status %>
-              </div>
-            </div>
-          <% end %>
-        <% end %>
-      </div>
+        <%= render "shared/confirm_modal", id: discard_cid,
+              title: "Discard this draft run?",
+              message: "This removes the run and returns any pulled-in staff hours to what's waiting to be paid. Bonuses, reimbursements, tips and manually-typed amounts on this run are cleared. This can't be undone.",
+              confirm_text: "Discard run",
+              url: manage_payout_batch_path(@batch),
+              method: :delete %>
+      <% end %>
     </div>
-
-    <%# Discard lives quietly at the very bottom — a draft run that hasn't been funded. %>
-    <% if @batch.status == "draft" %>
-      <% discard_cid = "confirm-discard-batch" %>
-      <div class="mt-10 pt-6 border-t border-gray-100 text-center">
-        <p class="text-xs text-gray-400 max-w-md mx-auto">
-          Nothing here has been funded yet. Discarding removes this draft run and returns any pulled-in staff hours to what's waiting to be paid.
-        </p>
-        <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= discard_cid %>"
-                class="mt-2 text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer bg-transparent border-0">
-          Discard this draft run
-        </button>
-      </div>
-      <%= render "shared/confirm_modal", id: discard_cid,
-            title: "Discard this draft run?",
-            message: "This removes the run and returns any pulled-in staff hours to what's waiting to be paid. Bonuses, reimbursements, tips and manually-typed amounts on this run are cleared. This can't be undone.",
-            confirm_text: "Discard run",
-            url: manage_payout_batch_path(@batch),
-            method: :delete %>
-    <% end %>
   </div>
 </div>

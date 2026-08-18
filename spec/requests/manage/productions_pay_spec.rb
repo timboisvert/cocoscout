@@ -3,7 +3,7 @@
 require "rails_helper"
 
 # The Pay tab on the production edit page: are performers paid for this
-# production, and which payout scheme do its shows start from?
+# production, and which payout calculation do its shows start from?
 RSpec.describe "Manage::Productions Pay tab", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
@@ -22,16 +22,31 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
   describe "the tab" do
-    it "renders the performer pay card with the org's schemes" do
+    it "renders the performer pay card with the picker modal listing the org's calculations" do
       get edit_manage_production_path(production)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Performer pay")
       expect(response.body).to include("Performers are paid for this production")
+      expect(response.body).to include('id="pick-calculation"')
+      expect(response.body).to include("Choose a payout calculation")
       expect(response.body).to include("Flat Fifty")
       expect(response.body).to include("Act Pay")
-      expect(response.body).to include("Manage payout schemes")
+      expect(response.body).to include("No calculation chosen yet")
+      expect(response.body).to include("Choose a calculation")
+      expect(response.body).to include("Create a new calculation")
       expect(response.body).to include(update_pay_manage_production_path(production))
+      expect(response.body).not_to include("payout scheme")
+      expect(response.body).not_to include('name="payout_scheme_id" id="payout_scheme_id"')
+    end
+
+    it "links both create paths into the calculation wizard for this production, returning to the Pay tab" do
+      get edit_manage_production_path(production)
+
+      wizard = ERB::Util.html_escape(manage_money_payout_calculation_wizard_start_path(
+        production_id: production.id, return_to: edit_manage_production_path(production, anchor: "tab-6")
+      ))
+      expect(response.body.scan(wizard).size).to be >= 2
     end
 
     it "keeps Danger Zone as the last tab" do
@@ -43,25 +58,34 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       expect(response.body[danger_at, 200]).to include("Danger Zone")
     end
 
-    it "preselects the production's current default scheme" do
+    it "shows the current calculation as a card, tags it in the picker and keeps it on Save" do
       flat_scheme.add_default_for_production!(production)
+      show = create(:show, production: production, date_and_time: 2.days.ago)
+      ShowPayout.create!(show: show, payout_scheme: flat_scheme)
 
       get edit_manage_production_path(production)
 
-      expect(response.body).to include(%(<option value="#{flat_scheme.id}" selected>))
+      expect(response.body).to include("Current calculation")
+      expect(response.body).to include("Used by 1 show so far")
+      expect(response.body).to include(manage_money_payout_calculation_path(flat_scheme))
+      expect(response.body).to include("Choose a different calculation")
+      expect(response.body).to match(/<input type="radio" name="payout_scheme_id" value="#{flat_scheme.id}" checked/)
+      expect(response.body).to include(">Current<")
+      expect(response.body).to match(/<input type="hidden" name="payout_scheme_id" value="#{flat_scheme.id}"/)
     end
 
-    it "nudges an act-based production toward the Per-Act preset when the org has no per-act scheme" do
+    it "nudges an act-based production into the calculation wizard when the org has no per-act calculation" do
       production.update!(casting_mode: "act_based")
       act_scheme.archive!
 
       get edit_manage_production_path(production)
 
       expect(response.body).to include("Act-based productions usually pay per act")
-      expect(response.body).to include(ERB::Util.html_escape(manage_presets_money_payout_schemes_path(preset: "per_act", production_id: production.id)))
+      expect(response.body).to include("set up a per-act calculation")
+      expect(response.body).not_to include("preset=per_act")
     end
 
-    it "does not nudge when a per-act scheme already exists" do
+    it "does not nudge when a per-act calculation already exists" do
       production.update!(casting_mode: "act_based")
 
       get edit_manage_production_path(production)
@@ -92,7 +116,7 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
   end
 
   describe "saving" do
-    it "makes the chosen scheme the production's default from today" do
+    it "makes the calculation picked in the modal the production's default from today" do
       patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: flat_scheme.id }
 
       expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
@@ -102,7 +126,47 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       expect(PayoutScheme.current_default_for_production(production)).to eq(flat_scheme)
     end
 
-    it "switches schemes without touching the scheme's other productions" do
+    it "reaches back to the production's first show, so a night that already happened resolves to it" do
+      past_show = create(:show, production: production, date_and_time: 3.weeks.ago)
+      create(:show, production: production, date_and_time: 1.week.from_now)
+
+      patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: act_scheme.id }
+
+      default = PayoutSchemeDefault.for_production(production).first
+      expect(default.effective_from).to eq(3.weeks.ago.to_date)
+      expect(PayoutScheme.default_for_show(past_show)).to eq(act_scheme)
+    end
+
+    it "restamps payouts nobody has calculated yet, so the choice sticks on the payout page" do
+      # An earlier visit pinned this show's payout to the org fallback...
+      show = create(:show, production: production, date_and_time: 2.days.ago)
+      pending = ShowPayout.create!(show: show, payout_scheme: flat_scheme)
+      # ...while a calculated show, and one with a hand-tuned override, keep theirs.
+      calculated = ShowPayout.create!(show: create(:show, production: production, date_and_time: 5.days.ago),
+                                      payout_scheme: flat_scheme, calculated_at: Time.current)
+      overridden = ShowPayout.create!(show: create(:show, production: production, date_and_time: 4.days.ago),
+                                      payout_scheme: flat_scheme, override_rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 10 } })
+
+      patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: act_scheme.id }
+
+      expect(pending.reload.payout_scheme).to eq(act_scheme)
+      expect(calculated.reload.payout_scheme).to eq(flat_scheme)
+      expect(overridden.reload.payout_scheme).to eq(flat_scheme)
+
+      get manage_money_show_payout_path(show)
+      expect(response.body).to include("Act Pay")
+    end
+
+    it "shows the Pro pill and the current calculation's summary" do
+      act_scheme.make_production_scheme!(production)
+
+      get edit_manage_production_path(production)
+      expect(response.body).to include("Pro feature")
+      expect(response.body).to include("Current calculation")
+      expect(response.body).to include(act_scheme.rules_summary)
+    end
+
+    it "switches calculations without touching the calculation's other productions" do
       other = create(:production, organization: org, name: "Saturday Cabaret")
       flat_scheme.add_default_for_production!(production)
       flat_scheme.add_default_for_production!(other)
@@ -113,24 +177,60 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       expect(PayoutScheme.current_default_for_production(other)).to eq(flat_scheme)
     end
 
-    it "removes the production's defaults when performers aren't paid" do
-      flat_scheme.add_default_for_production!(production)
+    it "keeps A's past-dated row and dates C from today when the production has history" do
+      past = create(:show, production: production, date_and_time: 3.weeks.ago)
+      flat_scheme.make_production_scheme!(production) # reaches back to the past show
+
+      patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: act_scheme.id }
+
+      rows = PayoutSchemeDefault.for_production(production).order(:effective_from)
+      expect(rows.map { |r| [ r.payout_scheme, r.effective_from ] }).to eq([ [ flat_scheme, past.date_and_time.to_date ], [ act_scheme, Date.current ] ])
+      expect(PayoutScheme.default_for_show(past)).to eq(flat_scheme)
+      expect(PayoutScheme.current_default_for_production(production)).to eq(act_scheme)
+    end
+
+    it "turning pay off pauses it: the calculation rows stay, nothing resolves, pending payouts let go" do
+      pending = ShowPayout.create!(show: create(:show, production: production, date_and_time: 2.days.ago), payout_scheme: nil)
+      calculated = ShowPayout.create!(show: create(:show, production: production, date_and_time: 5.days.ago),
+                                      payout_scheme: flat_scheme, calculated_at: Time.current)
+      flat_scheme.make_production_scheme!(production) # reaches back to the first show
+      expect(pending.reload.payout_scheme).to eq(flat_scheme)
 
       patch update_pay_manage_production_path(production), params: { performers_paid: "0" }
 
       expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
-      expect(PayoutSchemeDefault.for_production(production)).to be_empty
+      expect(production.reload.pays_performers).to be(false)
+      expect(PayoutSchemeDefault.for_production(production).map(&:payout_scheme)).to eq([ flat_scheme ])
+      expect(PayoutScheme.current_default_for_production(production)).to be_nil
+      expect(pending.reload.payout_scheme).to be_nil
+      expect(calculated.reload.payout_scheme).to eq(flat_scheme)
+
+      # The tab still shows the kept calculation, and the copy says it's paused, not removed.
+      get edit_manage_production_path(production)
+      expect(response.body).to include("Current calculation")
+      expect(response.body).to include("Flat Fifty")
+      expect(response.body).to include("the calculation is kept for when you turn it back on")
+
+      # Back on: the same calculation resolves again and pending payouts pick it up.
+      patch update_pay_manage_production_path(production), params: { performers_paid: "1" }
+      expect(production.reload.pays_performers).to be(true)
+      expect(PayoutScheme.current_default_for_production(production)).to eq(flat_scheme)
+      expect(pending.reload.payout_scheme).to eq(flat_scheme)
+      expect(flash[:notice]).to eq("Performer pay is on for Friday Variety.")
     end
 
-    it "asks for a scheme when paid but none picked" do
+    it "turns performer pay on without a calculation yet, and says to choose one" do
+      production.update!(pays_performers: false)
+
       patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: "" }
 
       expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
-      expect(flash[:alert]).to include("Pick a payout scheme")
+      expect(flash[:notice]).to include("now choose its payout calculation")
+      expect(production.reload.pays_performers).to be(true)
       expect(PayoutSchemeDefault.for_production(production)).to be_empty
     end
 
-    it "ignores a scheme from another organization" do
+    it "ignores a calculation from another organization" do
       foreign = PayoutScheme.create!(organization: create(:organization), name: "Not Ours",
                                      rules: { "distribution" => { "method" => "equal" } })
 
@@ -143,26 +243,29 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
   describe "casting nudge helper + partial" do
     include PayoutHelper
 
-    it "nudges an act-based production with no scheme, and stops once one is set" do
+    it "nudges an act-based production with no calculation, and stops once one is set" do
       production.update!(casting_mode: "act_based")
-      expect(production_needs_per_act_scheme_nudge?(production)).to be(true)
+      expect(production_needs_per_act_calculation_nudge?(production)).to be(true)
 
       act_scheme.add_default_for_production!(production)
-      expect(production_needs_per_act_scheme_nudge?(production.reload)).to be(false)
+      expect(production_needs_per_act_calculation_nudge?(production.reload)).to be(false)
     end
 
     it "never nudges a role-based production" do
-      expect(production_needs_per_act_scheme_nudge?(production)).to be(false)
+      expect(production_needs_per_act_calculation_nudge?(production)).to be(false)
     end
 
-    it "renders the alert panel pointing at the Per-Act preset" do
+    it "renders the alert panel pointing into the calculation wizard, coming back to casting" do
       production.update!(casting_mode: "act_based")
-      html = ApplicationController.render(partial: "manage/casting/pay_scheme_nudge", locals: { production: production })
+      html = ApplicationController.render(partial: "manage/casting/pay_calculation_nudge", locals: { production: production })
 
       expect(html).to include("Pay by act?")
       expect(html).to include("Set up per-act pay")
-      expect(html).to include("preset=per_act")
-      expect(html).to include("production_id=#{production.id}")
+      expect(html).to include("payout calculation")
+      expect(html).not_to include("preset=per_act")
+      expect(html).to include(ERB::Util.html_escape(manage_money_payout_calculation_wizard_start_path(
+        production_id: production.id, return_to: manage_casting_production_path(production)
+      )))
     end
   end
 end

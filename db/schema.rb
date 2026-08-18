@@ -1545,7 +1545,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_140000) do
     t.datetime "created_at", null: false
     t.date "effective_from"
     t.bigint "payout_scheme_id", null: false
-    t.bigint "production_id"
+    t.bigint "production_id", null: false
     t.datetime "updated_at", null: false
     t.index ["payout_scheme_id", "production_id"], name: "idx_payout_defaults_scheme_prod"
     t.index ["payout_scheme_id"], name: "index_payout_scheme_defaults_on_payout_scheme_id"
@@ -1797,6 +1797,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_140000) do
     t.string "name"
     t.text "old_keys"
     t.integer "organization_id", null: false
+    t.boolean "pays_performers", default: true, null: false
     t.string "production_type", default: "in_house", null: false
     t.string "public_key"
     t.datetime "public_key_changed_at"
@@ -2340,6 +2341,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_140000) do
     t.boolean "canceled", default: false, null: false
     t.boolean "casting_enabled", default: true, null: false
     t.datetime "casting_finalized_at"
+    t.string "casting_mode"
     t.string "casting_source"
     t.bigint "course_offering_id"
     t.datetime "created_at", null: false
@@ -2364,6 +2366,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_140000) do
     t.jsonb "staffing_coverage_exempt_role_ids", default: [], null: false
     t.datetime "updated_at", null: false
     t.boolean "use_custom_roles", default: false, null: false
+    t.index ["casting_mode"], name: "index_shows_on_casting_mode"
     t.index ["casting_source"], name: "index_shows_on_casting_source"
     t.index ["course_offering_id"], name: "index_shows_on_course_offering_id"
     t.index ["date_and_time"], name: "idx_shows_date_and_time"

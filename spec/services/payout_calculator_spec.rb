@@ -113,6 +113,18 @@ RSpec.describe PayoutCalculator do
         # 50 tickets * $2 = $100 per person, but minimum is $150
         expect(result[:line_items].first[:amount]).to eq(150.0)
       end
+
+      it "pays a guest by the same per-ticket rule instead of re-splitting the pool" do
+        guest = create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil)
+
+        result = described_class.calculate(show: show, rules: rules)
+
+        expect(result[:success]).to be true
+        amounts = show.show_payout.line_items.reload.map { |li| [ li.is_guest?, li.amount.to_f ] }
+        expect(amounts).to all(satisfy { |(_, amount)| amount == 150.0 })
+        expect(show.show_payout.line_items.find_by(is_guest: true, guest_name: "Gigi").calculation_details["formula"]).to include("Minimum")
+        expect(guest).to be_persisted
+      end
     end
 
     context "with flat_fee distribution" do
@@ -244,6 +256,21 @@ RSpec.describe PayoutCalculator do
           )
 
           expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(50.0)
+        end
+
+        it "adds the beyond-the-table rate for each act past the last row when there is one" do
+          with_beyond = rules.deep_dup
+          with_beyond["distribution"]["additional_act_rate"] = 20.0
+
+          result = described_class.calculate(
+            show: show, rules: with_beyond,
+            act_counts: { "Person_#{performer1.id}" => 2, "Person_#{performer2.id}" => 4 }
+          )
+
+          expect(result[:line_items].find { |li| li.payee == performer1 }.amount.to_f).to eq(50.0)
+          expect(result[:line_items].find { |li| li.payee == performer2 }.amount.to_f).to eq(90.0)
+          expect(result[:line_items].find { |li| li.payee == performer2 }.calculation_details["breakdown"].first)
+            .to eq("1 act $25.00, 2 acts $50.00, then $20.00 per act")
         end
 
         it "pays nothing to someone with no acts" do
@@ -459,6 +486,100 @@ RSpec.describe PayoutCalculator do
       end
     end
 
+    context "with shares and a guest" do
+      let!(:guest) { create(:show_person_role_assignment, show: show, role: role, guest_name: "Guest Star", assignable: nil) }
+
+      before do
+        create(:show_financials, :complete, show: show, ticket_revenue: 300.0, expenses: 0.0)
+        create(:show_payout, show: show)
+      end
+
+      it "counts the guest as default_shares worth and keeps everyone's shares intact" do
+        rules = {
+          "distribution" => { "method" => "shares", "default_shares" => 1.0 },
+          "performer_overrides" => { "Person_#{performer1.id}" => { "shares" => 2.0 } }
+        }
+
+        result = described_class.calculate(show: show, rules: rules)
+        expect(result[:success]).to be(true), result[:error]
+
+        items = result[:line_items]
+        two_shares = items.find { |li| li.payee == performer1 }
+        one_share = items.find { |li| li.payee == performer2 }
+        guest_line = items.find(&:is_guest?)
+
+        # $300 over 4 shares (2 + 1 + guest 1) = $75/share
+        expect(two_shares.amount.to_f).to eq(150.0)
+        expect(two_shares.shares.to_f).to eq(2.0)
+        expect(two_shares.calculation_details["formula"]).to eq("$300.00 × (2.0 ÷ 4.0 shares)")
+        expect(one_share.amount.to_f).to eq(75.0)
+        expect(one_share.shares.to_f).to eq(1.0)
+        expect(guest_line.amount.to_f).to eq(75.0)
+        expect(guest_line.shares.to_f).to eq(1.0)
+        expect(guest_line.calculation_details["guest_assignment_id"]).to eq(guest.id)
+        expect(result[:total]).to eq(300.0)
+      end
+    end
+
+    context "as a dry run (persist: false)" do
+      before do
+        create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, expenses: 200.0)
+        create(:show_payout, show: show)
+      end
+
+      it "returns the same numbers as hashes and writes nothing" do
+        result = described_class.calculate(show: show, rules: { "distribution" => { "method" => "equal" } }, persist: false)
+
+        expect(result[:success]).to be(true)
+        expect(result[:total]).to eq(800.0)
+        expect(result[:line_items]).to all(be_a(Hash))
+        expect(result[:line_items].map { |li| li[:amount] }).to eq([ 400.0, 400.0 ])
+        expect(result[:line_items].map { |li| li[:payee] }).to contain_exactly(performer1, performer2)
+
+        payout = show.reload.show_payout
+        expect(payout.line_items).to be_empty
+        expect(payout.calculated_at).to be_nil
+        expect(PayoutLedgerEntry.where(payee: performer1)).to be_empty
+      end
+    end
+
+    context "with a person and a group sharing an id" do
+      let(:shared_id) { [ Person.maximum(:id).to_i, Group.maximum(:id).to_i ].max + 1 }
+      let!(:person) { create(:person, id: shared_id) }
+      let!(:group) { create(:group, id: shared_id) }
+
+      before do
+        show.show_person_role_assignments.destroy_all
+        create(:show_person_role_assignment, show: show, role: role, assignable: person)
+        create(:show_person_role_assignment, show: show, role: role, assignable: group)
+        create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, expenses: 0.0)
+        create(:show_payout, show: show)
+      end
+
+      it "pays each their own customized amount" do
+        rules = {
+          "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 },
+          "performer_overrides" => { "Person_#{shared_id}" => { "flat_amount" => 10.0 }, "Group_#{shared_id}" => { "flat_amount" => 90.0 } }
+        }
+        result = described_class.calculate(show: show, rules: rules)
+        expect(result[:success]).to be(true), result[:error]
+
+        expect(result[:line_items].find { |li| li.payee == person }.amount.to_f).to eq(10.0)
+        expect(result[:line_items].find { |li| li.payee == group }.amount.to_f).to eq(90.0)
+      end
+
+      it "reads an older bare-id key as the person, never the group" do
+        rules = {
+          "distribution" => { "method" => "flat_fee", "flat_amount" => 50.0 },
+          "performer_overrides" => { shared_id.to_s => { "flat_amount" => 10.0 } }
+        }
+        result = described_class.calculate(show: show, rules: rules)
+
+        expect(result[:line_items].find { |li| li.payee == person }.amount.to_f).to eq(10.0)
+        expect(result[:line_items].find { |li| li.payee == group }.amount.to_f).to eq(50.0)
+      end
+    end
+
     context "error cases" do
       it "returns error when no show provided" do
         result = described_class.calculate(show: nil, rules: {})
@@ -566,5 +687,52 @@ RSpec.describe PayoutCalculator do
       expect(result[:line_items].map(&:payee_id)).to include(tech_person.id)
       expect(result[:line_items].size).to eq(3)
     end
+  end
+
+  # An exact amount set for one person tonight (performer_overrides[act_key]
+  # ["flat_amount"]) wins under every method — for cast and for guests.
+  describe "an exact per-person amount" do
+    let!(:guest) { create(:show_person_role_assignment, show: show, role: role, guest_name: "Gigi", assignable: nil) }
+    let(:overrides) { { "Person_#{performer1.id}" => { "flat_amount" => 99.0 }, "guest_#{guest.id}" => { "flat_amount" => 11.0 } } }
+
+    before do
+      create(:show_financials, :complete, show: show, ticket_count: 100, ticket_revenue: 900.0, expenses: 0.0)
+      create(:show_payout, show: show)
+    end
+
+    # act_counts may key performer2 as "Person_PERF2" — ids aren't known when
+    # the shared examples below are declared.
+    def amounts_for(distribution, act_counts: {})
+      act_counts = act_counts.transform_keys { |k| k.sub("PERF2", performer2.id.to_s) }
+      result = described_class.calculate(show: show, rules: { "distribution" => distribution, "performer_overrides" => overrides }, act_counts: act_counts)
+      expect(result[:success]).to be(true), result[:error]
+      items = show.show_payout.line_items.reload
+      {
+        custom: items.find_by(payee: performer1),
+        other: items.find_by(payee: performer2),
+        guest: items.find_by(is_guest: true)
+      }
+    end
+
+    shared_examples "honours the exact amounts" do |distribution, other_amount, act_counts: {}|
+      it "under #{distribution['method']}" do
+        items = amounts_for(distribution, act_counts: act_counts)
+        expect(items[:custom].amount.to_f).to eq(99.0)
+        expect(items[:custom].calculation_details["formula"]).to eq("Custom amount")
+        expect(items[:guest].amount.to_f).to eq(11.0)
+        expect(items[:guest].calculation_details["formula"]).to eq("Custom amount")
+        expect(items[:other].amount.to_f).to eq(other_amount)
+        expect(items[:other].calculation_details["formula"]).not_to eq("Custom amount")
+      end
+    end
+
+    include_examples "honours the exact amounts", { "method" => "equal" }, 300.0
+    include_examples "honours the exact amounts", { "method" => "shares", "default_shares" => 1.0 }, 300.0
+    include_examples "honours the exact amounts", { "method" => "per_ticket", "per_ticket_rate" => 2.0 }, 200.0
+    include_examples "honours the exact amounts", { "method" => "per_ticket_guaranteed", "per_ticket_rate" => 1.0, "minimum" => 150.0 }, 150.0
+    include_examples "honours the exact amounts", { "method" => "flat_fee", "flat_amount" => 50.0 }, 50.0
+    include_examples "honours the exact amounts", { "method" => "no_pay" }, 0.0
+    include_examples "honours the exact amounts", { "method" => "per_act", "act_mode" => "simple", "per_act_rate" => 20.0 }, 40.0,
+                     act_counts: { "Person_PERF2" => 2 }
   end
 end

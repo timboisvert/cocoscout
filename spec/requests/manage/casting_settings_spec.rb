@@ -57,6 +57,7 @@ RSpec.describe "Manage::CastingSettings", type: :request do
       expect(response.body).to include("Casting Style")
       expect(response.body).to include('name="casting_mode"')
       expect(response.body).to include("Existing roles and assignments are kept")
+      expect(response.body).to include("Dancer ×5 becomes five Dancer acts, cast kept")
     end
 
     it "updates the casting mode" do
@@ -64,6 +65,82 @@ RSpec.describe "Manage::CastingSettings", type: :request do
 
       expect(response).to redirect_to(manage_casting_settings_path(production))
       expect(production.reload).to be_act_based
+    end
+
+    context "with a role-based lineup already cast for the coming weeks" do
+      let!(:show) { create(:show, production: production, date_and_time: 3.days.from_now) }
+      let!(:dancer) { production.roles.create!(name: "Dancer", quantity: 3, position: 0) }
+      let!(:host)   { production.roles.create!(name: "Host", quantity: 1, position: 1) }
+      let!(:people) { (1..3).map { |i| create(:person, name: "Dancer #{i}").tap { |p| org.people << p } } }
+      let!(:mc)     { create(:person, name: "The MC").tap { |p| org.people << p } }
+
+      before do
+        people.each_with_index { |p, i| create(:show_person_role_assignment, show: show, role: dancer, assignable: p, position: i + 1) }
+        create(:show_person_role_assignment, show: show, role: host, assignable: mc, position: 1)
+      end
+
+      it "switching to acts splits each multi-person role into one act per person, cast kept" do
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "act_based" } }
+
+        expect(response).to redirect_to(manage_casting_settings_path(production))
+        lineup = production.roles.production_roles.reload
+        expect(lineup.map(&:name)).to eq(%w[Dancer Dancer Dancer Host])
+        expect(lineup.map(&:quantity)).to all(eq(1))
+        cast = show.show_person_role_assignments.reload.includes(:role)
+        expect(cast.size).to eq(4)
+        expect(cast.group_by(&:role_id).values.map(&:size)).to all(eq(1))
+        people.each { |p| expect(cast.find { |a| a.assignable == p }.role.name).to eq("Dancer") }
+        expect(cast.find { |a| a.assignable == mc }.role).to eq(host)
+      end
+
+      it "then lists the numbered acts, by name, on the Lineup tab" do
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "act_based" } }
+        get manage_casting_settings_section_path(production_id: production, section: "roles")
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body.scan(/tabular-nums">\s*(\d+)\s*</).flatten).to eq(%w[1 2 3 4])
+        expect(response.body.scan(/data-role-name="([^"]+)"/).flatten).to eq(%w[Dancer Dancer Dancer Host])
+        expect(response.body).not_to include("slots</span>")
+      end
+
+      it "switching back to roles folds the Dancer acts into Dancer ×3 again, everyone in a slot, and role edits work" do
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "act_based" } }
+        expect(production.roles.production_roles.reload.count).to eq(4)
+
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "role_based" } }
+
+        expect(production.reload).to be_role_based
+        lineup = production.roles.production_roles.reload
+        expect(lineup.map { |r| [ r.id, r.name, r.position, r.quantity ] }).to eq([ [ dancer.id, "Dancer", 0, 3 ], [ host.id, "Host", 1, 1 ] ])
+        cast = show.show_person_role_assignments.reload.includes(:role)
+        expect(cast.size).to eq(4)
+        expect(cast.select { |a| a.role_id == dancer.id }.map(&:position)).to contain_exactly(1, 2, 3)
+        expect(cast.select { |a| a.role_id == dancer.id }.map(&:assignable)).to match_array(people)
+
+        # a role-based lineup holds one role per name, so renaming and reordering validate again
+        patch manage_update_casting_role_path(production, dancer), params: { role: { name: "Dancer", quantity: 3, category: "performing" } }
+        expect(response).to redirect_to(manage_casting_settings_section_path(production_id: production, section: "roles"))
+        expect(flash[:alert]).to be_nil
+        expect(flash[:notice]).to eq("Role was successfully updated")
+      end
+
+      it "an act lineup whose repeated names aren't in a row gets suffixed names back in role mode" do
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "act_based" } }
+        production.roles.production_roles.reload.find_by(position: 1).update_columns(name: "Solo")
+        expect(production.roles.production_roles.reload.map(&:name)).to eq(%w[Dancer Solo Dancer Host])
+
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "role_based" } }
+
+        expect(production.roles.production_roles.reload.map { |r| [ r.name, r.quantity ] }).to eq([ [ "Dancer", 1 ], [ "Solo", 1 ], [ "Dancer (2)", 1 ], [ "Host", 1 ] ])
+        expect(production.roles.production_roles.reload).to all(be_valid)
+      end
+
+      it "does not touch the lineup when the mode is saved unchanged" do
+        patch manage_casting_settings_path(production), params: { production: { casting_mode: "role_based" } }
+
+        expect(dancer.reload.quantity).to eq(3)
+        expect(production.roles.production_roles.reload.count).to eq(2)
+      end
     end
 
     it "drops an unknown casting mode instead of raising" do
@@ -125,6 +202,59 @@ RSpec.describe "Manage::CastingSettings", type: :request do
       expect(response.body).to match(%r{>\s*Roles\s*</a>})
       expect(response.body).to include("Add Role")
       expect(response.body).not_to include("Add intermission")
+    end
+
+    it "says under the heading how the production casts" do
+      get manage_casting_settings_path(production)
+      expect(response.body).to include("#{production.name} casts by roles.")
+
+      production.update!(casting_mode: "act_based")
+      get manage_casting_settings_path(production)
+      expect(response.body).to include("#{production.name} casts by acts.")
+    end
+  end
+
+  describe "ways in" do
+    let(:settings_path) { manage_casting_settings_path(production) }
+    let!(:show) { create(:show, production: production) }
+
+    it "links from the production's casting board, the show board, and the per-show settings modal" do
+      get manage_casting_production_path(production)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Casting Settings")
+      expect(response.body).to include(settings_path)
+
+      get manage_casting_show_cast_path(production, show)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Production casting settings")
+      expect(response.body).to include("Change how the whole production casts (roles or acts, source, lineup) in")
+      expect(response.body).to include(settings_path)
+    end
+
+    it "lists productions as Roles & Acts on the org casting page, tagged by how each casts" do
+      act_production = create(:production, organization: org, name: "Variety Night", casting_mode: "act_based")
+      act_production.roles.create!(name: "Magic", position: 0)
+      act_production.roles.create!(name: "Intermission", category: "break", position: 1)
+      act_production.roles.create!(name: "Clown", position: 2)
+      production.roles.create!(name: "Host")
+
+      get manage_casting_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Roles &amp; Acts")
+      expect(response.body).not_to include("Roles &amp; Lineups")
+      expect(response.body).not_to include("Define roles or a lineup")
+
+      get manage_casting_roles_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Roles &amp; Acts")
+      expect(response.body).to include("Choose a production to manage its roles or lineup and casting settings")
+      expect(response.body).to include(manage_casting_settings_section_path(production_id: production, section: "roles"))
+      expect(response.body).to include(manage_casting_settings_section_path(production_id: act_production, section: "roles"))
+      expect(response.body).to match(%r{>\s*Acts\s*</span>})
+      expect(response.body).to match(%r{>\s*Roles\s*</span>})
+      # The lineup keeps its running order, the intermission as a divider
+      expect(response.body).to include("— Intermission —")
+      expect(response.body.index("Magic")).to be < response.body.index("— Intermission —")
     end
   end
 end
