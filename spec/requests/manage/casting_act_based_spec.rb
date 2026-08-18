@@ -205,6 +205,21 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(response.body).to include("Show roles: MC, Stage Kitten x 2")
     end
 
+    it "puts the show roles after the acts on the casting index cast card, behind a divider, whatever their position" do
+      show # the lazy let — the card is the show's
+      get manage_casting_production_path(production)
+      expect(response).to have_http_status(:ok)
+      body = response.body
+      expect(body).to include('data-tooltip-text="Show roles"')
+      expect(body.index("Act 3 · Magic - Not Cast")).to be < body.index("MC - Not Cast")
+      expect(body.index("MC - Not Cast")).to be < body.index("Stage Kitten - Not Cast")
+
+      # Even a show role created first (position 0) lists after the lineup
+      mc.update!(position: -1)
+      get manage_casting_production_path(production)
+      expect(response.body.index("Act 1 · Magic - Not Cast")).to be < response.body.index("MC - Not Cast")
+    end
+
     it "casts two people into the two-slot show role" do
       other = create(:person, user: create(:user, password: password)).tap { |p| org.people << p }
       post manage_casting_show_assign_person_path(production, show), params: { person_id: performer.id, role_id: kittens.id }
