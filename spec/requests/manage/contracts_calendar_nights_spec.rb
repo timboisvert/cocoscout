@@ -65,14 +65,14 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
       show.show_financials.destroy!
       settlement.reload.update!(amount: 0, amount_tbd: true)
       get manage_contracts_path(month: month_param(past_at.to_date))
-      expect(response.body).to include("Numbers not in")
+      expect(response.body).to include("Needs financials")
       expect(response.body).not_to include('text-red-600">Late')
     end
 
     it "says the numbers aren't in yet for a past night without financials" do
       other = create(:show, production: production, date_and_time: past_at - 1.hour)
       get manage_contracts_path(month: month_param(past_at.to_date))
-      expect(response.body).to include("Numbers not in")
+      expect(response.body).to include("Needs financials")
       expect(response.body).to include(manage_money_show_financials_path(other))
     end
   end

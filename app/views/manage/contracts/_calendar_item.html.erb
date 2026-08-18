@@ -8,13 +8,13 @@
 
   # What a night made us as one line: "$225" (hover for the pieces — tickets,
   # what we paid them, what they paid us), "−$50" if it lost money, or
-  # "Numbers not in" while the tickets aren't reported. Colour by sign only; a
+  # "Needs financials" while the tickets aren't reported. Colour by sign only; a
   # genuinely overdue settlement gets a small Late tag.
   night_line = lambda do |result, name|
     net = result[:net]
     if result[:pending]
-      tooltip = "#{name} — ticket numbers aren't in yet"
-      text = "Numbers not in"
+      tooltip = "#{name} — enter the show's financials to see what it made"
+      text = "Needs financials"
       colour = "text-gray-500"
     else
       pieces = result[:lines].map do |label, amount|
