@@ -40,10 +40,10 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
       get manage_contracts_path(month: month_param(past_at.to_date))
       expect(response).to have_http_status(:ok)
 
-      expect(response.body).to include("+$100 all in")
+      expect(response.body).to include(">$100<")
       # No rental card for this show, so the bar reads like a booking: time · name
       expect(response.body).to include("#{past_at.strftime('%-l:%M%p').downcase} · Random Memory")
-      expect(response.body).to include("Random Memory: +$100 all in · Ticket sales: +$200 · Paid Dan: −$100")
+      expect(response.body).to include("Random Memory: $100 · Ticket sales: +$200 · Paid Dan: −$100")
       # The −$100 settlement doesn't also show as its own pill
       expect(response.body).not_to include(">−$100<")
       # The settled $100 is past due and unpaid — that IS late
@@ -55,7 +55,7 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
       show.update!(space_rental: rental)
 
       get manage_contracts_path(month: month_param(past_at.to_date))
-      expect(response.body.scan(">+$100 all in<").size).to eq(1)
+      expect(response.body.scan(">$100<").size).to eq(1)
       expect(response.body).to include("Space rental")
       expect(response.body).not_to include("#{past_at.strftime('%-l:%M%p').downcase} · Random Memory</div>")
     end
@@ -96,7 +96,7 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
                                 description: "Ticket revenue less $300.00 fee", amount: 0, amount_tbd: true, due_date: future_at.to_date)
 
       get manage_contracts_path(month: month_param(past_at.to_date))
-      expect(response.body).to include("+$300")
+      expect(response.body).to include(">$300<")
       expect(response.body).to include("Ticket sales: +$800 · Paid Venue Corp: −$500")
       expect(response.body).not_to include(">−$500<")
 

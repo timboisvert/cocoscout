@@ -6,9 +6,10 @@
   record   = item[:record]
   contract = item[:contract]
 
-  # What a night made us, all in, as one line: "+$225 all in" (hover for the
-  # pieces), or "Numbers not in" while the tickets aren't reported. Colour by
-  # sign only; a genuinely overdue settlement gets a small Late tag.
+  # What a night made us as one line: "$225" (hover for the pieces — tickets,
+  # what we paid them, what they paid us), "−$50" if it lost money, or
+  # "Numbers not in" while the tickets aren't reported. Colour by sign only; a
+  # genuinely overdue settlement gets a small Late tag.
   night_line = lambda do |result, name|
     net = result[:net]
     if result[:pending]
@@ -20,9 +21,10 @@
         amount.nil? ? label : "#{label}: #{amount.negative? ? '−' : '+'}#{number_to_currency(amount.abs, precision: 0)}"
       end
       pieces << "Settled #{contract.settlement_cadence_label.to_s.downcase}" if result[:settled_together] && contract
-      signed = "#{net.negative? ? '−' : '+'}#{number_to_currency(net.abs, precision: 0)}"
-      tooltip = ([ "#{name}: #{signed} all in" ] + pieces).join(" · ")
-      text = "#{signed} all in"
+      # Just the number: "$300" made, "−$50" lost.
+      signed = "#{net.negative? ? '−' : ''}#{number_to_currency(net.abs, precision: 0)}"
+      tooltip = ([ "#{name}: #{signed}" ] + pieces).join(" · ")
+      text = signed
       colour = net.negative? ? "text-red-700" : "text-green-700"
     end
     capture do
