@@ -335,4 +335,87 @@ RSpec.describe "Production wizard", type: :request do
       expect(Production.find_by(name: "Velvet Hour").pays_performers).to be(false)
     end
   end
+
+  # The schedule step collects the show wizard's field set — type, duration,
+  # call time, location + space (or online), subtitle — not just a date.
+  describe "schedule step" do
+    let(:org) { set_up_org(pro: true) }
+    let!(:location) { create(:location, organization: org, name: "The Velvet Room") }
+    let!(:space) { location.location_spaces.create!(name: "Back Bar") }
+
+    def walk_to_schedule
+      post manage_productions_wizard_save_name_path, params: { name: "Velvet Hour" }
+      post manage_productions_wizard_save_logo_path, params: { skip: "true" }
+      post manage_productions_wizard_save_casting_path, params: { casting_source: "talent_pool" }
+      post manage_productions_wizard_save_casting_style_path, params: { casting_mode: "role_based" }
+      post manage_productions_wizard_save_roles_path, params: { has_roles: "no" }
+      post manage_productions_wizard_save_shows_path, params: { has_shows: "yes" }
+    end
+
+    it "offers duration, call time, space and online fields on the step" do
+      walk_to_schedule
+      get manage_productions_wizard_schedule_path
+
+      expect(response.body).to include('name="details[duration_minutes]"')
+      expect(response.body).to include('name="details[call_time_enabled]"')
+      expect(response.body).to include('name="details[location_space_id]"')
+      expect(response.body).to include('name="details[online_location_info]"')
+      expect(response.body).to include('name="details[secondary_name]"')
+      expect(response.body).to include("Back Bar")
+    end
+
+    it "creates a single show carrying every detail" do
+      walk_to_schedule
+      post manage_productions_wizard_save_schedule_path, params: {
+        schedule_type: "single",
+        shows: { "0" => { date_and_time: "2026-10-03T20:00" } },
+        details: { event_type: "show", duration_minutes: "90", call_time_enabled: "1", call_time_offset_minutes: "45",
+                   is_online: "false", location_id: location.id, location_space_id: space.id, secondary_name: "Opening Night" }
+      }
+
+      get manage_productions_wizard_review_path
+      expect(response.body).to include("The Velvet Room · Back Bar")
+      expect(response.body).to include("1 hr 30 min")
+
+      post manage_productions_wizard_create_path
+      show = Production.find_by(name: "Velvet Hour").shows.sole
+      expect(show).to have_attributes(event_type: "show", duration_minutes: 90, location_id: location.id,
+                                      location_space_id: space.id, is_online: false, secondary_name: "Opening Night",
+                                      call_time_enabled: true, recurrence_group_id: nil)
+      expect(show.call_time).to eq(show.date_and_time - 45.minutes)
+    end
+
+    it "drops the venue when the show is online" do
+      walk_to_schedule
+      post manage_productions_wizard_save_schedule_path, params: {
+        schedule_type: "single",
+        shows: { "0" => { date_and_time: "2026-10-03T20:00" } },
+        details: { event_type: "rehearsal", is_online: "true", location_id: location.id, location_space_id: space.id,
+                   online_location_info: "Zoom link to follow" }
+      }
+      post manage_productions_wizard_create_path
+
+      show = Production.find_by(name: "Velvet Hour").shows.sole
+      expect(show).to have_attributes(event_type: "rehearsal", is_online: true, location_id: nil, location_space_id: nil,
+                                      online_location_info: "Zoom link to follow", call_time_enabled: false, call_time: nil)
+    end
+
+    it "gives a repeating series the shared details and one recurrence group" do
+      walk_to_schedule
+      post manage_productions_wizard_save_schedule_path, params: {
+        schedule_type: "repeating",
+        recurring: { frequency: "weekly", day_of_week: "5", time: "21:00", start_date: "2026-10-01", count: "3" },
+        details: { event_type: "show", duration_minutes: "120", is_online: "false", location_id: location.id, location_space_id: space.id }
+      }
+      post manage_productions_wizard_create_path
+
+      shows = Production.find_by(name: "Velvet Hour").shows.order(:date_and_time)
+      expect(shows.size).to eq(3)
+      expect(shows.map(&:location_space_id).uniq).to eq([ space.id ])
+      expect(shows.map(&:duration_minutes).uniq).to eq([ 120 ])
+      expect(shows.map(&:recurrence_group_id).uniq.size).to eq(1)
+      expect(shows.first.recurrence_group_id).to be_present
+      expect(shows.map(&:recurrence_pattern).uniq).to eq([ "weekly" ])
+    end
+  end
 end

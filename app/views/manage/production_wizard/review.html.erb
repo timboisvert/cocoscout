@@ -167,6 +167,26 @@
       <div class="flex-1">
         <p class="text-sm font-medium text-gray-500">Shows</p>
         <% if @wizard_state[:has_shows] == 'yes' && @wizard_state[:shows].present? && @wizard_state[:shows].any? %>
+          <%
+            details = (@wizard_state[:details] || {}).with_indifferent_access
+            type_label = EventTypes.labels[details[:event_type].to_s] || details[:event_type].to_s.titleize.presence || "Show"
+            # The details every show shares — where, how long, call time, subtitle.
+            bits = []
+            bits << (details[:is_online] ? "Online" : [ @location&.name, @location_space&.name ].compact.join(" · ").presence)
+            if details[:duration_minutes].to_i.positive?
+              h, m = details[:duration_minutes].to_i.divmod(60)
+              bits << [ (h.positive? ? "#{h} hr" : nil), (m.positive? ? "#{m} min" : nil) ].compact.join(" ")
+            end
+            if details[:call_time_enabled]
+              off = details[:call_time_offset_minutes].to_i
+              bits << "call #{off % 60 == 0 ? "#{off / 60} hr" : "#{off} min"} before"
+            end
+            bits << "“#{details[:secondary_name]}”" if details[:secondary_name].present?
+            bits.compact!
+          %>
+          <% if bits.any? %>
+            <p class="text-sm text-gray-600 mt-1"><%= bits.join(" · ") %></p>
+          <% end %>
           <div class="mt-2 space-y-2">
             <% @wizard_state[:shows].each do |show| %>
               <% datetime = begin
@@ -177,9 +197,7 @@
               end %>
               <% if datetime %>
                 <div class="flex items-center gap-2">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">
-                    <%= (show[:event_type] || show['event_type'])&.titleize %>
-                  </span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800"><%= type_label %></span>
                   <span class="text-sm text-gray-900"><%= datetime.strftime("%B %-d, %Y at %-I:%M %p") %></span>
                 </div>
               <% end %>

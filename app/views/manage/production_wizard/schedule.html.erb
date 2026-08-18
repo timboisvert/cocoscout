@@ -1,3 +1,17 @@
+<%#
+  Production wizard — Schedule step. Collects the same fields as the show
+  wizard (event type, duration, call time, location + space or online info,
+  secondary name) so shows created here aren't second-class. Single vs
+  repeating only decides WHEN; the details block below applies to every show.
+%>
+<%
+  details = @wizard_state[:details] || {}
+  d = ->(key) { details[key] || details[key.to_s] }
+  is_online = d.call(:is_online).to_s == "true"
+  location_spaces_map = @locations.each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } }
+  current_spaces = location_spaces_map[d.call(:location_id).presence&.to_i] || []
+  input_cls = "block w-full shadow-sm rounded-lg border border-gray-400 px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+%>
 <%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: :schedule, step_name: "Schedule" } do %>
   <div class="text-center mb-6">
     <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -9,7 +23,9 @@
     <p class="text-gray-600 mt-2">Is this a single event or a repeating series?</p>
   </div>
 
-  <%= form_with url: manage_productions_wizard_save_schedule_path, method: :post, local: true, id: "schedule-form" do |form| %>
+  <div data-controller="location-modal" data-location-modal-event-type-value="event">
+  <%= form_with url: manage_productions_wizard_save_schedule_path, method: :post, local: true, id: "schedule-form",
+        data: { controller: "location-toggle", "location-toggle-spaces-value": location_spaces_map.to_json } do |form| %>
     <div class="space-y-4">
       <!-- Single event option -->
       <label class="block cursor-pointer">
@@ -41,45 +57,19 @@
         </div>
       </label>
 
-      <!-- Single Event Form -->
-      <div id="single-event-form" class="<%= @wizard_state[:schedule_type] == 'repeating' ? 'hidden' : '' %> space-y-4">
+      <!-- Single Event: when -->
+      <div id="single-event-form" class="<%= @wizard_state[:schedule_type] == 'repeating' ? 'hidden' : '' %>">
         <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-              <select name="shows[0][event_type]" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-                <% EventTypes.for_select.each do |label, value| %>
-                  <% show = @wizard_state[:shows]&.first || {} %>
-                  <option value="<%= value %>" <%= "selected" if (show[:event_type] || show['event_type'] || 'show') == value %>><%= label %></option>
-                <% end %>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
-              <% show = @wizard_state[:shows]&.first || {} %>
-              <input type="datetime-local"
-                     name="shows[0][date_and_time]"
-                     value="<%= show[:date_and_time] || show['date_and_time'] %>"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-            </div>
-            <div class="sm:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-              <select name="shows[0][location_id]" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-                <option value="">Select a location...</option>
-                <% @locations.each do |location| %>
-                  <% show = @wizard_state[:shows]&.first || {} %>
-                  <option value="<%= location.id %>" <%= "selected" if (show[:location_id] || show['location_id']).to_s == location.id.to_s %>><%= location.name %></option>
-                <% end %>
-              </select>
-              <% if @locations.empty? %>
-                <p class="text-xs text-gray-500 mt-1">You can add locations in Settings after creating your production.</p>
-              <% end %>
-            </div>
-          </div>
+          <% show = @wizard_state[:shows]&.first || {} %>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+          <input type="datetime-local"
+                 name="shows[0][date_and_time]"
+                 value="<%= show[:date_and_time] || show['date_and_time'] %>"
+                 class="<%= input_cls %> sm:w-64">
         </div>
       </div>
 
-      <!-- Repeating Event Form -->
+      <!-- Repeating Event: when -->
       <div id="repeating-event-form" class="<%= @wizard_state[:schedule_type] == 'repeating' ? '' : 'hidden' %> space-y-4">
         <div class="bg-pink-50 border border-pink-200 rounded-lg p-4">
           <p class="text-sm text-pink-800">
@@ -90,16 +80,8 @@
         <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-              <select name="recurring[event_type]" id="recurring-event-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-                <% EventTypes.for_select.each do |label, value| %>
-                  <option value="<%= value %>" <%= "selected" if (@wizard_state[:recurring_event_type] || 'show') == value %>><%= label %></option>
-                <% end %>
-              </select>
-            </div>
-            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
-              <select name="recurring[frequency]" id="recurring-frequency" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+              <select name="recurring[frequency]" id="recurring-frequency" class="<%= input_cls %>">
                 <option value="weekly" <%= "selected" if @wizard_state[:recurring_frequency] == 'weekly' %>>Weekly</option>
                 <option value="biweekly" <%= "selected" if @wizard_state[:recurring_frequency] == 'biweekly' %>>Every 2 weeks</option>
                 <option value="monthly" <%= "selected" if @wizard_state[:recurring_frequency] == 'monthly' %>>Monthly</option>
@@ -107,7 +89,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
-              <select name="recurring[day_of_week]" id="recurring-day" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+              <select name="recurring[day_of_week]" id="recurring-day" class="<%= input_cls %>">
                 <% %w[Sunday Monday Tuesday Wednesday Thursday Friday Saturday].each_with_index do |day, index| %>
                   <option value="<%= index %>" <%= "selected" if @wizard_state[:recurring_day_of_week].to_s == index.to_s %>><%= day %></option>
                 <% end %>
@@ -118,14 +100,14 @@
               <input type="time"
                      name="recurring[time]"
                      value="<%= @wizard_state[:recurring_time] || '20:00' %>"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                     class="<%= input_cls %>">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Starting From</label>
               <input type="date"
                      name="recurring[start_date]"
                      value="<%= @wizard_state[:recurring_start_date] || Date.current.to_s %>"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                     class="<%= input_cls %>">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Number of Shows</label>
@@ -135,24 +117,12 @@
                      min="1"
                      max="104"
                      step="1"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+                     class="<%= input_cls %>">
               <p class="text-xs text-gray-500 mt-1">Enter any number from 1 to 104</p>
             </div>
-            <div class="sm:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-              <select name="recurring[location_id]" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
-                <option value="">Select a location...</option>
-                <% @locations.each do |location| %>
-                  <option value="<%= location.id %>" <%= "selected" if @wizard_state[:recurring_location_id].to_s == location.id.to_s %>><%= location.name %></option>
-                <% end %>
-              </select>
-              <% if @locations.empty? %>
-                <p class="text-xs text-gray-500 mt-1">You can add locations in Settings after creating your production.</p>
-              <% end %>
-            </div>
-            <div id="recurring-week-ordinal-row" class="sm:col-span-2 hidden">
+            <div id="recurring-week-ordinal-row" class="hidden">
               <label class="block text-sm font-medium text-gray-700 mb-1">Which Week of Month</label>
-              <select name="recurring[week_ordinal]" id="recurring-week-ordinal" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500">
+              <select name="recurring[week_ordinal]" id="recurring-week-ordinal" class="<%= input_cls %>">
                 <option value="1" <%= "selected" if @wizard_state[:recurring_week_ordinal].to_s == "1" %>>First</option>
                 <option value="2" <%= "selected" if @wizard_state[:recurring_week_ordinal].to_s == "2" %>>Second</option>
                 <option value="3" <%= "selected" if @wizard_state[:recurring_week_ordinal].to_s == "3" %>>Third</option>
@@ -160,6 +130,126 @@
                 <option value="5" <%= "selected" if @wizard_state[:recurring_week_ordinal].to_s == "5" %>>Last</option>
               </select>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Details — apply to every show created here -->
+      <div class="pt-2">
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Details</h3>
+        <p class="text-xs text-gray-500 mb-3">These apply to every show you're adding now. Each one can be changed on its own afterwards.</p>
+
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+              <select name="details[event_type]" class="<%= input_cls %>">
+                <% EventTypes.for_select.each do |label, value| %>
+                  <option value="<%= value %>" <%= "selected" if (d.call(:event_type) || 'show') == value %>><%= label %></option>
+                <% end %>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+              <%= render "shared/duration_field",
+                  name: "details[duration_minutes]",
+                  value: d.call(:duration_minutes) || Show::DEFAULT_DURATION_MINUTES,
+                  max_hours: 24 %>
+            </div>
+          </div>
+
+          <!-- Call time -->
+          <div data-controller="wizard-call-time">
+            <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+              <span class="relative">
+                <input type="checkbox" name="details[call_time_enabled]" value="1" <%= "checked" if d.call(:call_time_enabled) %>
+                       data-wizard-call-time-target="toggle" data-action="change->wizard-call-time#sync"
+                       class="sr-only peer">
+                <span class="block w-11 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-pink-500"></span>
+                <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
+              </span>
+              <span class="text-sm font-medium text-gray-700">Set an earlier call time</span>
+            </label>
+            <div data-wizard-call-time-target="fields" class="mt-3 <%= "hidden" unless d.call(:call_time_enabled) %>">
+              <label class="block text-sm text-gray-600 mb-1">How long before the event should cast arrive?</label>
+              <% offset = (d.call(:call_time_offset_minutes) || 60).to_i %>
+              <select name="details[call_time_offset_minutes]" class="<%= input_cls %> sm:w-64">
+                <% [ [ 30, "30 minutes" ], [ 45, "45 minutes" ], [ 60, "1 hour" ], [ 90, "1.5 hours" ], [ 120, "2 hours" ] ].each do |m, l| %>
+                  <option value="<%= m %>" <%= "selected" if offset == m %>><%= l %> before</option>
+                <% end %>
+              </select>
+            </div>
+          </div>
+
+          <!-- Location -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+            <div class="flex items-center gap-3 mb-3">
+              <label class="inline-flex items-center cursor-pointer">
+                <input type="radio" name="details[is_online]" value="false"
+                       <%= "checked" unless is_online %>
+                       class="sr-only peer"
+                       data-action="change->location-toggle#toggle"
+                       data-location-toggle-target="inPersonRadio">
+                <span class="px-4 py-2 rounded-lg border-2 text-sm peer-checked:border-pink-500 peer-checked:bg-pink-50 border-gray-200 bg-white transition-colors">In-Person</span>
+              </label>
+              <label class="inline-flex items-center cursor-pointer">
+                <input type="radio" name="details[is_online]" value="true"
+                       <%= "checked" if is_online %>
+                       class="sr-only peer"
+                       data-action="change->location-toggle#toggle"
+                       data-location-toggle-target="onlineRadio">
+                <span class="px-4 py-2 rounded-lg border-2 text-sm peer-checked:border-pink-500 peer-checked:bg-pink-50 border-gray-200 bg-white transition-colors">Online</span>
+              </label>
+            </div>
+
+            <div data-location-toggle-target="inPersonFields" class="<%= 'hidden' if is_online %>">
+              <select name="details[location_id]" class="<%= input_cls %>"
+                      data-location-toggle-target="locationSelect"
+                      data-location-modal-target="locationSelect"
+                      data-action="change->location-toggle#locationChanged">
+                <option value="">Select a location</option>
+                <% @locations.each do |location| %>
+                  <option value="<%= location.id %>" <%= "selected" if d.call(:location_id).to_s == location.id.to_s %>><%= location.name %></option>
+                <% end %>
+              </select>
+              <p class="text-xs text-gray-500 mt-2">
+                Don't see your location?
+                <a href="#" data-action="click->location-modal#openModal" class="text-pink-500 hover:text-pink-600 underline cursor-pointer">Add a location</a>
+              </p>
+
+              <div data-location-toggle-target="spaceFields" class="mt-4 <%= 'hidden' if current_spaces.empty? %>">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+                <select name="details[location_space_id]" class="<%= input_cls %>"
+                        data-location-toggle-target="spaceSelect">
+                  <option value="">Entire venue</option>
+                  <% current_spaces.each do |space| %>
+                    <option value="<%= space[:id] %>" <%= "selected" if d.call(:location_space_id).to_s == space[:id].to_s %>><%= space[:name] %></option>
+                  <% end %>
+                </select>
+                <p class="text-xs text-gray-500 mt-2">Picking the space keeps other rooms free for rentals and other events on the same day.</p>
+              </div>
+            </div>
+
+            <div data-location-toggle-target="onlineFields" class="<%= 'hidden' unless is_online %>">
+              <input type="text"
+                     name="details[online_location_info]"
+                     value="<%= d.call(:online_location_info) %>"
+                     placeholder="e.g., Zoom link, YouTube Live URL, or 'Link will be emailed'"
+                     class="<%= input_cls %>">
+              <p class="text-xs text-gray-500 mt-2">Add a URL or instructions for joining online. This can also be added or updated later.</p>
+            </div>
+          </div>
+
+          <!-- Secondary name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Secondary Name <span class="text-gray-400 font-normal">(optional)</span></label>
+            <input type="text"
+                   name="details[secondary_name]"
+                   value="<%= d.call(:secondary_name) %>"
+                   placeholder="e.g., Opening Night, Special Guest Performance"
+                   class="<%= input_cls %>">
+            <p class="text-xs text-gray-500 mt-2">A subtitle to go along with the production name.</p>
           </div>
         </div>
       </div>
@@ -172,6 +262,10 @@
       <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
+
+  <%# Outside the form_with so the modal's inputs never ride the wizard submit. %>
+  <%= render "manage/locations/add_location_modal" %>
+  </div>
 <% end %>
 
 <script>

@@ -207,18 +207,19 @@ module Manage
 
     def save_schedule
       @wizard_state[:schedule_type] = params[:schedule_type]
+      # The details block (type, duration, call time, where, subtitle) is
+      # shared by every show this step creates — single or the whole series.
+      @wizard_state[:details] = parse_show_details(params[:details])
 
       if @wizard_state[:schedule_type] == "repeating"
         # Generate shows from recurring settings
         @wizard_state[:shows] = generate_recurring_shows(params[:recurring])
-        @wizard_state[:recurring_event_type] = params[:recurring][:event_type]
         @wizard_state[:recurring_frequency] = params[:recurring][:frequency]
         @wizard_state[:recurring_day_of_week] = params[:recurring][:day_of_week]
         @wizard_state[:recurring_week_ordinal] = params[:recurring][:week_ordinal]
         @wizard_state[:recurring_time] = params[:recurring][:time]
         @wizard_state[:recurring_start_date] = params[:recurring][:start_date]
         @wizard_state[:recurring_count] = params[:recurring][:count].to_i
-        @wizard_state[:recurring_location_id] = params[:recurring][:location_id]
       else
         # Parse single show from form
         @wizard_state[:shows] = parse_shows(params[:shows])
@@ -230,9 +231,9 @@ module Manage
 
     # Step 7: Review - Confirm and create
     def review
-      @location = if @wizard_state[:shows].present? && @wizard_state[:shows].first[:location_id].present?
-        Current.organization.locations.find_by(id: @wizard_state[:shows].first[:location_id])
-      end
+      details = @wizard_state[:details] || {}
+      @location = Current.organization.locations.find_by(id: details[:location_id]) if details[:location_id].present?
+      @location_space = @location.location_spaces.find_by(id: details[:location_space_id]) if @location && details[:location_space_id].present?
     end
 
     def create_production
@@ -289,17 +290,30 @@ module Manage
           end
         end
 
-        # Create shows
+        # Create shows — every one carries the schedule step's shared details,
+        # the same field set the show wizard collects.
         if @wizard_state[:shows].present?
+          details = (@wizard_state[:details] || {}).with_indifferent_access
+          # A repeating series shares one recurrence_group_id, like the show wizard.
+          recurrence_group_id = SecureRandom.uuid if @wizard_state[:schedule_type] == "repeating"
           @wizard_state[:shows].each do |show_data|
-            next if show_data[:date_and_time].blank? && show_data["date_and_time"].blank?
+            show_data = show_data.with_indifferent_access
+            next if show_data[:date_and_time].blank?
 
+            online = details[:is_online] == true
             @production.shows.create!(
-              event_type: show_data[:event_type] || show_data["event_type"] || "show",
-              date_and_time: show_data[:date_and_time] || show_data["date_and_time"],
-              duration_minutes: (show_data[:duration_minutes] || show_data["duration_minutes"]).presence&.to_i,
-              location_id: show_data[:location_id] || show_data["location_id"],
-              is_online: show_data[:is_online] || show_data["is_online"] || false,
+              event_type: details[:event_type].presence || show_data[:event_type].presence || "show",
+              date_and_time: show_data[:date_and_time],
+              duration_minutes: details[:duration_minutes].presence&.to_i,
+              location_id: online ? nil : details[:location_id].presence,
+              location_space_id: online ? nil : details[:location_space_id].presence,
+              is_online: online,
+              online_location_info: online ? details[:online_location_info].presence : nil,
+              secondary_name: details[:secondary_name].presence,
+              call_time_enabled: details[:call_time_enabled] == true,
+              call_time: wizard_call_time(show_data[:date_and_time], details),
+              recurrence_group_id: recurrence_group_id,
+              recurrence_pattern: recurrence_group_id && wizard_recurrence_pattern,
               casting_enabled: @wizard_state.fetch(:casting_enabled, true)
             )
           end
@@ -436,26 +450,54 @@ module Manage
 
       shows_params.values.map do |show|
         next if show[:date_and_time].blank?
-        {
-          event_type: show[:event_type] || "show",
-          date_and_time: show[:date_and_time],
-          location_id: show[:location_id],
-          is_online: show[:is_online] == "true"
-        }
+        { date_and_time: show[:date_and_time] }
       end.compact
     end
 
+    # The fields shared by every show the schedule step creates — the show
+    # wizard's set: type, duration, call time, where (or online), subtitle.
+    def parse_show_details(details_params)
+      details = details_params.presence || {}
+      online = details[:is_online].to_s == "true"
+      {
+        event_type: EventTypes.all.include?(details[:event_type]) ? details[:event_type] : "show",
+        duration_minutes: (details[:duration_minutes].presence || Show::DEFAULT_DURATION_MINUTES).to_i,
+        call_time_enabled: details[:call_time_enabled].present?,
+        call_time_offset_minutes: (details[:call_time_offset_minutes].presence || 60).to_i,
+        is_online: online,
+        location_id: online ? nil : details[:location_id].presence,
+        location_space_id: online ? nil : details[:location_space_id].presence,
+        online_location_info: online ? details[:online_location_info].presence : nil,
+        secondary_name: details[:secondary_name].presence
+      }
+    end
+
+    # Call time for a created show: `offset` minutes before its start, or nil
+    # when the manager didn't switch on a separate call time.
+    def wizard_call_time(date_and_time, details)
+      return nil unless details[:call_time_enabled] == true
+      base = Time.zone.parse(date_and_time.to_s) rescue nil
+      return nil unless base
+      base - (details[:call_time_offset_minutes].presence || 60).to_i.minutes
+    end
+
+    # The show wizard's vocabulary, so the series editor understands a series
+    # born here. Monthly is always "nth weekday" in this wizard.
+    def wizard_recurrence_pattern
+      { "weekly" => "weekly", "biweekly" => "biweekly", "monthly" => "monthly_week" }[@wizard_state[:recurring_frequency].to_s]
+    end
+
+    # Just the dates: everything else about the series comes from the shared
+    # details block.
     def generate_recurring_shows(recurring_params)
       return [] if recurring_params.blank?
 
-      event_type = recurring_params[:event_type] || "show"
       frequency = recurring_params[:frequency] || "weekly"
       day_of_week = recurring_params[:day_of_week].to_i
       week_ordinal = recurring_params[:week_ordinal].to_i
       time_str = recurring_params[:time] || "20:00"
       start_date = Date.parse(recurring_params[:start_date]) rescue Date.current
       count = (recurring_params[:count] || 8).to_i.clamp(1, 104)
-      location_id = recurring_params[:location_id]
 
       shows = []
 
@@ -474,12 +516,7 @@ module Manage
 
       count.times do
         datetime = Time.zone.parse("#{current_date} #{time_str}")
-        shows << {
-          event_type: event_type,
-          date_and_time: datetime.strftime("%Y-%m-%dT%H:%M"),
-          location_id: location_id,
-          is_online: false
-        }
+        shows << { date_and_time: datetime.strftime("%Y-%m-%dT%H:%M") }
 
         case frequency
         when "weekly"
