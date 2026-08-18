@@ -18,7 +18,10 @@ class RetryParkedPayoutsJob < ApplicationJob
   # payee: retry only the runs waiting on this payee (the webhook path).
   # Omitted: sweep every waiting run in the system (the daily path).
   def perform(payee: nil)
-    batches_to_check(payee).each do |batch|
+    batches = batches_to_check(payee)
+    refresh_stale_payees!(batches)
+
+    batches.each do |batch|
       next unless batch.ready_to_retry?
 
       paid_before = batch.items.where(status: "paid").pluck(:id).to_set
@@ -40,6 +43,23 @@ class RetryParkedPayoutsJob < ApplicationJob
     return scope.to_a unless payee
 
     scope.select { |b| b.items.any? { |i| PayoutBatch::RETRYABLE_ITEM_STATUSES.include?(i.status) && i.payee == payee } }
+  end
+
+  # Our payouts_enabled column is a cached copy of Stripe's answer, kept current
+  # by the account.updated webhook. When one of those events is missed — or the
+  # account was still being cleared when a transfer was attempted and we parked
+  # the item — the copy says "can't be paid" forever and the money sits. Before
+  # deciding, re-read the accounts we currently believe are unpayable. One API
+  # call per stranded payee, once a day, and only for money already owed.
+  def refresh_stale_payees!(batches)
+    payees = batches.flat_map { |b| b.items.select { |i| PayoutBatch::RETRYABLE_ITEM_STATUSES.include?(i.status) }.map(&:payee) }
+    payees.compact.uniq.each do |payee|
+      next unless payee.respond_to?(:can_receive_payouts?) && payee.connect_account_started? && !payee.can_receive_payouts?
+
+      StripeConnectService.new(payee).sync_account
+    rescue StandardError => e
+      Rails.logger.warn("[RetryParkedPayoutsJob] account re-sync failed for #{payee.class}##{payee.id}: #{e.message}")
+    end
   end
 
   # Money moved without anyone clicking, so it has to leave a trail.

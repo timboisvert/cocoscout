@@ -32,7 +32,10 @@ class PayoutBatchItem < ApplicationRecord
   # Mark paid and post the debiting ledger entry (idempotent per item).
   def mark_paid!(transfer_id: nil)
     transaction do
-      update!(status: "paid", paid_at: Time.current, stripe_transfer_id: transfer_id || stripe_transfer_id)
+      # error is cleared: an item that had been parked or had failed carries the
+      # reason it didn't go out, and that line is still rendered in red under a
+      # paid payee if we leave it behind.
+      update!(status: "paid", paid_at: Time.current, error: nil, stripe_transfer_id: transfer_id || stripe_transfer_id)
 
       # Course runs distribute money CocoScout already holds (course revenue), not
       # money the org owes its people — so they don't touch the performer/staff
@@ -60,6 +63,20 @@ class PayoutBatchItem < ApplicationRecord
       PayoutLedgerEntry.unpost!(source: self, entry_type: "payout")
       # The transfer never happened, so give the reserved money back to the
       # org's cash ledger too (no-op when nothing was reserved).
+      OrgCashEntry.unpost!(source: self, entry_type: "transfer")
+    end
+  end
+
+  # Stripe refused the transfer for a reason that fixes itself — the payee's
+  # account isn't cleared to receive one *yet*. Unwind exactly like a failure,
+  # but leave the item pending rather than "failed": nothing is wrong with the
+  # run, the money simply stays parked on it until the next automatic pass. The
+  # status change also mints a fresh transfer idempotency key (see
+  # PayoutBatchService#process!), so that pass really re-tries.
+  def mark_parked!(message)
+    transaction do
+      update!(status: "pending", paid_at: nil, error: message.to_s.truncate(500))
+      PayoutLedgerEntry.unpost!(source: self, entry_type: "payout")
       OrgCashEntry.unpost!(source: self, entry_type: "transfer")
     end
   end

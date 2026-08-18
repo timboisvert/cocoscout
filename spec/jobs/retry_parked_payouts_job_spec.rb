@@ -38,6 +38,22 @@ RSpec.describe RetryParkedPayoutsJob, type: :job do
     expect(PayoutBatchService).to have_received(:pay_remaining!).with(batch)
   end
 
+  # Our payouts_enabled column is only as fresh as the last account.updated
+  # webhook. A missed event used to strand the money forever, since the sweep
+  # asked the stale column and never Stripe.
+  it "re-reads Stripe for a payee it believes is unpayable, then pays them" do
+    batch = parked_run!(bank: false)
+    batch.items.first.payee.update!(stripe_account_id: "acct_stale")
+    allow_any_instance_of(StripeConnectService).to receive(:sync_account) do
+      allow_any_instance_of(Person).to receive(:can_receive_payouts?).and_return(true)
+    end
+    allow(PayoutBatchService).to receive(:pay_remaining!)
+
+    described_class.perform_now
+
+    expect(PayoutBatchService).to have_received(:pay_remaining!).with(batch)
+  end
+
   it "leaves a run alone while the person still has no bank" do
     parked_run!(bank: false)
     allow(PayoutBatchService).to receive(:pay_remaining!)

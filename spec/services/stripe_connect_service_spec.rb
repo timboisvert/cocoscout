@@ -5,9 +5,13 @@ require "rails_helper"
 RSpec.describe StripeConnectService do
   let(:person) { create(:person, email: "worker@example.com") }
 
-  def stripe_account(id: "acct_123", payouts_enabled: false, disabled_reason: nil)
+  def stripe_account(id: "acct_123", payouts_enabled: false, disabled_reason: nil, transfers: :unset)
     reqs = double("requirements", disabled_reason: disabled_reason)
-    double("account", id: id, payouts_enabled: payouts_enabled, requirements: reqs)
+    attrs = { id: id, payouts_enabled: payouts_enabled, requirements: reqs }
+    # Only accounts created with a capabilities hash report one — an account
+    # object without it must still be treated as payable (see .transferable?).
+    attrs[:capabilities] = double("capabilities", transfers: transfers) unless transfers == :unset
+    double("account", **attrs)
   end
 
   describe "#ensure_account" do
@@ -69,6 +73,28 @@ RSpec.describe StripeConnectService do
       expect(person.reload.payouts_enabled).to be(false)
       expect(person.stripe_account_status).to eq("restricted")
       expect(person.needs_bank_connection?).to be(true)
+    end
+
+    # Aug 2026: a run showed "Transfer failed — your destination account needs
+    # the transfers capability", and the very next click paid. payouts_enabled
+    # had gone true (firing account.updated, which retries parked payouts) while
+    # the capability money actually travels on was still being cleared.
+    it "does not call an account payable while its transfers capability is still pending" do
+      StripeConnectService.new(person).sync_account(stripe_account(payouts_enabled: true, transfers: "pending"))
+      expect(person.reload.payouts_enabled).to be(false)
+      expect(person.can_receive_payouts?).to be(false)
+      expect(person.stripe_account_status).to eq("pending")
+    end
+
+    it "calls it payable once the transfers capability is active" do
+      StripeConnectService.new(person).sync_account(stripe_account(payouts_enabled: true, transfers: "active"))
+      expect(person.reload.can_receive_payouts?).to be(true)
+      expect(person.stripe_account_status).to eq("enabled")
+    end
+
+    it "falls back to payouts_enabled for accounts that report no capabilities" do
+      StripeConnectService.new(person).sync_account(stripe_account(payouts_enabled: true))
+      expect(person.reload.can_receive_payouts?).to be(true)
     end
 
     it "fetches from Stripe when no account object is passed" do

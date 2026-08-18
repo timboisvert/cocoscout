@@ -285,7 +285,19 @@ class PayoutBatchService
       settle_item_sources!(item, transfer.id)
       record_performer_activation!(batch, item)
     rescue Stripe::StripeError => e
-      item.mark_failed!(e.message)
+      if destination_not_ready?(e)
+        # Their Stripe account isn't cleared to receive a transfer yet (see
+        # StripeConnectService.transferable?). Re-read the account so our copy
+        # of "can they be paid" stops claiming yes, and park the item instead
+        # of failing it: the money stays on the run, the manager sees "waiting
+        # on bank info" rather than a paragraph of Stripe capability jargon,
+        # and the account.updated webhook that fires when the capability goes
+        # active pays them without anyone clicking.
+        resync_payee!(item.payee)
+        item.mark_parked!("Stripe hasn't finished clearing their account to receive transfers — we'll send this automatically once it is.")
+      else
+        item.mark_failed!(e.message)
+      end
     end
 
     finalize_status!(batch)
@@ -299,6 +311,25 @@ class PayoutBatchService
     # which on ACH can be several days earlier.
     PayoutSentPayeeNotificationJob.perform_later(batch.id)
     batch
+  end
+
+  # Stripe refused the transfer because the destination account can't receive
+  # one yet — not a real failure, just too early. The error code is the reliable
+  # signal; the message is matched too because Stripe has worded this refusal
+  # several ways.
+  def self.destination_not_ready?(error)
+    code = error.try(:code).to_s
+    return true if code == "insufficient_capabilities_for_transfer"
+
+    error.message.to_s.include?("capabilities")
+  end
+
+  # Best-effort refresh of a payee's Connect state. Never lets a Stripe hiccup
+  # take down the rest of the run.
+  def self.resync_payee!(payee)
+    StripeConnectService.new(payee).sync_account
+  rescue StandardError => e
+    Rails.logger.warn("[PayoutBatchService] could not re-sync payee #{payee.class}##{payee.id}: #{e.message}")
   end
 
   # The Stripe charge that funded this run, how much of it is still

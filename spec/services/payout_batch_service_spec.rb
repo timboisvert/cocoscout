@@ -68,6 +68,55 @@ RSpec.describe PayoutBatchService do
       expect(org.payout_balance_cents_for(ready)).to eq(0)
     end
 
+    # Aug 2026: a payee whose Stripe account hadn't finished being cleared read
+    # "Transfer failed" with a paragraph of Stripe capability jargon, and the
+    # next click on Pay Remaining paid them. Nothing had failed — we were early.
+    it "parks a transfer refused for a not-yet-cleared account instead of failing it" do
+      allow(Stripe::Transfer).to receive(:create).and_raise(
+        Stripe::InvalidRequestError.new(
+          "Your destination account needs to have at least one of the following capabilities enabled: transfers",
+          nil, code: "insufficient_capabilities_for_transfer"
+        )
+      )
+      allow_any_instance_of(StripeConnectService).to receive(:sync_account) { ready.update!(payouts_enabled: false) }
+
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.update!(funding_status: "succeeded")
+      PayoutBatchService.process!(batch)
+
+      item = batch.items.first
+      # Pending, not failed: no "Transfer failed" badge, and the state badge
+      # reads "Waiting on bank info" now that the payee is known unpayable.
+      expect(item.reload.status).to eq("pending")
+      expect(item.error).to include("automatically")
+      expect(PayoutBatch.item_state(item)).to eq(:waiting)
+      # The money stays owed and stays on the run for the automatic retry.
+      expect(org.payout_balance_cents_for(ready)).to eq(5000)
+      expect(batch.reload.status).to eq("partially_paid")
+      expect(batch.awaiting_retry?).to be(true)
+    end
+
+    it "still fails an item outright for a real Stripe refusal" do
+      allow(Stripe::Transfer).to receive(:create).and_raise(Stripe::StripeError.new("no funds"))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      PayoutBatchService.process!(batch)
+
+      expect(batch.items.first.reload.status).to eq("failed")
+    end
+
+    it "clears the parked reason once the payee is paid" do
+      batch = PayoutBatchService.build_for(organization: org)
+      batch.items.first.mark_parked!("not cleared yet")
+      batch.update!(funding_status: "succeeded", status: "partially_paid")
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_ok"))
+
+      PayoutBatchService.pay_remaining!(batch)
+
+      expect(batch.items.first.reload.status).to eq("paid")
+      expect(batch.items.first.error).to be_nil
+    end
+
     it "ties each transfer to the funding charge, so settled-but-unavailable (or swept) funds still pay" do
       captured = []
       allow(Stripe::Transfer).to receive(:create) { |params, _opts| captured << params; double("transfer", id: "tr_src") }

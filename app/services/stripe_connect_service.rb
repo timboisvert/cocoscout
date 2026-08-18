@@ -106,7 +106,7 @@ class StripeConnectService
     reqs = account.requirements
 
     {
-      payouts_enabled: account.payouts_enabled,
+      payouts_enabled: self.class.transferable?(account),
       details_submitted: account.details_submitted,
       disabled_reason: reqs&.disabled_reason,
       currently_due: Array(reqs&.currently_due),
@@ -124,13 +124,43 @@ class StripeConnectService
 
     account = stripe_account || Stripe::Account.retrieve(@payee.stripe_account_id)
     @payee.update!(
-      payouts_enabled: account.payouts_enabled,
+      payouts_enabled: self.class.transferable?(account),
       stripe_account_status: derive_status(account),
       stripe_account_synced_at: Time.current
     )
     @payee
   rescue Stripe::StripeError => e
     raise Error, e.message
+  end
+
+  # Can money actually reach this account right now?
+  #
+  # Stripe's `payouts_enabled` only says the account may pay ITSELF out to its
+  # bank. A transfer INTO it additionally needs the `transfers` capability to be
+  # active, and the two aren't always in step: a freshly verified account can
+  # report payouts_enabled true — and fire the account.updated webhook we retry
+  # parked payouts on — a moment before the capability flips to active, and an
+  # account put back under review loses the capability first. Transferring in
+  # that window fails with "your destination account needs to have ... transfers
+  # ... enabled", which is what stranded a real run in Aug 2026.
+  #
+  # So this, not raw payouts_enabled, is what we store in the payouts_enabled
+  # column and what can_receive_payouts? ends up meaning. Accounts that don't
+  # report capabilities at all fall back to payouts_enabled rather than being
+  # locked out of being paid.
+  def self.transferable?(account)
+    return false unless account.payouts_enabled
+
+    transfers = transfers_capability(account)
+    transfers.blank? || transfers.to_s == "active"
+  end
+
+  def self.transfers_capability(account)
+    capabilities = account.try(:capabilities)
+    return nil if capabilities.blank?
+
+    capabilities.try(:transfers) ||
+      (capabilities.respond_to?(:[]) ? (capabilities[:transfers] || capabilities["transfers"]) : nil)
   end
 
   # Find the payee behind a Connect account id (for webhooks). Checks people,
@@ -144,7 +174,7 @@ class StripeConnectService
   private
 
   def derive_status(account)
-    return "enabled" if account.payouts_enabled
+    return "enabled" if self.class.transferable?(account)
     return "restricted" if account.requirements&.disabled_reason.present?
 
     "pending"
