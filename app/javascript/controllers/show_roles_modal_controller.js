@@ -11,7 +11,7 @@ export default class extends Controller {
         "migrationSummary", "migrationSummaryText", "linkedShowsWarning", "linkedShowsText",
         "autoMappableSection", "autoMappableList", "needsDecisionSection", "needsDecisionList",
         "noAssignmentsMessage", "migrationStats", "migrationExecuteButton", "migrationHint",
-        "quantityInput", "categorySelect", "roleNameLabel", "restrictedSection",
+        "quantityInput", "quantitySection", "categorySelect", "roleNameLabel", "restrictedSection",
         "slotChangeModal", "slotChangeTitle", "slotChangeMessage", "slotChangeList",
         "slotChangeStats", "slotChangeExecuteButton"
     ]
@@ -52,33 +52,61 @@ export default class extends Controller {
         return this.actBased ? "acts" : "roles"
     }
 
-    // 1-based running-order numbers for the current lineup, breaks skipped.
+    // 1-based running-order numbers for the current lineup. Breaks and show
+    // roles (MC, Stage Kitten — cast alongside the lineup, not in it) skipped.
     lineupNumbers() {
         const numbers = {}
         let n = 0
         this.roles.forEach(role => {
-            if (role.category === "break") return
+            if (role.category === "break" || role.standing) return
             n += 1
             numbers[role.id] = n
         })
         return numbers
     }
 
-    // Selecting "Break" in the act form hides the fields a break can't use.
+    // In act mode the select's value is the role's kind: performing (an act),
+    // break, or show_role. A saved show role reads as show_role whatever its
+    // category.
+    kindOf(role) {
+        if (this.actBased && role.standing) return "show_role"
+        return role.category || "performing"
+    }
+
+    kindLabel(kind) {
+        if (!this.actBased) return this.unitTitle
+        if (kind === "break") return "intermission"
+        if (kind === "show_role") return "show role"
+        return this.unitTitle
+    }
+
+    // Selecting "Break" in the act form hides the fields a break can't use;
+    // only a show role has a slot count (an act is one thing in the lineup).
     categoryChanged() {
         this.updateBreakFieldVisibility()
+        if (this.actBased && this.hasCategorySelectTarget && this.editingRoleId === null) {
+            const label = this.kindLabel(this.categorySelectTarget.value)
+            this.formTitleTarget.textContent = `Add ${label}`
+            this.saveButtonTextTarget.textContent = `Add ${label}`
+        }
     }
 
     updateBreakFieldVisibility() {
         if (!this.actBased || !this.hasCategorySelectTarget) return
-        const isBreak = this.categorySelectTarget.value === "break"
+        const kind = this.categorySelectTarget.value
+        const isBreak = kind === "break"
+        const isShowRole = kind === "show_role"
         if (this.hasRestrictedSectionTarget) this.restrictedSectionTarget.classList.toggle("hidden", isBreak)
         if (isBreak) {
             this.restrictedCheckboxTarget.checked = false
             this.updateEligibleMembersVisibility()
         }
+        if (this.hasQuantitySectionTarget) {
+            this.quantitySectionTarget.classList.toggle("hidden", !isShowRole)
+            if (!isShowRole && this.hasQuantityInputTarget) this.quantityInputTarget.value = "1"
+        }
         if (this.hasRoleNameLabelTarget) {
-            this.roleNameLabelTarget.textContent = isBreak ? "Label" : `${this.unitTitle} Name`
+            this.roleNameLabelTarget.textContent = isBreak ? "Label" : (isShowRole ? "Show role name" : `${this.unitTitle} Name`)
         }
     }
 
@@ -308,6 +336,7 @@ export default class extends Controller {
         let n = 0
         const roleOptions = castable.map(r => {
             if (this.actBased) {
+                if (r.standing) return `<option value="${r.id}">${r.name}</option>`
                 n += 1
                 return `<option value="${r.id}">Act ${n} · ${r.name}</option>`
             }
@@ -519,6 +548,7 @@ export default class extends Controller {
                     return `<span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium border border-dashed border-gray-300 text-gray-500">— ${role.name} —</span>`
                 }
                 const numberText = this.actBased && numbers[role.id] ? `<span class="mr-1.5 text-pink-600 font-bold">${numbers[role.id]}.</span>` : ""
+                const showRoleText = this.actBased && role.standing ? `<span class="mr-1.5 text-xs text-pink-600 font-medium uppercase tracking-wide">Show role</span>` : ""
                 const quantity = role.quantity || 1
                 const quantityText = quantity > 1 ? `<span class="ml-1.5 text-gray-400">x ${quantity}</span>` : ""
                 const restrictedIcon = role.restricted
@@ -526,7 +556,7 @@ export default class extends Controller {
                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                        </svg>`
                     : ""
-                return `<span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800">${numberText}${role.name}${quantityText}${restrictedIcon}</span>`
+                return `<span class="inline-flex items-center px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800">${numberText}${showRoleText}${role.name}${quantityText}${restrictedIcon}</span>`
             }).join("")
 
             this.inlineRolesListTarget.innerHTML = `<div class="flex flex-wrap gap-2">${rolesHtml}</div>`
@@ -545,6 +575,10 @@ export default class extends Controller {
         const restrictedBadge = role.restricted
             ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Restricted</span>`
             : ""
+        const showRoleBadge = this.actBased && role.standing
+            ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-50 text-pink-700 border border-pink-200">Show role</span>`
+            : ""
+        const kindTitle = this.kindLabel(this.kindOf(role))
 
         const categoryBadge = `<span class="text-xs font-medium text-gray-500 capitalize">${role.category || 'performing'}</span>`
 
@@ -575,6 +609,7 @@ export default class extends Controller {
                     <div class="flex-1">
                         <div class="font-bold text-md flex items-center">
                             ${role.name}${quantity > 1 ? ` <span class="ml-1 text-sm font-normal text-gray-500">(${quantity} slots)</span>` : ''}
+                            ${showRoleBadge}
                             ${restrictedBadge}
                         </div>
                         <div class="flex items-center gap-2 mt-1 ${this.actBased ? 'hidden' : ''}">
@@ -585,9 +620,9 @@ export default class extends Controller {
                     ${assignmentsText}
                     <div class="flex gap-2 items-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <button type="button" data-action="click->show-roles-modal#editRole" data-role-id="${role.id}"
-                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Edit ${this.unitTitle}</button>
+                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Edit ${kindTitle}</button>
                         <button type="button" data-action="click->show-roles-modal#deleteRole" data-role-id="${role.id}"
-                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Delete ${this.unitTitle}</button>
+                                class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 text-sm">Delete ${kindTitle}</button>
                     </div>
                 </div>
             </div>
@@ -665,9 +700,9 @@ export default class extends Controller {
         this.roleNameInputTarget.value = defaultName
         this.restrictedCheckboxTarget.checked = false
         this.selectedMemberKeys = []
-        const isBreak = category === "break"
-        this.formTitleTarget.textContent = isBreak ? "Add intermission" : `Add ${this.unitTitle}`
-        this.saveButtonTextTarget.textContent = isBreak ? "Add intermission" : `Add ${this.unitTitle}`
+        const label = this.kindLabel(category)
+        this.formTitleTarget.textContent = `Add ${label}`
+        this.saveButtonTextTarget.textContent = `Add ${label}`
         this.hideRoleNameError()
         this.updateEligibleMembersVisibility()
 
@@ -684,6 +719,11 @@ export default class extends Controller {
         this.showAddForm(event, { category: "break", defaultName: "Intermission" })
     }
 
+    // Act-based lineups: a show role (MC, Stage Kitten) alongside the lineup.
+    showAddShowRoleForm(event) {
+        this.showAddForm(event, { category: "show_role" })
+    }
+
     // Edit existing role
     editRole(event) {
         const roleId = parseInt(event.currentTarget.dataset.roleId)
@@ -695,15 +735,15 @@ export default class extends Controller {
         this.roleNameInputTarget.value = role.name
         this.restrictedCheckboxTarget.checked = role.restricted
         this.selectedMemberKeys = role.eligible_member_keys || []
-        const isBreak = this.actBased && role.category === "break"
-        this.formTitleTarget.textContent = isBreak ? "Edit intermission" : `Edit ${this.unitTitle}`
-        this.saveButtonTextTarget.textContent = isBreak ? "Update intermission" : `Update ${this.unitTitle}`
+        const label = this.kindLabel(this.kindOf(role))
+        this.formTitleTarget.textContent = `Edit ${label}`
+        this.saveButtonTextTarget.textContent = `Update ${label}`
         this.hideRoleNameError()
         this.updateEligibleMembersVisibility()
 
         // Populate quantity and category fields
         if (this.hasQuantityInputTarget) this.quantityInputTarget.value = role.quantity || 1
-        if (this.hasCategorySelectTarget) this.categorySelectTarget.value = role.category || "performing"
+        if (this.hasCategorySelectTarget) this.categorySelectTarget.value = this.kindOf(role)
         this.updateBreakFieldVisibility()
 
         this.showForm()
@@ -899,7 +939,7 @@ export default class extends Controller {
                 if (data.success) {
                     // Also update name and other fields if changed
                     const currentRoleData = this.roles.find(r => r.id === this.editingRoleId)
-                    if (currentRoleData && (currentRoleData.name !== name || currentRoleData.category !== this.categorySelectTarget?.value)) {
+                    if (currentRoleData && (currentRoleData.name !== name || this.kindOf(currentRoleData) !== this.categorySelectTarget?.value)) {
                         // Do a follow-up update for other fields
                         await this.updateRoleFields(name)
                     } else {

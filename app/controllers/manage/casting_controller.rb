@@ -1129,6 +1129,7 @@ module Manage
             position: source_role.position,
             quantity: source_role.quantity,
             category: source_role.category,
+            standing: source_role.standing,
             restricted: source_role.restricted
           )
 
@@ -1154,6 +1155,7 @@ module Manage
             position: source_role.position,
             quantity: source_role.quantity,
             category: source_role.category,
+            standing: source_role.standing,
             restricted: should_be_restricted,
             production: target_show.production
           )
@@ -1442,14 +1444,18 @@ module Manage
       show_dates = dates.count > 2 ? "#{dates.first} - #{dates.last}" : dates.join(" & ")
       shows_list = shows.map { |s| "<li>#{s.date_and_time.strftime('%A, %B %-d at %-l:%M %p')}: #{s.display_name}</li>" }.join("\n")
 
+      # An MC on an act-based night holds a show role, not an act — the word
+      # follows what this person was actually given.
+      unit = assignments.any? { |a| a[:role]&.act?(show: a[:show]) } ? "act" : "role"
+
       variables = {
         "production_name" => @production.name,
         "show_dates" => show_dates,
         "shows_list" => shows_list,
         "role_name" => role_names.join(", "),
         "role_names" => role_names.join(", "),
-        "casting_unit" => casting_unit_word,
-        "casting_units" => casting_unit_word.pluralize
+        "casting_unit" => unit,
+        "casting_units" => unit.pluralize
       }
 
       # Interpolate {{placeholders}} in the body and subject
@@ -1582,8 +1588,8 @@ module Manage
     # Build sync info comparing this show's cast with linked shows
     def build_linkage_sync_info(show, linked_shows)
       current_roles = show.available_roles.pluck(:id, :name).to_h
-      # Build role signature including name, quantity, category, and restricted status for comparison
-      current_role_signatures = show.available_roles.pluck(:name, :quantity, :category, :restricted).map { |r| r.join("|") }.sort
+      # Build role signature including name, quantity, category, standing (show role) and restricted status for comparison
+      current_role_signatures = show.available_roles.pluck(:name, :quantity, :category, :standing, :restricted).map { |r| r.join("|") }.sort
 
       sync_info = {
         all_in_sync: true,
@@ -1595,7 +1601,7 @@ module Manage
 
       linked_shows.each do |linked_show|
         linked_roles = linked_show.available_roles.pluck(:id, :name).to_h
-        linked_role_signatures = linked_show.available_roles.pluck(:name, :quantity, :category, :restricted).map { |r| r.join("|") }.sort
+        linked_role_signatures = linked_show.available_roles.pluck(:name, :quantity, :category, :standing, :restricted).map { |r| r.join("|") }.sort
 
         # Check if roles match (by name, quantity, category, and restricted status)
         roles_match = current_role_signatures == linked_role_signatures

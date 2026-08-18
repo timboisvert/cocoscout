@@ -142,6 +142,62 @@ RSpec.describe "Payout calculation wizard", type: :request do
       expect(PayoutScheme.act_amount(calc.distribution_config, 4)).to eq(225.0)
     end
 
+    it "per act: show roles priced by name, prefilled from the organization's show roles, with the stacking kept" do
+      act_production = create(:production, organization: org, casting_mode: "act_based", name: "Burlesque")
+      create(:role, production: act_production, name: "MC", standing: true, position: 0)
+      create(:role, production: act_production, name: "Stage Kitten", standing: true, quantity: 2, position: 1)
+      create(:role, production: act_production, name: "Magic", position: 2)
+      # Another org's show roles never leak in
+      create(:role, production: create(:production, casting_mode: "act_based"), name: "Host", standing: true)
+
+      start_wizard
+      choose("per_act")
+      get manage_money_payout_calculation_wizard_amounts_path
+      expect(response.body).to include("Show roles")
+      expect(response.body).to include('name="distribution[role_amounts][0][name]" value="MC"')
+      expect(response.body).to include('name="distribution[role_amounts][1][name]" value="Stage Kitten"')
+      expect(response.body).not_to include('value="Host"')
+      expect(response.body).not_to include('value="Magic"')
+      expect(response.body).to match(/name="distribution\[role_stacking\]" value="both" checked/)
+
+      post manage_money_payout_calculation_wizard_save_amounts_path, params: {
+        distribution: {
+          act_mode: "tiers",
+          tiers: { "0" => { acts: "1", amount: "75" }, "1" => { acts: "2", amount: "125" } },
+          role_amounts: { "0" => { name: "MC", amount: "100" }, "1" => { name: "Stage Kitten", amount: "35" }, "2" => { name: "Usher", amount: "" } },
+          role_stacking: "higher"
+        }
+      }
+      expect(response).to redirect_to(manage_money_payout_calculation_wizard_who_path)
+
+      get manage_money_payout_calculation_wizard_amounts_path
+      expect(response.body).to include('name="distribution[role_amounts][0][name]" value="MC"')
+      expect(response.body).to include('name="distribution[role_amounts][0][amount]" value="100"')
+      expect(response.body).to include('name="distribution[role_amounts][1][amount]" value="35"')
+      expect(response.body).not_to include('value="Usher"')
+      expect(response.body).to match(/name="distribution\[role_stacking\]" value="higher" checked/)
+
+      pick_who(act_production.id)
+      get manage_money_payout_calculation_wizard_review_path
+      expect(response.body).to include("MC $100.00, Stage Kitten $35.00 — or act pay, whichever is higher")
+
+      save_it(name: "Burlesque pay")
+      calc = PayoutScheme.order(:id).last
+      expect(calc.rules["distribution"]).to eq({
+        "method" => "per_act",
+        "act_mode" => "tiers",
+        "tiers" => [ { "acts" => 1, "amount" => 75.0 }, { "acts" => 2, "amount" => 125.0 } ],
+        "role_amounts" => [ { "name" => "MC", "amount" => 100.0 }, { "name" => "Stage Kitten", "amount" => 35.0 } ],
+        "role_stacking" => "higher"
+      })
+      expect(calc.rules_summary).to include("Show roles: MC $100.00, Stage Kitten $35.00 — or act pay, whichever is higher")
+
+      # Editing brings the priced rows back rather than the suggestions
+      start_wizard(id: calc.id)
+      get manage_money_payout_calculation_wizard_amounts_path
+      expect(response.body).to include('name="distribution[role_amounts][0][amount]" value="100"')
+    end
+
     it "per act: a table without a beyond rate stores no beyond rate" do
       start_wizard
       choose("per_act")

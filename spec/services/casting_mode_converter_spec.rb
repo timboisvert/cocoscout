@@ -434,6 +434,79 @@ RSpec.describe CastingModeConverter do
     end
   end
 
+  describe "show roles (standing) through a round trip" do
+    let!(:kittens) { create(:role, production: production, name: "Stage Kitten", category: "technical", quantity: 2, position: 2) }
+    let(:kitten_people) { (1..2).map { |i| create(:person, name: "Kitten #{i}").tap { |p| org.people << p } } }
+
+    before { kitten_people.each_with_index { |p, i| cast!(show, kittens, p, i + 1) } }
+
+    def to_acts!
+      production.update!(casting_mode: "act_based")
+      described_class.to_acts!(production)
+    end
+
+    def to_roles!
+      production.update!(casting_mode: "role_based")
+      described_class.to_roles!(production)
+    end
+
+    it "keeps a technical role as one show role with its slots instead of splitting it into acts" do
+      summary = to_acts!
+
+      kittens.reload
+      expect(summary.roles_kept_standing).to eq(1)
+      expect(kittens).to be_standing
+      expect(kittens.category).to eq("technical")
+      expect(kittens.quantity).to eq(2)
+      expect(kittens).not_to be_act
+      expect(production.roles.production_roles.where(name: "Stage Kitten").count).to eq(1)
+      expect(kittens.show_person_role_assignments.count).to eq(2)
+      # The dancers still split into acts.
+      expect(production.roles.production_roles.where(name: "Dancer").count).to eq(5)
+    end
+
+    it "never splits a show role, however many slots it holds" do
+      production.update!(casting_mode: "act_based")
+      ushers = create(:role, production: production, name: "Usher", standing: true, quantity: 3, position: 3)
+      described_class.to_acts!(production)
+      expect(production.roles.production_roles.where(name: "Usher").count).to eq(1)
+      expect(ushers.reload.quantity).to eq(3)
+    end
+
+    it "clears the flag on the way back, so the technical role comes back exactly as it was" do
+      to_acts!
+      summary = to_roles!
+
+      kittens.reload
+      expect(summary.standing_cleared).to eq(1)
+      expect(kittens).not_to be_standing
+      expect(kittens.category).to eq("technical")
+      expect(kittens.quantity).to eq(2)
+      expect(kittens.show_person_role_assignments.count).to eq(2)
+      expect(production.roles.production_roles.map(&:name)).to eq([ "Dancer", "Host", "Stage Kitten" ])
+    end
+
+    it "keeps a show role apart from a same-named act when folding" do
+      production.update!(casting_mode: "act_based")
+      # A show role's name is unique, an act's isn't — so the act comes second.
+      a = create(:role, production: production, name: "MC", standing: true, position: 20)
+      b = create(:role, production: production, name: "MC", position: 21)
+      runs = described_class.mergeable_runs([ a, b ])
+      expect(runs.map(&:size)).to eq([ 1, 1 ])
+    end
+
+    it "gives one show its own copy when only a technical role needs to become a show role" do
+      dancer.update!(quantity: 1)
+      show.update!(casting_mode: "act_based")
+      summary = described_class.to_acts_for_show!(show)
+
+      expect(summary.lineups_copied).to eq(1)
+      expect(show.reload.use_custom_roles?).to be(true)
+      expect(show.custom_roles.find_by(name: "Stage Kitten")).to be_standing
+      expect(kittens.reload).not_to be_standing
+    end
+  end
+
   describe ".mergeable_runs / .unique_name (the role shape of an act lineup)" do
     it "groups adjacent look-alike acts, skips breaks, and keeps different acts apart" do
       production.update!(casting_mode: "act_based")

@@ -72,6 +72,43 @@ RSpec.describe PayoutRulesBuilder do
     end
   end
 
+  describe ".build with show roles on a per-act calculation" do
+    it "keeps filled-in rows, drops blank ones, lets the last row for a name win, and validates the stacking" do
+      dist = described_class.build("method" => "per_act", "distribution" => {
+        "act_mode" => "simple", "per_act_rate" => "25",
+        "role_amounts" => {
+          "0" => { "name" => " MC ", "amount" => "90" },
+          "1" => { "name" => "Stage Kitten", "amount" => "" },
+          "2" => { "name" => "", "amount" => "10" },
+          "3" => { "name" => "mc", "amount" => "100" },
+          "4" => { "name" => "Usher", "amount" => "0" }
+        },
+        "role_stacking" => "higher"
+      })["distribution"]
+
+      expect(dist["role_amounts"]).to eq([ { "name" => "mc", "amount" => 100.0 }, { "name" => "Usher", "amount" => 0.0 } ])
+      expect(dist["role_stacking"]).to eq("higher")
+    end
+
+    it "writes nothing about show roles when no row is filled in" do
+      dist = described_class.build("method" => "per_act", "distribution" => {
+        "act_mode" => "simple", "per_act_rate" => "25",
+        "role_amounts" => { "0" => { "name" => "MC", "amount" => "" } },
+        "role_stacking" => "role_only"
+      })["distribution"]
+
+      expect(dist).to eq("method" => "per_act", "act_mode" => "simple", "per_act_rate" => 25.0)
+    end
+
+    it "falls back to paying both for an unknown stacking" do
+      dist = described_class.build("method" => "per_act", "distribution" => {
+        "act_mode" => "simple", "per_act_rate" => "25",
+        "role_amounts" => [ { "name" => "MC", "amount" => "100" } ], "role_stacking" => "always"
+      })["distribution"]
+      expect(dist["role_stacking"]).to eq("both")
+    end
+  end
+
   describe ".override" do
     let(:base) do
       { "allocation" => [ { "type" => "percentage", "value" => 50.0, "label" => "House take" }, { "type" => "remainder" } ],

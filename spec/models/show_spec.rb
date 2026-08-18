@@ -301,6 +301,52 @@ RSpec.describe Show, type: :model do
       end
     end
 
+    context 'with show roles alongside the lineup' do
+      let!(:mc) { create(:role, production: production, name: 'MC', standing: true, position: 0) }
+      let!(:kittens) { create(:role, production: production, name: 'Stage Kitten', standing: true, quantity: 2, position: 5) }
+
+      it "doesn't count a show role as an act" do
+        create(:show_person_role_assignment, show: show, role: mc, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: magic1, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: kittens, assignable: duo)
+
+        expect(show.lineup_act_counts).to eq(ShowPayout.act_key(dancer) => 1)
+      end
+
+      it 'lists the show roles each payee holds, by name' do
+        create(:show_person_role_assignment, show: show, role: mc, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: magic1, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: kittens, assignable: duo)
+        create(:show_person_role_assignment, show: show, role: variety, assignable: create(:person))
+
+        expect(show.show_role_names_by_payee).to eq(
+          ShowPayout.act_key(dancer) => [ 'MC' ],
+          ShowPayout.act_key(duo) => [ 'Stage Kitten' ]
+        )
+      end
+
+      it 'keys a guest by their first assignment even when that is a show role' do
+        first = create(:show_person_role_assignment, show: show, role: mc, assignable: nil, guest_name: 'Lola')
+        create(:show_person_role_assignment, show: show, role: magic1, assignable: nil, guest_name: 'Lola')
+        create(:show_person_role_assignment, show: show, role: magic2, assignable: nil, guest_name: 'lola')
+
+        key = ShowPayout.act_key(first)
+        expect(show.lineup_act_counts).to eq(key => 2)
+        expect(show.show_role_names_by_payee).to eq(key => [ 'MC' ])
+        expect(show.pay_cast_assignments[:guests].map(&:id)).to eq([ first.id ])
+      end
+
+      it 'copies the flag onto an act-based custom lineup and drops it for a role-based night' do
+        show.copy_roles_from_production!
+        expect(show.custom_roles.find_by(name: 'MC')).to be_standing
+        expect(show.custom_roles.find_by(name: 'Stage Kitten').quantity).to eq(2)
+
+        role_night = create(:show, production: production, casting_mode: 'role_based')
+        role_night.copy_roles_from_production!
+        expect(role_night.custom_roles.find_by(name: 'MC')).not_to be_standing
+      end
+    end
+
     describe '#pay_cast_assignments' do
       it 'lists people once and collapses guests in an act-based production' do
         create(:show_person_role_assignment, show: show, role: magic1, assignable: dancer)

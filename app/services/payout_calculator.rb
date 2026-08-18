@@ -19,9 +19,11 @@ class PayoutCalculator
   class << self
     # Calculate payouts for a show and, unless persist: false, rebuild its
     # line items from them. act_counts is only used by act-based schemes:
-    # { "Person_12" => 2, "guest_9" => 1 }
-    def calculate(show:, rules:, act_counts: {}, persist: true)
-      new(show: show, rules: rules, act_counts: act_counts, persist: persist).calculate
+    # { "Person_12" => 2, "guest_9" => 1 }. role_names — the show roles each
+    # payee holds, { "Person_12" => ["MC"] } — is read off the show's cast
+    # unless given.
+    def calculate(show:, rules:, act_counts: {}, role_names: nil, persist: true)
+      new(show: show, rules: rules, act_counts: act_counts, role_names: role_names, persist: persist).calculate
     end
 
     # Preview calculation without persisting (for UI feedback)
@@ -30,12 +32,13 @@ class PayoutCalculator
     end
   end
 
-  def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil, act_counts: {}, persist: true)
+  def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil, act_counts: {}, role_names: nil, persist: true)
     @show = show
     @rules = rules&.deep_stringify_keys || {}
     @preview_financials = preview_financials
     @preview_performer_count = preview_performer_count
     @act_counts = (act_counts || {}).stringify_keys
+    @role_names = role_names&.stringify_keys
     @persist = persist
     @guest_assignments = []
   end
@@ -561,23 +564,14 @@ class PayoutCalculator
     breakdown << "Paid by acts: #{act_rules_label(distribution)}"
 
     performers.map do |performer|
-      acts = act_count_for(ShowPayout.act_key(performer))
+      key = ShowPayout.act_key(performer)
+      acts = act_count_for(key)
+      roles = role_names_for(key)
       override = override_for(overrides, performer)
       custom = custom_amount_for(overrides, performer)
-      next custom_amount_item(custom, inputs: { acts: acts }).merge(payee: performer) if custom
+      next custom_amount_item(custom, inputs: per_act_inputs(acts, roles)).merge(payee: performer) if custom
 
-      amount, formula = per_act_amount_and_formula(distribution, override, acts)
-
-      {
-        payee: performer,
-        amount: amount,
-        shares: nil,
-        calculation_details: {
-          formula: formula,
-          inputs: { acts: acts },
-          breakdown: [ act_rules_label(distribution), "#{acts} #{'act'.pluralize(acts)} = #{format_currency(amount)}" ]
-        }
-      }
+      per_act_line(distribution, override, acts, roles).merge(payee: performer)
     end
   end
 
@@ -586,27 +580,91 @@ class PayoutCalculator
     return [] if guest_assignments.empty?
 
     guest_assignments.map do |assignment|
-      acts = act_count_for(ShowPayout.act_key(assignment))
+      key = ShowPayout.act_key(assignment)
+      acts = act_count_for(key)
+      roles = role_names_for(key)
       override = override_for(overrides, assignment)
       if override["flat_amount"].present?
-        next custom_amount_item(override["flat_amount"], inputs: { acts: acts })
+        next custom_amount_item(override["flat_amount"], inputs: per_act_inputs(acts, roles))
                .merge(guest_name: assignment.guest_name, guest_assignment_id: assignment.id)
       end
 
-      amount, formula = per_act_amount_and_formula(distribution, override, acts)
+      per_act_line(distribution, override, acts, roles)
+        .merge(guest_name: assignment.guest_name, guest_assignment_id: assignment.id)
+    end
+  end
 
-      {
-        guest_name: assignment.guest_name,
-        guest_assignment_id: assignment.id,
-        amount: amount,
+  # One payee's act-based line: act pay off their count, plus whatever show
+  # roles they hold (MC, Stage Kitten) priced by name, combined the way the
+  # calculation's role_stacking says. A payee holding no show roles reads
+  # exactly as before — act pay alone.
+  def per_act_line(distribution, override, acts, role_names)
+    act_amount, act_formula = per_act_amount_and_formula(distribution, override, acts)
+    acts_label = "#{acts} #{'act'.pluralize(acts)}"
+    act_line = "#{acts_label} = #{format_currency(act_amount)}"
+
+    priced = role_names.filter_map do |name|
+      amount = PayoutScheme.role_amount_for(distribution, name)
+      [ name, amount ] if amount
+    end
+    unpriced = role_names - priced.map(&:first)
+
+    if priced.empty?
+      breakdown = [ act_rules_label(distribution), act_line ]
+      breakdown.concat(unpriced.map { |name| "#{name}: not priced in this calculation" })
+      return {
+        amount: act_amount,
         shares: nil,
         calculation_details: {
-          formula: formula,
-          inputs: { acts: acts },
-          breakdown: [ act_rules_label(distribution), "#{acts} #{'act'.pluralize(acts)} = #{format_currency(amount)}" ]
+          formula: act_formula,
+          inputs: per_act_inputs(acts, role_names),
+          breakdown: breakdown
         }
       }
     end
+
+    role_amount = priced.sum { |_, amount| amount }.round(2)
+    role_label = priced.map(&:first).to_sentence
+    stacking = PayoutScheme.role_stacking(distribution)
+
+    amount, formula = case stacking
+    when "role_only"
+      [ role_amount, acts.positive? ? "#{role_label} (role only; #{acts_label} not paid on top)" : role_label ]
+    when "higher"
+      if acts.zero?
+        [ role_amount, role_label ]
+      elsif role_amount >= act_amount
+        [ role_amount, "#{role_label} (higher than #{acts_label})" ]
+      else
+        [ act_amount, "#{act_formula} (higher than #{role_label})" ]
+      end
+    else
+      [ (role_amount + act_amount).round(2), acts.positive? ? "#{role_label} + #{act_formula}" : role_label ]
+    end
+
+    breakdown = [ act_rules_label(distribution) ]
+    breakdown << "Show roles: #{priced.map { |name, a| "#{name} #{format_currency(a)}" }.join(', ')}"
+    breakdown << act_line
+    breakdown.concat(unpriced.map { |name| "#{name}: not priced in this calculation" })
+    breakdown << "Show role pay #{PayoutScheme.role_stacking_phrase(stacking)}: #{format_currency(amount)}"
+
+    {
+      amount: amount,
+      shares: nil,
+      calculation_details: {
+        formula: formula,
+        inputs: per_act_inputs(acts, role_names).merge(role_pay: role_amount, act_pay: act_amount, stacking: stacking),
+        breakdown: breakdown
+      }
+    }
+  end
+
+  # { acts: } as always; the roles ride along only when the payee holds one,
+  # so a plain act-only line item looks exactly as it did.
+  def per_act_inputs(acts, role_names)
+    inputs = { acts: acts }
+    inputs[:roles] = role_names if role_names.any?
+    inputs
   end
 
   # A flat per-act override beats the scheme's own rate/tiers for that person.
@@ -625,6 +683,13 @@ class PayoutCalculator
 
   def act_count_for(key)
     @act_counts[key].to_i
+  end
+
+  # The show roles this payee holds tonight — given to the calculator, or read
+  # off the show's cast. A preview with no show has none.
+  def role_names_for(key)
+    @role_names ||= (@show&.show_role_names_by_payee || {}).to_h.stringify_keys
+    Array(@role_names.fetch(key, []))
   end
 
   def act_rules_label(distribution)

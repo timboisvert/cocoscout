@@ -36,13 +36,25 @@ class Role < ApplicationRecord
   # Scopes for system-managed roles
   scope :system_managed, -> { where(system_managed: true) }
 
+  # Standing roles ("Show roles" in the UI — the MC, Stage Kitten ×2) sit
+  # outside an act-based lineup: cast per show like any role, but not acts.
+  # `lineup` is everything else — the running order in act mode.
+  scope :standing, -> { where(standing: true) }
+  scope :lineup, -> { where(standing: false) }
+
+  # How a role reads in an act-based lineup editor's Type select: an act in the
+  # running order, an intermission marker, or a show role alongside the lineup.
+  LINEUP_KINDS = %w[act break show_role].freeze
+
   validates :name, presence: true
   # An act-based lineup may repeat a name ("Magic" in each half); role-based
-  # lineups keep one role per name. A show's custom lineup follows the show's
-  # effective mode (it may override the production's).
+  # lineups keep one role per name — and so do show roles, which aren't acts.
+  # A show's custom lineup follows the show's effective mode (it may override
+  # the production's).
   validates :name, uniqueness: { scope: [ :production_id, :show_id ], message: "already exists" },
             unless: :act?
   validate :break_only_in_act_based_production
+  validate :standing_role_takes_performers
   validates :quantity, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 100 }
   validates :category, presence: true, inclusion: { in: CATEGORIES }
   validates :system_role_type, inclusion: { in: SYSTEM_ROLE_TYPES, allow_nil: true }
@@ -111,8 +123,10 @@ class Role < ApplicationRecord
 
   # ---- Act-based lineup support -------------------------------------------
   #
-  # In an act-based production every Role is an act in the running order.
-  # A "break" is a marker row (intermission) that takes no performer.
+  # In an act-based production a Role is an act in the running order unless
+  # it's a "break" (an intermission marker that takes no performer) or a
+  # standing role (a "Show role" — the MC, a stage kitten — cast alongside the
+  # lineup but not part of it).
 
   def break?
     category == BREAK_CATEGORY
@@ -122,16 +136,69 @@ class Role < ApplicationRecord
     !break?
   end
 
-  # Is this role an act? A show's custom role follows that show's effective
-  # casting mode (which may override the production's); a production role
-  # follows the production — unless it's being read inside a specific show
-  # (pass show:), in which case that show's mode decides. Callers with many
-  # roles should preload :show / :production so this doesn't query per role.
+  # Is this role an act? Standing roles never are. Otherwise a show's custom
+  # role follows that show's effective casting mode (which may override the
+  # production's); a production role follows the production — unless it's
+  # being read inside a specific show (pass show:), in which case that show's
+  # mode decides. Callers with many roles should preload :show / :production
+  # so this doesn't query per role.
   def act?(show: nil)
+    return false if standing?
+
     context = show || (show_id ? self.show : nil)
     return context.act_based? if context
 
     production&.act_based? || false
+  end
+
+  # The act-mode editor's Type select: "act" | "break" | "show_role". Setting
+  # it maps onto category + standing in one place so every editor (production
+  # roles, a show's lineup, the production wizard) agrees. A show role that
+  # was technical stays technical (the flag is what makes it a show role); an
+  # act or break clears the flag.
+  def lineup_kind
+    return "break" if break?
+    return "show_role" if standing?
+
+    "act"
+  end
+
+  # What a role editor posted, made safe for the lineup it's editing. In an
+  # act-based lineup the Type select posts `category` as performing (an act),
+  # break (an intermission) or show_role — that becomes lineup_kind, acts and
+  # breaks are one slot, and breaks aren't restricted. In a role-based lineup
+  # there are no breaks or show roles: either quietly becomes a performing
+  # role and `standing` is left alone.
+  def self.editor_params(permitted, act_based:)
+    permitted = permitted.to_h.with_indifferent_access
+    category = permitted.delete(:category).to_s
+    if act_based
+      kind = case category
+      when BREAK_CATEGORY then "break"
+      when "show_role" then "show_role"
+      else "act"
+      end
+      permitted[:lineup_kind] = kind
+      permitted[:quantity] = 1 unless kind == "show_role"
+      permitted[:restricted] = false if kind == "break"
+    else
+      permitted[:category] = %w[performing technical].include?(category) ? category : "performing"
+    end
+    permitted
+  end
+
+  def lineup_kind=(kind)
+    case kind.to_s
+    when "break"
+      self.category = BREAK_CATEGORY
+      self.standing = false
+    when "show_role"
+      self.category = "performing" unless category == "technical"
+      self.standing = true
+    else
+      self.category = "performing" if break?
+      self.standing = false
+    end
   end
 
   # The roles this one is ordered among: a show's custom lineup or the
@@ -170,10 +237,11 @@ class Role < ApplicationRecord
     self.class.lineup_numbers_for(siblings.to_a)[id]
   end
 
-  # { role_id => number } for a lineup, breaks omitted (they aren't numbered).
+  # { role_id => number } for a lineup; breaks and standing roles are omitted
+  # (neither is numbered — only acts have a place in the running order).
   def self.lineup_numbers_for(roles)
     numbers = {}
-    roles.to_a.reject(&:break?).each_with_index { |r, i| numbers[r.id] = i + 1 }
+    roles.to_a.reject { |r| r.break? || r.standing? }.each_with_index { |r, i| numbers[r.id] = i + 1 }
     numbers
   end
 
@@ -218,6 +286,12 @@ class Role < ApplicationRecord
     return if act?
 
     errors.add(:category, "breaks belong to act-based lineups only")
+  end
+
+  def standing_role_takes_performers
+    return unless standing? && break?
+
+    errors.add(:standing, "an intermission can't be a show role")
   end
 
   def restricted_role_has_eligible_members

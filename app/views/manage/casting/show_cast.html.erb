@@ -31,12 +31,16 @@
       unit_plural = casting_unit(@show, plural: true)
       unit_title = casting_unit(@show, capitalize: true)
       lineup_nums = lineup_numbers(@roles, show: @show)
+      # The progress line counts every slot; on an act-based night with show
+      # roles (MC, Stage Kitten ×2) those aren't all acts, so it says "spots".
+      progress_unit_plural = @show.act_based? && @roles.any?(&:standing?) ? "spots" : unit_plural
     %>
     <div data-controller="drop-role"
          data-drop-role-show-id-value="<%= @show.id %>"
          data-drop-role-production-id-value="<%= @production.id %>"
          data-drop-role-casting-source-value="<%= casting_source %>"
          data-drop-role-unit-value="<%= unit %>"
+         data-drop-role-progress-unit-value="<%= progress_unit_plural %>"
          data-drop-role-click-to-add-value="<%= show_click_to_add %>">
 
     <%
@@ -76,7 +80,7 @@
             <div class="flex-1 min-w-0">
               <div class="mb-2">
                 <span id="progress-label" class="text-sm font-semibold text-gray-900">
-                  <% if fully_cast %>This show is 100% cast<% else %><%= filled_slots %> of <%= total_slots %> <%= unit_plural %> have been cast<% end %>
+                  <% if fully_cast %>This show is 100% cast<% else %><%= filled_slots %> of <%= total_slots %> <%= progress_unit_plural %> have been cast<% end %>
                 </span>
               </div>
               <div class="w-full bg-gray-200 rounded-full h-2">

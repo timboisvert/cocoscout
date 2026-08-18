@@ -25,12 +25,20 @@
 # (Magic at 1 and 3, with Clown between) get a " (2)" suffix so a role-based
 # lineup keeps one role per name. Roles → acts → roles is a round trip.
 #
+# Show roles: a role-based lineup's technical roles (Stage Manager ×2) were
+# never acts, so switching to acts marks them standing — "Show roles" cast
+# alongside the lineup, slots kept — instead of splitting them into numbered
+# acts. Standing roles are never split. Switching back to roles clears the
+# flag (a role-based lineup has no running order to sit outside of); the
+# category was kept, so a technical role comes back exactly as it was.
+#
 # Idempotent both ways: a lineup already in the requested shape is left
 # untouched. Draft casting-table assignments stay on the surviving role.
 class CastingModeConverter
   Summary = Struct.new(:roles_split, :acts_created, :assignments_moved,
                        :notifications_moved, :vacancies_moved, :lineups_copied,
                        :roles_merged, :acts_merged, :breaks_removed, :names_suffixed,
+                       :roles_kept_standing, :standing_cleared,
                        keyword_init: true) do
     def initialize(**)
       super
@@ -39,7 +47,8 @@ class CastingModeConverter
 
     def changed?
       roles_split.positive? || lineups_copied.positive? || roles_merged.positive? ||
-        breaks_removed.positive? || names_suffixed.positive?
+        breaks_removed.positive? || names_suffixed.positive? ||
+        roles_kept_standing.positive? || standing_cleared.positive?
     end
 
     def merge!(other)
@@ -87,14 +96,15 @@ class CastingModeConverter
 
   # Group a lineup (breaks excluded, in running order) into runs of adjacent
   # castable roles that read as one role: same name, category, restriction and
-  # eligible members. Every role of a role-based lineup is its own run.
+  # eligible members — and the same standing, so a show role never folds into
+  # a same-named act. Every role of a role-based lineup is its own run.
   # Returns an array of arrays of roles.
   def self.mergeable_runs(roles)
     list = roles.to_a.reject(&:break?)
     eligibilities = RoleEligibility.where(role_id: list.map(&:id)).group_by(&:role_id)
     key = lambda do |role|
       members = role.restricted? ? (eligibilities[role.id] || []).map { |e| [ e.member_type, e.member_id ] }.sort : []
-      [ role.name.to_s.strip, role.category, role.restricted? && members.any?, members ]
+      [ role.name.to_s.strip, role.category, role.standing?, role.restricted? && members.any?, members ]
     end
     list.slice_when { |a, b| key.call(a) != key.call(b) }.to_a
   end
@@ -124,6 +134,8 @@ class CastingModeConverter
     summary = Summary.new
     Role.transaction do
       production_lineup = @production.roles.production_roles
+      # Only splitting reshapes the shared roles in a way a role-pinned show
+      # would notice; marking technical roles standing is idle in role mode.
       if production_lineup.any? { |r| splittable?(r) }
         @production.shows.where(casting_mode: "role_based", use_custom_roles: false).find_each do |show|
           copy_production_lineup_keeping_cast!(show)
@@ -147,12 +159,14 @@ class CastingModeConverter
     Role.transaction do
       if show.use_custom_roles?
         summary.merge!(split_lineup!(show.custom_roles, show: show))
-      elsif @production.roles.production_roles.castable.where("quantity > 1").exists?
+      elsif @production.roles.production_roles.any? { |r| splittable?(r) || becomes_standing?(r) }
+        # The production's roles are shared with every other night, so this
+        # show takes its own copy before anything is split or marked.
         copy_production_lineup_keeping_cast!(show)
         summary.lineups_copied += 1
         summary.merge!(split_lineup!(show.custom_roles, show: show))
       end
-      # else: nothing multi-slot to split — keep sharing the production's lineup.
+      # else: nothing to reshape — keep sharing the production's lineup.
     end
     summary
   end
@@ -208,6 +222,12 @@ class CastingModeConverter
   def split_lineup!(lineup_scope, show:)
     summary = Summary.new
     lineup = lineup_scope.reorder(position: :asc, created_at: :asc, id: :asc).to_a
+
+    # Technical roles were never acts: they become show roles, slots intact.
+    lineup.select { |r| becomes_standing?(r) }.each do |role|
+      role.update_columns(standing: true, updated_at: Time.current)
+      summary.roles_kept_standing += 1
+    end
     return summary if lineup.none? { |r| splittable?(r) }
 
     running_order = []
@@ -237,8 +257,13 @@ class CastingModeConverter
     summary
   end
 
+  # A show role isn't an act, whatever its slot count — it's never split.
   def splittable?(role)
-    role.castable? && role.quantity > 1
+    role.castable? && !role.standing? && !becomes_standing?(role) && role.quantity > 1
+  end
+
+  def becomes_standing?(role)
+    role.category == "technical" && !role.standing?
   end
 
   # A new act right after `role`: same name, category, restriction, and
@@ -254,6 +279,7 @@ class CastingModeConverter
       category: role.category,
       quantity: 1,
       restricted: restricted,
+      standing: false,
       position: role.position
     )
     act.pending_eligible_member_ids = eligibilities.map { |e| "#{e.member_type}_#{e.member_id}" } if restricted
@@ -336,19 +362,19 @@ class CastingModeConverter
 
   # ---- acts → roles ---------------------------------------------------------
 
-  # Would merging this lineup change it? True when it holds a break, a run of
-  # adjacent look-alike acts, or a repeated name.
+  # Would merging this lineup change it? True when it holds a break, a show
+  # role, a run of adjacent look-alike acts, or a repeated name.
   def mergeable?(lineup_scope)
     lineup = lineup_scope.reorder(position: :asc, created_at: :asc, id: :asc).to_a
-    return true if lineup.any?(&:break?)
+    return true if lineup.any? { |r| r.break? || r.standing? }
 
     runs = self.class.mergeable_runs(lineup)
     runs.any? { |run| run.size > 1 } || lineup.map { |r| r.name.to_s.strip }.uniq.size < lineup.size
   end
 
   # Fold one lineup back into roles: adjacent look-alike acts become one
-  # multi-slot role, breaks go, leftover repeated names get suffixed, and the
-  # running order is renumbered.
+  # multi-slot role, breaks go, show roles become plain roles, leftover
+  # repeated names get suffixed, and the running order is renumbered.
   def merge_lineup!(lineup_scope, show:)
     summary = Summary.new
     return summary unless mergeable?(lineup_scope)
@@ -357,6 +383,10 @@ class CastingModeConverter
     lineup.select(&:break?).each do |brk|
       brk.destroy!
       summary.breaks_removed += 1
+    end
+    lineup.select(&:standing?).each do |role|
+      role.update_columns(standing: false, updated_at: Time.current)
+      summary.standing_cleared += 1
     end
 
     survivors = self.class.mergeable_runs(lineup).map do |run|

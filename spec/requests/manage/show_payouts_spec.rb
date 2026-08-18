@@ -646,6 +646,37 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
 
         expect(response).to redirect_to(manage_money_production_payouts_path(production))
       end
+
+      context "with show roles cast alongside the lineup" do
+        let!(:mc_role) { create(:role, production: production, name: "MC", standing: true, position: 0) }
+        let!(:kitten_role) { create(:role, production: production, name: "Stage Kitten", standing: true, quantity: 2, position: 9) }
+        let!(:kitten) { create(:person, name: "Kitty Kat") }
+
+        before do
+          # Acty Ada is the MC and dances her two acts; Kitty only holds a show role.
+          create(:show_person_role_assignment, show: show, role: mc_role, assignable: performer)
+          create(:show_person_role_assignment, show: show, role: kitten_role, assignable: kitten)
+        end
+
+        it "pays the roles the calculation prices and points out the ones it doesn't" do
+          scheme.update!(rules: scheme.rules.deep_merge("distribution" => { "role_amounts" => [ { "name" => "MC", "amount" => 100.0 } ], "role_stacking" => "both" }))
+
+          get manage_money_show_payout_path(show)
+          expect(response.body).to include("Stage Kitten isn&#39;t priced in this calculation")
+          expect(response.body).to include("Edit calculation")
+          expect(response.body).to include("Show roles: MC $100.00 — added to act pay")
+
+          post manage_calculate_money_show_payout_path(show)
+          payout.reload
+          expect(payout.line_items.find_by(payee: performer).amount.to_f).to eq(150.0)
+          expect(payout.line_items.find_by(payee: performer).calculation_details["formula"]).to eq("MC + 2 acts")
+          expect(payout.line_items.find_by(payee: kitten).amount.to_f).to eq(0.0)
+
+          scheme.update!(rules: scheme.rules.deep_merge("distribution" => { "role_amounts" => [ { "name" => "MC", "amount" => 100.0 }, { "name" => "stage kitten", "amount" => 35.0 } ] }))
+          get manage_money_show_payout_path(show)
+          expect(response.body).not_to include("priced in this calculation")
+        end
+      end
     end
   end
 

@@ -3,16 +3,27 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["modal", "form", "title", "nameInput", "methodInput", "submitButton",
         "restrictedCheckbox", "eligiblePeopleSection", "personCheckbox", "searchInput",
-        "quantityInput", "categorySelect", "restrictedSection"]
+        "quantityInput", "quantitySection", "categorySelect", "restrictedSection"]
     static values = {
         createPath: String,
-        // Act-based production: roles are acts in a lineup, and a "break"
-        // category row is an intermission (no performer, no restrictions).
+        // Act-based production: roles are acts in a lineup; the Type select
+        // also offers "break" (an intermission — no performer, no
+        // restrictions) and "show_role" (MC, Stage Kitten ×2 — cast alongside
+        // the lineup, not in it, so it's the one act-mode type with slots).
         actMode: Boolean
     }
 
     get unit() {
         return this.actModeValue ? "Act" : "Role"
+    }
+
+    // The word for what the Type select currently says the role is.
+    get kindLabel() {
+        if (!this.actModeValue || !this.hasCategorySelectTarget) return this.unit
+        const kind = this.categorySelectTarget.value
+        if (kind === "break") return "intermission"
+        if (kind === "show_role") return "show role"
+        return "act"
     }
 
     connect() {
@@ -72,15 +83,29 @@ export default class extends Controller {
         this.categoryChanged()
     }
 
+    // Act mode: a show role alongside the lineup (MC, Stage Kitten).
+    openForShowRole(event) {
+        this.openForNew(event)
+        this.titleTarget.textContent = "Add show role"
+        this.submitButtonTarget.textContent = "Add show role"
+        if (this.hasCategorySelectTarget) {
+            this.categorySelectTarget.value = "show_role"
+        }
+        this.categoryChanged()
+        this.nameInputTarget.focus()
+    }
+
     openForEdit(event) {
         event.preventDefault()
         const button = event.currentTarget
         const isBreak = button.dataset.roleCategory === "break"
-        this.titleTarget.textContent = isBreak ? "Edit intermission" : `Edit ${this.unit}`
+        const isShowRole = this.actModeValue && button.dataset.roleStanding === "true"
+        const label = isBreak ? "intermission" : (isShowRole ? "show role" : (this.actModeValue ? "act" : this.unit))
+        this.titleTarget.textContent = `Edit ${label}`
         this.nameInputTarget.value = button.dataset.roleName
         this.formTarget.action = button.dataset.updatePath
         this.methodInputTarget.value = "patch"
-        this.submitButtonTarget.textContent = isBreak ? "Update intermission" : `Update ${this.unit}`
+        this.submitButtonTarget.textContent = `Update ${label}`
 
         // Set restricted toggle and load eligible members
         if (this.hasRestrictedCheckboxTarget) {
@@ -102,22 +127,39 @@ export default class extends Controller {
             this.quantityInputTarget.value = button.dataset.roleQuantity || 1
         }
         if (this.hasCategorySelectTarget) {
-            this.categorySelectTarget.value = button.dataset.roleCategory || "performing"
+            // In act mode the select's value is the role's kind; a show role
+            // keeps its category (performing/technical) behind the flag.
+            this.categorySelectTarget.value = isShowRole ? "show_role" : (button.dataset.roleCategory || "performing")
         }
         this.categoryChanged()
 
         this.modalTarget.classList.remove("hidden")
     }
 
-    // A break takes no performer: hide the restriction controls and clear them.
+    // A break takes no performer: hide the restriction controls and clear
+    // them. In act mode only a show role has a slot count — an act is one
+    // thing in the running order — so the quantity field follows the type.
     categoryChanged() {
-        if (!this.hasCategorySelectTarget || !this.hasRestrictedSectionTarget) return
+        if (!this.hasCategorySelectTarget) return
 
-        const isBreak = this.categorySelectTarget.value === "break"
-        this.restrictedSectionTarget.classList.toggle("hidden", isBreak)
-        if (isBreak && this.hasRestrictedCheckboxTarget) {
-            this.restrictedCheckboxTarget.checked = false
-            this.updateEligiblePeopleVisibility()
+        const kind = this.categorySelectTarget.value
+        const isBreak = kind === "break"
+        if (this.hasRestrictedSectionTarget) {
+            this.restrictedSectionTarget.classList.toggle("hidden", isBreak)
+            if (isBreak && this.hasRestrictedCheckboxTarget) {
+                this.restrictedCheckboxTarget.checked = false
+                this.updateEligiblePeopleVisibility()
+            }
+        }
+        if (this.actModeValue && this.hasQuantitySectionTarget) {
+            const isShowRole = kind === "show_role"
+            this.quantitySectionTarget.classList.toggle("hidden", !isShowRole)
+            if (!isShowRole && this.hasQuantityInputTarget) this.quantityInputTarget.value = 1
+        }
+        if (this.methodInputTarget.value === "post") {
+            const label = this.kindLabel
+            this.titleTarget.textContent = `Add ${label}`
+            this.submitButtonTarget.textContent = `Add ${label}`
         }
     }
 

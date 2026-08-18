@@ -349,6 +349,42 @@
         </div>
       <% end %>
 
+      <%
+        # A show role cast tonight (MC, Stage Kitten) that the calculation
+        # doesn't price pays nothing from the role — say so before the numbers.
+        unpriced_roles = @show_payout.unpriced_show_role_names
+        nudge_scheme = @show_payout.payout_scheme || @production_scheme
+      %>
+      <% if unpriced_roles.any? %>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div class="flex gap-3">
+            <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            <div>
+              <p class="text-sm text-amber-800 font-medium">
+                <%= unpriced_roles.to_sentence %> <%= unpriced_roles.size == 1 ? "isn't" : "aren't" %> priced in this calculation
+              </p>
+              <p class="text-sm text-amber-700 mt-1">
+                Anyone holding <%= unpriced_roles.size == 1 ? "it" : "them" %> is paid for their acts only.
+                <% if nudge_scheme && !@show_payout.has_overrides? %>
+                  Add a Show roles amount to <%= nudge_scheme.name %> to pay <%= unpriced_roles.size == 1 ? "it" : "them" %>, or set that person's amount for this show.
+                <% else %>
+                  Set that person's amount for this show to pay <%= unpriced_roles.size == 1 ? "it" : "them" %>.
+                <% end %>
+              </p>
+              <% if nudge_scheme && !@show_payout.has_overrides? && @show_payout.can_edit? %>
+                <div class="mt-3">
+                  <%= link_to manage_money_payout_calculation_wizard_start_path(id: nudge_scheme, return_to: manage_money_show_payout_path(@show)) do %>
+                    <%= render "shared/button", text: "Edit calculation", variant: "primary", size: "small" %>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
       <!-- Payout calculation: what this show's pay is worked out from -->
       <%
         # The show's calculation is the production's, or one chosen for this

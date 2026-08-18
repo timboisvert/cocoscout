@@ -363,6 +363,115 @@ RSpec.describe PayoutCalculator do
         end
       end
 
+      context "with show roles priced by name" do
+        let(:production) { create(:production, organization: organization, casting_mode: "act_based") }
+        let(:mc_role) { create(:role, production: production, name: "MC", standing: true, position: 0) }
+        let(:kitten_role) { create(:role, production: production, name: "Stage Kitten", standing: true, quantity: 2, position: 9) }
+        let(:kitten) { create(:person, user: create(:user)) }
+        let(:rules) do
+          {
+            "distribution" => {
+              "method" => "per_act",
+              "act_mode" => "tiers",
+              "tiers" => [ { "acts" => 1, "amount" => 75.0 }, { "acts" => 2, "amount" => 125.0 } ],
+              "role_amounts" => [ { "name" => "mc", "amount" => 100.0 } ],
+              "role_stacking" => "both"
+            }
+          }
+        end
+
+        before do
+          # performer1 is the MC and dances one act; performer2 dances one act;
+          # the kitten holds a show role the calculation doesn't price; the guest dances one act.
+          create(:show_person_role_assignment, show: show, role: mc_role, assignable: performer1)
+          create(:show_person_role_assignment, show: show, role: kitten_role, assignable: kitten)
+        end
+
+        def line_for(result, payee)
+          result[:line_items].find { |li| li.payee == payee }
+        end
+
+        def calculate(rules)
+          described_class.calculate(show: show, rules: rules, act_counts: show.lineup_act_counts)
+        end
+
+        it "adds the role amount to act pay when they're paid both" do
+          result = calculate(rules)
+          expect(result[:success]).to be true
+
+          mc = line_for(result, performer1)
+          expect(mc.amount.to_f).to eq(175.0)
+          expect(mc.calculation_details["formula"]).to eq("MC + 1 act")
+          expect(mc.calculation_details["inputs"]).to include("acts" => 1, "roles" => [ "MC" ], "role_pay" => 100.0, "act_pay" => 75.0, "stacking" => "both")
+          expect(mc.calculation_details["breakdown"]).to include("Show roles: MC $100.00", "1 act = $75.00")
+
+          plain = line_for(result, performer2)
+          expect(plain.amount.to_f).to eq(75.0)
+          expect(plain.calculation_details["formula"]).to eq("1 act")
+          expect(plain.calculation_details["inputs"]).to eq("acts" => 1)
+        end
+
+        it "pays the role amount alone when the person performs no acts" do
+          host = create(:person, user: create(:user))
+          create(:show_person_role_assignment, show: show, role: create(:role, production: production, name: "Host", standing: true), assignable: host)
+          with_host = rules.deep_dup
+          with_host["distribution"]["role_amounts"] << { "name" => "Host", "amount" => 60.0 }
+
+          line = line_for(calculate(with_host), host)
+          expect(line.amount.to_f).to eq(60.0)
+          expect(line.calculation_details["formula"]).to eq("Host")
+        end
+
+        it "pays the role only when that's the stacking" do
+          role_only = rules.deep_dup
+          role_only["distribution"]["role_stacking"] = "role_only"
+
+          mc = line_for(calculate(role_only), performer1)
+          expect(mc.amount.to_f).to eq(100.0)
+          expect(mc.calculation_details["formula"]).to eq("MC (role only; 1 act not paid on top)")
+        end
+
+        it "pays whichever is higher when that's the stacking" do
+          higher = rules.deep_dup
+          higher["distribution"]["role_stacking"] = "higher"
+
+          mc = line_for(calculate(higher), performer1)
+          expect(mc.amount.to_f).to eq(100.0)
+          expect(mc.calculation_details["formula"]).to eq("MC (higher than 1 act)")
+
+          cheap_role = higher.deep_dup
+          cheap_role["distribution"]["role_amounts"] = [ { "name" => "MC", "amount" => 20.0 } ]
+          mc = line_for(calculate(cheap_role), performer1)
+          expect(mc.amount.to_f).to eq(75.0)
+          expect(mc.calculation_details["formula"]).to eq("1 act (higher than MC)")
+        end
+
+        it "pays act pay alone for a show role the calculation doesn't price, and says so" do
+          line = line_for(calculate(rules), kitten)
+          expect(line.amount.to_f).to eq(0.0)
+          expect(line.calculation_details["formula"]).to eq("0 acts")
+          expect(line.calculation_details["inputs"]).to eq("acts" => 0, "roles" => [ "Stage Kitten" ])
+          expect(line.calculation_details["breakdown"]).to include("Stage Kitten: not priced in this calculation")
+        end
+
+        it "prices a guest's show role too" do
+          create(:show_person_role_assignment, show: show, role: mc_role, guest_name: "Guest Star", assignable: nil)
+          # The guest already dances one act (see the outer before); the MC slot is a second assignment.
+          result = calculate(rules)
+          guest_line = result[:line_items].find(&:is_guest?)
+          expect(guest_line.amount.to_f).to eq(175.0)
+          expect(guest_line.calculation_details["formula"]).to eq("MC + 1 act")
+        end
+
+        it "still lets a set amount for this show win" do
+          custom = rules.deep_dup
+          custom["performer_overrides"] = { "Person_#{performer1.id}" => { "flat_amount" => 12.0 } }
+          mc = line_for(calculate(custom), performer1)
+          expect(mc.amount.to_f).to eq(12.0)
+          expect(mc.calculation_details["inputs"]).to include("roles" => [ "MC" ], "custom" => true)
+        end
+      end
+
       context "with a rate for each act that adds up" do
         let(:rules) do
           {

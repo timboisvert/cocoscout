@@ -2,18 +2,21 @@ import { Controller } from "@hotwired/stimulus"
 
 // The amounts for one payout approach (manage/payout_calculation_wizard/_amounts_fields).
 // Reveals the optional panels (guaranteed minimum, shares, the two per-act
-// shapes) and manages the per-act table: rows of "N acts → $X" that number
-// themselves one past the last row when added.
+// shapes) and manages the per-act tables: rows of "N acts → $X" that number
+// themselves one past the last row when added, and rows of "show role → $X"
+// (MC $100, Stage Kitten $35).
 export default class extends Controller {
     static targets = [
         "minimumPanel",
         "sharesPanel",
         "perActSimple", "perActTiers",
-        "actTiersList", "actTierRow", "actTierActs", "actTierLabel", "actTierTemplate"
+        "actTiersList", "actTierRow", "actTierActs", "actTierLabel", "actTierTemplate",
+        "roleAmountsList", "roleAmountRow", "roleAmountTemplate"
     ]
 
     connect() {
         this.actTierIndex = this.actTierRowTargets.length
+        this.roleAmountIndex = this.roleAmountRowTargets.length
         this.relabelActTiers()
     }
 
@@ -62,6 +65,28 @@ export default class extends Controller {
     removeActTier(event) {
         event.preventDefault()
         event.target.closest('[data-payout-calculation-amounts-target="actTierRow"]')?.remove()
+    }
+
+    // Another "show role → $X" row.
+    addRoleAmount(event) {
+        if (event) event.preventDefault()
+        if (!this.hasRoleAmountsListTarget || !this.hasRoleAmountTemplateTarget) return
+
+        const index = this.roleAmountIndex++
+        const fragment = this.roleAmountTemplateTarget.content.cloneNode(true)
+        fragment.querySelectorAll("input[name]").forEach(input => {
+            input.name = input.name.replace("__INDEX__", index)
+        })
+        this.roleAmountsListTarget.appendChild(fragment)
+
+        const rows = this.roleAmountRowTargets
+        const nameInput = rows[rows.length - 1]?.querySelector("input[type='text']")
+        if (nameInput) nameInput.focus()
+    }
+
+    removeRoleAmount(event) {
+        event.preventDefault()
+        event.target.closest('[data-payout-calculation-amounts-target="roleAmountRow"]')?.remove()
     }
 
     // "1 act →" / "2 acts →" next to each count.

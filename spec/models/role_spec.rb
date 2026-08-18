@@ -178,6 +178,90 @@ RSpec.describe Role, type: :model do
       end
     end
 
+    describe 'show roles (standing)' do
+      it 'is not an act, is not numbered, reads by name and keeps its slots' do
+        create(:role, production: act_production, name: 'Magic', position: 0)
+        mc = create(:role, production: act_production, name: 'MC', standing: true, position: 1)
+        kittens = create(:role, production: act_production, name: 'Stage Kitten', standing: true, quantity: 2, position: 2)
+        finale = create(:role, production: act_production, name: 'Finale', position: 3)
+
+        expect(mc).not_to be_act
+        expect(mc).to be_castable
+        expect(mc.lineup_number).to be_nil
+        expect(mc.display_name).to eq('MC')
+        expect(kittens.total_slots).to eq(2)
+        expect(finale.lineup_number).to eq(2)
+        expect(Role.lineup_numbers_for(act_production.roles.to_a)).to eq(finale.id => 2, act_production.roles.first.id => 1)
+      end
+
+      it 'keeps its name unique in the lineup, unlike an act' do
+        create(:role, production: act_production, name: 'MC', standing: true)
+        dup = build(:role, production: act_production, name: 'MC', standing: true)
+        expect(dup).not_to be_valid
+        expect(dup.errors[:name]).to include('already exists')
+      end
+
+      it "can't be an intermission" do
+        brk = build(:role, production: act_production, name: 'Intermission', category: 'break', standing: true)
+        expect(brk).not_to be_valid
+        expect(brk.errors[:standing]).to be_present
+      end
+
+      it 'is idle in a role-based production' do
+        role = create(:role, production: role_production, name: 'Host', standing: true, quantity: 2)
+        expect(role).not_to be_act
+        expect(role.lineup_kind).to eq('show_role')
+      end
+
+      describe '#lineup_kind= (the editor Type select)' do
+        it 'maps act / break / show_role onto category and standing' do
+          role = build(:role, production: act_production, name: 'MC')
+          role.lineup_kind = 'show_role'
+          expect(role).to be_standing
+          expect(role.category).to eq('performing')
+
+          role.lineup_kind = 'break'
+          expect(role).not_to be_standing
+          expect(role).to be_break
+
+          role.lineup_kind = 'act'
+          expect(role).not_to be_standing
+          expect(role.category).to eq('performing')
+        end
+
+        it 'keeps a technical category behind the show-role flag' do
+          role = build(:role, production: act_production, name: 'Stage Manager', category: 'technical')
+          role.lineup_kind = 'show_role'
+          expect(role.category).to eq('technical')
+          expect(role.lineup_kind).to eq('show_role')
+        end
+      end
+
+      describe '.editor_params' do
+        it 'turns a posted show_role category into a standing role with its slots, in act mode' do
+          params = Role.editor_params({ 'name' => 'Stage Kitten', 'quantity' => '2', 'category' => 'show_role', 'restricted' => '0' }, act_based: true)
+          expect(params[:lineup_kind]).to eq('show_role')
+          expect(params[:quantity]).to eq('2')
+          expect(params).not_to have_key(:category)
+        end
+
+        it 'keeps an act to one slot and a break unrestricted' do
+          expect(Role.editor_params({ 'category' => 'performing', 'quantity' => '3' }, act_based: true)[:quantity]).to eq(1)
+          brk = Role.editor_params({ 'category' => 'break', 'quantity' => '3', 'restricted' => '1' }, act_based: true)
+          expect(brk[:lineup_kind]).to eq('break')
+          expect(brk[:restricted]).to be(false)
+        end
+
+        it 'gives a role-based lineup a plain category and leaves standing alone' do
+          params = Role.editor_params({ 'category' => 'show_role', 'quantity' => '2' }, act_based: false)
+          expect(params[:category]).to eq('performing')
+          expect(params).not_to have_key(:lineup_kind)
+          expect(params).not_to have_key(:standing)
+          expect(Role.editor_params({ 'category' => 'technical' }, act_based: false)[:category]).to eq('technical')
+        end
+      end
+    end
+
     describe 'breaks' do
       it 'is valid in an act-based production and takes no slots' do
         brk = build(:role, production: act_production, name: 'Intermission', category: 'break')
