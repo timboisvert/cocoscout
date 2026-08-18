@@ -11,7 +11,7 @@ export default class extends Controller {
         "migrationSummary", "migrationSummaryText", "linkedShowsWarning", "linkedShowsText",
         "autoMappableSection", "autoMappableList", "needsDecisionSection", "needsDecisionList",
         "noAssignmentsMessage", "migrationStats", "migrationExecuteButton", "migrationHint",
-        "quantityInput", "quantitySection", "categorySelect", "roleNameLabel", "restrictedSection",
+        "quantityInput", "quantitySection", "categorySelect", "typeSection", "fieldsRow", "roleNameLabel", "restrictedSection",
         "slotChangeModal", "slotChangeTitle", "slotChangeMessage", "slotChangeList",
         "slotChangeStats", "slotChangeExecuteButton"
     ]
@@ -108,6 +108,24 @@ export default class extends Controller {
         if (this.hasRoleNameLabelTarget) {
             this.roleNameLabelTarget.textContent = isBreak ? "Label" : (isShowRole ? "Show role name" : `${this.unitTitle} Name`)
         }
+        if (this.hasRoleNameInputTarget) {
+            this.roleNameInputTarget.placeholder = isBreak ? "Intermission" : (isShowRole ? "e.g., MC, Stage Kitten" : "e.g., Magic, Variety")
+        }
+        this.updateFieldsRow()
+    }
+
+    // The button that opened the form already said what's being added, so in
+    // act mode the Type select stays out of the way until an edit.
+    showTypeSelect(visible) {
+        if (this.hasTypeSectionTarget) this.typeSectionTarget.classList.toggle("hidden", !visible)
+        this.updateFieldsRow()
+    }
+
+    updateFieldsRow() {
+        if (!this.hasFieldsRowTarget) return
+        const typeShown = this.hasTypeSectionTarget && !this.typeSectionTarget.classList.contains("hidden")
+        const qtyShown = this.hasQuantitySectionTarget && !this.quantitySectionTarget.classList.contains("hidden")
+        this.fieldsRowTarget.classList.toggle("hidden", !typeShown && !qtyShown)
     }
 
     connect() {
@@ -709,6 +727,7 @@ export default class extends Controller {
         // Reset quantity and category fields
         if (this.hasQuantityInputTarget) this.quantityInputTarget.value = "1"
         if (this.hasCategorySelectTarget) this.categorySelectTarget.value = category
+        this.showTypeSelect(!this.actBased)
         this.updateBreakFieldVisibility()
 
         this.showForm()
@@ -744,6 +763,7 @@ export default class extends Controller {
         // Populate quantity and category fields
         if (this.hasQuantityInputTarget) this.quantityInputTarget.value = role.quantity || 1
         if (this.hasCategorySelectTarget) this.categorySelectTarget.value = this.kindOf(role)
+        this.showTypeSelect(true)
         this.updateBreakFieldVisibility()
 
         this.showForm()

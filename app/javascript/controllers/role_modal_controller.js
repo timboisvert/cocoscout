@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["modal", "form", "title", "nameInput", "methodInput", "submitButton",
         "restrictedCheckbox", "eligiblePeopleSection", "personCheckbox", "searchInput",
-        "quantityInput", "quantitySection", "categorySelect", "restrictedSection"]
+        "quantityInput", "quantitySection", "categorySelect", "typeSection", "fieldsRow", "restrictedSection", "nameLabel"]
     static values = {
         createPath: String,
         // Act-based production: roles are acts in a lineup; the Type select
@@ -65,9 +65,25 @@ export default class extends Controller {
         if (this.hasCategorySelectTarget) {
             this.categorySelectTarget.value = "performing"
         }
+        // The button that opened this already said what's being added, so in
+        // act mode there's nothing to pick; the select comes back for edits.
+        this.showTypeSelect(!this.actModeValue)
         this.categoryChanged()
 
         this.modalTarget.classList.remove("hidden")
+    }
+
+    showTypeSelect(visible) {
+        if (this.hasTypeSectionTarget) this.typeSectionTarget.classList.toggle("hidden", !visible)
+        this.updateFieldsRow()
+    }
+
+    // The type/slots row disappears entirely when neither field is showing.
+    updateFieldsRow() {
+        if (!this.hasFieldsRowTarget) return
+        const typeShown = this.hasTypeSectionTarget && !this.typeSectionTarget.classList.contains("hidden")
+        const qtyShown = this.hasQuantitySectionTarget && !this.quantitySectionTarget.classList.contains("hidden")
+        this.fieldsRowTarget.classList.toggle("hidden", !typeShown && !qtyShown)
     }
 
     // Act mode: drop an intermission into the lineup — a break-category role
@@ -131,6 +147,7 @@ export default class extends Controller {
             // keeps its category (performing/technical) behind the flag.
             this.categorySelectTarget.value = isShowRole ? "show_role" : (button.dataset.roleCategory || "performing")
         }
+        this.showTypeSelect(true)
         this.categoryChanged()
 
         this.modalTarget.classList.remove("hidden")
@@ -155,6 +172,14 @@ export default class extends Controller {
             const isShowRole = kind === "show_role"
             this.quantitySectionTarget.classList.toggle("hidden", !isShowRole)
             if (!isShowRole && this.hasQuantityInputTarget) this.quantityInputTarget.value = 1
+        }
+        this.updateFieldsRow()
+        // The name field says what it's naming: "Act name", "Show role name",
+        // or just "Label" for an intermission.
+        if (this.actModeValue && this.hasNameLabelTarget) {
+            const isShowRole = kind === "show_role"
+            this.nameLabelTarget.textContent = isBreak ? "Label" : (isShowRole ? "Show role name" : "Act name")
+            this.nameInputTarget.placeholder = isBreak ? "Intermission" : (isShowRole ? "e.g., MC, Stage Kitten" : "e.g., Magic, Aerial")
         }
         if (this.methodInputTarget.value === "post") {
             const label = this.kindLabel

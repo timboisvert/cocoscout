@@ -191,9 +191,9 @@
             <%= form.text_field :name, data: { role_modal_target: "nameInput" }, placeholder: (act_mode ? "e.g., Magic, Aerial" : "e.g., Host, Comic"), class: ["w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500", @role.errors[:name].any? ? "border-pink-500" : "border-gray-300"] %>
           </div>
 
-          <!-- Type and slots. An act is always one thing in the running order, so in act mode the slot count only shows for a show role (the JS toggles it). -->
-          <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
+          <!-- Type and slots. In act mode the "Add act / intermission / show role" button already said which, so the Type select only shows when editing (the JS toggles it); an act is always one thing in the running order, so the slot count only shows for a show role. -->
+          <div class="grid grid-cols-2 gap-4 mb-4" data-role-modal-target="fieldsRow">
+            <div data-role-modal-target="typeSection">
               <%= form.label :category, (act_mode ? "Type" : "Category"), class: "block text-sm font-medium text-gray-700 mb-2" %>
               <% category_options = act_mode ? [["Act", "performing"], ["Intermission", "break"], ["Show role", "show_role"]] : [["Performing", "performing"], ["Technical", "technical"]] %>
               <%= form.select :category, category_options, { selected: (act_mode ? { "act" => "performing" }.fetch(@role.lineup_kind, @role.lineup_kind) : @role.category) }, data: { role_modal_target: "categorySelect", action: "change->role-modal#categoryChanged" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>

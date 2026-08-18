@@ -103,8 +103,8 @@
             <p data-show-roles-modal-target="roleNameError" class="hidden mt-1 text-sm text-red-600"></p>
           </div>
 
-          <!-- Quantity and Type. An act is always one slot, so in act mode the slot count only shows for a show role (the JS toggles it). -->
-          <div class="grid grid-cols-2 gap-4">
+          <!-- Quantity and Type. In act mode the "Add act / intermission / show role" button already said which, so the Type select only shows when editing; an act is always one slot, so the slot count only shows for a show role (the JS toggles both). -->
+          <div class="grid grid-cols-2 gap-4" data-show-roles-modal-target="fieldsRow">
             <div data-show-roles-modal-target="quantitySection" class="<%= 'hidden' if act_mode %>">
               <label class="block text-sm font-medium text-gray-700 mb-1">Slots</label>
               <input type="number" data-show-roles-modal-target="quantityInput"
@@ -112,7 +112,7 @@
                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
               <p class="text-xs text-gray-500 mt-1">Number of people for this role</p>
             </div>
-            <div>
+            <div data-show-roles-modal-target="typeSection">
               <label class="block text-sm font-medium text-gray-700 mb-1"><%= act_mode ? "Type" : "Category" %></label>
               <select data-show-roles-modal-target="categorySelect"
                       data-action="change->show-roles-modal#categoryChanged"
