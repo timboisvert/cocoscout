@@ -2,11 +2,13 @@
     (render layout: "shared/help_modal", locals: { title: ... } do ... end) so the
     help body is passed as the block. Requires an ancestor element with
     data-controller="help-modal" and a trigger inside it using
-    data-action="click->help-modal#open". %>
+    data-action="click->help-modal#open".
+    Optional local max_width (default "max-w-lg") for wider help bodies. %>
+<% max_width = local_assigns.fetch(:max_width, "max-w-lg") %>
 <div data-help-modal-target="modal"
      class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-[60]"
      data-action="click->help-modal#closeOnBackdrop keydown.esc@window->help-modal#close">
-  <div class="relative top-16 mx-auto mb-16 p-5 border w-full max-w-lg shadow-lg rounded-lg bg-white"
+  <div class="relative top-16 mx-auto mb-16 p-5 border w-full <%= max_width %> shadow-lg rounded-lg bg-white"
        data-action="click->help-modal#stop">
     <%# Header — solid pink, matching the sign-up form modals. %>
     <div class="flex items-center justify-between -mx-5 -mt-5 px-5 py-4 bg-pink-500 rounded-t-lg">

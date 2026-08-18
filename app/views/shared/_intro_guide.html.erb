@@ -22,8 +22,10 @@
                                    state see.
 
     States (per user, users.dismissed_guides): visible -> the panel with a
-    dismiss X; explicitly dismissed -> a tiny right-aligned "Show guide" link;
-    default-hidden with no state -> nothing at all. %>
+    dismiss X; explicitly dismissed -> a fixed "?" bubble in the top-right
+    corner (no layout space) that opens the same guide in the shared help
+    modal, with a "keep it on the page" restore inside; default-hidden with no
+    state -> nothing at all. %>
 <%
   guide_key       = local_assigns.fetch(:guide_key).to_s
   title           = local_assigns.fetch(:title)
@@ -71,10 +73,39 @@
     <% end %>
   </div>
 <% elsif Current.user.guide_dismissed?(guide_key) %>
-  <div class="mb-2 flex justify-end">
-    <%= button_to guide_restore_path(guide_key), method: :post,
-          class: "text-xs text-gray-400 hover:text-pink-600 cursor-pointer" do %>
-      Show guide: <%= title %>
+  <%# Dismissed: nothing in the page flow. A "?" bubble pinned to the top-right
+      corner (under the mobile bar; page titles sit left so the spot is free)
+      opens the guide as a pop-up; from there it can be put back on the page. %>
+  <div data-controller="help-modal" data-intro-guide-help="<%= guide_key %>">
+    <button type="button" data-action="click->help-modal#open"
+            title="Help: <%= title %>" aria-label="Help: <%= title %>"
+            class="fixed top-[54px] right-3 lg:top-5 lg:right-5 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full bg-pink-500 text-white shadow-lg hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 cursor-pointer">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+      </svg>
+    </button>
+    <%= render layout: "shared/help_modal", locals: { title: title, max_width: cards.any? ? "max-w-2xl" : "max-w-lg" } do %>
+      <div class="text-sm text-gray-600 [&_p]:mb-2 [&_ol]:list-decimal [&_ol]:my-3 [&_ol]:pl-5 [&_ol]:space-y-1 [&_li]:pl-1">
+        <%= body %>
+      </div>
+      <% if cards.any? %>
+        <div class="mt-5">
+          <%= render "shared/module_actions", actions: cards %>
+        </div>
+      <% end %>
+      <% if actions.any? %>
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <% actions.each_with_index do |action, i| %>
+            <%= render "shared/button", { variant: i.zero? ? "primary" : "secondary", size: "small" }.merge(action) %>
+          <% end %>
+        </div>
+      <% end %>
+      <div class="mt-5 pt-4 border-t border-gray-200 flex items-center justify-between gap-3">
+        <p class="text-xs text-gray-500">Want this back on the page?</p>
+        <%= button_to guide_restore_path(guide_key), method: :post, class: "flex-shrink-0" do %>
+          <%= render "shared/button", text: "Show it on the page", variant: "secondary", size: "small" %>
+        <% end %>
+      </div>
     <% end %>
   </div>
 <% end %>

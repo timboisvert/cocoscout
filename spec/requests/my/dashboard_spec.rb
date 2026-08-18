@@ -67,7 +67,7 @@ RSpec.describe "My::Dashboard", type: :request do
       get my_dashboard_path
 
       expect(response.body).not_to include('data-intro-guide="talent_welcome"')
-      expect(response.body).to include("Show guide")
+      expect(response.body).to include("Show it on the page")
       expect(response.body).to include("Get started by completing your profile")
     end
 
