@@ -524,17 +524,29 @@ class Contract < ApplicationRecord
     end
   end
 
-  # Turn a set of service line items into billable ContractPayments. A flat
-  # line bills once, due at contract end; a per-event line bills one payment
-  # per selected date — due on the event's date, tied to the show when one
-  # exists (billing runs after show creation at activation). Used at
-  # activation and re-billing on amendment.
+  # Bill a set of service line items. A service they pay us for is not a second
+  # invoice — it's part of the payment for the event it belongs to. So a
+  # per-event service folds INTO that event's pending payment (same direction,
+  # same settlement, same show/date) and the payment grows: "$350 rent" becomes
+  # "$400 incl. Booth Tech $50", one pay link, one Collect. A flat (once per
+  # contract) service folds into the last such payment. Only when there is no
+  # payment to fold into does a service get a row of its own — and a service
+  # settled by payout deduction always stays its own row (payment_schedule_groups
+  # nets those against the settlement).
+  #
+  # Used at activation and re-billing on amendment.
   def bill_services!(services)
     shows_by_date = service_shows_by_date
-    # Charges that have already been settled — paid, or netted out of a payout
-    # run. Re-billing on an amendment must not raise them a second time.
-    already_billed = contract_payments.select { |p| p.status_paid? || p.in_payout_run? }
-                                      .map { |p| [ p.description, p.due_date ] }.to_set
+    # Charges already settled — paid, or netted out of a payout run, or folded
+    # into a payment that has been. Re-billing on an amendment must not raise
+    # them a second time.
+    already_billed = contract_payments.select { |p| p.status_paid? || p.in_payout_run? }.flat_map do |p|
+      folded = p.service_components.map do |c|
+        date = (Date.parse(c["billed_for"].to_s) rescue nil)
+        date ? [ "#{c['name']} — #{date.strftime('%b %-d, %Y')}", date ] : [ c["name"], p.due_date ]
+      end
+      [ [ p.description, p.due_date ] ] + folded
+    end.to_set
 
     Array(services).each do |service|
       direction = service["direction"].presence || "incoming"
@@ -554,17 +566,24 @@ class Contract < ApplicationRecord
           end
           next unless amount.positive?
 
+          date = starts_at.to_date
           description = "#{service['name']} — #{starts_at.strftime('%b %-d, %Y')}"
-          next if already_billed.include?([ description, starts_at.to_date ])
+          next if already_billed.include?([ description, date ])
 
-          contract_payments.create!(
-            description: description,
-            amount: amount,
-            direction: direction,
-            settlement_method: settlement,
-            due_date: starts_at.to_date,
-            show_id: shows_by_date[starts_at.to_date]&.first&.id
-          )
+          show_id = shows_by_date[date]&.first&.id
+          host = service_host_payment(direction: direction, settlement: settlement, date: date, show_id: show_id)
+          if host
+            host.fold_service!(name: service["name"], amount: amount, billed_for: date)
+          else
+            contract_payments.create!(
+              description: description,
+              amount: amount,
+              direction: direction,
+              settlement_method: settlement,
+              due_date: date,
+              show_id: show_id
+            )
+          end
         end
       else
         amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
@@ -573,15 +592,37 @@ class Contract < ApplicationRecord
         due = contract_end_date || Date.current
         next if already_billed.include?([ service["name"], due ])
 
-        contract_payments.create!(
-          description: service["name"],
-          amount: amount,
-          direction: direction,
-          settlement_method: settlement,
-          due_date: due
-        )
+        host = service_host_payment(direction: direction, settlement: settlement, date: nil, show_id: nil)
+        if host
+          host.fold_service!(name: service["name"], amount: amount, billed_for: nil)
+        else
+          contract_payments.create!(
+            description: service["name"],
+            amount: amount,
+            direction: direction,
+            settlement_method: settlement,
+            due_date: due
+          )
+        end
       end
     end
+  end
+
+  # The payment a service charge folds into: a pending, uncommitted, direct
+  # payment of the deal itself (never another service row, never one whose
+  # amount is still to be worked out from ticket sales), facing the same way.
+  # Per-event: the event's own payment (by show, else by due date). Flat: the
+  # last such payment on the schedule. Deduction-settled services never fold.
+  def service_host_payment(direction:, settlement:, date:, show_id:)
+    return nil unless settlement == "direct"
+
+    candidates = contract_payments.status_pending.by_due_date.to_a.select do |p|
+      p.direction == direction && p.settlement_method == "direct" && !p.amount_tbd? &&
+        !p.auto_shortfall? && !p.in_payout_run? && !service_charge?(p)
+    end
+    return candidates.last if date.nil?
+
+    candidates.detect { |p| show_id && p.show_id == show_id } || candidates.detect { |p| p.due_date == date }
   end
 
   # This contract's shows keyed by date, for tying a per-event service payment
@@ -598,8 +639,13 @@ class Contract < ApplicationRecord
   def reconcile_service_payments!(new_services)
     old_names = draft_services.map { |s| s["name"] }.compact
     if old_names.any?
-      # Per-event lines billed as "Name — Oct 16, 2026", so match the bare
-      # name and its dated variants.
+      # Services folded into a still-pending payment come back out of it first
+      # (the payment shrinks back to the deal's own amount)…
+      contract_payments.status_pending.reject(&:in_payout_run?)
+                       .select(&:includes_services?)
+                       .each { |p| p.unfold_services!(old_names) }
+      # …and standalone service rows go. Per-event lines billed as
+      # "Name — Oct 16, 2026", so match the bare name and its dated variants.
       conditions = old_names.map { "(description = ? OR description LIKE ?)" }.join(" OR ")
       binds = old_names.flat_map { |n| [ n, "#{n} — %" ] }
       # Pending only, and never one already committed to a payout run — that
@@ -659,6 +705,11 @@ class Contract < ApplicationRecord
         # keeps facing the way the money went — the financials decide that,
         # not the staged row (resynced below).
         values = match.auto_shortfall? ? attrs[:values].slice(:notes) : attrs[:values]
+        # A re-priced payment keeps the services folded into it: the staged
+        # amount is the deal's own figure, so the folded charges ride on top.
+        if values.key?(:amount) && match.includes_services? && !values[:amount_tbd]
+          values = values.merge(amount: (values[:amount].to_f + match.components_total).round(2))
+        end
         match.update!(values)
         kept << match
       end

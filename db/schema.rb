@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_123000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_17_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -435,6 +435,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_123000) do
     t.decimal "amount", precision: 10, scale: 2, null: false
     t.boolean "amount_tbd", default: false, null: false
     t.boolean "auto_shortfall", default: false, null: false
+    t.jsonb "components", default: [], null: false
     t.bigint "contract_id", null: false
     t.datetime "created_at", null: false
     t.string "description"

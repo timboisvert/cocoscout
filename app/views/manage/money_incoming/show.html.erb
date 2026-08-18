@@ -42,6 +42,9 @@
             <% end %>
           </div>
           <h1 class="text-lg font-bold text-gray-900 truncate"><%= @payment.description.presence || "Payment" %></h1>
+          <% if @payment.includes_services? %>
+            <div class="text-sm text-gray-500"><%= number_to_currency(@payment.base_amount) %> <%= @payment.folded_services_summary %></div>
+          <% end %>
           <div class="text-sm text-gray-600 mt-1">
             From <%= link_to @contract.contractor_name.presence || "payer", (@contractor ? manage_contractor_path(@contractor) : manage_contract_path(@contract)), class: "text-pink-600 hover:text-pink-700 font-medium" %>
             · <%= link_to "View contract", manage_contract_path(@contract), class: "text-pink-600 hover:text-pink-700" %>
