@@ -64,7 +64,7 @@
 
   # Cache key includes show, assignments, and roles timestamps
   cast_card_cache_key = [
-    "cast_card_v15",
+    "cast_card_v16",
     show.id,
     show.updated_at.to_i,
     show.use_custom_roles?,
@@ -159,10 +159,18 @@
           <% end %>
         </div>
 
-        <%# Cast member headshots - show all slots for multi-person roles %>
-        <div class="flex flex-wrap gap-1.5">
-          <% roles.each do |role| %>
-            <% next if role.break? %>
+        <%# Cast member headshots - show all slots for multi-person roles. On an
+            act-based night the acts come first in running order, then a gap, then
+            the show roles (MC, Stage Kitten) cast alongside the lineup. %>
+        <%
+          slot_roles = roles.reject(&:break?)
+          slot_roles = slot_roles.reject(&:standing?) + slot_roles.select(&:standing?) if show.act_based?
+        %>
+        <div class="flex flex-wrap items-center gap-1.5">
+          <% slot_roles.each_with_index do |role, role_index| %>
+            <% if show.act_based? && role.standing? && role_index.positive? && !slot_roles[role_index - 1].standing? %>
+              <div class="w-px h-8 bg-gray-300 mx-1" data-controller="tooltip" data-tooltip-text="Show roles"></div>
+            <% end %>
             <%
               role_quantity = role.quantity || 1
               role_label = role_display_name(role, lineup_nums, show: show)

@@ -190,6 +190,20 @@ class ShowPayout < ApplicationRecord
     PayoutScheme.act_rules_description(act_distribution)
   end
 
+  def role_rules_description
+    PayoutScheme.role_rules_description(act_distribution)
+  end
+
+  # Show roles held on this show (MC, Stage Kitten) that the calculation
+  # doesn't price — anyone holding one is paid for their acts alone. Only an
+  # act-based calculation on an act-based night can have any.
+  def unpriced_show_role_names
+    return [] unless act_based? && show.act_based?
+
+    held = show.show_role_names_by_payee.values.flatten.uniq { |name| PayoutScheme.normalize_role_name(name) }
+    held.reject { |name| PayoutScheme.role_amount_for(act_distribution, name) }
+  end
+
   def act_count_for(payee)
     (act_counts || {})[self.class.act_key(payee)].to_i
   end
@@ -451,6 +465,9 @@ class ShowPayout < ApplicationRecord
       from_desc = PayoutScheme.act_rules_description(from)
       to_desc = PayoutScheme.act_rules_description(to)
       changes << "#{to_desc} instead of #{from_desc}" if from_desc != to_desc
+      from_roles = PayoutScheme.role_rules_description(from)
+      to_roles = PayoutScheme.role_rules_description(to)
+      changes << "Show roles #{to_roles} instead of #{from_roles}" if from_roles != to_roles
     end
 
     changes

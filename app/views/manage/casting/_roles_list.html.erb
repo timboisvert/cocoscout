@@ -35,26 +35,27 @@
   role_count = roles.size
 
   # Act-based shows render the running order as one numbered lineup
-  # (breaks are intermission dividers); role-based ones group by category.
-  # The show decides — it may override the production's casting style.
+  # (breaks are intermission dividers), then the show roles cast alongside it
+  # (MC, Stage Kitten ×2 — not acts, not numbered); role-based ones group by
+  # category. The show decides — it may override the production's casting style.
   act_mode = show.act_based?
   unit = casting_unit(show)
   numbers = lineup_numbers(roles, show: show)
+  section_titles = { "lineup" => "Lineup", "show_roles" => "Show roles" }
   if act_mode
-    roles_by_category = { "lineup" => roles }
-    category_order = ["lineup"]
+    roles_by_category = { "lineup" => roles.reject(&:standing?), "show_roles" => roles.select(&:standing?) }.reject { |_, list| list.empty? }
+    category_order = %w[lineup show_roles] & roles_by_category.keys
   else
     # Group roles by category for section display
     roles_by_category = roles.group_by { |r| r.category || "performing" }
     # Order categories: performing first, then others alphabetically
     category_order = ["performing"] + (roles_by_category.keys - ["performing"]).sort
   end
-  empty_slot_copy = if act_mode
-    "Cast this act"
-  else
-    is_manual_mode = local_assigns[:is_manual_mode] || false
-    is_manual_mode ? "Click to add someone" : "Drag or click to add someone"
-  end
+  is_manual_mode = local_assigns[:is_manual_mode] || false
+  role_slot_copy = is_manual_mode ? "Click to add someone" : "Drag or click to add someone"
+  # An empty act slot says so; a show role's slot reads like any role's.
+  empty_slot_copy_for = ->(role) { role.act?(show: show) ? "Cast this act" : role_slot_copy }
+  mobile_slot_copy_for = ->(role) { role.act?(show: show) ? "Cast this act" : "Assign someone" }
 
   # Build vacancies lookup by role_id (include vacated_by for showing who can't make it)
   vacancies_by_role_id = local_assigns[:vacancies_by_role_id] || @vacancies_by_role_id
@@ -116,7 +117,7 @@
 
       <% if act_mode %>
         <div class="flex items-center gap-2 pt-2 first:pt-0">
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lineup</h3>
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide"><%= section_titles[category] %></h3>
           <div class="flex-1 border-t border-gray-200"></div>
         </div>
       <% elsif roles_by_category.keys.size > 1 %>
@@ -334,7 +335,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        <%= empty_slot_copy %>
+                        <%= empty_slot_copy_for.call(role) %>
                       </button>
                     <% else %>
                       <%# Talent pool mode: Show drag zone on desktop %>
@@ -361,7 +362,7 @@
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
-                      <%= act_mode ? "Cast this act" : "Assign someone" %>
+                      <%= mobile_slot_copy_for.call(role) %>
                     </button>
                   <% end %>
                 <% end %>
@@ -601,7 +602,7 @@
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                           </svg>
-                          <%= empty_slot_copy %>
+                          <%= empty_slot_copy_for.call(role) %>
                         </button>
                       <% else %>
                         <%# Talent pool mode: Show drag zone on desktop %>
@@ -624,7 +625,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
-                        <%= act_mode ? "Cast this act" : "Assign someone" %>
+                        <%= mobile_slot_copy_for.call(role) %>
                       </button>
                     <% end %>
                   <% end %>

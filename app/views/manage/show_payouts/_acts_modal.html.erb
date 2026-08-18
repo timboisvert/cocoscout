@@ -21,10 +21,15 @@
   from_lineup = @show_payout.counts_acts_from_lineup?
   lineup_counts = from_lineup ? @show.lineup_act_counts : {}
   saved_counts = @show_payout.act_counts || {}
+  # Show roles (MC, Stage Kitten) each payee holds, and what the calculation
+  # pays for them — shown per row so the running total matches the calculator.
+  role_names_by_payee = from_lineup ? @show.show_role_names_by_payee : {}
+  role_stacking = PayoutScheme.role_stacking(distribution)
 %>
 
 <div data-controller="payout-acts"
      data-payout-acts-mode-value="<%= act_mode %>"
+     data-payout-acts-stacking-value="<%= role_stacking %>"
      data-payout-acts-rate-value="<%= per_act_rate %>"
      data-payout-acts-tiers-value="<%= tiers.to_json %>"
      data-payout-acts-act-rates-value="<%= act_rates.to_json %>"
@@ -59,6 +64,9 @@
         <div class="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
           <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Pay rules</span>
           <div class="mt-1 font-medium text-gray-900"><%= @show_payout.act_rules_description %></div>
+          <% if PayoutScheme.role_amounts(distribution).any? %>
+            <div class="mt-1 text-xs text-gray-500">Show roles: <%= @show_payout.role_rules_description %></div>
+          <% end %>
           <% if act_mode == "schedule" %>
             <div class="mt-1 text-xs text-gray-500">Each act is paid at its own rate and they add up.</div>
           <% elsif act_mode == "tiers" && distribution["additional_act_rate"].present? %>
@@ -109,6 +117,10 @@
                   else
                     @show_payout.act_count_for(payee)
                   end
+                  held_roles = Array(role_names_by_payee[key])
+                  priced_roles = held_roles.filter_map { |n| a = PayoutScheme.role_amount_for(distribution, n); [ n, a ] if a }
+                  unpriced_roles = held_roles - priced_roles.map(&:first)
+                  role_pay = priced_roles.sum { |_, a| a }
                 %>
                 <div class="flex items-center gap-3 py-2.5">
                   <% if headshot_variant %>
@@ -127,11 +139,18 @@
                     <% if from_lineup %>
                       <div class="text-xs text-gray-500">Counted from the lineup — <%= pluralize(lineup_count, "act") %></div>
                     <% end %>
+                    <% if held_roles.any? %>
+                      <div class="text-xs text-gray-500">
+                        <%= priced_roles.map { |n, a| "#{n} #{PayoutScheme.act_money(a)}" }.join(", ") %><% if priced_roles.any? && unpriced_roles.any? %>, <% end %><%= unpriced_roles.map { |n| "#{n} — not priced" }.join(", ") %>
+                      </div>
+                    <% end %>
                   </div>
 
                   <input type="number" name="act_counts[<%= key %>]" value="<%= count %>" min="0" step="1"
                          data-payout-acts-target="input"
                          data-lineup-count="<%= lineup_count %>"
+                         data-role-pay="<%= role_pay %>"
+                         data-role-priced="<%= priced_roles.any? %>"
                          data-action="input->payout-acts#update"
                          class="w-20 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
 

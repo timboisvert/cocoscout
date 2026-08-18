@@ -10,7 +10,10 @@ export default class extends Controller {
         rate: { type: Number, default: 0 },
         tiers: { type: Array, default: [] },
         actRates: { type: Array, default: [] },
-        additionalRate: { type: Number, default: 0 }
+        additionalRate: { type: Number, default: 0 },
+        // How a show role's pay (data-role-pay on the row) combines with act
+        // pay: both | role_only | higher (PayoutScheme::ROLE_STACKINGS).
+        stacking: { type: String, default: "both" }
     }
 
     connect() {
@@ -81,13 +84,26 @@ export default class extends Controller {
         let total = 0
 
         this.inputTargets.forEach((input, index) => {
-            const amount = this.amountFor(this.parseCount(input.value))
+            const amount = this.lineAmountFor(input)
             total += amount
             const amountEl = this.amountTargets[index]
             if (amountEl) amountEl.textContent = this.formatCurrency(amount)
         })
 
         if (this.hasTotalTarget) this.totalTarget.textContent = this.formatCurrency(total)
+    }
+
+    // Act pay for the row's count, plus the show roles it holds, combined the
+    // way the calculation says (mirrors PayoutCalculator#per_act_line).
+    lineAmountFor(input) {
+        const count = this.parseCount(input.value)
+        const actPay = this.amountFor(count)
+        if (input.dataset.rolePriced !== "true") return actPay
+
+        const rolePay = Number(input.dataset.rolePay) || 0
+        if (this.stackingValue === "role_only") return rolePay
+        if (this.stackingValue === "higher") return Math.max(rolePay, actPay)
+        return Math.round((rolePay + actPay) * 100) / 100
     }
 
     amountFor(count) {

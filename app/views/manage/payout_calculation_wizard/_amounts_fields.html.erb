@@ -11,8 +11,11 @@
     distribution  hash in the stored rules shape (string or symbol keys):
                   method, flat_amount, per_ticket_rate, minimum, default_shares,
                   act_mode (simple | tiers), per_act_rate, tiers [{acts, amount}],
-                  additional_act_rate. A legacy "schedule" (act_rates) shows as
-                  the tiers table it adds up to.
+                  additional_act_rate, role_amounts [{name, amount}], role_stacking
+                  (both | role_only | higher). A legacy "schedule" (act_rates)
+                  shows as the tiers table it adds up to.
+    suggested_role_names  (per_act, optional) show-role names to prefill the
+                  "Show roles" table with when the distribution prices none yet.
 %>
 <%
   dist = (local_assigns[:distribution] || {}).to_h.deep_stringify_keys
@@ -56,6 +59,20 @@
   act_tiers = [ { "acts" => 1, "amount" => 75 }, { "acts" => 2, "amount" => 125 }, { "acts" => 3, "amount" => 175 } ] if act_tiers.empty?
   act_tiers = act_tiers.map { |t| t.transform_values { |v| v.is_a?(Float) && v == v.to_i ? v.to_i : v } }
   additional_act_rate = additional_act_rate.to_i if additional_act_rate.is_a?(Float) && additional_act_rate == additional_act_rate.to_i
+
+  # Show roles priced by name (MC $100, Stage Kitten $35). A calculation that
+  # prices none yet starts from the names this organization already casts,
+  # amounts left blank (a blank row isn't saved).
+  role_amounts = PayoutScheme.role_amounts(dist).map do |row|
+    amount = row["amount"]
+    amount = amount.to_i if amount == amount.to_i
+    { "name" => row["name"], "amount" => amount }
+  end
+  if role_amounts.empty?
+    role_amounts = Array(local_assigns[:suggested_role_names]).map { |name| { "name" => name, "amount" => "" } }
+  end
+  role_amounts = [ { "name" => "", "amount" => "" } ] if role_amounts.empty?
+  role_stacking = PayoutScheme.role_stacking(dist)
 
   # The x that removes a tier row. Same button in the rendered rows and in the
   # <template> the controller clones for new ones.
@@ -207,6 +224,65 @@
           <span class="text-sm text-gray-600">per act</span>
         </div>
         <p class="mt-1.5 text-xs text-gray-500">Added for every act past the last row. Leave it blank if the last row is the most anyone is paid.</p>
+      </div>
+    </div>
+
+    <div class="pt-4 border-t border-gray-200">
+      <p class="block text-sm font-medium text-gray-900 mb-1">Show roles</p>
+      <p class="text-xs text-gray-500 mb-3">Roles cast alongside the lineup — an MC, stage kittens — are paid a set amount for the night. They're matched by name in every production that uses this calculation.</p>
+
+      <div data-payout-calculation-amounts-target="roleAmountsList" class="space-y-2">
+        <% role_amounts.each_with_index do |row, index| %>
+          <div class="<%= row_classes %>" data-payout-calculation-amounts-target="roleAmountRow">
+            <input type="text" name="distribution[role_amounts][<%= index %>][name]" value="<%= row['name'] %>" placeholder="Role name (e.g., MC)"
+                   class="flex-1 min-w-0 <%= input_classes %>">
+            <span class="text-gray-500">$</span>
+            <input type="number" name="distribution[role_amounts][<%= index %>][amount]" value="<%= row['amount'] %>" min="0" step="0.01" placeholder="0.00" class="<%= money_input %>">
+            <%= remove_button.call("removeRoleAmount") %>
+          </div>
+        <% end %>
+      </div>
+      <template data-payout-calculation-amounts-target="roleAmountTemplate">
+        <div class="<%= row_classes %>" data-payout-calculation-amounts-target="roleAmountRow">
+          <input type="text" name="distribution[role_amounts][__INDEX__][name]" value="" placeholder="Role name (e.g., MC)"
+                 class="flex-1 min-w-0 <%= input_classes %>">
+          <span class="text-gray-500">$</span>
+          <input type="number" name="distribution[role_amounts][__INDEX__][amount]" value="" min="0" step="0.01" placeholder="0.00" class="<%= money_input %>">
+          <%= remove_button.call("removeRoleAmount") %>
+        </div>
+      </template>
+
+      <div class="mt-3">
+        <%= render "shared/button", text: "Add a show role", variant: "secondary", size: "small", type: :button, icon: "plus",
+              data: { action: "click->payout-calculation-amounts#addRoleAmount" } %>
+      </div>
+
+      <div class="mt-4">
+        <p class="block text-sm font-medium text-gray-900 mb-2">If someone holds a show role and also performs acts, they're paid</p>
+        <div class="space-y-2">
+          <label class="<%= option_card %>">
+            <input type="radio" name="distribution[role_stacking]" value="both" <%= "checked" if role_stacking == "both" %> class="<%= radio_classes %>">
+            <div>
+              <div class="font-medium text-gray-900">Both</div>
+              <div class="text-sm text-gray-500">The role amount plus whatever their acts pay. An MC who also dances one act gets the MC amount and the one-act rate.</div>
+            </div>
+          </label>
+          <label class="<%= option_card %>">
+            <input type="radio" name="distribution[role_stacking]" value="role_only" <%= "checked" if role_stacking == "role_only" %> class="<%= radio_classes %>">
+            <div>
+              <div class="font-medium text-gray-900">The role amount only</div>
+              <div class="text-sm text-gray-500">Their acts aren't paid on top.</div>
+            </div>
+          </label>
+          <label class="<%= option_card %>">
+            <input type="radio" name="distribution[role_stacking]" value="higher" <%= "checked" if role_stacking == "higher" %> class="<%= radio_classes %>">
+            <div>
+              <div class="font-medium text-gray-900">Whichever is higher</div>
+              <div class="text-sm text-gray-500">The role amount or their act pay — not both.</div>
+            </div>
+          </label>
+        </div>
+        <p class="mt-2 text-xs text-gray-500">Someone with a show role and no acts is paid the role amount either way. A show role with no row above pays nothing from the role.</p>
       </div>
     </div>
   <% end %>

@@ -41,6 +41,9 @@
     how_it_works << "Each performer is paid #{number_to_currency(dist['flat_amount'])} flat, whatever the night takes."
   when "per_act"
     how_it_works << "Each performer is paid by the acts they did — #{calc.act_rules_description}."
+    if calc.role_amounts.any?
+      how_it_works << "Show roles cast alongside the lineup are paid a set amount for the night — #{calc.role_rules_description}."
+    end
     how_it_works << "You enter the act counts when you work out each show's payout."
   when "no_pay"
     how_it_works << "Nobody is paid through CocoScout for these shows."
@@ -88,7 +91,7 @@
                 <% when "shares" %>
                   Split by shares, <%= number_with_precision(dist["default_shares"] || 1, strip_insignificant_zeros: true) %> each to start
                 <% when "per_act" %>
-                  <%= calc.act_rules_description %>
+                  <%= calc.act_rules_description %><% if calc.role_amounts.any? %>; show roles: <%= calc.role_rules_description %><% end %>
                 <% end %>
               </p>
             </div>

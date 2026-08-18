@@ -263,6 +263,7 @@ module Manage
           id: role.id,
           name: role.name,
           category: role.category,
+          standing: role.standing?,
           quantity: role.quantity
         }
       end
@@ -567,15 +568,12 @@ module Manage
       @role = @show.custom_roles.find(params.expect(:id))
     end
 
+    # The Type select posts `category`; Role.editor_params turns it into the
+    # right shape for this show's lineup. The show's effective mode decides
+    # (it may override the production's).
     def role_params
-      permitted = params.expect(show_role: [ :name, :restricted, :quantity, :category ])
-      # A break (intermission marker) only exists in an act-based lineup; a
-      # role-based show quietly gets a performing role instead. The show's
-      # effective mode decides (it may override the production's).
-      if permitted[:category] == Role::BREAK_CATEGORY && !@show.act_based?
-        permitted[:category] = "performing"
-      end
-      permitted
+      Role.editor_params(params.expect(show_role: [ :name, :restricted, :quantity, :category ]),
+                         act_based: @show.act_based?)
     end
 
     def update_eligible_members(role)
@@ -613,6 +611,7 @@ module Manage
         restricted: role.restricted?,
         quantity: role.quantity,
         category: role.category,
+        standing: role.standing?,
         eligible_member_keys: role.role_eligibilities.map { |e| "#{e.member_type}_#{e.member_id}" },
         eligible_members: role.eligible_members.map { |m|
           {

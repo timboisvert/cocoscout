@@ -316,6 +316,69 @@ class PayoutScheme < ApplicationRecord
     "$#{'%.2f' % amount.to_f}"
   end
 
+  # --- Show roles in act-based pay ------------------------------------------
+  #
+  # An act-based lineup can carry roles that aren't acts — the MC, a stage
+  # kitten — cast alongside the running order. A per_act calculation prices
+  # those by NAME (calculations are shared across productions, so a role's id
+  # can't be the key):
+  #
+  #   role_amounts  — [{ name: "MC", amount: 100 }, { name: "Stage Kitten", amount: 35 }]
+  #   role_stacking — what someone who holds a show role AND performs acts is
+  #                   paid: "both" (role amount + act pay), "role_only" (the
+  #                   role amount; acts add nothing), "higher" (whichever is
+  #                   more). A show-role holder with no acts is paid the role
+  #                   amount either way. A show role with no row pays nothing
+  #                   from the role — the show payout page points that out.
+  ROLE_STACKINGS = %w[both role_only higher].freeze
+  DEFAULT_ROLE_STACKING = "both"
+
+  # The priced show roles, blank names dropped, in the order they were entered.
+  def self.role_amounts(distribution)
+    rows = (distribution || {}).deep_stringify_keys["role_amounts"]
+    Array(rows)
+      .select { |row| row.is_a?(Hash) }
+      .map { |row| row.deep_stringify_keys }
+      .map { |row| { "name" => row["name"].to_s.squish, "amount" => row["amount"].to_f } }
+      .reject { |row| row["name"].blank? }
+  end
+
+  # Names match case- and whitespace-insensitively ("mc" is "MC").
+  def self.normalize_role_name(name)
+    name.to_s.downcase.squish
+  end
+
+  # What a show role by this name pays under the distribution — nil when the
+  # calculation doesn't price it (which is different from pricing it at $0).
+  def self.role_amount_for(distribution, name)
+    key = normalize_role_name(name)
+    row = role_amounts(distribution).reverse.find { |r| normalize_role_name(r["name"]) == key }
+    row && row["amount"]
+  end
+
+  def self.role_stacking(distribution)
+    value = (distribution || {}).deep_stringify_keys["role_stacking"].to_s
+    ROLE_STACKINGS.include?(value) ? value : DEFAULT_ROLE_STACKING
+  end
+
+  # "added to act pay" / "instead of act pay" / "or act pay, whichever is higher"
+  def self.role_stacking_phrase(stacking)
+    case stacking.to_s
+    when "role_only" then "instead of act pay"
+    when "higher" then "or act pay, whichever is higher"
+    else "added to act pay"
+    end
+  end
+
+  # "MC $100.00, Stage Kitten $35.00 — added to act pay"
+  def self.role_rules_description(distribution)
+    rows = role_amounts(distribution)
+    return "No show roles priced" if rows.empty?
+
+    list = rows.map { |row| "#{row['name']} #{act_money(row['amount'])}" }.join(", ")
+    "#{list} — #{role_stacking_phrase(role_stacking(distribution))}"
+  end
+
   # A name for a calculation nobody has named yet, read off its rules — what
   # the wizard offers on the review step. Short, the way you'd say it out
   # loud: "$25 per act", "$50 flat per performer", "Even split after 40% house".
@@ -370,6 +433,18 @@ class PayoutScheme < ApplicationRecord
     self.class.act_rules_description(distribution_config)
   end
 
+  def role_amounts
+    self.class.role_amounts(distribution_config)
+  end
+
+  def role_stacking
+    self.class.role_stacking(distribution_config)
+  end
+
+  def role_rules_description
+    self.class.role_rules_description(distribution_config)
+  end
+
   # Human-readable summary of rules
   def rules_summary
     parts = []
@@ -410,6 +485,7 @@ class PayoutScheme < ApplicationRecord
       parts << "$#{distribution_config['flat_amount']} flat per performer"
     when "per_act"
       parts << "Paid by acts (#{act_rules_description})"
+      parts << "Show roles: #{role_rules_description}" if role_amounts.any?
     when "no_pay"
       parts << "Performers aren't paid"
     end

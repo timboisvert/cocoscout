@@ -32,7 +32,9 @@ module Manage
       @state[:production_id] = context_production&.id
       @state[:return_to] = safe_return_to(params[:return_to])
       save_state
-      redirect_to(@state[:editing_id].present? && params[:duplicate].blank? ? wizard_step_link(:review) : wizard_step_link(:approach))
+      # An edit walks the same steps from the top, prefilled — the review page
+      # is where it ends, not where it starts.
+      redirect_to wizard_step_link(:approach)
     end
 
     def approach
@@ -52,6 +54,12 @@ module Manage
     def amounts
       @distribution = @state[:distribution] || starter_distribution(current_approach)
       @legacy_no_pay = @state[:legacy_no_pay].present?
+      # A per-act calculation can price the show roles cast alongside a lineup
+      # (MC, Stage Kitten). Until this calculation names any, offer the ones
+      # this organization's productions already have — names only, no amounts.
+      if current_approach == "per_act" && PayoutScheme.role_amounts(@distribution).empty?
+        @suggested_role_names = suggested_show_role_names
+      end
     end
 
     def save_amounts
@@ -263,10 +271,23 @@ module Manage
         method = d["split"] == "shares" ? "shares" : "equal"
         { "method" => method, "default_shares" => d["default_shares"] }
       when "per_act"
-        d.slice("act_mode", "per_act_rate", "act_rates", "additional_act_rate", "tiers").merge("method" => "per_act")
+        d.slice("act_mode", "per_act_rate", "act_rates", "additional_act_rate", "tiers", "role_amounts", "role_stacking").merge("method" => "per_act")
       else
         { "method" => "flat_fee", "flat_amount" => d["flat_amount"] }
       end
+    end
+
+    # The distinct show-role names across this organization's productions,
+    # scoped through the productions (never a bare Role query).
+    def suggested_show_role_names
+      Role.standing
+          .joins(:production)
+          .where(productions: { organization_id: Current.organization.id })
+          .reorder(nil)
+          .distinct
+          .pluck(:name)
+          .uniq { |name| PayoutScheme.normalize_role_name(name) }
+          .sort_by { |name| PayoutScheme.normalize_role_name(name) }
     end
 
     # The numbers each approach starts from on the amounts step.

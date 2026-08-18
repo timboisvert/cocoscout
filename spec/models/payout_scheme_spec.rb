@@ -195,6 +195,46 @@ RSpec.describe PayoutScheme do
     end
   end
 
+  describe "show roles priced by name" do
+    let(:distribution) do
+      { "method" => "per_act", "act_mode" => "tiers", "tiers" => [ { "acts" => 1, "amount" => 75.0 } ],
+        "role_amounts" => [ { "name" => "MC", "amount" => 100 }, { "name" => "Stage Kitten", "amount" => 35 } ] }
+    end
+
+    it "prices a role by name, whatever the case or spacing" do
+      expect(described_class.role_amount_for(distribution, "mc")).to eq(100.0)
+      expect(described_class.role_amount_for(distribution, "  stage  kitten ")).to eq(35.0)
+      expect(described_class.role_amount_for(distribution, "Host")).to be_nil
+    end
+
+    it "tells an unpriced role from one priced at zero" do
+      free = distribution.merge("role_amounts" => [ { "name" => "Usher", "amount" => 0 } ])
+      expect(described_class.role_amount_for(free, "Usher")).to eq(0.0)
+      expect(described_class.role_amount_for(free, "MC")).to be_nil
+    end
+
+    it "defaults stacking to both and only accepts the known choices" do
+      expect(described_class.role_stacking(distribution)).to eq("both")
+      expect(described_class.role_stacking(distribution.merge("role_stacking" => "higher"))).to eq("higher")
+      expect(described_class.role_stacking(distribution.merge("role_stacking" => "sometimes"))).to eq("both")
+    end
+
+    it "spells the roles and the stacking out" do
+      expect(described_class.role_rules_description(distribution)).to eq("MC $100.00, Stage Kitten $35.00 — added to act pay")
+      expect(described_class.role_rules_description(distribution.merge("role_stacking" => "role_only"))).to eq("MC $100.00, Stage Kitten $35.00 — instead of act pay")
+      expect(described_class.role_rules_description(distribution.merge("role_stacking" => "higher"))).to eq("MC $100.00, Stage Kitten $35.00 — or act pay, whichever is higher")
+      expect(described_class.role_rules_description({})).to eq("No show roles priced")
+    end
+
+    it "shows up in the rules summary only when there are any" do
+      priced = create(:payout_scheme, organization: create(:organization), rules: { "allocation" => [], "distribution" => distribution })
+      expect(priced.rules_summary).to include("Show roles: MC $100.00, Stage Kitten $35.00 — added to act pay")
+
+      plain = create(:payout_scheme, organization: create(:organization), rules: { "allocation" => [], "distribution" => distribution.except("role_amounts") })
+      expect(plain.rules_summary).not_to include("Show roles")
+    end
+  end
+
   describe ".suggested_name" do
     def rules_for(distribution, allocation = [])
       { "allocation" => allocation, "distribution" => distribution }

@@ -185,6 +185,128 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
     end
   end
 
+  describe "show roles alongside the lineup (MC, Stage Kitten ×2)" do
+    let!(:mc) { create(:role, production: production, name: "MC", standing: true, position: 4) }
+    let!(:kittens) { create(:role, production: production, name: "Stage Kitten", standing: true, quantity: 2, position: 5) }
+
+    it "renders them in their own section, unnumbered, without shifting the act numbers" do
+      get manage_casting_show_cast_path(production, show)
+      expect(response).to have_http_status(:ok)
+
+      expect(response.body).to include("Show roles")
+      expect(response.body).to include('data-role-name="Act 3 · Magic"')
+      expect(response.body).not_to include('data-role-name="Act 4')
+      expect(response.body).to include('data-role-name="MC"')
+      expect(response.body).to include('data-role-name="Stage Kitten"')
+      # Six castable slots, not all of them acts
+      expect(response.body).to include("0 of 6 spots have been cast")
+      expect(response.body).to include('data-drop-role-progress-unit-value="spots"')
+      # The board's lineup summary lists the running order, then the show roles
+      expect(response.body).to include("Show roles: MC, Stage Kitten x 2")
+    end
+
+    it "puts the show roles after the acts on the casting index cast card, behind a divider, whatever their position" do
+      show # the lazy let — the card is the show's
+      get manage_casting_production_path(production)
+      expect(response).to have_http_status(:ok)
+      body = response.body
+      expect(body).to include('data-tooltip-text="Show roles"')
+      expect(body.index("Act 3 · Magic - Not Cast")).to be < body.index("MC - Not Cast")
+      expect(body.index("MC - Not Cast")).to be < body.index("Stage Kitten - Not Cast")
+
+      # Even a show role created first (position 0) lists after the lineup
+      mc.update!(position: -1)
+      get manage_casting_production_path(production)
+      expect(response.body.index("Act 1 · Magic - Not Cast")).to be < response.body.index("MC - Not Cast")
+    end
+
+    it "casts two people into the two-slot show role" do
+      other = create(:person, user: create(:user, password: password)).tap { |p| org.people << p }
+      post manage_casting_show_assign_person_path(production, show), params: { person_id: performer.id, role_id: kittens.id }
+      expect(response).to have_http_status(:ok)
+      post manage_casting_show_assign_person_path(production, show), params: { person_id: other.id, role_id: kittens.id }
+      expect(response).to have_http_status(:ok)
+      expect(show.show_person_role_assignments.where(role: kittens).count).to eq(2)
+    end
+
+    describe "the production role editor" do
+      it "creates a show role from the Type select, keeping its slots" do
+        post manage_create_casting_role_path(production), params: { role: { name: "Usher", category: "show_role", quantity: "3", restricted: "0" } }
+        expect(response).to redirect_to(manage_casting_settings_section_path(production_id: production, section: "roles"))
+        usher = production.roles.find_by(name: "Usher")
+        expect(usher).to be_standing
+        expect(usher.category).to eq("performing")
+        expect(usher.quantity).to eq(3)
+        expect(usher).not_to be_act
+      end
+
+      it "turns an act into a show role and back" do
+        patch manage_update_casting_role_path(production, variety), params: { role: { name: "Variety", category: "show_role", quantity: "2", restricted: "0" } }
+        expect(variety.reload).to be_standing
+        expect(variety.quantity).to eq(2)
+
+        patch manage_update_casting_role_path(production, variety), params: { role: { name: "Variety", category: "performing", quantity: "2", restricted: "0" } }
+        expect(variety.reload).not_to be_standing
+        expect(variety.quantity).to eq(1)
+      end
+
+      it "lists show roles after the lineup on the roles tab, with an Add show role button" do
+        get manage_casting_settings_section_path(production_id: production, section: "roles")
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("Add show role")
+        expect(response.body).to include('data-role-standing="true"')
+        expect(response.body.index("Stage Kitten")).to be > response.body.index('data-role-name="Act 3 · Magic"').to_i
+      end
+    end
+
+    describe "a show's own lineup editor" do
+      it "creates a show role and says so in the JSON" do
+        show.update!(use_custom_roles: true)
+        post manage_show_roles_path(production, show),
+             params: { show_role: { name: "MC", category: "show_role", quantity: 1 } }, as: :json
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body.dig("role", "standing")).to be(true)
+        expect(show.custom_roles.reload.first).to be_standing
+      end
+    end
+
+    describe "cast notifications" do
+      it "says 'role' to someone who only holds a show role, and 'act' to someone who performs" do
+        create(:show_person_role_assignment, show: show, role: mc, assignable: performer)
+        post manage_casting_show_notify_path(production, show), params: {
+          assignable_keys: [ "Person:#{performer.id}" ],
+          cast_email_draft: { title: "Your {{casting_unit}}: {{role_names}}", body: "<div>x</div>" }
+        }
+        expect(Message.order(:created_at).last.subject).to eq("Your role: MC")
+
+        dancer = create(:person, user: create(:user, password: password)).tap { |p| org.people << p }
+        create(:show_person_role_assignment, show: show, role: kittens, assignable: dancer)
+        create(:show_person_role_assignment, show: show, role: magic_two, assignable: dancer)
+        post manage_casting_show_notify_path(production, show), params: {
+          assignable_keys: [ "Person:#{dancer.id}" ],
+          cast_email_draft: { title: "Your {{casting_units}}: {{role_names}}", body: "<div>x</div>" }
+        }
+        expect(Message.order(:created_at).last.subject).to eq("Your acts: Stage Kitten, Magic (Act 3)")
+      end
+    end
+
+    describe "copying the cast to a linked show" do
+      it "carries the show-role flag onto the linked show's lineup" do
+        linkage = EventLinkage.create!(production: production)
+        show.update!(event_linkage: linkage, use_custom_roles: true)
+        other = create(:show, production: production, event_linkage: linkage, date_and_time: show.date_and_time + 1.day, use_custom_roles: true)
+        show.custom_roles.create!(name: "MC", standing: true, production: production, position: 0)
+        show.custom_roles.create!(name: "Magic", production: production, position: 1)
+
+        post manage_casting_show_copy_to_linked_path(production, show)
+        expect(response).to have_http_status(:redirect)
+
+        expect(other.custom_roles.reload.find_by(name: "MC")).to be_standing
+        expect(other.custom_roles.find_by(name: "Magic")).not_to be_standing
+      end
+    end
+  end
+
   describe "per-show lineup tweaks (custom roles) accept breaks only in act mode" do
     it "creates an intermission row for an act-based show" do
       show.update!(use_custom_roles: true)

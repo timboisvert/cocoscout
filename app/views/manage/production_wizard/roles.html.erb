@@ -75,30 +75,34 @@
             <% role_name = role[:name] || role['name'] %>
             <% role_category = (role[:category] || role['category'] || 'performing').to_s %>
             <% role_category = "performing" if role_category == "break" && !act_mode %>
+            <% role_standing = act_mode && (role[:standing] || role['standing']) ? true : false %>
+            <%# In act mode the select's value is the row's kind: performing (an act), break, or show_role %>
+            <% role_kind = role_standing ? "show_role" : role_category %>
             <% role_qty = role[:quantity] || role['quantity'] || 1 %>
-            <div class="flex items-center gap-2 role-row" data-category="<%= role_category %>">
+            <div class="flex items-center gap-2 role-row" data-category="<%= role_kind %>">
               <% if act_mode %>
                 <span class="lineup-number w-7 shrink-0 text-right text-sm font-medium text-gray-500 tabular-nums" aria-hidden="true"></span>
               <% end %>
               <input type="text"
                      name="roles[<%= index %>][name]"
                      value="<%= role_name %>"
-                     placeholder="<%= act_mode ? 'Act name (e.g., Magic)' : 'Role name (e.g., Host)' %>"
+                     placeholder="<%= act_mode ? (role_standing ? 'Show role (e.g., MC)' : 'Act name (e.g., Magic)') : 'Role name (e.g., Host)' %>"
                      class="flex-1 <%= input_classes %> role-name-input">
-              <% unless act_mode %>
-                <input type="number"
-                       name="roles[<%= index %>][quantity]"
-                       value="<%= role_qty %>"
-                       min="1"
-                       class="w-16 text-center <%= input_classes %>"
-                       title="Number of slots">
-              <% end %>
+              <%# Acts are one thing in the running order, so act mode only shows the slot count for a show role %>
+              <input type="number"
+                     name="roles[<%= index %>][quantity]"
+                     value="<%= role_qty %>"
+                     min="1"
+                     class="w-16 text-center <%= input_classes %> role-quantity-input <%= 'hidden' if act_mode && !role_standing %>"
+                     title="Number of slots">
               <select name="roles[<%= index %>][category]"
                       class="w-32 <%= input_classes %> role-category-select">
-                <option value="performing" <%= "selected" if role_category == "performing" %>>Performing</option>
                 <% if act_mode %>
-                  <option value="break" <%= "selected" if role_category == "break" %>>Intermission</option>
+                  <option value="performing" <%= "selected" if role_kind == "performing" %>>Act</option>
+                  <option value="break" <%= "selected" if role_kind == "break" %>>Intermission</option>
+                  <option value="show_role" <%= "selected" if role_kind == "show_role" %>>Show role</option>
                 <% else %>
+                  <option value="performing" <%= "selected" if role_category == "performing" %>>Performing</option>
                   <option value="technical" <%= "selected" if role_category == "technical" %>>Crew / Technical</option>
                 <% end %>
               </select>
@@ -114,6 +118,7 @@
           <%= render "shared/button", text: (act_mode ? "Add another act" : "Add another role"), variant: "secondary", size: "small", type: :button, icon: "plus", data: { wizard_role_action: "add-role" } %>
           <% if act_mode %>
             <%= render "shared/button", text: "Add intermission", variant: "secondary", size: "small", type: :button, data: { wizard_role_action: "add-break" } %>
+            <%= render "shared/button", text: "Add show role", variant: "secondary", size: "small", type: :button, data: { wizard_role_action: "add-show-role" } %>
           <% end %>
         </div>
       </div>
@@ -144,6 +149,7 @@
   const rolesList = document.getElementById('roles-list');
   const addRoleBtn = document.querySelector('[data-wizard-role-action="add-role"]');
   const addBreakBtn = document.querySelector('[data-wizard-role-action="add-break"]');
+  const addShowRoleBtn = document.querySelector('[data-wizard-role-action="add-show-role"]');
   const actMode = rolesList && rolesList.dataset.castingMode === 'act_based';
   const inputClasses = <%= input_classes.to_json.html_safe %>;
   let roleIndex = rolesList ? rolesList.querySelectorAll('.role-row').length : 1;
@@ -173,18 +179,27 @@
     return d.innerHTML;
   }
 
-  // Number the acts 1, 2, 3… — intermissions get no number.
+  // Number the acts 1, 2, 3… — intermissions and show roles (MC, Stage
+  // Kitten ×2: cast alongside the lineup, not in it) get no number. Only a
+  // show role shows its slot count; an act is one thing in the running order.
   function renumber() {
     if (!actMode || !rolesList) return;
     let n = 0;
     rolesList.querySelectorAll('.role-row').forEach(row => {
       const badge = row.querySelector('.lineup-number');
       const select = row.querySelector('.role-category-select');
-      const isBreak = (select ? select.value : row.dataset.category) === 'break';
-      row.dataset.category = isBreak ? 'break' : 'performing';
-      if (badge) badge.textContent = isBreak ? '' : String(++n);
+      const kind = select ? select.value : row.dataset.category;
+      const isBreak = kind === 'break';
+      const isShowRole = kind === 'show_role';
+      row.dataset.category = kind;
+      if (badge) badge.textContent = (isBreak || isShowRole) ? '' : String(++n);
       const nameInput = row.querySelector('.role-name-input');
-      if (nameInput) nameInput.placeholder = isBreak ? 'Intermission' : 'Act name (e.g., Magic)';
+      if (nameInput) nameInput.placeholder = isBreak ? 'Intermission' : (isShowRole ? 'Show role (e.g., MC)' : 'Act name (e.g., Magic)');
+      const qtyInput = row.querySelector('.role-quantity-input');
+      if (qtyInput) {
+        qtyInput.classList.toggle('hidden', !isShowRole);
+        if (!isShowRole) qtyInput.value = 1;
+      }
       row.classList.toggle('opacity-80', isBreak);
     });
   }
@@ -204,12 +219,15 @@
     row.className = 'flex items-center gap-2 role-row';
     row.dataset.category = category;
     if (actMode) {
+      const isShowRole = category === 'show_role';
       row.innerHTML = `
         <span class="lineup-number w-7 shrink-0 text-right text-sm font-medium text-gray-500 tabular-nums" aria-hidden="true"></span>
-        <input type="text" name="roles[${roleIndex}][name]" value="${escapeHtml(name)}" placeholder="Act name (e.g., Magic)" class="flex-1 ${inputClasses} role-name-input">
+        <input type="text" name="roles[${roleIndex}][name]" value="${escapeHtml(name)}" placeholder="${isShowRole ? 'Show role (e.g., MC)' : 'Act name (e.g., Magic)'}" class="flex-1 ${inputClasses} role-name-input">
+        <input type="number" name="roles[${roleIndex}][quantity]" value="1" min="1" class="w-16 text-center ${inputClasses} role-quantity-input ${isShowRole ? '' : 'hidden'}" title="Number of slots">
         <select name="roles[${roleIndex}][category]" class="w-32 ${inputClasses} role-category-select">
-          <option value="performing" ${category === 'performing' ? 'selected' : ''}>Performing</option>
+          <option value="performing" ${category === 'performing' ? 'selected' : ''}>Act</option>
           <option value="break" ${category === 'break' ? 'selected' : ''}>Intermission</option>
+          <option value="show_role" ${isShowRole ? 'selected' : ''}>Show role</option>
         </select>
         ${removeButtonHtml()}`;
     } else {
@@ -240,6 +258,9 @@
   }
   if (addBreakBtn) {
     addBreakBtn.addEventListener('click', function() { appendRow({ name: 'Intermission', category: 'break' }); });
+  }
+  if (addShowRoleBtn) {
+    addShowRoleBtn.addEventListener('click', function() { appendRow({ category: 'show_role' }); });
   }
 
   // Remove role button + category changes (renumber the lineup)

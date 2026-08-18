@@ -49,7 +49,12 @@
         <p class="text-xs text-gray-500 mt-0.5">
           <% if roles.any? %>
             <% if act_mode %>
-              <%= roles.map { |r| r.break? ? "— #{r.name} —" : "#{numbers[r.id]}. #{r.name}" }.join(", ") %>
+              <%# The running order, then the show roles cast alongside it (MC, Stage Kitten ×2 — not numbered) %>
+              <% lineup, standing = roles.partition { |r| !r.standing? } %>
+              <%= lineup.map { |r| r.break? ? "— #{r.name} —" : "#{numbers[r.id]}. #{r.name}" }.join(", ") %>
+              <% if standing.any? %>
+                <%= lineup.any? ? " · " : "" %>Show roles: <%= standing.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
+              <% end %>
             <% else %>
               <%= roles.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
             <% end %>

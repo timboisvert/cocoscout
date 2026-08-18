@@ -13,7 +13,9 @@
 # Rules shape (unchanged from before — PayoutCalculator reads it):
 #   { "allocation" => [ {type: expenses_first} | {type: percentage, value:, label:} |
 #                       {type: percentage, value:, person_id:, label:} | {type: remainder} ],
-#     "distribution" => { "method" => …, per-method keys },
+#     "distribution" => { "method" => …, per-method keys
+#                         (per_act may also carry "role_amounts" => [{name:, amount:}] and
+#                          "role_stacking" => both|role_only|higher — see PayoutScheme) },
 #     "performer_overrides" => { "Person_<id>" | "Group_<id>" | "guest_<assignment_id>" => { flat_amount:, … } } }
 #   (performer_overrides are keyed like ShowPayout.act_key; older rules keyed a
 #   person by bare id, which PayoutCalculator still reads — for a Person only.)
@@ -160,6 +162,25 @@ class PayoutRulesBuilder
             { "acts" => acts, "amount" => tier[:amount].to_f }
           end.sort_by { |tier| tier["acts"] }
           distribution["additional_act_rate"] = d[:additional_act_rate].to_f if d[:additional_act_rate].present?
+        end
+
+        # Show roles priced by name (see PayoutScheme::ROLE_STACKINGS). Only
+        # written when a row is fully filled in: a prefilled name left without
+        # an amount stays unpriced (the show payout page nudges about it),
+        # while a typed "0" is a real price. The last row for a name wins.
+        rows = d[:role_amounts].is_a?(Hash) ? d[:role_amounts].values : Array(d[:role_amounts])
+        role_rows = rows.filter_map do |row|
+          next unless row.is_a?(Hash)
+
+          name = row[:name].to_s.squish
+          next if name.blank? || row[:amount].to_s.strip.blank?
+
+          { "name" => name, "amount" => row[:amount].to_f }
+        end
+        role_rows = role_rows.reverse.uniq { |row| PayoutScheme.normalize_role_name(row["name"]) }.reverse
+        if role_rows.any?
+          distribution["role_amounts"] = role_rows
+          distribution["role_stacking"] = PayoutScheme.role_stacking("role_stacking" => d[:role_stacking])
         end
       end
 

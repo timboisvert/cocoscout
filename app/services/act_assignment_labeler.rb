@@ -9,6 +9,9 @@
 #   one act  -> "Magic (Act 3)"
 #   several  -> "2 acts as Magic (Acts 1 and 3)"
 #
+# A show role (MC, Stage Kitten — a standing role alongside the lineup) has
+# no act number and reads by name, listed first: "MC, Magic (Act 3)".
+#
 # In a role-based show the labels are just the distinct role names, so a
 # caller can use this everywhere a person's assignments are listed and only
 # act-based shows read differently. Breaks (intermissions) are never listed.
@@ -42,7 +45,8 @@ class ActAssignmentLabeler
 
     numbers = @numbers || Role.lineup_numbers_for(@show.available_roles.to_a)
     numbered = @roles.map { |role| [ role, numbers[role.id] || role.lineup_number(show: @show) ] }
-    numbered.sort_by! { |_, n| n || Float::INFINITY }
+    # Show roles (no number) lead; acts follow in running order.
+    numbered.sort_by! { |_, n| n || -1 }
     numbered.group_by { |role, _| role.name.to_s.downcase.strip }.values.map { |group| label_for(group) }
   end
 

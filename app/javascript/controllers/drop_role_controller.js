@@ -20,13 +20,19 @@ export default class extends Controller {
         // Vacancy modal targets
         "vacancyModal", "vacancyPersonName", "vacancyPersonName2", "vacancyRoleName"
     ];
-    static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean, unit: String };
+    static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean, unit: String, progressUnit: String };
 
     // The word the board uses for the thing being cast: "role" (default) or
     // "act" in an act-based production. Only user-visible strings read this;
     // endpoint names and data attributes keep saying "role".
     get unit() {
         return this.hasUnitValue && this.unitValue ? this.unitValue : "role";
+    }
+
+    // The plural for the progress line ("acts", "roles" — or "spots" when an
+    // act-based night also has show roles, so not every slot is an act).
+    get progressUnit() {
+        return this.hasProgressUnitValue && this.progressUnitValue ? this.progressUnitValue : `${this.unit}s`;
     }
 
     get unitTitle() {
@@ -1546,14 +1552,14 @@ export default class extends Controller {
             if (percentage === 100) {
                 labelElement.textContent = 'This show is 100% cast';
             } else {
-                labelElement.textContent = `${assignment_count} of ${role_count} ${this.unit}s have been cast`;
+                labelElement.textContent = `${assignment_count} of ${role_count} ${this.progressUnit} have been cast`;
             }
         }
 
         // Update fraction
         const fractionElement = document.getElementById('progress-fraction');
         if (fractionElement) {
-            fractionElement.textContent = `${assignment_count}/${role_count} ${this.unit}s cast`;
+            fractionElement.textContent = `${assignment_count}/${role_count} ${this.progressUnit} cast`;
             // Update color
             fractionElement.classList.remove('text-green-600', 'text-pink-600');
             fractionElement.classList.add(percentage === 100 ? 'text-green-600' : 'text-pink-600');

@@ -94,10 +94,16 @@
                   <% role_name = role[:name] || role['name'] %>
                   <% next if role_name.blank? %>
                   <% is_break = (role[:category] || role['category']).to_s == "break" %>
+                  <% is_show_role = (role[:standing] || role['standing']) ? true : false %>
+                  <% role_qty = (role[:quantity] || role['quantity'] || 1).to_i %>
                   <li class="flex items-center gap-2 text-sm">
                     <% if is_break %>
                       <span class="w-6 text-right text-gray-300">—</span>
                       <span class="text-gray-500 italic"><%= role_name %></span>
+                    <% elsif is_show_role %>
+                      <span class="w-6 text-right text-gray-300">·</span>
+                      <span class="text-gray-900"><%= role_name %><%= " ×#{role_qty}" if role_qty > 1 %></span>
+                      <span class="text-xs text-gray-500">show role</span>
                     <% else %>
                       <% act_number += 1 %>
                       <span class="w-6 text-right text-gray-500 font-medium tabular-nums"><%= act_number %></span>

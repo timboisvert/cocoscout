@@ -73,6 +73,9 @@
             <li>Each performer is paid a flat <span class="font-medium text-gray-900"><%= number_to_currency(@payout_scheme.distribution_config["flat_amount"]) %></span>.</li>
           <% when "per_act" %>
             <li>Each performer is paid by how many acts they did: <span class="font-medium text-gray-900"><%= @payout_scheme.act_rules_description %></span>.</li>
+            <% if @payout_scheme.role_amounts.any? %>
+              <li>Show roles cast alongside the lineup are paid a set amount for the night: <span class="font-medium text-gray-900"><%= @payout_scheme.role_rules_description %></span>.</li>
+            <% end %>
             <li>The night's lineup sets the act counts; you can adjust them on the show's payout page.</li>
           <% when "no_pay" %>
             <li>Performers aren't paid for shows using this calculation.</li>

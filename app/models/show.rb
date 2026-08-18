@@ -427,24 +427,49 @@ class Show < ApplicationRecord
   end
 
   # How many acts each payee holds on this show, keyed by ShowPayout.act_key
-  # (the same key the payout's act_counts uses). Breaks aren't acts. Guests
-  # collapse by identity onto the key of their first assignment.
+  # (the same key the payout's act_counts uses). Breaks and show roles aren't
+  # acts. Guests collapse by identity onto the key of their first assignment.
   def lineup_act_counts
     counts = Hash.new(0)
-    guest_keys = {}
-    assignments = show_person_role_assignments.includes(:assignable, :role).to_a
-    assignments.sort_by { |a| [ a.role&.position || 0, a.id ] }.each do |a|
-      next if a.role&.break?
-
-      if a.guest?
-        key = (guest_keys[a.guest_identity] ||= ShowPayout.act_key(a))
-        counts[key] += 1
-      elsif a.assignable
-        counts[ShowPayout.act_key(a.assignable)] += 1
-      end
+    each_pay_assignment do |key, assignment|
+      counts[key] += 1 if assignment.role&.act?(show: self)
     end
     counts
   end
+
+  # The show roles each payee holds on this show — the standing roles cast
+  # alongside an act-based lineup (MC, Stage Kitten), keyed like
+  # lineup_act_counts: { "Person_12" => ["MC"] }. A payout calculation prices
+  # these by name.
+  def show_role_names_by_payee
+    names = {}
+    each_pay_assignment do |key, assignment|
+      role = assignment.role
+      next unless role&.standing?
+
+      list = (names[key] ||= [])
+      list << role.name unless list.include?(role.name)
+    end
+    names
+  end
+
+  # Walks the cast in running order, yielding each assignment with its payee
+  # key. A guest's key is fixed by their FIRST assignment whatever its role —
+  # the same rule pay_cast_assignments uses to pick the assignment that stands
+  # in for them — so an MC who also dances stays one payee.
+  def each_pay_assignment
+    guest_keys = {}
+    assignments = show_person_role_assignments.includes(:assignable, :role).to_a
+    assignments.sort_by { |a| [ a.role&.position || 0, a.id ] }.each do |a|
+      key = if a.guest?
+        guest_keys[a.guest_identity] ||= ShowPayout.act_key(a)
+      elsif a.assignable
+        ShowPayout.act_key(a.assignable)
+      end
+      yield key, a if key
+    end
+  end
+  private :each_pay_assignment
 
   # Returns the roles available for this show.
   # If use_custom_roles is true, returns show-specific roles.
@@ -708,7 +733,10 @@ class Show < ApplicationRecord
         production: production,
         # Multi-person and category fields
         quantity: run.sum(&:quantity),
-        category: role.category
+        category: role.category,
+        # A show role stays a show role on an act-based night; a role-based
+        # night has no lineup for it to sit outside of, so the flag drops.
+        standing: act_based? && role.standing?
       )
 
       # Set pending eligible member IDs to pass validation for restricted roles
