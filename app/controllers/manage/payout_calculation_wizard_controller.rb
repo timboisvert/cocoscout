@@ -32,7 +32,7 @@ module Manage
       @state[:production_id] = context_production&.id
       @state[:return_to] = safe_return_to(params[:return_to])
       save_state
-      redirect_to(@state[:editing_id].present? && params[:duplicate].blank? ? wizard_path(:review) : wizard_path(:approach))
+      redirect_to(@state[:editing_id].present? && params[:duplicate].blank? ? wizard_step_link(:review) : wizard_step_link(:approach))
     end
 
     def approach
@@ -167,13 +167,13 @@ module Manage
     def next_after(step)
       position = STEPS.index(step) || -1
       following = steps_for_state.find { |s| STEPS.index(s) > position }
-      wizard_path(following || :review)
+      wizard_step_link(following || :review)
     end
 
-    def wizard_path(step)
+    def wizard_step_link(step)
       public_send("manage_money_payout_calculation_wizard_#{step}_path")
     end
-    helper_method :wizard_path
+    helper_method :wizard_step_link
 
     def current_approach
       @state[:approach].presence || default_approach

@@ -8,7 +8,7 @@
     who: "Who uses it",
     review: "Review"
   }
-  wizard_steps = steps_for_state.map { |key| { key: key, name: step_labels[key], path: wizard_path(key) } }
+  wizard_steps = steps_for_state.map { |key| { key: key, name: step_labels[key], path: wizard_step_link(key) } }
   current_index = wizard_steps.index { |s| s[:key] == current_step.to_sym } || 0
 %>
 <% content_for :title, "#{page_title} - #{step_name}" %>
