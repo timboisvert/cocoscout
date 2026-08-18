@@ -1460,132 +1460,74 @@ module Manage
     end
 
     # POST /manage/productions/:production_id/shows/preview_reschedule
-    # Preview what rescheduling future events would look like
+    # "Change the schedule from a date onward": events on or after the chosen
+    # date are replaced by a fresh run — new first event, new rhythm, new end —
+    # and everything before that date is left exactly as it is. This is the one
+    # way to change a series: a different weekday, a different time, a different
+    # pattern, or all three, from any future date. Preview says what goes and
+    # what comes.
     def preview_reschedule
-      @recurrence_group_id = params[:recurrence_group_id]
-      return head :not_found unless @recurrence_group_id.present?
-
-      shows_in_series = @production.shows.in_recurrence_group(@recurrence_group_id).order(:date_and_time).to_a
-      return head :not_found if shows_in_series.empty?
-
-      pattern = shows_in_series.first.recurrence_pattern || infer_recurrence_pattern(shows_in_series)
-      future_shows = shows_in_series.select { |s| s.date_and_time > Time.current }
-
-      # Parse new schedule params
-      new_day = params[:new_day_of_week]&.to_i # 0=Sun, 1=Mon, ..., 6=Sat
-      new_hour = params[:new_hour]&.to_i
-      new_minute = params[:new_minute]&.to_i || 0
-
-      if new_day.nil? || new_hour.nil?
-        render json: { error: "Please select a day and time." }, status: :unprocessable_entity
-        return
-      end
-
-      # Determine end date: use custom or keep the last future show's date
-      end_date = if params[:reschedule_end_date].present?
-        begin
-          Date.parse(params[:reschedule_end_date])
-        rescue Date::Error
-          nil
-        end
-      else
-        future_shows.last&.date_and_time&.to_date
-      end
-
-      if end_date.nil?
-        render json: { error: "No future events to reschedule." }, status: :unprocessable_entity
-        return
-      end
-
-      # Find the first occurrence of the new day starting from today
-      start_date = Date.current
-      days_until_new_day = (new_day - start_date.wday) % 7
-      days_until_new_day = 7 if days_until_new_day == 0 && Time.current.hour >= new_hour
-      first_new_date = start_date + days_until_new_day.days
-      start_datetime = first_new_date.in_time_zone.change(hour: new_hour, min: new_minute)
-
-      new_dates = generate_recurring_dates(start_datetime, pattern, end_date)
-
-      if new_dates.empty?
-        render json: { error: "No dates would be generated with this schedule." }, status: :unprocessable_entity
+      plan = build_reschedule_plan
+      if plan[:error]
+        render json: { error: plan[:error] }, status: :unprocessable_entity
         return
       end
 
       render json: {
-        removing: future_shows.length,
-        adding: new_dates.length,
-        dates: new_dates.map { |d| { display: d.strftime("%A, %B %-d, %Y"), time: d.strftime("%-I:%M %p") } },
-        end_date: end_date.strftime("%B %-d, %Y")
+        removing: plan[:removing].length,
+        keeping: plan[:keeping].length,
+        adding: plan[:dates].length,
+        from: plan[:from].strftime("%A, %B %-d, %Y"),
+        until: plan[:until].strftime("%B %-d, %Y"),
+        pattern: helpers.series_pattern_phrase(plan[:pattern], Show.new(date_and_time: plan[:from])),
+        time: plan[:from].strftime("%-I:%M %p"),
+        dates: plan[:dates].map { |d| { display: d.strftime("%A, %B %-d, %Y"), time: d.strftime("%-I:%M %p") } }
       }
     end
 
     # POST /manage/productions/:production_id/shows/reschedule_future
-    # Delete future events and regenerate with new day/time
     def reschedule_future
-      @recurrence_group_id = params[:recurrence_group_id]
-      return head :not_found unless @recurrence_group_id.present?
-
-      shows_in_series = @production.shows.in_recurrence_group(@recurrence_group_id).order(:date_and_time).to_a
-      return head :not_found if shows_in_series.empty?
-
-      pattern = shows_in_series.first.recurrence_pattern || infer_recurrence_pattern(shows_in_series)
-      template_show = shows_in_series.last
-
-      # Parse new schedule params
-      new_day = params[:new_day_of_week].to_i
-      new_hour = params[:new_hour].to_i
-      new_minute = params[:new_minute]&.to_i || 0
-
-      end_date = if params[:reschedule_end_date].present?
-        Date.parse(params[:reschedule_end_date])
-      else
-        shows_in_series.select { |s| s.date_and_time > Time.current }.last&.date_and_time&.to_date
-      end
-
-      if end_date.nil?
-        redirect_to manage_production_shows_path(@production), alert: "No future events to reschedule."
+      plan = build_reschedule_plan
+      if plan[:error]
+        redirect_to manage_production_shows_path(@production), alert: plan[:error]
         return
       end
 
-      # Find the first occurrence of the new day
-      start_date = Date.current
-      days_until_new_day = (new_day - start_date.wday) % 7
-      days_until_new_day = 7 if days_until_new_day == 0 && Time.current.hour >= new_hour
-      first_new_date = start_date + days_until_new_day.days
-      start_datetime = first_new_date.in_time_zone.change(hour: new_hour, min: new_minute)
+      template = plan[:series].last
+      call_time_lead = template.call_time_enabled? && template.call_time && template.date_and_time ? (template.date_and_time - template.call_time) : nil
 
-      new_dates = generate_recurring_dates(start_datetime, pattern, end_date)
+      # Contract payments point at shows by FK and the financials cascade would
+      # re-link a payment to the show being deleted (see Show.without_contract_
+      # payment_sync). Detach first; the rebuilt run re-links them by due date.
+      ContractPayment.where(show_id: plan[:removing].map(&:id)).update_all(show_id: nil)
+      Show.without_contract_payment_sync { plan[:removing].each(&:destroy!) }
 
-      # Delete future shows (callbacks handle sign-up instance cleanup)
-      deleted_count = @production.shows.in_recurrence_group(@recurrence_group_id)
-                                       .where("date_and_time > ?", Time.current)
-                                       .destroy_all.length
-
-      # Create new shows with same properties as last show in series
       created_count = 0
-      new_dates.each do |datetime|
+      plan[:dates].each do |datetime|
         show = @production.shows.new(
-          event_type: template_show.event_type,
-          secondary_name: template_show.secondary_name,
-          location_id: template_show.location_id,
-          location_space_id: template_show.location_space_id,
-          is_online: template_show.is_online,
-          online_location_info: template_show.online_location_info,
-          casting_enabled: template_show.casting_enabled,
-          casting_source: template_show.casting_source,
-          casting_mode: template_show.casting_mode,
-          public_profile_visible: template_show.public_profile_visible,
+          event_type: template.event_type,
+          secondary_name: template.secondary_name,
+          duration_minutes: template.duration_minutes,
+          location_id: template.location_id,
+          location_space_id: template.location_space_id,
+          is_online: template.is_online,
+          online_location_info: template.online_location_info,
+          casting_enabled: template.casting_enabled,
+          casting_source: template.casting_source,
+          casting_mode: template.casting_mode,
+          public_profile_visible: template.public_profile_visible,
+          call_time_enabled: template.call_time_enabled,
+          call_time: call_time_lead && (datetime - call_time_lead),
           date_and_time: datetime,
           recurrence_group_id: @recurrence_group_id,
-          recurrence_pattern: pattern
+          recurrence_pattern: plan[:pattern]
         )
         created_count += 1 if show.save
       end
 
-      day_name = Date::DAYNAMES[new_day]
-      time_str = start_datetime.strftime("%-I:%M %p")
+      phrase = helpers.series_pattern_phrase(plan[:pattern], Show.new(date_and_time: plan[:from]))
       redirect_to manage_production_shows_path(@production),
-                  notice: "Rescheduled: removed #{deleted_count} future events, created #{created_count} new events on #{day_name}s at #{time_str}"
+                  notice: "Schedule changed from #{plan[:from].strftime('%b %-d')}: #{plan[:removing].length} #{'event'.pluralize(plan[:removing].length)} replaced with #{created_count}, #{phrase.downcase} at #{plan[:from].strftime('%-I:%M %p')}."
     end
 
     private
@@ -1811,6 +1753,31 @@ module Manage
       end
 
       Rails.logger.info "[Shows] Sent cancellation: #{messages_sent} messages, #{emails_sent} emails"
+    end
+
+    # Everything the reschedule preview and commit share: which events go,
+    # which stay, and the dates that replace them. Returns { error: } when the
+    # inputs don't make a plan.
+    def build_reschedule_plan
+      @recurrence_group_id = params[:recurrence_group_id]
+      series = @recurrence_group_id.present? ? @production.shows.in_recurrence_group(@recurrence_group_id).order(:date_and_time).to_a : []
+      return { error: "That series no longer exists." } if series.empty?
+
+      from = Time.zone.parse(params[:reschedule_from].to_s) rescue nil
+      return { error: "Pick the date and time of the first event on the new schedule." } if from.nil?
+      return { error: "The new schedule has to start today or later." } if from.to_date < Date.current
+
+      pattern = params[:new_pattern].presence || series.first.recurrence_pattern || infer_recurrence_pattern(series) || "weekly"
+      return { error: "That repeat pattern isn't one we know." } unless Manage::ShowsHelper::RECURRENCE_PATTERNS.any? { |_, v| v == pattern }
+
+      until_date = RecurrenceEndDate.parse(params[:reschedule_until]) || series.last.date_and_time.to_date
+      until_date = from.to_date if until_date < from.to_date
+
+      removing, keeping = series.partition { |s| s.date_and_time >= from.beginning_of_day }
+      dates = generate_recurring_dates(from, pattern, until_date)
+      return { error: "No dates fall between #{from.strftime('%b %-d')} and #{until_date.strftime('%b %-d, %Y')} on that schedule." } if dates.empty?
+
+      { series: series, from: from, until: until_date, pattern: pattern, removing: removing, keeping: keeping, dates: dates }
     end
 
     # "Add more events until" — a date after the last show. nil when the date

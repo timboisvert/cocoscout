@@ -2,12 +2,38 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = [
+        "tab", "panel",
         "extendForm", "previewContainer", "previewList",
         "previewCount", "previewThrough", "previewError", "previewButton", "confirmForm",
         "rescheduleForm", "reschedulePreviewButton", "rescheduleError", "reschedulePreviewContainer",
-        "rescheduleList", "rescheduleRemoving", "rescheduleAdding", "rescheduleConfirmForm"
+        "rescheduleList", "rescheduleRemoving", "rescheduleKeeping", "rescheduleAdding", "rescheduleFromLabel",
+        "rescheduleUntil", "reschedulePattern", "rescheduleTime", "rescheduleConfirmForm",
+        "rescheduleFrom", "patternSelect"
     ]
-    static values = { previewUrl: String, extendUrl: String, previewRescheduleUrl: String, rescheduleUrl: String }
+    static values = { previewUrl: String, previewRescheduleUrl: String }
+
+    connect() {
+        this.relabelPatterns()
+    }
+
+    // ==========================================
+    // Tabs: Events / Extend / Change schedule
+    // ==========================================
+
+    showTab(event) {
+        const name = event.params.tab
+        const active = ["border-pink-500", "text-pink-600"]
+        const idle = ["border-transparent", "text-gray-500", "hover:text-gray-700", "hover:border-gray-300"]
+        this.tabTargets.forEach(tab => {
+            const on = tab.dataset.recurringSeriesModalTabParam === name
+            active.forEach(c => tab.classList.toggle(c, on))
+            idle.forEach(c => tab.classList.toggle(c, !on))
+            tab.setAttribute("aria-selected", on ? "true" : "false")
+        })
+        this.panelTargets.forEach(panel => {
+            panel.classList.toggle("hidden", panel.dataset.panel !== name)
+        })
+    }
 
     close() {
         const frame = document.getElementById('recurring_series_modal')
@@ -143,14 +169,6 @@ export default class extends Controller {
         const form = this.rescheduleFormTarget
         const formData = new FormData(form)
 
-        // Parse time input into hour/minute
-        const timeValue = formData.get('new_time')
-        if (timeValue) {
-            const [hour, minute] = timeValue.split(':')
-            formData.set('new_hour', hour)
-            formData.set('new_minute', minute)
-        }
-
         const button = this.reschedulePreviewButtonTarget
         const originalSpan = button.querySelector('span')
         const originalText = originalSpan?.textContent || button.textContent
@@ -195,8 +213,15 @@ export default class extends Controller {
         ).join('')
 
         this.rescheduleListTarget.innerHTML = listHtml
-        this.rescheduleRemovingTarget.textContent = data.removing
+        this.rescheduleRemovingTarget.textContent = `${data.removing} event${data.removing === 1 ? '' : 's'}`
+        this.rescheduleKeepingTarget.textContent = data.keeping > 0
+            ? `(${data.keeping} earlier event${data.keeping === 1 ? ' stays' : 's stay'} as ${data.keeping === 1 ? 'it is' : 'they are'})`
+            : ''
         this.rescheduleAddingTarget.textContent = `${data.adding} new event${data.adding === 1 ? '' : 's'}`
+        this.rescheduleFromLabelTarget.textContent = data.from
+        this.rescheduleUntilTarget.textContent = data.until
+        this.reschedulePatternTarget.textContent = data.pattern.toLowerCase()
+        this.rescheduleTimeTarget.textContent = data.time
 
         // Copy form params to confirm form
         const confirmForm = this.rescheduleConfirmFormTarget
@@ -224,5 +249,40 @@ export default class extends Controller {
         this.reschedulePreviewContainerTarget.classList.add('hidden')
         this.rescheduleErrorTarget.classList.add('hidden')
         this.rescheduleFormTarget.classList.remove('hidden')
+    }
+
+    // Say what each pattern means for THIS first event — "Weekly on Saturdays",
+    // "Monthly on the 17th", "Monthly on the third Saturday" — instead of the
+    // generic "same date / same weekday". Values and the selection are kept.
+    relabelPatterns() {
+        if (!this.hasPatternSelectTarget || !this.hasRescheduleFromTarget) return
+        const value = this.rescheduleFromTarget.value
+        if (!value) return
+        const date = new Date(value)
+        if (isNaN(date)) return
+
+        const day = date.toLocaleDateString('en-US', { weekday: 'long' })
+        const dom = date.getDate()
+        const ordinalWords = ["first", "second", "third", "fourth", "fifth"]
+        const weekOrdinal = ordinalWords[Math.ceil(dom / 7) - 1] || `${Math.ceil(dom / 7)}th`
+        const suffix = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]) }
+
+        const labels = {
+            daily: "Daily",
+            weekly: `Weekly on ${day}s`,
+            biweekly: `Every other ${day}`,
+            monthly_date: `Monthly on the ${suffix(dom)}`,
+            monthly_week: `Monthly on the ${weekOrdinal} ${day}`
+        }
+        Array.from(this.patternSelectTarget.options).forEach(option => {
+            if (labels[option.value]) option.textContent = labels[option.value]
+        })
+    }
+
+    // Any change to the inputs invalidates a preview that's showing.
+    rescheduleChanged() {
+        if (this.hasReschedulePreviewContainerTarget && !this.reschedulePreviewContainerTarget.classList.contains('hidden')) {
+            this.backToRescheduleOptions()
+        }
     }
 }
