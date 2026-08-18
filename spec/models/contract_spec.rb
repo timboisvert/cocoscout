@@ -659,6 +659,67 @@ RSpec.describe Contract, type: :model do
     end
   end
 
+  describe "#night_result (what one night made us, all in)" do
+    let(:org) { create(:organization) }
+    let(:production) { create(:production, organization: org, production_type: "third_party") }
+
+    def contract_for(config)
+      create(:contract, :active, organization: org, production: production, contractor_name: "Dan",
+                        draft_data: { "payment_config" => config })
+    end
+
+    def night(contract, revenue: nil, at: 3.days.ago)
+      show = create(:show, production: production, date_and_time: at)
+      create(:show_financials, :complete, show: show, ticket_revenue: revenue, expenses: 0) if revenue
+      [ show, contract.night_result(show) ]
+    end
+
+    it "reads a split we sell from its terms when the deal settles weekly, so there's no per-show payment" do
+      contract = contract_for({ "who_sells_tickets" => "org", "settlement_basis" => "revenue_share",
+                                "revenue_our_share" => 60, "revenue_settlement" => "weekly" })
+      _show, result = night(contract, revenue: 200)
+      expect(result[:net]).to eq(120.0)
+      expect(result[:pending]).to be(false)
+      expect(result[:settled_together]).to be(true)
+      expect(result[:lines]).to eq([ [ "Ticket sales", 200.0 ], [ "Dan's 40% share", -80.0 ] ])
+    end
+
+    it "reads a split they sell as our share of their tickets" do
+      contract = contract_for({ "who_sells_tickets" => "contractor", "settlement_basis" => "revenue_share",
+                                "revenue_our_share" => 30, "revenue_settlement" => "monthly" })
+      _show, result = night(contract, revenue: 1000)
+      expect(result[:net]).to eq(300.0)
+      expect(result[:lines]).to eq([ [ "Dan ticket sales", 1000.0 ], [ "Your 30% share", 300.0 ] ])
+    end
+
+    it "prefers the payments that settle the show, services and all, when they exist" do
+      contract = contract_for({ "who_sells_tickets" => "org", "settlement_basis" => "revenue_share",
+                                "revenue_our_share" => 50, "revenue_settlement" => "per_event" })
+      show = create(:show, production: production, date_and_time: 3.days.ago)
+      create(:show_financials, :complete, show: show, ticket_revenue: 200, expenses: 0)
+      paid = create(:contract_payment, contract: contract, direction: "outgoing", show: show, amount: 100, due_date: 3.days.ago.to_date)
+      create(:contract_payment, contract: contract, direction: "incoming", show: show, amount: 50, due_date: 3.days.ago.to_date, description: "Booth tech")
+      create(:contract_payment, contract: contract, direction: "outgoing", show: show, amount: 999, due_date: 3.days.ago.to_date, status: "cancelled")
+
+      result = contract.night_result(show)
+      expect(result[:net]).to eq(150.0)
+      expect(result[:payments].map(&:id)).to contain_exactly(paid.id, ContractPayment.find_by(description: "Booth tech").id)
+      expect(result[:late]).to be(true) # both pending and past due
+      expect(result[:lines]).to include([ "Paid Dan", -100.0 ], [ "Dan paid us", 50.0 ])
+    end
+
+    it "is pending while the tickets aren't in, and nil for a night with nothing to say" do
+      split = contract_for({ "who_sells_tickets" => "org", "settlement_basis" => "revenue_share", "revenue_our_share" => 50 })
+      _show, result = night(split)
+      expect(result[:pending]).to be(true)
+      expect(result[:net]).to be_nil
+
+      flat = create(:contract, :active, organization: create(:organization), contractor_name: "Rent Co")
+      show = create(:show, date_and_time: 3.days.ago)
+      expect(flat.night_result(show)).to be_nil
+    end
+  end
+
   describe "#execute_by_signature!" do
     it "enqueues the manager notification when the counterparty signs" do
       contract = create(:contract, signing_mode: :esign, signing_state: :out_for_signature)

@@ -1,6 +1,6 @@
 <%#
   A single pill in the contracts calendar.
-  Local: item — hash with :type (:payment | :rental), :record, :contract, etc.
+  Local: item — hash with :type (:payment | :rental | :night), :record, :contract, etc.
 %>
 <%
   record   = item[:record]
@@ -12,13 +12,14 @@
     late = item[:late]
     incoming = item[:incoming]
     label = (contract&.production_name.presence || contract&.contractor_name).to_s
-    amount = if record.amount_tbd? && record.amount.to_f == 0
-      "TBD"
-    else
-      number_to_currency(record.amount, precision: 0)
-    end
+    # A settlement that hasn't been worked out yet has no amount to show and
+    # no direction to colour — it's just "this contract settles here".
+    tbd = record.amount_tbd? && record.amount.to_f == 0
+    amount = number_to_currency(record.amount, precision: 0)
     classes = if late
       "bg-red-500 text-white border-red-600 hover:bg-red-600"
+    elsif tbd
+      "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
     elsif incoming
       "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
     else
@@ -28,10 +29,63 @@
   <%= link_to (contract ? manage_contract_path(contract) : "#"), class: "block mb-1" do %>
     <div class="text-xs px-1.5 py-1 rounded border <%= classes %> transition-colors">
       <div class="flex items-center justify-between gap-1">
-        <span class="font-semibold"><%= incoming ? "+" : "−" %><%= amount %></span>
+        <% if tbd %>
+          <span class="font-semibold truncate"><%= label.presence || "Payment" %></span>
+        <% else %>
+          <span class="font-semibold"><%= incoming ? "+" : "−" %><%= amount %></span>
+        <% end %>
         <% if late %><span class="text-[9px] font-bold uppercase">Late</span><% end %>
       </div>
-      <div class="truncate text-[10px]"><%= label.presence || "Payment" %></div>
+      <div class="truncate text-[10px]"><%= tbd ? "Settles after the show" : (label.presence || "Payment") %></div>
+    </div>
+  <% end %>
+
+<% when :night %>
+  <%
+    # What the night made us, all in — one number for a show that has happened,
+    # with the pieces (tickets, what we paid them, what they paid us) on hover.
+    result = item[:result]
+    label = (contract&.production_name.presence || contract&.production&.name.presence || contract&.contractor_name).to_s
+    net = result[:net]
+    late = result[:late]
+    pending = result[:pending]
+    path = if pending
+      manage_money_show_financials_path(record)
+    elsif contract
+      manage_contract_path(contract)
+    else
+      "#"
+    end
+    classes = if late
+      "bg-red-500 text-white border-red-600 hover:bg-red-600"
+    elsif pending
+      "bg-gray-100 text-gray-600 border-dashed border-gray-300 hover:bg-gray-200"
+    elsif net.to_f.negative?
+      "bg-red-100 text-red-800 border-red-300 hover:bg-red-200"
+    else
+      "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+    end
+    detail_lines = result[:lines].map do |text, amount|
+      amount.nil? ? text : "#{text}: #{amount.negative? ? '−' : '+'}#{number_to_currency(amount.abs, precision: 0)}"
+    end
+    detail_lines << "Settled #{contract.settlement_cadence_label.to_s.downcase}" if result[:settled_together] && contract
+    tooltip = if pending
+      "#{label} — ticket numbers aren't in yet"
+    else
+      ([ "#{label}: #{net.negative? ? '−' : '+'}#{number_to_currency(net.abs, precision: 0)} all in" ] + detail_lines).join(" · ")
+    end
+  %>
+  <%= link_to path, class: "block mb-1", data: { controller: "tooltip", tooltip_text: tooltip } do %>
+    <div class="text-xs px-1.5 py-1 rounded border <%= classes %> transition-colors">
+      <div class="flex items-center justify-between gap-1">
+        <% if pending %>
+          <span class="font-semibold">Numbers not in</span>
+        <% else %>
+          <span class="font-semibold"><%= net.negative? ? "−" : "+" %><%= number_to_currency(net.abs, precision: 0) %></span>
+        <% end %>
+        <% if late %><span class="text-[9px] font-bold uppercase">Late</span><% end %>
+      </div>
+      <div class="truncate text-[10px]"><%= label.presence || "Show" %><%= pending ? "" : " · all in" %></div>
     </div>
   <% end %>
 

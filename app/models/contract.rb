@@ -1101,6 +1101,84 @@ class Contract < ApplicationRecord
     { made: made, cost: cost, net: made - cost, pending_shows: pending }
   end
 
+  # What one night on this contract made us, all in — the number a manager
+  # wants for "how did Friday do?": the tickets we sold (when we sell), less
+  # what we handed the contractor, plus what they paid us. Payments linked to
+  # the show carry the settlement (services folded in and all); a deal that
+  # settles by the week, month or run has no per-show payment, so its night
+  # reads from the terms instead. nil when there's nothing to say — a deal
+  # with no tickets and no payment on this night.
+  #
+  # Returns { show:, net:, pending:, late:, lines: [ [label, signed amount] ],
+  # payments: [the linked payments], settled_together: } — net is nil while
+  # the numbers aren't in yet (pending).
+  def night_result(show)
+    financials = show.show_financials
+    revenue = financials&.has_data? ? financials.total_revenue.to_f : nil
+    payments = live_contract_payments.select { |p| p.show_id == show.id }
+    sells = org_sells_tickets?
+    return nil if !sells && !revenue_share? && payments.empty?
+
+    counterparty = (contractor_name.presence || production_name.presence || production&.name).to_s
+    lines = []
+    lines << [ sells ? "Ticket sales" : "#{counterparty} ticket sales", revenue ] if revenue && (sells || revenue_share?)
+
+    net =
+      if payments.any?
+        payments.each do |p|
+          next if p.amount_tbd? && p.amount.to_f.zero?
+
+          lines << (p.direction_incoming? ? [ "#{counterparty} paid us", p.amount.to_f ] : [ "Paid #{counterparty}", -p.amount.to_f ])
+        end
+        (sells ? revenue.to_f : 0.0) + payments.select(&:direction_incoming?).sum { |p| p.amount.to_f } -
+          payments.reject(&:direction_incoming?).sum { |p| p.amount.to_f }
+      elsif revenue.nil?
+        nil
+      elsif revenue_share?
+        ours = (revenue * revenue_share_percentage.to_f / 100.0).round(2)
+        if sells
+          lines << [ "#{counterparty}'s #{number_for(contractor_share_percentage)}% share", -(revenue - ours).round(2) ]
+        else
+          lines << [ "Your #{number_for(revenue_share_percentage)}% share", ours ]
+        end
+        ours
+      elsif ticket_revenue_minus_fee?
+        fee = flat_fee_for_shows(1)
+        remainder = (revenue - fee).round(2)
+        if remainder.positive?
+          lines << [ "Handed back to #{counterparty}", -remainder ]
+        elsif remainder.negative?
+          lines << [ "#{counterparty} owes the shortfall", -remainder ]
+        end
+        fee
+      else
+        revenue # we sell and keep it all
+      end
+
+    pending = revenue.nil? && (sells || revenue_share?)
+    {
+      show: show,
+      net: pending ? nil : net.to_f.round(2),
+      pending: pending,
+      late: payments.any?(&:overdue?),
+      lines: lines,
+      payments: payments,
+      settled_together: payments.empty? && (revenue_share? || ticket_revenue_minus_fee?) && !%w[per_event next_day same_day].include?(settlement_cadence)
+    }
+  end
+
+  # This contract's payments that still count (cancelled rows are history),
+  # from memory when the association is already loaded.
+  def live_contract_payments
+    contract_payments.to_a.reject(&:status_cancelled?)
+  end
+
+  def number_for(value)
+    f = value.to_f
+    f == f.to_i ? f.to_i : f
+  end
+  private :number_for
+
   # Financial summary
   def total_incoming
     contract_payments.where(direction: "incoming", status: "paid").sum(:amount)
