@@ -56,7 +56,10 @@ module Manage
       # what they paid us). The payments that settle a night fold into its bar
       # rather than showing as their own pills. Money data was preloaded for
       # @sorted_contracts above, which the active contracts are part of.
+      # A night whose booking is on the calendar as a rental folds onto that
+      # rental's card (see below); one with no rental gets a bar of its own.
       absorbed_payment_ids = Set.new
+      nights_by_contract_date = Hash.new { |h, k| h[k] = [] }
       @active_contracts.each do |contract|
         contract.money_shows.each do |show|
           date = show.date_and_time&.to_date
@@ -66,13 +69,7 @@ module Manage
           next unless result
 
           result[:payments].each { |p| absorbed_payment_ids << p.id }
-          @calendar_items_by_date[date] << {
-            type: :night,
-            sort_key: [ 2, show.date_and_time ],
-            record: show,
-            contract: contract,
-            result: result
-          }
+          nights_by_contract_date[[ contract.id, date ]] << result
         end
       end
 
@@ -96,16 +93,34 @@ module Manage
           key = [ rental.contract_id, rental.starts_at.to_date ]
           # Only the first rental for a contract+date claims that day's payments,
           # so an amount is never shown twice.
-          rental_payments = claimed_keys.add?(key) ? (payments_by_contract_date[key] || []) : []
+          first_for_day = claimed_keys.add?(key)
+          rental_payments = first_for_day ? (payments_by_contract_date[key] || []) : []
+          # The night's number rides on the same card as its booking.
+          rental_nights = first_for_day ? (nights_by_contract_date.delete(key) || []) : []
           @calendar_items_by_date[rental.starts_at.to_date] << {
             type: :rental,
             sort_key: [ 1, rental.starts_at ],
             at: rental.starts_at,
             record: rental,
             contract: rental.contract,
-            payments: rental_payments
+            payments: rental_payments,
+            nights: rental_nights
           }
         end
+
+      # Nights with no rental card to ride on stand on their own.
+      nights_by_contract_date.each do |(contract_id, date), results|
+        contract = @active_contracts.find { |c| c.id == contract_id }
+        results.each do |result|
+          @calendar_items_by_date[date] << {
+            type: :night,
+            sort_key: [ 1, result[:show].date_and_time ],
+            record: result[:show],
+            contract: contract,
+            result: result
+          }
+        end
+      end
 
       # Remaining payments (no rental on the same contract+day) render on their own.
       payments_by_contract_date.each do |key, pmts|

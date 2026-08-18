@@ -40,11 +40,33 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
       get manage_contracts_path(month: month_param(past_at.to_date))
       expect(response).to have_http_status(:ok)
 
-      expect(response.body).to include("+$100")
-      expect(response.body).to include("Random Memory · all in")
-      expect(response.body).to include("Ticket sales: +$200 · Paid Dan: −$100")
+      expect(response.body).to include("+$100 all in")
+      # No rental card for this show, so the bar reads like a booking: time · name
+      expect(response.body).to include("#{past_at.strftime('%-l:%M%p').downcase} · Random Memory")
+      expect(response.body).to include("Random Memory: +$100 all in · Ticket sales: +$200 · Paid Dan: −$100")
       # The −$100 settlement doesn't also show as its own pill
       expect(response.body).not_to include(">−$100<")
+      # The settled $100 is past due and unpaid — that IS late
+      expect(response.body).to include('text-red-600">Late')
+    end
+
+    it "rides on the rental card when the booking is on the calendar, instead of a second bar" do
+      rental = create(:space_rental, contract: contract, starts_at: past_at)
+      show.update!(space_rental: rental)
+
+      get manage_contracts_path(month: month_param(past_at.to_date))
+      expect(response.body.scan(">+$100 all in<").size).to eq(1)
+      expect(response.body).to include("Space rental")
+      expect(response.body).not_to include("#{past_at.strftime('%-l:%M%p').downcase} · Random Memory</div>")
+    end
+
+    it "isn't 'late' while the settlement is only TBD" do
+      # Numbers withdrawn: the settlement goes back to TBD (financials sync it, so order matters)
+      show.show_financials.destroy!
+      settlement.reload.update!(amount: 0, amount_tbd: true)
+      get manage_contracts_path(month: month_param(past_at.to_date))
+      expect(response.body).to include("Numbers not in")
+      expect(response.body).not_to include('text-red-600">Late')
     end
 
     it "says the numbers aren't in yet for a past night without financials" do

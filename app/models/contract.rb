@@ -1160,7 +1160,8 @@ class Contract < ApplicationRecord
       show: show,
       net: pending ? nil : net.to_f.round(2),
       pending: pending,
-      late: payments.any?(&:overdue?),
+      # A settlement that's still TBD isn't late — the numbers just aren't in.
+      late: payments.any? { |p| p.overdue? && !(p.amount_tbd? && p.amount.to_f.zero?) },
       lines: lines,
       payments: payments,
       settled_together: payments.empty? && (revenue_share? || ticket_revenue_minus_fee?) && !%w[per_event next_day same_day].include?(settlement_cadence)
