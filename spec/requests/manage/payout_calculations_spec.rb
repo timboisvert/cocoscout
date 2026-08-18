@@ -98,6 +98,36 @@ RSpec.describe "Manage::PayoutCalculations", type: :request do
       expect(visible_text).not_to match(/scheme/i)
     end
 
+    it "offers only in-house productions in the used-by modal, plus anything already using it" do
+      contract_production = create(:production, organization: org, name: "Renter Revue", production_type: "third_party")
+      course_production = create(:production, organization: org, name: "Improv 101", production_type: "course")
+      legacy_contract = create(:production, organization: org, name: "Old Renter Night", production_type: "third_party")
+      flat_calculation.make_production_scheme!(legacy_contract)
+
+      get manage_money_payout_calculation_path(flat_calculation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(name="production_ids[]" value="#{production.id}"))
+      expect(response.body).not_to include(%(name="production_ids[]" value="#{contract_production.id}"))
+      expect(response.body).not_to include(%(name="production_ids[]" value="#{course_production.id}"))
+      # Already covered by this calculation, so it stays pickable (to untick) — with a badge saying what it is.
+      expect(response.body).to match(/name="production_ids\[\]" value="#{legacy_contract.id}"\s+checked/)
+      expect(response.body).to include("Contract</span>")
+      expect(response.body).to include("Only in-house productions are listed")
+    end
+
+    it "gives a long production list a search box and puts the productions already using it first" do
+      others = 8.times.map { |i| create(:production, organization: org, name: "Show #{('A'..'Z').to_a[i]}") }
+      flat_calculation.make_production_scheme!(others.last)
+
+      get manage_money_payout_calculation_path(flat_calculation)
+
+      expect(response.body).to include('data-production-checklist-target="search"')
+      first_row_value = response.body[/name="production_ids\[\]" value="(\d+)"/, 1].to_i
+      expect(first_row_value).to eq(others.last.id)
+      expect(response.body).to include("1 selected")
+    end
+
     it "offers Edit, Duplicate, Archive and Delete" do
       get manage_money_payout_calculation_path(act_calculation)
 

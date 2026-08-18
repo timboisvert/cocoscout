@@ -3,6 +3,10 @@
   performers with it. Inline, hidden,
   opened by a trigger with data-controller="modal" data-action="click->modal#open"
   and data-modal-id matching `id`. Posts to update_defaults.
+
+  Long lists get a search box; the productions already using the calculation
+  sort to the top; when the list spans production types (an already-checked
+  contract or course), type chips narrow it and off-type rows wear a badge.
   NOTE: keep ERB tags out of this comment.
 
   Locals:
@@ -16,6 +20,14 @@
   calculation  = local_assigns.fetch(:calculation)
   productions  = Array(local_assigns[:productions])
   checked_ids  = Array(local_assigns[:checked_ids])
+
+  # Already-using productions first, then the rest alphabetically.
+  checked_first = productions.partition { |production| checked_ids.include?(production.id) }.flatten
+  searchable    = productions.size > 6
+
+  types_present = productions.map(&:production_type).uniq
+  type_labels   = { "in_house" => "In-house", "third_party" => "Contract", "course" => "Course" }
+  show_chips    = types_present.size > 1
 %>
 <div id="<%= id %>"
      class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -34,24 +46,73 @@
     </div>
 
     <%= form_with url: manage_update_defaults_money_payout_calculation_path(calculation), method: :post, local: true, class: "contents", id: "#{id}-form" do %>
-      <div class="px-6 py-5 overflow-y-auto space-y-5">
+      <div class="px-6 py-5 overflow-y-auto space-y-5" data-controller="production-checklist">
         <div>
-          <p class="text-sm font-medium text-gray-700 mb-2">Productions</p>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-medium text-gray-700">Productions</p>
+            <% if productions.any? %>
+              <span class="text-xs text-gray-500" data-production-checklist-target="count"><%= checked_ids.size %> selected</span>
+            <% end %>
+          </div>
+
           <% if productions.any? %>
-            <div class="max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1">
-              <% productions.each do |production| %>
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1.5 rounded">
+            <% if searchable %>
+              <input type="text"
+                     placeholder="Search productions…"
+                     autocomplete="off"
+                     data-production-checklist-target="search"
+                     data-action="input->production-checklist#filter"
+                     class="block w-full mb-2 px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <% end %>
+
+            <% if show_chips %>
+              <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                <button type="button"
+                        data-production-checklist-target="chip"
+                        data-production-checklist-type-param=""
+                        data-action="click->production-checklist#setType"
+                        class="px-2.5 py-1 rounded-full text-[11px] font-medium border cursor-pointer transition hover:opacity-90 bg-pink-500 text-white border-pink-500">
+                  All types
+                </button>
+                <% types_present.each do |type| %>
+                  <button type="button"
+                          data-production-checklist-target="chip"
+                          data-production-checklist-type-param="<%= type %>"
+                          data-action="click->production-checklist#setType"
+                          class="px-2.5 py-1 rounded-full text-[11px] font-medium border cursor-pointer transition hover:opacity-90 bg-white text-gray-700 border-gray-300">
+                    <%= type_labels[type] || type.humanize %>
+                  </button>
+                <% end %>
+              </div>
+            <% end %>
+
+            <div class="max-h-72 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1">
+              <% checked_first.each do |production| %>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1.5 rounded"
+                       data-production-checklist-target="row"
+                       data-name="<%= production.name.to_s.downcase %>"
+                       data-type="<%= production.production_type %>">
                   <input type="checkbox" name="production_ids[]" value="<%= production.id %>"
                          <%= "checked" if checked_ids.include?(production.id) %>
+                         data-production-checklist-target="checkbox"
+                         data-action="change->production-checklist#updateCount"
                          class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-                  <span class="text-gray-700"><%= production.name %></span>
+                  <span class="text-gray-700 truncate"><%= production.name %></span>
+                  <% unless production.type_in_house? %>
+                    <span class="ml-auto flex-shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-500 bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5"><%= type_labels[production.production_type] %></span>
+                  <% end %>
+                  <% if production.archived_at.present? %>
+                    <span class="<%= production.type_in_house? ? 'ml-auto' : '' %> flex-shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-500 bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5">Archived</span>
+                  <% end %>
                 </label>
               <% end %>
+              <p data-production-checklist-target="empty" style="display: none" class="px-1.5 py-2 text-sm text-gray-500">No productions match.</p>
             </div>
           <% else %>
-            <p class="text-sm text-gray-500">You don't have any productions yet.</p>
+            <p class="text-sm text-gray-500">You don't have any in-house productions yet.</p>
           <% end %>
           <p class="mt-1.5 text-xs text-gray-500">Checked productions pay their performers with this calculation. Unchecking one leaves it with no calculation until another is chosen.</p>
+          <p class="mt-1 text-xs text-gray-500">Only in-house productions are listed — contract productions settle on their contract, and courses have no shows to pay out.</p>
         </div>
       </div>
 

@@ -22,9 +22,13 @@ module Manage
       @defaults = @payout_scheme.payout_scheme_defaults.includes(:production).to_a
       @default_productions = @defaults.map(&:production).compact.uniq.sort_by { |production| production.name.to_s.downcase }
       @default_production_ids = @default_productions.map(&:id)
-      # The modal offers every active production, plus any inactive one this
-      # calculation still covers (so it can be unticked rather than vanish).
-      @pickable_productions = (Current.organization.productions.active.to_a + @default_productions)
+      # The modal offers the productions that can actually pay a cast with a
+      # calculation — active in-house ones. Contract productions settle on
+      # their contract and courses have no shows, so listing them is only
+      # noise. Anything this calculation already covers stays pickable
+      # (archived or not, whatever its type) so it can be unticked rather
+      # than vanish.
+      @pickable_productions = (Current.organization.productions.active.castable.to_a + @default_productions)
                                 .uniq.sort_by { |production| production.name.to_s.downcase }
     end
 
