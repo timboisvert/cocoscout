@@ -2,7 +2,11 @@
 
 module Manage
   class ContractsController < ManageController
-    before_action :set_contract, except: %i[index new create completed]
+    before_action :set_contract, except: %i[index all new create completed]
+
+    # How long a freshly signed (or activated) contract stays in the hub's
+    # "in motion" list before it's just another active contract.
+    RECENTLY_SIGNED_WINDOW = 30.days
 
     def index
       @contracts = Current.organization.contracts.includes(:contract_payments, :space_rentals)
@@ -12,15 +16,10 @@ module Manage
       @draft_contracts = @contracts.status_draft
       @completed_contracts = @contracts.status_completed.or(@contracts.status_cancelled).order(contract_end_date: :desc)
 
-      # Sort all contracts for the combined list (active + draft)
-      # Active contracts by start date, then drafts with dates, then drafts without dates
-      @sorted_contracts = (
-        @active_contracts.to_a +
-        @draft_contracts.where.not(contract_start_date: nil).order(:contract_start_date).to_a +
-        @draft_contracts.where(contract_start_date: nil).order(:created_at).to_a
-      )
-      # The slim list shows per-contract money; batch its shows/payments lookups.
-      Contract.preload_money_data(@sorted_contracts)
+      # The hub shows what's in motion — out for signature, ready to send, an
+      # amendment waiting on a signature, drafts, and anything signed lately —
+      # not the whole book. The rest lives on All Contracts.
+      load_in_motion_contracts
 
       active_contract_ids = @active_contracts.map(&:id)
 
@@ -55,7 +54,7 @@ module Manage
       # night made us, all in (tickets we sold, less what we handed them, plus
       # what they paid us). The payments that settle a night fold into its bar
       # rather than showing as their own pills. Money data was preloaded for
-      # @sorted_contracts above, which the active contracts are part of.
+      # every active contract in load_in_motion_contracts.
       # A night whose booking is on the calendar as a rental folds onto that
       # rental's card (see below); one with no rental gets a bar of its own.
       absorbed_payment_ids = Set.new
@@ -185,6 +184,24 @@ module Manage
       ).map(&:money_display)
       @contracts_made = year_contract_money.sum { |d| d[:made] }
       @contracts_cost = year_contract_money.sum { |d| d[:cost] }
+    end
+
+    # Every current contract (active + drafts), sortable by upcoming start or by
+    # name. Past ones have their own page.
+    def all
+      @sort = params[:sort] == "name" ? "name" : "upcoming"
+      contracts = Current.organization.contracts.includes(:contract_payments, :space_rentals, :production)
+      active = contracts.status_active.to_a
+      drafts = contracts.status_draft.to_a
+      @contracts = if @sort == "name"
+        (active + drafts).sort_by { |c| [ c.contractor_name.to_s.downcase, c.created_at ] }
+      else
+        # By start date; drafts without a date bring up the rear, newest first.
+        dated, undated = (active + drafts).partition(&:contract_start_date)
+        dated.sort_by { |c| [ c.contract_start_date, c.status_draft? ? 1 : 0, c.contractor_name.to_s.downcase ] } +
+          undated.sort_by { |c| -c.created_at.to_i }
+      end
+      Contract.preload_money_data(@contracts)
     end
 
     def completed
@@ -628,6 +645,43 @@ module Manage
     end
 
     private
+
+    # The hub's "in motion" list, in the order they want attention: waiting on a
+    # signature (out for signature, ready to send, an amendment staged), then
+    # drafts newest first, then contracts signed or activated within
+    # RECENTLY_SIGNED_WINDOW, newest first. @in_motion_badges carries the
+    # per-contract state label for the active ones (drafts badge themselves).
+    def load_in_motion_contracts
+      since = RECENTLY_SIGNED_WINDOW.ago
+      actives = @active_contracts.includes(:contract_versions).to_a
+      drafts = @draft_contracts.to_a
+      # The calendar reads every active contract's shows and payments; batch
+      # those lookups once for the lot, and let the calendar walk the same
+      # loaded records.
+      Contract.preload_money_data(actives + drafts)
+      @active_contracts = actives
+
+      waiting_drafts, other_drafts = drafts.partition { |c| c.signing_mode_esign? && (c.signing_out_for_signature? || c.signing_awaiting_send?) }
+      waiting_drafts.sort_by! { |c| c.signing_out_for_signature? ? 0 : 1 }
+      other_drafts.sort_by! { |c| -c.created_at.to_i }
+
+      amending = actives.select(&:amendment_pending?)
+      recent = (actives - amending).filter_map do |c|
+        signed_at = [ c.executed_at, c.activated_at, c.contract_versions.filter_map(&:executed_at).max ].compact.max
+        [ c, signed_at ] if signed_at && signed_at >= since
+      end.sort_by { |_, at| -at.to_i }
+
+      @in_motion_badges = {}
+      amending.each do |c|
+        @in_motion_badges[c.id] = c.signing_out_for_signature? ? { text: "Amendment out for signature", color: "amber" } : { text: "Amendment ready to send", color: "blue" }
+      end
+      recent.each do |c, at|
+        verb = c.signing_mode_esign? ? "Signed" : "Activated"
+        @in_motion_badges[c.id] = { text: "#{verb} #{helpers.time_ago_in_words(at)} ago", color: "green" }
+      end
+
+      @in_motion_contracts = waiting_drafts + amending + other_drafts + recent.map(&:first)
+    end
 
     # Needs a signature, so nothing goes live. The version carries the proposed
     # document — rendered by applying inside a rolled-back savepoint — plus the

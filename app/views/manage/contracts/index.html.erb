@@ -58,6 +58,33 @@
     </div>
   <% end %>
 
+  <%# What's in motion — waiting on a signature, drafts, signed lately. The
+      whole book is one click away on All Contracts; the hub isn't a list. %>
+  <div class="mb-8">
+    <div class="flex items-baseline justify-between gap-3 mb-3">
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+        In motion
+        <% if @in_motion_contracts.any? %>
+          <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= @in_motion_contracts.size %>)</span>
+        <% end %>
+      </h3>
+      <span class="text-sm text-gray-500 normal-case tracking-normal">Out for signature, drafts, and anything signed in the last <%= Manage::ContractsController::RECENTLY_SIGNED_WINDOW.inspect %></span>
+    </div>
+    <% if @in_motion_contracts.any? %>
+      <%= render "contract_slim_list", contracts: @in_motion_contracts, badges: @in_motion_badges %>
+    <% elsif @contracts.any? %>
+      <div class="bg-white rounded-lg border border-gray-200 p-5 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-600 flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          </span>
+          <p class="text-sm text-gray-600">Nothing in motion — no drafts, nothing out for signature.</p>
+        </div>
+        <%= link_to "All contracts", all_manage_contracts_path, class: "text-sm text-pink-600 hover:text-pink-700 flex-shrink-0" %>
+      </div>
+    <% end %>
+  </div>
+
   <%# Unified calendar: payments + shows + rentals, month by month %>
   <% calendar_legend = capture do %>
     <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-green-300"></span> Payment in / night made</span>
@@ -75,30 +102,18 @@
     today_link: manage_contracts_path,
     legend: calendar_legend %>
 
-  <%# Active contracts list, below the upcoming-stuff calendar %>
-  <% if @sorted_contracts.any? %>
-    <div data-controller="tabs">
-      <nav class="flex space-x-2 border-b border-gray-200 mb-4">
-        <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">
-          <%= icon("list", class: "w-4 h-4 inline mr-1") %>
-          Active Contracts
-        </button>
-        <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">
-          <%= icon("calendar", class: "w-4 h-4 inline mr-1") %>
-          Timeline
-        </button>
-      </nav>
-
-      <%# Active Contracts Tab %>
-      <div data-tabs-target="panel">
-        <%= render "contract_slim_list", contracts: @sorted_contracts %>
+  <%# Browsing, not doing: the whole book lives on All Contracts, sortable by
+      upcoming date or by name (the Money hub does the same). %>
+  <% if @contracts.any? %>
+    <%= link_to all_manage_contracts_path, class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors mt-8" do %>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="font-semibold text-gray-900">All contracts</h3>
+          <p class="text-sm text-gray-500 mt-0.5">Every current contract and draft — by upcoming date or by name.</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
       </div>
-
-      <%# Timeline Tab %>
-      <div data-tabs-target="panel" class="hidden">
-        <%= render "timeline", contracts: @sorted_contracts %>
-      </div>
-    </div>
+    <% end %>
   <% end %>
 
   <%# Empty state %>

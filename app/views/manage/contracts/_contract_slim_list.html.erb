@@ -5,7 +5,11 @@
 
   Locals:
     contracts: array of Contract objects
+    badges: optional hash of contract id → { text:, color: } for contracts that
+            aren't drafts (drafts badge themselves by signing stage) — the hub
+            uses it to say "Signed 3 days ago" / "Amendment out for signature".
 %>
+<% extra_badges = local_assigns.fetch(:badges, {}) %>
 <%= render layout: "shared/slim_list", locals: { label: "Contractor", columns: [ "Dates", "Type", "Value" ], col_classes: [ "w-56", "w-36", "w-28" ], col_aligns: [ "text-left", "text-left", "text-right" ], min_width: "min-w-[780px]" } do %>
   <% contracts.each do |contract| %>
     <%
@@ -78,7 +82,7 @@
 
       badge =
         if !is_draft
-          nil
+          extra_badges[contract.id]
         elsif contract.signing_mode_esign?
           # E-sign drafts read by their signing stage, not a step number.
           case contract.signing_state

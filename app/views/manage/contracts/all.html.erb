@@ -1,0 +1,43 @@
+<% content_for :title, "All Contracts" %>
+
+<%# The whole current book — active contracts and drafts — as the slim list,
+    sortable by upcoming start date or by name. The hub only shows what's in
+    motion; past contracts have their own page. %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [ "Contracts", manage_contracts_path ]
+    ],
+    text: "All Contracts",
+    links: [
+      { text: "Past Contracts", path: completed_manage_contracts_path }
+    ]
+  } %>
+
+  <div class="mb-3">
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      {
+        label: "Sort",
+        filters: [
+          { text: "Upcoming", path: all_manage_contracts_path(sort: "upcoming"), active: @sort == "upcoming" },
+          { text: "Name",     path: all_manage_contracts_path(sort: "name"),     active: @sort == "name" }
+        ]
+      }
+    ] %>
+  </div>
+
+  <% if @contracts.any? %>
+    <%= render "contract_slim_list", contracts: @contracts %>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center">
+      <%= icon("file-text", class: "w-12 h-12 text-gray-400 mx-auto mb-4") %>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No contracts yet</h3>
+      <p class="text-gray-600 mb-4">
+        Create a contract when an external group wants to rent your space or perform at your venue.
+      </p>
+      <%= render "shared/button", text: "New Contract", variant: "primary", icon: "plus", path: manage_new_contract_wizard_path %>
+    </div>
+  <% end %>
+</div>

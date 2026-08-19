@@ -1422,6 +1422,7 @@ Rails.application.routes.draw do
 
     resources :contracts, path: "contracts" do
       collection do
+        get :all
         get :completed
       end
       member do
