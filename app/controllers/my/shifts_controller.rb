@@ -5,8 +5,6 @@ module My
   # (the Staffing module's counterpart to "My Shows & Events"), plus the place
   # where staff mark the dates they're unavailable to work.
   class ShiftsController < ApplicationController
-    SCOPES = %w[all_day day_shifts evening_shifts].freeze
-
     def index
       @people = Current.user.people.active.order(:created_at).to_a
       people_ids = @people.map(&:id)
@@ -53,6 +51,7 @@ module My
       # the current month through ~12 months out so month navigation has data.
       person = Current.user.person
       @availability_mode = person&.availability_mode || "unavailable"
+      @availability_day_parts = person ? person.staffing_day_parts : StaffingDayParts::DEFAULT_STAFFING_DAY_PARTS
       @unavailability_entries =
         if person
           person.staff_unavailabilities
@@ -97,9 +96,11 @@ module My
       dates = dates.compact.uniq
       return render(json: { ok: false, error: "No dates" }, status: :unprocessable_entity) if dates.empty?
 
+      # "all_day", or the key of one of the work time regions this person can mark.
+      allowed = [ StaffUnavailability::ALL_DAY ] + person.staffing_day_parts.map { |p| p["key"] }
       if scope == "clear"
         person.staff_unavailabilities.where(date: dates).destroy_all
-      elsif SCOPES.include?(scope)
+      elsif allowed.include?(scope)
         dates.each do |date|
           record = person.staff_unavailabilities.find_or_initialize_by(date: date)
           record.scope = scope

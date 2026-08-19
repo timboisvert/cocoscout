@@ -75,7 +75,8 @@ class SchedulingRuleMatcher
         unavailable: StaffUnavailability.unavailable_for?(
           mode: availability_modes[rule.person_id] || "unavailable",
           entries: unavailability_entries[rule.person_id] || [],
-          time: starts_at
+          time: starts_at,
+          organization: @organization
         )
       )
     end

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { dayPartFor, entryCovers } from "controllers/lib/day_parts"
 
 // The progressive Add-shift modal. Pick a role and the rest reveals itself
 // already filled in: the suggested time window (editable), the show picker for
@@ -28,6 +29,7 @@ export default class extends Controller {
         // Sibling controller payloads, shared via the page root.
         this.staffByRole = this.parse(this.element.dataset.shiftAssignStaffByRoleValue, {})
         this.unavailability = this.parse(this.element.dataset.shiftAssignStaffUnavailabilityValue, {})
+        this.dayParts = this.parse(this.element.dataset.shiftAssignDayPartsValue, [])
         this.castByDay = this.parse(this.element.dataset.shiftAssignCastByDayValue, {})
 
         if (this.hasSubtitleTarget) this.subtitleTarget.textContent = btn.dataset.dayLabel || ""
@@ -252,14 +254,9 @@ export default class extends Controller {
         if (!data) return false
 
         const start = this.hasStartTimeInputTarget ? this.startTimeInputTarget.value : ""
-        const dayPart = parseInt(start.slice(0, 2) || "17", 10) >= 17 ? "evening" : "day"
+        const dayPart = dayPartFor(start.slice(0, 5) || "17:00", this.dayParts)
         const entries = data.entries || []
-        const covers = entries.some(e => {
-            if (e.date !== this.dayIso) return false
-            return e.scope === "all_day" ||
-                   (e.scope === "day_shifts" && dayPart === "day") ||
-                   (e.scope === "evening_shifts" && dayPart === "evening")
-        })
+        const covers = entries.some(e => entryCovers(e, this.dayIso, dayPart))
         return data.mode === "available" ? !covers : covers
     }
 

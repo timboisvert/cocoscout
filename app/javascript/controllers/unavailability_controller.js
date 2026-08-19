@@ -5,19 +5,27 @@ import { confirmDialog } from "controllers/lib/confirm_dialog"
 // and a month grid, navigates months without a server round-trip, and supports
 // single-day or multi-day selection. Changes persist via fetch (JSON) and are
 // applied optimistically to local state.
-const SCOPE_LABEL = { all_day: "All day", day_shifts: "Afternoon", evening_shifts: "Evening" }
-const SCOPE_CELL = {
-    all_day: "bg-red-100 border-red-300 text-red-800",
-    day_shifts: "bg-amber-100 border-amber-300 text-amber-800",
-    evening_shifts: "bg-indigo-100 border-indigo-300 text-indigo-800"
-}
+//
+// A mark is "all_day" or the key of one of the work time regions the person's
+// organizations declare (dayParts value: [{ key, name }, …]); each region is
+// coloured by its position, matching the swatches/buttons the modal renders.
+const ALL_DAY_CELL = "bg-red-100 border-red-300 text-red-800"
+const PART_CELLS = [
+    "bg-amber-100 border-amber-300 text-amber-800",
+    "bg-indigo-100 border-indigo-300 text-indigo-800",
+    "bg-emerald-100 border-emerald-300 text-emerald-800",
+    "bg-sky-100 border-sky-300 text-sky-800",
+    "bg-violet-100 border-violet-300 text-violet-800",
+    "bg-rose-100 border-rose-300 text-rose-800"
+]
 
 export default class extends Controller {
     static targets = ["summary", "modal", "calendar", "monthLabel", "actionBar", "selectedCount", "multiButton", "modeBtn", "modeBanner"]
-    static values = { entries: Array, createUrl: String, mode: String, setModeUrl: String }
+    static values = { entries: Array, createUrl: String, mode: String, setModeUrl: String, dayParts: Array }
 
     connect() {
         this.entries = new Map((this.entriesValue || []).map(e => [e.date, e.scope]))
+        this.dayParts = this.hasDayPartsValue ? this.dayPartsValue : []
         this.mode = this.modeValue || "unavailable"
         this.viewMonth = this.startOfMonth(new Date())
         this.multiMode = false
@@ -186,8 +194,22 @@ export default class extends Controller {
             <div class="mt-1 space-y-0.5">${rows}${extra}</div>`
     }
 
+    // "All day" / the region's name; an unknown key (a region an org has since
+    // renamed away) reads as its key.
+    scopeLabel(scope) {
+        if (scope === "all_day") return "All day"
+        const part = this.dayParts.find(p => p.key === scope)
+        return part ? part.name : String(scope || "").replace(/_/g, " ")
+    }
+
+    scopeCell(scope) {
+        if (scope === "all_day") return ALL_DAY_CELL
+        const index = this.dayParts.findIndex(p => p.key === scope)
+        return PART_CELLS[(index < 0 ? 0 : index) % PART_CELLS.length]
+    }
+
     summaryRow(d, scope) {
-        const label = (SCOPE_LABEL[scope] || "").toLowerCase()
+        const label = this.scopeLabel(scope).toLowerCase()
         return `<div class="text-xs text-gray-600"><span class="font-medium text-gray-800">${this.fmtLong(d)}</span> <span class="text-gray-400">· ${label}</span></div>`
     }
 
@@ -212,10 +234,10 @@ export default class extends Controller {
             let cls
             if (past) cls = `${base} bg-gray-50 border-gray-100 text-gray-300`
             else if (selected) cls = `${base} bg-pink-500 border-pink-500 text-white cursor-pointer`
-            else if (scope) cls = `${base} ${SCOPE_CELL[scope]} cursor-pointer`
+            else if (scope) cls = `${base} ${this.scopeCell(scope)} cursor-pointer`
             else cls = `${base} bg-white border-gray-200 text-gray-700 hover:border-pink-300 cursor-pointer`
 
-            const label = (!selected && scope) ? `<span class="text-[9px] leading-tight">${SCOPE_LABEL[scope]}</span>` : ""
+            const label = (!selected && scope) ? `<span class="text-[9px] leading-tight">${this.scopeLabel(scope)}</span>` : ""
             const action = past ? "" : `data-action="click->unavailability#dayClick" data-date="${ds}"`
             cells += `<div class="${cls}" ${action}><span class="font-medium">${day}</span>${label}</div>`
         }
@@ -238,17 +260,13 @@ export default class extends Controller {
         if (this.hasSelectedCountTarget) {
             this.selectedCountTarget.textContent = `${n} day${n === 1 ? "" : "s"} selected — mark as:`
         }
-        // Pluralize Afternoon/Evening when more than one day is selected.
+        // Pluralize the region ("Evenings") when more than one day is selected.
         const plural = n > 1
         const verb = this.available ? "Available" : "Unavailable"
-        const labels = {
-            all_day: `${verb} All Day`,
-            day_shifts: `${verb} Afternoon${plural ? "s" : ""}`,
-            evening_shifts: `${verb} Evening${plural ? "s" : ""}`
-        }
         this.actionBarTarget.querySelectorAll("[data-scope]").forEach(btn => {
-            const label = labels[btn.dataset.scope]
-            if (label) btn.textContent = label
+            const scope = btn.dataset.scope
+            if (scope === "all_day") btn.textContent = `${verb} All Day`
+            else if (scope !== "clear") btn.textContent = `${verb} ${btn.dataset.name || this.scopeLabel(scope)}${plural ? "s" : ""}`
         })
     }
 

@@ -8,10 +8,10 @@ module Manage
     # agreement-template CRUD lives in AgreementTemplatesController and
     # redirects back here), and who's hidden from the Pay People grid.
     class SettingsController < Manage::ManageController
-      SECTIONS = %w[agreements pay_people role_call regulars notifications].freeze
+      SECTIONS = %w[agreements pay_people role_call regulars work_times notifications].freeze
       SECTION_LABELS = { "agreements" => "Staff agreements", "pay_people" => "Pay People list",
                          "role_call" => "Role Call", "regulars" => "Regulars",
-                         "notifications" => "Notifications" }.freeze
+                         "work_times" => "Work times", "notifications" => "Notifications" }.freeze
       DEFAULT_SECTION = "agreements"
 
       before_action :set_section, only: %i[show]
@@ -32,6 +32,9 @@ module Manage
                                     .where(role_type: ::HouseRole.role_types[:show_specific]).ordered.to_a
         when "regulars"
           @regulars_rule_count = Current.organization.scheduling_rules.active.count
+        when "work_times"
+          @day_parts = Current.organization.staffing_day_parts_or_default
+          @day_parts_declared = Current.organization.staffing_day_parts_declared?
         when "notifications"
           @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
           @notification_selected_ids = Current.organization.staffing_notification_user_ids
@@ -50,6 +53,8 @@ module Manage
           update_role_call_roles
         elsif params[:updating_regulars].present?
           update_regulars_toggle
+        elsif params[:updating_work_times].present?
+          update_work_times
         elsif params[:updating_notifications].present?
           update_notification_recipients
         else
@@ -105,6 +110,28 @@ module Manage
         count = scope.where(excluded_from_pay: true).count
         redirect_to section_path("pay_people"),
                     notice: count.positive? ? "#{helpers.pluralize(count, 'person')} hidden from the Pay People list." : "Everyone shows on the Pay People list."
+      end
+
+      # Work times: the regions of the day staff mark availability by and shifts
+      # fall into (Morning 6–12, Evening 5–close…). The submitted rows are the
+      # whole list; blank rows are dropped, and clearing them all goes back to
+      # the app's default Afternoon/Evening. Marks staff already made keep
+      # their region key, so renaming a region's hours re-reads them; a region
+      # removed outright leaves those marks blocking nothing here.
+      def update_work_times
+        rows = params[:day_parts].respond_to?(:to_unsafe_h) ? params[:day_parts].to_unsafe_h : params[:day_parts]
+        errors = Current.organization.update_staffing_day_parts!(rows)
+        if errors.any?
+          @section = "work_times"
+          @day_parts = ::Organization.build_staffing_day_parts(rows).first
+          @day_parts = Current.organization.staffing_day_parts_or_default if @day_parts.empty?
+          @day_parts_declared = Current.organization.staffing_day_parts_declared?
+          flash.now[:alert] = errors.join(" ")
+          render :show, status: :unprocessable_entity
+        else
+          redirect_to section_path("work_times"),
+                      notice: Current.organization.staffing_day_parts_declared? ? "Work times saved." : "Back to the standard Afternoon and Evening."
+        end
       end
 
       # Role Call: when on, the scheduling page checks every show against the

@@ -16,6 +16,7 @@ module My
       # Person-scoped availability, so step 3 can open the same calendar modal
       # inline instead of bouncing to My Shifts.
       @availability_mode = @person.availability_mode || "unavailable"
+      @availability_day_parts = @person.staffing_day_parts
       @unavailability_entries = @person.staff_unavailabilities
                                        .where(date: Date.current.beginning_of_month..(Date.current + 12.months))
                                        .order(:date)

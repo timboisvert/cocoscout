@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1416,6 +1416,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_180000) do
     t.string "referral_source"
     t.bigint "required_staff_agreement_template_id"
     t.integer "signature_expiry_days", default: 14, null: false
+    t.jsonb "staffing_day_parts", default: [], null: false
     t.jsonb "staffing_notification_user_ids", default: [], null: false
     t.boolean "staffing_regulars_enabled", default: false, null: false
     t.string "staffing_subscription_id"
@@ -2770,6 +2771,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_180000) do
   create_table "staff_unavailabilities", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "date", null: false
+    t.string "day_part_key"
     t.bigint "person_id", null: false
     t.integer "scope", default: 0, null: false
     t.datetime "updated_at", null: false

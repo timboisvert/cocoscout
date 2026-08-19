@@ -171,6 +171,9 @@ module Manage
           entries: (entries_by_person[pid] || []).map { |u| { date: u.date.iso8601, scope: u.scope } }
         }
       end.transform_keys(&:to_s)
+      # The org's work time regions, so the client can tell which region a
+      # shift's start time falls in the same way Organization#staffing_day_part_for does.
+      @staffing_day_parts_payload = Current.organization.staffing_day_parts_or_default
 
       load_availability_overview
     end
@@ -516,7 +519,7 @@ module Manage
         {
           member: m,
           mode: m.person&.availability_mode || "unavailable",
-          entries: (future_by_person[m.person_id] || []).map { |u| { date: u.date, label: u.scope_label } }
+          entries: (future_by_person[m.person_id] || []).map { |u| { date: u.date, label: u.scope_label(Current.organization) } }
         }
       end
     end

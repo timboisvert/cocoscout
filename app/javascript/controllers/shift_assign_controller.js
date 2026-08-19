@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { dayPartFor, entryCovers } from "controllers/lib/day_parts"
 
 // Opens a modal for assigning staff to a specific shift. The available pool
 // per house role is embedded on the page as JSON; this controller filters it
@@ -18,6 +19,7 @@ export default class extends Controller {
         shiftTimes: Object,          // { "<shiftId>": { starts_at, ends_at, role, day, cast_date, time_range } }
         personBusy: Object,          // { "<personId>": ["<shiftId>", ...] }
         staffUnavailability: Object, // { "<personId>": [{ date: "YYYY-MM-DD", scope }, ...] }
+        dayParts: Array,             // the org's work time regions: [{ key, name, starts, ends }]
         castByDay: Object            // { "YYYY-MM-DD": { "<personId>": ["Show label", ...] } }
     }
 
@@ -34,7 +36,7 @@ export default class extends Controller {
         this.currentRoleName = roleName
         this.currentTimeRange = timeRange
 
-        // Derive the shift's date + day part (day/evening) from the times payload,
+        // Derive the shift's date + work time region from the times payload,
         // so we can flag people who marked themselves unavailable then.
         const times = (this.hasShiftTimesValue ? this.shiftTimesValue : {})[this.currentShiftId]
         if (times && times.starts_at) {
@@ -42,8 +44,7 @@ export default class extends Controller {
             // Cast lives on the schedule day (which can differ from the literal
             // start date when a shift crosses midnight); fall back to start date.
             this.currentCastDate = times.cast_date || this.currentShiftDate
-            const hour = parseInt(times.starts_at.slice(11, 13), 10)
-            this.currentDayPart = hour >= 17 ? "evening" : "day"
+            this.currentDayPart = dayPartFor(times.starts_at.slice(11, 16), this.hasDayPartsValue ? this.dayPartsValue : [])
         } else {
             this.currentShiftDate = null
             this.currentCastDate = null
@@ -106,12 +107,7 @@ export default class extends Controller {
         if (!data) return false
 
         const entries = data.entries || []
-        const covers = entries.some(e => {
-            if (e.date !== this.currentShiftDate) return false
-            return e.scope === "all_day" ||
-                   (e.scope === "day_shifts" && this.currentDayPart === "day") ||
-                   (e.scope === "evening_shifts" && this.currentDayPart === "evening")
-        })
+        const covers = entries.some(e => entryCovers(e, this.currentShiftDate, this.currentDayPart))
         return data.mode === "available" ? !covers : covers
     }
 

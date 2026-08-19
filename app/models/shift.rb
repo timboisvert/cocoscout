@@ -78,9 +78,11 @@ class Shift < ApplicationRecord
     assigned_count >= required_count
   end
 
-  # :day or :evening, used to match against staff unavailability scopes.
+  # The key of the organization's work time region this shift starts in
+  # ("evening"), matched against staff unavailability marks; nil in a gap
+  # between regions.
   def day_part
-    StaffUnavailability.day_part_for(starts_at)
+    organization.staffing_day_part_for(starts_at)
   end
 
   private

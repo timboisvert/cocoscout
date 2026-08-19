@@ -5,6 +5,7 @@ class Organization < ApplicationRecord
   # Payee-side Stripe Connect state, so an org can receive its own money (leftover
   # course revenue CocoScout holds) to its bank — same rail as Person/Contractor.
   include StripeConnectable
+  include StaffingDayParts
 
   belongs_to :owner, class_name: "User"
   belongs_to :organization_talent_pool, class_name: "TalentPool", optional: true

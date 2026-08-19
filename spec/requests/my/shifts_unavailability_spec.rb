@@ -17,12 +17,12 @@ RSpec.describe "My::Shifts unavailability", type: :request do
   describe "POST /my/shifts/unavailability" do
     it "sets unavailability for a batch of dates" do
       dates = %w[2026-06-10 2026-06-11 2026-06-12]
-      post my_create_shift_unavailability_path, params: { dates: dates, scope: "day_shifts" }, as: :json
+      post my_create_shift_unavailability_path, params: { dates: dates, scope: "afternoon" }, as: :json
 
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)["ok"]).to be(true)
       expect(person.staff_unavailabilities.pluck(:date).map(&:to_s)).to match_array(dates)
-      expect(person.staff_unavailabilities.pluck(:scope).uniq).to eq([ "day_shifts" ])
+      expect(person.staff_unavailabilities.map(&:scope).uniq).to eq([ "afternoon" ])
     end
 
     it "accepts a single date param" do
@@ -33,10 +33,10 @@ RSpec.describe "My::Shifts unavailability", type: :request do
 
     it "updates the scope of an existing date instead of duplicating" do
       create(:staff_unavailability, person: person, date: Date.new(2026, 6, 20), scope: :all_day)
-      post my_create_shift_unavailability_path, params: { dates: [ "2026-06-20" ], scope: "evening_shifts" }, as: :json
+      post my_create_shift_unavailability_path, params: { dates: [ "2026-06-20" ], scope: "evening" }, as: :json
 
       expect(person.staff_unavailabilities.where(date: "2026-06-20").count).to eq(1)
-      expect(person.staff_unavailabilities.find_by(date: "2026-06-20").scope).to eq("evening_shifts")
+      expect(person.staff_unavailabilities.find_by(date: "2026-06-20").scope).to eq("evening")
     end
 
     it "clears unavailability for the given dates" do

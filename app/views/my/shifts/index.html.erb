@@ -16,6 +16,7 @@
      data-unavailability-entries-value="<%= @unavailability_entries.to_json %>"
      data-unavailability-create-url-value="<%= my_create_shift_unavailability_path %>"
      data-unavailability-mode-value="<%= @availability_mode %>"
+     data-unavailability-day-parts-value="<%= @availability_day_parts.to_json %>"
      data-unavailability-set-mode-url-value="<%= my_set_shift_availability_mode_path %>">
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
