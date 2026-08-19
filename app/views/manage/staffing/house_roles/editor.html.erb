@@ -4,7 +4,8 @@
       <% @house_roles.each do |role| %>
         <div class="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2"
              data-role-id="<%= role.id %>" data-role-name="<%= role.name %>"
-             data-role-default-rate="<%= role.default_hourly_rate_dollars ? format("%.2f", role.default_hourly_rate_dollars) : "" %>">
+             data-role-default-rate="<%= (d = role.flat? ? role.default_flat_rate_dollars : role.default_hourly_rate_dollars) ? format("%.2f", d) : "" %>"
+             data-role-unit="<%= role.flat? ? "/shift" : "/hr" %>">
           <span class="text-sm text-gray-900 flex items-center gap-2">
             <%= role.name %>
             <% if role.show_specific? %><span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">Per-show</span><% end %>

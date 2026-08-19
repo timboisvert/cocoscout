@@ -1,7 +1,10 @@
 <%# Role assignments WITH a per-role pay rate. Each role the person can fill has
-    its own hourly rate. A role can carry a default hourly pay, which pre-fills an
-    assigned person's rate here (still overridable per person) and shows as the
-    placeholder otherwise. Submits house_role_ids[] and role_rates[<id>]. A
+    its own rate — per hour, or per shift for a flat-pay role (HouseRole#flat?);
+    the field honours whichever the role uses. A role can carry a default pay,
+    which pre-fills an assigned person's rate here (still overridable per
+    person) and shows as the placeholder otherwise. Submits house_role_ids[] and
+    role_rates[<id>] (OrganizationStaffMember#sync_role_qualifications! files a
+    flat role's rate as its per-shift amount). A
     "Manage roles" modal (Turbo-frame) adds/removes house roles without leaving
     the page; new roles sync into the list when it closes.
     Locals: house_roles, assigned_ids (array of ids). Optional: role_rates. %>
@@ -12,13 +15,14 @@
 <% if house_roles.empty? %>
   <p class="text-sm text-gray-500 mb-3" id="staff-roles-empty">No roles yet — add some so you can mark what this person is qualified for and what they earn in each.</p>
 <% end %>
-<p class="text-xs text-gray-500 mb-2">Check each role they can work and set the hourly rate for it. They're paid the rate for whichever role they work.</p>
+<p class="text-xs text-gray-500 mb-2">Check each role they can work and set the rate for it — per hour, or per shift for a flat-pay role. They're paid the rate for whichever role they work.</p>
 <div id="staff-roles-list" data-rate-placeholder="<%= rate_placeholder %>" class="space-y-2">
   <% house_roles.each do |role| %>
     <%
       assigned = assigned_ids.include?(role.id)
       own_rate = role_rates[role.id]
-      role_default = role.default_hourly_rate_dollars
+      role_default = role.flat? ? role.default_flat_rate_dollars : role.default_hourly_rate_dollars
+      unit = role.flat? ? "/shift" : "/hr"
       # Show the person's own rate; otherwise seed an assigned role with its
       # default so it "shows up" when you set them up. Unassigned rows stay blank
       # with the default shown as the placeholder.
@@ -31,13 +35,14 @@
     %>
     <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer"
            data-role-row data-role-id="<%= role.id %>"
-           data-role-default-rate="<%= role_default ? format("%.2f", role_default) : "" %>">
+           data-role-default-rate="<%= role_default ? format("%.2f", role_default) : "" %>"
+           data-role-unit="<%= unit %>">
       <input type="checkbox" name="house_role_ids[]" value="<%= role.id %>" <%= "checked" if assigned %>
              data-role-checkbox class="h-4 w-4 rounded border-gray-300 accent-pink-500">
       <span class="flex-1 min-w-0">
         <span class="block text-sm font-medium text-gray-800 truncate"><%= role.name %></span>
         <% if role_default %>
-          <span class="block text-xs text-gray-400">Role default $<%= format("%.2f", role_default) %>/hr</span>
+          <span class="block text-xs text-gray-400">Role default $<%= format("%.2f", role_default) %><%= unit %></span>
         <% end %>
       </span>
       <div class="relative w-28 flex-shrink-0">
@@ -45,7 +50,7 @@
         <input type="text" inputmode="decimal" name="role_rates[<%= role.id %>]"
                value="<%= field_value %>" placeholder="<%= placeholder %>"
                data-role-rate class="w-full pl-5 pr-8 py-1.5 border border-gray-200 rounded text-right text-sm focus:outline-none focus:ring-1 focus:ring-pink-300">
-        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">/hr</span>
+        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs"><%= unit %></span>
       </div>
     </label>
   <% end %>

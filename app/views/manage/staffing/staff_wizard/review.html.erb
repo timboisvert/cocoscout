@@ -29,7 +29,7 @@
               <% rate = role_rates[role.id].to_s.delete("$,").strip.presence %>
               <div class="flex items-center justify-between gap-4">
                 <span><%= role.name %></span>
-                <span class="text-gray-600"><%= rate ? "#{number_to_currency(rate.to_f)}/hr" : "no rate set" %></span>
+                <span class="text-gray-600"><%= rate ? "#{number_to_currency(rate.to_f)}#{role.flat? ? '/shift' : '/hr'}" : "no rate set" %></span>
               </div>
             <% end %>
           </div>

@@ -118,9 +118,12 @@
         <div data-staff-edit-target="panel" data-panel="roles" class="hidden space-y-5">
           <div>
             <h2 class="text-lg font-semibold text-gray-900">Roles &amp; pay</h2>
-            <p class="text-sm text-gray-500 mt-0.5">The roles they can work and the hourly rate for each.</p>
+            <p class="text-sm text-gray-500 mt-0.5">The roles they can work and the rate for each — per hour, or per shift for a flat-pay role.</p>
           </div>
-          <% role_rates = @staff_member.staff_role_qualifications.each_with_object({}) { |q, h| h[q.house_role_id] = q.hourly_rate_dollars } %>
+          <%# A flat role's rate is its per-shift amount; an hourly role's is its hourly rate. %>
+          <% role_rates = @staff_member.staff_role_qualifications.includes(:house_role).each_with_object({}) do |q, h|
+               h[q.house_role_id] = q.house_role&.flat? ? q.flat_rate_dollars : q.hourly_rate_dollars
+             end %>
           <%# Sentinel so this form ALWAYS submits house_role_ids — lets "uncheck all" clear roles, %>
           <%# and lets the controller tell a full save apart from a partial (exempt-toggle) save. %>
           <%= hidden_field_tag "house_role_ids[]", "" %>

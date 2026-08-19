@@ -12,4 +12,9 @@ class StaffRoleQualification < ApplicationRecord
   def hourly_rate_dollars
     hourly_rate_cents ? hourly_rate_cents / 100.0 : nil
   end
+
+  # This person's per-shift amount for a flat-pay role (see HouseRole#flat?).
+  def flat_rate_dollars
+    flat_rate_cents ? flat_rate_cents / 100.0 : nil
+  end
 end
