@@ -9,6 +9,37 @@ RSpec.describe "My::Dashboard", type: :request do
 
   before { post handle_signin_path, params: { email_address: user.email_address, password: password } }
 
+  describe "contracts waiting on your signature" do
+    let!(:org) { create(:organization, :pro, name: "Stars & Garters") }
+    let!(:contractor) { create(:contractor, organization: org, person: person) }
+    let!(:production) { create(:production, organization: org, production_type: "third_party", name: "Random Memory") }
+
+    def send_it!(contract)
+      contract.update!(signing_state: :awaiting_send)
+      contract.send_for_signature!
+    end
+
+    it "nudges with a Review & sign panel that opens the signing page" do
+      contract = create(:contract, organization: org, production: production, contractor: contractor, signing_mode: :esign)
+      send_it!(contract)
+
+      get my_dashboard_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Signature required")
+      expect(response.body).to include("Random Memory")
+      expect(response.body).to include("Stars &amp; Garters needs you to review and sign this contract.")
+      expect(response.body).to include(sign_contract_path(token: contract.reload.signing_token))
+    end
+
+    it "says nothing about contracts that aren't in their court" do
+      create(:contract, organization: org, production: production, contractor: contractor, signing_mode: :esign) # still a draft
+      create(:contract, :active, organization: org, production: production, contractor: contractor, signing_state: :executed)
+
+      get my_dashboard_path
+      expect(response.body).not_to include("Signature required")
+    end
+  end
+
   describe "staff onboarding prompts" do
     it "prompts to finish onboarding for an incomplete staff position, linking to that org's onboarding" do
       org = create(:organization, :pro)

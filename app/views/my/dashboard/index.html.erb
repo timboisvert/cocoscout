@@ -74,6 +74,15 @@
   <!-- Pending Vacancy Invitations -->
   <%= render "my/vacancy_invitation_alerts", invitations: @pending_vacancy_invitations %>
 
+  <!-- Contracts waiting on your signature -->
+  <% @contracts_awaiting_signature.each do |contract| %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Signature required",
+          headline: contract.production_name.presence || contract.production&.name.presence || contract.contractor_name,
+          body: "#{contract.organization.name} needs you to review and sign this contract.",
+          actions: [ { text: "Review & sign", path: sign_contract_path(token: contract.signing_token) } ] %>
+  <% end %>
+
   <!-- Pending Agreement Signatures -->
   <% @pending_agreements.each do |production| %>
     <%= render "shared/alert_panel",

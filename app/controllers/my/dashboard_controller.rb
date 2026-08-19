@@ -372,6 +372,12 @@ module My
         .includes(role_vacancy: [ :role, { show: :production } ])
         .order("shows.date_and_time ASC")
 
+      # Contracts the org has signed and sent, waiting on this person's signature.
+      @contracts_awaiting_signature = Contract.awaiting_signature_of(people_ids)
+        .includes(:organization)
+        .order(:created_at)
+        .to_a
+
       # Pending agreement signatures
       @pending_agreements = @productions
         .select(&:agreement_required?)
