@@ -50,6 +50,23 @@ RSpec.describe "Manage::Contracts hub and All Contracts", type: :request do
       expect(body).not_to include("Active Contracts")
     end
 
+    it "leads with a contract that has a payment overdue, whatever month it fell in" do
+      old_active.contract_payments.create!(description: "Rent", amount: 500, direction: "incoming", due_date: 3.months.ago.to_date)
+      old_active.contract_payments.create!(description: "Rent", amount: 500, direction: "incoming", due_date: 2.months.ago.to_date)
+      old_active.contract_payments.create!(description: "Rent", amount: 500, direction: "incoming", due_date: 1.month.from_now.to_date)
+
+      get manage_contracts_path
+      body = response.body
+      # The Overdue tile carries the amount owed to us
+      expect(body).to include("Overdue")
+      expect(body).to include("$1,000.00")
+      expect(body).to include("2 payments past due")
+      expect(body).to include("Old Reliable").and include("2 payments overdue")
+      expect(body.index("Old Reliable")).to be < body.index("Waiting Room")
+      # The old banner is gone — the list is the warning now
+      expect(body).not_to include("use the month arrows")
+    end
+
     it "shows an amendment waiting on a signature" do
       template = org.contract_templates.create!(name: "T", content: "<p>{{production_name}}</p>")
       old_active.update!(signing_mode: :esign, contract_template: template)

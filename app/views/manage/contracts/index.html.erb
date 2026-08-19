@@ -27,7 +27,7 @@
 
   <div class="border-t border-gray-200 pt-4 mt-2">
   <%# Contract Stats %>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-lg border border-gray-200 p-5">
       <div class="text-sm text-gray-500 mb-1">Received This Year</div>
       <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(@money_received) %></div>
@@ -40,6 +40,20 @@
       <div class="text-xs text-gray-500">pending incoming payments</div>
     </div>
 
+    <%# Overdue wears red while there's anything late, plain white when there isn't. %>
+    <% overdue_any = @overdue_count.to_i.positive? %>
+    <div class="rounded-lg border p-5 <%= overdue_any ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200' %>">
+      <div class="text-sm text-gray-500 mb-1">Overdue</div>
+      <div class="text-2xl font-semibold <%= overdue_any ? 'text-red-600' : 'text-gray-400' %> tabular-nums"><%= number_to_currency(@overdue_incoming) %></div>
+      <% if overdue_any %>
+        <div class="text-xs text-gray-500">
+          <%= pluralize(@overdue_count, "payment") %> past due<% if @overdue_outgoing.to_f.positive? %> · <%= number_to_currency(@overdue_outgoing, precision: 0) %> you owe<% end %>
+        </div>
+      <% else %>
+        <div class="text-xs text-gray-500">nothing past due</div>
+      <% end %>
+    </div>
+
     <div class="bg-white rounded-lg border border-gray-200 p-5">
       <div class="text-sm text-gray-500 mb-1"><%= Date.current.year %> Contracts</div>
       <div class="text-2xl font-semibold <%= (@contracts_made - @contracts_cost) >= 0 ? 'text-gray-900' : 'text-red-600' %> tabular-nums"><%= number_to_currency(@contracts_made - @contracts_cost) %></div>
@@ -48,18 +62,9 @@
     </div>
   </div>
 
-  <%# Persistent warning for any overdue payments (they may sit in a past month) %>
-  <% if @late_payments_count > 0 %>
-    <div class="flex items-center gap-2 px-4 py-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
-      <%= icon("alert-circle", class: "w-4 h-4 flex-shrink-0") %>
-      <span>
-        <strong><%= pluralize(@late_payments_count, "payment") %></strong> overdue. Late payments are marked in red on the calendar — use the month arrows to find them.
-      </span>
-    </div>
-  <% end %>
-
-  <%# What's in motion — waiting on a signature, drafts, signed lately. The
-      whole book is one click away on All Contracts; the hub isn't a list. %>
+  <%# What's in motion — a payment overdue, waiting on a signature, drafts,
+      signed lately. The whole book is one click away on All Contracts; the hub
+      isn't a list. %>
   <div class="mb-8">
     <div class="flex items-baseline justify-between gap-3 mb-3">
       <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
@@ -68,7 +73,7 @@
           <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= @in_motion_contracts.size %>)</span>
         <% end %>
       </h3>
-      <span class="text-sm text-gray-500 normal-case tracking-normal">Out for signature, drafts, and anything signed in the last <%= Manage::ContractsController::RECENTLY_SIGNED_WINDOW.inspect %></span>
+      <span class="text-sm text-gray-500 normal-case tracking-normal">Overdue payments, out for signature, drafts, and anything signed in the last <%= Manage::ContractsController::RECENTLY_SIGNED_WINDOW.inspect %></span>
     </div>
     <% if @in_motion_contracts.any? %>
       <%= render "contract_slim_list", contracts: @in_motion_contracts, badges: @in_motion_badges %>
@@ -78,7 +83,7 @@
           <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-600 flex-shrink-0">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
           </span>
-          <p class="text-sm text-gray-600">Nothing in motion — no drafts, nothing out for signature.</p>
+          <p class="text-sm text-gray-600">Nothing in motion — no overdue payments, no drafts, nothing out for signature.</p>
         </div>
         <%= link_to "All contracts", all_manage_contracts_path, class: "text-sm text-pink-600 hover:text-pink-700 flex-shrink-0" %>
       </div>

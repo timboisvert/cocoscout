@@ -141,15 +141,6 @@ module Manage
 
       @calendar_items_by_date.each_value { |items| items.sort_by! { |i| i[:sort_key] } }
 
-      # Count of overdue payments across all months (may fall outside the visible
-      # month) so we can surface a persistent late-payments warning.
-      @late_payments_count = ContractPayment
-        .joins(:contract)
-        .where(contracts: { organization_id: Current.organization.id, status: "active" })
-        .where(status: "pending")
-        .where("due_date < ?", Date.current)
-        .count
-
       # Contract stats for this year
       year_start = Date.current.beginning_of_year
       year_end = Date.current.end_of_year
@@ -173,6 +164,17 @@ module Manage
         .where(status: "pending")
         .where.not(amount: nil)
         .sum(:amount)
+
+      # Overdue: pending payments past their due date on active contracts,
+      # whatever month they fell in — what's owed to us, and what we owe them.
+      overdue_payments = ContractPayment
+        .joins(:contract)
+        .where(contracts: { organization_id: Current.organization.id, status: "active" })
+        .where(status: "pending")
+        .where("due_date < ?", Date.current)
+      @overdue_incoming = overdue_payments.where(direction: "incoming").where.not(amount: nil).sum(:amount)
+      @overdue_outgoing = overdue_payments.where(direction: "outgoing").where.not(amount: nil).sum(:amount)
+      @overdue_count = overdue_payments.count
 
       # What this year's contracts made vs cost us (gross model — ticket revenue
       # counts as made for our-sale deals, contractor shares as cost; flat deals
@@ -646,11 +648,12 @@ module Manage
 
     private
 
-    # The hub's "in motion" list, in the order they want attention: waiting on a
-    # signature (out for signature, ready to send, an amendment staged), then
-    # drafts newest first, then contracts signed or activated within
-    # RECENTLY_SIGNED_WINDOW, newest first. @in_motion_badges carries the
-    # per-contract state label for the active ones (drafts badge themselves).
+    # The hub's "in motion" list, in the order they want attention: a payment
+    # overdue (whatever month it fell in), then waiting on a signature (out for
+    # signature, ready to send, an amendment staged), then drafts newest first,
+    # then contracts signed or activated within RECENTLY_SIGNED_WINDOW, newest
+    # first. @in_motion_badges carries the per-contract state label for the
+    # active ones (drafts badge themselves).
     def load_in_motion_contracts
       since = RECENTLY_SIGNED_WINDOW.ago
       actives = @active_contracts.includes(:contract_versions).to_a
@@ -665,13 +668,22 @@ module Manage
       waiting_drafts.sort_by! { |c| c.signing_out_for_signature? ? 0 : 1 }
       other_drafts.sort_by! { |c| -c.created_at.to_i }
 
-      amending = actives.select(&:amendment_pending?)
-      recent = (actives - amending).filter_map do |c|
+      late = actives.filter_map do |c|
+        overdue = c.contract_payments.select { |p| p.status_pending? && p.overdue? }
+        [ c, overdue ] if overdue.any?
+      end.sort_by { |_, overdue| overdue.map(&:due_date).min }
+      late_contracts = late.map(&:first)
+
+      amending = (actives - late_contracts).select(&:amendment_pending?)
+      recent = (actives - late_contracts - amending).filter_map do |c|
         signed_at = [ c.executed_at, c.activated_at, c.contract_versions.filter_map(&:executed_at).max ].compact.max
         [ c, signed_at ] if signed_at && signed_at >= since
       end.sort_by { |_, at| -at.to_i }
 
       @in_motion_badges = {}
+      late.each do |c, overdue|
+        @in_motion_badges[c.id] = { text: overdue.size == 1 ? "Payment overdue" : "#{overdue.size} payments overdue", color: "red" }
+      end
       amending.each do |c|
         @in_motion_badges[c.id] = c.signing_out_for_signature? ? { text: "Amendment out for signature", color: "amber" } : { text: "Amendment ready to send", color: "blue" }
       end
@@ -680,7 +692,7 @@ module Manage
         @in_motion_badges[c.id] = { text: "#{verb} #{helpers.time_ago_in_words(at)} ago", color: "green" }
       end
 
-      @in_motion_contracts = waiting_drafts + amending + other_drafts + recent.map(&:first)
+      @in_motion_contracts = late_contracts + waiting_drafts + amending + other_drafts + recent.map(&:first)
     end
 
     # Needs a signature, so nothing goes live. The version carries the proposed
