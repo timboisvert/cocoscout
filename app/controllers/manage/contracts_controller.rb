@@ -697,11 +697,17 @@ module Manage
     # then contracts signed or activated within RECENTLY_SIGNED_WINDOW, newest
     # first. @in_motion_badges carries the per-contract state label for the
     # active ones (drafts badge themselves).
-    # The dates on the contract plus the rooms each of their venues offers. The
-    # spaces come off the contract's own rentals, so nothing here can be pointed
-    # at another org's venue by a crafted id.
+    # The contract's upcoming dates plus the rooms each of their venues offers.
+    # A night that's already happened was in the room it was in — moving it now
+    # would only rewrite history, so it isn't offered (and, since the POST reads
+    # the same list, can't be posted either).
+    #
+    # The spaces come off the contract's own rentals, so nothing here can be
+    # pointed at another org's venue by a crafted id.
     def load_space_amendment
-      @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
+      all_rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
+      @rentals = all_rentals.select { |r| r.starts_at >= Time.current }
+      @past_rental_count = all_rentals.size - @rentals.size
       @spaces_by_location = @rentals.filter_map(&:location).uniq.each_with_object({}) do |location, out|
         out[location.id] = location.location_spaces.by_name.to_a
       end

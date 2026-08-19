@@ -139,6 +139,40 @@ RSpec.describe "Contracts — change the room", type: :request do
     end
   end
 
+  # A night that's already happened was in the room it was in.
+  describe "dates that have already happened" do
+    let(:past) { 2.weeks.ago.change(hour: 20) }
+
+    it "aren't listed" do
+      booked_date!(past)
+      booked_date!(future)
+
+      get amend_space_manage_contract_path(contract)
+
+      expect(response.body).to include(future.strftime("%A, %b %-d, %Y"))
+      expect(response.body).not_to include(past.strftime("%A, %b %-d, %Y"))
+    end
+
+    it "can't be moved even if one is posted" do
+      rental, show = booked_date!(past)
+
+      post apply_amend_space_manage_contract_path(contract),
+           params: { spaces: { rental.id.to_s => cabaret.id.to_s } }
+
+      expect(rental.reload.location_space_id).to eq(mainstage.id)
+      expect(show.reload.location_space_id).to eq(mainstage.id)
+      expect(flash[:notice]).to eq("No room changes to make.")
+    end
+
+    it "says so when the whole contract is behind us" do
+      booked_date!(past)
+
+      get amend_space_manage_contract_path(contract)
+
+      expect(response.body).to include("Every date on this contract has already happened")
+    end
+  end
+
   # A crafted id from another venue mustn't quietly read as "entire venue".
   it "ignores a room that isn't one of this venue's" do
     other_location = create(:location, organization: org)

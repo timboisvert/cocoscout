@@ -1,7 +1,10 @@
 <%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Change the room", width: "max-w-3xl" } do %>
-    <p class="text-gray-600 mb-6">
+    <p class="text-gray-600 mb-2">
       Same nights, same deal — a different space at the same venue. Nothing about the money or the
       contract changes, so there's nothing to re-sign.
+    </p>
+    <p class="text-sm text-gray-500 mb-6">
+      Only nights still to come. A show that's already happened was in the room it was in.
     </p>
 
     <% if @conflicts.any? %>
@@ -32,7 +35,7 @@
           <div class="flex items-end justify-between gap-4 flex-wrap mb-3">
             <div>
               <p class="font-semibold text-gray-900"><%= location&.name || "No venue" %></p>
-              <p class="text-xs text-gray-500"><%= pluralize(rentals.size, "date") %> on this contract</p>
+              <p class="text-xs text-gray-500"><%= pluralize(rentals.size, "date") %> still to come</p>
             </div>
 
             <% if spaces.any? && rentals.size > 1 %>
@@ -66,7 +69,6 @@
             <% rentals.each do |rental| %>
               <%
                 current = @selected.key?(rental.id) ? @selected[rental.id] : rental.location_space_id
-                past = rental.starts_at < Time.current
                 clashing = @conflicts.any? { |c| c[:rental].id == rental.id }
               %>
               <div class="border <%= clashing ? "border-amber-300 bg-amber-50/50" : "border-gray-200 bg-gray-50" %> rounded-lg p-4">
@@ -76,10 +78,7 @@
                       <%= rental.starts_at.strftime("%A, %b %-d, %Y") %>
                       <span class="text-gray-400 font-normal">· <%= rental.starts_at.strftime("%-l:%M %p") %>–<%= rental.ends_at.strftime("%-l:%M %p") %></span>
                     </p>
-                    <p class="text-xs text-gray-500 mt-0.5">
-                      Currently in <%= rental.space_name %>
-                      <% if past %><span class="text-gray-400">· already happened</span><% end %>
-                    </p>
+                    <p class="text-xs text-gray-500 mt-0.5">Currently in <%= rental.space_name %></p>
                   </div>
 
                   <div class="flex-shrink-0">
@@ -101,7 +100,13 @@
       <% end %>
 
       <% if @rentals.empty? %>
-        <p class="text-sm text-gray-500">This contract has no dates on it yet.</p>
+        <p class="text-sm text-gray-500">
+          <% if @past_rental_count.positive? %>
+            Every date on this contract has already happened, so there's no room left to change.
+          <% else %>
+            This contract has no dates on it yet.
+          <% end %>
+        </p>
       <% end %>
 
       <div class="flex items-center justify-between gap-3 mt-6 flex-wrap">
