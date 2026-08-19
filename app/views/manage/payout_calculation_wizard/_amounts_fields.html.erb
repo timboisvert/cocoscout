@@ -73,6 +73,16 @@
   end
   role_amounts = [ { "name" => "", "amount" => "" } ] if role_amounts.empty?
   role_stacking = PayoutScheme.role_stacking(dist)
+  whole = ->(v) { v.is_a?(Float) && v == v.to_i ? v.to_i : v }
+  # The all-in figure(s) for a role holder who also performs (stacking "flat"
+  # / "table"). Both panels always render so switching the radio reveals a
+  # sensible starting point.
+  role_with_acts_amount = whole.call(PayoutScheme.role_with_acts_amount(dist))
+  role_with_acts_amount = "" if role_with_acts_amount.to_f.zero? && role_stacking != "flat"
+  role_with_acts_tiers = PayoutScheme.role_with_acts_tiers(dist).map { |t| t.transform_values { |v| whole.call(v) } }
+  role_with_acts_tiers = [ { "acts" => 1, "amount" => "" }, { "acts" => 2, "amount" => "" }, { "acts" => 3, "amount" => "" } ] if role_with_acts_tiers.empty?
+  role_with_acts_additional_rate = dist["role_with_acts_additional_rate"]
+  role_with_acts_additional_rate = whole.call(role_with_acts_additional_rate.to_f) if role_with_acts_additional_rate.present?
 
   # The x that removes a tier row. Same button in the rendered rows and in the
   # <template> the controller clones for new ones.
@@ -184,7 +194,7 @@
       <p class="block text-sm font-medium text-gray-900 mb-1">Act table</p>
       <p class="text-xs text-gray-500 mb-3">Each row is the total someone is paid for doing that many acts.</p>
 
-      <div data-payout-calculation-amounts-target="actTiersList" class="space-y-2">
+      <div data-payout-calculation-amounts-target="actTiersList" data-list="act" class="space-y-2">
         <% act_tiers.each_with_index do |tier, index| %>
           <div class="<%= row_classes %>" data-payout-calculation-amounts-target="actTierRow">
             <input type="number" name="distribution[tiers][<%= index %>][acts]" value="<%= tier['acts'] %>" min="1" step="1"
@@ -213,7 +223,7 @@
 
       <div class="mt-3">
         <%= render "shared/button", text: "Add a row", variant: "secondary", size: "small", type: :button, icon: "plus",
-              data: { action: "click->payout-calculation-amounts#addActTier" } %>
+              data: { action: "click->payout-calculation-amounts#addActTier", list: "act" } %>
       </div>
 
       <div class="mt-4 pt-4 border-t border-gray-200">
@@ -261,27 +271,103 @@
         <p class="block text-sm font-medium text-gray-900 mb-2">If someone holds a show role and also performs acts, they're paid</p>
         <div class="space-y-2">
           <label class="<%= option_card %>">
-            <input type="radio" name="distribution[role_stacking]" value="both" <%= "checked" if role_stacking == "both" %> class="<%= radio_classes %>">
+            <input type="radio" name="distribution[role_stacking]" value="both" <%= "checked" if role_stacking == "both" %>
+                   data-action="change->payout-calculation-amounts#updateRoleStacking" class="<%= radio_classes %>">
             <div>
               <div class="font-medium text-gray-900">Both</div>
               <div class="text-sm text-gray-500">The role amount plus whatever their acts pay. An MC who also dances one act gets the MC amount and the one-act rate.</div>
             </div>
           </label>
           <label class="<%= option_card %>">
-            <input type="radio" name="distribution[role_stacking]" value="role_only" <%= "checked" if role_stacking == "role_only" %> class="<%= radio_classes %>">
+            <input type="radio" name="distribution[role_stacking]" value="role_only" <%= "checked" if role_stacking == "role_only" %>
+                   data-action="change->payout-calculation-amounts#updateRoleStacking" class="<%= radio_classes %>">
             <div>
               <div class="font-medium text-gray-900">The role amount only</div>
               <div class="text-sm text-gray-500">Their acts aren't paid on top.</div>
             </div>
           </label>
           <label class="<%= option_card %>">
-            <input type="radio" name="distribution[role_stacking]" value="higher" <%= "checked" if role_stacking == "higher" %> class="<%= radio_classes %>">
+            <input type="radio" name="distribution[role_stacking]" value="higher" <%= "checked" if role_stacking == "higher" %>
+                   data-action="change->payout-calculation-amounts#updateRoleStacking" class="<%= radio_classes %>">
             <div>
               <div class="font-medium text-gray-900">Whichever is higher</div>
               <div class="text-sm text-gray-500">The role amount or their act pay — not both.</div>
             </div>
           </label>
+          <label class="<%= option_card %>">
+            <input type="radio" name="distribution[role_stacking]" value="flat" <%= "checked" if role_stacking == "flat" %>
+                   data-action="change->payout-calculation-amounts#updateRoleStacking" class="<%= radio_classes %>">
+            <div>
+              <div class="font-medium text-gray-900">A set amount, all in</div>
+              <div class="text-sm text-gray-500">One figure for the night when they hold the role and do at least one act, however many.</div>
+            </div>
+          </label>
+          <label class="<%= option_card %>">
+            <input type="radio" name="distribution[role_stacking]" value="table" <%= "checked" if role_stacking == "table" %>
+                   data-action="change->payout-calculation-amounts#updateRoleStacking" class="<%= radio_classes %>">
+            <div>
+              <div class="font-medium text-gray-900">Their own act table, all in</div>
+              <div class="text-sm text-gray-500">A table like the one above, just for role holders — each row the total for the role plus that many acts.</div>
+            </div>
+          </label>
         </div>
+
+        <div data-payout-calculation-amounts-target="roleStackingFlat" class="mt-3 <%= role_stacking == 'flat' ? '' : 'hidden' %>">
+          <label for="distribution_role_with_acts_amount" class="block text-sm font-medium text-gray-900 mb-1.5">A role holder who also performs is paid</label>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-500">$</span>
+            <input type="number" id="distribution_role_with_acts_amount" name="distribution[role_with_acts_amount]" value="<%= role_with_acts_amount %>" min="0" step="0.01" placeholder="0.00" class="<%= money_input %>">
+            <span class="text-sm text-gray-600">for the night</span>
+          </div>
+        </div>
+
+        <div data-payout-calculation-amounts-target="roleStackingTable" class="mt-3 <%= role_stacking == 'table' ? '' : 'hidden' %>">
+          <p class="block text-sm font-medium text-gray-900 mb-1">Role holder's act table</p>
+          <p class="text-xs text-gray-500 mb-3">Each row is the total a role holder is paid for the night when they also do that many acts.</p>
+
+          <div data-payout-calculation-amounts-target="roleActTiersList" data-list="roleActs" class="space-y-2">
+            <% role_with_acts_tiers.each_with_index do |tier, index| %>
+              <div class="<%= row_classes %>" data-payout-calculation-amounts-target="actTierRow">
+                <input type="number" name="distribution[role_with_acts_tiers][<%= index %>][acts]" value="<%= tier['acts'] %>" min="1" step="1"
+                       data-payout-calculation-amounts-target="actTierActs"
+                       data-action="input->payout-calculation-amounts#relabelActTiers"
+                       class="w-20 <%= input_classes %>">
+                <span class="text-sm text-gray-600 whitespace-nowrap w-16" data-payout-calculation-amounts-target="actTierLabel"><%= "act".pluralize(tier['acts'].to_i) %> &rarr;</span>
+                <span class="text-gray-500">$</span>
+                <input type="number" name="distribution[role_with_acts_tiers][<%= index %>][amount]" value="<%= tier['amount'] %>" min="0" step="0.01" placeholder="0.00" class="<%= money_input %>">
+                <%= remove_button.call("removeActTier") %>
+              </div>
+            <% end %>
+          </div>
+          <template data-payout-calculation-amounts-target="roleActTierTemplate">
+            <div class="<%= row_classes %>" data-payout-calculation-amounts-target="actTierRow">
+              <input type="number" name="distribution[role_with_acts_tiers][__INDEX__][acts]" value="1" min="1" step="1"
+                     data-payout-calculation-amounts-target="actTierActs"
+                     data-action="input->payout-calculation-amounts#relabelActTiers"
+                     class="w-20 <%= input_classes %>">
+              <span class="text-sm text-gray-600 whitespace-nowrap w-16" data-payout-calculation-amounts-target="actTierLabel">acts &rarr;</span>
+              <span class="text-gray-500">$</span>
+              <input type="number" name="distribution[role_with_acts_tiers][__INDEX__][amount]" value="0" min="0" step="0.01" class="<%= money_input %>">
+              <%= remove_button.call("removeActTier") %>
+            </div>
+          </template>
+
+          <div class="mt-3">
+            <%= render "shared/button", text: "Add a row", variant: "secondary", size: "small", type: :button, icon: "plus",
+                  data: { action: "click->payout-calculation-amounts#addActTier", list: "roleActs" } %>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <label for="distribution_role_with_acts_additional_rate" class="block text-sm font-medium text-gray-900 mb-1.5">Each act beyond that</label>
+            <div class="flex items-center gap-2">
+              <span class="text-gray-500">$</span>
+              <input type="number" id="distribution_role_with_acts_additional_rate" name="distribution[role_with_acts_additional_rate]" value="<%= role_with_acts_additional_rate %>" min="0" step="0.01" placeholder="0.00" class="<%= money_input %>">
+              <span class="text-sm text-gray-600">per act</span>
+            </div>
+            <p class="mt-1.5 text-xs text-gray-500">Added for every act past the last row. Leave it blank if the last row is the most a role holder is paid.</p>
+          </div>
+        </div>
+
         <p class="mt-2 text-xs text-gray-500">Someone with a show role and no acts is paid the role amount either way. A show role with no row above pays nothing from the role.</p>
       </div>
     </div>

@@ -446,6 +446,44 @@ RSpec.describe PayoutCalculator do
           expect(mc.calculation_details["formula"]).to eq("1 act (higher than MC)")
         end
 
+        it "pays one set amount, all in, for a role holder who also performs" do
+          flat = rules.deep_dup
+          flat["distribution"].merge!("role_stacking" => "flat", "role_with_acts_amount" => 150.0)
+
+          mc = line_for(calculate(flat), performer1)
+          expect(mc.amount.to_f).to eq(150.0)
+          expect(mc.calculation_details["formula"]).to eq("MC with 1 act (set amount)")
+          expect(mc.calculation_details["breakdown"].last).to eq("Show role holder with 1 act, all in: $150.00")
+          # Everyone without the role is unaffected
+          expect(line_for(calculate(flat), performer2).amount.to_f).to eq(75.0)
+        end
+
+        it "reads a role holder's own act table, all in, by how many acts they did" do
+          table = rules.deep_dup
+          table["distribution"].merge!(
+            "role_stacking" => "table",
+            "role_with_acts_tiers" => [ { "acts" => 1, "amount" => 120.0 }, { "acts" => 2, "amount" => 160.0 } ],
+            "role_with_acts_additional_rate" => 30.0
+          )
+
+          mc = line_for(calculate(table), performer1)
+          expect(mc.amount.to_f).to eq(120.0)
+          expect(mc.calculation_details["formula"]).to eq("MC with 1 act (role-holder table)")
+
+          # Past the last row each further act adds the beyond rate
+          counts = show.lineup_act_counts.merge(ShowPayout.act_key(performer1) => 4)
+          result = described_class.calculate(show: show, rules: table, act_counts: counts)
+          expect(line_for(result, performer1).amount.to_f).to eq(220.0)
+        end
+
+        it "still pays the role amount alone under flat or table when they did no acts" do
+          flat = rules.deep_dup
+          flat["distribution"].merge!("role_stacking" => "flat", "role_with_acts_amount" => 150.0)
+          counts = show.lineup_act_counts.merge(ShowPayout.act_key(performer1) => 0)
+          result = described_class.calculate(show: show, rules: flat, act_counts: counts)
+          expect(line_for(result, performer1).amount.to_f).to eq(100.0)
+        end
+
         it "pays act pay alone for a show role the calculation doesn't price, and says so" do
           line = line_for(calculate(rules), kitten)
           expect(line.amount.to_f).to eq(0.0)

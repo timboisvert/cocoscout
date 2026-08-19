@@ -12,8 +12,14 @@ export default class extends Controller {
         actRates: { type: Array, default: [] },
         additionalRate: { type: Number, default: 0 },
         // How a show role's pay (data-role-pay on the row) combines with act
-        // pay: both | role_only | higher (PayoutScheme::ROLE_STACKINGS).
-        stacking: { type: String, default: "both" }
+        // pay: both | role_only | higher | flat | table (PayoutScheme::ROLE_STACKINGS).
+        stacking: { type: String, default: "both" },
+        // The all-in figure(s) for a role holder who also performs — "flat"
+        // pays roleWithActsAmount, "table" reads roleWithActsTiers like the
+        // main tiers table.
+        roleWithActsAmount: { type: Number, default: 0 },
+        roleWithActsTiers: { type: Array, default: [] },
+        roleWithActsAdditionalRate: { type: Number, default: 0 }
     }
 
     connect() {
@@ -103,6 +109,10 @@ export default class extends Controller {
         const rolePay = Number(input.dataset.rolePay) || 0
         if (this.stackingValue === "role_only") return rolePay
         if (this.stackingValue === "higher") return Math.max(rolePay, actPay)
+        if (this.stackingValue === "flat") return count > 0 ? this.roleWithActsAmountValue : rolePay
+        if (this.stackingValue === "table") {
+            return count > 0 ? this.tierAmount(count, this.roleWithActsTiersValue, this.roleWithActsAdditionalRateValue) : rolePay
+        }
         return Math.round((rolePay + actPay) * 100) / 100
     }
 
@@ -125,10 +135,15 @@ export default class extends Controller {
             return Math.round(total * 100) / 100
         }
 
-        // Tiers: each row is the total for that many acts — take the highest
-        // row reached. Past the last row, every further act adds the beyond
-        // rate (when there is one).
-        const tiers = this.tiersValue
+        return this.tierAmount(count, this.tiersValue, this.additionalRateValue)
+    }
+
+    // Tiers: each row is the total for that many acts — take the highest row
+    // reached. Past the last row, every further act adds the beyond rate
+    // (when there is one). Shared by the main table and the role holder's.
+    tierAmount(count, rows, additionalRate) {
+        if (count <= 0) return 0
+        const tiers = rows
             .filter(tier => Number(tier.acts) > 0)
             .sort((a, b) => Number(a.acts) - Number(b.acts))
         const reached = tiers.filter(tier => Number(tier.acts) <= count).pop()
@@ -137,7 +152,7 @@ export default class extends Controller {
         let amount = Number(reached.amount)
         const last = tiers[tiers.length - 1]
         if (reached === last && count > Number(last.acts)) {
-            amount += this.additionalRateValue * (count - Number(last.acts))
+            amount += additionalRate * (count - Number(last.acts))
         }
         return Math.round(amount * 100) / 100
     }

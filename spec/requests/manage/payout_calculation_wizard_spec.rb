@@ -204,6 +204,51 @@ RSpec.describe "Payout calculation wizard", type: :request do
       expect(response.body).to include('name="distribution[role_amounts][0][amount]" value="100"')
     end
 
+    it "per act: a role holder who also performs can be paid a set amount, or from their own act table" do
+      start_wizard
+      choose("per_act")
+      get manage_money_payout_calculation_wizard_amounts_path
+      expect(response.body).to include("A set amount, all in")
+      expect(response.body).to include("Their own act table, all in")
+
+      post manage_money_payout_calculation_wizard_save_amounts_path, params: {
+        distribution: {
+          act_mode: "simple", per_act_rate: "25",
+          role_amounts: { "0" => { name: "MC", amount: "100" } },
+          role_stacking: "table",
+          role_with_acts_tiers: { "0" => { acts: "1", amount: "120" }, "1" => { acts: "2", amount: "160" } },
+          role_with_acts_additional_rate: "30"
+        }
+      }
+      get manage_money_payout_calculation_wizard_amounts_path
+      expect(response.body).to match(/name="distribution\[role_stacking\]" value="table" checked/)
+      expect(response.body).to include('name="distribution[role_with_acts_tiers][0][amount]" value="120"')
+      expect(response.body).to include('name="distribution[role_with_acts_tiers][1][amount]" value="160"')
+      expect(response.body).to include('name="distribution[role_with_acts_additional_rate]" value="30"')
+
+      pick_who
+      save_it(name: "Hosts who dance")
+      calc = PayoutScheme.order(:id).last
+      expect(calc.rules["distribution"]).to include(
+        "role_stacking" => "table",
+        "role_with_acts_tiers" => [ { "acts" => 1, "amount" => 120.0 }, { "acts" => 2, "amount" => 160.0 } ],
+        "role_with_acts_additional_rate" => 30.0
+      )
+      expect(calc.rules_summary).to include("their own act table when they also perform (1 act $120.00, 2 acts $160.00, then $30.00 an act)")
+
+      # Switching to a set amount drops the table and keeps the one figure
+      start_wizard(id: calc.id)
+      post manage_money_payout_calculation_wizard_save_amounts_path, params: {
+        distribution: { act_mode: "simple", per_act_rate: "25",
+                        role_amounts: { "0" => { name: "MC", amount: "100" } },
+                        role_stacking: "flat", role_with_acts_amount: "150" }
+      }
+      post manage_money_payout_calculation_wizard_save_path, params: { name: "Hosts who dance" }
+      calc.reload
+      expect(calc.rules["distribution"]).to include("role_stacking" => "flat", "role_with_acts_amount" => 150.0)
+      expect(calc.rules["distribution"]).not_to have_key("role_with_acts_tiers")
+    end
+
     it "per act: a table without a beyond rate stores no beyond rate" do
       start_wizard
       choose("per_act")

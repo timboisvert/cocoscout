@@ -327,10 +327,14 @@ class PayoutScheme < ApplicationRecord
   #   role_stacking — what someone who holds a show role AND performs acts is
   #                   paid: "both" (role amount + act pay), "role_only" (the
   #                   role amount; acts add nothing), "higher" (whichever is
-  #                   more). A show-role holder with no acts is paid the role
-  #                   amount either way. A show role with no row pays nothing
-  #                   from the role — the show payout page points that out.
-  ROLE_STACKINGS = %w[both role_only higher].freeze
+  #                   more), "flat" (one set amount, all in — see
+  #                   role_with_acts_amount), or "table" (their own act table,
+  #                   all in — role_with_acts_tiers / role_with_acts_additional_rate,
+  #                   read like the main tiers table). A show-role holder with
+  #                   no acts is paid the role amount either way. A show role
+  #                   with no row pays nothing from the role — the show payout
+  #                   page points that out.
+  ROLE_STACKINGS = %w[both role_only higher flat table].freeze
   DEFAULT_ROLE_STACKING = "both"
 
   # The priced show roles, blank names dropped, in the order they were entered.
@@ -361,11 +365,47 @@ class PayoutScheme < ApplicationRecord
     ROLE_STACKINGS.include?(value) ? value : DEFAULT_ROLE_STACKING
   end
 
-  # "added to act pay" / "instead of act pay" / "or act pay, whichever is higher"
-  def self.role_stacking_phrase(stacking)
+  # The one all-in amount a show-role holder is paid when they also perform
+  # (role_stacking "flat").
+  def self.role_with_acts_amount(distribution)
+    (distribution || {}).deep_stringify_keys["role_with_acts_amount"].to_f
+  end
+
+  # The role holder's own act table (role_stacking "table"), shaped and read
+  # exactly like the main tiers table: each row the all-in total for that many
+  # acts, each act past the last row adding role_with_acts_additional_rate.
+  def self.role_with_acts_distribution(distribution)
+    d = (distribution || {}).deep_stringify_keys
+    { "act_mode" => "tiers", "tiers" => d["role_with_acts_tiers"], "additional_act_rate" => d["role_with_acts_additional_rate"] }
+  end
+
+  def self.role_with_acts_tiers(distribution)
+    act_tiers(role_with_acts_distribution(distribution))
+  end
+
+  # What a show-role holder who did `act_count` acts is paid all in under
+  # "flat" or "table" — nil for the other stackings, which combine the role
+  # amount with act pay instead (see PayoutCalculator#per_act_line).
+  def self.role_with_acts_amount_for(distribution, act_count)
+    case role_stacking(distribution)
+    when "flat" then role_with_acts_amount(distribution)
+    when "table" then act_amount(role_with_acts_distribution(distribution), act_count)
+    end
+  end
+
+  # "added to act pay" / "instead of act pay" / "or act pay, whichever is
+  # higher" / "$150.00 all in when they also perform" / "their own act table
+  # when they also perform (1 act $120.00, 2 acts $160.00)"
+  def self.role_stacking_phrase(stacking, distribution = nil)
     case stacking.to_s
     when "role_only" then "instead of act pay"
     when "higher" then "or act pay, whichever is higher"
+    when "flat" then "#{act_money(role_with_acts_amount(distribution))} all in when they also perform"
+    when "table"
+      rows = role_with_acts_tiers(distribution).map { |t| "#{t['acts']} #{'act'.pluralize(t['acts'].to_i)} #{act_money(t['amount'])}" }
+      tail = additional_act_rate(role_with_acts_distribution(distribution))
+      rows << "then #{act_money(tail)} an act" if tail.positive?
+      "their own act table when they also perform" + (rows.any? ? " (#{rows.join(', ')})" : "")
     else "added to act pay"
     end
   end
@@ -376,7 +416,7 @@ class PayoutScheme < ApplicationRecord
     return "No show roles priced" if rows.empty?
 
     list = rows.map { |row| "#{row['name']} #{act_money(row['amount'])}" }.join(", ")
-    "#{list} — #{role_stacking_phrase(role_stacking(distribution))}"
+    "#{list} — #{role_stacking_phrase(role_stacking(distribution), distribution)}"
   end
 
   # A name for a calculation nobody has named yet, read off its rules — what

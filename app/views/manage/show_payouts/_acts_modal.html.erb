@@ -33,7 +33,10 @@
      data-payout-acts-rate-value="<%= per_act_rate %>"
      data-payout-acts-tiers-value="<%= tiers.to_json %>"
      data-payout-acts-act-rates-value="<%= act_rates.to_json %>"
-     data-payout-acts-additional-rate-value="<%= additional_act_rate %>">
+     data-payout-acts-additional-rate-value="<%= additional_act_rate %>"
+     data-payout-acts-role-with-acts-amount-value="<%= PayoutScheme.role_with_acts_amount(distribution) %>"
+     data-payout-acts-role-with-acts-tiers-value="<%= PayoutScheme.role_with_acts_tiers(distribution).to_json %>"
+     data-payout-acts-role-with-acts-additional-rate-value="<%= PayoutScheme.additional_act_rate(PayoutScheme.role_with_acts_distribution(distribution)) %>">
 
   <div data-payout-acts-target="modal" id="payout-acts-modal"
        class="<%= "hidden" unless auto_open %> fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50"

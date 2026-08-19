@@ -226,6 +226,25 @@ RSpec.describe PayoutScheme do
       expect(described_class.role_rules_description({})).to eq("No show roles priced")
     end
 
+    it "pays a role holder who also performs one set amount, or reads their own table" do
+      flat = distribution.merge("role_stacking" => "flat", "role_with_acts_amount" => 150)
+      expect(described_class.role_with_acts_amount_for(flat, 1)).to eq(150.0)
+      expect(described_class.role_with_acts_amount_for(flat, 3)).to eq(150.0)
+      expect(described_class.role_rules_description(flat)).to eq("MC $100.00, Stage Kitten $35.00 — $150.00 all in when they also perform")
+
+      table = distribution.merge("role_stacking" => "table",
+                                 "role_with_acts_tiers" => [ { "acts" => 2, "amount" => 160 }, { "acts" => 1, "amount" => 120 } ],
+                                 "role_with_acts_additional_rate" => 30)
+      expect(described_class.role_with_acts_amount_for(table, 1)).to eq(120.0)
+      expect(described_class.role_with_acts_amount_for(table, 2)).to eq(160.0)
+      expect(described_class.role_with_acts_amount_for(table, 4)).to eq(220.0)
+      expect(described_class.role_rules_description(table))
+        .to eq("MC $100.00, Stage Kitten $35.00 — their own act table when they also perform (1 act $120.00, 2 acts $160.00, then $30.00 an act)")
+
+      # The other stackings combine role and act pay in the calculator instead
+      expect(described_class.role_with_acts_amount_for(distribution, 1)).to be_nil
+    end
+
     it "shows up in the rules summary only when there are any" do
       priced = create(:payout_scheme, organization: create(:organization), rules: { "allocation" => [], "distribution" => distribution })
       expect(priced.rules_summary).to include("Show roles: MC $100.00, Stage Kitten $35.00 — added to act pay")

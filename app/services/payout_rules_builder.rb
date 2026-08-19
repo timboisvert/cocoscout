@@ -15,7 +15,8 @@
 #                       {type: percentage, value:, person_id:, label:} | {type: remainder} ],
 #     "distribution" => { "method" => …, per-method keys
 #                         (per_act may also carry "role_amounts" => [{name:, amount:}] and
-#                          "role_stacking" => both|role_only|higher — see PayoutScheme) },
+#                          "role_stacking" => both|role_only|higher|flat|table, plus role_with_acts_amount /
+#                          role_with_acts_tiers for the last two — see PayoutScheme) },
 #     "performer_overrides" => { "Person_<id>" | "Group_<id>" | "guest_<assignment_id>" => { flat_amount:, … } } }
 #   (performer_overrides are keyed like ShowPayout.act_key; older rules keyed a
 #   person by bare id, which PayoutCalculator still reads — for a Person only.)
@@ -180,7 +181,23 @@ class PayoutRulesBuilder
         role_rows = role_rows.reverse.uniq { |row| PayoutScheme.normalize_role_name(row["name"]) }.reverse
         if role_rows.any?
           distribution["role_amounts"] = role_rows
-          distribution["role_stacking"] = PayoutScheme.role_stacking("role_stacking" => d[:role_stacking])
+          stacking = PayoutScheme.role_stacking("role_stacking" => d[:role_stacking])
+          distribution["role_stacking"] = stacking
+          # The all-in figure(s) for a role holder who also performs — only
+          # the shape the chosen stacking reads.
+          case stacking
+          when "flat"
+            distribution["role_with_acts_amount"] = d[:role_with_acts_amount].to_f
+          when "table"
+            rows = d[:role_with_acts_tiers].is_a?(Hash) ? d[:role_with_acts_tiers].values : Array(d[:role_with_acts_tiers])
+            distribution["role_with_acts_tiers"] = rows.filter_map do |tier|
+              acts = tier[:acts].to_i
+              next if acts <= 0
+
+              { "acts" => acts, "amount" => tier[:amount].to_f }
+            end.sort_by { |tier| tier["acts"] }
+            distribution["role_with_acts_additional_rate"] = d[:role_with_acts_additional_rate].to_f if d[:role_with_acts_additional_rate].present?
+          end
         end
       end
 

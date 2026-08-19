@@ -638,6 +638,16 @@ class PayoutCalculator
       else
         [ act_amount, "#{act_formula} (higher than #{role_label})" ]
       end
+    when "flat", "table"
+      # One all-in figure for a role holder who also performs — a set amount,
+      # or their own act table by count. Nothing stacks on it, and a custom
+      # per-act rate doesn't apply: it's what the whole night pays them.
+      if acts.zero?
+        [ role_amount, role_label ]
+      else
+        all_in = PayoutScheme.role_with_acts_amount_for(distribution, acts).to_f.round(2)
+        [ all_in, "#{role_label} with #{acts_label} (#{stacking == 'flat' ? 'set amount' : 'role-holder table'})" ]
+      end
     else
       [ (role_amount + act_amount).round(2), acts.positive? ? "#{role_label} + #{act_formula}" : role_label ]
     end
@@ -646,7 +656,11 @@ class PayoutCalculator
     breakdown << "Show roles: #{priced.map { |name, a| "#{name} #{format_currency(a)}" }.join(', ')}"
     breakdown << act_line
     breakdown.concat(unpriced.map { |name| "#{name}: not priced in this calculation" })
-    breakdown << "Show role pay #{PayoutScheme.role_stacking_phrase(stacking)}: #{format_currency(amount)}"
+    breakdown << if %w[flat table].include?(stacking) && acts.positive?
+      "Show role holder with #{acts_label}, all in: #{format_currency(amount)}"
+    else
+      "Show role pay #{PayoutScheme.role_stacking_phrase(stacking, distribution)}: #{format_currency(amount)}"
+    end
 
     {
       amount: amount,

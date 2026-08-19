@@ -100,6 +100,30 @@ RSpec.describe PayoutRulesBuilder do
       expect(dist).to eq("method" => "per_act", "act_mode" => "simple", "per_act_rate" => 25.0)
     end
 
+    it "keeps the all-in figure only for the stacking that reads it" do
+      flat = described_class.build("method" => "per_act", "distribution" => {
+        "act_mode" => "simple", "per_act_rate" => "25",
+        "role_amounts" => [ { "name" => "MC", "amount" => "100" } ], "role_stacking" => "flat",
+        "role_with_acts_amount" => "150",
+        "role_with_acts_tiers" => { "0" => { "acts" => "1", "amount" => "120" } }
+      })["distribution"]
+      expect(flat["role_stacking"]).to eq("flat")
+      expect(flat["role_with_acts_amount"]).to eq(150.0)
+      expect(flat).not_to have_key("role_with_acts_tiers")
+
+      table = described_class.build("method" => "per_act", "distribution" => {
+        "act_mode" => "simple", "per_act_rate" => "25",
+        "role_amounts" => [ { "name" => "MC", "amount" => "100" } ], "role_stacking" => "table",
+        "role_with_acts_amount" => "150",
+        "role_with_acts_tiers" => { "0" => { "acts" => "2", "amount" => "160" }, "1" => { "acts" => "1", "amount" => "120" }, "2" => { "acts" => "", "amount" => "5" } },
+        "role_with_acts_additional_rate" => "30"
+      })["distribution"]
+      expect(table["role_stacking"]).to eq("table")
+      expect(table["role_with_acts_tiers"]).to eq([ { "acts" => 1, "amount" => 120.0 }, { "acts" => 2, "amount" => 160.0 } ])
+      expect(table["role_with_acts_additional_rate"]).to eq(30.0)
+      expect(table).not_to have_key("role_with_acts_amount")
+    end
+
     it "falls back to paying both for an unknown stacking" do
       dist = described_class.build("method" => "per_act", "distribution" => {
         "act_mode" => "simple", "per_act_rate" => "25",

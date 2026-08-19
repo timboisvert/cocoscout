@@ -279,7 +279,8 @@ module Manage
         method = d["split"] == "shares" ? "shares" : "equal"
         { "method" => method, "default_shares" => d["default_shares"] }
       when "per_act"
-        d.slice("act_mode", "per_act_rate", "act_rates", "additional_act_rate", "tiers", "role_amounts", "role_stacking").merge("method" => "per_act")
+        d.slice("act_mode", "per_act_rate", "act_rates", "additional_act_rate", "tiers", "role_amounts", "role_stacking",
+                "role_with_acts_amount", "role_with_acts_tiers", "role_with_acts_additional_rate").merge("method" => "per_act")
       else
         { "method" => "flat_fee", "flat_amount" => d["flat_amount"] }
       end
