@@ -392,6 +392,49 @@ module Manage
       redirect_to amend_dates_manage_contract_path(@contract), alert: "Couldn't change those dates: #{e.message}"
     end
 
+    # Room only: the same nights, the same deal, a different space at the same
+    # venue. The contract names the venue, so this needs no new paper.
+    def amend_space
+      load_space_amendment
+    end
+
+    # Apply room changes: params[:spaces] is { rental_id => location_space_id },
+    # where blank means the whole venue. Anything left on its current room is a
+    # no-op, so only what actually changed is touched.
+    def apply_amend_space
+      load_space_amendment
+      @selected = submitted_space_selection
+      changed = @rentals.select { |r| @selected.key?(r.id) && @selected[r.id] != r.location_space_id }
+
+      if changed.empty?
+        redirect_to manage_contract_path(@contract), notice: "No room changes to make."
+        return
+      end
+
+      unless params[:force] == "1"
+        @conflicts = changed.filter_map do |rental|
+          reasons = ContractDateChanges.space_conflicts(rental: rental, location_space_id: @selected[rental.id])
+          next if reasons.empty?
+
+          { rental: rental, space_name: space_name_for(rental.location_id, @selected[rental.id]), reasons: reasons }
+        end
+
+        return render :amend_space, status: :unprocessable_entity if @conflicts.any?
+      end
+
+      moved = []
+      @contract.transaction do
+        changed.each do |rental|
+          moved << ContractDateChanges.change_space!(contract: @contract, rental: rental,
+                                                    location_space_id: @selected[rental.id])
+        end
+      end
+
+      redirect_to manage_contract_path(@contract), notice: room_change_notice(moved)
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to amend_space_manage_contract_path(@contract), alert: "Couldn't change those rooms: #{e.message}"
+    end
+
     # Cut the version this amendment produced. Only e-sign contracts can be
     # asked to re-sign; an offline one has no signature machinery to re-engage,
     # so it's always recorded as an internal correction.
@@ -654,6 +697,50 @@ module Manage
     # then contracts signed or activated within RECENTLY_SIGNED_WINDOW, newest
     # first. @in_motion_badges carries the per-contract state label for the
     # active ones (drafts badge themselves).
+    # The dates on the contract plus the rooms each of their venues offers. The
+    # spaces come off the contract's own rentals, so nothing here can be pointed
+    # at another org's venue by a crafted id.
+    def load_space_amendment
+      @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
+      @spaces_by_location = @rentals.filter_map(&:location).uniq.each_with_object({}) do |location, out|
+        out[location.id] = location.location_spaces.by_name.to_a
+      end
+      @selected ||= {}
+      @conflicts ||= []
+    end
+
+    # { rental_id => location_space_id or nil }. A space id that isn't one of
+    # that venue's own rooms is dropped rather than quietly read as "entire
+    # venue" — a bad id shouldn't silently empty the room.
+    def submitted_space_selection
+      raw = params[:spaces].is_a?(ActionController::Parameters) ? params[:spaces].to_unsafe_h : {}
+
+      @rentals.each_with_object({}) do |rental, out|
+        next unless raw.key?(rental.id.to_s)
+
+        value = raw[rental.id.to_s].to_s
+        if value.blank?
+          out[rental.id] = nil
+        elsif (@spaces_by_location[rental.location_id] || []).any? { |s| s.id == value.to_i }
+          out[rental.id] = value.to_i
+        end
+      end
+    end
+
+    def space_name_for(location_id, location_space_id)
+      return "Entire Venue" if location_space_id.blank?
+
+      (@spaces_by_location[location_id] || []).find { |s| s.id == location_space_id }&.name || "Entire Venue"
+    end
+    helper_method :space_name_for
+
+    # Plain English for what just moved where.
+    def room_change_notice(moved)
+      moved.group_by { |m| m[:space] }.map do |space, entries|
+        "Moved #{entries.map { |e| e[:label] }.to_sentence} to #{space}"
+      end.join(". ") + "."
+    end
+
     def load_in_motion_contracts
       since = RECENTLY_SIGNED_WINDOW.ago
       actives = @active_contracts.includes(:contract_versions).to_a

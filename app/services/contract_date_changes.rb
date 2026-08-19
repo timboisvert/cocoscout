@@ -66,6 +66,64 @@ class ContractDateChanges
       starts_at.strftime("%b %-d")
     end
 
+    # Same night, different room. The contract names the venue, not the space —
+    # we keep the right to move them — so this touches the booking and the show
+    # sitting in it and nothing else: no payments, no version, no re-signature.
+    #
+    # location_space_id nil means the whole venue.
+    def change_space!(contract:, rental:, location_space_id:)
+      shows = shows_for(contract, rental)
+      space_id = location_space_id.presence
+
+      rental.update!(location_space_id: space_id)
+
+      # The show carries its own copy of where it is, and that copy is what the
+      # calendar, the overlap checks and everyone's call sheet read.
+      shows.each { |show| show.update!(location_id: rental.location_id, location_space_id: space_id) }
+
+      { label: rental.starts_at.strftime("%b %-d"), space: rental.location_space&.name || "Entire Venue" }
+    end
+
+    # What else is already in that room at that time, in plain English.
+    #
+    # SpaceRental#no_overlapping_rentals only runs on create, so a room change
+    # would slide into an occupied space without a word. Same 1-minute
+    # back-to-back buffer and the same entire-venue rule: a specific room
+    # clashes with itself or with a whole-venue hold; moving TO the whole venue
+    # clashes with everything at the location.
+    def space_conflicts(rental:, location_space_id:)
+      buffer = 1.minute
+      space_id = location_space_id.presence
+
+      rentals = SpaceRental
+        .joins(:contract)
+        .includes(:contract, :location_space)
+        .where(location_id: rental.location_id)
+        .where.not(id: rental.id)
+        .where.not(contracts: { status: "cancelled" })
+        .where("space_rentals.starts_at < ? AND space_rentals.ends_at > ?", rental.ends_at - buffer, rental.starts_at + buffer)
+      rentals = rentals.where(location_space_id: [ space_id, nil ]) if space_id.present?
+
+      rental_conflicts = rentals.map do |other|
+        name = other.contract.production_name.presence || other.contract.contractor_name
+        "#{name.presence || "Another booking"} is in #{other.space_name} " \
+        "#{other.starts_at.strftime("%-l:%M %p").strip}–#{other.ends_at.strftime("%-l:%M %p").strip}"
+      end
+
+      shows = Show
+        .includes(:location_space)
+        .where(location_id: rental.location_id, canceled: false, space_rental_id: nil)
+        .where("date_and_time > ? AND date_and_time < ?", rental.starts_at + buffer, rental.ends_at - buffer)
+      shows = shows.where(location_space_id: [ space_id, nil ]) if space_id.present?
+
+      show_conflicts = shows.map do |show|
+        "#{show.display_name.presence || "An event"} is in #{show.location_space&.name || "Entire Venue"} " \
+        "at #{show.date_and_time.strftime("%-l:%M %p").strip}"
+      end
+
+      rental_conflicts + show_conflicts
+    end
+
     # Has money actually moved for this date? A paid payment, a payment
     # committed to a payout run, or real revenue recorded against the show.
     #

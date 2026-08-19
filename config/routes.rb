@@ -1435,6 +1435,10 @@ Rails.application.routes.draw do
         # Changing dates is its own job — no financial regeneration at all.
         get "amend/dates", action: :amend_dates, as: :amend_dates
         post "amend/dates", action: :apply_amend_dates, as: :apply_amend_dates
+        # Changing the room is smaller still — same nights, same deal, just a
+        # different space at the same venue. No repapering.
+        get "amend/space", action: :amend_space, as: :amend_space
+        post "amend/space", action: :apply_amend_space, as: :apply_amend_space
         get "amend/bookings", action: :amend_bookings, as: :amend_bookings
         post "amend/bookings", action: :save_amend_bookings, as: :save_amend_bookings
         get "amend/events", action: :amend_events, as: :amend_events
