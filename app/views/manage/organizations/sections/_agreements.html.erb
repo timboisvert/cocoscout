@@ -1,18 +1,22 @@
-<% unless @organization.on_paid_plan? %>
-  <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
-    <div class="w-12 h-12 rounded-xl bg-pink-100 text-pink-500 flex items-center justify-center mx-auto mb-4">
-      <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+<% unless @organization.feature_available?(:agreements) %>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/card_header", title: "Agreement Templates" do %>
+      <%= render "shared/pro_marker", kind: :header %>
+    <% end %>
+    <div class="p-6">
+      <%= render "shared/pro_locked_card", feature: :agreements,
+            title: "Reusable performer agreement templates",
+            description: "Pro feature — write your terms once, collect e-signatures in-app, and track who's signed across your productions." %>
     </div>
-    <h3 class="text-lg font-semibold text-gray-900">Performer Agreements is a Pro feature</h3>
-    <p class="mt-1 text-sm text-gray-600 max-w-md mx-auto">Create reusable agreement templates, collect e-signatures, and track who's signed across your productions.</p>
-    <button type="button" data-action="click->upgrade-modal#open" data-upgrade-feature="agreements"
-            class="mt-5 inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors cursor-pointer bg-pink-500 text-white hover:bg-pink-600 text-sm px-4 py-2">
-      Upgrade to Pro
-    </button>
   </div>
 <% else %>
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-  <%= render "shared/card_header", title: "Agreement Templates", action_text: "New Template", action_path: new_manage_agreement_template_path %>
+  <%= render "shared/card_header", title: "Agreement Templates" do %>
+    <%= render "shared/pro_marker", kind: :header %>
+    <%= link_to new_manage_agreement_template_path do %>
+      <%= render "shared/button", text: "New Template", variant: "secondary", size: "small" %>
+    <% end %>
+  <% end %>
   <div class="p-6">
     <% if @agreement_templates.any? %>
       <div class="space-y-3">

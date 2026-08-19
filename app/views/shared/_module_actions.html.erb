@@ -17,7 +17,7 @@
         <%# Pro feature you already have access to (paid plan): a quiet corner tag.
             When locked (free plan) the inline lock + "Pro" below handles it. %>
         <% if action[:feature].present? && !action[:locked] %>
-          <span class="absolute top-1.5 right-1.5 text-[9px] font-bold uppercase tracking-wide text-pink-600 bg-pink-50 border border-pink-200 rounded px-1 py-0.5 leading-none">Pro</span>
+          <%= render "shared/pro_marker", classes: "absolute top-1.5 right-1.5" %>
         <% end %>
         <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
           <%= render "shared/module_header_icon", icon: action[:icon] %>
@@ -29,7 +29,7 @@
               <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-pink-600 text-white text-[11px] font-semibold leading-none"><%= action[:badge] %></span>
             <% end %>
             <% if action[:locked] %>
-              <svg class="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-label="Pro feature"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
+              <%= render "shared/pro_marker", kind: :lock %>
             <% end %>
           </div>
           <% if action[:description].present? %>

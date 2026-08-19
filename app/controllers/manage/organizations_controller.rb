@@ -146,8 +146,15 @@ module Manage
 
     def sections
       available_sections.map do |key|
-        { key: key, label: SECTION_LABELS[key],
-          path: section_manage_organization_path(@organization, section: key) }
+        section = { key: key, label: SECTION_LABELS[key],
+                    path: section_manage_organization_path(@organization, section: key) }
+        # Performer agreements are Pro: the tab says so, and wears the padlock
+        # when the plan doesn't include them.
+        if key == "agreements"
+          section[:feature] = :agreements
+          section[:locked] = !@organization.feature_available?(:agreements)
+        end
+        section
       end
     end
     helper_method :sections

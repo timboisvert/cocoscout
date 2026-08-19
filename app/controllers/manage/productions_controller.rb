@@ -377,7 +377,15 @@ module Manage
       end
     end
 
+    # Performer agreements are Pro: the roster and the send button live behind
+    # the plan the same way update_pay does for performer pay.
     def agreement_status
+      unless Current.organization.feature_available?(:agreements)
+        redirect_to edit_manage_production_path(@production, anchor: "tab-4"),
+                    alert: "Performer agreements are part of CocoScout Pro."
+        return
+      end
+
       return redirect_to edit_manage_production_path(@production), alert: "No agreement configured for this production" unless @production.agreement_template.present?
 
       @stats = @production.agreement_signature_stats
@@ -389,6 +397,12 @@ module Manage
     # signed; pass person_id to target a single performer. Delivery + roster
     # tracking both go through AgreementRequestService.
     def send_agreement_reminders
+      unless Current.organization.feature_available?(:agreements)
+        redirect_to edit_manage_production_path(@production, anchor: "tab-4"),
+                    alert: "Performer agreements are part of CocoScout Pro."
+        return
+      end
+
       return redirect_to edit_manage_production_path(@production), alert: "No agreement configured" unless @production.agreement_template.present?
 
       recipients = if params[:person_id].present?
@@ -464,16 +478,14 @@ module Manage
     # Note: cast_talent_pool_ids and show_upcoming_event_types are processed
     # before this method is called to convert arrays to JSON strings
     def production_params
-      params.require(:production).permit(:name, :logo, :description, :notes,
-                                         :contact_email, :public_key,
-                                         :public_profile_enabled,
-                                         :show_cast_members, :show_upcoming_events,
-                                         :show_upcoming_events_mode,
-                                         :show_upcoming_event_types,
-                                         :cast_talent_pool_ids,
-                                         :auto_create_event_pages, :auto_create_event_pages_mode,
-                                         :event_visibility_overrides,
-                                         :agreement_template_id, :agreement_required, :agreement_auto_send).merge(organization_id: Current.organization&.id)
+      permitted = %i[name logo description notes contact_email public_key public_profile_enabled
+                     show_cast_members show_upcoming_events show_upcoming_events_mode
+                     show_upcoming_event_types cast_talent_pool_ids
+                     auto_create_event_pages auto_create_event_pages_mode event_visibility_overrides]
+      # Performer agreements are Pro: the settings that turn them on (and the
+      # auto-send that fires on every talent-pool add) only get through on Pro.
+      permitted += %i[agreement_template_id agreement_required agreement_auto_send] if Current.organization&.feature_available?(:agreements)
+      params.require(:production).permit(*permitted).merge(organization_id: Current.organization&.id)
     end
 
     # Convert event_visibility checkboxes to JSON stored in event_visibility_overrides

@@ -17,16 +17,17 @@
         <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
         <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
           Agreement
-          <% unless @production.organization.on_paid_plan? %>
-            <svg class="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-label="Pro feature"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+          <%= render "shared/pro_marker" %>
+          <% unless @production.organization.feature_available?(:agreements) %>
+            <%= render "shared/pro_marker", kind: :lock %>
           <% end %>
         </button>
         <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
         <button type="button" data-tabs-target="tab" data-index="6" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
           Pay
-          <span class="text-[9px] font-bold uppercase tracking-wide text-pink-600 bg-pink-50 border border-pink-200 rounded px-1 py-0.5 leading-none">Pro</span>
+          <%= render "shared/pro_marker" %>
           <% unless @production.organization.feature_available?(:money) %>
-            <svg class="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-label="Pro feature"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+            <%= render "shared/pro_marker", kind: :lock %>
           <% end %>
         </button>
         <button type="button" data-tabs-target="tab" data-index="7" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
@@ -77,7 +78,12 @@
                       <% end %>
                     </p>
                   </div>
-                  <%= render "shared/button", text: "View Contract", variant: "secondary", size: "small", path: manage_contract_path(@production.contract) %>
+                  <% contracts_ok = @production.organization.feature_available?(:contracts) %>
+                  <span class="inline-flex items-center gap-1.5">
+                    <%= render "shared/pro_marker", kind: (contracts_ok ? :pill : :lock) %>
+                    <%= render "shared/button", text: "View Contract", variant: "secondary", size: "small", path: manage_contract_path(@production.contract),
+                          data: (contracts_ok ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
+                  </span>
                 </div>
               <% else %>
                 <p class="text-sm text-gray-500">This production was created from a third-party contract.</p>
@@ -377,24 +383,26 @@
       <div data-tabs-target="panel" class="hidden">
         <% templates = @production.organization.agreement_templates.active.order(:name) %>
 
-        <% unless @production.organization.on_paid_plan? %>
-          <!-- Pro upsell (Agreements is a Pro feature) -->
-          <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
-            <div class="w-12 h-12 rounded-xl bg-pink-100 text-pink-500 flex items-center justify-center mx-auto mb-4">
-              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+        <%# Same shape as the Pay tab: one card, Pro pill in the header, and the
+            locked treatment inside it when the plan doesn't include agreements. %>
+        <% unless @production.organization.feature_available?(:agreements) %>
+          <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+            <%= render "shared/card_header", title: "Performer agreements" do %>
+              <%= render "shared/pro_marker", kind: :header %>
+            <% end %>
+            <div class="p-6">
+              <%= render "shared/pro_locked_card", feature: :agreements,
+                    title: "Performers sign an agreement for this production",
+                    description: "Pro feature — reusable agreement templates, in-app e-signatures, and a signed / awaiting / not-sent roster, sent by hand or automatically when someone joins your talent pool." %>
             </div>
-            <h3 class="text-lg font-semibold text-gray-900">Performer Agreements is a Pro feature</h3>
-            <p class="mt-1 text-sm text-gray-600 max-w-md mx-auto">Send agreements, collect e-signatures, and track who's signed — send them manually or automatically when someone joins your talent pool.</p>
-            <button type="button" data-action="click->upgrade-modal#open" data-upgrade-feature="agreements"
-                    class="mt-5 inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors cursor-pointer bg-pink-500 text-white hover:bg-pink-600 text-sm px-4 py-2">
-              Upgrade to Pro
-            </button>
           </div>
         <% else %>
 
         <!-- Agreement Settings Card -->
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-          <%= render "shared/card_header", title: "Agreement Settings" %>
+          <%= render "shared/card_header", title: "Agreement Settings" do %>
+            <%= render "shared/pro_marker", kind: :header %>
+          <% end %>
           <div class="p-6">
             <%= form_with(model: [:manage, @production], url: manage_production_path(@production), method: :patch) do |f| %>
               <% if templates.any? %>

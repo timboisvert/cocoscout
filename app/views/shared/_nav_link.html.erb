@@ -37,7 +37,7 @@
 <% link_data = upgrade_feature.present? ? { action: "click->upgrade-modal#open", upgrade_feature: upgrade_feature } : {} %>
 <% if path.present? %>
   <%= link_to path, class: classes, data: link_data do %>
-    <%= text %><% if local_assigns[:badge].present? %><span class="ml-1 text-xs text-pink-500 font-bold"><%= local_assigns[:badge] %></span><% end %><% if local_assigns[:locked] %><svg class="w-3.5 h-3.5 text-gray-400 ml-auto" fill="currentColor" viewBox="0 0 20 20" aria-label="Pro feature"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg><% end %>
+    <%= text %><% if local_assigns[:badge].present? %><span class="ml-1 text-xs text-pink-500 font-bold"><%= local_assigns[:badge] %></span><% end %><% if local_assigns[:locked] %><%= render "shared/pro_marker", kind: :lock, classes: "ml-auto" %><% end %>
   <% end %>
 <% elsif href.present? %>
   <a href="<%= href %>"

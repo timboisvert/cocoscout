@@ -8,16 +8,19 @@
   icon_color = active ? "text-pink-600" : "text-gray-500"
   label_color = active ? "text-pink-600" : "text-gray-700"
 %>
-<%= link_to item[:path], class: "relative flex #{layout} rounded-xl border #{border} hover:border-pink-300 transition" do %>
+<%# A locked (Pro) tile opens the upgrade modal like the desktop nav does. %>
+<% tile_data = item[:locked] && item[:feature].present? ? { action: "click->upgrade-modal#open", upgrade_feature: item[:feature] } : {} %>
+<%= link_to item[:path], class: "relative flex #{layout} rounded-xl border #{border} hover:border-pink-300 transition", data: tile_data do %>
   <svg class="<%= full ? 'w-6 h-6' : 'w-7 h-7' %> flex-shrink-0 <%= icon_color %>" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
     <path stroke-linecap="round" stroke-linejoin="round" d="<%= nav_icon_path(item[:icon]) %>"/>
   </svg>
   <span class="<%= full ? 'text-base font-medium' : 'text-xs font-medium leading-tight' %> <%= label_color %>"><%= item[:label] %></span>
   <% if item[:badge].to_i > 0 %>
     <span class="absolute top-1.5 right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-pink-500 rounded-full"><%= item[:badge] > 99 ? "99+" : item[:badge] %></span>
-  <% elsif item[:locked] %>
-    <span class="absolute top-1.5 right-1.5 text-gray-400">
-      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+  <% end %>
+  <% if item[:locked] %>
+    <span class="absolute <%= item[:badge].to_i > 0 ? 'top-1.5 left-1.5' : 'top-1.5 right-1.5' %>">
+      <%= render "shared/pro_marker", kind: :lock %>
     </span>
   <% end %>
 <% end %>

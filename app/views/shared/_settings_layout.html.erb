@@ -51,6 +51,11 @@
               aria: { current: active ? "page" : nil },
               class: "px-4 py-2 -mb-px text-sm font-medium whitespace-nowrap border-b-2 transition-colors #{active ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" do %>
           <%= section[:label] %>
+          <%# A Pro section: `feature:` marks it; `locked: true` adds the padlock (the page shows the locked card). %>
+          <% if section[:feature].present? %>
+            <%= render "shared/pro_marker", classes: "ml-1.5" %>
+            <% if section[:locked] %><%= render "shared/pro_marker", kind: :lock, classes: "ml-1 inline-block align-middle" %><% end %>
+          <% end %>
           <% if section[:badge].to_i.positive? %>
             <span class="ml-1.5 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold leading-none"><%= section[:badge] %></span>
           <% end %>

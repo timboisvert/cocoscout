@@ -410,7 +410,9 @@ module Manage
     # Create the production + course offering + shows
     def create_offering
       contract = nil
-      if @wizard_state[:contract_id].present?
+      # Contract-linked scheduling is Pro; a contract id cached from before a
+      # plan change doesn't get to ride through here.
+      if @wizard_state[:contract_id].present? && contract_scheduling_available?
         contract = Current.organization.contracts.find_by(id: @wizard_state[:contract_id])
       end
 

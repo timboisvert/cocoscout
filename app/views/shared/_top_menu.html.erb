@@ -27,6 +27,12 @@
           <%
             button_data = link[:data] || {}
             button_data[:action] = link[:data_action] if link[:data_action].present?
+            # A link into a Pro module: `feature:` marks it with the Pro pill; add
+            # `locked: true` when the org's plan doesn't include it and the button
+            # opens the upgrade modal instead of the paywall page.
+            if link[:feature].present? && link[:locked]
+              button_data = button_data.merge(action: "click->upgrade-modal#open", upgrade_feature: link[:feature])
+            end
             button_variant = if link[:variant].present?
               link[:variant]
             elsif link[:color] == "white"
@@ -35,17 +41,22 @@
               "primary"
             end
           %>
-          <%= render partial: "shared/button", locals: {
-            text: link[:text],
-            path: link[:path],
-            icon: link[:icon],
-            variant: button_variant,
-            data: button_data,
-            size: "small",
-            method: link[:method],
-            type: link[:type] || :submit,
-            disabled: link[:disabled] || false
-          } %>
+          <span class="relative inline-flex">
+            <%= render partial: "shared/button", locals: {
+              text: link[:text],
+              path: link[:path],
+              icon: link[:icon],
+              variant: button_variant,
+              data: button_data,
+              size: "small",
+              method: link[:method],
+              type: link[:type] || :submit,
+              disabled: link[:disabled] || false
+            } %>
+            <% if link[:feature].present? %>
+              <%= render "shared/pro_marker", kind: (link[:locked] ? :lock : :pill), classes: "absolute -top-1.5 -right-1.5 #{link[:locked] ? 'bg-white rounded-full p-0.5 w-4 h-4' : ''}" %>
+            <% end %>
+          </span>
         <% end %>
       <% end %>
     </div>
@@ -106,6 +117,9 @@
             <%
               button_data = link[:data] || {}
               button_data[:action] = link[:data_action] if link[:data_action].present?
+              if link[:feature].present? && link[:locked]
+                button_data = button_data.merge(action: "click->upgrade-modal#open", upgrade_feature: link[:feature])
+              end
               button_variant = if link[:variant].present?
                 link[:variant]
               elsif link[:color] == "white"
@@ -114,17 +128,22 @@
                 "primary"
               end
             %>
-            <%= render partial: "shared/button", locals: {
-              text: link[:text],
-              path: link[:path],
-              icon: link[:icon],
-              variant: button_variant,
-              data: button_data,
-              size: "small",
-              method: link[:method],
-              type: link[:type] || :submit,
-              disabled: link[:disabled] || false
-            } %>
+            <span class="relative inline-flex">
+              <%= render partial: "shared/button", locals: {
+                text: link[:text],
+                path: link[:path],
+                icon: link[:icon],
+                variant: button_variant,
+                data: button_data,
+                size: "small",
+                method: link[:method],
+                type: link[:type] || :submit,
+                disabled: link[:disabled] || false
+              } %>
+              <% if link[:feature].present? %>
+                <%= render "shared/pro_marker", kind: (link[:locked] ? :lock : :pill), classes: "absolute -top-1.5 -right-1.5 #{link[:locked] ? 'bg-white rounded-full p-0.5 w-4 h-4' : ''}" %>
+              <% end %>
+            </span>
           <% end %>
         <% end %>
       </div>

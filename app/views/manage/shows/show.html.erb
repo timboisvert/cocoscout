@@ -180,8 +180,11 @@
                   <div class="mb-3">
                     <div class="text-sm font-medium text-gray-900"><%= @production.contract.contractor_name %></div>
                   </div>
+                  <% contracts_ok = @production.organization.feature_available?(:contracts) %>
                   <div class="flex flex-wrap gap-2 items-center">
-                    <%= render "shared/button", text: "View Contract", path: manage_contract_path(@production.contract), variant: "primary", size: "small" %>
+                    <%= render "shared/button", text: "View Contract", path: manage_contract_path(@production.contract), variant: "primary", size: "small",
+                          data: (contracts_ok ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
+                    <%= render "shared/pro_marker", kind: (contracts_ok ? :pill : :lock) %>
                   </div>
                 </div>
               </div>

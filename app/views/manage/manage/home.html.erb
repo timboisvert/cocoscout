@@ -59,16 +59,16 @@
       soonest_form = all_sign_up_forms.first
 
       # A summary box with nothing in it is just noise — only show each one
-      # when there's something to summarize. (Auditions additionally needs Pro,
-      # since that's a paid feature.)
-      show_auditions_box = Current.organization&.on_paid_plan? && all_open_calls.any?
+      # when there's something to summarize. (Auditions are a Producer-plan
+      # feature, so no plan gate here.)
+      show_auditions_box = all_open_calls.any?
       show_registrations_box = all_sign_up_forms.any?
     %>
 
     <!-- Row 1: Summary Boxes -->
     <% if show_auditions_box || show_registrations_box %>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-      <%# Audition Sign-ups — accordion (Pro-tier only; auditions are a paid feature) %>
+      <%# Audition Sign-ups — accordion %>
       <% if show_auditions_box %>
       <div class="border border-gray-200 rounded-lg bg-white overflow-hidden">
         <details class="group">

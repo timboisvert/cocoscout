@@ -675,7 +675,8 @@ module Manage
     # production's worth of shows in a single request.
     def crew_for_shows(shows)
       show_ids = shows.map(&:id)
-      return {} if show_ids.empty?
+      # Crew comes from Staffing (Pro); an org without it has none to message.
+      return {} if show_ids.empty? || !Current.organization.feature_available?(:staffing)
 
       merged = ShiftShow.where(show_id: show_ids).pluck(:shift_id, :show_id)
       shifts = Shift.where(id: merged.map(&:first))

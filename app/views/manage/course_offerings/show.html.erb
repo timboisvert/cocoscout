@@ -29,8 +29,11 @@
   <% archive_course_cid = "confirm-archive-course-#{@course_offering.id}" %>
   <% cancel_course_cid = "confirm-cancel-course-#{@course_offering.id}" %>
   <%
+    money_ok = Current.organization.feature_available?(:money)
+    contracts_ok = Current.organization.feature_available?(:contracts)
     top_links = [
-      { text: "Financials", path: manage_money_production_financials_path(@production) },
+      # Financials lives in Money (Pro): marked as such, and locked when the plan doesn't include it.
+      { text: "Financials", path: manage_money_production_financials_path(@production), feature: :money, locked: !money_ok },
       { text: "Edit Course", path: manage_edit_course_offering_path(@course_offering) },
       { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
     ]
@@ -90,7 +93,9 @@
       </svg>
       <div class="text-sm text-amber-800">
         This run was created from a contract. To remove it, <strong>cancel and then delete</strong> the
-        <%= link_to "associated contract", manage_contract_path(@course_offering.contract), class: "font-medium underline hover:text-amber-900" %>
+        <%= link_to "associated contract", manage_contract_path(@course_offering.contract), class: "font-medium underline hover:text-amber-900",
+              data: (contracts_ok ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
+        <% unless contracts_ok %><%= render "shared/pro_marker", kind: :lock, classes: "inline-block align-middle" %><% end %>
         (a run with paid registrations can't be removed this way).
       </div>
     </div>
@@ -486,9 +491,12 @@
                 <p class="text-xs text-gray-500"><%= @course_offering.contract.production_name %></p>
               <% end %>
             </div>
-            <%= link_to manage_contract_path(@course_offering.contract) do %>
-              <%= render "shared/button", text: "View Contract", variant: "secondary", size: "small" %>
-            <% end %>
+            <span class="inline-flex items-center gap-1.5">
+              <%= render "shared/pro_marker", kind: (contracts_ok ? :pill : :lock) %>
+              <%= render "shared/button", text: "View Contract", variant: "secondary", size: "small",
+                    path: manage_contract_path(@course_offering.contract),
+                    data: (contracts_ok ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
+            </span>
           </div>
         </div>
       <% end %>

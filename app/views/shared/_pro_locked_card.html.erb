@@ -1,0 +1,28 @@
+<%#
+  The locked state of a Pro card — what an org whose plan doesn't include the
+  feature sees in place of the real thing. Same shape everywhere (the
+  production Pay tab set the pattern): padlock in a pink square, the feature's
+  own headline, one line on why it's Pro, and an Upgrade to Pro button that
+  opens the upgrade modal (and falls back to the billing upgrade page without
+  JS). Render it INSIDE the card body so the card keeps its header + Pro pill.
+
+  Locals:
+    feature     (required) PAID_FEATURES symbol — money, contracts, agreements…
+    title       (required) what the card would be about, e.g. "Performers are paid for this production"
+    description (required) one sentence on what Pro adds
+  NOTE: keep ERB tags out of this comment.
+%>
+<div class="flex items-start gap-4">
+  <div class="w-10 h-10 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
+    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-label="Pro feature"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+  </div>
+  <div class="flex-1 min-w-0">
+    <p class="font-medium text-gray-900"><%= title %></p>
+    <p class="text-sm text-gray-600 mt-1"><%= description %></p>
+    <div class="mt-4">
+      <%= render "shared/button", text: "Upgrade to Pro", variant: "primary", size: "medium",
+            path: manage_billing_upgrade_path(feature: feature.to_s),
+            data: { action: "click->upgrade-modal#open", upgrade_feature: feature.to_s } %>
+    </div>
+  </div>
+</div>
