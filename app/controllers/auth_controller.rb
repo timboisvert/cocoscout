@@ -20,9 +20,12 @@ class AuthController < ApplicationController
 
   def signup
     @user = User.new
+    @signup_token = SignupFormToken.generate
   end
 
   def handle_signup
+    return unless signup_gate_passed?
+
     # Get the email and show an error if it already exists
     # Remove null bytes to prevent database errors
     normalized_email = user_params[:email_address].to_s.delete("\0").strip.downcase
@@ -44,6 +47,7 @@ class AuthController < ApplicationController
 
       redirect_to post_authentication_landing_path(@user, new_signup: true) and return
     else
+      @signup_token = SignupFormToken.generate
       render :signup, status: :unprocessable_entity
     end
   end
@@ -170,6 +174,40 @@ class AuthController < ApplicationController
   end
 
   private
+
+  # Bot defense for the public signup form, in front of everything else in
+  # handle_signup. Two independent tells, either one refuses the signup:
+  #
+  #   * The honeypot: an off-screen text field ("website") no human sees.
+  #     Scripts that fill every input fill it. Tripping it gets a quiet
+  #     redirect home — no account, no error to learn from.
+  #
+  #   * The form token: SignupFormToken stamps the form with when it was
+  #     served. A post arriving under MIN_AGE later, or with no valid token at
+  #     all, is re-rendered as a 422 without creating anything. Too-fast keeps
+  #     the same (still valid, now older) token so a real person just clicks
+  #     again; missing/expired gets a fresh one.
+  #
+  # Added 2026-08-18 after a proxy-pool script created ~85 accounts in a day
+  # with rotating decade-old user agents. Rack::Attack blocks that pool's
+  # range outright; this is what stops the next one.
+  def signup_gate_passed?
+    if params[:website].present?
+      Rails.logger.warn("[signup] honeypot tripped ip=#{request.remote_ip} ua=#{request.user_agent.to_s[0, 120]}")
+      redirect_to root_path
+      return false
+    end
+
+    age = SignupFormToken.age(params[:signup_token])
+    return true if age && age >= SignupFormToken::MIN_AGE
+
+    Rails.logger.warn("[signup] form token #{age ? "too young (#{age}s)" : 'missing/invalid'} ip=#{request.remote_ip}")
+    @user = User.new(user_params)
+    @signup_retry = true
+    @signup_token = age ? params[:signup_token] : SignupFormToken.generate
+    render :signup, status: :unprocessable_entity
+    false
+  end
 
   def user_params
     permitted_params = params.require(:user).permit(:email_address, :password)

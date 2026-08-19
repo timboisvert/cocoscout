@@ -27,7 +27,7 @@ RSpec.describe "Organization join link", type: :request do
 
   describe "an existing signed-in user" do
     it "joins and gets the same greeting" do
-      post handle_signup_path, params: { user: { email_address: "member@example.com", password: password } }
+      post handle_signup_path, params: signup_params(email_address: "member@example.com", password: password)
 
       post do_join_organization_path(organization.invite_token)
 

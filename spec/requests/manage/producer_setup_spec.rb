@@ -13,7 +13,7 @@ RSpec.describe "Producer setup", type: :request do
   before { allow(Rails).to receive(:cache).and_return(memory_cache) }
 
   def sign_up(email = "producer@example.com")
-    post handle_signup_path, params: { user: { email_address: email, password: password } }
+    post handle_signup_path, params: signup_params(email_address: email, password: password)
   end
 
   def complete_setup(genre: "sketch", name: "The Late Shift", plan: "free", interval: nil)

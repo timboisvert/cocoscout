@@ -42,21 +42,21 @@ RSpec.describe "SketchFest referral attribution", type: :request do
   describe "the full journey to a created organization" do
     it "attributes an org created after a SketchFest signup" do
       get sketchfest_path
-      post handle_signup_path, params: { user: { email_address: "team@example.com", password: password } }
+      post handle_signup_path, params: signup_params(email_address: "team@example.com", password: password)
       post manage_organizations_path, params: { organization: { name: "The Late Shift" } }
 
       expect(Organization.find_by(name: "The Late Shift").referral_source).to eq("sketchfest")
     end
 
     it "leaves referral_source nil for an organic signup" do
-      post handle_signup_path, params: { user: { email_address: "organic@example.com", password: password } }
+      post handle_signup_path, params: signup_params(email_address: "organic@example.com", password: password)
       post manage_organizations_path, params: { organization: { name: "Some Theater Co" } }
 
       expect(Organization.find_by(name: "Some Theater Co").referral_source).to be_nil
     end
 
     it "cannot be spoofed by posting the attribute directly" do
-      post handle_signup_path, params: { user: { email_address: "sneaky@example.com", password: password } }
+      post handle_signup_path, params: signup_params(email_address: "sneaky@example.com", password: password)
       post manage_organizations_path,
            params: { organization: { name: "Fake Referral Co", referral_source: "sketchfest" } }
 
@@ -82,7 +82,7 @@ RSpec.describe "SketchFest referral attribution", type: :request do
 
     it "asks a sketch signup what their team is called, not their organization" do
       get sketchfest_path
-      post handle_signup_path, params: { user: { email_address: "troupe@example.com", password: password } }
+      post handle_signup_path, params: signup_params(email_address: "troupe@example.com", password: password)
       get new_manage_organization_path
 
       expect(response.body).to include("Set up your team")
@@ -91,7 +91,7 @@ RSpec.describe "SketchFest referral attribution", type: :request do
     end
 
     it "keeps the generic organization form for everyone else" do
-      post handle_signup_path, params: { user: { email_address: "generic@example.com", password: password } }
+      post handle_signup_path, params: signup_params(email_address: "generic@example.com", password: password)
       get new_manage_organization_path
 
       expect(response.body).to include("Organization Name")

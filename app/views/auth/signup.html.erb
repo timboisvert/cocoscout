@@ -58,7 +58,22 @@
             </div>
           <% end %>
 
+          <% if @signup_retry %>
+            <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-md text-sm text-pink-700">
+              That didn't go through. Please click Create Account again.
+            </div>
+          <% end %>
+
           <%= form_with(model: @user, url: handle_signup_path, class: "space-y-5") do |form| %>
+            <%# Bot defense (see AuthController#signup_gate_passed?): a signed
+                "form served at" stamp, and an off-screen honeypot no person
+                sees or tabs into. Neither is autofilled by browsers. %>
+            <%= hidden_field_tag :signup_token, @signup_token || SignupFormToken.generate, id: nil %>
+            <div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+              <label for="signup_website">Website</label>
+              <input type="text" name="website" id="signup_website" tabindex="-1" autocomplete="off" value="">
+            </div>
+
             <div>
               <label for="user_email_address" class="block text-sm font-medium text-slate-700 mb-1">Email address</label>
               <%= form.email_field :email_address,

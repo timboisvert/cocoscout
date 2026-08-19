@@ -11,7 +11,7 @@ RSpec.describe "Signup intent routing", type: :request do
   let(:password) { "Password123!" }
 
   def sign_up(email)
-    post handle_signup_path, params: { user: { email_address: email, password: password } }
+    post handle_signup_path, params: signup_params(email_address: email, password: password)
   end
 
   describe "capturing intent" do
