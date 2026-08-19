@@ -82,6 +82,11 @@ class Contract < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :upcoming, -> { status_active.where("contract_end_date >= ?", Date.current).order(:contract_start_date) }
   scope :past, -> { where("contract_end_date < ?", Date.current).order(contract_end_date: :desc) }
+  # Contracts sitting in these people's court: the org has signed and sent
+  # them, and they haven't signed back yet.
+  scope :awaiting_signature_of, ->(person_ids) do
+    joins(:contractor).where(contractors: { person_id: person_ids }, signing_state: :out_for_signature)
+  end
 
   # Allow overlap flag - when true, skip overlap validation on space rentals
   attr_accessor :allow_overlap
@@ -436,6 +441,45 @@ class Contract < ApplicationRecord
   # Draft data helpers
   def draft_bookings
     draft_data["bookings"] || []
+  end
+
+  # The schedule the signable document describes. Before activation the only
+  # schedule is the creation wizard's draft bookings; once the contract is
+  # live, its space rentals are the truth — every amendment (dates moved or
+  # dropped, nights added) edits those and never the draft, so a document
+  # built from the draft would send the original dates out for re-signature.
+  # Shaped like draft bookings so the license grid reads either the same way.
+  def document_bookings
+    return draft_bookings if status_draft?
+
+    event_type = (draft_data["production"] || {})["event_type"].presence || "show"
+    # Fresh queries, not the cached associations: an amendment being previewed
+    # has just rewritten these rows inside a savepoint.
+    SpaceRental.where(contract_id: id).order(:starts_at).map do |rental|
+      {
+        "starts_at" => rental.starts_at.iso8601,
+        "ends_at" => rental.ends_at&.iso8601,
+        "location_id" => rental.location_id,
+        "location_space_id" => rental.location_space_id,
+        "event_type" => event_type
+      }
+    end
+  end
+
+  # Same idea for the money: the live payment rows (cancelled ones are
+  # history) once the contract is active, the wizard's draft payments before.
+  def document_payments
+    return draft_payments if status_draft?
+
+    ContractPayment.where(contract_id: id).where.not(status: "cancelled").order(:due_date, :id).map do |payment|
+      {
+        "description" => payment.description,
+        "amount" => payment.amount.to_f,
+        "amount_tbd" => payment.amount_tbd?,
+        "due_date" => payment.due_date&.iso8601,
+        "direction" => payment.direction
+      }
+    end
   end
 
   def draft_booking_rules
@@ -883,11 +927,13 @@ class Contract < ApplicationRecord
     # After shows exist, so per-event payments can link to them.
     reconcile_amended_payments!(amend["payments"]) if amend.key?("payments")
 
+    # The term is exactly what's booked now — dropping the last night of a run
+    # shortens it, not just adding one lengthens it.
     rentals = space_rentals.reload
     if rentals.any?
       update!(
-        contract_start_date: [ contract_start_date, rentals.minimum(:starts_at)&.to_date ].compact.min,
-        contract_end_date: [ contract_end_date, rentals.maximum(:ends_at)&.to_date ].compact.max
+        contract_start_date: rentals.minimum(:starts_at).to_date,
+        contract_end_date: rentals.maximum(:ends_at).to_date
       )
     end
     true
@@ -1592,7 +1638,7 @@ class Contract < ApplicationRecord
   def can_net_services_from_payout?
     outgoing_settlement? ||
       settlement_direction == "outgoing" ||
-      (draft_payments rescue []).any? { |p| p["direction"] == "outgoing" }
+      (document_payments rescue []).any? { |p| p["direction"] == "outgoing" }
   end
 
   def settlement_cadence_label
@@ -1832,7 +1878,7 @@ class Contract < ApplicationRecord
       out << "</ul>"
     end
 
-    payments = (draft_payments rescue [])
+    payments = (document_payments rescue [])
     if payments.any?
       out << "<h4>Payment schedule</h4><table><thead><tr><th>Item</th><th>Direction</th><th>Amount</th><th>Due</th></tr></thead><tbody>"
       payments.each do |p|
@@ -1907,7 +1953,7 @@ class Contract < ApplicationRecord
   # Concrete scheduled payments (real amount, real due date — not TBD revenue-share
   # placeholders), oldest first, shaped for the payment-schedule grid.
   def license_concrete_payments
-    draft_payments.filter_map do |p|
+    document_payments.filter_map do |p|
       next if p["amount_tbd"]
 
       amount = p["amount"].to_f
@@ -1924,7 +1970,7 @@ class Contract < ApplicationRecord
   # The set of dates the bookings fall on (the rental date) — used to tell whether a
   # payment is "extra" (a deposit/installment worth its own row) or just per-date rent.
   def license_booking_dates
-    draft_bookings.filter_map { |b| parse_booking_time(b["starts_at"])&.to_date }
+    document_bookings.filter_map { |b| parse_booking_time(b["starts_at"])&.to_date }
   end
 
   # The services being rendered on this contract, for the {{services}} token — the
@@ -1964,7 +2010,7 @@ class Contract < ApplicationRecord
     space_names = license_space_names
     rent_label = license_rent_label
 
-    draft_bookings.filter_map do |b|
+    document_bookings.filter_map do |b|
       # The contract covers the whole booked slot (e.g. 8–11 PM), not the show's own
       # time within it (e.g. 9–10:30) — the rental time is what's being licensed, so
       # the grid shows the booking's start/end, not the event's.
@@ -2015,7 +2061,7 @@ class Contract < ApplicationRecord
   # dollar figure. Only real, settled-in amounts land here — TBD/revenue-share
   # placeholders are skipped so they fall through to the worded pricing label.
   def license_concrete_rent_by_date
-    draft_payments.each_with_object({}) do |payment, map|
+    document_payments.each_with_object({}) do |payment, map|
       next if payment["amount_tbd"]
 
       amount = payment["amount"].to_f
@@ -2069,7 +2115,7 @@ class Contract < ApplicationRecord
 
   # Names for the stages referenced by the bookings, in one query.
   def license_space_names
-    ids = draft_bookings.filter_map { |b| (b["location_space_id"].presence || b["space_id"].presence)&.to_i }.uniq
+    ids = document_bookings.filter_map { |b| (b["location_space_id"].presence || b["space_id"].presence)&.to_i }.uniq
     return {} if ids.empty?
 
     LocationSpace.where(id: ids).pluck(:id, :name).to_h
