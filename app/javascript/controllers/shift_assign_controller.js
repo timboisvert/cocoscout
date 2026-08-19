@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { dayPartFor, entryCovers } from "controllers/lib/day_parts"
+import { dayPartsFor, entryCovers } from "controllers/lib/day_parts"
 
 // Opens a modal for assigning staff to a specific shift. The available pool
 // per house role is embedded on the page as JSON; this controller filters it
@@ -44,11 +44,11 @@ export default class extends Controller {
             // Cast lives on the schedule day (which can differ from the literal
             // start date when a shift crosses midnight); fall back to start date.
             this.currentCastDate = times.cast_date || this.currentShiftDate
-            this.currentDayPart = dayPartFor(times.starts_at.slice(11, 16), this.hasDayPartsValue ? this.dayPartsValue : [])
+            this.currentDayParts = dayPartsFor(times.starts_at.slice(11, 16), this.hasDayPartsValue ? this.dayPartsValue : [])
         } else {
             this.currentShiftDate = null
             this.currentCastDate = null
-            this.currentDayPart = null
+            this.currentDayParts = []
         }
 
         if (this.hasTitleTarget) this.titleTarget.textContent = `Assign ${roleName}`
@@ -107,7 +107,7 @@ export default class extends Controller {
         if (!data) return false
 
         const entries = data.entries || []
-        const covers = entries.some(e => entryCovers(e, this.currentShiftDate, this.currentDayPart))
+        const covers = entries.some(e => entryCovers(e, this.currentShiftDate, this.currentDayParts))
         return data.mode === "available" ? !covers : covers
     }
 

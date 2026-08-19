@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { dayPartFor, entryCovers } from "controllers/lib/day_parts"
+import { dayPartsFor, entryCovers } from "controllers/lib/day_parts"
 
 // The progressive Add-shift modal. Pick a role and the rest reveals itself
 // already filled in: the suggested time window (editable), the show picker for
@@ -254,9 +254,9 @@ export default class extends Controller {
         if (!data) return false
 
         const start = this.hasStartTimeInputTarget ? this.startTimeInputTarget.value : ""
-        const dayPart = dayPartFor(start.slice(0, 5) || "17:00", this.dayParts)
+        const dayParts = dayPartsFor(start.slice(0, 5) || "17:00", this.dayParts)
         const entries = data.entries || []
-        const covers = entries.some(e => entryCovers(e, this.dayIso, dayPart))
+        const covers = entries.some(e => entryCovers(e, this.dayIso, dayParts))
         return data.mode === "available" ? !covers : covers
     }
 

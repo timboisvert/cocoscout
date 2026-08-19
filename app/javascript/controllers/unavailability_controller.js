@@ -16,7 +16,11 @@ const PART_CELLS = [
     "bg-emerald-100 border-emerald-300 text-emerald-800",
     "bg-sky-100 border-sky-300 text-sky-800",
     "bg-violet-100 border-violet-300 text-violet-800",
-    "bg-rose-100 border-rose-300 text-rose-800"
+    "bg-rose-100 border-rose-300 text-rose-800",
+    "bg-orange-100 border-orange-300 text-orange-800",
+    "bg-teal-100 border-teal-300 text-teal-800",
+    "bg-fuchsia-100 border-fuchsia-300 text-fuchsia-800",
+    "bg-lime-100 border-lime-300 text-lime-800"
 ]
 
 export default class extends Controller {

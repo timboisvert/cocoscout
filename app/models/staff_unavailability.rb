@@ -2,9 +2,10 @@
 
 # A date on which a person has marked themselves unavailable to work house
 # shifts. Person-level (applies across every org they staff). The mark covers
-# the whole day, or one work time region by key — "evening", "morning" — as
-# each organization declares its regions (StaffingDayParts). A region key an
-# org doesn't use is simply a mark that never blocks a shift there.
+# the whole day, or one work time region by key — "evening", "late_morning" —
+# from the catalog each organization picks its regions from
+# (StaffingDayParts). A region an org hasn't turned on is simply a mark that
+# never blocks a shift there.
 #
 # "Available" everywhere in the Staffing module simply means *not* covered by
 # one of these records.
@@ -46,9 +47,10 @@ class StaffUnavailability < ApplicationRecord
 
   # Does this record cover a shift starting at `time`, read against the
   # organization's regions? All day covers everything; a region mark covers
-  # a start time that falls in that region.
+  # a start time that falls in that region (regions overlap, so a Late
+  # morning shift is also a Morning shift).
   def covers_time?(time, organization)
-    all_day? || day_part_key == organization.staffing_day_part_for(time)
+    all_day? || organization.staffing_day_part_keys_for(time).include?(day_part_key)
   end
 
   def covers_shift?(shift)

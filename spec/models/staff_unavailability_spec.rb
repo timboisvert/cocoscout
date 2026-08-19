@@ -45,19 +45,19 @@ RSpec.describe StaffUnavailability, type: :model do
       expect(build(:staff_unavailability, :afternoon).covers_shift?(evening_shift)).to be(false)
     end
 
-    it "reads the same mark against each organization's own hours" do
-      organization.update!(staffing_day_parts: [
-        { "key" => "morning", "name" => "Morning", "starts" => "06:00", "ends" => "12:00" },
-        { "key" => "evening", "name" => "Evening", "starts" => "18:00", "ends" => "24:00" }
-      ])
-      early_evening = build(:shift, organization: organization, starts_at: Time.zone.local(2026, 6, 1, 17, 30), ends_at: Time.zone.local(2026, 6, 1, 20, 0))
-      rec = build(:staff_unavailability, :evening)
-      # 5:30pm is before this room's Evening starts — and in a gap, so only all day covers it
-      expect(rec.covers_shift?(early_evening)).to be(false)
-      expect(rec.covers_shift?(evening_shift)).to be(true)
-      # A region this room doesn't have blocks nothing here
-      expect(build(:staff_unavailability, scope: "afternoon").covers_shift?(afternoon_shift)).to be(false)
-      expect(build(:staff_unavailability, scope: "morning").covers_shift?(afternoon_shift)).to be(false)
+    it "reads a mark against the regions each organization has turned on — overlapping ones all count" do
+      organization.update!(staffing_day_parts: %w[morning late_evening late_night])
+      late = build(:shift, organization: organization, starts_at: Time.zone.local(2026, 6, 1, 22, 30), ends_at: Time.zone.local(2026, 6, 2, 1, 0))
+      expect(build(:staff_unavailability, scope: "late_evening").covers_shift?(late)).to be(true)
+      expect(build(:staff_unavailability, scope: "late_night").covers_shift?(late)).to be(true)
+      # 7pm is in no region this room offers, so only all day covers it
+      expect(build(:staff_unavailability, scope: "late_evening").covers_shift?(evening_shift)).to be(false)
+      # A region this room hasn't turned on blocks nothing here, even though it's in the catalog
+      expect(build(:staff_unavailability, :evening).covers_shift?(evening_shift)).to be(false)
+      expect(build(:staff_unavailability, :afternoon).covers_shift?(afternoon_shift)).to be(false)
+      # A shift starting past midnight still reads as Late night
+      small_hours = build(:shift, organization: organization, starts_at: Time.zone.local(2026, 6, 2, 1, 0), ends_at: Time.zone.local(2026, 6, 2, 3, 0))
+      expect(build(:staff_unavailability, scope: "late_night", date: Date.new(2026, 6, 2)).covers_shift?(small_hours)).to be(true)
     end
 
     it "honours the person's availability mode" do
@@ -70,13 +70,13 @@ RSpec.describe StaffUnavailability, type: :model do
   end
 
   describe "#scope / #scope_label" do
-    it "speaks all_day or the region key, and labels by the organization's name for it" do
-      organization = create(:organization, staffing_day_parts: [ { "key" => "late", "name" => "Late night", "starts" => "22:00", "ends" => "02:00" } ])
+    it "speaks all_day or the region key, and labels by the catalog name" do
+      organization = create(:organization, staffing_day_parts: %w[late_night])
       expect(build(:staff_unavailability, scope: :all_day).scope).to eq("all_day")
       expect(build(:staff_unavailability, scope: :all_day).scope_label).to eq("All day")
-      expect(build(:staff_unavailability, scope: "late").scope).to eq("late")
-      expect(build(:staff_unavailability, scope: "late").scope_label(organization)).to eq("Late night")
-      expect(build(:staff_unavailability, scope: "late").scope_label).to eq("Late")
+      expect(build(:staff_unavailability, scope: "late_night").scope).to eq("late_night")
+      expect(build(:staff_unavailability, scope: "late_night").scope_label(organization)).to eq("Late night")
+      expect(build(:staff_unavailability, scope: "late_night").scope_label).to eq("Late Night")
       expect(build(:staff_unavailability, :evening).scope_label(organization)).to eq("Evening")
     end
   end

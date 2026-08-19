@@ -38,13 +38,13 @@ class Person < ApplicationRecord
   has_many :staff_unavailabilities, dependent: :destroy
 
   # The work time regions this person can mark availability by: every region
-  # of every organization they staff, one entry per key in the order those
-  # orgs declare them (a shared key like "evening" appears once). Nobody's
-  # staff anywhere → the app's default two.
+  # any organization they staff has turned on, in catalog order. Nobody's
+  # staff anywhere → the defaults.
   def staffing_day_parts
-    orgs = Organization.where(id: organization_staff_members.active.select(:organization_id)).order(:name)
-    parts = orgs.flat_map(&:staffing_day_parts_or_default).uniq { |p| p["key"] }
-    parts.any? ? parts : StaffingDayParts::DEFAULT_STAFFING_DAY_PARTS
+    orgs = Organization.where(id: organization_staff_members.active.select(:organization_id))
+    keys = orgs.flat_map(&:staffing_day_part_keys).uniq
+    keys = StaffingDayParts::DEFAULT_STAFFING_DAY_PART_KEYS if keys.empty?
+    Organization.staffing_day_parts_for_keys(keys)
   end
   has_many :staff_schedule_removals, dependent: :destroy
   has_many :scheduling_rules, dependent: :destroy

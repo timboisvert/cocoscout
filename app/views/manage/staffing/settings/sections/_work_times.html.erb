@@ -1,14 +1,11 @@
 <%#
-  Work times: the regions of the day this organization staffs by. Staff mark
-  themselves unavailable "all day" or for one of these regions, and a shift
-  belongs to the region its start time falls in. Locals from the controller:
-  @day_parts (the declared rows, or the defaults), @day_parts_declared.
+  Work times: which regions of the day this organization staffs by, picked
+  from the fixed catalog (StaffingDayParts::STAFFING_DAY_PART_CATALOG). Staff
+  mark themselves unavailable "all day" or for one of the regions turned on
+  here, and a shift belongs to every region its start time falls in.
+  Local from the controller: @day_part_keys — the keys currently on.
 %>
-<%
-  input_classes = "px-3 py-2.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-  row_classes = "flex flex-wrap items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg"
-%>
-<div class="bg-white border border-gray-200 rounded-xl p-6" data-controller="staffing-day-parts">
+<div class="bg-white border border-gray-200 rounded-xl p-6">
   <div class="flex items-center gap-2.5 mb-1">
     <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
@@ -16,65 +13,41 @@
     <h2 class="text-xl text-gray-900 coustard-regular">Work times</h2>
   </div>
   <p class="text-sm text-gray-600">
-    The stretches of the day you staff by — Morning, Afternoon, Evening, or
-    whatever your room calls them, with the hours each covers. Staff mark
-    themselves unavailable for a whole day or for one of these, and Scheduling
-    reads a shift against the region its start time falls in. "All day" is
-    always there.
-  </p>
-  <p class="text-sm text-gray-600 mt-2">
-    <% if @day_parts_declared %>
-      Clear every row to go back to the standard Afternoon (before 5pm) and Evening (5pm on).
-    <% else %>
-      You're on the standard Afternoon (before 5pm) and Evening (5pm on). Edit the rows to declare your own.
-    <% end %>
+    The stretches of the day your staff can mark themselves unavailable for.
+    Turn on the ones that fit how you schedule — Morning, Afternoon and Evening
+    to start, or finer slices like Late morning or Early evening. Scheduling
+    reads a shift against every region its start time falls in, and "All day"
+    is always there.
   </p>
 
   <%= form_with url: manage_staffing_settings_path, method: :patch, class: "mt-5 pt-5 border-t border-gray-200" do %>
-    <%# Marker param so an all-blank submit still routes to this setting. %>
+    <%# Marker param so an all-unchecked submit still routes to this setting. %>
     <%= hidden_field_tag :updating_work_times, "1" %>
 
-    <div data-staffing-day-parts-target="list" class="space-y-2">
-      <% @day_parts.each_with_index do |part, index| %>
-        <div class="<%= row_classes %>" data-staffing-day-parts-target="row">
-          <input type="text" name="day_parts[<%= index %>][name]" value="<%= part["name"] %>" placeholder="Region name (e.g., Morning)"
-                 class="flex-1 min-w-[10rem] <%= input_classes %>">
-          <label class="flex items-center gap-2 text-sm text-gray-600">from
-            <input type="time" name="day_parts[<%= index %>][starts]" value="<%= part["starts"] == "24:00" ? "00:00" : part["starts"] %>" step="300" class="<%= input_classes %>">
-          </label>
-          <label class="flex items-center gap-2 text-sm text-gray-600">to
-            <input type="time" name="day_parts[<%= index %>][ends]" value="<%= part["ends"] == "24:00" ? "23:59" : part["ends"] %>" step="60" class="<%= input_classes %>">
-          </label>
-          <%= render "shared/button", text: "", variant: "ghost", size: "small", type: :button, icon: "x-mark",
-                title: "Remove this region", classes: "ml-auto text-gray-400 hover:text-red-500",
-                data: { action: "click->staffing-day-parts#remove" } %>
-        </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+      <% StaffingDayParts::STAFFING_DAY_PART_CATALOG.each do |part| %>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <%= check_box_tag "day_part_keys[]", part["key"], @day_part_keys.include?(part["key"]), id: "day_part_#{part['key']}",
+                class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <span>
+            <span class="block text-sm font-medium text-gray-900"><%= part["name"] %></span>
+            <span class="block text-xs text-gray-500"><%= Organization.day_part_hours_label(part) %></span>
+          </span>
+        </label>
       <% end %>
+      <label class="flex items-start gap-3 opacity-70">
+        <%= check_box_tag "day_part_always_all_day", "1", true, disabled: true,
+              class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <span>
+          <span class="block text-sm font-medium text-gray-900">All day</span>
+          <span class="block text-xs text-gray-500">Always offered</span>
+        </span>
+      </label>
     </div>
-    <template data-staffing-day-parts-target="template">
-      <div class="<%= row_classes %>" data-staffing-day-parts-target="row">
-        <input type="text" name="day_parts[__INDEX__][name]" value="" placeholder="Region name (e.g., Morning)"
-               class="flex-1 min-w-[10rem] <%= input_classes %>">
-        <label class="flex items-center gap-2 text-sm text-gray-600">from
-          <input type="time" name="day_parts[__INDEX__][starts]" value="" step="300" class="<%= input_classes %>">
-        </label>
-        <label class="flex items-center gap-2 text-sm text-gray-600">to
-          <input type="time" name="day_parts[__INDEX__][ends]" value="" step="60" class="<%= input_classes %>">
-        </label>
-        <%= render "shared/button", text: "", variant: "ghost", size: "small", type: :button, icon: "x-mark",
-              title: "Remove this region", classes: "ml-auto text-gray-400 hover:text-red-500",
-              data: { action: "click->staffing-day-parts#remove" } %>
-      </div>
-    </template>
 
-    <div class="mt-3 flex items-center justify-between gap-4">
-      <%= render "shared/button", text: "Add a region", variant: "secondary", size: "small", type: :button, icon: "plus",
-            data: { action: "click->staffing-day-parts#add" } %>
+    <div class="mt-5 flex items-center justify-between gap-4">
+      <p class="text-xs text-gray-500">Unchecking everything goes back to Morning, Afternoon and Evening.</p>
       <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
     </div>
-    <p class="mt-3 text-xs text-gray-500">
-      A region that ends at or before it starts runs past midnight ("Late" 10:00 PM to 2:00 AM). Regions can't overlap in a way that
-      matters: a shift belongs to the first region its start time falls in. Use 11:59 PM to run to the end of the day.
-    </p>
   <% end %>
 </div>

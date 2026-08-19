@@ -51,7 +51,7 @@ module My
       # the current month through ~12 months out so month navigation has data.
       person = Current.user.person
       @availability_mode = person&.availability_mode || "unavailable"
-      @availability_day_parts = person ? person.staffing_day_parts : StaffingDayParts::DEFAULT_STAFFING_DAY_PARTS
+      @availability_day_parts = person ? person.staffing_day_parts : Organization.staffing_day_parts_for_keys(StaffingDayParts::DEFAULT_STAFFING_DAY_PART_KEYS)
       @unavailability_entries =
         if person
           person.staff_unavailabilities

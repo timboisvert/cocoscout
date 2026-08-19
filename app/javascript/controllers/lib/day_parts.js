@@ -1,9 +1,11 @@
 // Work time regions ("day parts") an organization staffs by — the JS twin of
-// Organization#staffing_day_part_for / StaffUnavailability#covers_time?.
-// `parts` is the org's declared list: [{ key, name, starts: "HH:MM", ends: "HH:MM" }, …].
+// Organization#staffing_day_part_keys_for / StaffUnavailability#covers_time?.
+// `parts` is the org's turned-on catalog entries: [{ key, name, starts: "HH:MM", ends: "HH:MM" }, …]
+// (StaffingDayParts::STAFFING_DAY_PART_CATALOG); regions overlap on purpose.
 
 const DEFAULT_DAY_PARTS = [
-    { key: "afternoon", name: "Afternoon", starts: "00:00", ends: "17:00" },
+    { key: "morning", name: "Morning", starts: "06:00", ends: "12:00" },
+    { key: "afternoon", name: "Afternoon", starts: "12:00", ends: "17:00" },
     { key: "evening", name: "Evening", starts: "17:00", ends: "24:00" }
 ]
 
@@ -18,24 +20,23 @@ function minuteOfDay(value) {
     return hour * 60 + min
 }
 
-// The key of the region a "HH:MM" start time falls in, or null in a gap.
+// The keys of every region a "HH:MM" start time falls in ([] in a gap).
 // A region whose end is at or before its start wraps past midnight.
-export function dayPartFor(hhmm, parts) {
+export function dayPartsFor(hhmm, parts) {
     const minute = minuteOfDay(hhmm)
-    if (minute === null) return null
+    if (minute === null) return []
     const list = Array.isArray(parts) && parts.length ? parts : DEFAULT_DAY_PARTS
-    const found = list.find(part => {
+    return list.filter(part => {
         const starts = minuteOfDay(part.starts)
         const ends = minuteOfDay(part.ends)
         if (starts === null || ends === null) return false
         return ends > starts ? (minute >= starts && minute < ends) : (minute >= starts || minute < ends)
-    })
-    return found ? found.key : null
+    }).map(part => part.key)
 }
 
 // Does an unavailability entry ({ date, scope }) cover a shift on `dateIso`
-// starting in region `dayPart`? "all_day" covers everything on the date.
-export function entryCovers(entry, dateIso, dayPart) {
+// starting in regions `dayParts`? "all_day" covers everything on the date.
+export function entryCovers(entry, dateIso, dayParts) {
     if (entry.date !== dateIso) return false
-    return entry.scope === "all_day" || (dayPart !== null && entry.scope === dayPart)
+    return entry.scope === "all_day" || (dayParts || []).includes(entry.scope)
 }

@@ -171,8 +171,8 @@ module Manage
           entries: (entries_by_person[pid] || []).map { |u| { date: u.date.iso8601, scope: u.scope } }
         }
       end.transform_keys(&:to_s)
-      # The org's work time regions, so the client can tell which region a
-      # shift's start time falls in the same way Organization#staffing_day_part_for does.
+      # The org's work time regions, so the client can tell which regions a
+      # shift's start time falls in the same way Organization#staffing_day_part_keys_for does.
       @staffing_day_parts_payload = Current.organization.staffing_day_parts_or_default
 
       load_availability_overview

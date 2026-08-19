@@ -33,8 +33,7 @@ module Manage
         when "regulars"
           @regulars_rule_count = Current.organization.scheduling_rules.active.count
         when "work_times"
-          @day_parts = Current.organization.staffing_day_parts_or_default
-          @day_parts_declared = Current.organization.staffing_day_parts_declared?
+          @day_part_keys = Current.organization.staffing_day_part_keys
         when "notifications"
           @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
           @notification_selected_ids = Current.organization.staffing_notification_user_ids
@@ -112,26 +111,18 @@ module Manage
                     notice: count.positive? ? "#{helpers.pluralize(count, 'person')} hidden from the Pay People list." : "Everyone shows on the Pay People list."
       end
 
-      # Work times: the regions of the day staff mark availability by and shifts
-      # fall into (Morning 6–12, Evening 5–close…). The submitted rows are the
-      # whole list; blank rows are dropped, and clearing them all goes back to
-      # the app's default Afternoon/Evening. Marks staff already made keep
-      # their region key, so renaming a region's hours re-reads them; a region
-      # removed outright leaves those marks blocking nothing here.
+      # Work times: which regions of the day (from the fixed catalog) staff mark
+      # availability by and shifts fall into. The submitted checkbox set is the
+      # whole pick; an all-unchecked submit goes back to the defaults. Marks
+      # staff already made keep their region key — a region turned off leaves
+      # those marks blocking nothing here until it's turned back on.
+      # (updating_work_times is a marker param so an all-unchecked submit
+      # still routes here.)
       def update_work_times
-        rows = params[:day_parts].respond_to?(:to_unsafe_h) ? params[:day_parts].to_unsafe_h : params[:day_parts]
-        errors = Current.organization.update_staffing_day_parts!(rows)
-        if errors.any?
-          @section = "work_times"
-          @day_parts = ::Organization.build_staffing_day_parts(rows).first
-          @day_parts = Current.organization.staffing_day_parts_or_default if @day_parts.empty?
-          @day_parts_declared = Current.organization.staffing_day_parts_declared?
-          flash.now[:alert] = errors.join(" ")
-          render :show, status: :unprocessable_entity
-        else
-          redirect_to section_path("work_times"),
-                      notice: Current.organization.staffing_day_parts_declared? ? "Work times saved." : "Back to the standard Afternoon and Evening."
-        end
+        Current.organization.update_staffing_day_part_keys!(Array(params[:day_part_keys]))
+        names = Current.organization.staffing_day_parts_or_default.map { |p| p["name"] }
+        redirect_to section_path("work_times"),
+                    notice: Current.organization.staffing_day_parts_declared? ? "Staff can mark #{names.to_sentence} and all day." : "Back to the standard Morning, Afternoon and Evening."
       end
 
       # Role Call: when on, the scheduling page checks every show against the
