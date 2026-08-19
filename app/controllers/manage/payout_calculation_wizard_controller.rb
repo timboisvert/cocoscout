@@ -205,8 +205,16 @@ module Manage
 
     # ---- who uses it -----------------------------------------------------------
 
+    # The productions that can actually pay a cast with a calculation — active
+    # in-house ones, the same list the calculation page's "used by" modal
+    # offers. Contract productions settle on their contract and courses have
+    # no shows. Anything already checked (an edit of a calculation that covers
+    # an archived or third-party production) stays listed so it can be
+    # unticked rather than vanish.
     def load_productions
-      @productions = Current.organization.productions.order(:name).to_a
+      already = Current.organization.productions.where(id: default_production_ids).to_a
+      @productions = (Current.organization.productions.active.castable.to_a + already)
+                       .uniq.sort_by { |production| production.name.to_s.downcase }
       @current_calculations = PayoutScheme.current_defaults_for_productions(@productions)
     end
 

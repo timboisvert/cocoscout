@@ -53,9 +53,15 @@ RSpec.describe "Payout calculation wizard", type: :request do
       # Flat pays no pool, so there is no "before" step; straight on to who uses it.
       expect(response).to redirect_to(manage_money_payout_calculation_wizard_who_path)
 
+      # Only productions that pay a cast with a calculation are offered — active
+      # in-house ones. Contract productions and archived ones stay off the list.
+      create(:production, organization: org, name: "Touring Rental", production_type: "third_party")
+      create(:production, organization: org, name: "Last Year's Revue", archived_at: 1.month.ago)
       get manage_money_payout_calculation_wizard_who_path
       expect(response.body).to include("Which productions should use this calculation?")
       expect(response.body).to include("Friday Cabaret")
+      expect(response.body).not_to include("Touring Rental")
+      expect(response.body).not_to include("Last Year's Revue")
       expect(response.body).to include("None yet")
       pick_who
 
