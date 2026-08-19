@@ -29,6 +29,14 @@ class User < ApplicationRecord
 
   # Message subscriptions - threads the user is subscribed to
   has_many :message_subscriptions, dependent: :destroy
+  # Everything else that points at users with a NOT NULL foreign key must go
+  # with the user, or user.destroy! (superadmin's suspicious-people sweep,
+  # account deletion) raises PG::ForeignKeyViolation.
+  has_many :message_reactions, dependent: :destroy
+  has_many :message_poll_votes, dependent: :destroy
+  has_many :audition_wizard_states, dependent: :destroy
+  has_many :email_batches, dependent: :destroy
+  has_many :course_registrations, dependent: :nullify
 
   # Messaging - messages addressed to any of user's People
   def received_messages
