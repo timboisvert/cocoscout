@@ -31,6 +31,7 @@
   #   "outline-pink" - White with pink border (border-pink-200 hover:border-pink-300)
   #   "ghost" - Text only, no border (text-gray-700 hover:bg-gray-100)
   #   "ghost-cancel" - Cancel text style (text-gray-700 hover:text-gray-900)
+  #   "dashed" - Dashed outline "add one here" placeholder (staffing add-shift triggers)
 
   text = local_assigns[:text] || ""
   variant = local_assigns[:variant] || "primary"
@@ -67,6 +68,10 @@
       "text-gray-700 hover:bg-gray-100"
     when "ghost-cancel"
       "text-gray-700 hover:text-gray-900"
+    when "dashed"
+      # Sits where the new thing would go rather than beside it — an empty slot
+      # you click, not a button you press.
+      "border border-dashed border-gray-300 text-gray-500 hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50"
     else
       "bg-pink-500 hover:bg-pink-600 text-white"
   end

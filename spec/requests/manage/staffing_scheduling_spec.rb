@@ -214,6 +214,46 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     end
   end
 
+  # Adding a second bartender used to mean scrolling past every role column to
+  # the trigger at the end of the row. Each role now offers it under its own
+  # shifts, and the far-right trigger is what it actually does: add a role.
+  describe "adding another shift in a role that's already on the day" do
+    let!(:bartender) { create(:house_role, organization: org, role_type: :house, name: "Bartender") }
+    let!(:shift) do
+      create(:shift, organization: org, house_role: bartender, source: early_show,
+                     starts_at: early_show.date_and_time, ends_at: early_show.ends_at)
+    end
+
+    it "offers another one under that role's own column, opened on that role" do
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+
+      body = response.body
+      expect(body).to include("+ Another Bartender")
+      expect(body).to include("shift-add#openForRole")
+      expect(body).to include(%(data-preselect-role-id="#{bartender.id}"))
+    end
+
+    it "calls the trigger at the end of the row what it is — a new role" do
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+
+      body = response.body
+      expect(body).to include("+ Add role")
+      # The day still has exactly one plain "open on nothing" trigger: the new
+      # column at the end. Everything else opens on a role.
+      expect(body.scan("shift-add#open\"").size).to eq(1)
+    end
+
+    it "keeps the plain add when the day has no shifts to sit under" do
+      shift.destroy!
+
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+
+      body = response.body
+      expect(body).to include("+ Add shift")
+      expect(body).not_to include("+ Another Bartender")
+    end
+  end
+
   describe "the show panel's event-type label" do
     it "names the event type instead of a generic 'Show'" do
       create(:show, production: production, event_type: "rehearsal",
@@ -289,7 +329,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
         get manage_staffing_scheduling_path(week_start: week_start.to_s)
         expect(response.body).to include("Staff it")
         expect(response.body).to include(%(data-preselect-role-id="#{tech.id}"))
-        expect(response.body).to include("shift-add#openToStaff")
+        expect(response.body).to include("shift-add#openForRole")
       end
 
       it "an unstaffed shift isn't coverage — the flag stays" do

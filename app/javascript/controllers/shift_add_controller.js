@@ -42,10 +42,11 @@ export default class extends Controller {
         this.show()
     }
 
-    // Role Call's "Staff it": the uncovered role and its show arrive on the
-    // button, so the modal opens with both preselected and the qualified
-    // people already showing.
-    openToStaff(event) {
+    // Opened from somewhere that already knows the role: a role's own column in
+    // the day grid ("+ Another Bartender"), or Role Call's "Staff it", which
+    // also names the show. The modal opens on that role with its window filled
+    // in and its qualified people already showing.
+    openForRole(event) {
         this.open(event)
         const roleId = event.currentTarget.dataset.preselectRoleId || ""
         if (this.hasRoleSelectTarget && roleId) {

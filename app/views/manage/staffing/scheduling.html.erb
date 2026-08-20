@@ -501,21 +501,40 @@
                   </div>
 
                     <% end %>
+
+                    <%# Another shift in THIS role, right under the ones it
+                        already has — scrolling to the end of the row to find
+                        the role again is the long way round to a second
+                        bartender. Same modal, opened on this role. %>
+                    <%= render "shared/button", text: "+ Another #{role.name}", variant: "dashed", size: "xs",
+                          type: :button, classes: "w-full min-w-0 overflow-hidden",
+                          title: "Add another #{role.name} shift",
+                          data: {
+                            action: "click->shift-add#openForRole",
+                            "preselect-role-id": role.id,
+                            "day-label": day_label,
+                            "day-iso": day.iso8601,
+                            "role-defaults": role_defaults_for_day.to_json,
+                            "source-show-id": day_shows.first&.id,
+                            "show-defaults": show_defaults_for_day.to_json,
+                            "day-shows": day_shows_options.to_json
+                          } %>
                   </div>
                 <% end %>
 
-                <%# + Add shift — appended to the same scroller so it sits to the right of role columns. %>
-                <button type="button"
-                        data-action="click->shift-add#open"
-                        data-day-label="<%= day_label %>"
-                        data-day-iso="<%= day.iso8601 %>"
-                        data-role-defaults="<%= role_defaults_for_day.to_json %>"
-                        data-source-show-id="<%= day_shows.first&.id %>"
-                        data-show-defaults="<%= show_defaults_for_day.to_json %>"
-                        data-day-shows="<%= day_shows_options.to_json %>"
-                        class="w-48 sm:w-56 flex-shrink-0 self-start text-sm px-3 py-2 rounded-md border border-dashed border-gray-300 text-gray-500 hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-colors cursor-pointer">
-                  + Add shift
-                </button>
+                <%# + Add role — a column of its own at the end of the scroller.
+                    A role already on the day adds from under its own column. %>
+                <%= render "shared/button", text: "+ Add role", variant: "dashed", size: "small",
+                      type: :button, classes: "w-48 sm:w-56 flex-shrink-0 self-start",
+                      data: {
+                        action: "click->shift-add#open",
+                        "day-label": day_label,
+                        "day-iso": day.iso8601,
+                        "role-defaults": role_defaults_for_day.to_json,
+                        "source-show-id": day_shows.first&.id,
+                        "show-defaults": show_defaults_for_day.to_json,
+                        "day-shows": day_shows_options.to_json
+                      } %>
               </div>
               <%# Mobile scroll affordance — the scroller is hard to spot otherwise. %>
               <% if role_groups.size > 1 %>
@@ -539,17 +558,17 @@
               <div class="flex items-center gap-3">
                 <div class="text-sm text-gray-400 italic px-2 py-2">No shifts scheduled.</div>
                 <% if @house_role_count.positive? %>
-                  <button type="button"
-                          data-action="click->shift-add#open"
-                          data-day-label="<%= day_label %>"
-                        data-day-iso="<%= day.iso8601 %>"
-                          data-role-defaults="<%= role_defaults_for_day.to_json %>"
-                          data-source-show-id="<%= day_shows.first&.id %>"
-                          data-show-defaults="<%= show_defaults_for_day.to_json %>"
-                          data-day-shows="<%= day_shows_options.to_json %>"
-                          class="text-sm px-3 py-1.5 rounded-md border border-dashed border-gray-300 text-gray-500 hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-colors cursor-pointer">
-                    + Add shift
-                  </button>
+                  <%= render "shared/button", text: "+ Add shift", variant: "dashed", size: "small",
+                        type: :button,
+                        data: {
+                          action: "click->shift-add#open",
+                          "day-label": day_label,
+                          "day-iso": day.iso8601,
+                          "role-defaults": role_defaults_for_day.to_json,
+                          "source-show-id": day_shows.first&.id,
+                          "show-defaults": show_defaults_for_day.to_json,
+                          "day-shows": day_shows_options.to_json
+                        } %>
                 <% end %>
               </div>
             <% end %>
@@ -738,7 +757,7 @@
                                           exactly like the "+ Add shift" trigger. %>
                                       <%= render "shared/button", text: "Staff it", variant: "primary", size: "small", type: :button,
                                             data: {
-                                              action: "click->modal#close click->shift-add#openToStaff",
+                                              action: "click->modal#close click->shift-add#openForRole",
                                               "preselect-role-id": role[:id],
                                               "day-label": day_label,
                                               "day-iso": day.iso8601,
