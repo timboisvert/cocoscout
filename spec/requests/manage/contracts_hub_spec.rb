@@ -67,6 +67,71 @@ RSpec.describe "Manage::Contracts hub and All Contracts", type: :request do
       expect(body).not_to include("use the month arrows")
     end
 
+    # A past-due payment that's already in a payout run isn't being chased. The
+    # badge and the amount both have to say which money is where.
+    context "when an overdue payment is already in a payout run" do
+      let(:payee) { create(:person) }
+
+      def stage_in_run!(payment, status:)
+        batch = PayoutBatch.create!(organization: org, status: status, kind: "performer")
+        item = batch.items.create!(payee: payee, amount_cents: (payment.amount.to_f * 100).round)
+        batch.payout_contributions.create!(source: payment, payout_batch_item: item, payee: payee,
+                                           amount_cents: item.amount_cents, label: "Settlement")
+        batch
+      end
+
+      it "says the payment is in flight, not overdue, and shows that payment's money" do
+        overdue = old_active.contract_payments.create!(description: "Settlement", amount: 400,
+                                                       direction: "outgoing", due_date: 1.week.ago.to_date)
+        old_active.contract_payments.create!(description: "Rent", amount: 2_600, direction: "incoming",
+                                             due_date: 3.months.from_now.to_date)
+        stage_in_run!(overdue, status: "funded")
+
+        get manage_contracts_path
+        body = response.body
+        expect(body).to include("Old Reliable").and include("Payment in flight")
+        expect(body).not_to include("Payment overdue")
+        # The Value column carries the money in motion, with the contract's own
+        # worth as context underneath.
+        expect(body).to include("$400.00")
+        expect(body).to include("of $3,000")
+      end
+
+      it "says it's in a draft run when the run hasn't gone out yet" do
+        overdue = old_active.contract_payments.create!(description: "Settlement", amount: 400,
+                                                       direction: "outgoing", due_date: 1.week.ago.to_date)
+        stage_in_run!(overdue, status: "draft")
+
+        get manage_contracts_path
+        expect(response.body).to include("Payment in a draft payout run")
+        expect(response.body).not_to include("Payment overdue")
+      end
+
+      it "still calls it overdue when the run failed" do
+        overdue = old_active.contract_payments.create!(description: "Settlement", amount: 400,
+                                                       direction: "outgoing", due_date: 1.week.ago.to_date)
+        stage_in_run!(overdue, status: "failed")
+
+        get manage_contracts_path
+        expect(response.body).to include("Payment overdue")
+      end
+
+      it "chases the payment that isn't in a run, and counts only that one" do
+        in_run = old_active.contract_payments.create!(description: "Settlement", amount: 400,
+                                                      direction: "outgoing", due_date: 2.weeks.ago.to_date)
+        old_active.contract_payments.create!(description: "Rent", amount: 750, direction: "incoming",
+                                             due_date: 1.week.ago.to_date)
+        stage_in_run!(in_run, status: "processing")
+
+        get manage_contracts_path
+        body = response.body
+        expect(body).to include("Payment overdue")
+        expect(body).not_to include("2 payments overdue")
+        # Only the money still to chase, not the pair and not the contract.
+        expect(body).to include("$750.00")
+      end
+    end
+
     it "shows an amendment waiting on a signature" do
       template = org.contract_templates.create!(name: "T", content: "<p>{{production_name}}</p>")
       old_active.update!(signing_mode: :esign, contract_template: template)

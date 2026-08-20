@@ -133,6 +133,20 @@ class ContractPayment < ApplicationRecord
     payout_contribution.present?
   end
 
+  # Where a payment sits in the payout machinery: nil when it isn't in a run at
+  # all (or its run failed/was canceled, which hands it back to us), :in_draft
+  # when it's staged in a run nobody has submitted yet, :in_flight once the run
+  # is funded and the money is moving. A payment past its due date but sitting
+  # in a submitted run isn't late in any way anyone can act on — it's on its
+  # way, and saying "overdue" about it is just wrong.
+  def payout_stage
+    batch = payout_contribution&.payout_batch
+    return nil unless batch
+
+    stage = MoneyTodoService.payout_bucket(batch, paid: status_paid?)
+    stage if %i[in_draft in_flight].include?(stage)
+  end
+
   # Money they owe us that we've agreed to net out of their payout instead of
   # invoicing. Only meaningful on incoming payments.
   #

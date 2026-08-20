@@ -76,7 +76,7 @@
       <span class="text-sm text-gray-500 normal-case tracking-normal">Overdue payments, out for signature, drafts, and anything signed in the last <%= Manage::ContractsController::RECENTLY_SIGNED_WINDOW.inspect %></span>
     </div>
     <% if @in_motion_contracts.any? %>
-      <%= render "contract_slim_list", contracts: @in_motion_contracts, badges: @in_motion_badges %>
+      <%= render "contract_slim_list", contracts: @in_motion_contracts, badges: @in_motion_badges, amounts: @in_motion_amounts %>
     <% elsif @contracts.any? %>
       <div class="bg-white rounded-lg border border-gray-200 p-5 flex items-center justify-between gap-3">
         <div class="flex items-center gap-2.5 min-w-0">

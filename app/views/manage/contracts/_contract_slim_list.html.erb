@@ -8,8 +8,13 @@
     badges: optional hash of contract id → { text:, color: } for contracts that
             aren't drafts (drafts badge themselves by signing stage) — the hub
             uses it to say "Signed 3 days ago" / "Amendment out for signature".
+    amounts: optional hash of contract id → { amount:, note:, color: }. A row
+            that's in the list because of a specific payment shows THAT money in
+            the Value column (with the contract's own value as context), not the
+            whole contract's worth.
 %>
 <% extra_badges = local_assigns.fetch(:badges, {}) %>
+<% focus_amounts = local_assigns.fetch(:amounts, {}) %>
 <%= render layout: "shared/slim_list", locals: { label: "Contractor", columns: [ "Dates", "Type", "Value" ], col_classes: [ "w-56", "w-36", "w-28" ], col_aligns: [ "text-left", "text-left", "text-right" ], min_width: "min-w-[780px]" } do %>
   <% contracts.each do |contract| %>
     <%
@@ -52,10 +57,17 @@
       # ---- Column 3: Value (price is the headline; status is small subtext) ----
       value_sub = nil
       value_sub_class = "text-gray-400"
+      focus = focus_amounts[contract.id]
       # Ticket-based deals with real activity show actuals: net headline, made/cost
       # beneath — a rev-share where we sell is revenue + a payout, not one number.
-      actuals = !is_draft && (is_revenue_share || contract.ticket_revenue_minus_fee?) ? contract.money_display : nil
-      if actuals && (actuals[:made] > 0 || actuals[:cost] > 0)
+      actuals = !is_draft && !focus && (is_revenue_share || contract.ticket_revenue_minus_fee?) ? contract.money_display : nil
+      if focus
+        # Here because of a payment: the headline is that payment's money, and
+        # the contract's own value is the small print behind it.
+        value_label = number_to_currency(focus[:amount])
+        value_class = "text-#{focus[:color]}-600"
+        value_sub = total_value > focus[:amount] ? "of #{number_to_currency(total_value, precision: 0)}" : focus[:note]
+      elsif actuals && (actuals[:made] > 0 || actuals[:cost] > 0)
         value_label = number_to_currency(actuals[:net])
         value_class = actuals[:net] >= 0 ? "text-green-600" : "text-red-600"
         value_sub = "in #{number_to_currency(actuals[:made], precision: 0)} · out #{number_to_currency(actuals[:cost], precision: 0)}"

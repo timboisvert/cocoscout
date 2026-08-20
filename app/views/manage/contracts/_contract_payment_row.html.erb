@@ -55,6 +55,14 @@
   # Ticket-linked amounts land on their own once show financials are in.
   awaits_financials = payment.amount_tbd? &&
     (payment.revenue_share? || contract.revenue_share? || contract.ticket_revenue_minus_fee?)
+  # A minus-fee settlement waiting on ticket sales isn't a mystery: our fee is
+  # ours whatever the night sells (a night that sells under it becomes a
+  # shortfall they owe us), and so is anything deducted from the payout. Only
+  # the remainder we hand back is unknown — so the row names the money we're
+  # sure of instead of a bare "TBD".
+  awaiting_amount = payment.amount_tbd? && payment.amount.to_f.zero?
+  held_back_fee = awaiting_amount && !is_incoming ? contract.fee_held_back_for(payment) : nil
+  our_take = held_back_fee ? (held_back_fee + deduction_total).round(2) : nil
   # Where the payment's title links. Send people to where the money actually
   # lives: incoming money → its Collect/record page; an outgoing amount that was
   # calculated on a show's payout page → back to that payout page; otherwise the
@@ -136,8 +144,10 @@
     <%# Right Section: Amount & Actions %>
     <div class="w-full md:w-1/2 flex items-center justify-between border-t border-gray-100 md:border-t-0 md:border-l md:border-gray-200 mt-2 md:mt-0 pt-2 md:pt-0 md:pl-4">
       <div class="flex-1">
-        <div class="text-2xl font-bold <%= is_cancelled ? 'text-gray-400 line-through' : is_incoming ? 'text-green-600' : 'text-red-600' %>">
-          <% if payment.amount_tbd? && payment.amount.to_f == 0 %>
+        <div class="text-2xl font-bold <%= is_cancelled ? 'text-gray-400 line-through' : (is_incoming || our_take) ? 'text-green-600' : 'text-red-600' %>">
+          <% if our_take %>
+            <%= number_to_currency(our_take) %>
+          <% elsif awaiting_amount %>
             TBD
           <% elsif deductions.any? %>
             <%# The number that matters is what actually moves: the share net of
@@ -147,12 +157,16 @@
             <%= number_to_currency(payment.amount) %>
           <% end %>
         </div>
-        <% if deductions.any? && !(payment.amount_tbd? && payment.amount.to_f == 0) %>
+        <% if deductions.any? && !awaiting_amount %>
           <div class="text-xs text-gray-500 tabular-nums">
             <%= number_to_currency(payment.amount) %> − <%= number_to_currency(deduction_total) %> services
           </div>
         <% end %>
-        <% if payment.amount_tbd? && payment.amount.to_f > 0 %>
+        <% if our_take %>
+          <div class="text-xs text-gray-500">
+            our <%= number_to_currency(held_back_fee) %> fee<%= " + #{number_to_currency(deduction_total)} services" if deductions.any? %> — the rest of ticket sales goes back to them
+          </div>
+        <% elsif payment.amount_tbd? && payment.amount.to_f > 0 %>
           <div class="text-xs text-amber-600">
             Partial — some shows still pending
           </div>

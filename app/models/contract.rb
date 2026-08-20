@@ -1405,6 +1405,37 @@ class Contract < ApplicationRecord
   # price times the count; a whole-contract total is allocated proportionally,
   # and lands on exactly flat_fee_amount once every show is counted so a run
   # never over- or under-charges by a rounding cent.
+  # The shows one settlement covers — the same grouping
+  # ContractPaymentSyncService settles by: a per-event settlement covers its own
+  # night, a deal that settles once covers every show, a weekly/monthly one
+  # covers the shows in its period.
+  def settlement_shows_for(payment)
+    return money_shows.select { |s| s.id == payment.show_id } if payment.show_id.present?
+
+    case settlement_cadence
+    when "once" then money_shows
+    when "weekly" then money_shows.select { |s| s.date_and_time.to_date.beginning_of_week == payment.due_date.beginning_of_week }
+    when "monthly" then money_shows.select { |s| s.date_and_time.to_date.beginning_of_month == payment.due_date.beginning_of_month }
+    else money_shows.select { |s| s.date_and_time.to_date == payment.due_date }
+    end
+  end
+
+  # What we keep out of the ticket money on a minus-fee settlement no matter how
+  # the night sells: our fee for the shows this settlement covers. Only the
+  # remainder we hand back waits on ticket sales — the fee never does (a night
+  # that sells under it turns into a shortfall they owe us, see
+  # ContractPaymentSyncService#face_the_money!). Nil when there's no fee to
+  # name, so callers can fall back to "TBD" rather than claim a confident $0.
+  def fee_held_back_for(payment)
+    return nil unless ticket_revenue_minus_fee?
+
+    count = settlement_shows_for(payment).size
+    return nil if count.zero?
+
+    fee = flat_fee_for_shows(count)
+    fee.positive? ? fee : nil
+  end
+
   def flat_fee_for_shows(count)
     count = count.to_i
     return 0.0 unless count.positive?

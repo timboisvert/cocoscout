@@ -8,6 +8,15 @@ module Manage
     # "in motion" list before it's just another active contract.
     RECENTLY_SIGNED_WINDOW = 30.days
 
+    # How the hub words a past-due payment, most urgent first: nobody has done
+    # anything about it, it's staged in a payout run that hasn't gone out, or
+    # it's in a run that has. Colors match the money pages' in-draft/in-flight.
+    PAYMENT_STAGE_LABELS = {
+      overdue: [ "overdue", "red" ],
+      in_draft: [ "in a draft payout run", "amber" ],
+      in_flight: [ "in flight", "blue" ]
+    }.freeze
+
     def index
       @contracts = Current.organization.contracts.includes(:contract_payments, :space_rentals)
 
@@ -755,27 +764,56 @@ module Manage
       # those lookups once for the lot, and let the calendar walk the same
       # loaded records.
       Contract.preload_money_data(actives + drafts)
+      # payout_stage walks each payment's run; load them for the lot at once.
+      ActiveRecord::Associations::Preloader.new(
+        records: actives.flat_map(&:contract_payments),
+        associations: { payout_contribution: :payout_batch }
+      ).call
       @active_contracts = actives
 
       waiting_drafts, other_drafts = drafts.partition { |c| c.signing_mode_esign? && (c.signing_out_for_signature? || c.signing_awaiting_send?) }
       waiting_drafts.sort_by! { |c| c.signing_out_for_signature? ? 0 : 1 }
       other_drafts.sort_by! { |c| -c.created_at.to_i }
 
-      late = actives.filter_map do |c|
+      # A payment past its due date isn't automatically something to chase: it
+      # may already be staged in a payout run (nothing left to do but send the
+      # run) or in a submitted one (the money is moving). Each contract lands in
+      # the most urgent group it has a payment in, and carries only those
+      # payments — the badge and the amount both speak about that money.
+      groups = { overdue: [], in_draft: [], in_flight: [] }
+      actives.each do |c|
         overdue = c.contract_payments.select { |p| p.status_pending? && p.overdue? }
-        [ c, overdue ] if overdue.any?
-      end.sort_by { |_, overdue| overdue.map(&:due_date).min }
-      late_contracts = late.map(&:first)
+        next if overdue.empty?
 
-      amending = (actives - late_contracts).select(&:amendment_pending?)
-      recent = (actives - late_contracts - amending).filter_map do |c|
+        by_stage = overdue.group_by { |p| p.payout_stage || :overdue }
+        stage = groups.keys.find { |s| by_stage[s].present? }
+        groups[stage] << [ c, by_stage[stage] ]
+      end
+      groups.each_value { |group| group.sort_by! { |_, payments| payments.map(&:due_date).min } }
+      payment_contracts = groups.values.flatten(1).map(&:first)
+
+      amending = (actives - payment_contracts).select(&:amendment_pending?)
+      recent = (actives - payment_contracts - amending).filter_map do |c|
         signed_at = [ c.executed_at, c.activated_at, c.contract_versions.filter_map(&:executed_at).max ].compact.max
         [ c, signed_at ] if signed_at && signed_at >= since
       end.sort_by { |_, at| -at.to_i }
 
       @in_motion_badges = {}
-      late.each do |c, overdue|
-        @in_motion_badges[c.id] = { text: overdue.size == 1 ? "Payment overdue" : "#{overdue.size} payments overdue", color: "red" }
+      # The money actually in question on the rows that are here because of a
+      # payment — the list shows this instead of the whole contract's value.
+      @in_motion_amounts = {}
+      groups.each do |stage, group|
+        phrase, color = PAYMENT_STAGE_LABELS.fetch(stage)
+        group.each do |c, payments|
+          @in_motion_badges[c.id] = {
+            text: payments.size == 1 ? "Payment #{phrase}" : "#{payments.size} payments #{phrase}",
+            color: color
+          }
+          # A TBD amount has no figure to show yet; if that's all there is, the
+          # row falls back to the contract's own value.
+          amount = payments.reject(&:amount_tbd?).sum { |p| p.amount.to_f }
+          @in_motion_amounts[c.id] = { amount: amount, note: phrase, color: color } if amount.positive?
+        end
       end
       amending.each do |c|
         @in_motion_badges[c.id] = c.signing_out_for_signature? ? { text: "Amendment out for signature", color: "amber" } : { text: "Amendment ready to send", color: "blue" }
@@ -785,7 +823,7 @@ module Manage
         @in_motion_badges[c.id] = { text: "#{verb} #{helpers.time_ago_in_words(at)} ago", color: "green" }
       end
 
-      @in_motion_contracts = late_contracts + waiting_drafts + amending + other_drafts + recent.map(&:first)
+      @in_motion_contracts = payment_contracts + waiting_drafts + amending + other_drafts + recent.map(&:first)
     end
 
     # Needs a signature, so nothing goes live. The version carries the proposed
