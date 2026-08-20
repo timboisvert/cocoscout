@@ -29,7 +29,14 @@
   status_class = { "active" => "bg-green-100 text-green-700", "draft" => "bg-gray-100 text-gray-600",
                    "completed" => "bg-blue-100 text-blue-700", "cancelled" => "bg-red-100 text-red-700" }[contract.status] || "bg-gray-100 text-gray-600"
 
-  amount_label = ->(payment) { payment.amount_tbd? && payment.amount.to_f.zero? ? "$TBD" : number_to_currency(payment.amount) }
+  # A settlement waiting on ticket sales is TBD to them — it's the remainder
+  # after the org's fee — but the fee itself is already known, so say it.
+  amount_label = lambda do |payment|
+    return number_to_currency(payment.amount) unless payment.awaiting_amount?
+
+    fee = payment.guaranteed_fee
+    fee ? "TBD after the #{number_to_currency(fee)} fee" : "$TBD"
+  end
   org_name = contract.organization&.name.presence || "The organization"
 %>
 

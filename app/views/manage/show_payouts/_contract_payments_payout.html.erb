@@ -36,8 +36,12 @@
                 </div>
               </div>
               <div class="flex items-center gap-3 flex-shrink-0">
-                <span class="text-lg font-semibold text-gray-900 tabular-nums">
+                <span class="text-lg font-semibold text-gray-900 tabular-nums text-right">
                   <%= amount_set ? number_to_currency(payment.amount) : "TBD" %>
+                  <%# What we hand back waits on ticket sales; our fee doesn't. %>
+                  <% if (held_back = payment.guaranteed_fee) %>
+                    <span class="block text-xs font-normal text-gray-500">after our <%= number_to_currency(held_back) %> fee</span>
+                  <% end %>
                 </span>
                 <% if payment.status_paid? %>
                   <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Paid</span>

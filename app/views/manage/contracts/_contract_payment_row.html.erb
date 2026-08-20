@@ -60,8 +60,8 @@
   # shortfall they owe us), and so is anything deducted from the payout. Only
   # the remainder we hand back is unknown — so the row names the money we're
   # sure of instead of a bare "TBD".
-  awaiting_amount = payment.amount_tbd? && payment.amount.to_f.zero?
-  held_back_fee = awaiting_amount && !is_incoming ? contract.fee_held_back_for(payment) : nil
+  awaiting_amount = payment.awaiting_amount?
+  held_back_fee = payment.guaranteed_fee
   our_take = held_back_fee ? (held_back_fee + deduction_total).round(2) : nil
   # Where the payment's title links. Send people to where the money actually
   # lives: incoming money → its Collect/record page; an outgoing amount that was

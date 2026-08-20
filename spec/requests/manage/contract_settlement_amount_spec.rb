@@ -55,6 +55,29 @@ RSpec.describe "Manage::Contracts settlement amount before ticket sales", type: 
     expect(body).to include("our $300.00 fee + $50.00 services")
   end
 
+  it "says what comes off first on the show payout page, where the figure is what we owe" do
+    get manage_money_show_payout_path(show)
+
+    body = response.body
+    # The number there is money OUT — the fee can't be the headline, but it can
+    # say what the remainder is waiting behind.
+    expect(body).to include("TBD")
+    expect(body).to include("after our $300.00 fee")
+  end
+
+  it "tells the contractor what comes off their remainder" do
+    contractor_user = create(:user, password: password)
+    person = create(:person, user: contractor_user, email: contractor_user.email_address)
+    contract.update!(contractor: create(:contractor, organization: org, person: person, email: person.email))
+    post handle_signin_path, params: { email_address: contractor_user.email_address, password: password }
+
+    get my_contracts_path
+
+    body = response.body
+    expect(body).to include("TBD after the $300.00 fee")
+    expect(body).not_to include("$TBD")
+  end
+
   it "leaves a revenue split as TBD — nothing about it is known yet" do
     contract.update!(draft_data: contract.draft_data.merge(
       "payment_structure" => "revenue_share",

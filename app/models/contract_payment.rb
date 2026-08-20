@@ -133,6 +133,23 @@ class ContractPayment < ApplicationRecord
     payout_contribution.present?
   end
 
+  # A settlement whose amount is still waiting on ticket sales.
+  def awaiting_amount?
+    amount_tbd? && amount.to_f.zero?
+  end
+
+  # On a minus-fee settlement, the fee we keep out of the night's ticket money.
+  # It's ours however the night sells — one that sells under it turns into a
+  # shortfall they owe us — so no screen has to say a flat "TBD" about this
+  # part. Only the remainder handed back waits on sales. Nil when there's no
+  # fee to name, and never on an incoming row (a shortfall carries a real
+  # amount, and the fee isn't what it's collecting).
+  def guaranteed_fee
+    return nil unless awaiting_amount? && direction_outgoing?
+
+    contract.fee_held_back_for(self)
+  end
+
   # Where a payment sits in the payout machinery: nil when it isn't in a run at
   # all (or its run failed/was canceled, which hands it back to us), :in_draft
   # when it's staged in a run nobody has submitted yet, :in_flight once the run
