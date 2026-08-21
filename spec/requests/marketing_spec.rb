@@ -117,6 +117,24 @@ RSpec.describe "Public marketing site", type: :request do
     end
   end
 
+  describe "GET /sketchfest/qr (printable QR code)" do
+    before { get sketchfest_qr_path }
+
+    it "renders a QR code pointing at the sketchfest URL, with a download button" do
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(data-qr-code-url-value="#{sketchfest_url}"))
+      expect(response.body).to include(%(data-action="click->qr-code#download"))
+    end
+
+    it "does not count as a sketchfest referral — only scanning the code does" do
+      expect(session[:referral_source]).to be_nil
+    end
+
+    it "asks search engines not to index it" do
+      expect(response.body).to include('<meta name="robots" content="noindex">')
+    end
+  end
+
   describe "auth pages" do
     it "sign in renders persona cards linking to Find a Mic" do
       get signin_path

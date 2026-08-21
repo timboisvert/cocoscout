@@ -1,0 +1,30 @@
+<% content_for :title, "SketchFest QR code — CocoScout" %>
+<% content_for :head do %>
+  <meta name="robots" content="noindex">
+<% end %>
+
+<%# Internal utility page: a QR code pointing at /sketchfest, big enough to
+    right-click-copy or download and paste into flyers, decks, and signage.
+    The canvas renders at 1000px for print quality and is displayed smaller. %>
+<div class="min-h-screen bg-[#f9f9f7] flex items-center justify-center px-6 py-12">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 sm:p-10 text-center max-w-md w-full"
+       data-controller="qr-code"
+       data-qr-code-url-value="<%= sketchfest_url %>"
+       data-qr-code-size-value="1000"
+       data-qr-code-filename-value="cocoscout-sketchfest-qr.png">
+
+    <div class="mb-6 flex justify-center">
+      <%= render "shared/sketchfest_lockup", size: :small %>
+    </div>
+
+    <canvas data-qr-code-target="canvas" class="w-72 h-72 max-w-full mx-auto rounded-lg border border-slate-100"></canvas>
+
+    <p class="mt-4 text-sm text-slate-500">Scans to <span class="font-medium text-slate-700">cocoscout.com/sketchfest</span></p>
+
+    <div class="mt-6 flex justify-center">
+      <%= render "shared/button", text: "Download PNG", variant: "primary", size: "medium", icon: "qr-code", type: :button,
+            data: { action: "click->qr-code#download" } %>
+    </div>
+    <p class="mt-3 text-xs text-slate-400">Or right-click the code and choose &ldquo;Copy Image.&rdquo;</p>
+  </div>
+</div>

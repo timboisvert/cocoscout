@@ -27,4 +27,9 @@ class HomeController < ApplicationController
     # but don't clobber a choice an earlier CTA click already made.
     session[:signup_intent] ||= "producer"
   end
+
+  # QR code for /sketchfest, for pasting into flyers and decks. Viewing this
+  # page is not itself a referral — scanning the code lands on /sketchfest,
+  # which does the attribution.
+  def sketchfest_qr; end
 end

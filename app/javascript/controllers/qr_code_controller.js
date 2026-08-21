@@ -2,11 +2,19 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["modal", "canvas"]
-    static values = { url: String }
+    static values = {
+        url: String,
+        size: { type: Number, default: 280 },
+        filename: { type: String, default: "cocoscout-qr-code.png" }
+    }
 
-    connect() {
+    async connect() {
         // Load QRCode library dynamically if not already loaded
-        this.loadQRCodeLibrary()
+        await this.loadQRCodeLibrary()
+        // Without a modal target the canvas is always visible, so render now
+        if (!this.hasModalTarget && this.hasCanvasTarget) {
+            this.generateQRCode()
+        }
     }
 
     loadQRCodeLibrary() {
@@ -54,7 +62,7 @@ export default class extends Controller {
     generateQRCode() {
         const canvas = this.canvasTarget
         const url = this.urlValue
-        const size = 280
+        const size = this.sizeValue
 
         if (typeof qrcode === 'undefined') {
             console.error('QRCode library not loaded')
@@ -98,7 +106,7 @@ export default class extends Controller {
     download() {
         const canvas = this.canvasTarget
         const link = document.createElement('a')
-        link.download = 'cocoscout-qr-code.png'
+        link.download = this.filenameValue
         link.href = canvas.toDataURL('image/png')
         link.click()
     }
