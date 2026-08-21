@@ -63,6 +63,45 @@
       </div>
     </div>
 
+    <%# ---- Where the collected money is now. A payment made through our rail
+        sits in CocoScout's balance FOR the org until it's remitted — this panel
+        is how the org sees that and moves it along. %>
+    <% if (stage = @payment.remittance_stage) %>
+      <div class="border-t border-gray-100 p-6 flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <h3 class="font-semibold text-gray-900">Getting this money to your bank</h3>
+          <p class="text-sm text-gray-500 mt-0.5">
+            <% case stage %>
+            <% when :to_pay %>
+              They paid CocoScout, so we're holding <strong><%= number_to_currency(@payment.remittable_cents / 100.0) %></strong> for your organization<%= " (#{number_to_currency(@payment.amount)} less card processing)" if @payment.stripe_fee_cents.to_i.positive? %>.
+              <% if Current.organization.can_receive_payouts? %>
+                Add it to your payout run to send it on.
+              <% else %>
+                Connect your organization's bank and we'll send it straight to you.
+              <% end %>
+            <% when :in_draft %>
+              <strong><%= number_to_currency(@payment.remittable_cents / 100.0) %></strong> is on your payout run — pay out the run and it lands in your bank.
+            <% when :in_flight %>
+              <strong><%= number_to_currency(@payment.remittable_cents / 100.0) %></strong> is on its way to your bank.
+            <% when :paid %>
+              <strong><%= number_to_currency(@payment.remittable_cents / 100.0) %></strong> has been sent to your organization's bank.
+            <% end %>
+          </p>
+        </div>
+        <div class="flex-shrink-0">
+          <% if stage == :to_pay && Current.organization.can_receive_payouts? %>
+            <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small",
+                  path: manage_remit_money_incoming_payment_path(@payment), method: :post %>
+          <% elsif stage == :to_pay %>
+            <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "small",
+                  path: manage_course_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
+          <% else %>
+            <%= link_to "View this payout run", manage_payout_batch_path(@payment.payout_contribution.payout_batch), class: "text-sm text-pink-600 hover:text-pink-700" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
     <% unless is_paid %>
       <%# ---- Action panels ------------------------------------------------ %>
       <div class="border-t border-gray-100 divide-y divide-gray-100">

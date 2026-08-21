@@ -33,18 +33,20 @@ RSpec.describe MoneyTodoService do
         .tap { |p| p.update!(stripe_checkout_session_id: "cs_#{p.id}", stripe_fee_cents: fee_cents) }
     end
 
-    it "surfaces it in the payouts section, net of Stripe's fee" do
-      collected_payment
+    it "surfaces it in the payouts section, net of Stripe's fee, linking to the payment itself" do
+      payment = collected_payment
 
       item = service.payouts.items.find { |i| i[:kind] == :remittance }
       expect(item).to be_present
       expect(item[:name]).to eq(org.name)
       expect(item[:amounts][:to_pay]).to eq(242.0)
       expect(item[:due_soon]).to eq(242.0)
-      expect(item[:subtitle]).to include("collected for you")
+      expect(item[:subtitle]).to include("collected for you from SketchFest")
+      # Straight to where the money is — never a courses page.
+      expect(item[:href]).to eq("/manage/money/incoming/payment/#{payment.id}")
     end
 
-    it "counts money staged on the remittance run as in a draft run" do
+    it "counts money staged on the remittance run as in a draft run, linking to the run" do
       payment = collected_payment
       batch = PayoutBatch.create!(organization: org, status: "draft", kind: "course")
       batch_item = batch.items.create!(payee: org, amount_cents: 24_200)
@@ -54,6 +56,7 @@ RSpec.describe MoneyTodoService do
       item = service.payouts.items.find { |i| i[:kind] == :remittance }
       expect(item[:amounts][:in_draft]).to eq(242.0)
       expect(item[:amounts][:to_pay]).to be_nil
+      expect(item[:href]).to eq("/manage/money/payout-runs/#{batch.id}")
     end
 
     it "drops out once the remittance has been paid" do
@@ -72,6 +75,24 @@ RSpec.describe MoneyTodoService do
         .update!(payment_method: "check")
 
       expect(service.payouts.items.find { |i| i[:kind] == :remittance }).to be_nil
+    end
+  end
+
+  # A settlement with services deducted from it hands over the NET — the hub
+  # must say the same number the contract page does, not the gross.
+  describe "contract payouts net of deducted services" do
+    it "counts what actually moves: the share less the services netted out of it" do
+      contract = create(:contract, :active, organization: org, production: production, contractor_name: "Katie Rae")
+      create(:contract_payment, contract: contract, direction: "outgoing", amount: 70,
+                                description: "Aug 20 — 50% to them", due_date: Date.current)
+      create(:contract_payment, contract: contract, direction: "incoming", amount: 50,
+                                description: "Booth Tech", settlement_method: "payout_deduction",
+                                due_date: Date.current)
+
+      item = service.payouts.items.find { |i| i[:kind] == :contract }
+      expect(item[:amount]).to eq(20.0)
+      expect(item[:amounts][:to_pay]).to eq(20.0)
+      expect(item[:due_soon]).to eq(20.0)
     end
   end
 

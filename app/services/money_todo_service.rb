@@ -292,19 +292,28 @@ class MoneyTodoService
                 .includes({ contract_payments: { payout_contribution: :payout_batch } }, :contractor).each do |contract|
       outgoing = contract.contract_payments.select(&:direction_outgoing?)
       pending = outgoing.select(&:status_pending?)
-      amount = pending.sum { |p| p.amount.to_f }
+
+      # What a settlement actually hands over: services they owe us that net
+      # out of it (deduct-from-payout charges) come off before any money moves,
+      # so a "$70 minus $50 services" settlement is $20 owed here, not $70 —
+      # the same number its contract page shows.
+      net_of_deductions = contract.payment_schedule_groups(contract.contract_payments.sort_by(&:due_date))
+                                  .to_h { |g| [ g[:payment].id, [ g[:payment].amount.to_f - g[:deductions].select(&:status_pending?).sum { |d| d.amount.to_f }, 0.0 ].max ] }
+      net = ->(p) { net_of_deductions.fetch(p.id, p.amount.to_f) }
+
+      amount = pending.sum { |p| net.call(p) }
       next unless amount.positive?
 
       # Contract payments can be staged in payout runs too — split them the
       # same way as show payouts.
       by_col = pending.group_by { |p| self.class.payout_bucket(p.payout_contribution&.payout_batch, paid: false) }
       paid_payments = outgoing.select(&:status_paid?)
-      amounts = by_col.transform_values { |ps| ps.sum { |p| p.amount.to_f } }
+      amounts = by_col.transform_values { |ps| ps.sum { |p| net.call(p) } }
       amounts[:paid] = paid_payments.sum { |p| p.amount.to_f }
       # Of the untouched money, only what's due inside the horizon (or carries
       # no date at all) is due now — a payment for a show next spring is owed,
       # not overdue.
-      due_soon = (by_col[:to_pay] || []).select { |p| due_soon?(p.due_date) }.sum { |p| p.amount.to_f }
+      due_soon = (by_col[:to_pay] || []).select { |p| due_soon?(p.due_date) }.sum { |p| net.call(p) }
 
       parts = [ "#{pending.count} contract #{'payment'.pluralize(pending.count)} due" ]
       due = pending.filter_map(&:due_date).min
@@ -351,13 +360,27 @@ class MoneyTodoService
     return [] unless unpaid.positive?
 
     unremitted = by_col[:to_pay] || []
-    parts = [ "#{payments.size - (by_col[:paid]&.size || 0)} contract #{'payment'.pluralize(payments.size)} collected for you" ]
+    unpaid_payments = payments.reject { |p| p.remittance_stage == :paid }
+    payers = unpaid_payments.map { |p| p.contract.contractor_name.presence }.compact.uniq
+    parts = [ [ "#{unpaid_payments.size} contract #{'payment'.pluralize(unpaid_payments.size)} collected for you",
+                ("from #{payers.to_sentence}" if payers.any? && payers.size <= 2) ].compact.join(" ") ]
     if unremitted.any? && !organization.can_receive_payouts?
-      parts << "connect a bank in Courses settings to receive it"
+      parts << "connect a bank to receive it"
     elsif by_col[:in_draft].present?
       parts << "pay out the run to send it to your bank"
     elsif by_col[:in_flight].present?
       parts << "on its way to your bank"
+    end
+
+    # Land where the money actually is: the run once one holds it, the single
+    # payment's own page, or the received book when several are waiting.
+    staged = (by_col[:in_draft] || []) + (by_col[:in_flight] || [])
+    href = if staged.any?
+      manage_payout_batch_path(staged.first.payout_contribution.payout_batch)
+    elsif unpaid_payments.size == 1
+      manage_money_incoming_payment_path(unpaid_payments.first)
+    else
+      manage_money_incoming_received_path
     end
 
     [ { name: organization.name, kind: :remittance, amount: unpaid,
@@ -366,7 +389,7 @@ class MoneyTodoService
         due_soon: unpaid,
         subtitle: parts.join(" · "),
         due_on: payments.filter_map(&:paid_date).min,
-        href: manage_course_payout_run_path } ]
+        href: href } ]
   end
 
   # A dateless payment is due now — better to headline it than to hide it.

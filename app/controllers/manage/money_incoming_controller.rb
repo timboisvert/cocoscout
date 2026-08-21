@@ -122,6 +122,27 @@ module Manage
       @received_methods = RECEIVED_METHODS
     end
 
+    # Queue this collected payment's remittance onto the org's fund-free run —
+    # the "Add to payout run" button on a collected payment.
+    def remit
+      @payment = find_payment
+      unless @payment.remittance_stage == :to_pay
+        redirect_to manage_money_incoming_payment_path(@payment),
+                    alert: "This payment isn't waiting to be remitted."
+        return
+      end
+      unless Current.organization.can_receive_payouts?
+        redirect_to manage_money_incoming_payment_path(@payment),
+                    alert: "Connect your organization's bank first so there's somewhere to send it."
+        return
+      end
+
+      ContractPaymentCollection.remit_to_organization!(@payment)
+      batch = @payment.reload.payout_contribution&.payout_batch
+      redirect_to manage_money_incoming_payment_path(@payment),
+                  notice: "Added to your payout run#{" — pay it out to send it to your bank" if batch&.open?}."
+    end
+
     # Nudge the payer about this receivable. Renders the seeded
     # contract_payment_reminder template (channel "both") to the payer's Person —
     # in-app message if they have an account, plus an email carrying the pay link.

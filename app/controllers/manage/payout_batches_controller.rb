@@ -153,12 +153,43 @@ module Manage
       unless batch.open? && batch.items.pending.any?
         redirect_to(manage_payout_batch_path(batch), alert: "There's nothing to pay in this run.") and return
       end
+      # A fund-free run pays from money already held — ACH-debiting the org to
+      # pay itself would charge them twice. pay_now is that run's button.
+      if batch.skips_funding?
+        redirect_to(manage_payout_batch_path(batch), alert: "This run pays from money CocoScout already holds — use Pay now.") and return
+      end
 
       PayoutBatchService.fund!(batch, method: "ach")
       redirect_to manage_payout_batch_path(batch),
                   notice: "Funding started — everyone in this run gets paid once it clears."
     rescue PayoutBatchService::Error => e
       redirect_to manage_payout_batch_path(batch), alert: e.message
+    end
+
+    # Pay a fund-free run: the money (course sales, collected contract
+    # payments) is already in CocoScout's balance, so there's no ACH step —
+    # transfers go straight out. The Money-side twin of the Courses page's
+    # "Pay everyone now".
+    def pay_now
+      batch = organization.payout_batches.find(params[:id])
+      unless batch.skips_funding?
+        redirect_to(manage_payout_batch_path(batch), alert: "This run needs funding first.") and return
+      end
+      unless batch.items.pending.any?
+        redirect_to(manage_payout_batch_path(batch), alert: "There's nothing to pay in this run.") and return
+      end
+      if Stripe.api_key.blank?
+        redirect_to(manage_payout_batch_path(batch), alert: "Payouts aren't configured yet.") and return
+      end
+
+      result = CoursePayoutRunExecutor.pay!(batch)
+      if result.error.present?
+        redirect_to manage_payout_batch_path(batch), alert: result.error
+      else
+        notice = "Paid #{result.paid} #{'payout'.pluralize(result.paid)} straight to their bank."
+        notice += " #{result.failed} couldn't be sent — see below." if result.failed.positive?
+        redirect_to manage_payout_batch_path(batch), notice: notice
+      end
     end
 
     # Discard an unfunded draft run: undo everything it staged. Staff hours it

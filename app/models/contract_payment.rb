@@ -150,6 +150,26 @@ class ContractPayment < ApplicationRecord
     contract.fee_held_back_for(self)
   end
 
+  # Collected through CocoScout's rail: the payer paid our Stripe balance, so
+  # CocoScout is holding this money FOR the org until it's remitted onward.
+  # Hand-recorded money (a check) never sat with us and never remits.
+  def collected_online?
+    status_paid? && direction_incoming? && stripe_checkout_session_id.present?
+  end
+
+  # Where the org's remittance of this collected money stands: :to_pay (not on
+  # a run yet — including a failed run handing it back), :in_draft, :in_flight,
+  # or :paid once it reached the org's bank. Nil for money we never held.
+  def remittance_stage
+    return nil unless collected_online?
+
+    contribution = payout_contribution
+    return :to_pay unless contribution
+
+    MoneyTodoService.payout_bucket(contribution.payout_batch,
+                                   paid: contribution.payout_batch_item&.paid? || false)
+  end
+
   # Where a payment sits in the payout machinery: nil when it isn't in a run at
   # all (or its run failed/was canceled, which hands it back to us), :in_draft
   # when it's staged in a run nobody has submitted yet, :in_flight once the run

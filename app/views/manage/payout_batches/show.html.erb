@@ -132,6 +132,30 @@
             </div>
           <% end %>
         </div>
+      <% elsif @batch.open? && @items.any? && @batch.skips_funding? %>
+        <%# Fund-free run: the money (course sales, collected contract payments)
+            is already sitting in CocoScout's balance for this org — no ACH,
+            just send it. %>
+        <div class="rounded-lg border border-pink-200 bg-pink-50 p-5">
+          <h2 class="text-sm font-semibold text-gray-900">
+            Ready to send <%= number_to_currency(@batch.total_cents / 100.0) %>
+          </h2>
+          <p class="text-xs text-gray-600 mt-1">CocoScout is already holding this money for you — no bank debit. Transfers go straight to each payee's connected bank.</p>
+          <% if @breakdown[:waiting][:count].positive? %>
+            <p class="text-xs text-gray-600 mt-1">The <%= number_to_currency(@breakdown[:waiting][:cents] / 100.0) %> for payees without a connected bank stays on this run until they connect.</p>
+          <% end %>
+          <div class="mt-3">
+            <% pay_now_cid = "confirm-pay-now-batch" %>
+            <%= render "shared/button", text: "Pay now", variant: "primary", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: pay_now_cid } %>
+            <%= render "shared/confirm_modal", id: pay_now_cid,
+                  title: "Send this money now?",
+                  message: "Send #{number_to_currency(@breakdown[:ready][:cents] / 100.0)} straight from the money CocoScout holds for you? No bank debit.",
+                  confirm_text: "Pay now",
+                  url: manage_pay_now_payout_batch_path(@batch),
+                  method: :post %>
+          </div>
+        </div>
       <% elsif @batch.open? && @items.any? %>
         <div class="rounded-lg border border-pink-200 bg-pink-50 p-5">
           <h2 class="text-sm font-semibold text-gray-900">

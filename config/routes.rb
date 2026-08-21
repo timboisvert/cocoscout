@@ -1284,6 +1284,7 @@ Rails.application.routes.draw do
     post "money/payout-runs",      to: "payout_batches#create", as: "create_payout_batch"
     get  "money/payout-runs/:id",  to: "payout_batches#show",   as: "payout_batch"
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
+    post "money/payout-runs/:id/pay-now", to: "payout_batches#pay_now", as: "pay_now_payout_batch"
     post "money/payout-runs/:id/pay-remaining", to: "payout_batches#pay_remaining", as: "pay_remaining_payout_batch"
     # Dev-only escape hatch (the action 404s outside development).
     post "money/payout-runs/:id/simulate-funding", to: "payout_batches#simulate_funding", as: "simulate_funding_payout_batch"
@@ -1297,6 +1298,7 @@ Rails.application.routes.draw do
     get  "money/incoming/payment/:id", to: "money_incoming#show", as: "money_incoming_payment"
     post "money/incoming/payment/:id/remind", to: "money_incoming#remind", as: "remind_money_incoming_payment"
     post "money/incoming/payment/:id/mark_received", to: "money_incoming#mark_received", as: "mark_received_money_incoming_payment"
+    post "money/incoming/payment/:id/remit", to: "money_incoming#remit", as: "remit_money_incoming_payment"
     get  "money/incoming/:production_id/payments", to: "money_incoming#payments", as: "money_production_incoming_payments"
     get  "money/incoming/:production_id", to: "money_incoming#index", as: "money_production_incoming"
 

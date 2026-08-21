@@ -195,6 +195,26 @@
             <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
             Paid<%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %>
           </span>
+          <%# Money they paid through CocoScout is held for the org until the
+              remittance run sends it on — say where it is, right on the row. %>
+          <% if show_actions %>
+            <% case payment.remittance_stage %>
+            <% when :to_pay %>
+              <% if Current.organization.can_receive_payouts? %>
+                <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "xs",
+                      path: manage_remit_money_incoming_payment_path(payment), method: :post %>
+              <% else %>
+                <%= link_to "Held for you — connect a bank", manage_money_incoming_payment_path(payment),
+                      class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors" %>
+              <% end %>
+            <% when :in_draft %>
+              <%= link_to "In payout run", manage_payout_batch_path(payment.payout_contribution.payout_batch),
+                    class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>
+            <% when :in_flight %>
+              <%= link_to "On its way to your bank", manage_payout_batch_path(payment.payout_contribution.payout_batch),
+                    class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>
+            <% end %>
+          <% end %>
           <%# Amounts settled through a payout run are fixed by the transfer. %>
           <% if show_actions && !in_run %>
             <%= render "shared/button", text: (payment.amount_tbd? ? "Set Amount" : "Edit"),
