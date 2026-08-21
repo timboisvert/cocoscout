@@ -8,6 +8,11 @@ module Manage
     before_action :ensure_org_owner_or_manager
 
     def index
+      # Catch up any collected contract money that missed its remittance (the
+      # org's bank wasn't connected when it arrived). Idempotent and free when
+      # there's nothing waiting.
+      ContractPaymentCollection.remit_pending!(organization)
+
       # Active = anything short of fully done: drafts being built, runs funding/
       # paying, partially-paid runs waiting on people, and failed runs needing
       # attention. Completed (and the rare canceled) runs are history below.

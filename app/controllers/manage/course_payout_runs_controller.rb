@@ -9,6 +9,10 @@ module Manage
     before_action :require_org_manager, only: :pay
 
     def show
+      # Contract remittances ride this run too — catch up any that were
+      # collected before the org could receive payouts.
+      ContractPaymentCollection.remit_pending!(Current.organization)
+
       @run = current_course_run || recent_course_run
       @items = @run ? @run.items.includes(:payee, :payout_contributions).order(:created_at).to_a : []
     end

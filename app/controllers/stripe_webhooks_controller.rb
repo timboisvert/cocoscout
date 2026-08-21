@@ -150,6 +150,10 @@ class StripeWebhooksController < ApplicationController
     # parked on a funded run waiting for exactly this. The daily sweep would
     # catch it tomorrow morning; this makes the usual case immediate.
     RetryParkedPayoutsJob.perform_later(payee: payee) if payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
+
+    # An ORG connecting its bank may have contract money collected before it
+    # could be remitted — queue it now that there's somewhere to send it.
+    ContractPaymentCollection.remit_pending!(payee) if payee.is_a?(Organization) && payee.can_receive_payouts?
   rescue StripeConnectService::Error => e
     Rails.logger.warn("Connect account.updated sync failed for #{account.id}: #{e.message}")
   end

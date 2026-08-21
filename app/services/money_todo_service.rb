@@ -124,7 +124,8 @@ class MoneyTodoService
   # in flight / paid) so it answers "what have I done about this?"
   def payouts
     @payouts ||= begin
-      items = production_payout_items + course_payout_items + contract_payout_items
+      items = production_payout_items + course_payout_items + contract_payout_items +
+              remittance_payout_items
       items.sort_by! { |i| payout_sort_key(i) }
 
       columns = [ :to_pay ]
@@ -324,6 +325,48 @@ class MoneyTodoService
                  href: manage_contract_path(contract) }
     end
     items
+  end
+
+  # Money already collected FOR the org: a contract payment that arrived
+  # through CocoScout's rail sits in our balance until the remittance run
+  # transfers it on to the org's own bank. That's money awaiting a payout just
+  # like a show's payees — it only points the other way — so it belongs in the
+  # same list. Amounts are net of Stripe's processing fee (what the org is
+  # actually owed).
+  def remittance_payout_items
+    payments = ContractPayment.direction_incoming.status_paid
+                              .where.not(stripe_checkout_session_id: nil)
+                              .joins(:contract)
+                              .where(contracts: { organization_id: organization.id })
+                              .includes({ payout_contribution: [ :payout_batch, :payout_batch_item ] }, :contract)
+                              .to_a
+    return [] if payments.empty?
+
+    by_col = payments.group_by do |p|
+      self.class.payout_bucket(p.payout_contribution&.payout_batch,
+                               paid: p.payout_contribution&.payout_batch_item&.paid? || false)
+    end
+    amounts = by_col.transform_values { |ps| ps.sum(&:remittable_cents) / 100.0 }
+    unpaid = amounts.except(:paid).values.sum
+    return [] unless unpaid.positive?
+
+    unremitted = by_col[:to_pay] || []
+    parts = [ "#{payments.size - (by_col[:paid]&.size || 0)} contract #{'payment'.pluralize(payments.size)} collected for you" ]
+    if unremitted.any? && !organization.can_receive_payouts?
+      parts << "connect a bank in Courses settings to receive it"
+    elsif by_col[:in_draft].present?
+      parts << "pay out the run to send it to your bank"
+    elsif by_col[:in_flight].present?
+      parts << "on its way to your bank"
+    end
+
+    [ { name: organization.name, kind: :remittance, amount: unpaid,
+        amounts: amounts,
+        # Collected money is due the moment it lands — never "later".
+        due_soon: unpaid,
+        subtitle: parts.join(" · "),
+        due_on: payments.filter_map(&:paid_date).min,
+        href: manage_course_payout_run_path } ]
   end
 
   # A dateless payment is due now — better to headline it than to hide it.

@@ -32,9 +32,27 @@ class ContractPaymentCollection
       false
     end
 
+    # Queue every collected-but-unremitted payment for an org. The per-payment
+    # remit is skipped when the org has no connected bank; nothing else ever
+    # re-ran it, so that money sat invisible in the held balance forever. Called
+    # when the org's Connect account comes alive (account.updated webhook) and
+    # as an idempotent sweep from the payout screens.
+    def remit_pending!(organization)
+      return 0 unless organization.can_receive_payouts?
+
+      payments = ContractPayment.direction_incoming.status_paid
+                                .where.not(stripe_checkout_session_id: nil)
+                                .joins(:contract)
+                                .where(contracts: { organization_id: organization.id })
+                                .where.missing(:payout_contribution)
+                                .includes(:contract)
+      payments.each { |payment| remit_to_organization!(payment) }
+      payments.size
+    end
+
     # Adds what the org is owed to its open course payout run. Skipped silently
     # when the org hasn't connected a bank — the money stays with CocoScout and
-    # lands in the run as soon as they do (see the settings page nudge).
+    # lands in the run as soon as they do (remit_pending! catches it up).
     def remit_to_organization!(payment)
       organization = payment.contract.organization
       cents = payment.remittable_cents

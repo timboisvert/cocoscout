@@ -18,8 +18,9 @@
 <% items.each do |item| %>
   <%
     badge = case item[:kind]
-            when :course   then { text: "Course", color: "purple" }
-            when :contract then { text: "Contract", color: "gray" }
+            when :course     then { text: "Course", color: "purple" }
+            when :contract   then { text: "Contract", color: "gray" }
+            when :remittance then { text: "To your bank", color: "green" }
             end
     common = {
       title: item[:name],

@@ -19,6 +19,62 @@ RSpec.describe MoneyTodoService do
     described_class.new(user: owner.reload, organization: org, row_limit: row_limit)
   end
 
+  # A contract payment collected through our rail is CocoScout holding the
+  # org's money until the remittance run sends it on — awaiting payout, just
+  # pointed the other way, so it rides the same section.
+  describe "collected contract money awaiting remittance" do
+    let!(:contract) do
+      create(:contract, :active, organization: org, production: production, contractor_name: "SketchFest")
+    end
+
+    def collected_payment(fee_cents: 800)
+      create(:contract_payment, :paid, contract: contract, direction: "incoming",
+                                       amount: 250, due_date: 1.week.ago.to_date)
+        .tap { |p| p.update!(stripe_checkout_session_id: "cs_#{p.id}", stripe_fee_cents: fee_cents) }
+    end
+
+    it "surfaces it in the payouts section, net of Stripe's fee" do
+      collected_payment
+
+      item = service.payouts.items.find { |i| i[:kind] == :remittance }
+      expect(item).to be_present
+      expect(item[:name]).to eq(org.name)
+      expect(item[:amounts][:to_pay]).to eq(242.0)
+      expect(item[:due_soon]).to eq(242.0)
+      expect(item[:subtitle]).to include("collected for you")
+    end
+
+    it "counts money staged on the remittance run as in a draft run" do
+      payment = collected_payment
+      batch = PayoutBatch.create!(organization: org, status: "draft", kind: "course")
+      batch_item = batch.items.create!(payee: org, amount_cents: 24_200)
+      batch.payout_contributions.create!(source: payment, payout_batch_item: batch_item,
+                                         payee: org, amount_cents: 24_200, label: "Remittance")
+
+      item = service.payouts.items.find { |i| i[:kind] == :remittance }
+      expect(item[:amounts][:in_draft]).to eq(242.0)
+      expect(item[:amounts][:to_pay]).to be_nil
+    end
+
+    it "drops out once the remittance has been paid" do
+      payment = collected_payment
+      batch = PayoutBatch.create!(organization: org, status: "completed", kind: "course")
+      batch_item = batch.items.create!(payee: org, amount_cents: 24_200, status: "paid")
+      batch.payout_contributions.create!(source: payment, payout_batch_item: batch_item,
+                                         payee: org, amount_cents: 24_200, label: "Remittance")
+
+      expect(service.payouts.items.find { |i| i[:kind] == :remittance }).to be_nil
+    end
+
+    it "ignores money recorded by hand — a check never sat in our balance" do
+      create(:contract_payment, :paid, contract: contract, direction: "incoming",
+                                       amount: 250, due_date: 1.week.ago.to_date)
+        .update!(payment_method: "check")
+
+      expect(service.payouts.items.find { |i| i[:kind] == :remittance }).to be_nil
+    end
+  end
+
   describe "shows awaiting financials" do
     it "counts a started show with no financials" do
       show = create(:show, production: production, event_type: :show, date_and_time: 2.days.ago)
