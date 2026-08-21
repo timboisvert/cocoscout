@@ -1,10 +1,15 @@
 # frozen_string_literal: true
 
 module Manage
-  # The course payout run: instructors + the org's own share, paid straight from
-  # the course money CocoScout already holds. Lives in Courses (a free module),
-  # not the Pro-only Money section — the existing run pages under money/ are
-  # Pro-gated. No funding step: paying just transfers held funds out.
+  # The Courses-side window onto the org's ONE payout run (kind "performer" —
+  # performers, contractors, course money, and contract remittances all ride
+  # it; staff pay is the only separate run). Lives in Courses (a free module),
+  # not the Pro-only Money section — the run pages under money/ are Pro-gated.
+  #
+  # Paying from here only works when everything pending is held money (course
+  # sales, collected contract payments) — no bank debit. A run that also
+  # carries bank-funded payouts (show pay, contractor payments) must be funded
+  # from the Money page instead.
   class CoursePayoutRunsController < Manage::ManageController
     before_action :require_org_manager, only: :pay
 
@@ -13,12 +18,15 @@ module Manage
       # collected before the org could receive payouts.
       ContractPaymentCollection.remit_pending!(Current.organization)
 
-      @run = current_course_run || recent_course_run
+      @run = current_run || recent_run
       @items = @run ? @run.items.includes(:payee, :payout_contributions).order(:created_at).to_a : []
+      @held_cents = @run&.open? ? @run.held_cents(@items) : 0
+      pending_cents = @items.sum { |i| i.status == "pending" ? i.amount_cents : 0 }
+      @bank_funded_cents = [ pending_cents - @held_cents, 0 ].max
     end
 
     def pay
-      run = current_course_run
+      run = current_run
       if run.nil? || run.items.pending.none?
         redirect_to manage_course_payout_run_path, alert: "There's nothing to pay out right now."
         return
@@ -28,26 +36,39 @@ module Manage
         return
       end
 
-      result = CoursePayoutRunExecutor.pay!(run)
-      if result.error.present?
-        redirect_to manage_course_payout_run_path, alert: result.error
+      # Anything beyond held money needs the org's bank debited — that's the
+      # Money page's fund & pay flow, not this button.
+      pending_cents = run.items.pending.sum(:amount_cents)
+      if pending_cents > run.held_cents
+        redirect_to manage_course_payout_run_path,
+          alert: "This run also includes payouts funded from your bank. Fund & pay it from Money → Payout Runs."
         return
       end
 
-      notice = "Paid #{result.paid} #{'payout'.pluralize(result.paid)} straight to their bank."
-      notice += " #{result.failed} couldn't be sent — see below." if result.failed.positive?
+      PayoutBatchService.fund!(run)
+      paid = run.reload.items.paid.count
+      notice = "Paid #{paid} #{'payout'.pluralize(paid)} straight to their bank."
+      unpaid = run.items.where.not(status: "paid").count
+      notice += " #{unpaid} couldn't be sent yet — see below." if unpaid.positive?
       redirect_to manage_course_payout_run_path, notice: notice
+    rescue PayoutBatchService::Error => e
+      redirect_to manage_course_payout_run_path, alert: e.message
     end
 
     private
 
-    def current_course_run
-      PayoutBatch.of_kind("course").open_runs
+    # The one open run everything joins. Falls back to legacy open course-kind
+    # drafts only through recent_run (they no longer accept new money).
+    def current_run
+      PayoutBatch.of_kind("performer").open_runs
         .where(organization: Current.organization).order(:created_at).first
     end
 
-    def recent_course_run
-      PayoutBatch.of_kind("course").where(organization: Current.organization).recent.first
+    # Something to show when nothing is open: the most recent run that carried
+    # course-style money — a performer run or a legacy course run.
+    def recent_run
+      PayoutBatch.of_kind(%w[performer course])
+        .where(organization: Current.organization).recent.first
     end
 
     def require_org_manager

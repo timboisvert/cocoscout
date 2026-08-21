@@ -4,10 +4,11 @@
 # organization's remittance.
 #
 # The money is in CocoScout's balance (the contractor paid us, exactly like a
-# course registration), so the org gets it through the fund-free "course" payout
-# run — one Stripe transfer from the platform balance to the org's own Connect
-# account. CocoScout keeps no margin: the org is remitted what arrived less what
-# Stripe charged to process it.
+# course registration), so the org's remittance joins the regular PERFORMER
+# payout run as a held-funds line (PayoutContribution#held_funds?): funding the
+# run never debits the org's bank for it — one Stripe transfer from the
+# platform balance to the org's own Connect account. CocoScout keeps no margin:
+# the org is remitted what arrived less what Stripe charged to process it.
 #
 # Idempotent. Both the webhook and the success page call this, and either may
 # arrive first or twice.
@@ -50,16 +51,18 @@ class ContractPaymentCollection
       payments.size
     end
 
-    # Adds what the org is owed to its open course payout run. Skipped silently
-    # when the org hasn't connected a bank — the money stays with CocoScout and
-    # lands in the run as soon as they do (remit_pending! catches it up).
+    # Adds what the org is owed to its open performer payout run (the one rail —
+    # performers, contractors, course money, and remittances all ride it).
+    # Skipped silently when the org hasn't connected a bank — the money stays
+    # with CocoScout and lands in the run as soon as they do (remit_pending!
+    # catches it up).
     def remit_to_organization!(payment)
       organization = payment.contract.organization
       cents = payment.remittable_cents
       return if cents.zero? || !organization.can_receive_payouts?
 
       ActiveRecord::Base.transaction do
-        batch = PayoutBatch.open_for(organization, kind: "course")
+        batch = PayoutBatch.open_for(organization, kind: "performer")
         item = batch.items.find_by(payee: organization) ||
           batch.items.create!(payee: organization, amount_cents: cents, status: "pending")
 
@@ -72,7 +75,8 @@ class ContractPaymentCollection
           contribution.description = organization.name
         end
 
-        item.update!(amount_cents: item.payout_contributions.sum(:amount_cents))
+        # Org items live off the performer ledger; this sums their lines.
+        item.settle_performer_amount!
         batch.recalculate_total!
       end
     end

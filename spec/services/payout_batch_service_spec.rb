@@ -313,6 +313,49 @@ RSpec.describe PayoutBatchService do
       expect { PayoutBatchService.fund!(batch, method: "ach") }
         .to raise_error(PayoutBatchService::Error, /Connect a bank or card/)
     end
+
+    # A held-funds line: money CocoScout already holds for the org (a collected
+    # contract payment's remittance / course money), riding the same run.
+    def add_held_remittance!(batch, cents)
+      org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
+      item = batch.items.create!(payee: org, amount_cents: cents, status: "pending")
+      batch.payout_contributions.create!(payout_batch_item: item, payee: org,
+                                         amount_cents: cents, label: "Contract: collected money")
+      batch.recalculate_total!
+    end
+
+    it "debits the bank only for the run's non-held remainder" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
+
+      batch = PayoutBatchService.build_for(organization: org) # ready: 5000
+      add_held_remittance!(batch, 2000)                       # total: 7000
+
+      PayoutBatchService.fund!(batch, method: "card")
+
+      expect(Stripe::PaymentIntent).to have_received(:create).with(hash_including(amount: 5000))
+      expect(batch.reload.status).to eq("completed")
+      expect(batch.items.all? { |i| i.reload.paid? }).to be(true)
+    end
+
+    it "pays a fully-held run with no funding source and no debit at all" do
+      org.update!(funding_payment_method_id: nil)
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_held"))
+
+      batch = org.payout_batches.create!(kind: "performer", status: "draft", trigger: "manual")
+      add_held_remittance!(batch, 24_200)
+
+      PayoutBatchService.fund!(batch)
+
+      # No PaymentIntent was created: the run funded itself from held money
+      # (a debit attempt would have raised — create is unstubbed here).
+      expect(batch.reload.status).to eq("completed")
+      expect(batch.funding_status).to eq("succeeded")
+      expect(batch.funding_payment_intent_id).to be_nil
+      expect(batch.items.first.reload).to be_paid
+      # The org's own remittance never touches the performer payout ledger.
+      expect(PayoutLedgerEntry.where(payee: org)).to be_empty
+    end
   end
 
   describe "org cash enforcement" do

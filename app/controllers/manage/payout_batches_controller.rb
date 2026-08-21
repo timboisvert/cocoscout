@@ -147,7 +147,9 @@ module Manage
     end
 
     # Fund and pay an existing open run (e.g. a performer run built via
-    # "add to payout run"). ACH-debits the org, then transfers to each payee.
+    # "add to payout run"). ACH-debits the org for whatever held money (course
+    # sales, collected contract payments) doesn't cover, then transfers to each
+    # payee — a fully-held run debits nothing and pays immediately.
     def fund
       batch = organization.payout_batches.find(params[:id])
       unless batch.open? && batch.items.pending.any?
@@ -166,10 +168,10 @@ module Manage
       redirect_to manage_payout_batch_path(batch), alert: e.message
     end
 
-    # Pay a fund-free run: the money (course sales, collected contract
-    # payments) is already in CocoScout's balance, so there's no ACH step —
-    # transfers go straight out. The Money-side twin of the Courses page's
-    # "Pay everyone now".
+    # LEGACY: pay a pre-fold course-kind run (skips_funding?) — the money is
+    # already in CocoScout's balance, so there's no ACH step. New runs carry
+    # held money as held-funds lines on the performer run and go through #fund,
+    # which debits nothing when held money covers the run.
     def pay_now
       batch = organization.payout_batches.find(params[:id])
       unless batch.skips_funding?

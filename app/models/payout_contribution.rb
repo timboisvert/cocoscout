@@ -25,6 +25,21 @@ class PayoutContribution < ApplicationRecord
   # paid (staff already took their split from the bar tip jar).
   scope :payable, -> { where(excluded_from_payout: false) }
 
+  # Course-derived sources are paid out of money CocoScout already holds
+  # (students paid us over the enrollment period), not money the org funds from
+  # its bank. See #held_funds?.
+  HELD_SOURCE_TYPES = %w[CourseOfferingPayout CourseOfferingPayoutLineItem].freeze
+
+  # True when this line is paid from money CocoScout already holds FOR the org,
+  # so funding the run must not debit the org's bank for it: every course line
+  # (instructors and the org's remainder), and any line remitting money to the
+  # organization itself (collected contract payments). An OUTGOING contract
+  # payment to a contractor is normal bank-funded money — its source is also a
+  # ContractPayment, which is why direction is judged by payee, not source.
+  def held_funds?
+    payee_type == "Organization" || HELD_SOURCE_TYPES.include?(source_type)
+  end
+
   def worksheet_entries
     Array(worksheet)
   end

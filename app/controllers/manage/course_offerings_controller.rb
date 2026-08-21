@@ -27,11 +27,11 @@ module Manage
       @active_courses_count = @course_offerings.count { |o| o.status.in?(%w[open closed]) }
       @awaiting_payout = @course_offerings.select { |o| course_awaiting_payout?(o) }
 
-      # An open course payout run with money still to send — surfaced so it's one
-      # click from the hub.
-      run = PayoutBatch.of_kind("course").open_runs
+      # Held money (course sales, collected contract payments) still to send on
+      # the org's open payout run — surfaced so it's one click from the hub.
+      run = PayoutBatch.of_kind("performer").open_runs
         .where(organization: Current.organization).order(:created_at).first
-      @course_run_pending_cents = run&.items&.pending&.sum(:amount_cents).to_i
+      @course_run_pending_cents = run ? run.held_cents : 0
     end
 
     def show

@@ -27,7 +27,10 @@ RSpec.describe ContractPaymentCollection, ".remit_pending!" do
     expect(contribution).to be_present
     expect(contribution.payee).to eq(org)
     expect(contribution.amount_cents).to eq(24_200)
-    expect(contribution.payout_batch.kind).to eq("course")
+    expect(contribution.payout_batch.kind).to eq("performer")
+    # Held money — funding the run must not debit the org's bank for it.
+    expect(contribution.held_funds?).to be(true)
+    expect(contribution.payout_batch.held_cents).to eq(24_200)
 
     # Idempotent — a second sweep finds nothing.
     expect(described_class.remit_pending!(org)).to eq(0)

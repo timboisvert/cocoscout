@@ -97,7 +97,7 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
   end
 
   describe "the run page in Money" do
-    it "offers Pay now (no ACH funding) for the fund-free remittance run" do
+    it "offers Pay now (no ACH debit) when held money covers the whole run" do
       org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
       ContractPaymentCollection.remit_to_organization!(payment)
       batch = payment.reload.payout_contribution.payout_batch
@@ -107,21 +107,44 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
       body = response.body
       expect(body).to include("Ready to send $242.00")
       expect(body).to include("Pay now")
-      expect(body).to include(manage_pay_now_payout_batch_path(batch))
+      expect(body).to include(manage_fund_payout_batch_path(batch))
       expect(body).not_to include("Fund &amp; pay run")
       expect(body).not_to include("We debit your bank via ACH")
     end
 
-    it "refuses to ACH-fund a fund-free run" do
+    it "debits only the non-held remainder when show pay shares the run" do
+      org.update!(stripe_account_id: "acct_org", payouts_enabled: true,
+                  funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account")
+      ContractPaymentCollection.remit_to_organization!(payment)
+      batch = payment.reload.payout_contribution.payout_batch
+      performer = create(:person, stripe_account_id: "acct_perf", payouts_enabled: true)
+      item = batch.items.create!(payee: performer, amount_cents: 5_000, status: "pending")
+      batch.payout_contributions.create!(payout_batch_item: item, payee: performer,
+                                         amount_cents: 5_000, label: "Show pay")
+      batch.recalculate_total!
+
+      get manage_payout_batch_path(batch)
+
+      body = response.body
+      expect(body).to include("We debit your bank via ACH")
+      expect(body).to include("CocoScout already holds $242.00 of this run")
+      expect(body).to include("debited only $50.00")
+      expect(body).to include("Fund &amp; pay run")
+    end
+
+    it "pays the fully-held run with no bank debit when funded" do
       org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
       ContractPaymentCollection.remit_to_organization!(payment)
       batch = payment.reload.payout_contribution.payout_batch
+      allow(Stripe::Transfer).to receive(:create).and_return(double(id: "tr_remit"))
 
       post manage_fund_payout_batch_path(batch)
 
       expect(response).to redirect_to(manage_payout_batch_path(batch))
-      expect(flash[:alert]).to include("use Pay now")
-      expect(batch.reload.status).to eq("draft")
+      expect(batch.reload.status).to eq("completed")
+      expect(batch.funding_payment_intent_id).to be_nil # no ACH/card debit
+      expect(Stripe::Transfer).to have_received(:create)
+        .with(hash_including(amount: 24_200, destination: "acct_org"), anything)
     end
 
     it "refuses Pay now on a run that needs funding" do

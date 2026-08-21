@@ -94,7 +94,7 @@
                   path: manage_remit_money_incoming_payment_path(@payment), method: :post %>
           <% elsif stage == :to_pay %>
             <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "small",
-                  path: manage_course_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
+                  path: manage_course_settings_connect_path(return_to: manage_money_incoming_payment_path(@payment)), method: :post, form: { data: { turbo: false } } %>
           <% else %>
             <%= link_to "View this payout run", manage_payout_batch_path(@payment.payout_contribution.payout_batch), class: "text-sm text-pink-600 hover:text-pink-700" %>
           <% end %>

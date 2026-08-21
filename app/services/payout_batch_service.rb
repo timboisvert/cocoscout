@@ -139,20 +139,37 @@ class PayoutBatchService
 
     org = batch.organization
     payment_method = payment_method_id.presence || org.funding_payment_method_id.presence
-    raise Error, "Connect a bank or card to fund payouts first." if payment_method.blank?
+
+    # Money CocoScout already holds for the org — course sales and collected
+    # contract payments staged on this run — never needs to come out of their
+    # bank; ACH-debiting the org to hand them their own held money would charge
+    # them twice. Only the remainder is fundable.
+    held_cents = batch.held_cents
+    fundable_cents = [ batch.total_cents - held_cents, 0 ].max
 
     # Money released back from earlier funded runs (payees paid another way)
     # never left the Stripe balance — spend it before debiting the bank.
-    credit_used = PayoutFundingCredit.consume!(org, batch.total_cents)
-    debit_cents = batch.total_cents - credit_used
+    credit_used = PayoutFundingCredit.consume!(org, fundable_cents)
+    debit_cents = fundable_cents - credit_used
 
     if debit_cents <= 0
-      # Fully covered by credit: no PaymentIntent at all — the balance already
-      # holds the money, so the run advances straight to paying.
+      # Nothing to debit (held money and/or credit covers the run): no
+      # PaymentIntent at all — the balance already holds the money, so the run
+      # advances straight to paying.
       batch.update!(status: "funding", funding_status: "succeeded", funding_payment_intent_id: nil)
       advance_funding!(batch, "succeeded")
       PayoutRunSubmittedNotificationJob.perform_later(batch.id)
       return batch
+    end
+
+    if payment_method.blank?
+      # Nothing was debited — hand back the credit this attempt consumed so the
+      # org's available balance stays truthful.
+      if credit_used.positive?
+        PayoutFundingCredit.create!(organization: org, amount_cents: credit_used,
+                                    note: "Restored after failed funding of run ##{batch.id}")
+      end
+      raise Error, "Connect a bank or card to fund payouts first."
     end
 
     # The Stripe payment-method type: prefer the connected source's type, else
@@ -398,11 +415,13 @@ class PayoutBatchService
   def self.record_performer_activation!(batch, item)
     return unless batch.kind == "performer" && item.payee.is_a?(Person)
 
-    # Don't count a person paid *only* as a contractor (contract payments ride the
-    # performer run too) toward the $3/active-performer charge — that's for
-    # performing. A person with any show-payout contribution still counts.
+    # Don't count a person paid *only* as a contractor or course instructor
+    # (contract payments and course money ride the performer run too) toward the
+    # $3/active-performer charge — that's for performing. A person with any
+    # show-payout contribution still counts.
     contributions = item.payout_contributions.to_a
-    return if contributions.any? && contributions.all? { |c| c.source_type == "ContractPayment" }
+    non_performing = PayoutContribution::HELD_SOURCE_TYPES + %w[ContractPayment]
+    return if contributions.any? && contributions.all? { |c| non_performing.include?(c.source_type) }
 
     PerformerActivation.record!(
       organization: batch.organization, person: item.payee, month: item.paid_at || Time.current

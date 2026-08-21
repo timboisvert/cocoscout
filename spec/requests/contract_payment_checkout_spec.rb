@@ -124,7 +124,9 @@ RSpec.describe "Contract payment checkout", type: :request do
       expect(contribution.payee).to eq(org)
       # $250 collected less $10 in processing fees.
       expect(contribution.amount_cents).to eq(24_000)
-      expect(contribution.payout_batch.kind).to eq("course")
+      # One payout rail: the remittance rides the performer run as held funds.
+      expect(contribution.payout_batch.kind).to eq("performer")
+      expect(contribution.held_funds?).to be(true)
     end
 
     it "settles once even if the webhook and the success page both arrive" do

@@ -1,18 +1,24 @@
 # frozen_string_literal: true
 
-# Adds a course offering's settlement to the organization's open "course" payout
-# run. Unlike a performer run, the money is already in CocoScout's balance
-# (students paid over the enrollment period), so a course run skips funding
-# entirely — it just transfers held funds out:
+# Adds a course offering's settlement to the organization's open PERFORMER
+# payout run — there is one payout rail: performers, contractors, course
+# instructors, and the org's own remittances all ride the same run (staff pay
+# is the only separate run). The course money is already in CocoScout's balance
+# (students paid over the enrollment period), so these lines are "held funds"
+# (PayoutContribution#held_funds?) — funding the run never debits the org's
+# bank for them:
 #
 #   * instructor payments  -> the instructor Person's Connect account
-#   * the org's remainder   -> the Organization's own Connect account
+#   * the org's remainder  -> the Organization's own Connect account
 #
 # One PayoutBatchItem per payee (their total = one transfer), one
-# PayoutContribution per source. Idempotent per source, so re-settling the same
-# course restates amounts instead of double-adding. Only payees who can actually
-# receive Stripe payouts are added; the rest stay owed (unpayable) until they
-# connect a bank.
+# PayoutContribution per source. Instructor/contractor lines post a real
+# performer-ledger earning (source: the contribution, so removing the line
+# reverses it) — the run then nets them against advances exactly like show pay.
+# The org's remainder row stays off the ledger (the org has none); its item is
+# just the sum of its lines. Idempotent per source, so re-settling the same
+# course restates amounts instead of double-adding. The org's remainder only
+# joins once the org's Stripe account can actually receive the transfer.
 class CoursePayoutRunService
   Result = Struct.new(:batch, :added, :skipped, keyword_init: true)
 
@@ -25,7 +31,7 @@ class CoursePayoutRunService
       batch = nil
 
       ActiveRecord::Base.transaction do
-        batch = PayoutBatch.open_for(organization, kind: "course", created_by: added_by)
+        batch = PayoutBatch.open_for(organization, kind: "performer", created_by: added_by)
 
         # CoursePayoutSettlement decides the final amounts (incl. the contract
         # rule that instructor pay comes out of the contractor's share), so the
@@ -58,24 +64,40 @@ class CoursePayoutRunService
         return :skipped if existing.payout_batch_item&.paid? || !existing.payout_batch&.open?
 
         existing.update!(amount_cents: cents, label: label)
-        resum_item(existing.payout_batch_item)
+        post_earning!(existing)
+        existing.payout_batch_item&.settle_performer_amount!
         return :added
       end
 
       item = batch.items.find_by(payee: payee) ||
         batch.items.create!(payee: payee, amount_cents: cents, status: "pending")
-      PayoutContribution.create!(
+      contribution = PayoutContribution.create!(
         payout_batch: batch, payout_batch_item: item, payee: payee,
         source: source, amount_cents: cents, label: label, description: payee.try(:name)
       )
-      resum_item(item)
+      post_earning!(contribution)
+      item.settle_performer_amount!
       :added
     end
 
-    # Course items are simply the sum of their contributions (no performer
-    # net-settle against advances — that's a performer-run concern).
-    def resum_item(item)
-      item.update!(amount_cents: item.payout_contributions.sum(:amount_cents))
+    # A performer-run item pays the payee's net ledger balance, so a course line
+    # must exist on the ledger as an earning or the run would settle it to zero.
+    # Posted with the contribution as source: post! restates on recalculation,
+    # and the contribution's dependent: :destroy reverses it when the line is
+    # removed from the run. The org's remainder row posts nothing — the org has
+    # no ledger; its item is summed from its lines instead.
+    def post_earning!(contribution)
+      return if contribution.payee_type == "Organization"
+
+      PayoutLedgerEntry.post!(
+        organization: contribution.payout_batch.organization,
+        payee: contribution.payee,
+        entry_type: "earning",
+        amount_cents: contribution.amount_cents,
+        source: contribution,
+        description: contribution.label,
+        category: "performer"
+      )
     end
 
     # People (instructors/contractors) go on the run whether or not they've

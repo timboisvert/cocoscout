@@ -23,7 +23,7 @@ RSpec.describe CoursePayoutRunService do
     )
   end
 
-  it "adds a payable instructor and the org remainder into the open course run" do
+  it "adds a payable instructor and the org remainder into the open performer run" do
     make_payable(org)
     instructor = make_payable(create(:person))
     payout = build_payout(net_cents: 3800, total_payout_cents: 1000)
@@ -32,11 +32,50 @@ RSpec.describe CoursePayoutRunService do
 
     result = described_class.add_to_run!(payout)
 
-    expect(result.batch.kind).to eq("course")
+    expect(result.batch.kind).to eq("performer")
     expect(result.added).to eq(2)
     expect(result.batch.items.find_by(payee: instructor).amount_cents).to eq(1000)
     expect(result.batch.items.find_by(payee: org).amount_cents).to eq(2800) # 3800 - 1000
     expect(result.batch.total_cents).to eq(3800)
+  end
+
+  it "posts a performer-ledger earning for the instructor line but none for the org's remainder" do
+    make_payable(org)
+    instructor = make_payable(create(:person))
+    payout = build_payout(net_cents: 3800, total_payout_cents: 1000)
+    payout.line_items.create!(payee: instructor, amount_cents: 1000, label: instructor.name,
+                              calculation_details: { type: "instructor" })
+
+    described_class.add_to_run!(payout)
+
+    expect(org.payout_balance_cents_for(instructor, category: "performer")).to eq(1000)
+    expect(PayoutLedgerEntry.where(payee: org)).to be_empty
+  end
+
+  it "counts every line as held funds, so funding the run debits nothing" do
+    make_payable(org)
+    instructor = make_payable(create(:person))
+    payout = build_payout(net_cents: 3800, total_payout_cents: 1000)
+    payout.line_items.create!(payee: instructor, amount_cents: 1000, label: instructor.name,
+                              calculation_details: { type: "instructor" })
+
+    batch = described_class.add_to_run!(payout).batch
+
+    expect(batch.held_cents).to eq(3800)
+  end
+
+  it "nets an instructor's course pay against an outstanding advance, like any performer earning" do
+    make_payable(org)
+    instructor = make_payable(create(:person))
+    PayoutLedgerEntry.post!(organization: org, payee: instructor, entry_type: "advance",
+                            amount_cents: -400, category: "performer")
+    payout = build_payout(net_cents: 3800, total_payout_cents: 1000)
+    payout.line_items.create!(payee: instructor, amount_cents: 1000, label: instructor.name,
+                              calculation_details: { type: "instructor" })
+
+    result = described_class.add_to_run!(payout)
+
+    expect(result.batch.items.find_by(payee: instructor).amount_cents).to eq(600)
   end
 
   it "adds an instructor with no connected bank (rides the run) and pays the org" do

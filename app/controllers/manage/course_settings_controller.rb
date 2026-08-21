@@ -36,17 +36,20 @@ module Manage
       start_bank_onboarding
     end
 
-    # Stripe redirects here after the org finishes (or exits) onboarding.
+    # Stripe redirects here after the org finishes (or exits) onboarding. The
+    # connect flow is started from more than just this settings page (e.g. a
+    # collected contract payment's "Connect your bank"), so honor the return_to
+    # it was launched with instead of dumping everyone on the courses page.
     def connect_return
       StripeConnectService.new(Current.organization).sync_account
       notice = if Current.organization.can_receive_payouts?
-        "Your organization's bank is connected — course payouts can be sent straight to you."
+        "Your organization's bank is connected — money we collect for you can be sent straight to your bank."
       else
         "Almost there — finish the remaining steps so your organization can get paid."
       end
-      redirect_to manage_course_settings_path, notice: notice
+      redirect_to return_to_path || manage_course_settings_path, notice: notice
     rescue StripeConnectService::Error
-      redirect_to manage_course_settings_path,
+      redirect_to return_to_path || manage_course_settings_path,
         alert: "We couldn't confirm your bank setup. Please try again."
     end
 
@@ -66,12 +69,19 @@ module Manage
 
     def start_bank_onboarding
       url = StripeConnectService.new(Current.organization).onboarding_link(
-        return_url: manage_course_settings_return_url,
-        refresh_url: manage_course_settings_refresh_url
+        return_url: manage_course_settings_return_url(return_to: return_to_path),
+        refresh_url: manage_course_settings_refresh_url(return_to: return_to_path)
       )
       redirect_to url, allow_other_host: true
     rescue StripeConnectService::Error => e
-      redirect_to manage_course_settings_path, alert: "Couldn't start bank setup: #{e.message}"
+      redirect_to return_to_path || manage_course_settings_path, alert: "Couldn't start bank setup: #{e.message}"
+    end
+
+    # Only a same-app relative path may ride the Stripe round-trip back, so
+    # ?return_to= can't be used as an open redirect.
+    def return_to_path
+      path = params[:return_to].to_s
+      path if path.start_with?("/") && !path.start_with?("//")
     end
   end
 end

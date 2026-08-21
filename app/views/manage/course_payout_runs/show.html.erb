@@ -1,4 +1,4 @@
-<% content_for :title, "Course Payout Run" %>
+<% content_for :title, "Payout Run" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -63,7 +63,17 @@
             <% end %>
           </div>
 
-          <% if pending.any? %>
+          <% if pending.any? && @bank_funded_cents.positive? %>
+            <%# The one run also carries bank-funded payouts (show pay, contractor
+                payments) — paying it means an ACH debit, which is the Money
+                page's fund & pay flow. %>
+            <div class="max-w-xs text-right">
+              <%= link_to manage_payout_batch_path(@run) do %>
+                <%= render "shared/button", text: "Fund & pay in Money", variant: "primary", size: "medium" %>
+              <% end %>
+              <p class="text-xs text-gray-500 mt-1">This run also includes <%= number_to_currency(@bank_funded_cents / 100.0) %> funded from your bank, so it's paid from Money → Payout Runs.</p>
+            </div>
+          <% elsif pending.any? %>
             <div>
               <% pay_everyone_cid = "confirm-pay-everyone-course" %>
               <%= render "shared/button", text: "Pay everyone now", variant: "primary", size: "medium", type: :button,
@@ -74,7 +84,7 @@
                     confirm_text: "Pay everyone",
                     url: manage_course_payout_run_pay_path,
                     method: :post %>
-              <p class="text-xs text-gray-500 mt-1 text-right">Paid from the course money we hold — no funding step.</p>
+              <p class="text-xs text-gray-500 mt-1 text-right">Paid from money CocoScout already holds for you — no bank debit.</p>
             </div>
           <% elsif completed %>
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-green-100 text-green-700 rounded-full">

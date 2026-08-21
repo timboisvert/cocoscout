@@ -38,13 +38,14 @@ module Manage
     end
 
     # Add this course's payouts (instructors + the org's remainder) to the org's
-    # open course payout run. Payees who haven't connected a bank are left owed
-    # and can be added to a later run once they're ready.
+    # open payout run — the same performer run everyone else rides. Payees who
+    # haven't connected a bank are left owed and can be added to a later run
+    # once they're ready.
     def add_to_run
       result = CoursePayoutRunService.add_to_run!(@payout, added_by: Current.user)
 
       if result.added.positive?
-        notice = "Added #{result.added} #{'payout'.pluralize(result.added)} to the course payout run."
+        notice = "Added #{result.added} #{'payout'.pluralize(result.added)} to the payout run."
         if result.skipped.positive?
           notice += " #{result.skipped} still can't be paid until a bank is connected."
         end
@@ -255,7 +256,7 @@ module Manage
     end
 
     def current_course_run
-      PayoutBatch.of_kind("course").open_runs
+      PayoutBatch.of_kind("performer").open_runs
         .where(organization: Current.organization).order(:created_at).first
     end
   end

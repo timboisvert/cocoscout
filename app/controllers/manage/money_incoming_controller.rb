@@ -122,8 +122,9 @@ module Manage
       @received_methods = RECEIVED_METHODS
     end
 
-    # Queue this collected payment's remittance onto the org's fund-free run —
-    # the "Add to payout run" button on a collected payment.
+    # Queue this collected payment's remittance onto the org's performer payout
+    # run (as a held-funds line — no bank debit) — the "Add to payout run"
+    # button on a collected payment.
     def remit
       @payment = find_payment
       unless @payment.remittance_stage == :to_pay

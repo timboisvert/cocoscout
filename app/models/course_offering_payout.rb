@@ -44,6 +44,40 @@ class CourseOfferingPayout < ApplicationRecord
     update!(status: "paid", paid_at: Time.current)
   end
 
+  # Settle the payout once every line is actually paid. A payout with no
+  # instructor lines is settled by its org row alone.
+  def settle_if_fully_paid!
+    return if paid?
+
+    update_columns(status: "paid", paid_at: Time.current) if line_items.reload.all?(&:paid?)
+  end
+
+  # This payout is the SOURCE of the org's own remainder row on the payout run
+  # (see CoursePayoutSettlement#org_row). Called when that run pays the org
+  # (PayoutBatchService.settle_item_sources!): record the OrgPayout — the books'
+  # record that CocoScout remitted the org its course share — and settle.
+  def mark_paid_via_payout_run!(reference_id: nil)
+    org_share = CoursePayoutSettlement.new(self).org_keeps_cents
+    if org_share.positive?
+      OrgPayout.create!(
+        organization: course_offering.production.organization,
+        course_offering: course_offering,
+        amount_cents: org_share,
+        status: "paid",
+        payout_type: "full_course",
+        payment_method: "bank_transfer",
+        paid_at: Time.current
+      )
+    end
+    settle_if_fully_paid!
+  end
+
+  # The run that paid the org's remainder came back — undo only what the run
+  # itself recorded.
+  def mark_unpaid_via_payout_run!
+    update_columns(status: "calculated", paid_at: nil) if paid?
+  end
+
   def formatted_total_revenue
     format_cents(effective_revenue_cents)
   end

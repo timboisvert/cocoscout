@@ -90,10 +90,30 @@ class PayoutBatch < ApplicationRecord
     end
   end
 
-  # A course run pays out money CocoScout already holds, so there's no funding
-  # (ACH/card) step — it goes straight to transferring held funds out.
+  # LEGACY: a course-kind run pays out money CocoScout already holds, so it has
+  # no funding (ACH/card) step at all. New runs are never created with this
+  # kind — course money now rides the performer run as held-funds lines (see
+  # #held_cents) — but old course runs still render and pay this way.
   def skips_funding?
     kind == "course"
+  end
+
+  # Money on this run's unpaid items that CocoScout already holds for the org —
+  # course sales and collected contract payments (see
+  # PayoutContribution#held_funds?). Funding the run debits the org's bank only
+  # for the remainder (see PayoutBatchService.fund!). Capped per item at the
+  # item's amount: performer netting (advances) can settle an item below the sum
+  # of its lines, and the bank-debit reduction must never exceed what the run
+  # actually pays.
+  def held_cents(loaded_items = items.includes(:payout_contributions))
+    loaded_items.sum do |item|
+      next 0 unless item.status == "pending"
+
+      held = item.payout_contributions.sum do |c|
+        !c.excluded_from_payout && c.held_funds? ? c.amount_cents : 0
+      end
+      held.clamp(0, item.amount_cents)
+    end
   end
 
   # --- Automatic retry of parked payees ---------------------------------------

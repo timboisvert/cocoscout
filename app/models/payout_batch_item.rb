@@ -37,11 +37,13 @@ class PayoutBatchItem < ApplicationRecord
       # paid payee if we leave it behind.
       update!(status: "paid", paid_at: Time.current, error: nil, stripe_transfer_id: transfer_id || stripe_transfer_id)
 
-      # Course runs distribute money CocoScout already holds (course revenue), not
-      # money the org owes its people — so they don't touch the performer/staff
-      # payout ledger. Posting one here would push the payee's performer balance
-      # negative (a payout with no matching earning).
-      next if payout_batch.kind == "course"
+      # Legacy course runs distribute money CocoScout already holds (course
+      # revenue), not money the org owes its people — so they don't touch the
+      # performer/staff payout ledger. Same for an Organization payee on any
+      # run: that's CocoScout remitting the org its own held money (course
+      # remainder, collected contract payments), and the org has no ledger.
+      # Posting here would record a payout with no matching earning.
+      next if payout_batch.kind == "course" || payee_type == "Organization"
 
       PayoutLedgerEntry.post!(
         organization: organization,
@@ -95,8 +97,9 @@ class PayoutBatchItem < ApplicationRecord
     transaction do
       update!(status: "returned", error: reason.to_s.truncate(500))
 
-      # Course runs never posted a payout entry, so there's nothing to reverse.
-      next if payout_batch.kind == "course"
+      # Course runs and Organization-payee items never posted a payout entry,
+      # so there's nothing to reverse.
+      next if payout_batch.kind == "course" || payee_type == "Organization"
 
       PayoutLedgerEntry.post!(
         organization: organization,
@@ -120,6 +123,19 @@ class PayoutBatchItem < ApplicationRecord
     # Never re-settle a paid item — the transfer already happened and its payout
     # ledger entry is history that must stand.
     return self if paid?
+
+    # The org's own remittance rows (course remainder, collected contract
+    # payments) live outside the performer ledger — their amount is simply the
+    # sum of their lines.
+    if payee_type == "Organization"
+      total = payout_contributions.payable.sum(:amount_cents)
+      if total.positive?
+        update!(amount_cents: total)
+        return self
+      end
+      destroy
+      return nil
+    end
 
     net_owed = [ organization.payout_balance_cents_for(payee, category: "performer"), 0 ].max
     # Pay only for the earning lines actually in THIS run (show payouts + contract

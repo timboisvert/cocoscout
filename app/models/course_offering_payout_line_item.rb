@@ -29,6 +29,28 @@ class CourseOfferingPayoutLineItem < ApplicationRecord
     sync_to_contract_payment(user, method, notes)
   end
 
+  # Called when the payout run carrying this line pays out (PayoutBatchService.
+  # settle_item_sources!): mark the line paid via Stripe and settle the parent
+  # payout once every line is. Display/traceability only — the run's item posts
+  # the single debiting ledger entry.
+  def mark_paid_via_payout_run!(reference_id: nil)
+    unless paid?
+      update_columns(manually_paid: true, manually_paid_at: Time.current,
+                     paid_at: Time.current, payment_method: "stripe")
+    end
+    course_offering_payout.settle_if_fully_paid!
+  end
+
+  # The run that paid this line came back — only undoes a Stripe-run payment,
+  # never money a manager recorded by hand.
+  def mark_unpaid_via_payout_run!
+    return unless manually_paid? && payment_method == "stripe" && manually_paid_by_id.nil?
+
+    update_columns(manually_paid: false, manually_paid_at: nil, paid_at: nil, payment_method: nil)
+    payout = course_offering_payout
+    payout.update_columns(status: "calculated", paid_at: nil) if payout.paid?
+  end
+
   def formatted_amount
     return "$0" if amount_cents.nil? || amount_cents.zero?
     dollars = amount_cents / 100.0

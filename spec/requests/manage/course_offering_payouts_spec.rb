@@ -29,15 +29,15 @@ RSpec.describe "Manage::CourseOfferingPayouts", type: :request do
     expect(response.body).not_to include("Venmo")
   end
 
-  it "adds the org's remainder to a course payout run" do
+  it "adds the org's remainder to the performer payout run (the one rail)" do
     make_payable(org)
     get manage_course_offering_payout_path(offering) # sets up the payout, as the UI does
 
     expect {
       post manage_course_offering_payout_add_to_run_path(offering)
-    }.to change { PayoutBatch.of_kind("course").count }.by(1)
+    }.to change { PayoutBatch.of_kind("performer").count }.by(1)
 
-    run = PayoutBatch.of_kind("course").last
+    run = PayoutBatch.of_kind("performer").last
     expect(run.items.find_by(payee: org)).to be_present
     expect(response).to redirect_to(manage_course_offering_payout_path(offering))
   end

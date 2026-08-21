@@ -12,6 +12,9 @@ RSpec.describe CoursePayoutRunExecutor do
     record
   end
 
+  # A LEGACY course-kind run, built the way pre-fold code staged it. New code
+  # stages course money on the performer run (see CoursePayoutRunService) —
+  # this executor only still pays old course drafts that predate the fold.
   def build_run
     org.reload
     payout = offering.create_course_offering_payout!(
@@ -19,9 +22,19 @@ RSpec.describe CoursePayoutRunExecutor do
       net_revenue_cents: 3800, total_payout_cents: 1000
     )
     instructor = make_payable(create(:person))
-    payout.line_items.create!(payee: instructor, amount_cents: 1000, label: instructor.name,
-                              calculation_details: { type: "instructor" })
-    CoursePayoutRunService.add_to_run!(payout).batch
+    line = payout.line_items.create!(payee: instructor, amount_cents: 1000, label: instructor.name,
+                                     calculation_details: { type: "instructor" })
+
+    batch = org.payout_batches.create!(kind: "course", status: "draft", trigger: "manual")
+    instructor_item = batch.items.create!(payee: instructor, amount_cents: 1000, status: "pending")
+    batch.payout_contributions.create!(payout_batch_item: instructor_item, payee: instructor,
+                                       source: line, amount_cents: 1000, label: "Course: #{offering.title}")
+    org_item = batch.items.create!(payee: org, amount_cents: 2800, status: "pending")
+    batch.payout_contributions.create!(payout_batch_item: org_item, payee: org,
+                                       source: payout, amount_cents: 2800,
+                                       label: "Course: #{offering.title} — organization's share")
+    batch.recalculate_total!
+    batch
   end
 
   before do
