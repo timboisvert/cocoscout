@@ -1293,6 +1293,7 @@ Rails.application.routes.draw do
     # almost all of it from contracts. Detail route before :production_id so the
     # literal "payment" segment isn't captured as a production id.
     get  "money/incoming", to: "money_incoming#index", as: "money_incoming"
+    get  "money/incoming/received", to: "money_incoming#received", as: "money_incoming_received"
     get  "money/incoming/payment/:id", to: "money_incoming#show", as: "money_incoming_payment"
     post "money/incoming/payment/:id/remind", to: "money_incoming#remind", as: "remind_money_incoming_payment"
     post "money/incoming/payment/:id/mark_received", to: "money_incoming#mark_received", as: "mark_received_money_incoming_payment"

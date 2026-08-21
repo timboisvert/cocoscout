@@ -1,0 +1,35 @@
+<% content_for :title, @production ? "#{@production.name} — Received" : "Received Payments" %>
+<%# The full book of money that already arrived — every collected incoming
+    payment, newest first, each linking to its payment page (QR, reference,
+    how it was recorded). The index's "Recently received" teaser lands here. %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Money", manage_money_index_path],
+      ["Incoming Payments", @production ? manage_money_production_incoming_path(@production) : manage_money_incoming_path],
+      (@production ? [@production.name, manage_money_production_incoming_path(@production)] : nil)
+    ].compact,
+    text: "Received Payments",
+    links: []
+  } %>
+
+  <% if @received_payments.any? %>
+    <p class="text-sm text-gray-500 mb-3 mt-2">
+      <%= pluralize(@received_payments.size, "payment") %> ·
+      <%= number_to_currency(@received_total) %> collected all time
+    </p>
+    <%= render layout: "shared/slim_list", locals: { label: "Payment", columns: [ "Paid", "Amount" ] } do %>
+      <% @received_payments.each do |payment| %>
+        <%= render "payment_slim_row", payment: payment, show_production: @production.nil? %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center mt-2">
+      <p class="text-gray-600">Nothing received yet.</p>
+      <p class="text-sm text-gray-500 mt-1">When an incoming payment is collected — online or recorded by hand — it'll show here.</p>
+    </div>
+  <% end %>
+</div>

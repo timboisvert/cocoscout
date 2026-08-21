@@ -24,7 +24,7 @@ module Manage
       { key: "all", label: "All",       months: nil }
     ].freeze
 
-    before_action :set_production, only: %i[index payments]
+    before_action :set_production, only: %i[index payments received]
 
     # Org-wide list grouped by production (mirrors money_payouts#index), or a
     # single production's incoming payments when a production_id is present.
@@ -60,16 +60,15 @@ module Manage
       @expected_in_window = upcoming.reject(&:amount_tbd?).sum { |p| p.amount.to_f }
       @monthly_forecast = build_monthly_forecast(upcoming, @window_end)
 
-      # What's already been collected — the page is a record, not only a
-      # to-do list. Newest money first; every row links to the same payment
-      # detail page it had while it was pending.
+      # A taste of what's already been collected — the page is a record, not
+      # only a to-do list. A handful of the most recent, with the full book one
+      # click away on the Received page.
       received = received_scope
       received = received.where(contracts: { production_id: @production.id }) if @production
-      @received_total = received.where.not(amount: nil).sum(:amount)
       @received_count = received.count
       @received_payments = received.includes(contract: [ :contractor, :production ])
                                    .order(paid_date: :desc, updated_at: :desc)
-                                   .limit(RECEIVED_LIMIT).to_a
+                                   .limit(RECENT_RECEIVED_LIMIT).to_a
 
       unless @production
         # Org-wide list layout: one flat list by due date (default, overdue and
@@ -98,6 +97,18 @@ module Manage
                                   .by_due_date.to_a
       @payments = window_end ? all_pending.select { |p| p.overdue? || p.due_date <= window_end } : all_pending
       render layout: false
+    end
+
+    # Every payment that has already arrived — the full received book the
+    # index's "Recently received" teaser links to. Production-scopable the
+    # same way the index is.
+    def received
+      received = received_scope
+      received = received.where(contracts: { production_id: @production.id }) if @production
+      @received_total = received.where.not(amount: nil).sum(:amount)
+      @received_payments = received.includes(contract: [ :contractor, :production ])
+                                   .order(paid_date: :desc, updated_at: :desc)
+                                   .to_a
     end
 
     # A single receivable: its status, the collect-in-person QR, the reminder
@@ -187,9 +198,9 @@ module Manage
 
     private
 
-    # The received history shows the most recent collections, not the whole
-    # book — the totals above it still count everything.
-    RECEIVED_LIMIT = 50
+    # How many recent collections the index teases before handing off to the
+    # full Received page.
+    RECENT_RECEIVED_LIMIT = 6
 
     # Money owed to this org that has actually arrived, however it came
     # (pay link, recorded check, netted out of a payout).
