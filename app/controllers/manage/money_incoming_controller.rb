@@ -60,6 +60,17 @@ module Manage
       @expected_in_window = upcoming.reject(&:amount_tbd?).sum { |p| p.amount.to_f }
       @monthly_forecast = build_monthly_forecast(upcoming, @window_end)
 
+      # What's already been collected — the page is a record, not only a
+      # to-do list. Newest money first; every row links to the same payment
+      # detail page it had while it was pending.
+      received = received_scope
+      received = received.where(contracts: { production_id: @production.id }) if @production
+      @received_total = received.where.not(amount: nil).sum(:amount)
+      @received_count = received.count
+      @received_payments = received.includes(contract: [ :contractor, :production ])
+                                   .order(paid_date: :desc, updated_at: :desc)
+                                   .limit(RECEIVED_LIMIT).to_a
+
       unless @production
         # Org-wide list layout: one flat list by due date (default, overdue and
         # soonest-due first) or grouped by production.
@@ -175,6 +186,18 @@ module Manage
     end
 
     private
+
+    # The received history shows the most recent collections, not the whole
+    # book — the totals above it still count everything.
+    RECEIVED_LIMIT = 50
+
+    # Money owed to this org that has actually arrived, however it came
+    # (pay link, recorded check, netted out of a payout).
+    def received_scope
+      ContractPayment.direction_incoming.status_paid
+                     .joins(:contract)
+                     .where(contracts: { organization_id: Current.organization.id })
+    end
 
     # Pending money owed TO this org that someone actually has to collect.
     #

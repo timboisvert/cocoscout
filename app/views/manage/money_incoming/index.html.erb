@@ -156,4 +156,25 @@
       <% end %>
     <% end %>
   <% end %>
+
+  <%# ---- Received — the money that already came in. The page is the record
+      of this org's receivables, not just the chase list; every row still
+      links to its payment page (QR, reference, how it was recorded). %>
+  <% if @received_payments.any? %>
+    <div class="flex items-baseline justify-between gap-3 mb-3 mt-10">
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+        Received
+        <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= @received_count %>)</span>
+      </h3>
+      <span class="text-sm text-gray-500"><%= number_to_currency(@received_total) %> collected all time</span>
+    </div>
+    <%= render layout: "shared/slim_list", locals: { label: "Payment", columns: [ "Paid", "Amount" ] } do %>
+      <% @received_payments.each do |payment| %>
+        <%= render "payment_slim_row", payment: payment, show_production: @production.nil? %>
+      <% end %>
+    <% end %>
+    <% if @received_count > @received_payments.size %>
+      <p class="text-xs text-gray-400 mt-2">Showing the <%= @received_payments.size %> most recent — the total above counts all <%= @received_count %>.</p>
+    <% end %>
+  <% end %>
 </div>

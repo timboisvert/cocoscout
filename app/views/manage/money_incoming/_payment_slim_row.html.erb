@@ -14,21 +14,30 @@
   contract = payment.contract
   prod_name = show_production ? (contract.production_name.presence || contract.production&.name) : nil
   subtitle_parts = [ prod_name, payment.description.presence || "Payment" ].compact
+  is_paid = payment.status_paid?
   is_late = payment.overdue?
   amount_tbd = payment.amount_tbd? && payment.amount.to_f.zero?
+  # A received row reads by when the money arrived; a pending one by when
+  # it's due. Same row, same link, either way.
+  date_label = is_paid ? "Paid" : "Due"
+  date_value = is_paid ? (payment.paid_date || payment.due_date) : payment.due_date
 %>
 <%= render "shared/slim_list_row",
       title: contract.contractor_name.presence || "Payer",
       subtitle: subtitle_parts.join(" · "),
-      badge: is_late ? { text: "Overdue", color: "red" } : nil,
+      badge: if is_paid
+               { text: "Paid", color: "green" }
+             elsif is_late
+               { text: "Overdue", color: "red" }
+             end,
       href: manage_money_incoming_payment_path(payment),
       href_data: href_data,
-      col_labels: [ "Due", "Amount" ],
+      col_labels: [ date_label, "Amount" ],
       cells: [
-        { value: payment.due_date.strftime("%b %-d, %Y"),
+        { value: date_value.strftime("%b %-d, %Y"),
           class: is_late ? "text-red-600 font-medium" : "text-gray-700",
-          subvalue: is_late ? "#{distance_of_time_in_words(payment.due_date, Date.current)} overdue" : nil,
-          subvalue_class: "text-red-500" },
+          subvalue: is_paid ? payment.received_via_label : (is_late ? "#{distance_of_time_in_words(payment.due_date, Date.current)} overdue" : nil),
+          subvalue_class: is_paid ? "text-gray-400" : "text-red-500" },
         { value: amount_tbd ? "TBD" : number_to_currency(payment.amount),
           class: amount_tbd ? "text-gray-400" : "text-green-600 font-semibold" }
       ] %>

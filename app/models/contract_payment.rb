@@ -284,6 +284,18 @@ class ContractPayment < ApplicationRecord
     end
   end
 
+  # How a settled incoming payment arrived, for history rows: the offline
+  # method when it was recorded by hand, otherwise the rail it moved on.
+  def received_via_label
+    return nil unless status_paid?
+
+    offline_payment_method_label ||
+      case payment_method
+      when "online" then "Paid online"
+      when "payout_deduction" then "Deducted from payout"
+      end
+  end
+
   # Paid by hand rather than through a payout run or a pay link.
   def paid_offline?
     status_paid? && payment_method.in?(OFFLINE_PAYOUT_METHODS)
