@@ -73,7 +73,7 @@
           <p class="text-sm text-gray-500 mt-0.5">
             <% case stage %>
             <% when :to_pay %>
-              They paid CocoScout, so we're holding <strong><%= number_to_currency(@payment.remittable_cents / 100.0) %></strong> for your organization<%= " (#{number_to_currency(@payment.amount)} less card processing)" if @payment.stripe_fee_cents.to_i.positive? %>.
+              They paid via CocoScout, so we're holding <strong><%= number_to_currency(@payment.remittable_cents / 100.0) %></strong> for your organization<%= " (#{number_to_currency(@payment.amount)} less card processing)" if @payment.stripe_fee_cents.to_i.positive? %>.
               <% if Current.organization.can_receive_payouts? %>
                 Add it to your payout run to send it on.
               <% else %>
