@@ -46,6 +46,59 @@ RSpec.describe "My::Contracts", type: :request do
     expect(response.body).to include("2 contracts")
   end
 
+  describe "money they owe" do
+    let!(:rental_contract) do
+      create(:contract, :active, organization: org, contractor: contractor,
+             contract_start_date: 2.weeks.ago.to_date, contract_end_date: 6.weeks.from_now.to_date,
+             draft_data: {
+               "payment_structure" => "per_event",
+               "payment_config" => { "per_event_amount" => 50, "per_event_direction" => "incoming", "per_event_timing" => "per_event" }
+             })
+    end
+    let!(:past_due) do
+      create(:contract_payment, contract: rental_contract, direction: "incoming", amount: 50,
+                                description: "Aug 19 event", due_date: 1.day.ago.to_date)
+    end
+    let!(:future_one) do
+      create(:contract_payment, contract: rental_contract, direction: "incoming", amount: 50,
+                                description: "Next week event", due_date: 1.week.from_now.to_date)
+    end
+    let!(:future_two) do
+      create(:contract_payment, contract: rental_contract, direction: "incoming", amount: 50,
+                                description: "Fortnight event", due_date: 2.weeks.from_now.to_date)
+    end
+
+    it "leads with what's already due and folds the schedule away" do
+      get my_contracts_path
+
+      body = response.body
+      # The headline figure is the money due now, not the whole schedule.
+      expect(body).to include("Due now")
+      expect(body).to include("$50.00")
+      expect(body).not_to include("You owe $150")
+      # The rest is reachable but secondary.
+      expect(body).to include("2 upcoming payments")
+      expect(body).to include("$100.00 scheduled")
+      expect(body).to include("Next week event")
+    end
+
+    it "says what the contract IS, not just its dates" do
+      get my_contracts_path
+
+      expect(response.body).to include("$50.00 per event — you pay them, paid event by event")
+    end
+
+    it "names what a rental contract books" do
+      location = create(:location, organization: org, name: "Stars &amp; Garters Bar".gsub("&amp;", "&"))
+      space = location.location_spaces.create!(name: "The Parlor")
+      create(:space_rental, contract: rental_contract, location: location, location_space: space,
+                            starts_at: 1.week.from_now.change(hour: 19))
+
+      get my_contracts_path
+      expect(response.body).to include("The Parlor at #{ERB::Util.html_escape(location.name)} · 1 booking")
+    end
+  end
+
   it "doesn't show contracts belonging to a different person" do
     other = create(:contractor, organization: org, person: create(:person), email: "other@example.com")
     create(:contract, :active, organization: org, contractor: other, contractor_name: "Other Co")

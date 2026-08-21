@@ -1795,6 +1795,51 @@ class Contract < ApplicationRecord
   # A plain-English summary of the deal for the review step — every term that
   # was set on Financials, so nobody has to click back to check. Returns an
   # array of { label:, value: } with money pre-formatted.
+  # The deal in one line, from the CONTRACTOR's side — for their My Contracts
+  # card, so a contract says what it is without opening the full summary.
+  # deal_summary above speaks as the org ("we keep 20%"); this speaks to them.
+  def talent_deal_line
+    cfg = draft_payment_config
+    case draft_payment_structure
+    when "flat_fee"
+      if cfg["flat_fee_direction"] == "ticket_revenue_minus_fee"
+        fee = deal_money(cfg["flat_fee_amount"])
+        fee = "#{fee} per show" if flat_fee_basis == "per_show"
+        "You keep the ticket revenue, less a #{fee} fee"
+      else
+        direction = cfg["flat_fee_direction"] == "outgoing" ? "they pay you" : "you pay them"
+        "Flat fee of #{deal_money(cfg['flat_fee_amount'])} — #{direction}"
+      end
+    when "per_event"
+      direction = cfg["per_event_direction"] == "outgoing" ? "they pay you" : "you pay them"
+      timing = cfg["per_event_timing"] == "upfront" ? "paid upfront" : "paid event by event"
+      "#{deal_money(cfg['per_event_amount'])} per event — #{direction}, #{timing}"
+    when "revenue_share"
+      our = cfg["revenue_our_share"].presence || 50
+      their = cfg["revenue_their_share"].presence || (100 - our.to_i)
+      "Revenue share — you keep #{their}%, they keep #{our}%"
+    end
+  end
+
+  # What this contract books, in one line for the contractor's card:
+  # "The Parlor at Stars & Garters · 7 bookings". Entire-venue rentals name
+  # the venue whole. Nil when the contract books no space.
+  def talent_booking_line
+    rentals = space_rentals.to_a
+    return nil if rentals.empty?
+
+    places = rentals.map do |r|
+      space = r.location_space&.name.presence || "Entire venue"
+      [ space, r.location&.name ].compact.join(" at ")
+    end.uniq
+    [ places.to_sentence, pluralize_bookings(rentals.size) ].join(" · ")
+  end
+
+  def pluralize_bookings(count)
+    "#{count} #{count == 1 ? 'booking' : 'bookings'}"
+  end
+  private :pluralize_bookings
+
   def deal_summary
     cfg = draft_payment_config
     lines = []

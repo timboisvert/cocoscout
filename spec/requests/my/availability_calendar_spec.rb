@@ -32,11 +32,15 @@ RSpec.describe "My::Availability calendar", type: :request do
   end
 
   it "renders read-only day tiles with a status chip and an editable day modal using the standard rows" do
-    show = create(:show, production: production, date_and_time: 10.days.from_now.change(hour: 19, min: 30))
+    # Both shows in one fully-future month, and the calendar opened on it —
+    # "10 days from now" lands in a month the calendar isn't showing whenever
+    # the test runs near month-end.
+    month = Date.current.next_month.beginning_of_month
+    show = create(:show, production: production, date_and_time: Time.zone.local(month.year, month.month, 10, 19, 30))
     create(:show_availability, :available, show: show, available_entity: person)
-    unanswered = create(:show, production: production, date_and_time: 12.days.from_now)
+    unanswered = create(:show, production: production, date_and_time: Time.zone.local(month.year, month.month, 12, 19))
 
-    get my_availability_calendar_path
+    get my_availability_calendar_path(month: month.strftime("%Y-%m-01"))
     expect(response).to have_http_status(:ok)
 
     # Desktop tiles: status chips, no inline thumbs buttons

@@ -344,49 +344,6 @@ class Person < ApplicationRecord
     self.hide_contact_info = !ActiveModel::Type::Boolean.new.cast(value)
   end
 
-  # Onboarding checklist tasks
-  def onboarding_tasks
-    tasks = []
-
-    # Task 1: Add a headshot
-    tasks << {
-      key: :headshot,
-      title: "Add a headshot",
-      description: "Upload a professional photo",
-      completed: profile_headshots.any?,
-      priority: 1
-    }
-
-    # Task 2: Upload a resume
-    tasks << {
-      key: :resume,
-      title: "Upload a resume",
-      description: "Add your performance resume",
-      completed: profile_resumes.any?,
-      priority: 2
-    }
-
-    # Task 3: Connect a bank for payouts
-    tasks << {
-      key: :payment,
-      title: "Set up payment info",
-      description: "Connect your bank to get paid directly",
-      completed: can_receive_payouts?,
-      priority: 3
-    }
-
-    # Task 4: Complete your profile (bio)
-    tasks << {
-      key: :profile,
-      title: "Complete your profile",
-      description: "Add a bio and basic info",
-      completed: bio.present?,
-      priority: 4
-    }
-
-    tasks.sort_by { |t| t[:priority] }
-  end
-
   # True when this person belongs to at least one talent pool (direct membership).
   def in_any_talent_pool?
     talent_pools.exists?

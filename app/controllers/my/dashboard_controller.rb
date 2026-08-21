@@ -378,6 +378,20 @@ module My
         .order(:created_at)
         .to_a
 
+      # Contract payments they owe that are already due — rent for a night
+      # that's happened, an invoice past its date. One dashboard bar per
+      # contract; the money still ahead of its due date stays on My Contracts.
+      @overdue_contract_payments = ContractPayment
+        .status_pending
+        .where("due_date < ?", Date.current)
+        .joins(contract: :contractor)
+        .where(contracts: { status: "active" }, contractors: { person_id: people_ids })
+        .includes(contract: [ :organization, :production ])
+        .order(:due_date)
+        .to_a
+        .select(&:collectable_online?)
+        .group_by(&:contract)
+
       # Pending agreement signatures
       @pending_agreements = @productions
         .select(&:agreement_required?)

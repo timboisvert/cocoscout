@@ -74,6 +74,48 @@ RSpec.describe "My::Dashboard", type: :request do
     end
   end
 
+  # Money she owes on a contract and hasn't paid by its due date gets a bar on
+  # the dashboard — amber, in the standard alert-panel shape. Money merely
+  # scheduled for later doesn't.
+  describe "contract money already due" do
+    let(:org) { create(:organization, :pro, name: "Stars & Garters") }
+    let(:production) { create(:production, organization: org, name: "Dada Reinvents The Wheel") }
+    let(:contractor) { create(:contractor, organization: org, person: person, email: person.email) }
+    let!(:contract) { create(:contract, :active, organization: org, production: production, contractor: contractor) }
+
+    it "shows an amber You-owe bar with a pay button for one overdue payment" do
+      create(:contract_payment, contract: contract, direction: "incoming", amount: 50,
+                                description: "Aug 19 event", due_date: 1.day.ago.to_date)
+
+      get my_dashboard_path
+
+      body = response.body
+      expect(body).to include("Payment due")
+      expect(body).to include("You owe $50.00")
+      expect(body).to include("Dada Reinvents The Wheel")
+      expect(body).to include("Pay $50.00")
+      expect(body).to include("border-amber-200")
+    end
+
+    it "sums several overdue payments and points at My Contracts" do
+      create(:contract_payment, contract: contract, direction: "incoming", amount: 50, due_date: 8.days.ago.to_date)
+      create(:contract_payment, contract: contract, direction: "incoming", amount: 50, due_date: 1.day.ago.to_date)
+
+      get my_dashboard_path
+
+      expect(response.body).to include("You owe $100.00")
+      expect(response.body).to include("View in My Contracts")
+    end
+
+    it "stays quiet when the money isn't due yet or is already paid" do
+      create(:contract_payment, contract: contract, direction: "incoming", amount: 50, due_date: 1.week.from_now.to_date)
+      create(:contract_payment, :paid, contract: contract, direction: "incoming", amount: 50, due_date: 1.week.ago.to_date)
+
+      get my_dashboard_path
+      expect(response.body).not_to include("You owe")
+    end
+  end
+
   describe "welcome guide" do
     it "greets the user with the welcome guide and holds the checklist back" do
       get my_dashboard_path
@@ -81,7 +123,6 @@ RSpec.describe "My::Dashboard", type: :request do
       expect(response.body).to include('data-intro-guide="talent_welcome"')
       expect(response.body).to include("Welcome to CocoScout!")
       expect(response.body).to include("Producing your own shows?")
-      expect(response.body).not_to include("Get started by completing your profile")
     end
 
     it "keeps greeting org members until they dismiss it" do
@@ -93,20 +134,14 @@ RSpec.describe "My::Dashboard", type: :request do
       expect(response.body).to include("We&#39;ve upgraded how you get paid")
     end
 
-    it "swaps to the checklist once dismissed, with a way back" do
+    it "leaves quietly once dismissed, with a way back" do
       post guide_dismiss_path("talent_welcome")
       get my_dashboard_path
 
       expect(response.body).not_to include('data-intro-guide="talent_welcome"')
       expect(response.body).to include("Show it on the page")
-      expect(response.body).to include("Get started by completing your profile")
-    end
-
-    it "dismisses the checklist through the guide system" do
-      post guide_dismiss_path("talent_welcome")
-      post guide_dismiss_path("profile_checklist")
-      get my_dashboard_path
-
+      # The retired "Get started by completing your profile" checklist is gone
+      # for good — profile nudges are the talent-pool alert panels now.
       expect(response.body).not_to include("Get started by completing your profile")
     end
   end

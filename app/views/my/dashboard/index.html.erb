@@ -58,13 +58,6 @@
     <%= render "my/dashboard/profile_completion_panel", person: primary %>
   <% end %>
 
-  <!-- Profile checklist — with the other action boxes, above the calendar
-       header. Suppressed while the welcome guide is greeting the user
-       (only for the primary person, to avoid duplicates). -->
-  <% if primary && !Current.user.guide_visible?("talent_welcome") %>
-    <%= render "my/dashboard/onboarding_checklist", person: primary %>
-  <% end %>
-
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
     text: "My Calendar",
@@ -81,6 +74,23 @@
           headline: contract.production_name.presence || contract.production&.name.presence || contract.contractor_name,
           body: "#{contract.organization.name} needs you to review and sign this contract.",
           actions: [ { text: "Review & sign", path: sign_contract_path(token: contract.signing_token) } ] %>
+  <% end %>
+
+  <!-- Contract money already due (rent for a night that's happened) -->
+  <% @overdue_contract_payments.each do |contract, payments| %>
+    <%
+      what = contract.production_name.presence || contract.production&.name.presence || "your contract"
+      oldest = payments.map(&:due_date).min
+    %>
+    <%= render "shared/alert_panel",
+          tone: :amber,
+          eyebrow: "Payment due",
+          headline: "You owe #{number_to_currency(payments.sum { |p| p.amount.to_f })}",
+          body: "To #{contract.organization.name} for #{what} — " +
+                (payments.size == 1 ? "was due #{oldest.strftime('%b %-d')}." : "#{payments.size} payments, the oldest due #{oldest.strftime('%b %-d')}."),
+          actions: payments.size == 1 ?
+            [ { text: "Pay #{number_to_currency(payments.first.amount)}", path: pay_contract_path(token: payments.first.payment_token!) } ] :
+            [ { text: "View in My Contracts", path: my_contracts_path } ] %>
   <% end %>
 
   <!-- Pending Agreement Signatures -->
