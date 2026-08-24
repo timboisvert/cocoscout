@@ -1,6 +1,6 @@
 <%# Renders the grid of talent pool members for inline display %>
 <% can_manage = current_user_can_manage?(talent_pool.production) %>
-<div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
+<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
   <% if talent_pool.members.any? %>
     <% talent_pool.members.each do |member| %>
       <div class="relative group"
@@ -30,7 +30,7 @@
             <% end %>
           </div>
 
-          <div class="text-xs font-medium text-gray-900 group-hover:text-pink-600 transition-colors truncate" title="<%= member.name %>">
+          <div class="text-xs font-medium text-gray-900 group-hover:text-pink-600 transition-colors break-words line-clamp-2" title="<%= member.name %>">
             <%= member.name %>
           </div>
         <% end %>
@@ -77,7 +77,7 @@
       Pending Invitations
       <span class="text-xs font-normal text-gray-500">(<%= pending_invitations.count %>)</span>
     </h4>
-    <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
+    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
       <% pending_invitations.each do |invitation| %>
         <div class="relative group opacity-60 hover:opacity-100 transition-opacity">
           <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">

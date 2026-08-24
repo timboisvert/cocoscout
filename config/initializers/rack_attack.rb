@@ -58,8 +58,12 @@ class Rack::Attack
   end
 
   # Active Storage variants are expensive (image processing / S3 fetch) — the
-  # exact resource the crawler used to tie up every worker thread.
-  throttle("blobs/ip", limit: 120, period: 1.minute) do |req|
+  # exact resource the crawler used to tie up every worker thread. The ceiling
+  # must clear a real page load on a cold cache: headshot-heavy manage pages
+  # (talent pools, casting) request one variant per person, so a manager
+  # browsing a big roster on their phone can fire 150+ blob requests in under
+  # a minute. At 120 those came back 429 — broken images.
+  throttle("blobs/ip", limit: 300, period: 1.minute) do |req|
     req.ip if req.path.start_with?("/rails/active_storage")
   end
 
