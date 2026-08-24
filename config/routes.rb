@@ -1438,7 +1438,10 @@ Rails.application.routes.draw do
         # Amend contract flow with nested paths
         get "amend", action: :amend_choose, as: :amend_choose
         # Changing dates is its own job — no financial regeneration at all.
+        # The form posts to review, which shows the plan; confirming re-posts
+        # the same params to apply.
         get "amend/dates", action: :amend_dates, as: :amend_dates
+        post "amend/dates/review", action: :review_amend_dates, as: :review_amend_dates
         post "amend/dates", action: :apply_amend_dates, as: :apply_amend_dates
         # Changing the room is smaller still — same nights, same deal, just a
         # different space at the same venue. No repapering.

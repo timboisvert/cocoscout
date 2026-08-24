@@ -368,6 +368,35 @@ module Manage
       @locations = Current.organization.locations.includes(:location_spaces)
     end
 
+    # Show the plan before touching anything: the same params apply_amend_dates
+    # takes, read back as what would happen. Confirming re-posts them untouched.
+    def review_amend_dates
+      changes = params[:dates].is_a?(ActionController::Parameters) ? params[:dates].to_unsafe_h : {}
+      shows_by_rental = @contract.production&.shows&.where(space_rental_id: changes.keys)&.index_by(&:space_rental_id) || {}
+
+      @planned = @contract.space_rentals.where(id: changes.keys).order(:starts_at).filter_map do |rental|
+        change = changes[rental.id.to_s] || {}
+        case change["action"]
+        when "remove"
+          show = shows_by_rental[rental.id]
+          settled = ContractDateChanges.settled_for?(contract: @contract, rental: rental, shows: [ show ].compact)
+          payments = @contract.contract_payments.select { |p| p.show_id == show&.id || p.due_date == rental.starts_at.to_date }
+          pending = payments.select { |p| p.status_pending? && !p.in_payout_run? }
+          { rental: rental, action: settled ? :cancel : :remove, pending: pending }
+        when "move"
+          starts_at = Time.zone.parse(change["starts_at"].to_s) rescue nil
+          next if starts_at.nil? || starts_at == rental.starts_at
+
+          { rental: rental, action: :move, new_starts_at: starts_at,
+            new_ends_at: starts_at + (rental.ends_at - rental.starts_at) }
+        end
+      end
+
+      redirect_to amend_dates_manage_contract_path(@contract), notice: "No date changes to make." and return if @planned.empty?
+
+      @unchanged_count = @contract.space_rentals.count - @planned.size
+    end
+
     # Apply date changes: params[:dates] is { rental_id => { action:, starts_at:, ends_at: } }
     # where action is "keep", "remove" or "move".
     def apply_amend_dates

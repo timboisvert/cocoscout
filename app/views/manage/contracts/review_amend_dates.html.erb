@@ -1,0 +1,129 @@
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Confirm date changes", width: "max-w-3xl" } do %>
+    <p class="text-gray-600 mb-6">
+      Nothing has been changed yet. Check the plan, then apply it.
+    </p>
+
+    <%
+      moves = @planned.select { |p| p[:action] == :move }
+      removes = @planned.select { |p| p[:action] == :remove }
+      cancels = @planned.select { |p| p[:action] == :cancel }
+    %>
+
+    <div class="space-y-5 mb-6">
+      <% if moves.any? %>
+        <div>
+          <h4 class="text-sm font-medium text-blue-600 mb-2 flex items-center gap-2">
+            <%= icon("arrow-right", class: "w-4 h-4") %>
+            Dates to Move (<%= moves.count %>)
+          </h4>
+          <div class="space-y-2">
+            <% moves.each do |plan| %>
+              <% rental = plan[:rental] %>
+              <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex-shrink-0 w-12 flex items-center gap-1">
+                  <span class="text-lg leading-none font-bold text-gray-900"><%= plan[:new_starts_at].strftime("%-d") %></span>
+                  <span class="text-[9px] leading-tight font-semibold text-blue-600 uppercase"><%= plan[:new_starts_at].strftime("%b") %></span>
+                </div>
+                <div class="min-w-0">
+                  <div class="font-medium text-gray-900"><%= rental.space_name %></div>
+                  <div class="text-sm text-gray-500 flex flex-wrap items-center gap-x-2">
+                    <span class="line-through"><%= rental.starts_at.strftime("%a, %b %-d, %Y · %-l:%M %p") %></span>
+                    <%= icon("arrow-right", class: "w-3.5 h-3.5 text-gray-400 flex-shrink-0") %>
+                    <span class="font-medium text-gray-900"><%= plan[:new_starts_at].strftime("%a, %b %-d, %Y · %-l:%M %p") %>–<%= plan[:new_ends_at].strftime("%-l:%M %p") %></span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">The show keeps its cast and staffing — they move with it.</p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if removes.any? %>
+        <div>
+          <h4 class="text-sm font-medium text-red-600 mb-2 flex items-center gap-2">
+            <%= icon("minus-circle", class: "w-4 h-4") %>
+            Dates to Remove (<%= removes.count %>)
+          </h4>
+          <div class="space-y-2">
+            <% removes.each do |plan| %>
+              <% rental = plan[:rental] %>
+              <div class="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div class="flex-shrink-0 w-12 flex items-center gap-1">
+                  <span class="text-lg leading-none font-bold text-gray-900"><%= rental.starts_at.strftime("%-d") %></span>
+                  <span class="text-[9px] leading-tight font-semibold text-red-600 uppercase"><%= rental.starts_at.strftime("%b") %></span>
+                </div>
+                <div class="min-w-0">
+                  <div class="font-medium text-gray-900"><%= rental.space_name %></div>
+                  <div class="text-sm text-gray-500">
+                    <%= rental.starts_at.strftime("%a, %b %-d, %Y") %> ·
+                    <%= rental.starts_at.strftime("%-l:%M %p") %>–<%= rental.ends_at.strftime("%-l:%M %p") %>
+                  </div>
+                  <% if plan[:pending].any? %>
+                    <p class="text-xs text-red-700 mt-1">
+                      Also drops <%= pluralize(plan[:pending].size, "pending payment") %>
+                      (<%= plan[:pending].map { |p| p.amount_tbd? ? "TBD" : number_to_currency(p.amount) }.to_sentence %>).
+                    </p>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if cancels.any? %>
+        <div>
+          <h4 class="text-sm font-medium text-amber-600 mb-2 flex items-center gap-2">
+            <%= icon("alert-triangle", class: "w-4 h-4") %>
+            Settled Dates to Cancel (<%= cancels.count %>)
+          </h4>
+          <div class="space-y-2">
+            <% cancels.each do |plan| %>
+              <% rental = plan[:rental] %>
+              <div class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div class="flex-shrink-0 w-12 flex items-center gap-1">
+                  <span class="text-lg leading-none font-bold text-gray-900"><%= rental.starts_at.strftime("%-d") %></span>
+                  <span class="text-[9px] leading-tight font-semibold text-amber-600 uppercase"><%= rental.starts_at.strftime("%b") %></span>
+                </div>
+                <div class="min-w-0">
+                  <div class="font-medium text-gray-900"><%= rental.space_name %></div>
+                  <div class="text-sm text-gray-500">
+                    <%= rental.starts_at.strftime("%a, %b %-d, %Y") %> ·
+                    <%= rental.starts_at.strftime("%-l:%M %p") %>–<%= rental.ends_at.strftime("%-l:%M %p") %>
+                  </div>
+                  <p class="text-xs text-amber-800 mt-1">
+                    Already settled — the show is cancelled and the room freed, but the money that already moved stays put.
+                  </p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <% if @unchanged_count.positive? %>
+      <p class="text-sm text-gray-500 mb-6">
+        The other <%= pluralize(@unchanged_count, "date") %> on this contract <%= @unchanged_count == 1 ? "stays" : "stay" %> exactly as <%= @unchanged_count == 1 ? "it is" : "they are" %>.
+      </p>
+    <% end %>
+
+    <%= form_with url: apply_amend_dates_manage_contract_path(@contract), method: :post, local: true do %>
+      <% @planned.each do |plan| %>
+        <% rental_id = plan[:rental].id %>
+        <% if plan[:action] == :move %>
+          <input type="hidden" name="dates[<%= rental_id %>][action]" value="move">
+          <input type="hidden" name="dates[<%= rental_id %>][starts_at]" value="<%= plan[:new_starts_at].strftime("%Y-%m-%dT%H:%M") %>">
+        <% else %>
+          <input type="hidden" name="dates[<%= rental_id %>][action]" value="remove">
+        <% end %>
+      <% end %>
+
+      <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+        <%= render "shared/button", text: "Back: Change dates", variant: "secondary", size: "medium", icon: "arrow-left",
+              path: amend_dates_manage_contract_path(@contract) %>
+        <%= render "shared/button", text: "Apply date changes", variant: "primary", size: "medium", icon: "check", type: :submit %>
+      </div>
+    <% end %>
+<% end %>

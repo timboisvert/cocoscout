@@ -4,7 +4,8 @@
       the rest of the deal exactly as it is.
     </p>
 
-    <%= form_with url: apply_amend_dates_manage_contract_path(@contract), method: :post, html: { novalidate: true } do %>
+    <%# Submits to review first — the plan is shown back before anything changes. %>
+    <%= form_with url: review_amend_dates_manage_contract_path(@contract), method: :post, html: { novalidate: true } do %>
       <div class="space-y-3">
         <% @rentals.each do |rental| %>
           <%
@@ -78,7 +79,7 @@
         <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left",
               path: amend_choose_manage_contract_path(@contract) %>
         <% if @rentals.any? %>
-          <%= render "shared/button", text: "Apply date changes", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Review changes", variant: "primary", size: "medium", type: :submit %>
         <% end %>
       </div>
     <% end %>

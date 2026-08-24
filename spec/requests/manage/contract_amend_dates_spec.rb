@@ -147,6 +147,70 @@ RSpec.describe "Contracts — change dates", type: :request do
     end
   end
 
+  # The form posts to review first: the plan is shown back, nothing is touched,
+  # and confirming re-posts the same params to apply.
+  describe "reviewing before applying" do
+    it "shows the plan without changing anything" do
+      rental, show = booked_date!(future)
+      moving, = booked_date!(future + 1.week)
+      original_start = moving.starts_at
+      pending = contract.contract_payments.create!(description: "Rent", amount: 200, direction: "incoming",
+                                                   due_date: future.to_date, show_id: show.id)
+      new_time = future + 3.weeks
+
+      post review_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "remove" },
+                              moving.id.to_s => { action: "move", starts_at: new_time.strftime("%Y-%m-%dT%H:%M") } } }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Dates to Remove")
+      expect(response.body).to include("Dates to Move")
+      expect(response.body).to include("1 pending payment")
+
+      # Nothing applied yet.
+      expect(SpaceRental.exists?(rental.id)).to be(true)
+      expect(ContractPayment.exists?(pending.id)).to be(true)
+      expect(moving.reload.starts_at).to eq(original_start)
+
+      # Confirming re-posts the same params.
+      expect(response.body).to include(%(name="dates[#{rental.id}][action]" value="remove"))
+      expect(response.body).to include(%(name="dates[#{moving.id}][starts_at]" value="#{new_time.strftime("%Y-%m-%dT%H:%M")}"))
+    end
+
+    it "labels a settled date as a cancellation, not a removal" do
+      rental, show = booked_date!(2.weeks.ago.change(hour: 20))
+      contract.contract_payments.create!(description: "Settlement", amount: 63, direction: "outgoing",
+                                         due_date: rental.starts_at.to_date, show_id: show.id,
+                                         status: "paid", paid_date: Date.current)
+
+      post review_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "remove" } } }
+
+      expect(response.body).to include("Settled Dates to Cancel")
+      expect(response.body).not_to include("Dates to Remove")
+      expect(Show.find(show.id).canceled).to be_falsey
+    end
+
+    it "bounces straight back when nothing would change" do
+      rental, = booked_date!(future)
+
+      post review_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "keep" } } }
+
+      expect(response).to redirect_to(amend_dates_manage_contract_path(contract))
+      expect(flash[:notice]).to include("No date changes")
+    end
+
+    it "treats a move to the same time as no change" do
+      rental, = booked_date!(future)
+
+      post review_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "move", starts_at: rental.starts_at.strftime("%Y-%m-%dT%H:%M") } } }
+
+      expect(response).to redirect_to(amend_dates_manage_contract_path(contract))
+    end
+  end
+
   describe "cancelling the show itself" do
     it "drops the pending contract payment in the same action" do
       _rental, show = booked_date!(future)
