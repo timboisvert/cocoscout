@@ -4,8 +4,10 @@
       the rest of the deal exactly as it is.
     </p>
 
-    <%# Submits to review first — the plan is shown back before anything changes. %>
-    <%= form_with url: review_amend_dates_manage_contract_path(@contract), method: :post, html: { novalidate: true } do %>
+    <%# Submits to review first — the plan is shown back before anything changes.
+        GET, because review only previews — and because Turbo drops a POST
+        response that renders 200 HTML instead of redirecting. %>
+    <%= form_with url: review_amend_dates_manage_contract_path(@contract), method: :get, html: { novalidate: true } do %>
       <div class="space-y-3">
         <% @rentals.each do |rental| %>
           <%

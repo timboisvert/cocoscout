@@ -147,8 +147,8 @@ RSpec.describe "Contracts — change dates", type: :request do
     end
   end
 
-  # The form posts to review first: the plan is shown back, nothing is touched,
-  # and confirming re-posts the same params to apply.
+  # The form GETs review first: the plan is shown back, nothing is touched,
+  # and confirming posts the same params to apply.
   describe "reviewing before applying" do
     it "shows the plan without changing anything" do
       rental, show = booked_date!(future)
@@ -158,7 +158,7 @@ RSpec.describe "Contracts — change dates", type: :request do
                                                    due_date: future.to_date, show_id: show.id)
       new_time = future + 3.weeks
 
-      post review_amend_dates_manage_contract_path(contract),
+      get review_amend_dates_manage_contract_path(contract),
            params: { dates: { rental.id.to_s => { action: "remove" },
                               moving.id.to_s => { action: "move", starts_at: new_time.strftime("%Y-%m-%dT%H:%M") } } }
 
@@ -183,7 +183,7 @@ RSpec.describe "Contracts — change dates", type: :request do
                                          due_date: rental.starts_at.to_date, show_id: show.id,
                                          status: "paid", paid_date: Date.current)
 
-      post review_amend_dates_manage_contract_path(contract),
+      get review_amend_dates_manage_contract_path(contract),
            params: { dates: { rental.id.to_s => { action: "remove" } } }
 
       expect(response.body).to include("Settled Dates to Cancel")
@@ -194,7 +194,7 @@ RSpec.describe "Contracts — change dates", type: :request do
     it "bounces straight back when nothing would change" do
       rental, = booked_date!(future)
 
-      post review_amend_dates_manage_contract_path(contract),
+      get review_amend_dates_manage_contract_path(contract),
            params: { dates: { rental.id.to_s => { action: "keep" } } }
 
       expect(response).to redirect_to(amend_dates_manage_contract_path(contract))
@@ -204,7 +204,7 @@ RSpec.describe "Contracts — change dates", type: :request do
     it "treats a move to the same time as no change" do
       rental, = booked_date!(future)
 
-      post review_amend_dates_manage_contract_path(contract),
+      get review_amend_dates_manage_contract_path(contract),
            params: { dates: { rental.id.to_s => { action: "move", starts_at: rental.starts_at.strftime("%Y-%m-%dT%H:%M") } } }
 
       expect(response).to redirect_to(amend_dates_manage_contract_path(contract))
