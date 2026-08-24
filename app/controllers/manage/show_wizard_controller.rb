@@ -99,8 +99,6 @@ module Manage
                                                              custom: params[:recurrence_custom_end_date])
         @wizard_state[:recurrence_end_date] = resolved&.iso8601
       end
-      @wizard_state[:recurrence_week_ordinal] = params[:recurrence_week_ordinal]
-      @wizard_state[:recurrence_weekday] = params[:recurrence_weekday]
       # Optional cast call time, as minutes before each event's start.
       @wizard_state[:call_time_enabled] = params[:call_time_enabled].present?
       @wizard_state[:call_time_offset_minutes] = (params[:call_time_offset_minutes].presence || 60).to_i
@@ -260,9 +258,7 @@ module Manage
       pattern = @wizard_state[:recurrence_pattern]
       end_date = RecurrenceEndDate.parse(@wizard_state[:recurrence_end_date]) || RecurrenceEndDate.default_for(start_datetime)
 
-      dates = generate_recurring_dates(start_datetime, pattern, end_date,
-                                       week_ordinal: @wizard_state[:recurrence_week_ordinal],
-                                       weekday: @wizard_state[:recurrence_weekday])
+      dates = generate_recurring_dates(start_datetime, pattern, end_date)
       created_count = 0
 
       # Generate a shared recurrence_group_id for all shows in this series
@@ -292,20 +288,12 @@ module Manage
       redirect_to manage_production_shows_path(@production), notice: "#{created_count} recurring events were successfully created"
     end
 
-    def generate_recurring_dates(start_datetime, pattern, end_date, week_ordinal: nil, weekday: nil)
-      # For monthly_week with explicit ordinal, derive first occurrence from params
-      if pattern == "monthly_week" && week_ordinal.present? && weekday.present?
-        wday = weekday.to_i
-        ordinal = week_ordinal.to_i
-        first = nth_weekday_of_month(start_datetime.year, start_datetime.month, wday, ordinal)
-        if first.to_date < start_datetime.to_date
-          # next_month, not `>> 1`: that's a Date method, and start_datetime is a
-          # TimeWithZone, which raises NoMethodError on it.
-          nm = start_datetime.next_month
-          first = nth_weekday_of_month(nm.year, nm.month, wday, ordinal)
-        end
-        start_datetime = first.in_time_zone.change(hour: start_datetime.hour, min: start_datetime.min)
-      end
+    def generate_recurring_dates(start_datetime, pattern, end_date)
+      # monthly_week is anchored to the start date itself: its weekday, and
+      # which week of the month it falls in (day 29+ counts as "last", which
+      # nth_weekday_of_month clamps in months that have no fifth).
+      weekday = start_datetime.wday
+      week_ordinal = ((start_datetime.day - 1) / 7) + 1
 
       dates = [ start_datetime ]
       current = start_datetime
@@ -321,18 +309,9 @@ module Manage
         when "monthly_date"
           current + 1.month
         when "monthly_week"
-          if week_ordinal.present? && weekday.present?
-            next_month = current.next_month
-            nth_weekday_of_month(next_month.year, next_month.month, weekday.to_i, week_ordinal.to_i)
-              .in_time_zone.change(hour: current.hour, min: current.min)
-          else
-            next_month = current + 1.month
-            week_of_month = (current.day - 1) / 7 + 1
-            first_day = next_month.beginning_of_month
-            first_weekday = first_day.beginning_of_week(:sunday) + current.wday.days
-            first_weekday += 1.week if first_weekday < first_day
-            (first_weekday + (week_of_month - 1).weeks).in_time_zone.change(hour: current.hour, min: current.min)
-          end
+          next_month = current.next_month
+          nth_weekday_of_month(next_month.year, next_month.month, weekday, week_ordinal)
+            .in_time_zone.change(hour: current.hour, min: current.min)
         else
           current + 1.week
         end

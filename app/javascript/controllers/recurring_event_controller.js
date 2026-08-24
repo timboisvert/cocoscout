@@ -1,10 +1,17 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["singleFields", "recurringFields", "submitButton", "patternSelect", "eventTypeSelect", "monthlyWeekFields"]
+    static targets = ["singleFields", "recurringFields", "submitButton", "patternSelect", "eventTypeSelect"]
 
     connect() {
         this.updateButtonText()
+
+        // On revisit the start date is already filled in — describe the
+        // patterns in its terms right away ("Monthly on the fourth Thursday").
+        const startInput = this.element.querySelector('input[name="recurrence_start_datetime"]')
+        if (startInput && startInput.value) {
+            this.rebuildPatternOptions(startInput.value)
+        }
     }
 
     toggle(event) {
@@ -71,7 +78,10 @@ export default class extends Controller {
     }
 
     updatePatternOptions(event) {
-        const dateValue = event.target.value
+        this.rebuildPatternOptions(event.target.value)
+    }
+
+    rebuildPatternOptions(dateValue) {
         if (!dateValue || !this.hasPatternSelectTarget) return
 
         const date = new Date(dateValue)
@@ -85,6 +95,9 @@ export default class extends Controller {
 
         // Generate ordinal suffix (1st, 2nd, 3rd, etc.)
         const ordinal = this.getOrdinal(dateOfMonth)
+
+        // Rebuilding the options must not lose what's already chosen
+        const selected = this.patternSelectTarget.value
 
         // Clear existing options
         this.patternSelectTarget.innerHTML = ''
@@ -110,20 +123,15 @@ export default class extends Controller {
             option.textContent = pattern.label
             this.patternSelectTarget.appendChild(option)
         })
-    }
 
-    toggleMonthlyWeekFields(event) {
-        if (!this.hasMonthlyWeekFieldsTarget) return
-        if (event.target.value === "monthly_week") {
-            this.monthlyWeekFieldsTarget.classList.remove("hidden")
-        } else {
-            this.monthlyWeekFieldsTarget.classList.add("hidden")
-        }
+        this.patternSelectTarget.value = selected
     }
 
     getWeekOrdinal(n) {
-        const words = ["first", "second", "third", "fourth", "fifth"]
-        return words[n - 1] || `${n}th`
+        // Day 29+ is the month's last such weekday; some months have no fifth,
+        // and the series generator clamps to the last one — say what happens.
+        const words = ["first", "second", "third", "fourth", "last"]
+        return words[n - 1] || "last"
     }
 
     getOrdinal(n) {
