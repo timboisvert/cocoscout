@@ -20,10 +20,12 @@
 
   notified_keys = show.notified_assignable_keys
   notifiable = show.show_person_role_assignments.includes(:assignable, :role).reject(&:guest?).select(&:assignable)
-  unnotified_assignments = notifiable.reject { |a| notified_keys.include?([ a.assignable_type, a.assignable_id ]) }
+  # Role-aware: a notified performer who gained another act needs notifying again.
+  unnotified_assignments = notifiable.reject { |a| notified_keys.include?([ a.assignable_type, a.assignable_id, a.role_id ]) }
   # Counts are of people/groups, not assignments: someone holding two acts is one recipient.
   notifiable_count = notifiable.map { |a| [ a.assignable_type, a.assignable_id ] }.uniq.size
   unnotified_count = unnotified_assignments.map { |a| [ a.assignable_type, a.assignable_id ] }.uniq.size
+  notified_people_count = notifiable_count - unnotified_count
   removed_members = show.removed_cast_members
   has_removed = removed_members.any?
   has_work = unnotified_assignments.any? || has_removed
@@ -52,7 +54,7 @@
             <div>
               <h3 class="text-base font-semibold text-gray-900">Finalize &amp; Notify</h3>
               <p class="text-xs text-gray-500">
-                <%= notified_keys.size %> of <%= notifiable_count %> notified<%= fully_cast ? " · fully cast" : " · #{filled_slots} of #{total_slots} cast" %>
+                <%= notified_people_count %> of <%= notifiable_count %> notified<%= fully_cast ? " · fully cast" : " · #{filled_slots} of #{total_slots} cast" %>
               </p>
             </div>
             <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "small", type: :button, data: { action: "click->modal#close" } %>

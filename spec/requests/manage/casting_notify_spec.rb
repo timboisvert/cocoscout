@@ -193,4 +193,71 @@ RSpec.describe "Manage::Casting per-individual notify", type: :request do
       expect(msg.body.to_plain_text).not_to include("{{")
     end
   end
+
+  describe "notification state follows adds and removals on a running order" do
+    before { org.update!(comped_indefinitely: true) } # second production
+
+    let(:act_production) { create(:production, organization: org, casting_mode: "act_based") }
+    let!(:magic)  { create(:role, production: act_production, name: "Magic", position: 0) }
+    let!(:aerial) { create(:role, production: act_production, name: "Aerial", position: 1) }
+    let(:act_show) { create(:show, production: act_production) }
+    let(:performer) { create(:person, name: "Trixie Tassels", user: create(:user)).tap { |p| org.people << p } }
+
+    def notify!(person)
+      post manage_casting_show_notify_path(act_production, act_show), params: {
+        assignable_keys: [ "Person:#{person.id}" ],
+        cast_email_draft: { title: "You're in", body: "<div>x</div>" }
+      }
+    end
+
+    it "offers a removal notice after their act is cut, and sends it without the role" do
+      magic_copy = act_show.custom_roles.find_by(name: "Magic")
+      create(:show_person_role_assignment, show: act_show, role: magic_copy, assignable: performer)
+      notify!(performer)
+      expect(act_show.reload.removed_cast_members).to be_empty
+
+      delete manage_casting_show_running_order_act_path(act_production, act_show, magic_copy, confirm: "true")
+      expect(response).to have_http_status(:ok)
+
+      # The notification record outlives the act — a removal notice is owed
+      expect(act_show.reload.removed_cast_members.map(&:id)).to eq([ performer.id ])
+
+      post manage_casting_show_notify_path(act_production, act_show), params: {
+        removed_keys: [ "Person:#{performer.id}" ],
+        removed_email_draft: { title: "Change", body: "<div>Released: {{role_names}}</div>" }
+      }
+      msg = Message.order(:created_at).last
+      expect(msg.body.to_plain_text).to include("Released: your spot in this show")
+      expect(act_show.reload.removed_cast_members).to be_empty
+    end
+
+    it "flags a notified performer's NEW act as unnotified while the announced one stays notified" do
+      magic_copy = act_show.custom_roles.find_by(name: "Magic")
+      aerial_copy = act_show.custom_roles.find_by(name: "Aerial")
+      create(:show_person_role_assignment, show: act_show, role: magic_copy, assignable: performer)
+      notify!(performer)
+      expect(act_show.reload.unnotified_cast_members).to be_empty
+
+      create(:show_person_role_assignment, show: act_show, role: aerial_copy, assignable: performer)
+
+      expect(act_show.reload.unnotified_cast_members.map(&:role_id)).to eq([ aerial_copy.id ])
+    end
+
+    it "keeps notified state through lazy materialization" do
+      legacy = create(:show, production: act_production)
+      legacy.custom_roles.destroy_all
+      legacy.update_columns(use_custom_roles: false)
+      create(:show_person_role_assignment, show: legacy, role: magic, assignable: performer)
+      post manage_casting_show_notify_path(act_production, legacy), params: {
+        assignable_keys: [ "Person:#{performer.id}" ], cast_email_draft: { title: "Hi", body: "<div>x</div>" }
+      }
+      expect(legacy.reload.unnotified_cast_members).to be_empty
+
+      legacy.ensure_custom_running_order!
+
+      # The record followed its act onto the show's copy
+      expect(legacy.reload.unnotified_cast_members).to be_empty
+      expect(legacy.show_cast_notifications.sole.role.show_id).to eq(legacy.id)
+    end
+  end
 end

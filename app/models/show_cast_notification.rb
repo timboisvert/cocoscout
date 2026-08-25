@@ -3,7 +3,9 @@
 class ShowCastNotification < ApplicationRecord
   belongs_to :show
   belongs_to :assignable, polymorphic: true
-  belongs_to :role
+  # Optional: the role nullifies when an act is cut from the running order,
+  # keeping the person-level record that they were notified.
+  belongs_to :role, optional: true
 
   enum :notification_type, { cast: 0, removed: 1 }
 

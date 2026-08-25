@@ -30,7 +30,9 @@
 
   # Notification status: guests can't be notified, so only count non-guest members.
   non_guest_assignments = show.show_person_role_assignments.reject(&:guest?)
-  notified_keys = @notified_keys_by_show ? @notified_keys_by_show[show.id] : show.notified_assignable_keys
+  # Person-level here (the card summarizes people) — the board's per-act
+  # badges are the role-aware view.
+  notified_keys = @notified_keys_by_show ? @notified_keys_by_show[show.id] : show.notified_assignable_keys.map { |type, id, _role| [ type, id ] }.to_set
   notifiable_count = non_guest_assignments.size
   notified_count = non_guest_assignments.count { |a| notified_keys.include?([ a.assignable_type, a.assignable_id ]) }
   unnotified_count = notifiable_count - notified_count

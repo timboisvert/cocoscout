@@ -1619,12 +1619,13 @@ module Manage
       result
     end
 
-    # True when every non-guest cast member on the show has a cast notification.
-    # Guests can't be notified, so they don't block "fully notified".
+    # True when every non-guest assignment on the show has been announced —
+    # role-aware, so a notified performer's NEW act still blocks "fully
+    # notified". Guests can't be notified, so they don't block it.
     def all_notifiable_notified?(show)
       notified = show.notified_assignable_keys
       notifiable = show.show_person_role_assignments.reject(&:guest?)
-      notifiable.any? && notifiable.all? { |a| notified.include?([ a.assignable_type, a.assignable_id ]) }
+      notifiable.any? && notifiable.all? { |a| notified.include?([ a.assignable_type, a.assignable_id, a.role_id ]) }
     end
 
     # Lock the show once it's fully cast and everyone (non-guest) is notified.
@@ -1695,7 +1696,9 @@ module Manage
 
           prev_notification = show.show_cast_notifications.cast_notifications
                                   .where(assignable: assignable).order(notified_at: :desc).first
-          next unless prev_notification&.role
+          # The role may be gone (act cut from the running order) — the notice
+          # still goes out; the labeler falls back to a generic spot.
+          next unless prev_notification
 
           recipients_for.call(assignable).each do |person|
             next unless person&.email.present?
@@ -1782,6 +1785,8 @@ module Manage
       role_names = assignments.group_by { |a| a[:show] }.flat_map do |show, show_assignments|
         ActAssignmentLabeler.labels(show_assignments.map { |a| a[:role] }, show: show)
       end.uniq
+      # A removed notice whose act was itself cut has no role left to name.
+      role_names = [ "your spot in this show" ] if role_names.empty?
       dates = shows.map { |s| s.date_and_time.strftime("%B %-d") }.uniq
       show_dates = dates.count > 2 ? "#{dates.first} - #{dates.last}" : dates.join(" & ")
       shows_list = shows.map { |s| "<li>#{s.date_and_time.strftime('%A, %B %-d at %-l:%M %p')}: #{s.display_name}</li>" }.join("\n")

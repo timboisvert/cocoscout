@@ -365,34 +365,26 @@ class Show < ApplicationRecord
     end.compact
   end
 
-  # Set of [assignable_type, assignable_id] that have been notified as cast for
-  # this show. Used to show per-person "notified" status on the casting board.
+  # Set of [assignable_type, assignable_id, role_id] that have been notified as
+  # cast for this show. Role-aware: someone re-added to a NEW act after being
+  # notified shows "not notified" for that act, even though an older
+  # notification exists for a different one.
   def notified_assignable_keys
     show_cast_notifications.cast_notifications
-                           .pluck(:assignable_type, :assignable_id)
+                           .pluck(:assignable_type, :assignable_id, :role_id)
                            .to_set
   end
 
-  # Get current cast members who haven't been notified yet
+  # Current assignments whose exact spot hasn't been announced. Role-aware: a
+  # notified performer who gains ANOTHER act needs notifying about it, so the
+  # match is per (assignable, role), not per person.
   def unnotified_cast_members
-    # Get all assignables from current cast
-    current_cast = show_person_role_assignments
-                     .pluck(:assignable_type, :assignable_id)
-                     .map { |type, id| [ type, id ] }
-                     .to_set
-
-    # Get all assignables already notified as cast
     already_notified = show_cast_notifications.cast_notifications
-                                               .pluck(:assignable_type, :assignable_id)
-                                               .map { |type, id| [ type, id ] }
-                                               .to_set
+                                              .pluck(:assignable_type, :assignable_id, :role_id)
+                                              .to_set
 
-    # Find who is in current cast but hasn't been notified
-    unnotified = current_cast - already_notified
-
-    # Load the actual assignable objects with their assignments
-    show_person_role_assignments.select do |assignment|
-      unnotified.include?([ assignment.assignable_type, assignment.assignable_id ])
+    show_person_role_assignments.reject do |assignment|
+      already_notified.include?([ assignment.assignable_type, assignment.assignable_id, assignment.role_id ])
     end
   end
 
@@ -817,6 +809,11 @@ class Show < ApplicationRecord
           # Their role vanished from the production lineup — nothing to remap onto.
           assignment.destroy!
         end
+      end
+      # Notification records ride along — they're matched per (person, role),
+      # so they must point at the copies too.
+      copied_from.each do |source_id, copy|
+        show_cast_notifications.where(role_id: source_id).update_all(role_id: copy.id, updated_at: Time.current)
       end
       update_columns(use_custom_roles: true, updated_at: Time.current)
       copied_from

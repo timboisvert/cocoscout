@@ -62,6 +62,12 @@ class RunningOrderReset
           guest_email: a.guest_email
         }
       end
+      # Which role each notification described, by match key, so the records
+      # follow their acts through the reset. Rows whose act doesn't survive
+      # keep a nil role (Role nullifies) — the evidence a removal notice is owed.
+      notification_keys = @show.show_cast_notifications.each_with_object({}) do |note, hash|
+        hash[note.id] = old_key_by_role_id[note.role_id] if note.role_id
+      end
 
       @show.custom_roles.destroy_all
       copied_from = @show.copy_roles_from_production!
@@ -79,6 +85,11 @@ class RunningOrderReset
           guest_name: entry[:guest_name],
           guest_email: entry[:guest_email]
         )
+      end
+
+      @show.show_cast_notifications.reload.each do |note|
+        target = key_to_copy[notification_keys[note.id]]
+        note.update_columns(role_id: target.id) if target
       end
     end
   end

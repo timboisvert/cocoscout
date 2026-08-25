@@ -18,7 +18,10 @@ class Role < ApplicationRecord
 
   has_many :role_eligibilities, dependent: :destroy
   has_many :vacancies, class_name: "RoleVacancy", dependent: :destroy
-  has_many :show_cast_notifications, dependent: :destroy
+  # Nullify, never destroy: a cast notification is the evidence someone was
+  # told about their spot — it must survive the act being cut so the removal
+  # notice can still be offered.
+  has_many :show_cast_notifications, dependent: :nullify
   has_many :casting_table_draft_assignments, dependent: :destroy
 
   # Scopes for production vs show-specific roles

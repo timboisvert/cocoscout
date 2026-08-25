@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_25_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2227,7 +2227,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_120000) do
     t.text "email_body"
     t.integer "notification_type", default: 0, null: false
     t.datetime "notified_at", null: false
-    t.bigint "role_id", null: false
+    t.bigint "role_id"
     t.bigint "show_id", null: false
     t.datetime "updated_at", null: false
     t.index ["assignable_type", "assignable_id"], name: "index_show_cast_notifications_on_assignable"

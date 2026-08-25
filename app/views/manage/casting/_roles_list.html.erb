@@ -308,7 +308,7 @@
                           <%= is_guest ? assignment.guest_name : assignable&.name %>
                         </span>
                         <% unless is_guest %>
-                          <% if notified_keys.include?([ assignment.assignable_type, assignment.assignable_id ]) %>
+                          <% if notified_keys.include?([ assignment.assignable_type, assignment.assignable_id, assignment.role_id ]) %>
                             <span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700" title="This person has been notified and can see their <%= unit %>">✓ Notified</span>
                           <% else %>
                             <span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600" title="Not notified yet — hidden from this person">Not notified yet</span>
@@ -531,7 +531,7 @@
                           <%= is_guest ? assignment.guest_name : assignable&.name %>
                         </span>
                         <% unless is_guest %>
-                          <% if notified_keys.include?([ assignment.assignable_type, assignment.assignable_id ]) %>
+                          <% if notified_keys.include?([ assignment.assignable_type, assignment.assignable_id, assignment.role_id ]) %>
                             <span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700" title="This person has been notified and can see their <%= unit %>">✓ Notified</span>
                           <% else %>
                             <span class="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600" title="Not notified yet — hidden from this person">Not notified yet</span>
