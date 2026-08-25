@@ -248,6 +248,73 @@ RSpec.describe "Manage::Casting running order", type: :request do
     end
   end
 
+  describe "stale boards (rendered before the show owned its lineup)" do
+    # A legacy show's board serves production role ids; its first mutation
+    # materializes the copies — the posted ids must land on those copies.
+    let(:legacy) do
+      s = create(:show, production: production)
+      s.custom_roles.destroy_all
+      s.update_columns(use_custom_roles: false)
+      s
+    end
+
+    def legacy_names
+      legacy.custom_roles.reload.order(:position, :created_at).map(&:name)
+    end
+
+    it "removes an act posted by its production id, cast and all" do
+      create(:show_person_role_assignment, show: legacy, role: magic, assignable: performer)
+
+      delete manage_casting_show_running_order_act_path(production, legacy, magic, confirm: "true")
+
+      expect(response).to have_http_status(:ok)
+      expect(legacy.reload.use_custom_roles).to be(true)
+      expect(legacy_names).to eq([ "Variety", "MC" ])
+      expect(legacy.show_person_role_assignments.count).to eq(0)
+      # The production's own lineup is untouched
+      expect(production.roles.production_roles.count).to eq(3)
+    end
+
+    it "reorders using production ids" do
+      post manage_casting_show_running_order_reorder_path(production, legacy),
+           params: { role_ids: [ variety.id, magic.id ] }
+
+      expect(response).to have_http_status(:ok)
+      expect(legacy_names).to eq([ "Variety", "Magic", "MC" ])
+    end
+
+    it "renames via a production id without touching the default lineup" do
+      patch "/manage/casting/#{production.id}/#{legacy.id}/running_order/acts/#{magic.id}",
+            params: { name: "Grand Illusion" }
+
+      expect(response).to have_http_status(:ok)
+      expect(legacy_names).to include("Grand Illusion")
+      expect(magic.reload.name).to eq("Magic")
+    end
+
+    it "duplicates an in-show act posted by its production id, carrying the cast" do
+      create(:show_person_role_assignment, show: legacy, role: magic, assignable: performer)
+
+      post manage_casting_show_running_order_acts_path(production, legacy),
+           params: { kind: "act", source_role_id: magic.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(legacy_names).to eq([ "Magic", "Variety", "Magic", "MC" ])
+      expect(legacy.show_person_role_assignments.count).to eq(2)
+      expect(legacy.show_person_role_assignments.map(&:assignable).uniq).to eq([ performer ])
+    end
+
+    it "still refuses a role that means nothing to this show" do
+      foreign_show = create(:show, production: production)
+      foreign_role = foreign_show.custom_roles.first
+
+      delete manage_casting_show_running_order_act_path(production, legacy, foreign_role, confirm: "true")
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(JSON.parse(response.body)["error"]).to include("reload the page")
+    end
+  end
+
   describe "act_options" do
     it "lists this show's acts (with performers) and missing default-lineup acts" do
       magic_copy = show.custom_roles.find_by(name: "Magic")

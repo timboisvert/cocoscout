@@ -388,10 +388,8 @@ module Manage
         return
       end
 
-      # Find the role, scoped to the org so a foreign role id can't cast into
-      # (or read the restrictions of) another org's role. Joined through
-      # production so show-level roles (production_id set, show_id present) match too.
-      role = org_scoped_roles.find(params[:role_id])
+      role = resolve_show_role(params[:role_id])
+      return if role.nil?
 
       # Validate eligibility for restricted roles (unless force is true - user confirmed in modal)
       if role.restricted? && !role.eligible?(assignable) && !params[:force]
@@ -494,8 +492,8 @@ module Manage
         return
       end
 
-      # Find the role, scoped to the org (see assign_person_to_role).
-      role = org_scoped_roles.find(params[:role_id])
+      role = resolve_show_role(params[:role_id])
+      return if role.nil?
 
       # Check if role is restricted - guests cannot be assigned unless force is true
       if role.restricted? && !params[:force]
@@ -1023,11 +1021,13 @@ module Manage
     def reorder_running_order
       return unless require_act_based!
 
-      @show.ensure_custom_running_order!
+      mapping = @show.ensure_custom_running_order!
 
-      ordered_ids = Array(params[:role_ids]).map(&:to_i)
+      # The posted ids may come from a board rendered before this show owned
+      # its lineup — translate each onto the copy it means.
+      ordered_ids = Array(params[:role_ids]).filter_map { |id| locate_custom_role(id, mapping)&.id }
       lineup, standing = @show.custom_roles.reload.partition { |r| !r.standing? }
-      return render json: { error: "Order doesn't match this show's running order" }, status: :unprocessable_entity unless ordered_ids.sort == lineup.map(&:id).sort
+      return render json: { error: "This show's lineup has changed — reload the page and try again." }, status: :unprocessable_entity unless ordered_ids.sort == lineup.map(&:id).sort
 
       by_id = lineup.index_by(&:id)
       ActiveRecord::Base.transaction do
@@ -1049,10 +1049,16 @@ module Manage
     def create_running_order_act
       return unless require_act_based!
 
-      @show.ensure_custom_running_order!
+      mapping = @show.ensure_custom_running_order!
 
       kind = %w[break show_role].include?(params[:kind]) ? params[:kind] : "act"
       source = params[:source_role_id].present? ? org_scoped_roles.find(params[:source_role_id]) : nil
+      # A stale board passes production ids for acts that ARE in this show —
+      # duplicate the copy (cast and all), don't re-copy the default shape.
+      if source && source.show_id.nil?
+        in_show_copy = locate_custom_role(source.id, mapping)
+        source = in_show_copy if in_show_copy
+      end
       name = params[:name].to_s.strip
       name = source&.name if name.blank?
       name = "Intermission" if name.blank? && kind == "break"
@@ -1127,9 +1133,11 @@ module Manage
     def destroy_running_order_act
       return unless require_act_based!
 
-      @show.ensure_custom_running_order!
+      mapping = @show.ensure_custom_running_order!
 
-      role = @show.custom_roles.find(params[:id])
+      role = locate_custom_role(params[:id], mapping)
+      return render_stale_lineup_error if role.nil?
+
       assignments = @show.show_person_role_assignments.where(role_id: role.id).includes(:assignable)
 
       if assignments.any? && params[:confirm] != "true"
@@ -1145,9 +1153,11 @@ module Manage
     def update_running_order_act
       return unless require_act_based!
 
-      @show.ensure_custom_running_order!
+      mapping = @show.ensure_custom_running_order!
 
-      role = @show.custom_roles.find(params[:id])
+      role = locate_custom_role(params[:id], mapping)
+      return render_stale_lineup_error if role.nil?
+
       name = params[:name].to_s.strip
       return render json: { error: "Name is required" }, status: :unprocessable_entity if name.blank?
 
@@ -1232,6 +1242,54 @@ module Manage
     # production-level (show_id nil) and show-level roles are covered.
     def org_scoped_roles
       Role.joins(:production).where(productions: { organization_id: Current.organization.id })
+    end
+
+    # Resolve an assign-request's role_id against THIS show's current lineup.
+    # Only lineup roles are castable — an org-valid role from another show or
+    # the production's default list must never take an assignment here (it
+    # renders nowhere on this board but still counts, wedging progress >100%).
+    #
+    # A stale page is the real-world way that happens: the board serves
+    # production role ids until the show materializes its own copies; a tab
+    # opened before that still posts the old ids. Those remap to the copy by
+    # match key (name + ordinal), so the open tab keeps working. Anything else
+    # renders an error and returns nil — callers bail on nil.
+    def resolve_show_role(role_id)
+      role = @show.available_roles.find_by(id: role_id)
+      return role if role
+
+      source = org_scoped_roles.find(role_id)
+      if @show.use_custom_roles? && source.show_id.nil? && source.production_id == @production.id
+        key = Role.match_key_for(source, source.siblings.to_a)
+        target = Role.match_keys_for(@show.custom_roles.to_a)[key]
+        return target if target
+      end
+
+      render_stale_lineup_error
+      nil
+    end
+
+    def render_stale_lineup_error
+      render json: { error: "This show's lineup has changed — reload the page and try again." }, status: :unprocessable_entity
+    end
+
+    # Running-order endpoints: turn a client-sent role id into this show's
+    # custom role. The id may be stale — a board rendered before the show
+    # materialized its lineup serves production ids. Try the direct id, then
+    # the fresh materialization mapping, then a match-key remap.
+    def locate_custom_role(role_id, mapping)
+      role = @show.custom_roles.find_by(id: role_id)
+      return role if role
+
+      mapped = mapping[role_id.to_i]
+      return mapped if mapped
+
+      source = org_scoped_roles.find_by(id: role_id)
+      if source && source.show_id.nil? && source.production_id == @production.id
+        key = Role.match_key_for(source, source.siblings.to_a)
+        return Role.match_keys_for(@show.custom_roles.reload.to_a)[key]
+      end
+      nil
     end
 
     # Render a success response for assignment operations (used for both new assignments and no-ops)

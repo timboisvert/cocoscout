@@ -60,6 +60,33 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
     end
   end
 
+  describe "assign role resolution (only this show's lineup is castable)" do
+    it "remaps a stale production-role id onto the show's copy" do
+      # A tab opened before the show materialized its lineup still posts
+      # production role ids — the cast must land on the copy, not the default.
+      post manage_casting_show_assign_person_path(production, show),
+           params: { person_id: performer.id, role_id: variety.id }
+
+      expect(response).to have_http_status(:ok)
+      assignment = show.show_person_role_assignments.sole
+      expect(assignment.role.show_id).to eq(show.id)
+      expect(assignment.role.name).to eq("Variety")
+      expect(assignment.role_id).not_to eq(variety.id)
+    end
+
+    it "refuses a role from elsewhere in the org instead of wedging progress" do
+      other_show = create(:show, production: production)
+      foreign_role = other_show.custom_roles.first
+
+      post manage_casting_show_assign_person_path(production, show),
+           params: { person_id: performer.id, role_id: foreign_role.id }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(JSON.parse(response.body)["error"]).to include("reload the page")
+      expect(show.show_person_role_assignments.count).to eq(0)
+    end
+  end
+
   describe "assigning the same person to two acts" do
     it "works through the existing assign endpoint and counts 3 slots, not 4" do
       post manage_casting_show_assign_person_path(production, show),
@@ -252,7 +279,9 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(response).to have_http_status(:ok)
       post manage_casting_show_assign_person_path(production, show), params: { person_id: other.id, role_id: kittens.id }
       expect(response).to have_http_status(:ok)
-      expect(show.show_person_role_assignments.where(role: kittens).count).to eq(2)
+      # Production role ids remap to the show's copy — the cast lands there
+      kitten_copy = show.custom_roles.find_by(name: "Stage Kitten")
+      expect(show.show_person_role_assignments.where(role: kitten_copy).count).to eq(2)
     end
 
     describe "the production role editor" do

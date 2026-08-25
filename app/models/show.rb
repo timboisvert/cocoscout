@@ -799,8 +799,13 @@ class Show < ApplicationRecord
   # no lineup when they were created): give the show its own roles and remap
   # its existing assignments onto them. Every running-order mutation calls
   # this first. No-op once the show owns its roles.
+  #
+  # Returns { production_role_id => custom_role } — the caller's request may
+  # carry role ids from a board rendered BEFORE this ran (that board served
+  # production roles), so endpoints translate incoming ids through this map.
+  # Empty hash when the show already owned its roles.
   def ensure_custom_running_order!
-    return if use_custom_roles?
+    return {} if use_custom_roles?
 
     transaction do
       copied_from = copy_roles_from_production!
@@ -814,6 +819,7 @@ class Show < ApplicationRecord
         end
       end
       update_columns(use_custom_roles: true, updated_at: Time.current)
+      copied_from
     end
   end
 
