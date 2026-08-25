@@ -106,6 +106,21 @@
           </label>
         </div>
 
+        <%# Warning + explicit acknowledgement — this reshapes casting for
+            every production; nobody should get here on one reflexive click. %>
+        <div class="mx-6 mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p class="text-sm text-amber-900 font-medium">This changes casting for every production.</p>
+          <p class="text-xs text-amber-800 mt-1">
+            All <%= pluralize(@productions.count, "production") %> will draw from one shared pool.
+            Your per-production pools are kept and come back if you switch back to per-production mode.
+          </p>
+          <label class="flex items-start gap-2 mt-3 cursor-pointer">
+            <input type="checkbox" required
+                   class="h-4 w-4 mt-0.5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+            <span class="text-sm text-amber-900">I understand every production will share one talent pool</span>
+          </label>
+        </div>
+
         <%# Footer %>
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
           <%= link_to manage_casting_talent_pools_path do %>

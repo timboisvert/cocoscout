@@ -77,9 +77,14 @@ module Manage
         @organization.update!(talent_pool_mode: :single)
 
         # Link all productions to the org pool via TalentPoolShare
-        # so existing queries find members for all productions' shows
+        # so existing queries find members for all productions' shows.
+        # Single mode supersedes ANY existing share — clear them first, or a
+        # stale share (e.g. to a legacy org-wide pool) silently takes over the
+        # moment the org switches back to per-production mode. That's the
+        # S&G everyone-in-one-pool incident (2026-08-25).
         @organization.productions.castable.each do |prod|
           next if prod.id == org_pool.production_id
+          prod.talent_pool_shares.where.not(talent_pool: org_pool).destroy_all
           TalentPoolShare.find_or_create_by!(production: prod, talent_pool: org_pool)
         end
       end

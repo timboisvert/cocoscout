@@ -106,6 +106,23 @@
           </label>
         </div>
 
+        <%# Warning + explicit acknowledgement. "Copy to all" in particular
+            adds every shared-pool member to EVERY production's pool — that's
+            tedious to undo by hand. %>
+        <div class="mx-6 mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p class="text-sm text-amber-900 font-medium">This changes casting for every production.</p>
+          <p class="text-xs text-amber-800 mt-1">
+            "Restore previous pools" is the safe choice — each production picks its own pool
+            back up exactly as it was. "Copy to all" adds every member of the shared pool to
+            every production's pool, which is tedious to undo.
+          </p>
+          <label class="flex items-start gap-2 mt-3 cursor-pointer">
+            <input type="checkbox" required
+                   class="h-4 w-4 mt-0.5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+            <span class="text-sm text-amber-900">I understand how each production's pool will be affected</span>
+          </label>
+        </div>
+
         <%# Footer %>
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
           <%= link_to manage_casting_talent_pools_path do %>
