@@ -137,10 +137,10 @@
       </div>
     <% end %>
 
-    <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
+    <div class="flex flex-col lg:flex-row gap-6">
 
       <!-- Roles on the left (or top on mobile) -->
-      <div class="w-full <%= show_talent_pool_panel ? 'lg:w-1/2' : '' %>">
+      <div class="w-full min-w-0 <%= show_talent_pool_panel ? 'lg:w-[55%]' : '' %>">
         <%= render partial: "manage/casting/roles_list", locals: {
           show: @show,
           roles: @roles,
@@ -163,7 +163,7 @@
           %>
           <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div class="p-3">
-              <div class="flex flex-col sm:grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 sm:items-center">
+              <div class="flex flex-col sm:grid sm:grid-cols-[minmax(100px,140px)_1fr] gap-2 sm:gap-4 sm:items-center">
                 <div class="font-semibold text-sm text-gray-900 flex items-center gap-1">
                   Attendees
                   <span class="text-xs px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-700">
@@ -241,7 +241,7 @@
 
       <% if show_talent_pool_panel %>
       <!-- Cast Members on the right (or bottom on mobile) - sticky on desktop -->
-      <div class="hidden lg:block w-full lg:w-1/2 lg:sticky lg:top-4 lg:h-fit">
+      <div class="hidden lg:block w-full lg:w-[45%] min-w-0 lg:sticky lg:top-4 lg:h-fit">
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="p-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="font-semibold text-gray-900">Talent Pool</h3>

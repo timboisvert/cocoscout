@@ -25,12 +25,49 @@ module My
       @current_month = params[:month] ? Date.parse(params[:month]).in_time_zone.beginning_of_month : Time.current.beginning_of_month
       cal_start = 6.months.ago.beginning_of_month
       cal_end = 12.months.from_now.end_of_month
-      prev_month = @current_month - 1.month
-      next_month = @current_month + 1.month
-      @can_go_prev = prev_month >= Time.current.beginning_of_month
-      @can_go_next = next_month <= cal_end
-      @prev_month = prev_month
-      @next_month = next_month
+      real_current_month = Time.current.beginning_of_month
+
+      # In the final stretch of a month, a single-month grid hides the weekend
+      # that spills into next month. Fold this month and the next into one view
+      # (starting at the current week); the forward arrow skips the folded
+      # month and stepping back from there returns here. Mirrors the manage
+      # home calendar.
+      days_left_in_month = (Time.current.end_of_month.to_date - Date.current).to_i
+      tail_of_month = days_left_in_month < 7
+      @calendar_combined = tail_of_month && @current_month == real_current_month
+
+      if tail_of_month && @current_month == real_current_month
+        @prev_month = @current_month - 1.month
+        @next_month = real_current_month + 2.months          # skip the folded next month
+      elsif tail_of_month && @current_month == real_current_month + 2.months
+        @prev_month = real_current_month                     # back to the combined this/next view
+        @next_month = @current_month + 1.month
+      else
+        @prev_month = @current_month - 1.month
+        @next_month = @current_month + 1.month
+      end
+      @can_go_prev = @prev_month >= Time.current.beginning_of_month
+      @can_go_next = @next_month <= cal_end
+
+      # The last month rendered in the grid — two months when combined.
+      @calendar_last_month = @calendar_combined ? (real_current_month + 1.month) : @current_month
+
+      # Nav-arrow labels: an arrow pointing at the combined view names both months.
+      combined_short = "#{real_current_month.strftime('%b')} / #{(real_current_month + 1.month).strftime('%b')}"
+      @prev_month_label = (tail_of_month && @prev_month == real_current_month) ? combined_short : @prev_month.strftime("%b")
+      @next_month_label = (tail_of_month && @next_month == real_current_month) ? combined_short : @next_month.strftime("%b")
+
+      # Heading: "August / September 2026" when combined, else "August 2026".
+      @calendar_heading =
+        if @calendar_combined
+          if @current_month.year == @calendar_last_month.year
+            "#{@current_month.strftime('%B')} / #{@calendar_last_month.strftime('%B %Y')}"
+          else
+            "#{@current_month.strftime('%B %Y')} / #{@calendar_last_month.strftime('%B %Y')}"
+          end
+        else
+          @current_month.strftime("%B %Y")
+        end
 
       # === Filter parameters ===
       all_calendar_types = %w[show rehearsal meeting course audition shift mic]
@@ -90,7 +127,8 @@ module My
             has_signup = signup_show_ids.include?(show.id)
 
             if assignment || has_signup
-              role_name = assignment&.role&.name
+              role_name = my_roles_label(show, "Person", selected_person_ids) ||
+                          my_roles_label(show, "Group", selected_group_ids)
               color = case show.event_type
               when "rehearsal" then "blue"
               when "meeting" then "green"
@@ -148,9 +186,7 @@ module My
 
         (person_assigned_shows + person_signup_shows).uniq(&:id).each do |show|
           show_data_by_id[show.id] = show
-          role_name = show.show_person_role_assignments
-            .detect { |a| a.assignable_type == "Person" && selected_person_ids.include?(a.assignable_id) }
-            &.role&.name
+          role_name = my_roles_label(show, "Person", selected_person_ids)
 
           color = case show.event_type
           when "rehearsal" then "blue"
@@ -187,9 +223,7 @@ module My
         group_assigned_shows.each do |show|
           next if show_data_by_id[show.id] # Already added from person shows
 
-          role_name = show.show_person_role_assignments
-            .detect { |a| a.assignable_type == "Group" && selected_group_ids.include?(a.assignable_id) }
-            &.role&.name
+          role_name = my_roles_label(show, "Group", selected_group_ids)
 
           color = case show.event_type
           when "rehearsal" then "blue"
@@ -356,9 +390,9 @@ module My
       # Group events by month for month navigation
       @events_by_month = @calendar_events.group_by { |e| e[:date].beginning_of_month }
 
-      # Get events for current month
+      # Get events for the displayed range (two months when combined)
       month_start_date = @current_month.to_date
-      month_end_date = month_start_date.end_of_month
+      month_end_date = (@calendar_last_month || @current_month).end_of_month.to_date
       @month_events = @calendar_events
         .select { |e| e[:date] >= month_start_date && e[:date] <= month_end_date }
         .sort_by { |e| e[:time] }
@@ -414,6 +448,21 @@ module My
       if flash[:just_joined_organization_id]
         @just_joined_organization = Organization.find_by(id: flash[:just_joined_organization_id])
       end
+    end
+
+    private
+
+    # Everything the member holds on a show, compacted for a calendar line:
+    # "Magician", "Magician x 2", "Magician x 2, MC". Roles read in lineup
+    # order; breaks never count. Nil when they hold nothing.
+    def my_roles_label(show, assignable_type, ids)
+      names = show.show_person_role_assignments
+                  .select { |a| a.assignable_type == assignable_type && ids.include?(a.assignable_id) }
+                  .sort_by { |a| a.role&.position || 0 }
+                  .filter_map { |a| a.role&.name unless a.role.nil? || a.role.break? }
+      return nil if names.empty?
+
+      names.tally.map { |name, count| count > 1 ? "#{name} x #{count}" : name }.join(", ")
     end
   end
 end

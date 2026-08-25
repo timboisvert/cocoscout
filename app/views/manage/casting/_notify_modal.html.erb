@@ -37,7 +37,7 @@
 
 <% elsif has_work %>
   <%# Scenarios 2 & 3: someone still needs notifying — open the modal. %>
-  <div class="border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center justify-center w-full" data-controller="modal">
+  <div class="border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center justify-start lg:justify-center w-full" data-controller="modal">
     <%= render "shared/button",
           text: trigger_text, variant: "primary", size: "small", type: :button,
           data: { action: "click->modal#open", modal_id: modal_id } %>
@@ -192,7 +192,7 @@
     cast_member_ids = show.show_person_role_assignments.map(&:assignable_id).compact.uniq
     cast_members = Person.where(id: cast_member_ids)
   %>
-  <div class="border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center justify-center w-full"
+  <div class="border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center justify-start lg:justify-center w-full"
        data-controller="compose-message"
        data-compose-message-recipient-type-value="show_cast"
        data-compose-message-recipient-id-value="<%= show.id %>"

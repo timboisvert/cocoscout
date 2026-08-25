@@ -33,6 +33,12 @@
         when viewing the current month (forward-looking calendars: shifts,
         availability). Pass true for retrospective calendars (approved hours,
         payments) so past days aren't dropped (default false)
+    - last_month: Time — render through this month's end instead of
+        current_month's, for a combined "Aug / Sep" tail-of-month view
+        (default: current_month)
+    - heading: String — override the header title (e.g. "August / September 2026")
+    - prev_label / next_label: String — override the nav-arrow labels (e.g.
+        "Aug / Sep" when an arrow points at a combined view)
 %>
 <%
   current_month = local_assigns[:current_month]
@@ -53,8 +59,13 @@
   max_desktop_items = local_assigns[:max_desktop_items]
   mobile_show_past  = local_assigns.fetch(:mobile_show_past, false)
 
+  last_month = local_assigns[:last_month] || current_month
+  heading = local_assigns[:heading] || current_month.strftime("%B %Y")
+  prev_label = local_assigns[:prev_label] || prev_month.strftime("%b")
+  next_label = local_assigns[:next_label] || next_month.strftime("%b")
+
   month_start_date = current_month.to_date
-  month_end_date   = current_month.end_of_month.to_date
+  month_end_date   = last_month.end_of_month.to_date
   is_current_month = month_start_date == Date.current.beginning_of_month
   current_week_sunday = Date.current.beginning_of_week(:sunday)
   cal_start_date = if local_assigns.fetch(:start_from_current_week, false) && is_current_month && current_week_sunday > month_start_date
@@ -73,13 +84,13 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
           </svg>
-          <%= prev_month.strftime("%b") %>
+          <%= prev_label %>
         <% end %>
       <% end %>
     </div>
 
     <div class="flex items-center gap-3">
-      <h2 class="text-lg font-bold text-gray-900"><%= current_month.strftime("%B %Y") %></h2>
+      <h2 class="text-lg font-bold text-gray-900"><%= heading %></h2>
       <% unless is_current_month %>
         <%= link_to "Today", today_link, class: "text-xs font-medium text-pink-600 hover:text-pink-700 border border-pink-200 rounded-full px-2 py-0.5" %>
       <% end %>
@@ -88,7 +99,7 @@
     <div>
       <% if can_go_next %>
         <%= link_to month_link.call(next_month), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
-          <%= next_month.strftime("%b") %>
+          <%= next_label %>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
           </svg>
@@ -125,7 +136,8 @@
         <% extra = cell_attrs ? (cell_attrs.call(current_date, day_items) || {}).dup : {} %>
         <% extra_class = extra.delete(:class) %>
         <div class="border border-gray-200 <%= min_cell %> p-1 <%= 'bg-blue-50' if is_today %> <%= 'opacity-50 bg-gray-50' if is_past %> <%= extra_class %>" <%= tag.attributes(extra) %>>
-          <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>"><%= current_date.day %></div>
+          <%# When the grid spans months, the 1st announces its month %>
+          <div class="text-xs font-semibold mb-1 <%= is_past ? 'text-gray-400' : 'text-gray-700' %>"><%= current_date.day == 1 && current_date != month_start_date ? current_date.strftime("%b %-d") : current_date.day %></div>
           <% visible_items = max_desktop_items ? day_items.first(max_desktop_items) : day_items %>
           <% visible_items.each do |item| %>
             <%= render item_partial, item: item, is_past: is_past %>

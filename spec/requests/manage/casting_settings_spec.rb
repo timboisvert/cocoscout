@@ -226,7 +226,8 @@ RSpec.describe "Manage::CastingSettings", type: :request do
 
       get manage_casting_show_cast_path(production, show)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Production casting settings")
+      # The way in from a show board is the per-show settings modal's footer
+      expect(response.body).to include("#{production.name}&#39;s casting settings")
       expect(response.body).to include("Change how the whole production casts (roles or acts, source, lineup) in")
       expect(response.body).to include(settings_path)
     end

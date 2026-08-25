@@ -3,6 +3,8 @@
 require "rails_helper"
 
 RSpec.describe "My::Dashboard", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:password) { "Password123!" }
   let(:user) { create(:user, password: password) }
   let!(:person) { create(:person, user: user).tap { |p| user.update!(default_person: p) } }
@@ -37,6 +39,53 @@ RSpec.describe "My::Dashboard", type: :request do
 
       get my_dashboard_path
       expect(response.body).not_to include("Signature required")
+    end
+  end
+
+  describe "the calendar's role line" do
+    it "lists everything you hold on a show, same-named acts counted" do
+      org = create(:organization, :pro)
+      org.people << person
+      production = create(:production, organization: org, casting_mode: "act_based", name: "Variety Night")
+      create(:role, production: production, name: "Magician", position: 0)
+      create(:role, production: production, name: "Magician", position: 1)
+      create(:role, production: production, name: "MC", standing: true, position: 2)
+      show = create(:show, production: production, date_and_time: Time.current.beginning_of_day + 10.hours)
+
+      show.custom_roles.each do |role|
+        create(:show_person_role_assignment, show: show, role: role, assignable: person)
+      end
+
+      get my_dashboard_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Magician x 2, MC")
+    end
+  end
+
+  describe "the tail-of-month combined calendar" do
+    it "folds this month and next into one view, forward arrow skipping the folded month" do
+      travel_to Time.zone.local(2026, 8, 28, 12, 0) do
+        get my_dashboard_path
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("August / September 2026")
+        expect(response.body).to match(%r{>\s*Oct\s*<}) # forward arrow jumps past September
+      end
+    end
+
+    it "stays a plain single month mid-month" do
+      travel_to Time.zone.local(2026, 8, 10, 12, 0) do
+        get my_dashboard_path
+        expect(response.body).to include("August 2026")
+        expect(response.body).not_to include("August / September")
+      end
+    end
+
+    it "steps back from the month after next into the combined view" do
+      travel_to Time.zone.local(2026, 8, 28, 12, 0) do
+        get my_dashboard_path(month: "2026-10-01")
+        expect(response.body).to include("October 2026")
+        expect(response.body).to include("Aug / Sep")
+      end
     end
   end
 

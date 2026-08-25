@@ -165,11 +165,14 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(response.body).to include("Act 1 · Magic")
       expect(response.body).not_to include("Intermission")
 
-      # The performer's page lists people, not slots: their two acts group
+      # The performer's page shows the night in order: numbered acts with
+      # who's doing them, intermission as a divider
       get my_show_path(show)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("2 acts as Magic (Acts 1 and 3)")
-      expect(response.body).not_to include("Act 3 · Magic")
+      expect(response.body).to include("Running Order")
+      expect(response.body).to include("Intermission")
+      expect(response.body).to include(performer.name)
+      expect(response.body).to include("Not cast yet") # Variety has no one
     end
 
     it "names the person once on the cast card's can't-make-it line, both acts grouped" do
@@ -371,7 +374,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('data-role-name="Magic"')
       expect(response.body).to include("0 of 2 roles have been cast")
-      expect(response.body).to include("Manage Roles")
+      expect(response.body).to include("Casting settings")
       expect(response.body).not_to include("Cast this act")
       expect(response.body).to include('data-drop-role-unit-value="role"')
     end

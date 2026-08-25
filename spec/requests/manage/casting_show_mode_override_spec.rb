@@ -47,7 +47,7 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       expect(response.body).to include('data-role-name="Magic"')
       expect(response.body).not_to include("Act 1 · Magic")
       expect(response.body).to include("0 of 3 roles have been cast")
-      expect(response.body).to include("Manage Roles")
+      expect(response.body).to include("Casting settings")
       expect(response.body).not_to include("Cast this act")
       expect(response.body).to include('data-drop-role-unit-value="role"')
     end
@@ -88,14 +88,18 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       variety_night.finalize_casting!
       plain_night.finalize_casting!
 
-      # A person's own assignments read "Magic (Act 1)" on the act-mode night
+      # The overridden night reads as a running order — "Acty Ada (Magic)"
+      # under a numbered row; the plain night keeps the Full Cast tiles
       get my_show_path(variety_night)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Magic (Act 1)")
+      expect(response.body).to include("Running Order")
+      expect(response.body).to include("(Magic)")
 
       get my_show_path(plain_night)
       expect(response).to have_http_status(:ok)
-      expect(response.body).not_to include("(Act 1)")
+      expect(response.body).to include("Full Cast")
+      expect(response.body).not_to include("Running Order")
+      expect(response.body).not_to include("(Magic)")
       expect(response.body).not_to include("Act 1 · Magic")
     end
 

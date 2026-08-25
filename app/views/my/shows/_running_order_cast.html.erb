@@ -1,0 +1,12 @@
+<%# Who's doing one act/show role on the performer-facing running order:
+    linked names (no images), comma-separated, your own in pink.
+    Locals: assignments (for one role), people_ids, group_ids %>
+<% if assignments.any? %>
+  <% assignments.each_with_index do |assignment, index| %><%= ", " if index > 0 %><% if assignment.guest? %><span class="text-gray-700"><%= assignment.guest_name %></span><% else %><%
+      is_mine = (assignment.assignable_type == "Person" && people_ids.include?(assignment.assignable_id)) ||
+                (assignment.assignable_type == "Group" && group_ids.include?(assignment.assignable_id))
+    %><%= link_to assignment.assignable.name, public_profile_path(assignment.assignable.public_key),
+          class: "hover:underline #{is_mine ? 'text-pink-500 font-medium' : 'text-gray-700'}" %><% end %><% end %>
+<% else %>
+  <span class="text-gray-400 italic">Not cast yet</span>
+<% end %>

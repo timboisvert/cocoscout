@@ -469,11 +469,61 @@
           </div>
         <% end %>
 
-        <!-- Full Cast (right side) -->
+        <%# Cast panel (right side): the running order for act-based shows, cast tiles otherwise %>
         <div class="lg:w-1/2 border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Full Cast" %>
+          <%= render "shared/card_header", title: @show.act_based? ? "Running Order" : "Full Cast" %>
           <div class="p-1 py-2 sm:p-4 sm:py-4">
-            <% if @show_person_role_assignments.any? %>
+            <% if @show.act_based? %>
+              <%
+                # The night in order: numbered acts with who's doing them,
+                # intermissions as dividers, then the show roles at the bottom.
+                ordered_roles = @show.available_roles.to_a
+                assignments_by_role = @show_person_role_assignments.group_by(&:role_id)
+                lineup_roles, standing_roles = ordered_roles.partition { |r| !r.standing? }
+
+                cast_line = ->(role) {
+                  assignments_by_role[role.id] || []
+                }
+              %>
+              <% if ordered_roles.any? %>
+                <div class="space-y-1">
+                  <% lineup_roles.each do |role| %>
+                    <% if role.break? %>
+                      <div class="flex items-center gap-3 py-1.5">
+                        <div class="flex-1 border-t border-dashed border-gray-300"></div>
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide"><%= role.name %></span>
+                        <div class="flex-1 border-t border-dashed border-gray-300"></div>
+                      </div>
+                    <% else %>
+                      <div class="flex items-center gap-2 py-1 text-sm">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-md bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center"><%= cast_numbers[role.id] %></span>
+                        <span class="min-w-0 truncate">
+                          <%= render "my/shows/running_order_cast", assignments: cast_line.call(role), people_ids: people_ids, group_ids: group_ids %>
+                          <span class="text-gray-500">(<%= role.name %>)</span>
+                        </span>
+                      </div>
+                    <% end %>
+                  <% end %>
+                </div>
+                <% if standing_roles.any? %>
+                  <div class="mt-4 pt-3 border-t border-gray-200">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Show roles</p>
+                    <div class="space-y-1">
+                      <% standing_roles.each do |role| %>
+                        <div class="flex items-center py-1 text-sm">
+                          <span class="min-w-0 truncate">
+                            <%= render "my/shows/running_order_cast", assignments: cast_line.call(role), people_ids: people_ids, group_ids: group_ids %>
+                            <span class="text-gray-500">(<%= role.name %>)</span>
+                          </span>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              <% else %>
+                <div class="text-sm text-gray-500">No running order yet</div>
+              <% end %>
+            <% elsif @show_person_role_assignments.any? %>
               <div class="flex flex-wrap gap-2">
                 <%
                   # One tile per person or group; someone holding several acts
