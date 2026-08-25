@@ -330,5 +330,22 @@ RSpec.describe "Manage::Casting running order", type: :request do
       expect(body["in_show"].first["act_number"]).to eq(1)
       expect(body["from_default"].map { |o| o["name"] }).to eq([ "Variety" ])
     end
+
+    it "suggests act names used before in this production, minus what's already offered" do
+      other = create(:show, production: production) # copies Magic, Variety at creation
+      other.custom_roles.create!(name: "Juggling", production: production, position: 20)
+      other.custom_roles.create!(name: "Juggling", production: production, position: 21)
+
+      get manage_casting_show_running_order_act_options_path(production, show)
+
+      body = JSON.parse(response.body)
+      names = body["frequent"].map { |o| o["name"] }
+      expect(names).to include("Juggling")
+      expect(body["frequent"].find { |o| o["name"] == "Juggling" }["count"]).to eq(2)
+      # Already offered by the other sections, or a show role — not suggested again
+      expect(names).not_to include("Magic")
+      expect(names).not_to include("Variety")
+      expect(names).not_to include("MC")
+    end
   end
 end

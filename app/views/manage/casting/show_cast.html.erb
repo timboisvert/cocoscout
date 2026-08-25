@@ -676,6 +676,12 @@
 
     <% if @show.act_based? %>
       <%# Running order editing: add an act or show role / edit / remove / reset %>
+      <%# Typing suggestions for act names, shared by the add and rename inputs %>
+      <datalist id="act-name-suggestions">
+        <% (@frequent_act_names || []).each do |name| %>
+          <option value="<%= name %>"></option>
+        <% end %>
+      </datalist>
       <%= render "manage/casting/add_act_modal" %>
       <%= render "manage/casting/add_show_role_modal" %>
       <%= render "manage/casting/edit_act_modal" %>

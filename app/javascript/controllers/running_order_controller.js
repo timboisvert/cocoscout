@@ -10,6 +10,7 @@ export default class extends Controller {
         "addActModal", "addActNameInput",
         "addActInShowSection", "addActInShowList",
         "addActDefaultSection", "addActDefaultList",
+        "addActFrequentSection", "addActFrequentList",
         "addShowRoleModal", "addShowRoleNameInput", "addShowRoleQuantityInput",
         "editActModal", "editActTitle", "editActNameInput", "editActQuantityField", "editActQuantityInput",
         "removeActModal", "removeActTitle", "removeActBody", "removeActConfirm",
@@ -155,6 +156,7 @@ export default class extends Controller {
             .then(data => {
                 this.fillOptionList(this.addActInShowSectionTarget, this.addActInShowListTarget, data.in_show || [], true)
                 this.fillOptionList(this.addActDefaultSectionTarget, this.addActDefaultListTarget, data.from_default || [], false)
+                this.fillFrequentList(data.frequent || [])
             })
             .catch(error => console.error("Failed to load act options:", error))
     }
@@ -188,6 +190,36 @@ export default class extends Controller {
             }
 
             list.appendChild(button)
+        })
+    }
+
+    // Act names this production keeps reusing — chips that add one by name.
+    fillFrequentList(options) {
+        if (!this.hasAddActFrequentSectionTarget || !this.hasAddActFrequentListTarget) return
+        this.addActFrequentListTarget.innerHTML = ""
+        this.addActFrequentSectionTarget.classList.toggle("hidden", options.length === 0)
+        options.forEach(option => {
+            const button = document.createElement("button")
+            button.type = "button"
+            button.className = "inline-flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded-full text-sm text-gray-700 hover:border-pink-400 hover:bg-pink-50 transition-all cursor-pointer"
+            button.addEventListener("click", () => {
+                this.closeAddActModal()
+                this.post(this.actsUrlValue, { kind: "act", name: option.name })
+            })
+
+            const name = document.createElement("span")
+            name.className = "font-medium"
+            name.textContent = option.name
+            button.appendChild(name)
+
+            if (option.count && option.count > 1) {
+                const count = document.createElement("span")
+                count.className = "text-xs text-gray-400"
+                count.textContent = `×${option.count}`
+                button.appendChild(count)
+            }
+
+            this.addActFrequentListTarget.appendChild(button)
         })
     }
 

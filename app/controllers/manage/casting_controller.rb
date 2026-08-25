@@ -233,6 +233,9 @@ module Manage
     def show_cast
       @availability = build_availability_hash(@show)
 
+      # Typing suggestions for the add/rename act inputs (datalist)
+      @frequent_act_names = @show.act_based? ? frequent_act_names(limit: 15).map { |o| o[:name] } : []
+
       # Use available_roles which respects show.use_custom_roles
       @roles = @show.available_roles.to_a
       # Every role on this board belongs to @production — pin the association so
@@ -1212,7 +1215,11 @@ module Manage
         { id: r.id, name: r.name }
       end
 
-      render json: { in_show: in_show, from_default: from_default }
+      render json: {
+        in_show: in_show,
+        from_default: from_default,
+        frequent: frequent_act_names(exclude: in_show.map { |o| o[:name] } + from_default.map { |o| o[:name] })
+      }
     end
 
     private
@@ -1271,6 +1278,22 @@ module Manage
 
     def render_stale_lineup_error
       render json: { error: "This show's lineup has changed — reload the page and try again." }, status: :unprocessable_entity
+    end
+
+    # Act names this production keeps using, most-used first — every show's
+    # roles count, so the names people actually type surface. Breaks and show
+    # roles don't.
+    def frequent_act_names(exclude: [], limit: 10)
+      excluded = exclude.map { |n| n.to_s.downcase.strip }
+      Role.where(production_id: @production.id, standing: false)
+          .where.not(category: "break")
+          .group(Arel.sql("LOWER(TRIM(roles.name))"))
+          .reorder(Arel.sql("COUNT(*) DESC, LOWER(TRIM(roles.name)) ASC"))
+          .limit(limit + excluded.size)
+          .pluck(Arel.sql("MIN(roles.name)"), Arel.sql("COUNT(*)"))
+          .reject { |name, _count| excluded.include?(name.downcase.strip) }
+          .first(limit)
+          .map { |name, count| { name: name, count: count } }
     end
 
     # Running-order endpoints: turn a client-sent role id into this show's

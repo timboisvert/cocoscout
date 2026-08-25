@@ -191,8 +191,11 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Running Order Finalized")
       expect(response.body).to include("The running order for this show has been finalized")
-      expect(response.body).to include("Act 1 · Magic")
-      expect(response.body).not_to include("Intermission")
+      # The finalized view reads as the running order: number badges carry the
+      # act numbers (no "Act 1 · Magic" labels), intermission divider in place
+      expect(response.body).not_to include("Act 1 · Magic")
+      expect(response.body).to include("Magic")
+      expect(response.body).to include("Intermission")
 
       # The performer's page shows the night in order: numbered acts with
       # who's doing them, intermission as a divider

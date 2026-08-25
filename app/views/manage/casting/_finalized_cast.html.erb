@@ -30,14 +30,37 @@
       <% end %>
     </p>
 
-    <%# Compact cast list %>
+    <%# Compact cast list — an act-based show reads as the running order:
+        numbered acts, intermissions as dividers, show roles at the bottom %>
+    <%
+      act_mode = show.act_based?
+      ordered_roles = act_mode ? roles.partition { |r| !r.standing? }.flatten : roles
+      shown_show_roles_header = false
+    %>
     <div class="space-y-2 mb-6">
-      <% roles.each do |role| %>
-        <% next if role.break? %>
+      <% ordered_roles.each do |role| %>
+        <% if role.break? %>
+          <% if act_mode %>
+            <div class="flex items-center gap-3 py-1">
+              <div class="flex-1 border-t border-dashed border-gray-300"></div>
+              <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide"><%= role.name %></span>
+              <div class="flex-1 border-t border-dashed border-gray-300"></div>
+            </div>
+          <% end %>
+          <% next %>
+        <% end %>
+        <% if act_mode && role.standing? && !shown_show_roles_header %>
+          <% shown_show_roles_header = true %>
+          <div class="flex items-center gap-2 pt-3 pb-1">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Show roles</h4>
+            <div class="flex-1 border-t border-gray-200"></div>
+          </div>
+        <% end %>
         <%
           assignments = (assignments_by_role_id[role.id] || []).sort_by { |a| a.position || 0 }
           role_quantity = role.quantity || 1
-          role_label = role_display_name(role, finalized_numbers, show: show)
+          # The number badge already places an act — its label is just the name
+          role_label = act_mode ? role.name : role_display_name(role, finalized_numbers, show: show)
         %>
 
         <% if assignments.any? %>
@@ -55,6 +78,9 @@
               cant_make_it_vacancy = is_guest ? nil : cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]]
             %>
             <div class="flex items-center gap-3 p-2 <%= cant_make_it_vacancy ? 'border border-amber-300 bg-amber-50' : 'bg-gray-50' %> rounded-lg group">
+              <% if act_mode && !role.standing? && finalized_numbers[role.id] %>
+                <span class="flex-shrink-0 w-6 h-6 rounded-md bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center"><%= finalized_numbers[role.id] %></span>
+              <% end %>
               <% if is_guest %>
                 <div class="w-10 h-10 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
                   <%= assignment.display_initials %>
@@ -114,6 +140,9 @@
           <%# Show empty slots for unassigned role %>
           <% role_quantity.times do |slot_num| %>
             <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+              <% if act_mode && !role.standing? && finalized_numbers[role.id] %>
+                <span class="flex-shrink-0 w-6 h-6 rounded-md bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center"><%= finalized_numbers[role.id] %></span>
+              <% end %>
               <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400 text-sm flex-shrink-0">
                 ?
               </div>

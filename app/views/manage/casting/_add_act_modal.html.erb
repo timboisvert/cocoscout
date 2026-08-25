@@ -18,7 +18,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-1" for="add-act-name">New act</label>
         <div class="flex items-center gap-2">
           <input type="text" id="add-act-name" data-running-order-target="addActNameInput"
-                 placeholder="Act name"
+                 placeholder="Act name" list="act-name-suggestions"
                  class="flex-1 rounded-md border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm" />
           <%= render "shared/button", text: "Add act", variant: "primary", size: "small", type: :submit %>
         </div>
@@ -33,6 +33,11 @@
       <div data-running-order-target="addActDefaultSection" class="hidden mt-6">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">From the default lineup</p>
         <div data-running-order-target="addActDefaultList" class="space-y-1"></div>
+      </div>
+
+      <div data-running-order-target="addActFrequentSection" class="hidden mt-6">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Used before in this production</p>
+        <div data-running-order-target="addActFrequentList" class="flex flex-wrap gap-1.5"></div>
       </div>
     </div>
   </div>
