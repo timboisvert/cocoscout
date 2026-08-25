@@ -370,9 +370,14 @@
           <% end %>
           <div class="p-4">
             <%
-              cast_count = @show.show_person_role_assignments.size
-              percentage = @roles_count > 0 ? (cast_count.to_f / @roles_count * 100).round : 0
-              fully_cast = percentage == 100
+              # The one true progress: Show#casting_progress counts castable
+              # slots (an intermission is nobody's role) — same as the board.
+              progress = @show.casting_progress
+              cast_count = progress[:filled]
+              total_slots = progress[:total]
+              percentage = progress[:percentage]
+              fully_cast = total_slots.positive? && percentage == 100
+              progress_unit = @show.act_based? && @roles.any?(&:standing?) ? "spots" : casting_unit(@show, plural: true)
             %>
 
             <%# Progress bar %>
@@ -383,7 +388,7 @@
                   <% if fully_cast %>
                     Fully cast
                   <% else %>
-                    <%= cast_count %>/<%= @roles_count %> roles have been cast
+                    <%= cast_count %>/<%= total_slots %> <%= progress_unit %> have been cast
                   <% end %>
                 </span>
               </div>
@@ -399,8 +404,18 @@
                 cancelled_vacancies = @cancelled_vacancies_by_assignment || {}
                 open_vacancies_by_role = @open_vacancies_by_role || {}
               %>
-              <div class="flex flex-wrap gap-1.5">
-                <% @roles.each do |role| %>
+              <%
+                # No slot for an intermission — nobody's cast in it. On an
+                # act-based night acts come first in running order, then a
+                # divider, then the show roles (matches the casting cast card).
+                slot_roles = @roles.reject(&:break?)
+                slot_roles = slot_roles.reject(&:standing?) + slot_roles.select(&:standing?) if @show.act_based?
+              %>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <% slot_roles.each_with_index do |role, role_index| %>
+                  <% if @show.act_based? && role.standing? && role_index.positive? && !slot_roles[role_index - 1].standing? %>
+                    <div class="w-px h-8 bg-gray-300 mx-1" data-controller="tooltip" data-tooltip-text="Show roles"></div>
+                  <% end %>
                   <%
                     role_assignments = @show.show_person_role_assignments.select { |a| a.role_id == role.id }
                     assignments_by_slot = cast_assignments_by_slot(role, role_assignments)

@@ -288,7 +288,6 @@ module Manage
       # Preload data for the cast_card partial to avoid N+1 queries
       # Use available_roles which respects show.use_custom_roles
       @roles = @show.available_roles.to_a
-      @roles_count = @roles.sum { |r| r.quantity || 1 }
 
       # Preload assignables (people and groups) with their headshots
       assignments = @show.show_person_role_assignments.to_a
