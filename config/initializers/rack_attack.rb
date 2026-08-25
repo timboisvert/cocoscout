@@ -13,9 +13,13 @@ class Rack::Attack
   end
 
   # General per-IP ceiling on dynamic requests. Assets are cheap and cached —
-  # leave them out so a busy page load doesn't eat the budget.
+  # leave them out so a busy page load doesn't eat the budget. Active Storage
+  # is excluded too: it has its own dedicated throttle below, and counting
+  # variants here double-charged them at a tighter effective rate — a manager
+  # browsing a few headshot-heavy pages burned the whole 5-minute budget on
+  # images and then 429'd on plain page loads.
   throttle("req/ip", limit: 300, period: 5.minutes) do |req|
-    req.ip unless req.path.start_with?("/assets")
+    req.ip unless req.path.start_with?("/assets", "/rails/active_storage")
   end
 
   # Auth endpoints: brute-force and bot-signup protection.

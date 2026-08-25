@@ -119,6 +119,18 @@ RSpec.describe "Signup bot defense", type: :request do
       expect { post_signup(from: "172.58.167.89") }.to change { user_count }.by(1)
     end
 
+    it "leaves assets and Active Storage out of the general per-IP ceiling" do
+      # Variants have their own dedicated throttle; counting them here too let a
+      # manager on a few headshot-heavy pages burn the whole 5-minute budget on
+      # images and then 429 on plain page loads (2026-08-25).
+      throttle = Rack::Attack.throttles.fetch("req/ip")
+      request_to = ->(path) { Rack::Attack::Request.new(Rack::MockRequest.env_for(path, "REMOTE_ADDR" => "24.13.93.231")) }
+
+      expect(throttle.block.call(request_to.call("/rails/active_storage/representations/redirect/abc/headshot.jpeg"))).to be_nil
+      expect(throttle.block.call(request_to.call("/assets/application.css"))).to be_nil
+      expect(throttle.block.call(request_to.call("/manage/shows"))).to eq("24.13.93.231")
+    end
+
     it "caps signups per /16 across rotating addresses" do
       10.times do |i|
         post_signup(from: "203.0.#{i}.#{i + 1}", email: "user#{i}@example.com")
