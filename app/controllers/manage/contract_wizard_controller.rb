@@ -419,12 +419,11 @@ module Manage
     end
 
     # Attach a CocoScout user to the contract's contractor from the send step —
-    # link an existing person (person_id) or invite one by email. Creates the
+    # link an existing person (person_id) or invite one by email. Reuses the
+    # org's contractor of the same name if one exists, and only creates a
     # Contractor record if the contract only had free-text contractor details.
     def link_signer
-      contractor = @contract.contractor ||
-        Current.organization.contractors.create!(name: @contract.contractor_name.presence || "Contractor",
-                                                 email: @contract.contractor_email)
+      contractor = @contract.contractor || find_or_create_contractor_for_contract
 
       person =
         if params[:person_id].present?
@@ -494,6 +493,15 @@ module Manage
     end
 
     private
+
+    # The org's existing contractor matching the contract's free-text name
+    # (whitespace/case-insensitive — a stray trailing space once minted a
+    # duplicate contractor in prod), or a fresh one if there's no match.
+    def find_or_create_contractor_for_contract
+      name = @contract.contractor_name.to_s.squish.presence || "Contractor"
+      Current.organization.contractors.where("LOWER(TRIM(name)) = ?", name.downcase).first ||
+        Current.organization.contractors.create!(name: name, email: @contract.contractor_email)
+    end
 
     # Derive the v2 settlement basis from the wizard's payment structure/config.
     def settlement_basis_for(structure, config)

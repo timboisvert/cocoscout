@@ -11,6 +11,9 @@ class Contractor < ApplicationRecord
   has_many :contracts, dependent: :nullify
   has_many :payout_ledger_entries, as: :payee, dependent: :destroy
 
+  normalizes :name, with: ->(n) { n.squish }
+  normalizes :email, with: ->(e) { e.strip.downcase }
+
   validates :name, presence: true
   validates :name, uniqueness: { scope: :organization_id, case_sensitive: false }
 

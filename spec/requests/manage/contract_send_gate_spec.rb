@@ -36,4 +36,19 @@ RSpec.describe "Contract wizard send gate (require a CocoScout user)", type: :re
     expect(contract.contractor.person).to eq(person)
     expect(contract.signer_person_record).to eq(person)
   end
+
+  it "link_signer reuses an existing contractor whose name differs only by whitespace/case" do
+    existing = create(:contractor, organization: org, name: "Sound Co")
+    # A legacy un-normalized row (predates the name squish) — write raw SQL so
+    # normalization doesn't clean it up.
+    Contractor.where(id: existing.id).update_all("name = 'sound co '")
+    person = create(:person, name: "Dan", email: "dan@example.com")
+
+    expect {
+      post manage_link_signer_contract_wizard_path(contract), params: { person_id: person.id }
+    }.not_to change(Contractor, :count)
+
+    expect(contract.reload.contractor).to eq(existing)
+    expect(existing.reload.person).to eq(person)
+  end
 end
