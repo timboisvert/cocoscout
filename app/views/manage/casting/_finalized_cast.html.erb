@@ -11,7 +11,7 @@
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-  <%= render "shared/card_header", title: "Casting Finalized" do %>
+  <%= render "shared/card_header", title: show.act_based? ? "Running Order Finalized" : "Casting Finalized" do %>
     <div data-controller="compose-message"
          data-compose-message-recipient-type-value="show_cast"
          data-compose-message-recipient-id-value="<%= show.id %>"
@@ -23,7 +23,11 @@
 
   <div class="p-4">
     <p class="text-sm text-gray-600 mb-4">
-      The cast for this show has been finalized and notifications have been sent.
+      <% if show.act_based? %>
+        The running order for this show has been finalized and notifications have been sent.
+      <% else %>
+        The cast for this show has been finalized and notifications have been sent.
+      <% end %>
     </p>
 
     <%# Compact cast list %>

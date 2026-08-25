@@ -162,6 +162,8 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       show.finalize_casting!  # finalized shows are visible to performers
       get manage_casting_show_cast_path(production, show)
       expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Running Order Finalized")
+      expect(response.body).to include("The running order for this show has been finalized")
       expect(response.body).to include("Act 1 · Magic")
       expect(response.body).not_to include("Intermission")
 
