@@ -130,13 +130,16 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
     end
 
     it "labels the shows list cast summary the same way" do
-      get manage_production_shows_path(production)
+      # view_mode "all" — the default by-month view only shows the current
+      # month, and the factory show (1.week.from_now) crosses into next month
+      # when this runs during the last week of a month.
+      get manage_production_shows_path(production, view_mode: "all")
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Act 1 · Magic")
       expect(response.body).to include("Act 2 · Variety (not assigned)")
       expect(response.body).not_to include("Intermission (not assigned)")
 
-      get manage_shows_path
+      get manage_shows_path(view_mode: "all")
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Act 3 · Magic")
     end
