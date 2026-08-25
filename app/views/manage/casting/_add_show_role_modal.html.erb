@@ -1,0 +1,36 @@
+<%# Add a show role (MC, Stage Kitten ×2) to an act-based show straight from
+    the board. Show roles sit alongside the running order without a place in it. %>
+<div id="add-show-role-modal" data-running-order-target="addShowRoleModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->running-order#closeAddShowRoleModal">
+  <div class="bg-white w-full max-w-md rounded-lg shadow-xl overflow-hidden" data-action="click->running-order#stopPropagation">
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-white">Add a Show Role</h2>
+      <button type="button" data-action="click->running-order#closeAddShowRoleModal" class="text-white/80 hover:text-white p-1 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <form data-action="submit->running-order#addShowRole">
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="add-show-role-name">Role name</label>
+          <input type="text" id="add-show-role-name" data-running-order-target="addShowRoleNameInput"
+                 placeholder="MC, Stage Kitten, Host…"
+                 class="w-full rounded-md border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="add-show-role-quantity">How many people?</label>
+          <input type="number" id="add-show-role-quantity" data-running-order-target="addShowRoleQuantityInput"
+                 min="1" max="20" value="1"
+                 class="w-24 rounded-md border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm" />
+        </div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->running-order#closeAddShowRoleModal" } %>
+        <%= render "shared/button", text: "Add show role", variant: "primary", type: :submit %>
+      </div>
+    </form>
+  </div>
+</div>

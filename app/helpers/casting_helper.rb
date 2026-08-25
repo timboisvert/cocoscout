@@ -16,7 +16,7 @@ module CastingHelper
 
   # The name of the structure being edited: "Roles" or "Lineup".
   def casting_structure_label(context)
-    context&.act_based? ? "Lineup" : "Roles"
+    context&.act_based? ? "Default Lineup" : "Roles"
   end
 
   # Running-order numbers for a lineup, { role_id => n }, breaks omitted.

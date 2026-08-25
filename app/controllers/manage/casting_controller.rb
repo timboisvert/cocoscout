@@ -1050,28 +1050,34 @@ module Manage
 
       @show.ensure_custom_running_order!
 
-      kind = params[:kind] == "break" ? "break" : "act"
+      kind = %w[break show_role].include?(params[:kind]) ? params[:kind] : "act"
       source = params[:source_role_id].present? ? org_scoped_roles.find(params[:source_role_id]) : nil
       name = params[:name].to_s.strip
       name = source&.name if name.blank?
       name = "Intermission" if name.blank? && kind == "break"
-      return render json: { error: "Act name is required" }, status: :unprocessable_entity if name.blank?
+      return render json: { error: "#{kind == 'show_role' ? 'Role' : 'Act'} name is required" }, status: :unprocessable_entity if name.blank?
 
       # Wrong-production sources 404 via org scoping above; belt and suspenders.
       return render json: { error: "That act belongs to another production" }, status: :unprocessable_entity if source && source.production_id != @production.id
 
       ActiveRecord::Base.transaction do
         lineup, standing = @show.custom_roles.reload.partition { |r| !r.standing? }
-        position = (lineup.map(&:position).compact.max || -1) + 1
+        # Acts and breaks land at the end of the lineup (show roles pushed
+        # below); a show role lands at the very end.
+        position = if kind == "show_role"
+          ((lineup + standing).map(&:position).compact.max || -1) + 1
+        else
+          (lineup.map(&:position).compact.max || -1) + 1
+        end
 
         role = @show.custom_roles.new(
           production: @production,
           name: name,
           category: kind == "break" ? "break" : (source&.category.presence || "performing"),
-          quantity: source&.quantity || 1,
+          quantity: kind == "show_role" ? params[:quantity].to_i.clamp(1, 20) : (source&.quantity || 1),
           position: position,
           restricted: false,
-          standing: false
+          standing: kind == "show_role"
         )
 
         # Copy restriction + eligibilities from an in-show or default-lineup source
@@ -1101,9 +1107,12 @@ module Manage
           end
         end
 
-        # New rows land at the end of the lineup — push the show roles below.
-        standing.sort_by { |r| [ r.position || 0, r.created_at ] }.each_with_index do |standing_role, index|
-          standing_role.update_columns(position: position + 1 + index)
+        # A new act or break lands at the end of the lineup — push the show
+        # roles below it. A new show role already sits at the very end.
+        unless kind == "show_role"
+          standing.sort_by { |r| [ r.position || 0, r.created_at ] }.each_with_index do |standing_role, index|
+            standing_role.update_columns(position: position + 1 + index)
+          end
         end
       end
 
@@ -1407,7 +1416,11 @@ module Manage
     # This ensures consistent data is passed across all assignment responses
     def build_cast_members_list_locals(show, availability)
       # Reload assignments to get fresh data
-      assignments = show.show_person_role_assignments.reload
+      assignments = show.show_person_role_assignments.includes(:role).reload
+
+      # Per-member assignments: on an act-based board the pool doesn't gray
+      # out — it says what each member is already doing in this show.
+      assignments_by_member = assignments.reject(&:guest?).group_by { |a| "#{a.assignable_type}_#{a.assignable_id}" }
 
       # Build assigned member keys set
       assigned_member_keys = Set.new(assignments.map { |a| "#{a.assignable_type}_#{a.assignable_id}" })
@@ -1444,7 +1457,8 @@ module Manage
         assigned_member_keys: assigned_member_keys,
         linked_availability: linked_availability,
         linked_shows: linked_shows,
-        conflicts_by_member: conflicts_by_member
+        conflicts_by_member: conflicts_by_member,
+        assignments_by_member: assignments_by_member
       }
     end
 

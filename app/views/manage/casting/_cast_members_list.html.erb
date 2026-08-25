@@ -7,6 +7,12 @@
       linked_availability = local_assigns[:linked_availability] || {}
       linked_shows = local_assigns[:linked_shows] || []
       conflicts_by_member = local_assigns[:conflicts_by_member] || {}
+      act_mode = show.act_based?
+      # On an act-based board, cast members stay full-strength in the pool
+      # (they can hold another act) and their card says what they already do.
+      assignments_by_member = local_assigns[:assignments_by_member] ||
+        show.show_person_role_assignments.includes(:role).reject(&:guest?).group_by { |a| "#{a.assignable_type}_#{a.assignable_id}" }
+      act_numbers = act_mode ? lineup_numbers(show.available_roles.to_a, show: show) : {}
       has_visible_people = false
       talent_pool = show.production.effective_talent_pool
       is_linked = linked_shows.any?
@@ -46,7 +52,7 @@
             headshot_variant = member.safe_headshot_variant(:thumb)
             headshot_url = headshot_variant ? url_for(headshot_variant) : nil
           %>
-          <div class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment %>"
+          <div class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all cursor-grab bg-white <%= 'opacity-50' if has_show_person_role_assignment && !act_mode %>"
               data-drag-cast-member-target="<%= is_person ? 'person' : 'group' %>"
               data-<%= is_person ? 'person' : 'group' %>-id="<%= member.id %>"
               data-person-name="<%= member.name %>"
@@ -73,6 +79,12 @@
 
               <div class="flex-1 min-w-0">
                 <span class="font-medium text-sm block truncate"><%= member.name %></span>
+                <% if act_mode && (member_assignments = assignments_by_member[member_key] || []).any? %>
+                  <% cast_labels = act_assignment_labels(member_assignments, show: show, numbers: act_numbers).join(", ") %>
+                  <span class="text-xs text-pink-600 block truncate" title="In this show: <%= cast_labels %>">
+                    In this show: <%= cast_labels %>
+                  </span>
+                <% end %>
                 <% member_conflicts = conflicts_by_member[member_key] || [] %>
                 <% if member_conflicts.any? { |c| c.overlap? } %>
                   <% conflict_text = member_conflicts.select(&:overlap?).map(&:message).join(" ") %>

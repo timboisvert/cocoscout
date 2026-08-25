@@ -48,6 +48,18 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
     end
   end
 
+  describe "the talent pool on an act-based board" do
+    it "keeps a cast member full-strength and says what they're already doing" do
+      create(:talent_pool_membership, talent_pool: production.talent_pool, member: performer)
+      magic_copies = show.custom_roles.where(name: "Magic").order(:position)
+      create(:show_person_role_assignment, show: show, role: magic_copies.first, assignable: performer)
+
+      get manage_casting_show_cast_path(production, show)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("In this show: Magic (Act 1)")
+    end
+  end
+
   describe "assigning the same person to two acts" do
     it "works through the existing assign endpoint and counts 3 slots, not 4" do
       post manage_casting_show_assign_person_path(production, show),

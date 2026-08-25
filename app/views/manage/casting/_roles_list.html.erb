@@ -48,7 +48,9 @@
   numbers = lineup_numbers(roles, show: show)
   section_titles = { "lineup" => "Running Order", "show_roles" => "Show roles" }
   if act_mode
-    roles_by_category = { "lineup" => roles.reject(&:standing?), "show_roles" => roles.select(&:standing?) }.reject { |_, list| list.empty? }
+    # The show-roles section always renders (an empty box invites adding an
+    # MC or stage kitten); an empty lineup is handled by the empty state.
+    roles_by_category = { "lineup" => roles.reject(&:standing?), "show_roles" => roles.select(&:standing?) }.reject { |cat, list| list.empty? && cat == "lineup" }
     category_order = %w[lineup show_roles] & roles_by_category.keys
   else
     # Group roles by category for section display
@@ -118,7 +120,7 @@
   <div class="space-y-4">
     <% category_order.each do |category| %>
       <% category_roles = roles_by_category[category] || [] %>
-      <% next if category_roles.empty? %>
+      <% next if category_roles.empty? && !(act_mode && category == "show_roles") %>
 
       <% if act_mode %>
         <div class="flex items-center gap-2 pt-2 first:pt-0">
@@ -157,6 +159,7 @@
                     data-action="click->running-order#confirmRemove"
                     data-running-order-role-id="<%= role.id %>"
                     data-running-order-role-label="<%= role.name %>"
+                    data-running-order-kind="intermission"
                     data-running-order-assignment-names="[]">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -702,6 +705,7 @@
                   data-action="click->running-order#confirmRemove"
                   data-running-order-role-id="<%= role.id %>"
                   data-running-order-role-label="<%= role_label %>"
+                  data-running-order-kind="act"
                   data-running-order-assignment-names="<%= assignments.map { |a| a.guest? ? a.guest_name : (people_by_id[a.assignable_id] || groups_by_id[a.assignable_id] || a.assignable)&.name }.compact.to_json %>">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -710,9 +714,20 @@
         </div>
       <% end %>
     <% end %>
+      <% if act_mode && category == "show_roles" && category_roles.empty? %>
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-3 text-sm text-gray-400">
+          No show roles for this show yet — an MC, a stage kitten, a host. They're cast alongside the running order without a place in it.
+        </div>
+      <% end %>
       </div>
       <% if act_mode && category == "lineup" %>
         <%= render "manage/casting/running_order_footer" %>
+      <% end %>
+      <% if act_mode && category == "show_roles" %>
+        <div class="flex items-center gap-2 pt-1">
+          <%= render "shared/button", text: "Add show role", variant: "secondary", size: "small", icon: "plus", type: :button,
+                data: { action: "click->running-order#openAddShowRoleModal" } %>
+        </div>
       <% end %>
     <% end %>
     <% if act_mode && !roles_by_category.key?("lineup") %>

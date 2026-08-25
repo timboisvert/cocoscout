@@ -10,7 +10,8 @@ export default class extends Controller {
         "addActModal", "addActNameInput",
         "addActInShowSection", "addActInShowList",
         "addActDefaultSection", "addActDefaultList",
-        "removeActModal", "removeActBody"
+        "addShowRoleModal", "addShowRoleNameInput", "addShowRoleQuantityInput",
+        "removeActModal", "removeActTitle", "removeActBody", "removeActConfirm"
     ]
     static values = { reorderUrl: String, actsUrl: String, optionsUrl: String }
 
@@ -207,18 +208,63 @@ export default class extends Controller {
         this.post(this.actsUrlValue, { kind: "break" })
     }
 
+    // ---- Add show role ----
+
+    openAddShowRoleModal() {
+        if (!this.hasAddShowRoleModalTarget) return
+        this.addShowRoleModalTarget.classList.remove("hidden")
+        document.body.classList.add("overflow-hidden")
+        if (this.hasAddShowRoleNameInputTarget) {
+            this.addShowRoleNameInputTarget.value = ""
+            this.addShowRoleNameInputTarget.focus()
+        }
+        if (this.hasAddShowRoleQuantityInputTarget) {
+            this.addShowRoleQuantityInputTarget.value = "1"
+        }
+    }
+
+    closeAddShowRoleModal() {
+        if (this.hasAddShowRoleModalTarget) {
+            this.addShowRoleModalTarget.classList.add("hidden")
+        }
+        document.body.classList.remove("overflow-hidden")
+    }
+
+    addShowRole(event) {
+        event.preventDefault()
+        const name = this.hasAddShowRoleNameInputTarget ? this.addShowRoleNameInputTarget.value.trim() : ""
+        if (!name) {
+            this.addShowRoleNameInputTarget?.focus()
+            return
+        }
+        const quantity = this.hasAddShowRoleQuantityInputTarget ? parseInt(this.addShowRoleQuantityInputTarget.value, 10) || 1 : 1
+        this.closeAddShowRoleModal()
+        this.post(this.actsUrlValue, { kind: "show_role", name: name, quantity: quantity })
+    }
+
     // ---- Remove act ----
 
     confirmRemove(event) {
         const button = event.currentTarget
         const roleId = button.dataset.runningOrderRoleId
         const label = button.dataset.runningOrderRoleLabel
+        // "act" or "intermission" — the modal names what it's removing
+        const kind = button.dataset.runningOrderKind || "act"
         let names = []
         try { names = JSON.parse(button.dataset.runningOrderAssignmentNames || "[]") } catch { names = [] }
 
         this.pendingRemove = roleId
+        if (this.hasRemoveActTitleTarget) {
+            this.removeActTitleTarget.textContent = kind === "intermission" ? "Remove This Intermission?" : "Remove This Act?"
+        }
+        if (this.hasRemoveActConfirmTarget) {
+            const span = this.removeActConfirmTarget.querySelector("span")
+            if (span) span.textContent = kind === "intermission" ? "Remove intermission" : "Remove act"
+        }
         if (this.hasRemoveActBodyTarget) {
-            let body = `Remove ${label} from this show's running order?`
+            let body = kind === "intermission"
+                ? `Remove the ${label.toLowerCase()} from this show's running order?`
+                : `Remove ${label} from this show's running order?`
             if (names.length) {
                 body += ` ${names.join(", ")} will be removed from this show with it.`
             }

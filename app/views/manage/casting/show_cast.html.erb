@@ -673,8 +673,9 @@
     <%= render "manage/casting/conflict_modal" %>
 
     <% if @show.act_based? %>
-      <%# Running order editing: add an act / confirm removing one %>
+      <%# Running order editing: add an act or show role / confirm removing one %>
       <%= render "manage/casting/add_act_modal" %>
+      <%= render "manage/casting/add_show_role_modal" %>
       <%= render "manage/casting/remove_act_modal" %>
     <% end %>
 

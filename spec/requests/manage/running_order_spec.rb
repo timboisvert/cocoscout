@@ -105,6 +105,17 @@ RSpec.describe "Manage::Casting running order", type: :request do
       expect(show.custom_roles.find_by(name: "Intermission").category).to eq("break")
     end
 
+    it "adds a show role at the very end, with its quantity" do
+      post manage_casting_show_running_order_acts_path(production, show),
+           params: { kind: "show_role", name: "Stage Kitten", quantity: 2 }
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Magic", "Variety", "MC", "Stage Kitten" ])
+      kitten = show.custom_roles.find_by(name: "Stage Kitten")
+      expect(kitten).to be_standing
+      expect(kitten.quantity).to eq(2)
+    end
+
     it "materializes a legacy inheriting show on first edit, remapping assignments" do
       legacy = create(:show, production: production)
       legacy.custom_roles.destroy_all

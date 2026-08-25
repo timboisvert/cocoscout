@@ -1200,11 +1200,15 @@ export default class extends Controller {
 
     // Update UI after a successful assignment
     updateUIAfterAssignment(data, assignableType, assignableId) {
-        // Find the entity element and add opacity-50
-        const targetType = assignableType === "Person" ? "person" : "group";
-        const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetType}-id="${assignableId}"]`);
-        if (entityElement) {
-            entityElement.classList.add('opacity-50');
+        // Find the entity element and add opacity-50. Act-based boards keep
+        // pool members full-strength (they can hold another act) — their card
+        // gets an "In this show" line from the re-rendered list instead.
+        if (this.unit !== "act") {
+            const targetType = assignableType === "Person" ? "person" : "group";
+            const entityElement = document.querySelector(`[data-drag-cast-member-target="${targetType}"][data-${targetType}-id="${assignableId}"]`);
+            if (entityElement) {
+                entityElement.classList.add('opacity-50');
+            }
         }
 
         // Update roles list
