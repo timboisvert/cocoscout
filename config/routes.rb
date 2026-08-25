@@ -928,6 +928,9 @@ Rails.application.routes.draw do
     post   "/casting/:production_id/:show_id/running_order/acts", to: "casting#create_running_order_act", as: "casting_show_running_order_acts"
     delete "/casting/:production_id/:show_id/running_order/acts/:id", to: "casting#destroy_running_order_act", as: "casting_show_running_order_act"
     get    "/casting/:production_id/:show_id/running_order/act_options", to: "casting#running_order_act_options", as: "casting_show_running_order_act_options"
+    patch  "/casting/:production_id/:show_id/running_order/acts/:id", to: "casting#update_running_order_act"
+    get    "/casting/:production_id/:show_id/running_order/reset_preview", to: "casting#running_order_reset_preview", as: "casting_show_running_order_reset_preview"
+    post   "/casting/:production_id/:show_id/running_order/reset", to: "casting#reset_running_order", as: "casting_show_running_order_reset"
 
     # Casting > Vacancies
     get  "/casting/:production_id/vacancies/:id", to: "vacancies#show", as: "casting_vacancy"

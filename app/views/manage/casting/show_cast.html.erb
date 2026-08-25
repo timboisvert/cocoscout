@@ -46,6 +46,8 @@
          data-running-order-reorder-url-value="<%= manage_casting_show_running_order_reorder_path(@production, @show) %>"
          data-running-order-acts-url-value="<%= manage_casting_show_running_order_acts_path(@production, @show) %>"
          data-running-order-options-url-value="<%= manage_casting_show_running_order_act_options_path(@production, @show) %>"
+         data-running-order-reset-preview-url-value="<%= manage_casting_show_running_order_reset_preview_path(@production, @show) %>"
+         data-running-order-reset-url-value="<%= manage_casting_show_running_order_reset_path(@production, @show) %>"
          <% end %>>
 
     <%
@@ -673,10 +675,12 @@
     <%= render "manage/casting/conflict_modal" %>
 
     <% if @show.act_based? %>
-      <%# Running order editing: add an act or show role / confirm removing one %>
+      <%# Running order editing: add an act or show role / edit / remove / reset %>
       <%= render "manage/casting/add_act_modal" %>
       <%= render "manage/casting/add_show_role_modal" %>
+      <%= render "manage/casting/edit_act_modal" %>
       <%= render "manage/casting/remove_act_modal" %>
+      <%= render "manage/casting/reset_running_order_modal" %>
     <% end %>
 
     <%# Replace Assignment Modal - shown when dropping on a full role %>

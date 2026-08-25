@@ -1,5 +1,12 @@
 <%#
-  Roles configuration bar - shows role info with a button to open casting settings modal
+  Roles configuration bar.
+
+  Act-based shows: the running order is edited right on the board, so this
+  bar says whether the show still matches the production's default lineup
+  (with a reset link when it doesn't) and opens the per-show casting settings
+  modal (enable, source, casting style — no running-order editor).
+
+  Role-based shows: unchanged — role summary plus the casting settings modal.
 
   Parameters:
     - show: The Show object
@@ -8,82 +15,118 @@
 %>
 <%
   uses_custom = show.use_custom_roles?
-  role_count = roles.count
-  total_slots = roles.sum(&:total_slots)
   act_mode = show.act_based?
-  numbers = lineup_numbers(roles, show: show)
   event_word = show.event_type.humanize.downcase
 %>
-<div class="bg-white border border-gray-200 rounded-lg overflow-hidden"
-     data-controller="casting-settings-modal"
-     data-casting-settings-modal-show-id-value="<%= show.id %>"
-     data-casting-settings-modal-production-id-value="<%= production.id %>"
-     data-casting-settings-modal-update-url-value="<%= manage_show_path(production, show) %>">
-  <div class="flex flex-col lg:flex-row lg:items-stretch">
-    <%# Left: Role info (flexible) %>
-    <div class="flex-1 flex items-center gap-3 px-4 py-3">
-      <%# Icon %>
-      <div class="flex-shrink-0 w-10 h-10 rounded-lg <%= uses_custom ? 'bg-purple-100' : 'bg-gray-100' %> flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 <%= uses_custom ? 'text-purple-600' : 'text-gray-600' %>">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      </div>
-
-      <%# Info text %>
-      <div>
-        <div class="flex items-center gap-2">
+<% if act_mode %>
+  <% matches_default = show.running_order_matches_default? %>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden"
+       data-controller="casting-settings-modal"
+       data-casting-settings-modal-show-id-value="<%= show.id %>"
+       data-casting-settings-modal-production-id-value="<%= production.id %>"
+       data-casting-settings-modal-update-url-value="<%= manage_show_path(production, show) %>">
+    <div class="flex flex-col lg:flex-row lg:items-stretch">
+      <%# Left: running-order status %>
+      <div class="flex-1 flex items-center gap-3 px-4 py-3">
+        <div class="flex-shrink-0 w-10 h-10 rounded-lg <%= matches_default ? 'bg-gray-100' : 'bg-purple-100' %> flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 <%= matches_default ? 'text-gray-600' : 'text-purple-600' %>">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <div>
           <span class="text-sm font-medium text-gray-900">
-            <% if act_mode %>
-              <% if uses_custom %>
-                This <%= event_word %>'s running order
-              <% else %>
-                This <%= event_word %> uses the <%= production.name %> default lineup
-              <% end %>
-            <% elsif uses_custom %>
-              Using custom roles for this <%= event_word %>
+            <% if matches_default %>
+              This <%= event_word %> uses the <%= production.name %> default lineup
             <% else %>
-              This <%= event_word %> uses the standard <%= production.name %> roles
+              This <%= event_word %>'s running order has been customized
             <% end %>
           </span>
-        </div>
-        <p class="text-xs text-gray-500 mt-0.5">
-          <% if roles.any? %>
-            <% if act_mode %>
-              <%# The running order, then the show roles cast alongside it (MC, Stage Kitten ×2 — not numbered) %>
-              <% lineup, standing = roles.partition { |r| !r.standing? } %>
-              <%= lineup.map { |r| r.break? ? "— #{r.name} —" : "#{numbers[r.id]}. #{r.name}" }.join(", ") %>
-              <% if standing.any? %>
-                <%= lineup.any? ? " · " : "" %>Show roles: <%= standing.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
-              <% end %>
+          <p class="text-xs text-gray-500 mt-0.5">
+            <% if matches_default %>
+              Rearrange, add, or remove acts right here — changes stay with this <%= event_word %>.
             <% else %>
-              <%= roles.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
+              It no longer matches the default lineup. Keep editing it here, or
+              <button type="button" class="text-pink-600 hover:text-pink-700 hover:underline cursor-pointer"
+                      data-action="click->running-order#openResetModal">reset it to the default lineup</button>.
             <% end %>
-          <% elsif act_mode %>
-            No acts in the running order yet
-          <% else %>
-            No roles defined
-          <% end %>
-        </p>
-        <p class="text-xs mt-1">
-          <%= link_to "Production casting settings", manage_casting_settings_path(production),
-                class: "text-pink-600 hover:text-pink-700 hover:underline",
-                title: "How #{production.name} casts: roles or acts, where the cast comes from, the #{act_mode ? 'default lineup' : 'standard roles'}" %>
-        </p>
+          </p>
+        </div>
+      </div>
+
+      <%# Right: this show's casting settings (enable, source, casting style) %>
+      <div class="flex-shrink-0 w-40 border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center">
+        <%= render "shared/button",
+          text: "Casting settings",
+          variant: "secondary",
+          size: "small",
+          icon: "cog-6-tooth",
+          type: :button,
+          data: { action: "casting-settings-modal#openModal" } %>
       </div>
     </div>
 
-    <%# Right: Fixed-width panel with button %>
-    <div class="flex-shrink-0 w-48 border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center">
-      <%= render "shared/button",
-        text: act_mode ? "Edit running order" : "Manage Roles",
-        variant: "secondary",
-        size: "small",
-        icon: "cog-6-tooth",
-        type: :button,
-        data: { action: "casting-settings-modal#openModal" } %>
-    </div>
+    <%# Casting Settings Modal (per-show overrides; the running order itself is edited on the board) %>
+    <%= render "manage/casting/casting_settings_modal", show: show, production: production %>
   </div>
+<% else %>
+  <%
+    role_count = roles.count
+    total_slots = roles.sum(&:total_slots)
+  %>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden"
+       data-controller="casting-settings-modal"
+       data-casting-settings-modal-show-id-value="<%= show.id %>"
+       data-casting-settings-modal-production-id-value="<%= production.id %>"
+       data-casting-settings-modal-update-url-value="<%= manage_show_path(production, show) %>">
+    <div class="flex flex-col lg:flex-row lg:items-stretch">
+      <%# Left: Role info (flexible) %>
+      <div class="flex-1 flex items-center gap-3 px-4 py-3">
+        <%# Icon %>
+        <div class="flex-shrink-0 w-10 h-10 rounded-lg <%= uses_custom ? 'bg-purple-100' : 'bg-gray-100' %> flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 <%= uses_custom ? 'text-purple-600' : 'text-gray-600' %>">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
 
-  <%# Casting Settings Modal %>
-  <%= render "manage/casting/casting_settings_modal", show: show, production: production %>
-</div>
+        <%# Info text %>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-900">
+              <% if uses_custom %>
+                Using custom roles for this <%= event_word %>
+              <% else %>
+                This <%= event_word %> uses the standard <%= production.name %> roles
+              <% end %>
+            </span>
+          </div>
+          <p class="text-xs text-gray-500 mt-0.5">
+            <% if roles.any? %>
+              <%= roles.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
+            <% else %>
+              No roles defined
+            <% end %>
+          </p>
+          <p class="text-xs mt-1">
+            <%= link_to "Production casting settings", manage_casting_settings_path(production),
+                  class: "text-pink-600 hover:text-pink-700 hover:underline",
+                  title: "How #{production.name} casts: roles or acts, where the cast comes from, the standard roles" %>
+          </p>
+        </div>
+      </div>
+
+      <%# Right: Fixed-width panel with button %>
+      <div class="flex-shrink-0 w-40 border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center">
+        <%= render "shared/button",
+          text: "Manage Roles",
+          variant: "secondary",
+          size: "small",
+          icon: "cog-6-tooth",
+          type: :button,
+          data: { action: "casting-settings-modal#openModal" } %>
+      </div>
+    </div>
+
+    <%# Casting Settings Modal %>
+    <%= render "manage/casting/casting_settings_modal", show: show, production: production %>
+  </div>
+<% end %>

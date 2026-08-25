@@ -20,7 +20,7 @@
   <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" data-action="click->casting-settings-modal#stopPropagation">
     <%# Header %>
     <div class="bg-pink-50 border-b border-pink-100 px-6 py-3 flex items-center justify-between flex-shrink-0">
-      <h2 class="text-lg font-semibold text-gray-900">Casting Settings</h2>
+      <h2 class="text-lg font-semibold text-gray-900">Casting settings for this <%= show.event_type.humanize.downcase %></h2>
       <button type="button" data-action="click->casting-settings-modal#closeModal" class="text-gray-500 hover:text-gray-700 cursor-pointer">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -141,6 +141,32 @@
         </div>
       </div>
 
+      <% if act_mode %>
+        <%# Section 3 (act-based): the running order is edited on the casting
+            page itself — this just says whether it still matches the default
+            lineup, and offers the way back. %>
+        <div class="pt-6 border-t border-gray-200">
+          <p class="text-sm font-medium text-gray-700">Running order</p>
+          <% if show.running_order_matches_default? %>
+            <p class="text-xs text-gray-500 mt-1">
+              This show's running order matches the production's default lineup.
+              Rearrange, add, or remove acts right on the casting page — changes stay with this show.
+            </p>
+          <% else %>
+            <div class="mt-2 bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <p class="text-sm text-purple-800 font-medium">This show's running order has been customized</p>
+              <p class="text-xs text-purple-700 mt-1">
+                It no longer matches the production's default lineup. Keep editing it on the casting page,
+                or reset it to start over from the default.
+              </p>
+              <div class="mt-3">
+                <%= render "shared/button", text: "Reset to default lineup", variant: "secondary", size: "small", type: :button,
+                      data: { action: "click->running-order#openResetModal" } %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
       <%# Section 3: Custom Roles - show before signup attendees %>
       <div class="pt-6 border-t border-gray-200"
            data-controller="show-roles-modal"
@@ -409,6 +435,7 @@
           </div>
         </div>
       </div>
+      <% end %>
 
     </div>
 
@@ -416,7 +443,7 @@
     <div class="bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between gap-4 flex-shrink-0">
       <p class="text-xs text-gray-500">
         Change how the whole production casts (roles or acts, source, lineup) in
-        <%= link_to "Casting Settings", manage_casting_settings_path(production), class: "text-pink-600 hover:text-pink-700 hover:underline font-medium" %>
+        <%= link_to "#{production.name}'s casting settings", manage_casting_settings_path(production), class: "text-pink-600 hover:text-pink-700 hover:underline font-medium" %>
       </p>
       <%= render "shared/button",
           text: "Done",

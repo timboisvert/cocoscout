@@ -782,6 +782,19 @@ class Show < ApplicationRecord
     update_columns(use_custom_roles: true)
   end
 
+  # Whether this show's running order still reads like the production's
+  # default lineup — same acts, breaks, and show roles in the same order.
+  # Every act-based show owns a copy, so the interesting fact is an actual
+  # difference, not the copy itself. A legacy show still rendering the
+  # production's roles trivially matches.
+  def running_order_matches_default?
+    return true unless use_custom_roles?
+
+    signature = ->(roles) { roles.map { |r| [ r.category, r.name.to_s.downcase.strip, r.quantity, r.standing? ] } }
+    signature.call(custom_roles.sort_by { |r| [ r.position || 0, r.created_at ] }) ==
+      signature.call(production.roles.production_roles.to_a)
+  end
+
   # Lazy path for shows that predate copy-at-creation (or whose production had
   # no lineup when they were created): give the show its own roles and remap
   # its existing assignments onto them. Every running-order mutation calls

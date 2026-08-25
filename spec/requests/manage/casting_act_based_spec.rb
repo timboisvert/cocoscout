@@ -42,7 +42,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
 
       # Act-mode copy
       expect(response.body).to include("Cast this act")
-      expect(response.body).to include("Edit running order")
+      expect(response.body).to include("Casting settings")
       expect(response.body).to include("0 of 3 acts have been cast")
       expect(response.body).to include('data-drop-role-unit-value="act"')
     end
@@ -220,8 +220,10 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       # Six castable slots, not all of them acts
       expect(response.body).to include("0 of 6 spots have been cast")
       expect(response.body).to include('data-drop-role-progress-unit-value="spots"')
-      # The board's lineup summary lists the running order, then the show roles
-      expect(response.body).to include("Show roles: MC, Stage Kitten x 2")
+      # The config bar reports the relationship to the default lineup — the
+      # board below IS the running order, so no summary line
+      expect(response.body).to include("default lineup")
+      expect(response.body).to include("Add show role")
     end
 
     it "puts the show roles after the acts on the casting index cast card, behind a divider, whatever their position" do

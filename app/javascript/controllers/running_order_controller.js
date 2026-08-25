@@ -11,9 +11,12 @@ export default class extends Controller {
         "addActInShowSection", "addActInShowList",
         "addActDefaultSection", "addActDefaultList",
         "addShowRoleModal", "addShowRoleNameInput", "addShowRoleQuantityInput",
-        "removeActModal", "removeActTitle", "removeActBody", "removeActConfirm"
+        "editActModal", "editActTitle", "editActNameInput", "editActQuantityField", "editActQuantityInput",
+        "removeActModal", "removeActTitle", "removeActBody", "removeActConfirm",
+        "resetModal", "resetNewLineup",
+        "resetMigratedSection", "resetMigratedList", "resetWipedSection", "resetWipedList"
     ]
-    static values = { reorderUrl: String, actsUrl: String, optionsUrl: String }
+    static values = { reorderUrl: String, actsUrl: String, optionsUrl: String, resetPreviewUrl: String, resetUrl: String }
 
     connect() {
         this.draggedElement = null
@@ -242,29 +245,162 @@ export default class extends Controller {
         this.post(this.actsUrlValue, { kind: "show_role", name: name, quantity: quantity })
     }
 
+    // ---- Edit (rename / resize) ----
+
+    openEditModal(event) {
+        const button = event.currentTarget
+        this.pendingEdit = button.dataset.runningOrderRoleId
+        const kind = button.dataset.runningOrderKind || "act"
+
+        if (this.hasEditActTitleTarget) {
+            const titles = { show_role: "Edit Show Role", intermission: "Rename Intermission", act: "Edit Act" }
+            this.editActTitleTarget.textContent = titles[kind] || titles.act
+        }
+        if (this.hasEditActNameInputTarget) {
+            this.editActNameInputTarget.value = button.dataset.runningOrderRoleName || ""
+        }
+        if (this.hasEditActQuantityFieldTarget) {
+            this.editActQuantityFieldTarget.classList.toggle("hidden", kind !== "show_role")
+        }
+        if (this.hasEditActQuantityInputTarget) {
+            this.editActQuantityInputTarget.value = button.dataset.runningOrderRoleQuantity || "1"
+        }
+        if (this.hasEditActModalTarget) {
+            this.editActModalTarget.classList.remove("hidden")
+            document.body.classList.add("overflow-hidden")
+            this.editActNameInputTarget?.focus()
+        }
+    }
+
+    closeEditModal() {
+        this.pendingEdit = null
+        if (this.hasEditActModalTarget) {
+            this.editActModalTarget.classList.add("hidden")
+        }
+        document.body.classList.remove("overflow-hidden")
+    }
+
+    saveEdit(event) {
+        event.preventDefault()
+        const roleId = this.pendingEdit
+        if (!roleId) return
+        const name = this.hasEditActNameInputTarget ? this.editActNameInputTarget.value.trim() : ""
+        if (!name) {
+            this.editActNameInputTarget?.focus()
+            return
+        }
+        const body = { name: name }
+        if (this.hasEditActQuantityFieldTarget && !this.editActQuantityFieldTarget.classList.contains("hidden")) {
+            body.quantity = parseInt(this.editActQuantityInputTarget.value, 10) || 1
+        }
+        this.closeEditModal()
+
+        fetch(`${this.actsUrlValue}/${roleId}`, { method: "PATCH", headers: this.headers(), body: JSON.stringify(body) })
+            .then(r => r.json())
+            .then(data => this.handleResponse(data))
+            .catch(error => {
+                console.error("Failed to update:", error)
+                alert("Failed to save. Please try again.")
+            })
+    }
+
+    // ---- Reset to default lineup ----
+
+    openResetModal() {
+        if (!this.hasResetModalTarget) return
+        fetch(this.resetPreviewUrlValue, { headers: { "Accept": "application/json" } })
+            .then(r => r.json())
+            .then(data => {
+                this.fillResetPreview(data)
+                this.resetModalTarget.classList.remove("hidden")
+                document.body.classList.add("overflow-hidden")
+            })
+            .catch(error => {
+                console.error("Failed to load reset preview:", error)
+                alert("Failed to load the reset preview. Please try again.")
+            })
+    }
+
+    fillResetPreview(data) {
+        if (this.hasResetNewLineupTarget) {
+            this.resetNewLineupTarget.innerHTML = ""
+            ;(data.new_lineup || []).forEach(entry => {
+                const li = document.createElement("li")
+                if (entry.kind === "intermission") {
+                    li.className = "text-gray-400"
+                    li.textContent = `— ${entry.name} —`
+                } else if (entry.kind === "show_role") {
+                    li.textContent = `${entry.name} (show role)`
+                } else {
+                    li.textContent = `${entry.number}. ${entry.name}`
+                }
+                this.resetNewLineupTarget.appendChild(li)
+            })
+        }
+
+        const fill = (section, list, entries, render) => {
+            if (!section || !list) return
+            list.innerHTML = ""
+            section.classList.toggle("hidden", entries.length === 0)
+            entries.forEach(entry => {
+                const li = document.createElement("li")
+                li.textContent = render(entry)
+                list.appendChild(li)
+            })
+        }
+
+        fill(this.hasResetMigratedSectionTarget && this.resetMigratedSectionTarget,
+             this.hasResetMigratedListTarget && this.resetMigratedListTarget,
+             data.migrated || [],
+             entry => `${entry.name} stays in ${entry.to}`)
+        fill(this.hasResetWipedSectionTarget && this.resetWipedSectionTarget,
+             this.hasResetWipedListTarget && this.resetWipedListTarget,
+             data.wiped || [],
+             entry => `${entry.name} — cast in ${entry.from}, which goes away`)
+    }
+
+    closeResetModal() {
+        if (this.hasResetModalTarget) {
+            this.resetModalTarget.classList.add("hidden")
+        }
+        document.body.classList.remove("overflow-hidden")
+    }
+
+    resetConfirmed() {
+        this.closeResetModal()
+        this.post(this.resetUrlValue, {})
+    }
+
     // ---- Remove act ----
 
     confirmRemove(event) {
         const button = event.currentTarget
         const roleId = button.dataset.runningOrderRoleId
         const label = button.dataset.runningOrderRoleLabel
-        // "act" or "intermission" — the modal names what it's removing
+        // "act", "intermission", or "show_role" — the modal names what it's removing
         const kind = button.dataset.runningOrderKind || "act"
         let names = []
         try { names = JSON.parse(button.dataset.runningOrderAssignmentNames || "[]") } catch { names = [] }
 
         this.pendingRemove = roleId
+        const titles = { intermission: "Remove This Intermission?", show_role: "Remove This Show Role?", act: "Remove This Act?" }
+        const confirms = { intermission: "Remove intermission", show_role: "Remove show role", act: "Remove act" }
         if (this.hasRemoveActTitleTarget) {
-            this.removeActTitleTarget.textContent = kind === "intermission" ? "Remove This Intermission?" : "Remove This Act?"
+            this.removeActTitleTarget.textContent = titles[kind] || titles.act
         }
         if (this.hasRemoveActConfirmTarget) {
             const span = this.removeActConfirmTarget.querySelector("span")
-            if (span) span.textContent = kind === "intermission" ? "Remove intermission" : "Remove act"
+            if (span) span.textContent = confirms[kind] || confirms.act
         }
         if (this.hasRemoveActBodyTarget) {
-            let body = kind === "intermission"
-                ? `Remove the ${label.toLowerCase()} from this show's running order?`
-                : `Remove ${label} from this show's running order?`
+            let body
+            if (kind === "intermission") {
+                body = `Remove the ${label.toLowerCase()} from this show's running order?`
+            } else if (kind === "show_role") {
+                body = `Remove ${label} from this show?`
+            } else {
+                body = `Remove ${label} from this show's running order?`
+            }
             if (names.length) {
                 body += ` ${names.join(", ")} will be removed from this show with it.`
             }

@@ -7,7 +7,8 @@ module Manage
     before_action :check_not_third_party, except: [ :org_index ]
     before_action :set_show,
                   only: %i[show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting notify_cast reopen_casting copy_cast_to_linked
-                           reorder_running_order create_running_order_act destroy_running_order_act running_order_act_options]
+                           reorder_running_order create_running_order_act update_running_order_act destroy_running_order_act running_order_act_options
+                           running_order_reset_preview reset_running_order]
 
     # Org-level casting index (moved from org_casting_controller)
     def org_index
@@ -1137,6 +1138,47 @@ module Manage
       end
 
       role.destroy!
+      render_running_order_response
+    end
+
+    # The board's pencil: rename an act, or rename/resize a show role.
+    def update_running_order_act
+      return unless require_act_based!
+
+      @show.ensure_custom_running_order!
+
+      role = @show.custom_roles.find(params[:id])
+      name = params[:name].to_s.strip
+      return render json: { error: "Name is required" }, status: :unprocessable_entity if name.blank?
+
+      role.name = name
+      if role.standing? && params[:quantity].present?
+        quantity = params[:quantity].to_i.clamp(1, 20)
+        filled = @show.show_person_role_assignments.where(role_id: role.id).count
+        if quantity < filled
+          return render json: { error: "#{filled} #{'person'.pluralize(filled)} are cast in this role — remove some before shrinking it." }, status: :unprocessable_entity
+        end
+        role.quantity = quantity
+      end
+      role.save!
+
+      render_running_order_response
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { error: e.record.errors.full_messages.to_sentence }, status: :unprocessable_entity
+    end
+
+    # What "Reset to default lineup" would do: the new running order, which
+    # assignments migrate (same-named act survives), and which get wiped.
+    def running_order_reset_preview
+      return unless require_act_based!
+
+      render json: RunningOrderReset.new(@show).preview
+    end
+
+    def reset_running_order
+      return unless require_act_based!
+
+      RunningOrderReset.new(@show).perform!
       render_running_order_response
     end
 

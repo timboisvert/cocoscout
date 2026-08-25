@@ -40,7 +40,7 @@ RSpec.describe "Manage::Casting running order", type: :request do
       # Numbers re-derive in the returned HTML: Variety is now Act 1
       expect(body["roles_html"]).to include('data-role-name="Act 1 · Variety"')
       expect(body["roles_html"]).to include('data-role-name="Act 2 · Magic"')
-      expect(body["roles_config_html"]).to include("1. Variety")
+      expect(body["roles_config_html"]).to include("running order has been customized")
     end
 
     it "rejects an order that doesn't cover this show's acts" do
@@ -139,6 +139,77 @@ RSpec.describe "Manage::Casting running order", type: :request do
            params: { kind: "act", source_role_id: foreign_role.id }
 
       expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "update (the pencil)" do
+    it "renames an act" do
+      magic_copy = show.custom_roles.find_by(name: "Magic")
+
+      patch "/manage/casting/#{production.id}/#{show.id}/running_order/acts/#{magic_copy.id}",
+            params: { name: "Grand Illusion" }
+
+      expect(response).to have_http_status(:ok)
+      expect(magic_copy.reload.name).to eq("Grand Illusion")
+    end
+
+    it "renames and resizes a show role" do
+      mc_copy = show.custom_roles.find_by(name: "MC")
+
+      patch "/manage/casting/#{production.id}/#{show.id}/running_order/acts/#{mc_copy.id}",
+            params: { name: "Emcee", quantity: 2 }
+
+      expect(response).to have_http_status(:ok)
+      expect(mc_copy.reload.name).to eq("Emcee")
+      expect(mc_copy.quantity).to eq(2)
+    end
+
+    it "refuses to shrink a show role below its cast" do
+      mc_copy = show.custom_roles.find_by(name: "MC")
+      mc_copy.update!(quantity: 2)
+      create(:show_person_role_assignment, show: show, role: mc_copy, assignable: performer)
+      other = create(:person).tap { |p| org.people << p }
+      create(:show_person_role_assignment, show: show, role: mc_copy, assignable: other)
+
+      patch "/manage/casting/#{production.id}/#{show.id}/running_order/acts/#{mc_copy.id}",
+            params: { name: "MC", quantity: 1 }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(mc_copy.reload.quantity).to eq(2)
+    end
+  end
+
+  describe "reset to default lineup" do
+    before do
+      # Customize: add an act the default doesn't have, cast people in both
+      magic_copy = show.custom_roles.find_by(name: "Magic")
+      create(:show_person_role_assignment, show: show, role: magic_copy, assignable: performer)
+      extra = show.custom_roles.create!(name: "Juggling", production: production, position: 10)
+      @juggler = create(:person, name: "Jolly Juggler").tap { |p| org.people << p }
+      create(:show_person_role_assignment, show: show, role: extra, assignable: @juggler)
+    end
+
+    it "previews the new order, who migrates, and who gets wiped" do
+      get manage_casting_show_running_order_reset_preview_path(production, show)
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["new_lineup"].map { |e| e["name"] }).to eq([ "Magic", "Variety", "MC" ])
+      expect(body["migrated"].map { |e| e["name"] }).to eq([ "Trixie Tassels" ])
+      expect(body["migrated"].first["to"]).to eq("Magic (Act 1)")
+      expect(body["wiped"].map { |e| e["name"] }).to eq([ "Jolly Juggler" ])
+    end
+
+    it "performs the reset, keeping same-named assignments and wiping the rest" do
+      post manage_casting_show_running_order_reset_path(production, show)
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Magic", "Variety", "MC" ])
+      remaining = show.show_person_role_assignments.reload
+      expect(remaining.count).to eq(1)
+      expect(remaining.first.assignable).to eq(performer)
+      expect(remaining.first.role.name).to eq("Magic")
+      expect(show.reload.running_order_matches_default?).to be(true)
     end
   end
 

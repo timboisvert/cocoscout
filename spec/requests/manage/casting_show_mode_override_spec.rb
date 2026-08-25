@@ -35,10 +35,9 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       expect(response.body).to include('data-role-name="Act 2 · Variety"')
       expect(response.body).to include('data-role-name="Act 3 · Aerial"')
       expect(response.body).to include("Cast this act")
-      expect(response.body).to include("Edit running order")
+      expect(response.body).to include("Casting settings")
       expect(response.body).to include("0 of 3 acts have been cast")
       expect(response.body).to include('data-drop-role-unit-value="act"')
-      expect(response.body).to include('data-show-roles-modal-act-based-value="true"')
     end
 
     it "leaves the production's other show on the role UI" do
@@ -58,7 +57,8 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       expect(response.body).to include("Override the production's casting style for this event")
       expect(response.body).to include('name="show[casting_mode]"')
       expect(response.body).to include("Assignments are kept either way")
-      expect(response.body).to include("this event gets its own lineup so the production's roles stay as they are")
+      # But no stacked running-order editor — the board itself is the editor
+      expect(response.body).not_to include("Edit running order")
     end
   end
 

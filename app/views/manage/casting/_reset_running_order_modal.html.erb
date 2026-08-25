@@ -1,0 +1,44 @@
+<%# Confirm resetting this show's running order to the production's default
+    lineup. running_order_controller fetches the preview and fills the lists:
+    the new order, which assignments migrate (same-named act survives), and
+    which get wiped. %>
+<div id="reset-running-order-modal" data-running-order-target="resetModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->running-order#closeResetModal">
+  <div class="bg-white w-full max-w-lg rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[85vh]" data-action="click->running-order#stopPropagation">
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <h2 class="text-lg font-semibold text-white">Reset to Default Lineup?</h2>
+      <button type="button" data-action="click->running-order#closeResetModal" class="text-white/80 hover:text-white p-1 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="p-6 overflow-y-auto flex-1">
+      <p class="text-sm text-gray-600 mb-4">
+        This show's running order will be replaced with the production's default lineup.
+      </p>
+
+      <div class="mb-4">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">The running order becomes</p>
+        <ul data-running-order-target="resetNewLineup" class="text-sm text-gray-700 space-y-1"></ul>
+      </div>
+
+      <div data-running-order-target="resetMigratedSection" class="hidden mb-4">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Kept — their act is in the default lineup</p>
+        <ul data-running-order-target="resetMigratedList" class="text-sm text-gray-700 space-y-1"></ul>
+      </div>
+
+      <div data-running-order-target="resetWipedSection" class="hidden mb-1">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Removed — their act isn't in the default lineup</p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <ul data-running-order-target="resetWipedList" class="text-sm text-amber-900 space-y-1"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 flex-shrink-0">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->running-order#closeResetModal" } %>
+      <%= render "shared/button", text: "Reset running order", variant: "primary", type: :button, data: { action: "click->running-order#resetConfirmed" } %>
+    </div>
+  </div>
+</div>
