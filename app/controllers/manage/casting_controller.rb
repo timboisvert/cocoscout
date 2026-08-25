@@ -6,7 +6,8 @@ module Manage
     before_action :check_production_access, except: [ :org_index ]
     before_action :check_not_third_party, except: [ :org_index ]
     before_action :set_show,
-                  only: %i[show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting notify_cast reopen_casting copy_cast_to_linked]
+                  only: %i[show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting notify_cast reopen_casting copy_cast_to_linked
+                           reorder_running_order create_running_order_act destroy_running_order_act running_order_act_options]
 
     # Org-level casting index (moved from org_casting_controller)
     def org_index
@@ -411,6 +412,11 @@ module Manage
         return
       end
 
+      # Double-booked at an overlapping time, or declared unavailable? Stop and
+      # ask (the client shows the conflict modal; "Cast anyway" resubmits with
+      # allow_conflicts).
+      return if render_conflict_response(assignable)
+
       # Make the assignment (position is auto-assigned by model callback)
       # Use find_or_create_by to handle race conditions with unique constraint
       begin
@@ -512,6 +518,10 @@ module Manage
             render json: { error: "This person is already assigned to this role" }, status: :unprocessable_entity
             return
           end
+
+          # The guest email matched a real person — they can be double-booked
+          # like anyone else. (Pure guests have no other assignments to check.)
+          return if render_conflict_response(existing_person)
 
           @show.show_person_role_assignments.create!(assignable: existing_person, role: role)
         else
@@ -701,6 +711,8 @@ module Manage
         )
         source_assignment&.destroy!
       end
+
+      return if render_conflict_response(new_assignable)
 
       # Do the replacement in a transaction
       ActiveRecord::Base.transaction do
@@ -1002,7 +1014,168 @@ module Manage
                   alert: "Failed to sync: #{e.message}"
     end
 
+    # --- Running order (act-based shows edit their lineup on the board) ---
+
+    # role_ids = the ordered lineup rows (acts + breaks; show roles keep their
+    # own relative order after them). Numbers re-derive server-side in the
+    # re-rendered partial.
+    def reorder_running_order
+      return unless require_act_based!
+
+      @show.ensure_custom_running_order!
+
+      ordered_ids = Array(params[:role_ids]).map(&:to_i)
+      lineup, standing = @show.custom_roles.reload.partition { |r| !r.standing? }
+      return render json: { error: "Order doesn't match this show's running order" }, status: :unprocessable_entity unless ordered_ids.sort == lineup.map(&:id).sort
+
+      by_id = lineup.index_by(&:id)
+      ActiveRecord::Base.transaction do
+        ordered_ids.each_with_index do |id, index|
+          role = by_id[id]
+          role.update_columns(position: index) if role.position != index
+        end
+        standing.sort_by { |r| [ r.position || 0, r.created_at ] }.each_with_index do |role, index|
+          role.update_columns(position: ordered_ids.length + index)
+        end
+      end
+
+      render_running_order_response
+    end
+
+    # kind: "act" | "break"; either a free-text name or a source_role_id to
+    # copy — an act already in this show (duplicated with its cast: the same
+    # act twice means the same performer) or a default-lineup act not here yet.
+    def create_running_order_act
+      return unless require_act_based!
+
+      @show.ensure_custom_running_order!
+
+      kind = params[:kind] == "break" ? "break" : "act"
+      source = params[:source_role_id].present? ? org_scoped_roles.find(params[:source_role_id]) : nil
+      name = params[:name].to_s.strip
+      name = source&.name if name.blank?
+      name = "Intermission" if name.blank? && kind == "break"
+      return render json: { error: "Act name is required" }, status: :unprocessable_entity if name.blank?
+
+      # Wrong-production sources 404 via org scoping above; belt and suspenders.
+      return render json: { error: "That act belongs to another production" }, status: :unprocessable_entity if source && source.production_id != @production.id
+
+      ActiveRecord::Base.transaction do
+        lineup, standing = @show.custom_roles.reload.partition { |r| !r.standing? }
+        position = (lineup.map(&:position).compact.max || -1) + 1
+
+        role = @show.custom_roles.new(
+          production: @production,
+          name: name,
+          category: kind == "break" ? "break" : (source&.category.presence || "performing"),
+          quantity: source&.quantity || 1,
+          position: position,
+          restricted: false,
+          standing: false
+        )
+
+        # Copy restriction + eligibilities from an in-show or default-lineup source
+        if source&.restricted? && source.role_eligibilities.any?
+          role.restricted = true
+          role.pending_eligible_member_ids = source.role_eligibilities.map { |e| "#{e.member_type}_#{e.member_id}" }
+        end
+
+        role.save!
+
+        if role.restricted?
+          source.role_eligibilities.each do |eligibility|
+            role.role_eligibilities.create!(member_type: eligibility.member_type, member_id: eligibility.member_id)
+          end
+        end
+
+        # Duplicating an act already in this show carries its performer(s).
+        if source && source.show_id == @show.id && params[:carry_cast] != "0"
+          @show.show_person_role_assignments.where(role_id: source.id).each do |a|
+            @show.show_person_role_assignments.create!(
+              role: role,
+              assignable_type: a.assignable_type,
+              assignable_id: a.assignable_id,
+              guest_name: a.guest_name,
+              guest_email: a.guest_email
+            )
+          end
+        end
+
+        # New rows land at the end of the lineup — push the show roles below.
+        standing.sort_by { |r| [ r.position || 0, r.created_at ] }.each_with_index do |standing_role, index|
+          standing_role.update_columns(position: position + 1 + index)
+        end
+      end
+
+      render_running_order_response
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    end
+
+    # Removing an act removes its assignments with it; the client confirms
+    # first when anyone is cast in it (confirm=true resubmits).
+    def destroy_running_order_act
+      return unless require_act_based!
+
+      @show.ensure_custom_running_order!
+
+      role = @show.custom_roles.find(params[:id])
+      assignments = @show.show_person_role_assignments.where(role_id: role.id).includes(:assignable)
+
+      if assignments.any? && params[:confirm] != "true"
+        names = assignments.map { |a| a.assignable&.name || a.guest_name }.compact
+        return render json: { needs_confirmation: true, assignment_count: assignments.size, assignment_names: names }
+      end
+
+      role.destroy!
+      render_running_order_response
+    end
+
+    # The Add Act picker: acts already in this show (re-adding duplicates them,
+    # cast and all) and default-lineup acts not in the show yet.
+    def running_order_act_options
+      return unless require_act_based!
+
+      show_roles = @show.available_roles.to_a
+      numbers = Role.lineup_numbers_for(show_roles)
+      assignments_by_role = @show.show_person_role_assignments.includes(:assignable).group_by(&:role_id)
+
+      in_show = show_roles.select { |r| r.act?(show: @show) }.map do |r|
+        performers = (assignments_by_role[r.id] || []).map { |a| a.assignable&.name || a.guest_name }.compact
+        { id: r.id, name: r.name, act_number: numbers[r.id], performers: performers }
+      end
+
+      present_keys = Role.match_keys_for(show_roles.reject { |r| r.standing? || r.break? })
+      default_acts = @production.roles.production_roles.to_a.reject { |r| r.standing? || r.break? }
+      from_default = Role.match_keys_for(default_acts).reject { |key, _| present_keys.key?(key) }.values.map do |r|
+        { id: r.id, name: r.name }
+      end
+
+      render json: { in_show: in_show, from_default: from_default }
+    end
+
     private
+
+    # The running-order endpoints only mean something on an act-based show.
+    def require_act_based!
+      return true if @show.act_based?
+
+      render json: { error: "This show isn't cast by acts" }, status: :unprocessable_entity
+      false
+    end
+
+    # The assign-success payload plus the config bar, whose lineup summary
+    # goes stale when the running order changes shape.
+    def render_running_order_response
+      # Positions changed under the association cache — start fresh.
+      @show.reload
+      @roles = @show.available_roles.to_a
+      payload = board_refresh_payload.merge(
+        roles_config_html: render_to_string(partial: "manage/casting/roles_config_bar",
+                                            locals: { show: @show, production: @production, roles: @roles })
+      )
+      render json: payload
+    end
 
     # Roles owned by the current org — through their production, so both
     # production-level (show_id nil) and show-level roles are covered.
@@ -1012,6 +1185,12 @@ module Manage
 
     # Render a success response for assignment operations (used for both new assignments and no-ops)
     def render_assignment_success_response
+      render json: board_refresh_payload
+    end
+
+    # Everything the board needs to refresh in place after a change: the two
+    # lists, linkage sync, notify modal, and progress.
+    def board_refresh_payload
       @availability = build_availability_hash(@show)
 
       # Build linkage sync info for linked shows
@@ -1049,7 +1228,7 @@ module Manage
 
       notify_modal_html = render_notify_modal_html(linked_shows, can_finalize: can_finalize)
 
-      render json: {
+      {
         cast_members_html: cast_members_html,
         roles_html: roles_html,
         linkage_sync_html: linkage_sync_html,
@@ -1063,6 +1242,24 @@ module Manage
       }
     end
 
+    # When the prospective member is double-booked at an overlapping time or
+    # declared unavailable, render a 409 the client turns into the conflict
+    # modal, and return true. allow_conflicts (set by "Cast anyway") skips the
+    # check entirely.
+    def render_conflict_response(assignable)
+      return false if params[:allow_conflicts].present?
+
+      conflicts = CastingConflicts.for_member(show: @show, assignable: assignable)
+      return false if conflicts.empty?
+
+      render json: {
+        conflict: true,
+        member_name: assignable.name,
+        conflicts: conflicts.map { |c| { kind: c.kind, message: c.message } }
+      }, status: :conflict
+      true
+    end
+
     def person_search_result(person)
       {
         id: person.id,
@@ -1070,7 +1267,7 @@ module Manage
         name: person.name,
         email: person.email,
         initials: person.initials,
-        headshot_url: person.safe_headshot_variant(:thumb)&.then { |v| Rails.application.routes.url_helpers.url_for(v) rescue nil }
+        headshot_url: person.safe_headshot_variant(:thumb)&.then { |v| url_for(v) }
       }
     end
 
@@ -1080,7 +1277,7 @@ module Manage
         type: "Group",
         name: group.name,
         initials: group.initials,
-        headshot_url: group.safe_headshot_variant(:thumb)&.then { |v| Rails.application.routes.url_helpers.url_for(v) rescue nil }
+        headshot_url: group.safe_headshot_variant(:thumb)&.then { |v| url_for(v) }
       }
     end
 
@@ -1233,13 +1430,21 @@ module Manage
                                .to_a
       pool_members = pool_people + pool_groups
 
+      # Double-bookings and declared unavailability, for the amber indicators
+      # on pool cards (assigned non-pool members ride along for the cast rows).
+      conflicts_by_member = CastingConflicts.busy_map(
+        show: show,
+        members: pool_members + assignments.filter_map(&:assignable)
+      )
+
       {
         show: show,
         availability: availability,
         pool_members: pool_members,
         assigned_member_keys: assigned_member_keys,
         linked_availability: linked_availability,
-        linked_shows: linked_shows
+        linked_shows: linked_shows,
+        conflicts_by_member: conflicts_by_member
       }
     end
 

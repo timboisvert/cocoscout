@@ -1,0 +1,185 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+# The act-based casting board edits the show's running order in place:
+# drag to reorder, add an act (typed, re-added from this show — duplicated
+# with its performer — or pulled from the default lineup), add an
+# intermission, and remove an act along with its assignments.
+RSpec.describe "Manage::Casting running order", type: :request do
+  let(:password) { "Password123!" }
+  let(:owner) { create(:user, password: password) }
+  let!(:org) { create(:organization, :pro, owner: owner) }
+  let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let(:production) { create(:production, organization: org, casting_mode: "act_based") }
+
+  let!(:magic)   { create(:role, production: production, name: "Magic", position: 0) }
+  let!(:variety) { create(:role, production: production, name: "Variety", position: 1) }
+  let!(:mc)      { create(:role, production: production, name: "MC", standing: true, position: 2) }
+
+  let(:show) { create(:show, production: production) }
+  let(:performer) { create(:person, name: "Trixie Tassels").tap { |p| org.people << p } }
+
+  before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
+
+  def lineup_names
+    show.custom_roles.reload.order(:position, :created_at).map(&:name)
+  end
+
+  describe "reorder" do
+    it "reorders the acts and keeps show roles below, renumbering server-side" do
+      copies = show.custom_roles.order(:position).to_a
+      magic_copy, variety_copy = copies.reject(&:standing?)
+
+      post manage_casting_show_running_order_reorder_path(production, show),
+           params: { role_ids: [ variety_copy.id, magic_copy.id ] }
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Variety", "Magic", "MC" ])
+      body = JSON.parse(response.body)
+      # Numbers re-derive in the returned HTML: Variety is now Act 1
+      expect(body["roles_html"]).to include('data-role-name="Act 1 · Variety"')
+      expect(body["roles_html"]).to include('data-role-name="Act 2 · Magic"')
+      expect(body["roles_config_html"]).to include("1. Variety")
+    end
+
+    it "rejects an order that doesn't cover this show's acts" do
+      post manage_casting_show_running_order_reorder_path(production, show),
+           params: { role_ids: [ magic.id ] } # a production role id, not the show's copies
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "422s for a role-based show" do
+      role_based = create(:production, organization: org, casting_mode: "role_based")
+      create(:role, production: role_based, name: "Host")
+      other_show = create(:show, production: role_based)
+
+      post manage_casting_show_running_order_reorder_path(role_based, other_show),
+           params: { role_ids: [] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
+
+  describe "create (add act)" do
+    it "adds a typed act at the end of the lineup, before show roles" do
+      post manage_casting_show_running_order_acts_path(production, show),
+           params: { kind: "act", name: "Juggling" }
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Magic", "Variety", "Juggling", "MC" ])
+    end
+
+    it "duplicates an act from this show, carrying its performer" do
+      magic_copy = show.custom_roles.find_by(name: "Magic")
+      create(:show_person_role_assignment, show: show, role: magic_copy, assignable: performer)
+
+      post manage_casting_show_running_order_acts_path(production, show),
+           params: { kind: "act", source_role_id: magic_copy.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Magic", "Variety", "Magic", "MC" ])
+      new_magic = show.custom_roles.where(name: "Magic").order(:position).last
+      expect(new_magic.id).not_to eq(magic_copy.id)
+      expect(show.show_person_role_assignments.where(role: new_magic).first.assignable).to eq(performer)
+    end
+
+    it "adds a default-lineup act uncast" do
+      show.custom_roles.find_by(name: "Variety").destroy!
+
+      post manage_casting_show_running_order_acts_path(production, show),
+           params: { kind: "act", source_role_id: variety.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Magic", "Variety", "MC" ])
+      expect(show.show_person_role_assignments.count).to eq(0)
+    end
+
+    it "adds an intermission" do
+      post manage_casting_show_running_order_acts_path(production, show),
+           params: { kind: "break" }
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Magic", "Variety", "Intermission", "MC" ])
+      expect(show.custom_roles.find_by(name: "Intermission").category).to eq("break")
+    end
+
+    it "materializes a legacy inheriting show on first edit, remapping assignments" do
+      legacy = create(:show, production: production)
+      legacy.custom_roles.destroy_all
+      legacy.update_columns(use_custom_roles: false)
+      assignment = create(:show_person_role_assignment, show: legacy, role: magic, assignable: performer)
+
+      post manage_casting_show_running_order_acts_path(production, legacy),
+           params: { kind: "act", name: "Juggling" }
+
+      expect(response).to have_http_status(:ok)
+      legacy.reload
+      expect(legacy.use_custom_roles).to be(true)
+      expect(assignment.reload.role.show_id).to eq(legacy.id)
+      expect(assignment.role.name).to eq("Magic")
+    end
+
+    it "404s for another org's source role" do
+      foreign_role = create(:role, name: "Foreign Act")
+
+      post manage_casting_show_running_order_acts_path(production, show),
+           params: { kind: "act", source_role_id: foreign_role.id }
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "destroy (remove act)" do
+    it "asks for confirmation when the act is cast" do
+      magic_copy = show.custom_roles.find_by(name: "Magic")
+      create(:show_person_role_assignment, show: show, role: magic_copy, assignable: performer)
+
+      delete manage_casting_show_running_order_act_path(production, show, magic_copy)
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["needs_confirmation"]).to be(true)
+      expect(body["assignment_names"]).to eq([ "Trixie Tassels" ])
+      expect(show.custom_roles.reload.count).to eq(3)
+    end
+
+    it "removes the act and its assignments once confirmed" do
+      magic_copy = show.custom_roles.find_by(name: "Magic")
+      create(:show_person_role_assignment, show: show, role: magic_copy, assignable: performer)
+
+      delete manage_casting_show_running_order_act_path(production, show, magic_copy, confirm: "true")
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Variety", "MC" ])
+      expect(show.show_person_role_assignments.count).to eq(0)
+    end
+
+    it "removes an uncast act without ceremony" do
+      variety_copy = show.custom_roles.find_by(name: "Variety")
+
+      delete manage_casting_show_running_order_act_path(production, show, variety_copy)
+
+      expect(response).to have_http_status(:ok)
+      expect(lineup_names).to eq([ "Magic", "MC" ])
+    end
+  end
+
+  describe "act_options" do
+    it "lists this show's acts (with performers) and missing default-lineup acts" do
+      magic_copy = show.custom_roles.find_by(name: "Magic")
+      create(:show_person_role_assignment, show: show, role: magic_copy, assignable: performer)
+      show.custom_roles.find_by(name: "Variety").destroy!
+
+      get manage_casting_show_running_order_act_options_path(production, show)
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["in_show"].map { |o| o["name"] }).to eq([ "Magic" ])
+      expect(body["in_show"].first["performers"]).to eq([ "Trixie Tassels" ])
+      expect(body["in_show"].first["act_number"]).to eq(1)
+      expect(body["from_default"].map { |o| o["name"] }).to eq([ "Variety" ])
+    end
+  end
+end

@@ -35,7 +35,7 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
       expect(response.body).to include('data-role-name="Act 2 · Variety"')
       expect(response.body).to include('data-role-name="Act 3 · Aerial"')
       expect(response.body).to include("Cast this act")
-      expect(response.body).to include("Edit lineup")
+      expect(response.body).to include("Edit running order")
       expect(response.body).to include("0 of 3 acts have been cast")
       expect(response.body).to include('data-drop-role-unit-value="act"')
       expect(response.body).to include('data-show-roles-modal-act-based-value="true"')

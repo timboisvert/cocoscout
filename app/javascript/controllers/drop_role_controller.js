@@ -18,7 +18,9 @@ export default class extends Controller {
         "replaceNewPersonNameWarning", "replaceRoleName", "replaceEligibilityWarning", "replaceOptionsList",
         "replaceRoleId", "replaceAssignableType", "replaceAssignableId", "replaceSourceRoleId", "replaceIsEligible",
         // Vacancy modal targets
-        "vacancyModal", "vacancyPersonName", "vacancyPersonName2", "vacancyRoleName"
+        "vacancyModal", "vacancyPersonName", "vacancyPersonName2", "vacancyRoleName",
+        // Scheduling-conflict modal targets
+        "conflictModal", "conflictMemberName", "conflictList"
     ];
     static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean, unit: String, progressUnit: String };
 
@@ -315,21 +317,24 @@ export default class extends Controller {
             this.moveAssignment(productionId, showId, assignableId, sourceRoleId, roleId, assignableType);
         } else if (assignableType === "Guest") {
             // Handle guest assignment to restricted role
-            fetch(`/manage/casting/${productionId}/${showId}/assign_guest_to_role`, {
+            const guestUrl = `/manage/casting/${productionId}/${showId}/assign_guest_to_role`;
+            const guestBody = {
+                role_id: roleId,
+                guest_name: guestName,
+                guest_email: guestEmail,
+                force: true
+            };
+            fetch(guestUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
                 },
-                body: JSON.stringify({
-                    role_id: roleId,
-                    guest_name: guestName,
-                    guest_email: guestEmail,
-                    force: true
-                })
+                body: JSON.stringify(guestBody)
             })
                 .then(r => r.json())
                 .then(data => {
+                    if (this.guardConflict(data, guestUrl, guestBody)) return;
                     if (data.error) {
                         this.handleServerError(data.error);
                     } else {
@@ -349,7 +354,8 @@ export default class extends Controller {
                 requestBody.group_id = assignableId;
             }
 
-            fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
+            const assignUrl = `/manage/casting/${productionId}/${showId}/assign_person_to_role`;
+            fetch(assignUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -359,6 +365,7 @@ export default class extends Controller {
             })
                 .then(r => r.json())
                 .then(data => {
+                    if (this.guardConflict(data, assignUrl, requestBody)) return;
                     if (data.error) {
                         this.handleServerError(data.error);
                     } else {
@@ -370,6 +377,68 @@ export default class extends Controller {
                     alert('Failed to assign. Please try again.');
                 });
         }
+    }
+
+    // ---- Scheduling-conflict modal (double-booked / marked unavailable) ----
+
+    // The server answers any assign endpoint with { conflict: true, ... } when
+    // the member is double-booked at an overlapping time or marked themselves
+    // unavailable. Stash the request so "Cast anyway" can resubmit it with
+    // allow_conflicts, and show the modal. Returns true when intercepted.
+    guardConflict(data, path, body) {
+        if (!data || !data.conflict) return false;
+        if (!this.hasConflictModalTarget) return false;
+
+        this.pendingConflictRequest = { path, body };
+        if (this.hasConflictMemberNameTarget) {
+            this.conflictMemberNameTarget.textContent = data.member_name || "This member";
+        }
+        if (this.hasConflictListTarget) {
+            this.conflictListTarget.innerHTML = "";
+            (data.conflicts || []).forEach(c => {
+                const li = document.createElement("li");
+                li.textContent = c.message;
+                this.conflictListTarget.appendChild(li);
+            });
+        }
+        this.conflictModalTarget.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        return true;
+    }
+
+    closeConflictModal() {
+        this.pendingConflictRequest = null;
+        if (this.hasConflictModalTarget) {
+            this.conflictModalTarget.classList.add('hidden');
+        }
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    confirmCastAnyway() {
+        const pending = this.pendingConflictRequest;
+        this.closeConflictModal();
+        if (!pending) return;
+
+        fetch(pending.path, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
+            },
+            body: JSON.stringify({ ...pending.body, allow_conflicts: 1 })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    this.handleServerError(data.error);
+                    return;
+                }
+                this.updateUIAfterAssignment(data, null, null);
+            })
+            .catch(error => {
+                console.error('Error assigning:', error);
+                alert('Failed to assign. Please try again.');
+            });
     }
 
     // Switch between search and guest tabs
@@ -629,7 +698,8 @@ export default class extends Controller {
             payload.group_id = groupId;
         }
 
-        fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
+        const assignUrl = `/manage/casting/${productionId}/${showId}/assign_person_to_role`;
+        fetch(assignUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -639,6 +709,7 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
+                if (this.guardConflict(data, assignUrl, payload)) return;
                 if (data.error) {
                     this.handleServerError(data.error);
                     return;
@@ -705,20 +776,23 @@ export default class extends Controller {
         const showId = this.showId;
         const productionId = this.productionId;
 
-        fetch(`/manage/casting/${productionId}/${showId}/assign_guest_to_role`, {
+        const guestUrl = `/manage/casting/${productionId}/${showId}/assign_guest_to_role`;
+        const guestBody = {
+            role_id: roleId,
+            guest_name: guestName,
+            guest_email: guestEmail
+        };
+        fetch(guestUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
             },
-            body: JSON.stringify({
-                role_id: roleId,
-                guest_name: guestName,
-                guest_email: guestEmail
-            })
+            body: JSON.stringify(guestBody)
         })
             .then(r => r.json())
             .then(data => {
+                if (this.guardConflict(data, guestUrl, guestBody)) return;
                 if (data.error) {
                     this.handleServerError(data.error);
                     return;
@@ -763,20 +837,23 @@ export default class extends Controller {
         const showId = this.showId;
         const productionId = this.productionId;
 
-        fetch(`/manage/casting/${productionId}/${showId}/assign_guest_to_role`, {
+        const guestUrl = `/manage/casting/${productionId}/${showId}/assign_guest_to_role`;
+        const guestBody = {
+            role_id: roleId,
+            guest_name: guestName,
+            guest_email: guestEmail
+        };
+        fetch(guestUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
             },
-            body: JSON.stringify({
-                role_id: roleId,
-                guest_name: guestName,
-                guest_email: guestEmail
-            })
+            body: JSON.stringify(guestBody)
         })
             .then(r => r.json())
             .then(data => {
+                if (this.guardConflict(data, guestUrl, guestBody)) return;
                 if (data.error) {
                     this.handleServerError(data.error);
                     return;
@@ -828,20 +905,23 @@ export default class extends Controller {
         // Close modal immediately
         this.closeGuestModal();
 
-        fetch(`/manage/casting/${productionId}/${showId}/assign_guest_to_role`, {
+        const guestUrl = `/manage/casting/${productionId}/${showId}/assign_guest_to_role`;
+        const guestBody = {
+            role_id: roleId,
+            guest_name: guestName,
+            guest_email: guestEmail
+        };
+        fetch(guestUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRF-Token": document.querySelector('meta[name=csrf-token]').content
             },
-            body: JSON.stringify({
-                role_id: roleId,
-                guest_name: guestName,
-                guest_email: guestEmail
-            })
+            body: JSON.stringify(guestBody)
         })
             .then(r => r.json())
             .then(data => {
+                if (this.guardConflict(data, guestUrl, guestBody)) return;
                 if (data.error) {
                     this.handleServerError(data.error);
                     return;
@@ -894,7 +974,8 @@ export default class extends Controller {
         // Close modal immediately
         this.closeAssignModal();
 
-        fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
+        const assignUrl = `/manage/casting/${productionId}/${showId}/assign_person_to_role`;
+        fetch(assignUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -904,6 +985,7 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
+                if (this.guardConflict(data, assignUrl, requestBody)) return;
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
@@ -1094,7 +1176,8 @@ export default class extends Controller {
             requestBody.group_id = assignableId;
         }
 
-        fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
+        const assignUrl = `/manage/casting/${productionId}/${showId}/assign_person_to_role`;
+        fetch(assignUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1104,6 +1187,7 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
+                if (this.guardConflict(data, assignUrl, requestBody)) return;
                 if (data.error) {
                     this.handleServerError(data.error);
                     return;
@@ -1271,7 +1355,8 @@ export default class extends Controller {
             requestBody.source_role_id = sourceRoleId;
         }
 
-        fetch(`/manage/casting/${productionId}/${showId}/replace_assignment`, {
+        const replaceUrl = `/manage/casting/${productionId}/${showId}/replace_assignment`;
+        fetch(replaceUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1281,6 +1366,7 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
+                if (this.guardConflict(data, replaceUrl, requestBody)) return;
                 if (data.error) {
                     this.handleServerError(data.error);
                     return;
@@ -1314,7 +1400,8 @@ export default class extends Controller {
             requestBody.group_id = assignableId;
         }
 
-        fetch(`/manage/casting/${productionId}/${showId}/assign_person_to_role`, {
+        const assignUrl = `/manage/casting/${productionId}/${showId}/assign_person_to_role`;
+        fetch(assignUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1324,6 +1411,7 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
+                if (this.guardConflict(data, assignUrl, requestBody)) return;
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
@@ -1366,8 +1454,11 @@ export default class extends Controller {
         })
             .then(r => r.json())
             .then(data => {
-                // Now assign the entity to the target role
-                const requestBody = { role_id: targetRoleId };
+                // Now assign the entity to the target role. This is a move
+                // within the show — they were already cast when the gesture
+                // started — so never conflict-check it (the removal above
+                // would otherwise make them look newly double-booked).
+                const requestBody = { role_id: targetRoleId, allow_conflicts: 1 };
                 if (assignableType === "Person") {
                     requestBody.person_id = assignableId;
                 } else if (assignableType === "Group") {

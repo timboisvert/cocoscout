@@ -923,6 +923,12 @@ Rails.application.routes.draw do
     patch "/casting/:production_id/:show_id/reopen", to: "casting#reopen_casting", as: "casting_show_reopen"
     post "/casting/:production_id/:show_id/copy_cast_to_linked", to: "casting#copy_cast_to_linked", as: "casting_show_copy_to_linked"
 
+    # Casting > Running order (act-based shows edit their lineup on the board)
+    post   "/casting/:production_id/:show_id/running_order/reorder", to: "casting#reorder_running_order", as: "casting_show_running_order_reorder"
+    post   "/casting/:production_id/:show_id/running_order/acts", to: "casting#create_running_order_act", as: "casting_show_running_order_acts"
+    delete "/casting/:production_id/:show_id/running_order/acts/:id", to: "casting#destroy_running_order_act", as: "casting_show_running_order_act"
+    get    "/casting/:production_id/:show_id/running_order/act_options", to: "casting#running_order_act_options", as: "casting_show_running_order_act_options"
+
     # Casting > Vacancies
     get  "/casting/:production_id/vacancies/:id", to: "vacancies#show", as: "casting_vacancy"
     post "/casting/:production_id/vacancies/:id/send_invitations", to: "vacancies#send_invitations", as: "send_invitations_casting_vacancy"

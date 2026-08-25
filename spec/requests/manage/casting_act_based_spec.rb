@@ -29,7 +29,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       get manage_casting_show_cast_path(production, show)
       expect(response).to have_http_status(:ok)
 
-      expect(response.body).to include("Lineup")
+      expect(response.body).to include("Running Order")
       # data-role-name carries the display label the JS uses in modals/toasts
       expect(response.body).to include('data-role-name="Act 1 · Magic"')
       expect(response.body).to include('data-role-name="Act 2 · Variety"')
@@ -42,7 +42,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
 
       # Act-mode copy
       expect(response.body).to include("Cast this act")
-      expect(response.body).to include("Edit lineup")
+      expect(response.body).to include("Edit running order")
       expect(response.body).to include("0 of 3 acts have been cast")
       expect(response.body).to include('data-drop-role-unit-value="act"')
     end
@@ -116,8 +116,10 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
 
   describe "everywhere else the cast is shown" do
     before do
-      create(:show_person_role_assignment, show: show, role: magic_one, assignable: performer)
-      create(:show_person_role_assignment, show: show, role: magic_two, assignable: performer)
+      # Copy-at-creation gave the show its own lineup; cast into its copies.
+      magic_copies = show.custom_roles.where(name: "Magic").order(:position)
+      create(:show_person_role_assignment, show: show, role: magic_copies.first, assignable: performer)
+      create(:show_person_role_assignment, show: show, role: magic_copies.last, assignable: performer)
     end
 
     it "labels the casting index cast card with numbered acts and no slot for the break" do
@@ -159,8 +161,10 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
     end
 
     it "names the person once on the cast card's can't-make-it line, both acts grouped" do
-      create(:role_vacancy, show: show, role: magic_one, vacated_by: performer, vacated_at: Time.current)
-      create(:role_vacancy, show: show, role: magic_two, vacated_by: performer, vacated_at: Time.current)
+      # Copy-at-creation gave the show its own lineup; vacancies point at its copies.
+      magic_copies = show.custom_roles.where(name: "Magic").order(:position)
+      create(:role_vacancy, show: show, role: magic_copies.first, vacated_by: performer, vacated_at: Time.current)
+      create(:role_vacancy, show: show, role: magic_copies.last, vacated_by: performer, vacated_at: Time.current)
 
       get manage_casting_production_path(production)
       expect(response).to have_http_status(:ok)
@@ -264,7 +268,8 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
 
     describe "a show's own lineup editor" do
       it "creates a show role and says so in the JSON" do
-        show.update!(use_custom_roles: true)
+        # Start from an empty custom lineup; copy-at-creation already filled it (MC included).
+        show.custom_roles.destroy_all
         post manage_show_roles_path(production, show),
              params: { show_role: { name: "MC", category: "show_role", quantity: 1 } }, as: :json
         expect(response).to have_http_status(:ok)
@@ -298,6 +303,9 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
         linkage = EventLinkage.create!(production: production)
         show.update!(event_linkage: linkage, use_custom_roles: true)
         other = create(:show, production: production, event_linkage: linkage, date_and_time: show.date_and_time + 1.day, use_custom_roles: true)
+        # Both shows auto-copied the default lineup; rebuild the exact lineups this spec is about.
+        show.custom_roles.destroy_all
+        other.custom_roles.destroy_all
         show.custom_roles.create!(name: "MC", standing: true, production: production, position: 0)
         show.custom_roles.create!(name: "Magic", production: production, position: 1)
 
@@ -312,7 +320,8 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
 
   describe "per-show lineup tweaks (custom roles) accept breaks only in act mode" do
     it "creates an intermission row for an act-based show" do
-      show.update!(use_custom_roles: true)
+      # Copy-at-creation already filled the custom lineup; this spec wants it bare.
+      show.custom_roles.destroy_all
       post manage_show_roles_path(production, show),
            params: { show_role: { name: "Intermission", category: "break", quantity: 1 } }, as: :json
       expect(response).to have_http_status(:ok)

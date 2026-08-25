@@ -161,9 +161,9 @@
         <div class="flex items-center justify-between">
           <div class="flex-1">
             <% if act_mode %>
-              <p class="text-sm font-medium text-gray-700">Customize this show's lineup</p>
+              <p class="text-sm font-medium text-gray-700">Customize this show's running order</p>
               <p class="text-xs text-gray-500 mt-1">
-                Start from the production's lineup, then add, remove, rename, or reorder acts for this night only.
+                Start from the default lineup, then add, remove, rename, or reorder acts for this night only.
               </p>
             <% else %>
               <p class="text-sm font-medium text-gray-700">Use custom roles for this event</p>
@@ -185,7 +185,7 @@
         <%# Custom Roles Content %>
         <div data-show-roles-modal-target="customRolesContent" class="<%= show.use_custom_roles? ? '' : 'hidden' %> mt-4">
           <div class="mb-3">
-            <p class="text-sm font-medium text-gray-700"><%= act_mode ? "This show's lineup" : "Custom Roles for This Event" %></p>
+            <p class="text-sm font-medium text-gray-700"><%= act_mode ? "This show's running order" : "Custom Roles for This Event" %></p>
           </div>
 
           <%# Roles List %>
@@ -208,14 +208,14 @@
                 <% end %>
               </div>
             <% else %>
-              <p class="text-sm text-gray-500 italic"><%= act_mode ? "No acts in this show's lineup yet." : "No custom roles defined yet." %></p>
+              <p class="text-sm text-gray-500 italic"><%= act_mode ? "No acts in this show's running order yet." : "No custom roles defined yet." %></p>
             <% end %>
           </div>
 
           <%# Manage Button %>
           <div data-show-roles-modal-target="manageButton">
             <%= render "shared/button",
-              text: act_mode ? "Edit lineup" : "Manage Custom Roles",
+              text: act_mode ? "Edit running order" : "Manage Custom Roles",
               size: "small",
               type: :button,
               data: { action: "show-roles-modal#openModal" } %>
@@ -330,7 +330,7 @@
                 <svg class="inline w-4 h-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                After transferring, you'll be able to add, edit, or remove <%= act_mode ? "acts in this show's lineup" : "custom roles" %>.
+                After transferring, you'll be able to add, edit, or remove <%= act_mode ? "acts in this show's running order" : "custom roles" %>.
               </div>
               <div class="flex items-center justify-between">
                 <div data-show-roles-modal-target="migrationStats" class="text-sm text-gray-600">

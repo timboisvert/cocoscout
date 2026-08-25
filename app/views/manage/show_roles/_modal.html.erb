@@ -8,7 +8,7 @@
 <div data-show-roles-modal-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto" data-action="click->show-roles-modal#stopPropagation">
     <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-      <h2 class="text-xl font-semibold"><%= act_mode ? "Customize this show's lineup" : "Manage Custom Roles" %></h2>
+      <h2 class="text-xl font-semibold"><%= act_mode ? "Customize this show's running order" : "Manage Custom Roles" %></h2>
       <button type="button" data-action="click->show-roles-modal#closeModal" class="text-gray-500 hover:text-gray-700 cursor-pointer">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -32,11 +32,11 @@
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
           </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900"><%= act_mode ? "This show's lineup is empty" : "No custom roles yet" %></h3>
-          <p class="mt-1 text-sm text-gray-500"><%= act_mode ? "Start from the production's lineup, or build one from scratch for this night." : "Get started by copying roles from your production or adding a new role." %></p>
+          <h3 class="mt-2 text-sm font-medium text-gray-900"><%= act_mode ? "This show's running order is empty" : "No custom roles yet" %></h3>
+          <p class="mt-1 text-sm text-gray-500"><%= act_mode ? "Start from the default lineup, or build one from scratch for this night." : "Get started by copying roles from your production or adding a new role." %></p>
           <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <%= render "shared/button",
-                text: act_mode ? "Use the production's lineup" : "Copy Production Roles",
+                text: act_mode ? "Use the default lineup" : "Copy Production Roles",
                 variant: "primary",
                 size: "small",
                 type: :button,
@@ -54,7 +54,7 @@
       <!-- Roles List -->
       <div data-show-roles-modal-target="rolesListSection" class="<%= show.custom_roles.any? ? '' : 'hidden' %>">
         <div class="flex items-center justify-between mb-4">
-          <p class="text-sm text-gray-500">Drag to reorder <%= act_mode ? "the lineup" : "roles" %></p>
+          <p class="text-sm text-gray-500">Drag to reorder <%= act_mode ? "the running order" : "roles" %></p>
           <div class="flex items-center gap-1">
             <% if act_mode %>
               <%= render "shared/button",

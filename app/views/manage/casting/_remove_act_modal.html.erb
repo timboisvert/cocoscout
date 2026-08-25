@@ -1,0 +1,24 @@
+<%# Confirm removing an act (or intermission) from this show's running order.
+    The body is filled by running_order_controller with the act's label and
+    who gets removed with it. %>
+<div id="remove-act-modal" data-running-order-target="removeActModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->running-order#closeRemoveActModal">
+  <div class="bg-white w-full max-w-md rounded-lg shadow-xl overflow-hidden" data-action="click->running-order#stopPropagation">
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-white">Remove This Act?</h2>
+      <button type="button" data-action="click->running-order#closeRemoveActModal" class="text-white/80 hover:text-white p-1 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="p-6">
+      <p class="text-sm text-gray-600" data-running-order-target="removeActBody"></p>
+    </div>
+
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->running-order#closeRemoveActModal" } %>
+      <%= render "shared/button", text: "Remove act", variant: "primary", type: :button, data: { action: "click->running-order#removeConfirmed" } %>
+    </div>
+  </div>
+</div>

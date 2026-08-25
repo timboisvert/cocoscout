@@ -1,0 +1,38 @@
+<%# Scheduling-conflict modal: shown when the server answers an assign with
+    conflict: true — the member is already cast somewhere overlapping, or
+    marked themselves unavailable. drop_role_controller fills the name and
+    the list, and "Cast anyway" resubmits the stashed request. %>
+<div id="casting-conflict-modal" data-drop-role-target="conflictModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->drop-role#closeConflictModal">
+  <div class="bg-white w-full max-w-md rounded-lg shadow-xl overflow-hidden" data-action="click->drop-role#stopPropagation">
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-white">Scheduling Conflict</h2>
+      <button type="button" data-action="click->drop-role#closeConflictModal" class="text-white/80 hover:text-white p-1 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="p-6">
+      <p class="text-sm text-gray-600 mb-4">
+        Casting <span data-drop-role-target="conflictMemberName" class="font-medium text-gray-900"></span>
+        in this show would double-book them:
+      </p>
+
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+        <ul data-drop-role-target="conflictList" class="text-sm text-amber-900 space-y-2 list-disc list-inside">
+          <%# Filled by JS %>
+        </ul>
+      </div>
+
+      <p class="text-sm text-gray-600">
+        You can still cast them if you know it works out.
+      </p>
+    </div>
+
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->drop-role#closeConflictModal" } %>
+      <%= render "shared/button", text: "Cast Anyway", variant: "primary", type: :button, data: { action: "click->drop-role#confirmCastAnyway" } %>
+    </div>
+  </div>
+</div>

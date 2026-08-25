@@ -1,0 +1,8 @@
+<%# Inline add controls under the running order (act-based shows only).
+    Actions resolve to the running-order controller on the page wrapper. %>
+<div class="flex items-center gap-2 pt-1">
+  <%= render "shared/button", text: "Add act", variant: "secondary", size: "small", icon: "plus", type: :button,
+        data: { action: "click->running-order#openAddActModal" } %>
+  <%= render "shared/button", text: "Add intermission", variant: "secondary", size: "small", type: :button,
+        data: { action: "click->running-order#addIntermission" } %>
+</div>

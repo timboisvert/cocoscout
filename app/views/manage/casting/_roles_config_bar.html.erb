@@ -35,9 +35,9 @@
           <span class="text-sm font-medium text-gray-900">
             <% if act_mode %>
               <% if uses_custom %>
-                Using a custom lineup for this <%= event_word %>
+                This <%= event_word %>'s running order
               <% else %>
-                This <%= event_word %> uses the standard <%= production.name %> lineup
+                This <%= event_word %> uses the <%= production.name %> default lineup
               <% end %>
             <% elsif uses_custom %>
               Using custom roles for this <%= event_word %>
@@ -59,7 +59,7 @@
               <%= roles.map { |r| r.quantity > 1 ? "#{r.name} x #{r.quantity}" : r.name }.join(", ") %>
             <% end %>
           <% elsif act_mode %>
-            No acts in the lineup yet
+            No acts in the running order yet
           <% else %>
             No roles defined
           <% end %>
@@ -67,7 +67,7 @@
         <p class="text-xs mt-1">
           <%= link_to "Production casting settings", manage_casting_settings_path(production),
                 class: "text-pink-600 hover:text-pink-700 hover:underline",
-                title: "How #{production.name} casts: roles or acts, where the cast comes from, the standard #{act_mode ? 'lineup' : 'roles'}" %>
+                title: "How #{production.name} casts: roles or acts, where the cast comes from, the #{act_mode ? 'default lineup' : 'standard roles'}" %>
         </p>
       </div>
     </div>
@@ -75,7 +75,7 @@
     <%# Right: Fixed-width panel with button %>
     <div class="flex-shrink-0 w-40 border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-3 flex items-center">
       <%= render "shared/button",
-        text: act_mode ? "Edit lineup" : "Manage Roles",
+        text: act_mode ? "Edit running order" : "Manage Roles",
         variant: "secondary",
         size: "small",
         icon: "cog-6-tooth",
