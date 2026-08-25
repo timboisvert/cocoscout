@@ -27,6 +27,79 @@ RSpec.describe Show, type: :model do
     end
   end
 
+  describe 'running order copy-at-creation' do
+    let(:production) { create(:production, casting_mode: "act_based") }
+
+    it 'copies the default lineup to show-scoped roles when an act-based show is created' do
+      create(:role, production: production, name: "Magic", position: 0)
+      create(:role, production: production, name: "Aerial", position: 1)
+
+      show = create(:show, production: production)
+
+      expect(show.reload.use_custom_roles).to be(true)
+      expect(show.custom_roles.order(:position).pluck(:name)).to eq([ "Magic", "Aerial" ])
+      # The production's own lineup is untouched
+      expect(production.roles.production_roles.count).to eq(2)
+    end
+
+    it 'leaves the show inheriting when the production has no lineup yet' do
+      show = create(:show, production: production)
+
+      expect(show.reload.use_custom_roles).to be(false)
+      expect(show.custom_roles).to be_empty
+    end
+
+    it 'does not copy for role-based productions' do
+      role_based = create(:production, casting_mode: "role_based")
+      create(:role, production: role_based, name: "Stargazer")
+
+      show = create(:show, production: role_based)
+
+      expect(show.reload.use_custom_roles).to be(false)
+    end
+
+    it 'editing the default lineup never touches an existing show' do
+      create(:role, production: production, name: "Magic", position: 0)
+      show = create(:show, production: production)
+
+      create(:role, production: production, name: "Juggling", position: 1)
+
+      expect(show.reload.custom_roles.pluck(:name)).to eq([ "Magic" ])
+    end
+  end
+
+  describe '#ensure_custom_running_order!' do
+    let(:production) { create(:production, casting_mode: "act_based") }
+
+    it 'materializes roles and remaps existing assignments for a legacy inheriting show' do
+      magic = create(:role, production: production, name: "Magic", position: 0)
+      show = create(:show, production: production)
+      # Simulate a legacy show still on the production lineup
+      show.custom_roles.destroy_all
+      show.update_columns(use_custom_roles: false)
+      person = create(:person)
+      assignment = create(:show_person_role_assignment, show: show, role: magic, assignable: person)
+
+      show.ensure_custom_running_order!
+
+      expect(show.reload.use_custom_roles).to be(true)
+      copied = show.custom_roles.find_by(name: "Magic")
+      expect(copied).to be_present
+      expect(copied.id).not_to eq(magic.id)
+      expect(assignment.reload.role_id).to eq(copied.id)
+    end
+
+    it 'is a no-op when the show already owns its roles' do
+      create(:role, production: production, name: "Magic")
+      show = create(:show, production: production)
+      role_ids = show.custom_roles.pluck(:id)
+
+      show.ensure_custom_running_order!
+
+      expect(show.reload.custom_roles.pluck(:id)).to match_array(role_ids)
+    end
+  end
+
   describe 'associations' do
     it 'belongs to production' do
       show = create(:show)
@@ -337,6 +410,9 @@ RSpec.describe Show, type: :model do
       end
 
       it 'copies the flag onto an act-based custom lineup and drops it for a role-based night' do
+        # Copy-at-creation already ran; exercise the copy machinery from an inheriting show.
+        show.custom_roles.destroy_all
+        show.update_columns(use_custom_roles: false)
         show.copy_roles_from_production!
         expect(show.custom_roles.find_by(name: 'MC')).to be_standing
         expect(show.custom_roles.find_by(name: 'Stage Kitten').quantity).to eq(2)
@@ -372,6 +448,13 @@ RSpec.describe Show, type: :model do
 
     describe '#copy_roles_from_production! (copies in the show\'s own shape)' do
       let!(:magic3) { create(:role, production: production, name: 'Magic', position: 5) }
+
+      before do
+        # Copy-at-creation already gave the show a lineup; these specs exercise
+        # the copy machinery directly, so start from an inheriting show.
+        show.custom_roles.destroy_all
+        show.update_columns(use_custom_roles: false)
+      end
 
       it 'copies an act-based show\'s lineup as is, break included, and says which copy came from which' do
         copied_from = show.copy_roles_from_production!

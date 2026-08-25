@@ -177,6 +177,10 @@ class Show < ApplicationRecord
   # Clear assignments when toggling custom roles (unless migration is handling it)
   attr_accessor :skip_assignment_clear_on_role_toggle
   before_save :clear_assignments_on_custom_roles_toggle, if: :should_clear_assignments_on_toggle?
+  # Act-based shows own their running order from birth: copy the production's
+  # default lineup at creation, then diverge freely. Editing the default never
+  # touches existing shows.
+  after_create :materialize_running_order!, if: :should_materialize_running_order?
 
   # Set default attendance_enabled based on event type
   before_validation :set_attendance_enabled_default, on: :create
@@ -759,6 +763,45 @@ class Show < ApplicationRecord
       run.each { |source| copied_from[source.id] = new_role }
     end
     copied_from
+  end
+
+  # Copy-at-creation for act-based shows (see the after_create). Checking
+  # custom_roles rather than the use_custom_roles flag self-heals shows whose
+  # flag was copied without their role rows (series rebuilds). A production
+  # with no default lineup yet leaves the show inheriting — it materializes
+  # lazily on the first running-order edit instead.
+  def should_materialize_running_order?
+    casting_enabled? && act_based? && custom_roles.none? &&
+      production&.roles&.production_roles&.exists?
+  end
+
+  def materialize_running_order!
+    copy_roles_from_production!
+    # update_columns: no assignments exist yet, so skip the
+    # clear_assignments_on_custom_roles_toggle dance.
+    update_columns(use_custom_roles: true)
+  end
+
+  # Lazy path for shows that predate copy-at-creation (or whose production had
+  # no lineup when they were created): give the show its own roles and remap
+  # its existing assignments onto them. Every running-order mutation calls
+  # this first. No-op once the show owns its roles.
+  def ensure_custom_running_order!
+    return if use_custom_roles?
+
+    transaction do
+      copied_from = copy_roles_from_production!
+      show_person_role_assignments.reload.each do |assignment|
+        target = copied_from[assignment.role_id]
+        if target
+          assignment.update_columns(role_id: target.id)
+        else
+          # Their role vanished from the production lineup — nothing to remap onto.
+          assignment.destroy!
+        end
+      end
+      update_columns(use_custom_roles: true, updated_at: Time.current)
+    end
   end
 
   # Get vacancies where the person can't make this show but is still cast.

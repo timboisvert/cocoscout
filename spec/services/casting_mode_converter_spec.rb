@@ -404,13 +404,18 @@ RSpec.describe CastingModeConverter do
     it "merges the custom lineup of a show that inherits the mode, gives an act-pinned show its own act lineup, and leaves the rest" do
       to_acts!
       inheriting = create(:show, production: production, use_custom_roles: true, date_and_time: 5.days.from_now)
+      inheriting.custom_roles.destroy_all # copy-at-creation filled it; this spec builds its own lineup
       duo1 = create(:role, production: production, show: inheriting, name: "Duo", position: 0)
       duo2 = create(:role, production: production, show: inheriting, name: "Duo", position: 1)
       cast!(inheriting, duo1, dancers[0], 1)
       cast!(inheriting, duo2, dancers[1], 1)
       pinned_acts = create(:show, production: production, casting_mode: "act_based", date_and_time: 6.days.from_now)
+      # This spec is about a legacy show still casting from the production's acts.
+      pinned_acts.custom_roles.destroy_all
+      pinned_acts.update_columns(use_custom_roles: false)
       cast!(pinned_acts, production.roles.production_roles.reload.to_a[2], dancers[2], 1)
       pinned_custom_acts = create(:show, production: production, casting_mode: "act_based", use_custom_roles: true, date_and_time: 8.days.from_now)
+      pinned_custom_acts.custom_roles.destroy_all # copy-at-creation filled it; this spec builds its own lineup
       create(:role, production: production, show: pinned_custom_acts, name: "Magic", position: 0)
       create(:role, production: production, show: pinned_custom_acts, name: "Magic", position: 1)
 
@@ -532,11 +537,12 @@ RSpec.describe CastingModeConverter do
     let(:variety_night) { create(:show, production: production, casting_mode: "act_based", use_custom_roles: true, date_and_time: 5.days.from_now) }
 
     before do
+      variety_night.custom_roles.destroy_all # copy-at-creation filled it; this spec builds its own lineup
       %w[Magic Magic Intermission Magic].each_with_index do |name, i|
         create(:role, production: production, show: variety_night, name: name, position: i,
                       category: name == "Intermission" ? "break" : "performing")
       end
-      cast!(variety_night, variety_night.custom_roles.first, dancers[0], 1)
+      cast!(variety_night, variety_night.custom_roles.reload.first, dancers[0], 1)
       cast!(variety_night, variety_night.custom_roles.reload.to_a[1], dancers[1], 1)
     end
 
@@ -570,6 +576,9 @@ RSpec.describe CastingModeConverter do
       production.update!(casting_mode: "act_based")
       described_class.to_acts!(production)
       night = create(:show, production: production, date_and_time: 9.days.from_now)
+      # A legacy show still casting straight from the production's acts.
+      night.custom_roles.destroy_all
+      night.update_columns(use_custom_roles: false)
       acts = production.roles.production_roles.reload.to_a
       cast!(night, acts[0], dancers[0], 1)
       cast!(night, acts[2], dancers[2], 1)
@@ -590,6 +599,9 @@ RSpec.describe CastingModeConverter do
 
     it "leaves a show sharing a role-based production's roles alone" do
       night = create(:show, production: production, casting_mode: "act_based", date_and_time: 9.days.from_now)
+      # Legacy: it was act-pinned but never got its own lineup.
+      night.custom_roles.destroy_all
+      night.update_columns(use_custom_roles: false)
       night.update!(casting_mode: nil)
 
       summary = described_class.to_roles_for_show!(night)
