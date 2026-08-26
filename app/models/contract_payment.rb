@@ -63,11 +63,17 @@ class ContractPayment < ApplicationRecord
     Array(components).select { |c| c["kind"] == "service" }
   end
 
-  def components_total
-    service_components.sum { |c| c["amount"].to_f }.round(2)
+  # Whole payments folded in by hand (see merge_in!) — each remembers the row
+  # it used to be: name, base amount, original due date, show.
+  def merged_components
+    Array(components).select { |c| c["kind"] == "merged" }
   end
 
-  # The payment's own amount before the services folded into it.
+  def components_total
+    (service_components + merged_components).sum { |c| c["amount"].to_f }.round(2)
+  end
+
+  # The payment's own amount before anything folded into it.
   def base_amount
     (amount.to_f - components_total).round(2)
   end
@@ -76,11 +82,42 @@ class ContractPayment < ApplicationRecord
     service_components.any?
   end
 
+  def combined?
+    merged_components.any?
+  end
+
+  # A name that stands on its own away from the contract page, where a bare
+  # description tells the payer nothing: "Event 2 fee" → "Event 2 fee —
+  # Oct 19, 2026". The event's own date when the payment is tied to a show,
+  # the due date otherwise; descriptions already carrying a date keep it.
+  def display_name
+    self.class.dated_label(description.presence || "Payment", show&.date_and_time&.to_date || due_date)
+  end
+
+  def self.dated_label(name, date)
+    return name if date.nil? || name.match?(/\d{4}/)
+    "#{name} — #{date.strftime('%b %-d, %Y')}"
+  end
+
+  # What a payment covers, as [label, amount] rows — its own fee first, then
+  # every folded service and combined payment, each dated the same way.
+  # Empty when nothing is folded in.
+  def breakdown_items
+    return [] unless includes_services? || combined?
+
+    items = [ [ display_name, base_amount ] ]
+    (service_components + merged_components).each do |c|
+      date = (Date.parse(c["billed_for"].to_s) rescue nil)
+      items << [ self.class.dated_label(c["name"].to_s, date), c["amount"].to_f ]
+    end
+    items
+  end
+
   # "incl. Booth Tech $50.00" / "incl. Booth Tech $50.00 and Sound $25.00"
   def folded_services_summary
-    return nil unless includes_services?
+    return nil unless includes_services? || combined?
 
-    parts = service_components.map { |c| "#{c['name']} #{ActiveSupport::NumberHelper.number_to_currency(c['amount'].to_f)}" }
+    parts = (service_components + merged_components).map { |c| "#{c['name']} #{ActiveSupport::NumberHelper.number_to_currency(c['amount'].to_f)}" }
     "incl. #{parts.to_sentence}"
   end
 
@@ -103,6 +140,84 @@ class ContractPayment < ApplicationRecord
 
     update!(amount: (amount.to_f - removed).round(2), components: keep)
     removed
+  end
+
+  # --- Combined payments --------------------------------------------------------
+  # Several small invoices on different days (rehearsal rent, a booth tech, the
+  # event itself) can be folded by hand into ONE payment: one amount, one pay
+  # link, one row on their side, due on the host's date. Reversed by
+  # split_merged!.
+
+  # Only money nobody has touched can move: pending, paid directly (deduction
+  # charges net against settlements and must stay their own rows), a real
+  # amount (not TBD, not a ticket-synced settlement the financials rewrite),
+  # not committed to a payout run, and no checkout in flight.
+  def combinable?
+    status_pending? && settlement_method == "direct" && !amount_tbd? &&
+      !auto_shortfall? && !revenue_share? && !in_payout_run? &&
+      stripe_checkout_session_id.blank?
+  end
+
+  # Fold other pending payments into this one. Their folded services move over
+  # intact — name and billed_for survive, so an amendment can still unfold and
+  # re-bill them — and each base amount is remembered as a "merged" component,
+  # so the row can say what's inside and split_merged! can put everything back.
+  # The absorbed rows are deleted; any pay links issued for them die with them.
+  def merge_in!(others)
+    others = Array(others).uniq - [ self ]
+    raise ArgumentError, "nothing to combine" if others.empty?
+    raise ArgumentError, "this payment can't be combined" unless combinable?
+
+    transaction do
+      others.each do |other|
+        unless other.combinable? && other.contract_id == contract_id && other.direction == direction
+          raise ArgumentError, "#{other.description.presence || 'a payment'} can't be combined into this one"
+        end
+
+        merged = { "kind" => "merged", "name" => (other.description.presence || "Payment"),
+                   "amount" => other.base_amount, "billed_for" => other.due_date.to_s }
+        merged["show_id"] = other.show_id if other.show_id
+        update!(amount: (amount.to_f + other.amount.to_f).round(2),
+                components: Array(components) + other.service_components + [ merged ])
+        other.destroy!
+      end
+    end
+    self
+  end
+
+  # Undo merge_in!: every merged component becomes its own pending payment
+  # again, taking back the service charges billed for its date. The host
+  # shrinks back to its own amount plus its own services.
+  def split_merged!
+    raise ArgumentError, "no combined payments to split" unless combined?
+    raise ArgumentError, "this payment can't be split right now" unless status_pending? && !in_payout_run? && stripe_checkout_session_id.blank?
+
+    transaction do
+      merged, keep = Array(components).partition { |c| c["kind"] == "merged" }
+      removed_total = 0.0
+
+      merged.each do |m|
+        date = (Date.parse(m["billed_for"].to_s) rescue nil)
+        services, keep = keep.partition do |c|
+          c["kind"] == "service" && date && c["billed_for"].to_s == m["billed_for"].to_s
+        end
+        row_amount = (m["amount"].to_f + services.sum { |c| c["amount"].to_f }).round(2)
+        removed_total += row_amount
+
+        contract.contract_payments.create!(
+          description: m["name"],
+          amount: row_amount,
+          direction: direction,
+          settlement_method: settlement_method,
+          due_date: date || due_date,
+          show_id: m["show_id"],
+          components: services
+        )
+      end
+
+      update!(amount: (amount.to_f - removed_total).round(2), components: keep)
+    end
+    self
   end
 
   # Check if this payment amount is to be determined (e.g., revenue share)

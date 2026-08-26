@@ -1476,6 +1476,8 @@ Rails.application.routes.draw do
           post :mark_paid
           post :pay_offline
           post :add_to_payout_run
+          post :combine
+          post :split
           patch :settlement
         end
       end

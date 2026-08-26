@@ -75,9 +75,21 @@
     else
       manage_contract_path(contract)
     end
+  # Other pending payments this one could absorb (Combine): same direction,
+  # nothing settled, committed, or ticket-synced. Offered on incoming money —
+  # "several small invoices to pay" is the payer's problem this solves.
+  combine_candidates = show_actions && is_incoming && payment.combinable? ?
+    contract.contract_payments.status_pending.by_due_date.to_a
+            .reject { |p| p.id == payment.id }
+            .select { |p| p.combinable? && p.direction == payment.direction } : []
+  combine_modal_id = "combine-payment-#{payment.id}"
+  split_confirm_id = "confirm-split-payment-#{payment.id}"
+  can_split = show_actions && payment.combined? && payment.status_pending? && !in_run
 %>
 
 <div data-controller="payment-modal">
+<%# No "Late" badge: the pink wash and the "overdue" line under the amount
+    already say it. %>
 <div class="flex items-stretch px-3 py-2 border rounded-lg transition-all group <%= is_late ? 'bg-pink-50 border-pink-300' : 'bg-white border-gray-200 hover:border-gray-400' %><%= ' opacity-60' if is_cancelled %>">
   <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
     <%# Left Section: Date & Payment Details %>
@@ -92,12 +104,7 @@
       <%# Payment Details %>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
-          <% if is_late %>
-            <span class="inline-flex items-center rounded-md bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700 ring-1 ring-inset ring-pink-600/20">
-              <%= icon("alert-circle", class: "w-3 h-3 mr-1 inline") %>
-              Late
-            </span>
-          <% elsif is_cancelled %>
+          <% if is_cancelled %>
             <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/20">
               Cancelled
             </span>
@@ -110,12 +117,13 @@
           <% if contract.production_name.present? %>
             <%= contract.contractor_name %> &middot;
           <% end %>
-          <%= payment.description.presence || "Payment" %><%= " and #{number_to_currency(deduction_total)} services" if deductions.any? %>
+          <%= payment.display_name %><%= " and #{number_to_currency(deduction_total)} services" if deductions.any? %>
           <span class="text-gray-400"><%= is_incoming ? "(they pay us)" : "(we pay them)" %></span>
         </div>
-        <% if payment.includes_services? %>
-          <%# Services they pay for on this event ride inside this one payment —
-              one amount, one pay link — not a second row to chase. %>
+        <% if payment.includes_services? || payment.combined? %>
+          <%# Services they pay for on this event — and any payments combined
+              into this one — ride inside this one payment: one amount, one
+              pay link, not a second row to chase. %>
           <div class="text-xs text-gray-500 mt-0.5">
             <%= number_to_currency(payment.base_amount) %> <%= payment.folded_services_summary %>
           </div>
@@ -223,60 +231,33 @@
           <% end %>
         </div>
       <% elsif show_actions && payment.status_pending? %>
-        <div class="flex items-center gap-2">
+        <%
+          # The row keeps one status badge and at most ONE primary button;
+          # every secondary action lives behind the kebab menu, so the cluster
+          # reads the same whether a payment has zero extra actions or five.
+          is_deduct = is_incoming && payment.deduct_from_payout?
+          can_copy_link = is_incoming && !is_deduct && payment.collectable_online?
+          can_record = is_incoming && !is_deduct && offline_allowed
+          can_deduct = is_incoming && !is_deduct && contract.contractor.present? && contract.outgoing_settlement?
+          can_edit_amount = !is_incoming && amount_set && !in_run
+          menu_any = !in_run && (can_copy_link || can_record || can_deduct || is_deduct ||
+                                 combine_candidates.any? || can_split || can_edit_amount || can_pay_offline)
+          menu_item_classes = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left"
+        %>
+        <div class="flex items-center gap-1.5">
           <% if in_run %>
             <%= link_to "In payout run", manage_payout_batch_path(payment.payout_contribution.payout_batch),
                   class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>
-          <% elsif is_incoming && payment.deduct_from_payout? %>
+          <% elsif is_deduct %>
             <%# Settling out of their payout: no pay link, no collecting — it
                 nets automatically when their share joins a payout run. %>
-            <div class="flex items-center gap-1.5">
-              <span class="inline-flex items-center rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700"
-                    title="Nets against their share automatically when it's added to a payout run.">
-                Deducts from payout
-              </span>
-              <%= button_to settlement_manage_contract_contract_payment_path(contract, payment, settlement_method: "direct"),
-                    method: :patch, form_class: "inline-block" do %>
-                <%= render "shared/button", text: "Have them pay it", variant: "secondary", size: "xs", type: :submit %>
-              <% end %>
-            </div>
-          <% elsif is_incoming && payment.collectable_online? %>
-            <%# Copy the pay link, record an offline payment inline, or open the
-                Collect page for the QR code + reminders. No login needed to pay. %>
-            <div class="flex items-center gap-1" data-controller="clipboard">
-              <input type="hidden" data-clipboard-target="textField"
-                     value="<%= pay_contract_url(token: payment.payment_token!) %>">
-              <%= render "shared/button", text: "Copy pay link", variant: "secondary", size: "xs",
-                    icon: "link", type: :button, data: { action: "click->clipboard#copy" } %>
-              <% if offline_allowed %>
-                <%= render "shared/button", text: "", variant: "outline-pink", size: "xs",
-                      icon: "check-circle", type: :button,
-                      data: { action: "click->payment-modal#open" },
-                      classes: "!gap-0", title: "Record a payment that arrived another way" %>
-              <% end %>
-              <%= link_to manage_money_incoming_payment_path(payment) do %>
-                <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
-              <% end %>
-              <% if contract.contractor.present? && contract.outgoing_settlement? %>
-                <%= button_to settlement_manage_contract_contract_payment_path(contract, payment, settlement_method: "payout_deduction"),
-                      method: :patch, form_class: "inline-block",
-                      title: "Stop collecting this — net it out of their payout instead" do %>
-                  <%= render "shared/button", text: "Deduct from payout", variant: "secondary", size: "xs", type: :submit %>
-                <% end %>
-              <% end %>
-            </div>
-          <% elsif is_incoming && offline_allowed %>
-            <%# Records money that arrived offline (cash/check); Collect page for more. %>
-            <div class="flex items-center gap-1">
-              <%= render "shared/button", text: "Record payment", variant: "outline-pink", size: "xs",
-                    icon: "check-circle", type: :button, data: { action: "click->payment-modal#open" } %>
-              <%= link_to manage_money_incoming_payment_path(payment) do %>
-                <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
-              <% end %>
-            </div>
+            <span class="inline-flex items-center rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700"
+                  title="Nets against their share automatically when it's added to a payout run.">
+              Deducts from payout
+            </span>
           <% elsif is_incoming %>
-            <%# No settled amount to charge yet (or online-only) — the Collect page
-                still lets them send a reminder or record an offline payment. %>
+            <%# The Collect page is the one place money they owe gets chased:
+                pay link + QR, reminders, recording an offline payment. %>
             <%= link_to manage_money_incoming_payment_path(payment) do %>
               <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
             <% end %>
@@ -305,20 +286,78 @@
                   method: :post %>
           <% else %>
             <%# No connected bank, so no payout run can reach them — which is
-                exactly when the money goes out by hand. Record that here; the
+                exactly when the money goes out by hand (in the menu). The
                 badge still links to setting them up properly. %>
-            <div class="flex items-center gap-1.5">
-              <%= link_to contractor ? manage_contractor_path(contractor) : "#",
-                    class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors",
-                    title: "They need to connect a bank account before a payout run can pay them." do %>
-                Needs bank
-              <% end %>
-              <% if can_pay_offline %>
-                <%= render "shared/button", text: "Paid another way", variant: "outline-pink", size: "xs",
-                      icon: "check-circle", type: :button,
-                      title: "Record money you sent them outside CocoScout — Zelle, a check, cash.",
-                      data: { controller: "modal", action: "click->modal#open", modal_id: offline_pay_id } %>
-              <% end %>
+            <%= link_to contractor ? manage_contractor_path(contractor) : "#",
+                  class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors",
+                  title: "They need to connect a bank account before a payout run can pay them." do %>
+              Needs bank
+            <% end %>
+          <% end %>
+
+          <% if menu_any %>
+            <div class="relative" data-controller="dropdown modal">
+              <button type="button" data-action="click->dropdown#toggle" title="More actions"
+                      class="p-1.5 text-gray-400 hover:text-gray-600 rounded-md border border-gray-200 hover:border-gray-400 bg-white transition-colors cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                </svg>
+              </button>
+              <div data-dropdown-target="menu"
+                   class="hidden absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <% if can_copy_link %>
+                  <%# One pay link, no login needed to pay it. %>
+                  <div data-controller="clipboard">
+                    <input type="hidden" data-clipboard-target="textField"
+                           value="<%= pay_contract_url(token: payment.payment_token!) %>">
+                    <button type="button" data-action="click->clipboard#copy" class="<%= menu_item_classes %>">
+                      <%= icon("link", class: "w-4 h-4 text-gray-400") %> Copy pay link
+                    </button>
+                  </div>
+                <% end %>
+                <% if can_record %>
+                  <button type="button" data-action="click->payment-modal#open" class="<%= menu_item_classes %>"
+                          title="Record a payment that arrived another way — a check, a bank transfer.">
+                    <%= icon("check-circle", class: "w-4 h-4 text-gray-400") %> Record a payment
+                  </button>
+                <% end %>
+                <% if combine_candidates.any? %>
+                  <button type="button" data-action="click->modal#open" data-modal-id="<%= combine_modal_id %>" class="<%= menu_item_classes %>"
+                          title="Fold other payments they owe into this one — one amount, one pay link.">
+                    <%= icon("plus-circle", class: "w-4 h-4 text-gray-400") %> Combine payments
+                  </button>
+                <% end %>
+                <% if can_split %>
+                  <button type="button" data-action="click->modal#open" data-modal-id="<%= split_confirm_id %>" class="<%= menu_item_classes %>"
+                          title="Put the combined payments back into their own rows.">
+                    <%= icon("arrow-up-right", class: "w-4 h-4 text-gray-400") %> Split combined payments
+                  </button>
+                <% end %>
+                <% if can_deduct %>
+                  <%= button_to settlement_manage_contract_contract_payment_path(contract, payment, settlement_method: "payout_deduction"),
+                        method: :patch, form_class: "w-full", class: menu_item_classes,
+                        title: "Stop collecting this — net it out of their payout instead" do %>
+                    <%= icon("banknotes", class: "w-4 h-4 text-gray-400") %><span>Deduct from payout</span>
+                  <% end %>
+                <% end %>
+                <% if is_deduct %>
+                  <%= button_to settlement_manage_contract_contract_payment_path(contract, payment, settlement_method: "direct"),
+                        method: :patch, form_class: "w-full", class: menu_item_classes do %>
+                    <%= icon("banknotes", class: "w-4 h-4 text-gray-400") %><span>Have them pay it</span>
+                  <% end %>
+                <% end %>
+                <% if can_edit_amount %>
+                  <button type="button" data-action="click->payment-modal#open" class="<%= menu_item_classes %>">
+                    <%= icon("pencil", class: "w-4 h-4 text-gray-400") %> Edit amount
+                  </button>
+                <% end %>
+                <% if can_pay_offline %>
+                  <button type="button" data-action="click->modal#open" data-modal-id="<%= offline_pay_id %>" class="<%= menu_item_classes %>"
+                          title="Record money you sent them outside CocoScout — Zelle, a check, cash.">
+                    <%= icon("check-circle", class: "w-4 h-4 text-gray-400") %> Paid another way
+                  </button>
+                <% end %>
+              </div>
             </div>
           <% end %>
         </div>
@@ -326,6 +365,22 @@
     </div>
   </div>
 </div>
+
+<%# Fold other payments they owe into this one — one amount, one pay link %>
+<% if combine_candidates.any? %>
+  <%= render "manage/contracts/combine_payments_modal", id: combine_modal_id,
+        payment: payment, contract: contract, candidates: combine_candidates %>
+<% end %>
+
+<%# Put combined payments back into their own rows %>
+<% if can_split %>
+  <%= render "shared/confirm_modal", id: split_confirm_id,
+        title: "Split this payment?",
+        message: "#{payment.merged_components.size == 1 ? 'The payment folded into this one gets' : "The #{payment.merged_components.size} payments folded into this one get"} their own rows and due dates back, each with a fresh pay link.",
+        confirm_text: "Split them out",
+        url: split_manage_contract_contract_payment_path(contract, payment),
+        method: :post %>
+<% end %>
 
 <%# Money we sent them by hand, for a payment no payout run can settle %>
 <% if show_actions && can_pay_offline %>

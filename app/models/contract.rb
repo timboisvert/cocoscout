@@ -729,6 +729,17 @@ class Contract < ApplicationRecord
 
     settled_slots = existing.select { |p| p.status_paid? || p.in_payout_run? }
                             .map { |p| payment_slot(p) }.to_set
+    # Slots living inside a combined payment (merge_in!): the manager folded
+    # that money into another row on purpose, and the host keeps it on top of
+    # its own staged amount below — minting a fresh row for the same slot
+    # would double the money. To re-price one of them, split the combined
+    # payment first.
+    merged_slots = existing.select(&:status_pending?).flat_map do |p|
+      p.merged_components.filter_map do |c|
+        date = (Date.parse(c["billed_for"].to_s) rescue nil)
+        [ p.direction, date ] if date
+      end
+    end.to_set
     # Only pending rows that aren't committed to a run are ours to change.
     unclaimed = existing.select { |p| p.status_pending? && !p.in_payout_run? }
     kept = []
@@ -751,9 +762,10 @@ class Contract < ApplicationRecord
         # keeps facing the way the money went — the financials decide that,
         # not the staged row (resynced below).
         values = match.auto_shortfall? ? attrs[:values].slice(:notes) : attrs[:values]
-        # A re-priced payment keeps the services folded into it: the staged
-        # amount is the deal's own figure, so the folded charges ride on top.
-        if values.key?(:amount) && match.includes_services? && !values[:amount_tbd]
+        # A re-priced payment keeps everything folded into it — services and
+        # hand-combined payments alike: the staged amount is the deal's own
+        # figure, so the folded charges ride on top.
+        if values.key?(:amount) && match.components_total.positive? && !values[:amount_tbd]
           values = values.merge(amount: (values[:amount].to_f + match.components_total).round(2))
         end
         match.update!(values)
@@ -765,6 +777,8 @@ class Contract < ApplicationRecord
       next if attrs[:claimed]
       # The guard that stops an amendment inventing money for a closed date.
       next if settled_slots.include?(attrs[:slot])
+      # Money folded into a combined payment already rides on that row.
+      next if merged_slots.include?(attrs[:slot])
 
       kept << contract_payments.create!(attrs[:values])
     end

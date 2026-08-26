@@ -185,9 +185,11 @@
         </div>
       </div>
 
-      <%# Payments %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Payments" %>
+      <%# Payments. No overflow-hidden here: the rows' kebab menus are
+          absolutely positioned and would be clipped at the card edge — the
+          header rounds its own top corners instead. %>
+      <div class="border border-gray-200 rounded-lg">
+        <%= render "shared/card_header", title: "Payments", bg_class: "bg-gray-50 rounded-t-lg" %>
         <div class="p-4">
           <% if @payments.any? %>
             <div class="space-y-2">

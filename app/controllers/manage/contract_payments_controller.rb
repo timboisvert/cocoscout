@@ -3,7 +3,7 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run settlement]
+    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run settlement combine split]
 
     def create
       @payment = @contract.contract_payments.build(payment_params)
@@ -147,6 +147,26 @@ module Manage
         "#{@payment.description.presence || 'This payment'} will be deducted from their payout." :
         "#{@payment.description.presence || 'This payment'} is back to being paid directly."
       redirect_back fallback_location: manage_contract_path(@contract), notice: notice
+    end
+
+    # Fold other pending payments they owe into this one — one combined amount,
+    # one pay link, one row on their side — instead of several small invoices
+    # on different days. Reversible below.
+    def combine
+      others = @contract.contract_payments.where(id: Array(params[:payment_ids])).to_a
+      @payment.merge_in!(others)
+      redirect_to manage_contract_path(@contract),
+                  notice: "Combined #{helpers.pluralize(others.size + 1, 'payment')} into one #{helpers.number_to_currency(@payment.amount)} payment due #{@payment.due_date.strftime('%b %-d, %Y')}."
+    rescue ArgumentError => e
+      redirect_to manage_contract_path(@contract), alert: "Could not combine payments: #{e.message}."
+    end
+
+    # Undo a combine: every folded-in payment becomes its own row again.
+    def split
+      @payment.split_merged!
+      redirect_to manage_contract_path(@contract), notice: "Split the combined payments back into their own rows."
+    rescue ArgumentError => e
+      redirect_to manage_contract_path(@contract), alert: "Could not split this payment: #{e.message}."
     end
 
     private

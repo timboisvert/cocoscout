@@ -41,9 +41,17 @@
               <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">Awaiting payment</span>
             <% end %>
           </div>
-          <h1 class="text-lg font-bold text-gray-900 truncate"><%= @payment.description.presence || "Payment" %></h1>
-          <% if @payment.includes_services? %>
-            <div class="text-sm text-gray-500"><%= number_to_currency(@payment.base_amount) %> <%= @payment.folded_services_summary %></div>
+          <h1 class="text-lg font-bold text-gray-900 truncate"><%= @payment.display_name %></h1>
+          <% if (breakdown = @payment.breakdown_items).any? %>
+            <%# One payment covering several things — say exactly what's inside. %>
+            <ul class="mt-1 space-y-0.5">
+              <% breakdown.each do |label, amount| %>
+                <li class="text-sm text-gray-500 flex items-baseline gap-2">
+                  <span class="truncate"><%= label %></span>
+                  <span class="tabular-nums text-gray-600 flex-shrink-0"><%= number_to_currency(amount) %></span>
+                </li>
+              <% end %>
+            </ul>
           <% end %>
           <div class="text-sm text-gray-600 mt-1">
             From <%= link_to @contract.contractor_name.presence || "payer", (@contractor ? manage_contractor_path(@contractor) : manage_contract_path(@contract)), class: "text-pink-600 hover:text-pink-700 font-medium" %>
@@ -193,7 +201,7 @@
           <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
             Reminding <strong><%= @contract.contractor_name.presence || "the payer" %></strong> about
             <strong><%= amount_tbd ? "this payment" : number_to_currency(@payment.amount) %></strong>
-            for <%= @payment.description.presence || "a payment" %>, due <%= @payment.due_date.strftime("%b %-d, %Y") %>.
+            for <%= @payment.display_name %>, due <%= @payment.due_date.strftime("%b %-d, %Y") %>.
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Add a note (optional)</label>
