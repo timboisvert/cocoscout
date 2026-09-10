@@ -1,7 +1,7 @@
 <%#
   Production wizard — Schedule step. Collects the same fields as the show
   wizard (event type, duration, call time, location + space or online info,
-  secondary name) so shows created here aren't second-class. Single vs
+  show name) so shows created here aren't second-class. Single vs
   repeating only decides WHEN; the details block below applies to every show.
 %>
 <%
@@ -11,6 +11,12 @@
   location_spaces_map = @locations.each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } }
   current_spaces = location_spaces_map[d.call(:location_id).presence&.to_i] || []
   input_cls = "block w-full shadow-sm rounded-lg border border-gray-400 px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  # The production doesn't exist yet, so suggest the name from what's been
+  # typed so far. Only when nothing has been entered — a name cleared on
+  # purpose stays cleared.
+  suggested_show_name = Show.suggested_name(production_name: @wizard_state[:name],
+                                            event_type: d.call(:event_type) || "show")
+  show_name_value = d.call(:secondary_name).nil? ? suggested_show_name : d.call(:secondary_name)
 %>
 <%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: :schedule, step_name: "Schedule" } do %>
   <div class="text-center mb-6">
@@ -238,15 +244,15 @@
             </div>
           </div>
 
-          <!-- Secondary name -->
+          <!-- Show name -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Secondary Name <span class="text-gray-400 font-normal">(optional)</span></label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Name this event</label>
             <input type="text"
                    name="details[secondary_name]"
-                   value="<%= d.call(:secondary_name) %>"
+                   value="<%= show_name_value %>"
                    placeholder="e.g., Opening Night, Special Guest Performance"
                    class="<%= input_cls %>">
-            <p class="text-xs text-gray-500 mt-2">A subtitle to go along with the production name.</p>
+            <p class="text-xs text-gray-500 mt-2">Suggested from the production name and the event type — change it to whatever these nights are called.</p>
           </div>
         </div>
       </div>

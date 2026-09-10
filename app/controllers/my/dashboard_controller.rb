@@ -148,7 +148,7 @@ module My
               @calendar_events << {
                 date: show.date_and_time.to_date,
                 time: show.date_and_time,
-                title: show.secondary_name.presence || show.production.name,
+                title: show.name_subtitle.presence || show.production.name,
                 subtitle: show.date_and_time.strftime("%-I:%M%p").downcase,
                 path: my_show_path(show),
                 type: :show,

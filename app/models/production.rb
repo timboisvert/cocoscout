@@ -139,6 +139,7 @@ class Production < ApplicationRecord
 
   # Cache invalidation
   after_commit :invalidate_caches
+  after_commit :resync_auto_named_shows, on: :update, if: :saved_change_to_name?
 
   # Each production has exactly one talent pool
   # This is the canonical way to access it
@@ -547,6 +548,32 @@ class Production < ApplicationRecord
   end
 
   private
+
+  # Shows still carrying the name we suggested for them follow the production
+  # when it's renamed. Without this, renaming "Improv Jam" to "Jam Night" would
+  # leave every show holding "Improv Jam Show" as though somebody had typed it,
+  # and every row would print it as a subtitle. Shows whose name was actually
+  # chosen ("Opening Night") are left alone.
+  def resync_auto_named_shows
+    was, now = saved_change_to_name
+    return if was.blank? || now.blank?
+
+    touched = false
+    shows.distinct.pluck(:event_type).compact.each do |event_type|
+      old_suggestion = Show.suggested_name(production_name: was, event_type: event_type, third_party: type_third_party?)
+      new_suggestion = Show.suggested_name(production_name: now, event_type: event_type, third_party: type_third_party?)
+      next if old_suggestion == new_suggestion
+
+      # update_all, not each-and-save: a rename shouldn't fire per-show calendar
+      # and sign-up syncs. updated_at moves by hand so the show-card caches,
+      # which key off it, don't serve the old name.
+      changed = shows.where(event_type: event_type, secondary_name: old_suggestion)
+                     .update_all(secondary_name: new_suggestion, updated_at: Time.current)
+      touched ||= changed.positive?
+    end
+
+    invalidate_caches if touched
+  end
 
   def generate_public_key
     return if public_key.present?

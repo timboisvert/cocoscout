@@ -13,9 +13,23 @@ module Manage
     # it's in a run that has. Colors match the money pages' in-draft/in-flight.
     PAYMENT_STAGE_LABELS = {
       overdue: [ "overdue", "red" ],
-      in_draft: [ "in a draft payout run", "amber" ],
+      in_draft: [ "staged in a draft run", "amber" ],
       in_flight: [ "in flight", "blue" ]
     }.freeze
+
+    # Money we owe them is a payout; money they owe us is an incoming payment.
+    # The badge says which, so "overdue" never leaves you guessing which way the
+    # money was going. A group with both falls back to the neutral word.
+    def self.payment_stage_noun(payments)
+      plural = payments.size > 1
+      if payments.all?(&:direction_outgoing?)
+        plural ? "payouts" : "Payout"
+      elsif payments.all?(&:direction_incoming?)
+        plural ? "incoming payments" : "Incoming payment"
+      else
+        plural ? "payments" : "Payment"
+      end
+    end
 
     def index
       @contracts = Current.organization.contracts.includes(:contract_payments, :space_rentals)
@@ -86,7 +100,7 @@ module Manage
       # alone — no "+$60" or "−TBD" on a show that hasn't happened.
       payments = ContractPayment
         .joins(:contract)
-        .includes(:contract)
+        .includes(:contract, payout_contribution: :payout_batch)
         .where(contracts: { organization_id: Current.organization.id, status: "active" })
         .where(due_date: month_start..[ month_end, Date.current ].min)
         .to_a
@@ -142,7 +156,7 @@ module Manage
             sort_key: [ 0, payment.due_date.to_time ],
             record: payment,
             contract: payment.contract,
-            late: payment.overdue?,
+            late: payment.late?,
             incoming: payment.direction_incoming?
           }
         end
@@ -176,14 +190,19 @@ module Manage
 
       # Overdue: pending payments past their due date on active contracts,
       # whatever month they fell in — what's owed to us, and what we owe them.
+      # Filtered in Ruby through ContractPayment#late?, so money already riding a
+      # submitted payout run isn't counted as past due (it's on its way).
       overdue_payments = ContractPayment
         .joins(:contract)
+        .includes(:contract, payout_contribution: :payout_batch)
         .where(contracts: { organization_id: Current.organization.id, status: "active" })
         .where(status: "pending")
         .where("due_date < ?", Date.current)
-      @overdue_incoming = overdue_payments.where(direction: "incoming").where.not(amount: nil).sum(:amount)
-      @overdue_outgoing = overdue_payments.where(direction: "outgoing").where.not(amount: nil).sum(:amount)
-      @overdue_count = overdue_payments.count
+        .to_a
+        .select(&:late?)
+      @overdue_incoming = overdue_payments.select { |p| p.direction_incoming? && p.amount }.sum { |p| p.amount.to_d }
+      @overdue_outgoing = overdue_payments.select { |p| p.direction_outgoing? && p.amount }.sum { |p| p.amount.to_d }
+      @overdue_count = overdue_payments.size
 
       # What this year's contracts made vs cost us (gross model — ticket revenue
       # counts as made for our-sale deals, contractor shares as cost; flat deals
@@ -792,12 +811,9 @@ module Manage
       # The calendar reads every active contract's shows and payments; batch
       # those lookups once for the lot, and let the calendar walk the same
       # loaded records.
+      # preload_money_data also loads each payment's payout run, which
+      # #late? and #payout_stage walk.
       Contract.preload_money_data(actives + drafts)
-      # payout_stage walks each payment's run; load them for the lot at once.
-      ActiveRecord::Associations::Preloader.new(
-        records: actives.flat_map(&:contract_payments),
-        associations: { payout_contribution: :payout_batch }
-      ).call
       @active_contracts = actives
 
       waiting_drafts, other_drafts = drafts.partition { |c| c.signing_mode_esign? && (c.signing_out_for_signature? || c.signing_awaiting_send?) }
@@ -834,8 +850,9 @@ module Manage
       groups.each do |stage, group|
         phrase, color = PAYMENT_STAGE_LABELS.fetch(stage)
         group.each do |c, payments|
+          noun = self.class.payment_stage_noun(payments)
           @in_motion_badges[c.id] = {
-            text: payments.size == 1 ? "Payment #{phrase}" : "#{payments.size} payments #{phrase}",
+            text: payments.size == 1 ? "#{noun} #{phrase}" : "#{payments.size} #{noun} #{phrase}",
             color: color
           }
           # A TBD amount has no figure to show yet; if that's all there is, the
@@ -1063,7 +1080,9 @@ module Manage
           "space_id" => rule["space_id"],
           "starts_at" => parsed_starts_at.iso8601,
           "duration" => rule["duration"] || "2",
-          "notes" => rule["notes"]
+          "notes" => rule["notes"],
+          # Per-booking, so one amendment can add a rehearsal and a show.
+          "event_type" => rule["event_type"].presence
         }
 
         # Include event_starts_at if different from rental start
@@ -1116,6 +1135,7 @@ module Manage
         count = 0
         event_time = rule["event_time"] # Optional different time for actual event start
         event_end_time = rule["event_end_time"] # Optional different time for actual event end
+        event_type = rule["event_type"].presence
 
         while current_date <= end_date && count < max_events
           # Use Time.zone.parse to respect Rails time zone settings
@@ -1126,7 +1146,8 @@ module Manage
             "space_id" => space_id,
             "starts_at" => starts_at.iso8601,
             "duration" => duration,
-            "notes" => notes
+            "notes" => notes,
+            "event_type" => event_type
           }
 
           # Add event_starts_at if event_time is specified
@@ -1218,6 +1239,7 @@ module Manage
           location_name: location&.name,
           space_name: space&.name,
           duration: duration,
+          event_type: booking["event_type"].presence,
           event_starts_at: event_starts_at,
           event_ends_at: event_ends_at
         }

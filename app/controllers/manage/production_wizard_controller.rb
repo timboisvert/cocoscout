@@ -39,30 +39,31 @@ module Manage
       end
 
       save_wizard_state
-      redirect_to manage_productions_wizard_logo_path
+      redirect_to manage_productions_wizard_poster_path
     end
 
-    # Step 2: Logo - Add a visual identity
-    def logo
-      # Logo is optional, just show the form
+    # Step 2: Poster - the production's main image. Logos are legacy; a new
+    # production gets a Poster, which is what every surface renders.
+    def poster
+      # Poster is optional, just show the form
     end
 
-    def save_logo
+    def save_poster
       # Handle skip
       if params[:skip] == "true"
-        @wizard_state[:skip_logo] = true
-        @wizard_state.delete(:logo_data)
-        @wizard_state.delete(:logo_filename)
-        @wizard_state.delete(:logo_content_type)
+        @wizard_state[:skip_poster] = true
+        @wizard_state.delete(:poster_data)
+        @wizard_state.delete(:poster_filename)
+        @wizard_state.delete(:poster_content_type)
         save_wizard_state
         redirect_to manage_productions_wizard_casting_path and return
       end
 
-      # Store logo data directly in cache (shared across web servers)
-      if params[:logo].present?
-        @wizard_state[:logo_data] = Base64.strict_encode64(params[:logo].read)
-        @wizard_state[:logo_filename] = params[:logo].original_filename
-        @wizard_state[:logo_content_type] = params[:logo].content_type
+      # Store poster data directly in cache (shared across web servers)
+      if params[:poster].present?
+        @wizard_state[:poster_data] = Base64.strict_encode64(params[:poster].read)
+        @wizard_state[:poster_filename] = params[:poster].original_filename
+        @wizard_state[:poster_content_type] = params[:poster].content_type
       end
 
       save_wizard_state
@@ -262,18 +263,25 @@ module Manage
           casting_setup_completed: true
         )
 
-        # Attach logo if provided (stored as base64 in cache)
-        if @wizard_state[:logo_data].present?
-          @production.logo.attach(
-            io: StringIO.new(Base64.strict_decode64(@wizard_state[:logo_data])),
-            filename: @wizard_state[:logo_filename],
-            content_type: @wizard_state[:logo_content_type]
-          )
-        end
-
         unless @production.save
           flash.now[:alert] = @production.errors.full_messages.join(", ")
           render :review, status: :unprocessable_entity and return
+        end
+
+        # Attach the poster if one was picked (held as base64 in the cache).
+        # First poster on a production becomes its primary automatically.
+        if @wizard_state[:poster_data].present?
+          poster = @production.posters.new(name: @production.name)
+          poster.image.attach(
+            io: StringIO.new(Base64.strict_decode64(@wizard_state[:poster_data])),
+            filename: @wizard_state[:poster_filename],
+            content_type: @wizard_state[:poster_content_type]
+          )
+          # A poster that won't take (wrong file type) shouldn't cost them the
+          # production they just spent seven steps describing.
+          unless poster.save
+            Rails.logger.warn("Production wizard poster rejected for production #{@production.id}: #{poster.errors.full_messages.to_sentence}")
+          end
         end
 
         # Create roles (the lineup, in order, for an act-based production —
@@ -342,7 +350,7 @@ module Manage
       if pay_outcome == NEW_CALCULATION
         redirect_to manage_money_payout_calculation_wizard_start_path(
                       production_id: @production.id,
-                      return_to: edit_manage_production_path(@production, anchor: "tab-6")
+                      return_to: edit_manage_production_path(@production, tab: 6)
                     ),
                     notice: "#{@production.name} is ready — now set up how its performers are paid."
       else

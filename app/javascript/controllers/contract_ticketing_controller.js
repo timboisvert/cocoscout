@@ -92,7 +92,7 @@ export default class extends Controller {
     openDiscountModal() {
         this.discountCodeTarget.value = ""
         this.discountAmountTarget.value = ""
-        this.discountTypeTarget.value = "percent"
+        this.discountTypeTarget.value = "fixed"
         this.hideError(this.discountErrorTarget)
         this.setDiscountAppliesTo("all")
         this.renderDiscountTierChoices([])

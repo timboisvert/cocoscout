@@ -235,6 +235,14 @@ class ContractPayment < ApplicationRecord
     status_pending? && due_date < Date.current && !nothing_to_hand_back?
   end
 
+  # Late in a way anyone can do something about. Money sitting in a payout run
+  # that's already been submitted is on its way — the several days a bank takes
+  # to clear it aren't lateness — so calendars and rows don't flag it. A run
+  # still in draft IS chaseable: somebody has to send it.
+  def late?
+    overdue? && payout_stage != :in_flight
+  end
+
   # A settlement that resolved to exactly nothing: on a ticket-revenue deal, the
   # night covered our fee to the penny, so there is nothing to hand back and
   # nothing to collect. Not late, not "set an amount" — done.

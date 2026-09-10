@@ -177,6 +177,11 @@ class Show < ApplicationRecord
   # Clear assignments when toggling custom roles (unless migration is handling it)
   attr_accessor :skip_assignment_clear_on_role_toggle
   before_save :clear_assignments_on_custom_roles_toggle, if: :should_clear_assignments_on_toggle?
+  # A show still carrying its suggested name follows its own kind: switch a
+  # rehearsal to a show and "Improv Jam Rehearsal" becomes "Improv Jam Show".
+  # A name somebody actually typed is left alone.
+  before_save :follow_suggested_name_on_event_type_change,
+              if: -> { event_type_changed? && secondary_name.present? }
   # Act-based shows own their running order from birth: copy the production's
   # default lineup at creation, then diverge freely. Editing the default never
   # touches existing shows.
@@ -296,13 +301,37 @@ class Show < ApplicationRecord
     Array(self[:staffing_coverage_exempt_role_ids]).map(&:to_i)
   end
 
-  # Display name for the show (secondary_name if set, otherwise production name + event type)
-  # For third-party productions, we don't append the event type since they often have unique names
+  # What we'd call an event of this kind if nobody named it: the production's
+  # name plus what kind of night it is. A third-party production usually carries
+  # a name of its own, so it takes no suffix. This is what the create and edit
+  # forms pre-fill Show Name with — the name is a thing somebody chose and
+  # stored, not a string re-derived on every screen.
+  def self.suggested_name(production_name:, event_type:, third_party: false)
+    return "Show" if production_name.blank?
+    return production_name if third_party || event_type.blank?
+
+    "#{production_name} #{event_type.titleize}"
+  end
+
+  def suggested_name
+    self.class.suggested_name(production_name: production&.name, event_type: event_type,
+                              third_party: production&.type_third_party? || false)
+  end
+
+  # The show's name. Shows created (or edited) since events got named up front
+  # carry their own; older ones fall back to the suggestion.
   def display_name
-    return secondary_name if secondary_name.present?
-    return production.name if production.present? && production.type_third_party?
-    return "#{production.name} #{event_type.titleize}" if production.present? && event_type.present?
-    "Show"
+    secondary_name.presence || suggested_name
+  end
+
+  # The name as an ADDITION to the production name, for screens that have
+  # already said "Improv Jam" and are deciding whether to put anything
+  # underneath. Nil while the show is just carrying its suggested name, since
+  # "Improv Jam Show" under "Improv Jam" tells nobody anything.
+  def name_subtitle
+    return nil if secondary_name.blank?
+
+    secondary_name.strip == suggested_name ? nil : secondary_name
   end
 
   # Display name with date for select dropdowns
@@ -938,6 +967,13 @@ class Show < ApplicationRecord
     # When a show is deleted, destroy all its sign-up form instances
     # This cascades to slots and registrations via dependent: :destroy
     SignUpFormInstance.where(show_id: id).destroy_all
+  end
+
+  def follow_suggested_name_on_event_type_change
+    previous = self.class.suggested_name(production_name: production&.name,
+                                         event_type: event_type_was,
+                                         third_party: production&.type_third_party? || false)
+    self.secondary_name = suggested_name if secondary_name.strip == previous
   end
 
   def invalidate_production_caches

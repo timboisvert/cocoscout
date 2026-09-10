@@ -66,6 +66,9 @@
                   <%= event[:space_name] || event[:location_name] || "Location" %>
                   <% if event[:type] == :new %>
                     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">New</span>
+                    <% if event[:event_type].present? %>
+                      <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"><%= EventTypes.labels[event[:event_type]] || event[:event_type].titleize %></span>
+                    <% end %>
                   <% end %>
                 </div>
                 <div class="text-sm text-gray-500">

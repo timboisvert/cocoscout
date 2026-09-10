@@ -1,0 +1,269 @@
+<%#
+  The two <template> blocks the contract-bookings Stimulus controller clones
+  when you add an event: one single event, one recurring series. Shared so
+  Amend Contract offers exactly what Create does — same fields, same event
+  type, same defaults.
+
+  Locals:
+    locations: [Location] for the location <select>
+    max_hours: Integer cap on the duration field (default 24)
+%>
+<% max_hours = local_assigns.fetch(:max_hours, 24) %>
+<template data-contract-bookings-target="singleEventTemplate">
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 booking-item space-y-4" data-booking-type="single" data-booking-index="">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+          <%= icon("calendar", class: "w-4 h-4 text-pink-600") %>
+        </div>
+        <span class="font-medium text-gray-900">Single Event</span>
+      </div>
+      <button type="button" data-action="click->contract-bookings#removeBooking" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+        <%= icon("x", class: "w-5 h-5") %>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Location <span class="text-pink-500">*</span></label>
+        <select data-field="location_id" data-action="change->contract-bookings#itemLocationChanged"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="">Select a location...</option>
+          <% locations.each do |location| %>
+            <option value="<%= location.id %>"><%= location.name %></option>
+          <% end %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+        <select data-field="space_id"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="">Entire venue</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Date & Time <span class="text-pink-500">*</span></label>
+        <input type="datetime-local" data-field="starts_at"
+               class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
+        <%= render "shared/duration_field",
+            unit: :hours,
+            value: 2,
+            max_hours: max_hours,
+            data_field: "duration" %>
+      </div>
+    </div>
+
+    <%# Event settings %>
+    <div class="border-t border-gray-200 pt-4 space-y-5">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Type</label>
+        <select data-field="event_type"
+                class="w-full max-w-xs px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <%= options_for_select(EventTypes.for_select) %>
+        </select>
+      </div>
+
+      <%# Event time toggle %>
+      <div>
+        <label class="inline-flex items-center cursor-pointer">
+          <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
+                 class="sr-only peer">
+          <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          <span class="ms-3 text-sm text-gray-600">Event runs at different times than rental</span>
+        </label>
+        <div data-event-time-row class="hidden mt-3">
+          <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+              <input type="datetime-local" data-field="event_starts_at"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+              <input type="datetime-local" data-field="event_ends_at"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-200 pt-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+      <input type="text" data-field="notes" placeholder="e.g., Setup time included"
+             class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
+    </div>
+  </div>
+</template>
+
+<template data-contract-bookings-target="recurringEventTemplate">
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 booking-item space-y-4" data-booking-type="recurring" data-booking-index="">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-pink-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </div>
+        <span class="font-medium text-gray-900">Recurring Series</span>
+      </div>
+      <button type="button" data-action="click->contract-bookings#removeBooking" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+        <%= icon("x", class: "w-5 h-5") %>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Location <span class="text-pink-500">*</span></label>
+        <select data-field="location_id" data-action="change->contract-bookings#itemLocationChanged"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="">Select a location...</option>
+          <% locations.each do |location| %>
+            <option value="<%= location.id %>"><%= location.name %></option>
+          <% end %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Space <span class="text-gray-400 font-normal">(optional)</span></label>
+        <select data-field="space_id"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="">Entire venue</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Frequency</label>
+        <select data-field="frequency" data-action="change->contract-bookings#frequencyChanged"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="daily">Daily</option>
+          <option value="weekly" selected>Weekly</option>
+          <option value="biweekly">Every 2 weeks</option>
+          <option value="monthly_day">Monthly (same day, e.g., 2nd Friday)</option>
+          <option value="monthly_date">Monthly (same date, e.g., the 15th)</option>
+        </select>
+      </div>
+      <%# Day of week - shown for weekly/biweekly %>
+      <div data-frequency-field="day_of_week">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Day of Week</label>
+        <select data-field="day_of_week"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5" selected>Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+      </div>
+    </div>
+
+    <%# Monthly day options - shown only for monthly_day %>
+    <div data-frequency-field="monthly_day_options" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Which Week</label>
+        <select data-field="week_ordinal"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="1">First</option>
+          <option value="2">Second</option>
+          <option value="3">Third</option>
+          <option value="4">Fourth</option>
+          <option value="5">Last</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Day of Week</label>
+        <select data-field="monthly_day_of_week"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5" selected>Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Time</label>
+        <input type="time" data-field="time" value="19:00"
+               class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
+        <%= render "shared/duration_field",
+            unit: :hours,
+            value: 2,
+            max_hours: max_hours,
+            data_field: "duration" %>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Start Date <span class="text-pink-500">*</span></label>
+        <input type="date" data-field="start_date" value="<%= Date.current.to_s %>"
+               class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Until <span class="text-pink-500">*</span></label>
+        <input type="date" data-field="end_date" value="<%= (Date.current + 3.months).to_s %>"
+               class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      </div>
+    </div>
+
+    <%# Event settings %>
+    <div class="border-t border-gray-200 pt-4 space-y-5">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Type</label>
+        <select data-field="event_type"
+                class="w-full max-w-xs px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <%= options_for_select(EventTypes.for_select) %>
+        </select>
+      </div>
+
+      <%# Event time toggle %>
+      <div>
+        <label class="inline-flex items-center cursor-pointer">
+          <input type="checkbox" data-field="event_time_toggle" data-action="change->contract-bookings#toggleItemEventTime"
+                 class="sr-only peer">
+          <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+          <span class="ms-3 text-sm text-gray-600">Event runs at different times than rental</span>
+        </label>
+        <div data-event-time-row class="hidden mt-3">
+          <p class="text-xs text-gray-500 mb-3">The rental period includes setup/teardown time, but the event itself runs during these hours.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Event Start Time</label>
+              <input type="time" data-field="event_time"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Event End Time</label>
+              <input type="time" data-field="event_end_time"
+                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-200 pt-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+      <input type="text" data-field="notes" placeholder="e.g., Weekly rehearsal"
+             class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400">
+    </div>
+  </div>
+</template>

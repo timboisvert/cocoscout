@@ -232,8 +232,8 @@
                     end %>
                     <div class="text-xs p-2 rounded border <%= event_type_badge_classes %> transition-colors relative">
                       <div class="font-semibold mb-1"><%= show.date_and_time.strftime("%l:%M %p").strip %></div>
-                      <% if show.secondary_name.present? %>
-                        <div class="truncate text-[10px] mb-1"><%= show.secondary_name %></div>
+                      <% if show.name_subtitle.present? %>
+                        <div class="truncate text-[10px] mb-1"><%= show.name_subtitle %></div>
                       <% end %>
                       <% if has_my_assignment %>
                         <% @calendar_assignments_by_show[show.id].each do |assignment| %>
@@ -306,8 +306,8 @@
                                   <%= show.event_type.titleize %>
                                 </span>
                               </div>
-                              <% if show.secondary_name.present? %>
-                                <div class="text-sm text-gray-600"><%= show.secondary_name %></div>
+                              <% if show.name_subtitle.present? %>
+                                <div class="text-sm text-gray-600"><%= show.name_subtitle %></div>
                               <% end %>
                               <% if has_my_assignment %>
                                 <% @calendar_assignments_by_show[show.id].each do |assignment| %>

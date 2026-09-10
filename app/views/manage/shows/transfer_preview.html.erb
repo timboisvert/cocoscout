@@ -61,8 +61,8 @@
           <div class="flex-1 min-w-0">
             <div class="font-medium text-gray-900">
               <%= show.event_type.titleize %>
-              <% if show.secondary_name.present? %>
-                <span class="text-gray-500 font-normal">- <%= show.secondary_name %></span>
+              <% if show.name_subtitle.present? %>
+                <span class="text-gray-500 font-normal">- <%= show.name_subtitle %></span>
               <% end %>
               <% if show == @show %>
                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-700">Selected</span>

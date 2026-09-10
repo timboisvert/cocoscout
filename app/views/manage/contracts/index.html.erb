@@ -91,13 +91,14 @@
   </div>
 
   <%# Unified calendar: payments + shows + rentals, month by month %>
+  <%# The colours speak for themselves; only "Late" earns a line of explanation. %>
   <% calendar_legend = capture do %>
-    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-green-300"></span> Payment in / night made</span>
-    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-red-300"></span> Payment out / night lost</span>
-    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-blue-300"></span> Space rental</span>
     <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-red-500"></span> Late</span>
   <% end %>
+  <%# Anchored so paging between months lands you back on the calendar rather
+      than at the top of the page. %>
   <%= render "shared/month_calendar",
+    anchor: "contracts-calendar",
     current_month: @current_month,
     prev_month: @prev_month,
     next_month: @next_month,

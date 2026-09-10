@@ -25,7 +25,10 @@
               contribution = payment.payout_contribution
               in_run = contribution.present?
               payee = payment.contract&.contractor&.person
-              payable = payee&.can_receive_payouts?
+              # Same rule as performers: a linked Person is enough to stage the
+              # money. No bank yet just means the run holds their share until
+              # they connect one.
+              payable = payee.present?
               amount_set = !payment.amount_tbd? && payment.amount.to_f.positive?
             %>
             <div class="px-5 py-4 flex items-center justify-between gap-3">
@@ -56,7 +59,7 @@
                     path: add_to_payout_run_manage_contract_contract_payment_path(payment.contract, payment),
                     method: :post, form: { data: { turbo: false } } %>
                 <% else %>
-                  <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-full" title="They need to connect a bank before they can be paid.">Needs bank</span>
+                  <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-full" title="Link a CocoScout person to this contractor before a payout run can pay them.">Needs a person</span>
                 <% end %>
               </div>
             </div>

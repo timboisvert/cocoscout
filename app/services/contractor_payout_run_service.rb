@@ -10,7 +10,9 @@
 # trigger the $3/performer charge (that's gated to Person payees).
 #
 # Idempotent per contract payment (unique source). Only outgoing, pending,
-# priced payments to a contractor with a connected bank are added.
+# priced payments to a contractor backed by a Person are added — a bank isn't
+# required to stage them, exactly as with performers: the run parks an unbanked
+# payee on "Waiting on bank info" and pays them the moment the bank lands.
 class ContractorPayoutRunService
   Result = Struct.new(:batch, :added, :error, keyword_init: true)
 
@@ -28,9 +30,6 @@ class ContractorPayoutRunService
       # holds the Stripe account + ledger).
       payee = contractor.person
       return failure("Link a person to #{contractor.name} first, then they can connect a bank and be paid.") unless payee
-      unless payee.can_receive_payouts?
-        return failure("#{contractor.name} hasn't connected a bank yet — send them the setup link first.")
-      end
 
       if (existing = PayoutContribution.find_by(source: contract_payment))
         return Result.new(batch: existing.payout_batch, added: false, error: "already_added")

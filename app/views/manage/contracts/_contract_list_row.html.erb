@@ -12,7 +12,7 @@
 
   # Determine payment status
   pending_payments = contract.contract_payments.select(&:status_pending?)
-  late_payments = pending_payments.select(&:overdue?)
+  late_payments = pending_payments.select(&:late?)
   is_paid = pending_payments.empty? && contract.contract_payments.any?
   is_behind = late_payments.any?
   total_value = contract.contract_payments.sum(&:amount)

@@ -39,6 +39,9 @@
     - heading: String — override the header title (e.g. "August / September 2026")
     - prev_label / next_label: String — override the nav-arrow labels (e.g.
         "Aug / Sep" when an arrow points at a combined view)
+    - anchor: String — give the calendar this DOM id and hang it off the
+        prev/next/Today links, so paging months lands you back on the calendar
+        instead of at the top of a long page
 %>
 <%
   current_month = local_assigns[:current_month]
@@ -59,6 +62,11 @@
   max_desktop_items = local_assigns[:max_desktop_items]
   mobile_show_past  = local_assigns.fetch(:mobile_show_past, false)
 
+  # Paging months is a full page visit; without an anchor to land on you're
+  # thrown back to the top of the page every time.
+  anchor = local_assigns[:anchor]
+  with_anchor = ->(path) { anchor.present? ? "#{path}##{anchor}" : path }
+
   last_month = local_assigns[:last_month] || current_month
   heading = local_assigns[:heading] || current_month.strftime("%B %Y")
   prev_label = local_assigns[:prev_label] || prev_month.strftime("%b")
@@ -75,12 +83,12 @@
   end
 %>
 
-<div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+<div <%= tag.attributes(id: anchor) if anchor.present? %> class="border border-gray-200 rounded-lg overflow-hidden mb-8">
   <%# Header with month navigation %>
   <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
     <div>
       <% if can_go_prev %>
-        <%= link_to month_link.call(prev_month), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
+        <%= link_to with_anchor.call(month_link.call(prev_month)), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
           </svg>
@@ -92,13 +100,13 @@
     <div class="flex items-center gap-3">
       <h2 class="text-lg font-bold text-gray-900"><%= heading %></h2>
       <% unless is_current_month %>
-        <%= link_to "Today", today_link, class: "text-xs font-medium text-pink-600 hover:text-pink-700 border border-pink-200 rounded-full px-2 py-0.5" %>
+        <%= link_to "Today", with_anchor.call(today_link), class: "text-xs font-medium text-pink-600 hover:text-pink-700 border border-pink-200 rounded-full px-2 py-0.5" %>
       <% end %>
     </div>
 
     <div>
       <% if can_go_next %>
-        <%= link_to month_link.call(next_month), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
+        <%= link_to with_anchor.call(month_link.call(next_month)), class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
           <%= next_label %>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>

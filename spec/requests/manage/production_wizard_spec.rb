@@ -55,7 +55,7 @@ RSpec.describe "Production wizard", type: :request do
       set_up_org(pro: true)
 
       post manage_productions_wizard_save_name_path, params: { name: "Fourth Wall", genre: "improv" }
-      post manage_productions_wizard_save_logo_path, params: { skip: "true" }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
       post manage_productions_wizard_save_casting_path, params: { casting_source: "talent_pool" }
       post manage_productions_wizard_save_roles_path, params: { has_roles: "no" }
       post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }
@@ -70,7 +70,7 @@ RSpec.describe "Production wizard", type: :request do
       set_up_org(pro: true)
 
       post manage_productions_wizard_save_name_path, params: { name: "Mystery", genre: "polka" }
-      post manage_productions_wizard_save_logo_path, params: { skip: "true" }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
       post manage_productions_wizard_save_casting_path, params: { casting_source: "talent_pool" }
       post manage_productions_wizard_save_roles_path, params: { has_roles: "no" }
       post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }
@@ -83,7 +83,7 @@ RSpec.describe "Production wizard", type: :request do
   describe "casting style" do
     def walk_to_casting_style(name: "Velvet Hour")
       post manage_productions_wizard_save_name_path, params: { name: name }
-      post manage_productions_wizard_save_logo_path, params: { skip: "true" }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
       post manage_productions_wizard_save_casting_path, params: { casting_source: "talent_pool" }
     end
 
@@ -100,7 +100,7 @@ RSpec.describe "Production wizard", type: :request do
     it "skips style, roles and pay entirely when there is no casting" do
       set_up_org(pro: true)
       post manage_productions_wizard_save_name_path, params: { name: "Rental" }
-      post manage_productions_wizard_save_logo_path, params: { skip: "true" }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
       post manage_productions_wizard_save_casting_path, params: { casting_source: "none" }
 
       expect(response).to redirect_to(manage_productions_wizard_shows_path)
@@ -187,7 +187,7 @@ RSpec.describe "Production wizard", type: :request do
   describe "pay step" do
     def walk_to_pay(name: "Velvet Hour")
       post manage_productions_wizard_save_name_path, params: { name: name }
-      post manage_productions_wizard_save_logo_path, params: { skip: "true" }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
       post manage_productions_wizard_save_casting_path, params: { casting_source: "talent_pool" }
       post manage_productions_wizard_save_casting_style_path, params: { casting_mode: "role_based" }
       post manage_productions_wizard_save_roles_path, params: { has_roles: "no" }
@@ -255,7 +255,7 @@ RSpec.describe "Production wizard", type: :request do
       production = Production.find_by(name: "Velvet Hour")
       expect(production).to be_present
       expect(response).to redirect_to(manage_money_payout_calculation_wizard_start_path(
-        production_id: production.id, return_to: edit_manage_production_path(production, anchor: "tab-6")
+        production_id: production.id, return_to: edit_manage_production_path(production, tab: 6)
       ))
       expect(flash[:notice]).to include("now set up how its performers are paid")
       expect(PayoutScheme.where(organization: production.organization)).to be_empty
@@ -345,7 +345,7 @@ RSpec.describe "Production wizard", type: :request do
 
     def walk_to_schedule
       post manage_productions_wizard_save_name_path, params: { name: "Velvet Hour" }
-      post manage_productions_wizard_save_logo_path, params: { skip: "true" }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
       post manage_productions_wizard_save_casting_path, params: { casting_source: "talent_pool" }
       post manage_productions_wizard_save_casting_style_path, params: { casting_mode: "role_based" }
       post manage_productions_wizard_save_roles_path, params: { has_roles: "no" }

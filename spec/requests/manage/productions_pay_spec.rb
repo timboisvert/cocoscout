@@ -44,7 +44,7 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       get edit_manage_production_path(production)
 
       wizard = ERB::Util.html_escape(manage_money_payout_calculation_wizard_start_path(
-        production_id: production.id, return_to: edit_manage_production_path(production, anchor: "tab-6")
+        production_id: production.id, return_to: edit_manage_production_path(production, tab: 6)
       ))
       expect(response.body.scan(wizard).size).to be >= 2
     end
@@ -109,7 +109,7 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       it "refuses to save" do
         patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: flat_scheme.id }
 
-        expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
+        expect(response).to redirect_to(edit_manage_production_path(production, tab: 6))
         expect(PayoutScheme.current_default_for_production(production)).to be_nil
       end
     end
@@ -119,7 +119,7 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
     it "makes the calculation picked in the modal the production's default from today" do
       patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: flat_scheme.id }
 
-      expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
+      expect(response).to redirect_to(edit_manage_production_path(production, tab: 6))
       default = PayoutSchemeDefault.for_production(production).first
       expect(default.payout_scheme).to eq(flat_scheme)
       expect(default.effective_from).to eq(Date.current)
@@ -198,7 +198,7 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
 
       patch update_pay_manage_production_path(production), params: { performers_paid: "0" }
 
-      expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
+      expect(response).to redirect_to(edit_manage_production_path(production, tab: 6))
       expect(production.reload.pays_performers).to be(false)
       expect(PayoutSchemeDefault.for_production(production).map(&:payout_scheme)).to eq([ flat_scheme ])
       expect(PayoutScheme.current_default_for_production(production)).to be_nil
@@ -224,7 +224,7 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
 
       patch update_pay_manage_production_path(production), params: { performers_paid: "1", payout_scheme_id: "" }
 
-      expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-6"))
+      expect(response).to redirect_to(edit_manage_production_path(production, tab: 6))
       expect(flash[:notice]).to include("now choose its payout calculation")
       expect(production.reload.pays_performers).to be(true)
       expect(PayoutSchemeDefault.for_production(production)).to be_empty

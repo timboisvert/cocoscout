@@ -544,8 +544,8 @@ Rails.application.routes.draw do
     # Productions > Wizard
     get    "/productions/new",                to: "production_wizard#name",          as: "productions_wizard"
     post   "/productions/wizard/name",        to: "production_wizard#save_name",     as: "productions_wizard_save_name"
-    get    "/productions/wizard/logo",        to: "production_wizard#logo",          as: "productions_wizard_logo"
-    post   "/productions/wizard/logo",        to: "production_wizard#save_logo",     as: "productions_wizard_save_logo"
+    get    "/productions/wizard/poster",      to: "production_wizard#poster",        as: "productions_wizard_poster"
+    post   "/productions/wizard/poster",      to: "production_wizard#save_poster",   as: "productions_wizard_save_poster"
     get    "/productions/wizard/casting",     to: "production_wizard#casting",       as: "productions_wizard_casting"
     post   "/productions/wizard/casting",     to: "production_wizard#save_casting",  as: "productions_wizard_save_casting"
     get    "/productions/wizard/casting_style", to: "production_wizard#casting_style",      as: "productions_wizard_casting_style"

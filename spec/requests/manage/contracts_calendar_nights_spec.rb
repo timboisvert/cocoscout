@@ -56,7 +56,8 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
 
       get manage_contracts_path(month: month_param(past_at.to_date))
       expect(response.body.scan(">$100<").size).to eq(1)
-      expect(response.body).to include("Space rental")
+      # The rental card itself, named by time and renter
+      expect(response.body).to include("#{past_at.strftime('%-l:%M%p').downcase} · Dan")
       expect(response.body).not_to include("#{past_at.strftime('%-l:%M%p').downcase} · Random Memory</div>")
     end
 
@@ -126,7 +127,7 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
                                 description: "Deposit", amount: 500, due_date: future_at.to_date)
 
       get manage_contracts_path(month: month_param(future_at.to_date))
-      expect(response.body).to include("Space rental")
+      expect(response.body).to include("#{future_at.strftime('%-l:%M%p').downcase} · Dan")
       expect(response.body).not_to include("+$60")
       expect(response.body).not_to include("$500")
       expect(response.body).not_to include("TBD")

@@ -935,8 +935,10 @@ class Contract < ApplicationRecord
       space_rentals.where(id: removed_rental_ids).destroy_all
     end
 
-    event_type = (draft_data["production"] || {})["event_type"].presence || "show"
-    new_bookings.each { |booking| create_amended_booking!(booking, event_type, force_overlap) }
+    # The contract's own event type is the fallback; a booking added by this
+    # amendment can name its own (a rehearsal alongside the shows).
+    default_event_type = (draft_data["production"] || {})["event_type"].presence || "show"
+    new_bookings.each { |booking| create_amended_booking!(booking, default_event_type, force_overlap) }
 
     # After shows exist, so per-event payments can link to them.
     reconcile_amended_payments!(amend["payments"]) if amend.key?("payments")
@@ -977,7 +979,7 @@ class Contract < ApplicationRecord
     v.present? && v.requires_signature? && v.executed_at.nil? && v.staged_amendment.present?
   end
 
-  def create_amended_booking!(booking, event_type, force_overlap)
+  def create_amended_booking!(booking, default_event_type, force_overlap)
     starts_at = Time.zone.parse(booking["starts_at"])
     ends_at = starts_at + (booking["duration"] || 2).to_f.hours
 
@@ -1001,7 +1003,7 @@ class Contract < ApplicationRecord
       location: rental.location,
       location_space: rental.location_space,
       space_rental: rental,
-      event_type: event_type
+      event_type: booking["event_type"].presence || default_event_type
     )
   end
 
@@ -1221,7 +1223,7 @@ class Contract < ApplicationRecord
       net: pending ? nil : net.to_f.round(2),
       pending: pending,
       # A settlement that's still TBD isn't late — the numbers just aren't in.
-      late: payments.any? { |p| p.overdue? && !(p.amount_tbd? && p.amount.to_f.zero?) },
+      late: payments.any? { |p| p.late? && !(p.amount_tbd? && p.amount.to_f.zero?) },
       lines: lines,
       payments: payments,
       settled_together: payments.empty? && (revenue_share? || ticket_revenue_minus_fee?) && !%w[per_event next_day same_day].include?(settlement_cadence)
@@ -1293,7 +1295,8 @@ class Contract < ApplicationRecord
 
     ActiveRecord::Associations::Preloader.new(
       records: contracts,
-      associations: [ :contract_payments, :space_rentals, { production: :contracts } ]
+      associations: [ { contract_payments: { payout_contribution: :payout_batch } },
+                      :space_rentals, { production: :contracts } ]
     ).call
 
     rental_owner = {}

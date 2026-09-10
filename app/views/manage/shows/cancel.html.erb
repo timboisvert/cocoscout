@@ -35,8 +35,8 @@
         <div class="flex-1 min-w-0">
           <h2 class="text-lg font-semibold text-gray-900">
             <%= @show.event_type.titleize %>
-            <% if @show.secondary_name.present? %>
-              <span class="text-gray-500 font-normal">- <%= @show.secondary_name %></span>
+            <% if @show.name_subtitle.present? %>
+              <span class="text-gray-500 font-normal">- <%= @show.name_subtitle %></span>
             <% end %>
             <% if @show.canceled %>
               <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Canceled</span>

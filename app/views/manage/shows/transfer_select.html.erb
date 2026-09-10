@@ -25,8 +25,8 @@
         <div class="flex-1 min-w-0">
           <h2 class="text-lg font-semibold text-gray-900">
             <%= @show.event_type.titleize %>
-            <% if @show.secondary_name.present? %>
-              <span class="text-gray-500 font-normal">- <%= @show.secondary_name %></span>
+            <% if @show.name_subtitle.present? %>
+              <span class="text-gray-500 font-normal">- <%= @show.name_subtitle %></span>
             <% end %>
           </h2>
           <p class="text-sm text-gray-600 mt-1">

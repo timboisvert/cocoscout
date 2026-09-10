@@ -55,8 +55,8 @@
                     Waitlist · <%= form.sign_up_slots.count %> slot<%= form.sign_up_slots.count == 1 ? '' : 's' %>
                   <% elsif form.single_event? && form.show.present? %>
                     <%= form.show.date_and_time.strftime("%a %b %-d") %>
-                    <% if form.show.secondary_name.present? %>
-                      · <%= form.show.secondary_name %>
+                    <% if form.show.name_subtitle.present? %>
+                      · <%= form.show.name_subtitle %>
                     <% end %>
                   <% end %>
                 </div>

@@ -161,7 +161,11 @@ module Manage
 
     # Step 4: Details - Additional info
     def details
-      @wizard_state[:secondary_name] ||= ""
+      # Pre-suggest the name rather than leaving it blank — an event gets named
+      # when it's created, by the same rules every screen used to apply at
+      # render time. Only when the key is absent: a name cleared on purpose
+      # stays cleared.
+      @wizard_state[:secondary_name] = suggested_show_name if @wizard_state[:secondary_name].nil?
     end
 
     def save_details
@@ -197,6 +201,13 @@ module Manage
     end
 
     private
+
+    # What we'd call an event of the kind this wizard is building.
+    def suggested_show_name
+      Show.suggested_name(production_name: @production.name,
+                          event_type: @wizard_state[:event_type],
+                          third_party: @production.type_third_party?)
+    end
 
     # Free-plan monthly event cap, read from the wizard's collected state (the
     # concern's params-based helper doesn't apply here). The Show model

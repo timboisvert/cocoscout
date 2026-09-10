@@ -58,7 +58,7 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
     expect(response.body).not_to include("Payout Scheme")
   end
 
-  it "flags a contractor with no connected bank instead of offering to pay" do
+  it "offers the run for a contractor whose person hasn't connected a bank yet" do
     contractor = create(:contractor, organization: org, person: create(:person), name: "No Bank Co")
     contract = create(:contract, :active, organization: org, production: production,
                                            contractor: contractor, contractor_name: contractor.name)
@@ -68,7 +68,21 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
     get manage_money_show_payout_path(show)
 
     expect(response.body).to include("Contract payout")
-    expect(response.body).to include("Needs bank")
+    expect(response.body).to include("Add to payout run")
+    expect(response.body).not_to include("Needs a person")
+  end
+
+  it "flags a contractor with no person behind it instead of offering to pay" do
+    contractor = create(:contractor, organization: org, person: nil, name: "Nobody Co")
+    contract = create(:contract, :active, organization: org, production: production,
+                                           contractor: contractor, contractor_name: contractor.name)
+    create(:contract_payment, contract: contract, show: show, direction: "outgoing",
+                              status: "pending", amount: 500, due_date: Date.current)
+
+    get manage_money_show_payout_path(show)
+
+    expect(response.body).to include("Contract payout")
+    expect(response.body).to include("Needs a person")
     expect(response.body).not_to include("Add to payout run")
   end
 end

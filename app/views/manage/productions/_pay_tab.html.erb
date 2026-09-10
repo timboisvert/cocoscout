@@ -17,7 +17,7 @@
   calculations = money_available ? organization.payout_schemes.active.order(:name).to_a : []
   needs_per_act_nudge = money_available && production.act_based? && !PayoutScheme.per_act_scheme_exists_for?(organization)
   shows_using_current = current_calculation ? ShowPayout.where(payout_scheme: current_calculation, show: production.shows).count : 0
-  return_to = edit_manage_production_path(production, anchor: "tab-6")
+  return_to = edit_manage_production_path(production, tab: 6)
   create_path = manage_money_payout_calculation_wizard_start_path(production_id: production.id, return_to: return_to)
   picker_id = "pick-calculation"
 %>

@@ -140,10 +140,10 @@ module Manage
       new_key = params[:production][:public_key]&.strip&.downcase
 
       if @production.update_public_key(new_key)
-        redirect_to edit_manage_production_path(@production, anchor: "tab-5"),
+        redirect_to edit_manage_production_path(@production, tab: 5),
                     notice: "Public profile URL updated successfully"
       else
-        redirect_to edit_manage_production_path(@production, anchor: "tab-5"),
+        redirect_to edit_manage_production_path(@production, tab: 5),
                     alert: @production.errors[:public_key].first || "Failed to update URL"
       end
     end
@@ -169,7 +169,7 @@ module Manage
     # can gracefully move off of legacy logos.
     def remove_logo
       @production.logo.purge if @production.logo.attached?
-      redirect_to edit_manage_production_path(@production, anchor: "tab-1"), notice: "Logo removed."
+      redirect_to edit_manage_production_path(@production, tab: 1), notice: "Logo removed."
     end
 
     # Production Team Management Actions
@@ -216,7 +216,7 @@ module Manage
       role = params[:role]
 
       unless %w[manager viewer].include?(role)
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"), alert: "Role is required" and return
+        redirect_to edit_manage_production_path(@production, tab: 3), alert: "Role is required" and return
       end
 
       # If a user_id was provided (existing CocoScout user selected from search)
@@ -235,7 +235,7 @@ module Manage
         end
 
         if user.role_for_production(@production).present?
-          redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+          redirect_to edit_manage_production_path(@production, tab: 3),
                       alert: "#{display_name} already has access to this production" and return
         end
 
@@ -255,7 +255,7 @@ module Manage
           s.enabled = true
         end
 
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     notice: "#{display_name} added to production team"
       elsif params[:email].present?
         email = params[:email].strip.downcase
@@ -264,7 +264,7 @@ module Manage
         user = User.find_by(email_address: email)
         if user
           if user.role_for_production(@production).present?
-            redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+            redirect_to edit_manage_production_path(@production, tab: 3),
                         alert: "#{email} already has access to this production" and return
           end
 
@@ -282,13 +282,13 @@ module Manage
             s.enabled = true
           end
 
-          redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+          redirect_to edit_manage_production_path(@production, tab: 3),
                       notice: "#{user.person&.name || user.email_address} added to production team"
         else
           # User doesn't exist - create invitation
           existing_invite = TeamInvitation.find_by(email: email, organization: Current.organization, production: @production)
           if existing_invite
-            redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+            redirect_to edit_manage_production_path(@production, tab: 3),
                         alert: "An invitation has already been sent to #{email}" and return
           end
 
@@ -301,14 +301,14 @@ module Manage
 
           Manage::TeamMailer.production_invite(invitation).deliver_later
 
-          redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+          redirect_to edit_manage_production_path(@production, tab: 3),
                       notice: "Invitation sent to #{email}"
         end
       else
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"), alert: "Email is required" and return
+        redirect_to edit_manage_production_path(@production, tab: 3), alert: "Email is required" and return
       end
     rescue ActiveRecord::RecordInvalid => e
-      redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+      redirect_to edit_manage_production_path(@production, tab: 3),
                   alert: "Could not add team member: #{e.message}"
     end
 
@@ -317,16 +317,16 @@ module Manage
       role = params[:role]
 
       unless user && %w[manager viewer].include?(role)
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"), alert: "Invalid user or role" and return
+        redirect_to edit_manage_production_path(@production, tab: 3), alert: "Invalid user or role" and return
       end
 
       permission = ProductionPermission.find_by(user: user, production: @production)
 
       if permission&.update(role: role)
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     notice: "Permission updated for #{user.person&.name || user.email_address}"
       else
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     alert: "Could not update permission"
       end
     end
@@ -336,17 +336,17 @@ module Manage
       enabled = params[:enabled] == "1"
 
       unless user
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"), alert: "User not found" and return
+        redirect_to edit_manage_production_path(@production, tab: 3), alert: "User not found" and return
       end
 
       setting = ProductionNotificationSetting.find_or_initialize_by(user: user, production: @production)
       setting.enabled = enabled
 
       if setting.save
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     notice: "Notification preference updated for #{user.person&.name || user.email_address}"
       else
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     alert: "Could not update notification preference"
       end
     end
@@ -357,10 +357,10 @@ module Manage
 
       if permission&.destroy
         ProductionNotificationSetting.find_by(user: user, production: @production)&.destroy
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     notice: "#{user.person&.name || user.email_address} removed from production team"
       else
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     alert: "Could not remove team member"
       end
     end
@@ -369,10 +369,10 @@ module Manage
       invite = @production.team_invitations.find_by(id: params[:invite_id])
 
       if invite&.destroy
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     notice: "Invitation to #{invite.email} has been revoked"
       else
-        redirect_to edit_manage_production_path(@production, anchor: "tab-3"),
+        redirect_to edit_manage_production_path(@production, tab: 3),
                     alert: "Could not revoke invitation"
       end
     end
@@ -381,7 +381,7 @@ module Manage
     # the plan the same way update_pay does for performer pay.
     def agreement_status
       unless Current.organization.feature_available?(:agreements)
-        redirect_to edit_manage_production_path(@production, anchor: "tab-4"),
+        redirect_to edit_manage_production_path(@production, tab: 4),
                     alert: "Performer agreements are part of CocoScout Pro."
         return
       end
@@ -398,7 +398,7 @@ module Manage
     # tracking both go through AgreementRequestService.
     def send_agreement_reminders
       unless Current.organization.feature_available?(:agreements)
-        redirect_to edit_manage_production_path(@production, anchor: "tab-4"),
+        redirect_to edit_manage_production_path(@production, tab: 4),
                     alert: "Performer agreements are part of CocoScout Pro."
         return
       end
@@ -437,7 +437,7 @@ module Manage
     # in return_to — the production's payouts page, say) or the Pay tab.
     def pay_return_path
       candidate = params[:return_to].to_s
-      candidate.start_with?("/manage/") ? candidate : edit_manage_production_path(@production, anchor: "tab-#{pay_tab_index}")
+      candidate.start_with?("/manage/") ? candidate : edit_manage_production_path(@production, tab: pay_tab_index)
     end
 
     # Use callbacks to share common setup or constraints between actions.

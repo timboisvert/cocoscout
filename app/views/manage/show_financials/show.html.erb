@@ -35,8 +35,8 @@
   our_share_amount = is_revenue_share && has_data ? (gross_revenue * our_pct / 100.0).round(2) : nil
   contractor_share_amount = is_revenue_share && has_data ? (gross_revenue * their_pct / 100.0).round(2) : nil
 
-  # Page title: secondary_name if present, otherwise "[event type]: [full date] at [time]"
-  page_title = @show.secondary_name.presence || "#{@show.event_type.titleize}: #{@show.date_and_time.strftime('%B %-d, %Y')} at #{@show.date_and_time.strftime('%-I:%M %p')}"
+  # Page title: the show's own name when it has one beyond the suggestion, otherwise "[event type]: [full date] at [time]"
+  page_title = @show.name_subtitle.presence || "#{@show.event_type.titleize}: #{@show.date_and_time.strftime('%B %-d, %Y')} at #{@show.date_and_time.strftime('%-I:%M %p')}"
 %>
 
 <div class="w-full mb-10">

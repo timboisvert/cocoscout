@@ -5,7 +5,8 @@ require "rails_helper"
 # The Contracts hub shows what's in motion — waiting on a signature, drafts,
 # anything signed lately — above the calendar, and hands the whole book off to
 # All Contracts (sortable by upcoming date or by name), the way the Money hub
-# hands off to All Financials.
+# hands off to All Financials. Money badges name the direction: what they owe us
+# is an "incoming payment", what we owe them is a "payout".
 RSpec.describe "Manage::Contracts hub and All Contracts", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
@@ -61,7 +62,7 @@ RSpec.describe "Manage::Contracts hub and All Contracts", type: :request do
       expect(body).to include("Overdue")
       expect(body).to include("$1,000.00")
       expect(body).to include("2 payments past due")
-      expect(body).to include("Old Reliable").and include("2 payments overdue")
+      expect(body).to include("Old Reliable").and include("2 incoming payments overdue")
       expect(body.index("Old Reliable")).to be < body.index("Waiting Room")
       # The old banner is gone — the list is the warning now
       expect(body).not_to include("use the month arrows")
@@ -89,8 +90,8 @@ RSpec.describe "Manage::Contracts hub and All Contracts", type: :request do
 
         get manage_contracts_path
         body = response.body
-        expect(body).to include("Old Reliable").and include("Payment in flight")
-        expect(body).not_to include("Payment overdue")
+        expect(body).to include("Old Reliable").and include("Payout in flight")
+        expect(body).not_to include("Payout overdue")
         # The Value column carries the money in motion, with the contract's own
         # worth as context underneath.
         expect(body).to include("$400.00")
@@ -103,8 +104,8 @@ RSpec.describe "Manage::Contracts hub and All Contracts", type: :request do
         stage_in_run!(overdue, status: "draft")
 
         get manage_contracts_path
-        expect(response.body).to include("Payment in a draft payout run")
-        expect(response.body).not_to include("Payment overdue")
+        expect(response.body).to include("Payout staged in a draft run")
+        expect(response.body).not_to include("Payout overdue")
       end
 
       it "still calls it overdue when the run failed" do
@@ -113,7 +114,7 @@ RSpec.describe "Manage::Contracts hub and All Contracts", type: :request do
         stage_in_run!(overdue, status: "failed")
 
         get manage_contracts_path
-        expect(response.body).to include("Payment overdue")
+        expect(response.body).to include("Payout overdue")
       end
 
       it "chases the payment that isn't in a run, and counts only that one" do
@@ -125,8 +126,8 @@ RSpec.describe "Manage::Contracts hub and All Contracts", type: :request do
 
         get manage_contracts_path
         body = response.body
-        expect(body).to include("Payment overdue")
-        expect(body).not_to include("2 payments overdue")
+        expect(body).to include("Incoming payment overdue")
+        expect(body).not_to include("2 incoming payments overdue")
         # Only the money still to chase, not the pair and not the contract.
         expect(body).to include("$750.00")
       end

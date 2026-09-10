@@ -44,9 +44,17 @@ export default class extends Controller {
 
         this.show(initialTab);
 
-        // Update the URL hash to match the initial tab (but not for modals)
+        // Update the URL hash to match the initial tab (but not for modals).
+        // ?tab= is a one-shot instruction — a controller redirect saying "come
+        // back to this tab", which a #hash can't carry because fetch drops the
+        // fragment off a redirect's Location. Consume it here so the hash is the
+        // only thing tracking the tab from now on, and a later reload doesn't
+        // yank you back to the redirect's tab.
         if (!selectKey) {
-            history.replaceState(null, '', `#tab-${initialTab}`);
+            const url = new URL(window.location.href);
+            url.searchParams.delete('tab');
+            url.hash = `tab-${initialTab}`;
+            history.replaceState(null, '', url.toString());
         }
     }
 

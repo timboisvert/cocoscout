@@ -64,9 +64,9 @@
                   <div class="text-xs sm:text-sm font-semibold text-gray-900 mt-0.5">
                     <%= show.time_range_display %>
                   </div>
-                  <% if show.secondary_name.present? %>
-                    <div class="hidden sm:block text-xs text-gray-500 truncate mt-0.5 max-w-[130px] mx-auto" title="<%= show.secondary_name %>">
-                      <%= show.secondary_name %>
+                  <% if show.name_subtitle.present? %>
+                    <div class="hidden sm:block text-xs text-gray-500 truncate mt-0.5 max-w-[130px] mx-auto" title="<%= show.name_subtitle %>">
+                      <%= show.name_subtitle %>
                     </div>
                   <% end %>
                 </button>

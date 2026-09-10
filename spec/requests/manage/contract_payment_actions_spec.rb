@@ -3,10 +3,11 @@
 require "rails_helper"
 
 # Phase 4 of the contracts redesign: money we owe leaves through the contractor
-# payout run (Stripe, to their bank) whenever it can. The one exception is a
-# contractor a run can't reach — no connected bank — who has to be paid by hand;
-# there the org's own offline methods (Money settings) are offered, and only
-# there.
+# payout run (Stripe, to their bank) whenever it can. A contractor joins the run
+# as soon as there's a Person behind them, bank or no bank — exactly like a
+# performer — and the run holds an unbanked share until they connect one. Paying
+# by hand (the org's own offline methods, from Money settings) stays on offer
+# only while there's no bank for the run to reach.
 RSpec.describe "Manage contract payment actions", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
@@ -42,14 +43,25 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(response.body).not_to match(/venmo|zelle/i)
     end
 
-    it "flags a contractor with no connected bank instead of offering the run" do
+    it "offers the run for a contractor whose person hasn't connected a bank yet" do
       contract = contract_for(create(:person))
       create(:contract_payment, contract: contract, direction: "outgoing",
                                 status: "pending", amount: 500, amount_tbd: false, due_date: Date.current)
 
       get manage_contract_path(contract)
 
-      expect(response.body).to include("Needs bank")
+      expect(response.body).to include("Add to payout run")
+      expect(response.body).not_to include("Needs a person")
+    end
+
+    it "flags a contractor with no person behind it instead of offering the run" do
+      contract = contract_for(nil)
+      create(:contract_payment, contract: contract, direction: "outgoing",
+                                status: "pending", amount: 500, amount_tbd: false, due_date: Date.current)
+
+      get manage_contract_path(contract)
+
+      expect(response.body).to include("Needs a person")
       expect(response.body).not_to include("Add to payout run")
     end
 
@@ -330,7 +342,6 @@ RSpec.describe "Manage contract payment actions", type: :request do
       payment
       get manage_contract_path(contract)
 
-      expect(response.body).to include("Needs bank")
       expect(response.body).to include("Paid another way")
       expect(response.body).to include("Zelle")
     end
@@ -351,7 +362,6 @@ RSpec.describe "Manage contract payment actions", type: :request do
       payment
       get manage_contract_path(contract)
 
-      expect(response.body).to include("Needs bank")
       expect(response.body).not_to include("Paid another way")
     end
 

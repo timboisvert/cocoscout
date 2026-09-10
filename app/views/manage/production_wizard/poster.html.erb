@@ -1,23 +1,23 @@
-<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: :logo, step_name: "Logo" } do %>
+<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: :poster, step_name: "Poster" } do %>
   <div class="text-center mb-6">
-    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4" id="logo-placeholder">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4" id="poster-placeholder">
       <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
     </div>
-    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Add a logo</h2>
-    <p class="text-gray-600 mt-2">Upload a logo to give your production a visual identity. You can always add or change this later.</p>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Add a poster</h2>
+    <p class="text-gray-600 mt-2">Upload a poster — the image that fronts this production everywhere it shows up. You can always add or change this later.</p>
   </div>
 
-  <%= form_with url: manage_productions_wizard_save_logo_path, method: :post, multipart: true, local: true, id: "logo-form" do |form| %>
+  <%= form_with url: manage_productions_wizard_save_poster_path, method: :post, multipart: true, local: true, id: "poster-form" do |form| %>
     <div class="space-y-6">
-      <!-- Logo Preview Area -->
+      <!-- Poster Preview Area -->
       <div class="flex flex-col items-center">
         <!-- Preview Container - shows selected image -->
         <div id="preview-container" class="hidden mb-4">
           <div class="relative inline-block">
-            <img id="logo-preview" src="" alt="Logo preview" class="max-h-40 max-w-xs rounded-lg border-2 border-pink-200 shadow-sm">
-            <button type="button" id="remove-logo" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md">
+            <img id="poster-preview" src="" alt="Poster preview" class="max-h-40 max-w-xs rounded-lg border-2 border-pink-200 shadow-sm">
+            <button type="button" id="remove-poster" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -26,17 +26,17 @@
           <p id="file-name" class="text-sm text-gray-600 mt-2 text-center"></p>
         </div>
 
-        <% if @wizard_state[:logo_data].present? %>
-          <div class="mb-4" id="existing-logo-info">
+        <% if @wizard_state[:poster_data].present? %>
+          <div class="mb-4" id="existing-poster-info">
             <p class="text-sm font-medium text-gray-700 mb-2">Current selection:</p>
             <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 flex items-center gap-3">
-              <img src="data:<%= @wizard_state[:logo_content_type] %>;base64,<%= @wizard_state[:logo_data] %>" alt="Logo preview" class="h-12 max-w-[120px] rounded object-contain">
-              <p class="text-sm text-gray-600"><%= @wizard_state[:logo_filename] %></p>
+              <img src="data:<%= @wizard_state[:poster_content_type] %>;base64,<%= @wizard_state[:poster_data] %>" alt="Poster preview" class="h-12 max-w-[120px] rounded object-contain">
+              <p class="text-sm text-gray-600"><%= @wizard_state[:poster_filename] %></p>
             </div>
           </div>
         <% end %>
 
-        <!-- Logo Upload - Dropzone -->
+        <!-- Poster Upload - Dropzone -->
         <div class="w-full max-w-sm" id="dropzone-container">
           <label class="relative block cursor-pointer">
             <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-pink-400 transition-colors">
@@ -47,9 +47,9 @@
                 <span class="font-medium text-pink-600 hover:text-pink-500">Upload a file</span>
                 <span class="pl-1">or drag and drop</span>
               </div>
-              <p class="mt-1 text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+              <p class="mt-1 text-xs text-gray-500">PNG or JPG up to 10MB — portrait (3:4) looks best</p>
             </div>
-            <input type="file" name="logo" accept="image/png,image/jpeg,image/gif" id="logo-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+            <input type="file" name="poster" accept="image/png,image/jpeg" id="poster-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
           </label>
         </div>
       </div>
@@ -75,27 +75,27 @@
 <script>
 (function() {
   // Get all elements
-  const input = document.getElementById('logo-input');
-  const preview = document.getElementById('logo-preview');
+  const input = document.getElementById('poster-input');
+  const preview = document.getElementById('poster-preview');
   const previewContainer = document.getElementById('preview-container');
   const fileNameDisplay = document.getElementById('file-name');
   const dropzone = document.getElementById('dropzone');
   const dropzoneContainer = document.getElementById('dropzone-container');
-  const removeButton = document.getElementById('remove-logo');
+  const removeButton = document.getElementById('remove-poster');
   const skipButton = document.getElementById('skip-button');
   const skipField = document.getElementById('skip-field');
-  const form = document.getElementById('logo-form');
-  const placeholder = document.getElementById('logo-placeholder');
-  const existingLogoInfo = document.getElementById('existing-logo-info');
+  const form = document.getElementById('poster-form');
+  const placeholder = document.getElementById('poster-placeholder');
+  const existingPosterInfo = document.getElementById('existing-poster-info');
 
   // Handle file selection
   function handleFileSelect(file) {
     if (!file) return;
 
     // Validate file type
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
     if (!validTypes.includes(file.type)) {
-      alert('Please select a PNG, JPG, or GIF image.');
+      alert('Please select a PNG or JPG image.');
       return;
     }
 
@@ -113,7 +113,7 @@
       previewContainer.classList.remove('hidden');
       dropzoneContainer.classList.add('hidden');
       if (placeholder) placeholder.classList.add('hidden');
-      if (existingLogoInfo) existingLogoInfo.classList.add('hidden');
+      if (existingPosterInfo) existingPosterInfo.classList.add('hidden');
     };
     reader.onerror = function() {
       alert('Error reading file. Please try again.');

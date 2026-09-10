@@ -87,10 +87,10 @@ RSpec.describe "Manage paid-feature gate", type: :request do
       template = organization.agreement_templates.create!(name: "Code of conduct", content: "<p>Be kind</p>")
 
       get agreement_status_manage_production_path(production)
-      expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-4"))
+      expect(response).to redirect_to(edit_manage_production_path(production, tab: 4))
 
       post send_agreement_reminders_manage_production_path(production)
-      expect(response).to redirect_to(edit_manage_production_path(production, anchor: "tab-4"))
+      expect(response).to redirect_to(edit_manage_production_path(production, tab: 4))
 
       patch manage_production_path(production), params: {
         production: { name: production.name, agreement_template_id: template.id, agreement_required: "1", agreement_auto_send: "1" }

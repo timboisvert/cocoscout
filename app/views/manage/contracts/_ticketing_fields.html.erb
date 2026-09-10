@@ -99,8 +99,9 @@
                      class="block flex-1 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
               <select data-contract-ticketing-target="discountType"
                       class="w-28 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-                <option value="percent">% off</option>
+                <%# Dollars off is how these codes are almost always written. %>
                 <option value="fixed">$ off</option>
+                <option value="percent">% off</option>
               </select>
             </div>
           </div>

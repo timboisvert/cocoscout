@@ -42,9 +42,14 @@ RSpec.describe ContractorPayoutRunService do
       expect(described_class.add_contract_payment!(incoming).added).to be(false)
     end
 
-    it "rejects a contractor whose person hasn't connected a bank" do
+    it "stages a contractor whose person hasn't connected a bank, like a performer" do
       payee.update!(payouts_enabled: false)
-      expect(described_class.add_contract_payment!(payment).error).to match(/hasn't connected a bank/)
+      result = described_class.add_contract_payment!(payment)
+
+      expect(result.added).to be(true)
+      item = result.batch.items.find_by(payee: payee)
+      expect(item).to be_present
+      expect(PayoutBatch.item_state(item)).to eq(:waiting)
     end
 
     it "rejects a contractor with no linked person yet" do
