@@ -65,8 +65,17 @@ class Shift < ApplicationRecord
   scope :ordered, -> { order(:starts_at, :id) }
 
   # Slot-fill status helpers used in the scheduling UI.
+
+  # The assignments actually staffing this shift. Someone who said "I can't make
+  # it" keeps their row — the manager has to see who dropped and why — but their
+  # slot is open again, so every count below ignores them. Rejected in Ruby
+  # rather than scoped in SQL so a preloaded week costs no extra queries.
+  def active_assignments
+    shift_assignments.reject(&:declined?)
+  end
+
   def assigned_count
-    shift_assignments.size
+    active_assignments.size
   end
 
   def remaining_slots

@@ -150,8 +150,11 @@ module Manage
       all_week_shows = @shows_by_day.values.flatten
       @show_cast = build_show_cast(all_week_shows)
       @cast_by_day_payload = build_cast_by_day_payload(@shows_by_day, @show_cast)
+      # Someone who declined a shift isn't busy that evening — they're free, and
+      # the assign modal shouldn't warn about a collision with a slot they gave
+      # back.
       @person_busy_payload = shifts.each_with_object({}) do |s, h|
-        s.shift_assignments.each do |a|
+        s.active_assignments.each do |a|
           (h[a.person_id.to_s] ||= []) << s.id.to_s
         end
       end

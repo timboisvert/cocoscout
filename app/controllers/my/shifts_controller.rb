@@ -151,8 +151,12 @@ module My
         .includes(:person, shift: [ :house_role, :additional_roles, :organization, :source ])
         .order("shifts.starts_at DESC")
         .to_a
+      # A shift you told them you couldn't make is not a shift you worked, so it
+      # never asks you to confirm hours for it — which is how a decline used to
+      # turn into payable time.
       past.select! do |a|
-        finalized_weeks.include?([ a.shift.organization_id, a.shift.starts_at.to_date.beginning_of_week ])
+        a.active? &&
+          finalized_weeks.include?([ a.shift.organization_id, a.shift.starts_at.to_date.beginning_of_week ])
       end
       confirmed_ids = StaffTimeEntry.where(shift_assignment_id: past.map(&:id)).pluck(:shift_assignment_id).to_set
       @unconfirmed_shifts = past.reject { |a| confirmed_ids.include?(a.id) }

@@ -13,6 +13,10 @@ class ShiftAssignment < ApplicationRecord
 
   # "Can't make it" declines (staff-initiated), for a manager heads-up.
   scope :declined, -> { where.not(declined_at: nil) }
+  # Still standing. A declined assignment stays on the record — the manager has
+  # to see who dropped and why — but it staffs nothing, so anything counting
+  # coverage counts only these.
+  scope :active, -> { where(declined_at: nil) }
 
   def decline!(reason: nil)
     update!(declined_at: Time.current, accepted_at: nil, decline_reason: reason.to_s.strip.presence)
@@ -28,6 +32,10 @@ class ShiftAssignment < ApplicationRecord
 
   def declined?
     declined_at.present?
+  end
+
+  def active?
+    declined_at.nil?
   end
 
   def response_status
