@@ -162,12 +162,31 @@ class ContractDateChanges
 
     # Only pending, uncommitted payments for this date come off. Anything paid
     # or already in a run is left exactly as it is.
+    #
+    # A payment is this date's if it's linked to one of the date's shows, or
+    # falls due on it. The by-date half deliberately does NOT require show_id
+    # to be nil. A payment can carry a STALE link — to an older run of the same
+    # production (see Contract#linkable_shows) — and gating on nil let exactly
+    # those survive the date they were written for, matching neither half:
+    # not among this rental's shows, and not null. It went on showing as due
+    # after the date was gone. What the by-date half does skip is a payment
+    # linked to a show on one of the contract's other live dates, which is that
+    # date's money and not this one's.
+    #
+    # This is the same question #settled_for? asks, and the two must answer it
+    # the same way: a payment that check would count as this date's has to be a
+    # payment this one is willing to remove.
     def drop_pending_payments!(contract, rental, shows)
+      other_dates_show_ids = Show.where(
+        space_rental_id: contract.space_rentals.where.not(id: rental.id).select(:id)
+      ).pluck(:id).to_set
+
       scope = contract.contract_payments.status_pending.where(show_id: shows.map(&:id))
       by_date = contract.contract_payments.status_pending
-                        .where(show_id: nil, due_date: rental.starts_at.to_date)
+                        .where(due_date: rental.starts_at.to_date)
+                        .reject { |p| other_dates_show_ids.include?(p.show_id) }
 
-      (scope.to_a + by_date.to_a).uniq.reject(&:in_payout_run?).each(&:destroy!).size
+      (scope.to_a + by_date).uniq.reject(&:in_payout_run?).each(&:destroy!).size
     end
   end
 end

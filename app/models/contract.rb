@@ -786,7 +786,7 @@ class Contract < ApplicationRecord
     # Pending, uncommitted rows the amended deal no longer produces.
     unclaimed.each(&:destroy!)
 
-    link_payments_to_shows(kept, contract_shows.order(:date_and_time).to_a)
+    link_payments_to_shows(kept, linkable_shows.order(:date_and_time).to_a)
     resettle_from_financials!
   end
 
@@ -1277,6 +1277,28 @@ class Contract < ApplicationRecord
     end
   end
 
+  # The shows a payment may be LINKED to.
+  #
+  # contract_shows deliberately widens to every show in the production when the
+  # production has a single contract, so that shows created without an explicit
+  # rental still count. On a production that comes back year after year that
+  # also sweeps in earlier runs, and the positional fallbacks in
+  # #link_payments_to_shows, #shows_for_payment and #find_payment_for_show will
+  # pair this run's payments with those older nights — the payment then
+  # reports, settles from, and survives the deletion of the wrong date.
+  #
+  # Once this contract has booked a room, its nights ARE its rentals' shows, so
+  # that is the whole answer and the production-wide widening is not needed.
+  # Only a contract with no rentals of its own falls back to it. Deliberately
+  # not filtered by contract_start_date/contract_end_date: those track the
+  # rental span, so a contract whose shows aren't rental-backed can hold shows
+  # legitimately outside them.
+  def linkable_shows
+    return contract_shows unless space_rentals.exists?
+
+    Show.where(space_rental_id: space_rentals.select(:id))
+  end
+
   # The not-canceled shows (with financials) that money summaries read from.
   # Batch callers set this via Contract.preload_money_data so a page of
   # contracts doesn't re-query shows per row.
@@ -1508,7 +1530,7 @@ class Contract < ApplicationRecord
       # of settlement_payments, linking a show to its neighbor's payment.
       revenue_payments.detect { |p| p.due_date == show.date_and_time.to_date } ||
         begin
-          all_shows = contract_shows.order(:date_and_time).to_a
+          all_shows = linkable_shows.order(:date_and_time).to_a
           show_index = all_shows.index { |s| s.id == show.id }
           show_index ? revenue_payments.to_a[show_index] : nil
         end
@@ -1554,6 +1576,9 @@ class Contract < ApplicationRecord
     end
 
     settlement = settlement_cadence
+    # The money set, deliberately the WIDE one: what a single settlement covers,
+    # and what a period's settlement filters down from. Narrowing this would
+    # quietly change what a settlement is worked out from.
     all_shows = contract_shows.includes(:show_financials).order(:date_and_time).to_a
 
     # One settlement at the end covers the whole run.
@@ -1565,9 +1590,15 @@ class Contract < ApplicationRecord
       # positional pairing stays only as a fallback (see find_payment_for_show).
       show = all_shows.find { |s| s.date_and_time.to_date == payment.due_date }
       if show.nil?
+        # Pairing by position is a guess, and this one gets written back as a
+        # show_id below, so it may only guess among nights this contract
+        # actually booked. On a returning production the wide set above also
+        # holds earlier runs, and guessing into those is what linked a payment
+        # to a show from the year before (see #linkable_shows).
+        candidates = linkable_shows.order(:date_and_time).to_a
         revenue_payments = settlement_payments.to_a
         payment_index = revenue_payments.index { |p| p.id == payment.id }
-        show = payment_index ? all_shows[payment_index] : nil
+        show = payment_index ? candidates[payment_index] : nil
       end
       if show
         # Link for future lookups
@@ -2403,7 +2434,12 @@ class Contract < ApplicationRecord
                   (structure == "revenue_share" && per_event_settlements.include?(settlement))
     return unless should_link
 
-    sorted_shows = shows.sort_by(&:date_and_time)
+    # A cancelled night is never the answer for a NEW link: its money is
+    # already attributed (or there is none), and pairing a live payment to it
+    # points that payment at a show nobody is going to play. Links that already
+    # exist are left alone — cancelling a settled date has to keep its link.
+    sorted_shows = shows.reject(&:canceled).sort_by(&:date_and_time)
+    return if sorted_shows.empty?
     # Per-event payments are named for their event date now (e.g. "Jul 1 event"),
     # so match the word case-insensitively; revenue-share ones are amount_tbd.
     sorted_payments = payments.select { |p| p.amount_tbd? || p.description&.downcase&.include?("event") || p.description&.downcase&.include?("revenue share") }
