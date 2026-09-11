@@ -134,6 +134,20 @@
                   <span class="text-gray-600"><%= @show_financials.flat_fee? ? "Flat Fee" : "Ticket Revenue" %></span>
                   <span class="font-medium text-gray-900"><%= number_to_currency(@show_financials.primary_revenue) %></span>
                 </div>
+                <%# Where the ticket money came from, when it was entered by source. %>
+                <% if @show_financials.ticket_sales? %>
+                  <% @show_financials.ticket_sales_lines.each do |line| %>
+                    <div class="flex justify-between text-sm pl-4">
+                      <span class="text-gray-500">
+                        <%= line.source_name %>
+                        <% if line.tickets_sold.to_i.positive? %>
+                          <span class="text-gray-400">· <%= pluralize(line.tickets_sold, "ticket") %></span>
+                        <% end %>
+                      </span>
+                      <span class="text-gray-600"><%= number_to_currency(line.amount) %></span>
+                    </div>
+                  <% end %>
+                <% end %>
                 <% if @show_financials.calculated_other_revenue > 0 %>
                   <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Other Revenue</span>

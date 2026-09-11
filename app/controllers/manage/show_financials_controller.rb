@@ -69,6 +69,10 @@ module Manage
     def set_show_financials
       @show_financials = @show.show_financials&.tap { |sf| sf.expense_items.load } || @show.build_show_financials
       @show_financials.save! if @show_financials.new_record?
+      @show_financials.ticket_sales_lines.load
+      # The sources the worksheet's per-line picker offers. Archived ones are
+      # left out of the picker but keep labelling the lines already using them.
+      @ticket_sources = Current.organization.ticket_sources.active.ordered.to_a
     end
 
     def require_manage_permission
@@ -103,7 +107,8 @@ module Manage
         :data_confirmed,
         other_revenue_details: [ :description, :amount ],
         expense_details: [ :category, :description, :amount ],
-        expense_items_attributes: [ :id, :category, :description, :amount, :position, :_destroy ]
+        expense_items_attributes: [ :id, :category, :description, :amount, :position, :_destroy ],
+        ticket_sales_lines_attributes: [ :id, :ticket_source_id, :tickets_sold, :amount, :position, :_destroy ]
       )
 
       # Convert hash-style params to arrays for details fields

@@ -1,0 +1,94 @@
+<%
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+%>
+
+<div class="bg-white border border-gray-200 rounded-xl p-6">
+  <h2 class="text-lg font-semibold text-gray-900 mb-1">Where you sell tickets</h2>
+  <p class="text-sm text-gray-600">
+    Name each place your tickets are sold — a ticketing site, a listing partner, your own box office,
+    cash at the door. When you enter a show's ticket sales you'll record how many each one sold and
+    what it brought in, instead of one lump figure.
+  </p>
+  <p class="text-sm text-gray-500 mt-2">
+    These are about money that already came in. They're not the ticket tiers you set on a contract —
+    those are the prices you plan to charge.
+  </p>
+</div>
+
+<%# Current sources %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-900">Your ticket sources</h3>
+  </div>
+  <% if @ticket_sources.any? %>
+    <div class="divide-y divide-gray-100">
+      <% @ticket_sources.each do |source| %>
+        <div class="px-6 py-4">
+          <%= form_with url: manage_money_settings_ticket_source_path(source), method: :patch do %>
+            <div class="flex flex-wrap items-end gap-3">
+              <div class="flex-1 min-w-[12rem]">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                <input type="text" name="ticket_source[name]" value="<%= source.name %>" class="<%= input %>">
+              </div>
+              <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
+            </div>
+          <% end %>
+          <div class="mt-3">
+            <% archive_cid = "confirm-archive-ticket-source-#{source.id}" %>
+            <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: archive_cid } %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="px-6 py-8 text-center text-sm text-gray-500">No ticket sources yet. Add one below.</div>
+  <% end %>
+</div>
+
+<%# The confirm modals live outside every form — a confirm_modal builds its own
+    form, and a nested one would leak its _method into the Save above. %>
+<% @ticket_sources.each do |source| %>
+  <%= render "shared/confirm_modal", id: "confirm-archive-ticket-source-#{source.id}",
+        title: "Stop using this ticket source?",
+        message: "#{ERB::Util.html_escape(source.name)} won't be offered when you enter ticket sales. Sales you've already recorded through it keep their label, and you can put it back any time.",
+        confirm_text: "Remove",
+        url: manage_money_settings_ticket_source_path(source),
+        method: :delete %>
+<% end %>
+
+<%# Add %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-900">Add a ticket source</h3>
+  </div>
+  <%= form_with url: manage_money_settings_ticket_sources_path, method: :post, class: "px-6 py-5" do %>
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-[12rem]">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
+        <input type="text" name="ticket_source[name]" placeholder="e.g. Eventbrite, At the door" class="<%= input %>">
+      </div>
+      <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>
+
+<%# No longer in use %>
+<% if @archived_ticket_sources.any? %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">No longer in use</h3>
+      <p class="text-xs text-gray-500 mt-0.5">Kept so past sales still say where the money came from.</p>
+    </div>
+    <div class="divide-y divide-gray-100">
+      <% @archived_ticket_sources.each do |source| %>
+        <div class="px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+          <span class="text-sm text-gray-600"><%= source.name %></span>
+          <%= form_with url: manage_money_settings_restore_ticket_source_path(source), method: :patch do %>
+            <%= render "shared/button", text: "Put back", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

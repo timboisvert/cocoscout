@@ -5,8 +5,15 @@ class ShowFinancials < ApplicationRecord
 
   has_one :production, through: :show
   has_many :expense_items, -> { ordered }, dependent: :destroy
+  # Ticket sales, one line per source. The lines are the truth; ticket_count and
+  # ticket_revenue below are rollups of them (recalculate_ticket_totals!), kept
+  # because everything from contract settlements to the per-ticket payout
+  # methods reads those two columns.
+  has_many :ticket_sales_lines, -> { ordered }, dependent: :destroy
 
   accepts_nested_attributes_for :expense_items, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :ticket_sales_lines, allow_destroy: true,
+                                reject_if: ->(attrs) { attrs[:ticket_source_id].blank? && attrs[:tickets_sold].to_i.zero? && attrs[:amount].to_f.zero? }
 
   REVENUE_TYPES = %w[ticket_sales flat_fee].freeze
 
@@ -114,6 +121,30 @@ class ShowFinancials < ApplicationRecord
   # Total revenue from all sources
   def total_revenue
     primary_revenue + calculated_other_revenue
+  end
+
+  # Recompute the two cached ticket columns from the lines. Called from
+  # TicketSalesLine on every save and destroy, so the cache has exactly one
+  # write path and can't drift.
+  #
+  # update_columns rather than update!: it skips validations and callbacks (no
+  # recursion back through the lines) while still setting the attributes on the
+  # receiver — which matters, because ShowFinancialsController#update calls
+  # ContractPaymentSyncService immediately after saving and that service reads
+  # total_revenue off this very object.
+  #
+  # A row with no lines is left alone. Financials entered before sources existed
+  # keep the figures they were given, the same way calculated_expenses falls
+  # back to the legacy expense_details.
+  def recalculate_ticket_totals!
+    lines = ticket_sales_lines.reload
+    return if lines.empty?
+
+    update_columns(
+      ticket_count: lines.sum { |l| l.tickets_sold.to_i },
+      ticket_revenue: lines.sum { |l| l.amount.to_d },
+      updated_at: Time.current
+    )
   end
 
   # Calculate production expense allocations for this show.

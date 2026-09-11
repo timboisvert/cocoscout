@@ -1275,10 +1275,14 @@ Rails.application.routes.draw do
     get "money", to: "money#index", as: "money_index"
     post "money/refresh", to: "money#refresh", as: "refresh_money"
     # Money settings — org-level config. Fixed sub-paths before the :section catch-all.
-    get   "money/settings", to: "money_settings#show", as: "money_settings"
-    patch "money/settings/offline-methods", to: "money_settings#update_offline_methods", as: "money_settings_offline_methods"
-    patch "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
-    get   "money/settings/:section", to: "money_settings#show", as: "money_settings_section"
+    get    "money/settings", to: "money_settings#show", as: "money_settings"
+    patch  "money/settings/offline-methods", to: "money_settings#update_offline_methods", as: "money_settings_offline_methods"
+    patch  "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
+    post   "money/settings/ticket-sources", to: "money_settings#create_ticket_source", as: "money_settings_ticket_sources"
+    patch  "money/settings/ticket-sources/:id", to: "money_settings#update_ticket_source", as: "money_settings_ticket_source"
+    delete "money/settings/ticket-sources/:id", to: "money_settings#archive_ticket_source"
+    patch  "money/settings/ticket-sources/:id/restore", to: "money_settings#restore_ticket_source", as: "money_settings_restore_ticket_source"
+    get    "money/settings/:section", to: "money_settings#show", as: "money_settings_section"
     get "money/financials", to: "money_financials#index", as: "money_financials"
     # Must precede the :production_id routes so "all" isn't eaten as an id.
     get "money/financials/all", to: "money_financials#all", as: "money_all_financials"

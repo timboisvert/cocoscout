@@ -43,6 +43,15 @@ module My
             data_confirmed: true,
             contractor_reported_at: Time.current
           )
+          # The contractor reports one figure — they sell the tickets, and the
+          # org's own ticket sources aren't their business. If the org had
+          # already split this show by source, those lines would silently
+          # overwrite what was just reported the next time one was touched, so
+          # the report replaces them with the single line it represents.
+          if financials.ticket_sales_lines.exists?
+            financials.ticket_sales_lines.destroy_all
+            financials.ticket_sales_lines.create!(tickets_sold: count.to_i, amount: revenue.to_f, position: 0)
+          end
           ContractPaymentSyncService.new(show).call
           reported += 1
         end

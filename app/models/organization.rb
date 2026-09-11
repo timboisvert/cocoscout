@@ -13,6 +13,9 @@ class Organization < ApplicationRecord
   has_many :contracts, dependent: :destroy
   has_many :contractors, dependent: :destroy
   has_many :contract_service_options, dependent: :destroy
+  # Where this org sells tickets, named in Money settings and picked per line
+  # when a show's ticket sales are entered.
+  has_many :ticket_sources, dependent: :destroy
   has_many :payout_schemes, dependent: :destroy
   has_many :team_invitations, dependent: :destroy
   has_many :organization_roles, dependent: :destroy

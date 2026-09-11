@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_25_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2844,6 +2844,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_230000) do
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
   end
 
+  create_table "ticket_sales_lines", force: :cascade do |t|
+    t.decimal "amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.bigint "show_financials_id", null: false
+    t.bigint "ticket_source_id"
+    t.integer "tickets_sold", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_financials_id", "position"], name: "index_ticket_sales_lines_on_show_financials_id_and_position"
+    t.index ["show_financials_id"], name: "index_ticket_sales_lines_on_show_financials_id"
+    t.index ["ticket_source_id"], name: "index_ticket_sales_lines_on_ticket_source_id"
+  end
+
+  create_table "ticket_sources", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "position"], name: "index_ticket_sources_on_organization_id_and_position"
+    t.index ["organization_id"], name: "index_ticket_sources_on_organization_id"
+  end
+
   create_table "training_credits", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "institution", limit: 200, null: false
@@ -3192,6 +3216,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_230000) do
   add_foreign_key "talent_pools", "productions"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
+  add_foreign_key "ticket_sales_lines", "show_financials", column: "show_financials_id"
+  add_foreign_key "ticket_sales_lines", "ticket_sources"
+  add_foreign_key "ticket_sources", "organizations"
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"
