@@ -42,9 +42,14 @@
               </div>
               <div class="flex-1">
                 <p class="font-medium text-gray-900">Use Talent Pool</p>
-                <p class="text-sm text-gray-500 mt-0.5">
-                  Include everyone from the talent pools of selected productions
-                  (<%= @talent_pool_people.count + @talent_pool_groups.count %> members)
+                <% pool_size = @talent_pool_people.size + @talent_pool_groups.size %>
+                <p class="text-sm <%= pool_size.zero? ? "text-amber-700" : "text-gray-500" %> mt-0.5">
+                  <% if pool_size.zero? %>
+                    Nobody's in the talent pool for <%= @productions.map(&:name).to_sentence %> yet.
+                  <% else %>
+                    Include everyone from the talent pools of selected productions
+                    (<%= pluralize(pool_size, "member") %>)
+                  <% end %>
                 </p>
               </div>
             </div>
@@ -82,7 +87,7 @@
                   <label class="flex items-center gap-2 p-2 rounded border border-gray-200 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" name="person_ids[]" value="<%= person.id %>"
                            class="h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500"
-                           <%= "checked" if @selected_member_ids.include?("person_#{person.id}") %>>
+                           <%= "checked" if @selected_person_ids.include?(person.id) %>>
                     <% headshot = person.safe_headshot_variant(:thumb) %>
                     <% if headshot %>
                       <%= image_tag headshot, alt: person.name, class: "w-6 h-6 rounded-lg object-cover" %>
@@ -106,7 +111,7 @@
                   <label class="flex items-center gap-2 p-2 rounded border border-gray-200 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" name="group_ids[]" value="<%= group.id %>"
                            class="h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500"
-                           <%= "checked" if @selected_member_ids.include?("group_#{group.id}") %>>
+                           <%= "checked" if @selected_group_ids.include?(group.id) %>>
                     <span class="text-sm text-gray-900 truncate"><%= group.name %></span>
                   </label>
                 <% end %>

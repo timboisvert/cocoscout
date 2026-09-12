@@ -49,32 +49,23 @@ module Manage
 
     # Step 2: Select Events/Shows
     def events
-      unless @wizard_state[:production_ids].present?
-        redirect_to manage_casting_tables_new_path and return
-      end
+      return redirect_to(manage_casting_tables_new_path) if @wizard_state[:production_ids].blank?
 
-      @productions = Current.organization.productions.where(id: @wizard_state[:production_ids]).order(:name)
-      @shows_by_production = {}
-      @productions.each do |production|
-        @shows_by_production[production.id] = production.shows
-                                                         .where("date_and_time >= ?", Time.current)
-                                                         .where(casting_enabled: true)
-                                                         .order(:date_and_time)
-      end
-
-      @selected_show_ids = @wizard_state[:show_ids] || []
-
-      # Check for shows already in finalized casting tables
-      all_show_ids = @shows_by_production.values.flatten.map(&:id)
-      @already_finalized_show_ids = CastingTable.shows_already_finalized(all_show_ids)
+      load_events_data
     end
 
     def save_events
+      # The step's own guard, up front. The re-render paths below call
+      # load_events_data, which only loads — an earlier version called #events,
+      # and on an expired session that redirected and then rendered, so a stale
+      # tab got a DoubleRenderError instead of being sent back to step one.
+      return redirect_to(manage_casting_tables_new_path) if @wizard_state[:production_ids].blank?
+
       show_ids = Array(params[:show_ids]).map(&:to_i).reject(&:zero?)
 
       if show_ids.empty?
         flash.now[:alert] = "Please select at least one event"
-        events # reload data
+        load_events_data
         render :events, status: :unprocessable_entity and return
       end
 
@@ -87,7 +78,7 @@ module Manage
 
       if valid_ids.sort != show_ids.sort
         flash.now[:alert] = "Invalid event selection"
-        events
+        load_events_data
         render :events, status: :unprocessable_entity and return
       end
 
@@ -95,7 +86,7 @@ module Manage
       already_finalized = CastingTable.shows_already_finalized(show_ids)
       if already_finalized.any?
         flash.now[:alert] = "Some events have already been included in a finalized casting table"
-        events
+        load_events_data
         render :events, status: :unprocessable_entity and return
       end
 
@@ -107,39 +98,34 @@ module Manage
 
     # Step 3: Select Members (from talent pools, or manually)
     def members
-      unless @wizard_state[:show_ids].present?
-        redirect_to manage_casting_tables_events_path and return
-      end
+      return redirect_to(manage_casting_tables_new_path) if @wizard_state[:production_ids].blank?
+      return redirect_to(manage_casting_tables_events_path) if @wizard_state[:show_ids].blank?
 
-      @productions = Current.organization.productions.where(id: @wizard_state[:production_ids])
-      @member_source = @wizard_state[:member_source] || "talent_pool"
-      @selected_member_ids = @wizard_state[:member_ids] || []
-
-      # Get all talent pool members across selected productions
-      @talent_pool_people = Person.joins(talent_pool_memberships: :talent_pool)
-                                   .where(talent_pools: { production_id: @wizard_state[:production_ids] })
-                                   .includes(profile_headshots: { image_attachment: :blob })
-                                   .distinct
-                                   .order(:name)
-
-      @talent_pool_groups = Group.joins(talent_pool_memberships: :talent_pool)
-                                  .where(talent_pools: { production_id: @wizard_state[:production_ids] })
-                                  .includes(profile_headshots: { image_attachment: :blob })
-                                  .distinct
-                                  .order(:name)
+      load_members_data
     end
 
     def save_members
+      # Without productions there's no pool to read and nothing to name, so the
+      # only honest answer is to start again rather than show an empty step.
+      return redirect_to(manage_casting_tables_new_path) if @wizard_state[:production_ids].blank?
+      return redirect_to(manage_casting_tables_events_path) if @wizard_state[:show_ids].blank?
+
       member_source = params[:member_source] || "talent_pool"
 
       if member_source == "talent_pool"
-        # Use all talent pool members
-        person_ids = Person.joins(talent_pool_memberships: :talent_pool)
-                           .where(talent_pools: { production_id: @wizard_state[:production_ids] })
-                           .distinct.pluck(:id)
-        group_ids = Group.joins(talent_pool_memberships: :talent_pool)
-                         .where(talent_pools: { production_id: @wizard_state[:production_ids] })
-                         .distinct.pluck(:id)
+        ids = talent_pool_member_ids
+        person_ids = ids[:person_ids]
+        group_ids = ids[:group_ids]
+
+        # An empty pool used to sail through to the review step, which bounced
+        # straight back here for having nobody to review — so Next looked like it
+        # did nothing at all. Say what's wrong instead.
+        if person_ids.empty? && group_ids.empty?
+          flash.now[:alert] = "There's nobody in the talent pool for #{selected_productions.map(&:name).to_sentence}. " \
+                              "Add people to the pool, or choose them by hand below."
+          load_members_data
+          render :members, status: :unprocessable_entity and return
+        end
 
         @wizard_state[:member_source] = "talent_pool"
         @wizard_state[:person_ids] = person_ids
@@ -151,7 +137,7 @@ module Manage
 
         if person_ids.empty? && group_ids.empty?
           flash.now[:alert] = "Please select at least one person or group"
-          members
+          load_members_data
           render :members, status: :unprocessable_entity and return
         end
 
@@ -166,16 +152,11 @@ module Manage
 
     # Step 4: Review and Create
     def review
-      unless @wizard_state[:person_ids].present? || @wizard_state[:group_ids].present?
-        redirect_to manage_casting_tables_members_path and return
+      if @wizard_state[:person_ids].blank? && @wizard_state[:group_ids].blank?
+        return redirect_to(manage_casting_tables_members_path)
       end
 
-      @productions = Current.organization.productions.where(id: @wizard_state[:production_ids]).order(:name)
-      @shows = Show.where(id: @wizard_state[:show_ids]).order(:date_and_time)
-      @people = Person.where(id: @wizard_state[:person_ids]).order(:name)
-      @groups = Group.where(id: @wizard_state[:group_ids]).order(:name)
-
-      @default_name = generate_default_name
+      load_review_data
     end
 
     def create_table
@@ -215,7 +196,7 @@ module Manage
 
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = "Error creating casting table: #{e.message}"
-      review
+      load_review_data
       render :review, status: :unprocessable_entity
     end
 
@@ -228,6 +209,72 @@ module Manage
 
     def load_wizard_state
       @wizard_state = (session[:casting_table_wizard] || {}).with_indifferent_access
+    end
+
+    def load_events_data
+      @productions = selected_productions
+      @shows_by_production = {}
+      @productions.each do |production|
+        @shows_by_production[production.id] = production.shows
+                                                         .where("date_and_time >= ?", Time.current)
+                                                         .where(casting_enabled: true)
+                                                         .order(:date_and_time)
+      end
+
+      @selected_show_ids = @wizard_state[:show_ids] || []
+
+      # Check for shows already in finalized casting tables
+      all_show_ids = @shows_by_production.values.flatten.map(&:id)
+      @already_finalized_show_ids = CastingTable.shows_already_finalized(all_show_ids)
+    end
+
+    def load_members_data
+      @productions = selected_productions
+      @member_source = @wizard_state[:member_source] || "talent_pool"
+      @selected_person_ids = Array(@wizard_state[:person_ids]).map(&:to_i)
+      @selected_group_ids = Array(@wizard_state[:group_ids]).map(&:to_i)
+
+      ids = talent_pool_member_ids
+      @talent_pool_people = Person.where(id: ids[:person_ids])
+                                  .includes(profile_headshots: { image_attachment: :blob })
+                                  .order(:name)
+      @talent_pool_groups = Group.where(id: ids[:group_ids])
+                                  .includes(profile_headshots: { image_attachment: :blob })
+                                  .order(:name)
+    end
+
+
+    def load_review_data
+      @productions = selected_productions
+      @shows = Show.where(id: @wizard_state[:show_ids]).order(:date_and_time)
+      @people = Person.where(id: @wizard_state[:person_ids]).order(:name)
+      @groups = Group.where(id: @wizard_state[:group_ids]).order(:name)
+      @default_name = generate_default_name
+    end
+
+    def selected_productions
+      @selected_productions ||= Current.organization.productions
+                                       .where(id: @wizard_state[:production_ids])
+                                       .order(:name).to_a
+    end
+
+    # Everyone in the EFFECTIVE talent pool of every selected production.
+    #
+    # Resolved through Production#effective_talent_pool rather than by querying
+    # talent_pools.production_id: a production may be using another production's
+    # shared pool, and on an org in single-pool mode the one pool belongs to
+    # whichever production owns it. Neither case has a talent_pool whose
+    # production_id is the selected production, so the raw query found nobody and
+    # the wizard dead-ended.
+    def talent_pool_member_ids
+      pool_ids = selected_productions.filter_map { |p| p.effective_talent_pool&.id }.uniq
+      return { person_ids: [], group_ids: [] } if pool_ids.empty?
+
+      memberships = TalentPoolMembership.where(talent_pool_id: pool_ids)
+      {
+        person_ids: memberships.where(member_type: "Person").distinct.pluck(:member_id),
+        group_ids: memberships.where(member_type: "Group").distinct.pluck(:member_id)
+      }
     end
 
     # Step bar for every wizard view. With one castable production the picker
