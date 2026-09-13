@@ -346,7 +346,7 @@
   <% current_vote = @audition_request.vote_for(Current.user) %>
   <% vote_counts = @audition_request.vote_counts %>
 
-  <div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
+  <div class="fixed bottom-4 left-4 right-4 lg:left-[17rem] lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
        data-controller="vote-form"
        data-vote-form-save-url-value="<%= manage_cast_vote_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>">
     <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">

@@ -86,10 +86,11 @@ class CastingTable < ApplicationRecord
         ).destroy_all
       end
 
-      # Unfinalize show casting status for affected shows
-      shows.each do |show|
-        show.update!(casting_finalized: false) if show.respond_to?(:casting_finalized)
-      end
+      # Reopen casting on the affected shows. This used to test
+      # `respond_to?(:casting_finalized)` — there is no such column or method,
+      # only casting_finalized_at — so the guard was always false and unfinalizing
+      # a table left every show still marked finalized.
+      shows.each { |show| show.reopen_casting! if show.casting_finalized? }
 
       update!(
         status: "draft",

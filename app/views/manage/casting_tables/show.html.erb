@@ -105,55 +105,27 @@
                   member_type = member.class.name
                   member_id = member.id
                   key = [show.id, member_type, member_id]
-                  availability_key = [show.id, member_type, member_id]
-                  availability = @availability[availability_key]
-
-                  draft_assignment = @draft_assignments[key]&.first
-                  existing_assignment = @existing_assignments[key]&.first
-
-                  has_draft = draft_assignment.present?
-                  has_existing = existing_assignment.present?
-
-                  # Availability display - status is enum: "available", "unavailable", "unset"
-                  if availability == "available"
-                    avail_display = "A"
-                    avail_class = "text-pink-500"
-                  elsif availability == "unavailable"
-                    avail_display = "U"
-                    avail_class = "text-gray-400"
-                  else
-                    avail_display = "-"
-                    avail_class = "text-gray-300"
-                  end
+                  availability = @availability[key]
+                  member_key = "#{member_type}_#{member_id}"
+                  conflicted = (@conflicts_by_show[show.id] || {})[member_key].present?
                 %>
                 <td class="px-1 py-2 text-center relative"
                     data-casting-table-target="cell"
                     data-show-id="<%= show.id %>"
-                    data-production-id="<%= show.production_id %>"
                     data-member-type="<%= member_type %>"
                     data-member-id="<%= member_id %>"
-                    data-availability="<%= availability || 'unset' %>">
-                  <% if has_draft %>
-                    <div class="w-full h-full min-h-[40px] bg-pink-500 text-white rounded flex items-center justify-center cursor-pointer text-xs font-medium px-1"
-                         <% if @casting_table.draft? %>
-                         data-action="click->casting-table#openRoleSelector"
-                         <% end %>
-                         title="<%= draft_assignment.role.name %>">
-                      <%= draft_assignment.role.name.truncate(10) %>
-                    </div>
-                  <% elsif has_existing %>
-                    <div class="w-full h-full min-h-[40px] bg-gray-400 text-white rounded flex items-center justify-center text-xs font-medium px-1"
-                         title="<%= existing_assignment.role.name %> (already cast)">
-                      <%= existing_assignment.role.name.truncate(10) %>
-                    </div>
-                  <% else %>
-                    <div class="w-full h-full min-h-[40px] rounded flex items-center justify-center <%= @casting_table.draft? ? 'cursor-pointer hover:bg-gray-100' : '' %>"
-                         <% if @casting_table.draft? %>
-                         data-action="click->casting-table#openRoleSelector"
-                         <% end %>>
-                      <span class="text-sm font-medium <%= avail_class %>"><%= avail_display %></span>
-                    </div>
-                  <% end %>
+                    data-member-key="<%= member_key %>"
+                    <%# Quoted through tag.attributes: the action contains ">", which ends an
+                        unquoted attribute and spills the rest of it onto the page. %>
+                    <%= tag.attributes(data: { action: "click->casting-table#openRoleSelector" }) if @casting_table.draft? %>>
+                  <%= render "manage/casting_tables/cell_content",
+                        drafts: (@draft_assignments[key] || []),
+                        existing: (@existing_assignments[key] || []),
+                        show: show,
+                        numbers: (@lineup_numbers[show.id] || {}),
+                        availability: availability,
+                        conflicted: conflicted,
+                        clickable: @casting_table.draft? %>
                 </td>
               <% end %>
               <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-2 py-2 text-center before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-gray-300 relative"
@@ -162,11 +134,10 @@
                   data-current-count="<%= show_count %>"
                   data-total-slots="<%= total_slots %>">
                 <div class="flex items-center justify-center gap-1">
-                  <% if is_fully_cast %>
-                    <svg class="w-3.5 h-3.5 text-pink-500 fully-cast-icon" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                    </svg>
-                  <% end %>
+                  <%# Always rendered so a change can show or hide it without a reload. %>
+                  <svg class="w-3.5 h-3.5 text-pink-500 fully-cast-icon<%= " hidden" unless is_fully_cast %>" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
                   <span class="text-xs font-medium text-gray-500 show-count-text"><%= show_count %>/<%= total_slots %></span>
                 </div>
               </td>
@@ -186,8 +157,7 @@
               %>
               <td class="px-1 py-2 text-center"
                   data-casting-table-target="memberCount"
-                  data-member-type="<%= member.class.name %>"
-                  data-member-id="<%= member.id %>"
+                  data-member-key="<%= member.class.name %>_<%= member.id %>"
                   data-current-count="<%= count %>">
                 <span class="inline-flex items-center justify-center w-6 h-6 rounded-full <%= count > 0 ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-500' %> text-xs font-medium member-count-text">
                   <%= count %>
@@ -210,22 +180,21 @@
     </div>
   </div>
 
-  <!-- Role Selector Popup (hidden by default) -->
-  <div id="role-selector" class="hidden fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-3 min-w-[200px] max-w-[280px]" data-casting-table-target="roleSelector">
-    <div class="text-xs font-medium text-gray-500 uppercase mb-2">Select Role</div>
-    <div id="role-options" class="space-y-1" data-casting-table-target="roleOptions">
-      <!-- Populated dynamically -->
-    </div>
-    <div class="mt-2 pt-2 border-t border-gray-200">
-      <button type="button" class="w-full text-center text-xs text-gray-500 hover:text-gray-700 py-1 cursor-pointer" data-action="click->casting-table#closeRoleSelector">
-        Cancel
-      </button>
+  <%# The cell panel. Its contents come from the server (casting_tables#cell), so
+      it can show the running order, who's in each slot and what this member
+      already holds without shipping the whole board to the browser. %>
+  <div id="role-selector" class="hidden fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+       data-casting-table-target="roleSelector">
+    <div data-casting-table-target="roleOptions">
+      <div class="px-6 py-10 text-center text-sm text-gray-400">Loading…</div>
     </div>
   </div>
 
   <% if @casting_table.draft? %>
     <!-- Floating Action Bar - styled like auditions voting bar -->
-    <div class="fixed bottom-4 left-4 right-4 lg:left-60 lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-40 overflow-hidden">
+    <%# lg:left-[17rem] = the w-64 nav plus the same 16px inset the other edges
+        use. This was lg:left-60 (240px), which tucked the bar under the nav. %>
+    <div class="fixed bottom-4 left-4 right-4 lg:left-[17rem] lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-40 overflow-hidden">
       <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
         <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Draft Mode</h3>
       </div>
@@ -265,26 +234,3 @@
     </div>
   <% end %>
 </div>
-
-<!-- Roles Data for JavaScript (keyed by show_id now) -->
-<script type="application/json" id="roles-data">
-<%= raw @roles_by_show.transform_values { |roles|
-  roles.map { |r|
-    role_data = {
-      id: r.id,
-      name: r.name,
-      restricted: r.restricted,
-      quantity: r.quantity
-    }
-    if r.restricted?
-      role_data[:eligible_members] = r.eligible_members.map { |m| { type: m.class.name, id: m.id, name: m.name } }
-    end
-    role_data
-  }
-}.to_json %>
-</script>
-
-<!-- Role Counts per Show for JavaScript -->
-<script type="application/json" id="role-counts-data">
-<%= raw @role_counts_by_show.transform_keys { |k| "#{k[0]}_#{k[1]}" }.to_json %>
-</script>

@@ -1,0 +1,175 @@
+<%#
+  The panel behind a casting-table cell: what this member can be given on this
+  night, with everything you'd compare against in view — the running order in
+  order, who's already in each slot, what this member holds, and whether a
+  second act would collide with something else tonight.
+
+  Local: cell — a CastingTableCell
+%>
+<%
+  show = cell.show
+  member = cell.member
+  editable = @casting_table.draft?
+  unit = casting_unit(show)
+
+  slot_row = ->(slot) do
+    capture do
+      if slot.break?
+        concat tag.div(class: "flex items-center gap-2 px-3 py-1") {
+          concat tag.span(slot.role.name, class: "text-[11px] uppercase tracking-wide text-gray-400 flex-shrink-0")
+          concat tag.span("", class: "flex-1 border-t border-dashed border-gray-200")
+        }
+      else
+        held = slot.held_by_member?
+        eligible = cell.eligible_for?(slot.role)
+        disabled = !editable || (!held && slot.full?)
+
+        row_classes = [ "w-full flex items-center gap-3 px-3 py-2 text-left transition-colors" ]
+        row_classes << if held
+          "bg-pink-50 hover:bg-pink-100 cursor-pointer"
+        elsif disabled
+          "opacity-60 cursor-default"
+        else
+          "hover:bg-gray-50 cursor-pointer"
+        end
+
+        attrs = { class: row_classes.join(" "), type: "button" }
+        unless disabled
+          attrs[:data] = {
+            action: "click->casting-table#toggleSlot",
+            role_id: slot.role.id,
+            held: held.to_s,
+            eligible: eligible.to_s,
+            role_name: role_display_name(slot.role, nil, show: show)
+          }
+        end
+
+        concat tag.button(**attrs) {
+          # Lineup number, or a dash for anything unnumbered (show roles).
+          concat tag.span(slot.number || "·",
+                          class: "w-6 flex-shrink-0 text-center text-xs font-semibold tabular-nums #{slot.number ? 'text-gray-400' : 'text-gray-300'}")
+
+          concat tag.span(class: "flex-1 min-w-0") {
+            concat tag.span(class: "flex items-center gap-1.5") {
+              concat tag.span(slot.role.name, class: "text-sm font-medium text-gray-900 truncate")
+              if slot.role.restricted? && !eligible
+                concat tag.span("not eligible", class: "text-[10px] uppercase tracking-wide text-amber-600 flex-shrink-0")
+              end
+            }
+            # Who's in this slot already — the comparison the old popup never showed.
+            if slot.occupants.any?
+              concat tag.span(class: "block text-xs text-gray-500 truncate mt-0.5") {
+                slot.occupants.each_with_index do |occ, i|
+                  concat tag.span(", ", class: "text-gray-300") if i.positive?
+                  concat tag.span(occ.name, class: occ.is_member ? "text-pink-700 font-medium" : (occ.draft? ? "text-gray-500" : "text-gray-400"))
+                  concat tag.span(" (cast)", class: "text-gray-400") unless occ.draft?
+                end
+              }
+            else
+              concat tag.span("nobody yet", class: "block text-xs text-gray-400 mt-0.5")
+            end
+          }
+
+          concat tag.span(class: "flex-shrink-0 flex items-center gap-2") {
+            concat tag.span("#{slot.filled}/#{slot.total}",
+                            class: "text-xs tabular-nums #{slot.full? ? 'text-gray-400' : 'text-gray-500'}")
+            if held
+              concat tag.span("Remove", class: "text-[11px] font-medium text-pink-600 w-14 text-right")
+            elsif disabled
+              concat tag.span("Full", class: "text-[11px] text-gray-400 w-14 text-right")
+            else
+              concat tag.span("Add", class: "text-[11px] font-medium text-gray-500 w-14 text-right")
+            end
+          }
+        }
+      end
+    end
+  end
+%>
+
+<div class="w-[min(26rem,calc(100vw-2rem))] flex flex-col max-h-[min(34rem,calc(100vh-6rem))]">
+  <%# Header: who, which night %>
+  <div class="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+    <div class="min-w-0">
+      <div class="text-sm font-semibold text-gray-900 truncate"><%= member.name %></div>
+      <div class="text-xs text-gray-500 truncate">
+        <%= show.date_and_time.strftime("%a %b %-d") %> · <%= show.time_range_display %>
+        <% if show.production %> · <%= show.production.name %><% end %>
+      </div>
+    </div>
+    <button type="button" data-action="click->casting-table#closeRoleSelector"
+            class="text-gray-400 hover:text-gray-600 cursor-pointer bg-transparent border-0 flex-shrink-0 -mt-0.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <%# Conflicts, when there are any — the reason not to add another act %>
+  <% if cell.conflicts.any? %>
+    <div class="px-4 py-2 bg-amber-50 border-b border-amber-200 flex-shrink-0">
+      <% cell.conflicts.each do |conflict| %>
+        <div class="flex items-start gap-1.5 text-xs text-amber-800">
+          <svg class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span><%= conflict.message %></span>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# What they already hold tonight %>
+  <div class="px-4 py-2 border-b border-gray-200 text-xs flex-shrink-0">
+    <% if cell.member_slots.any? %>
+      <span class="text-gray-500">Has</span>
+      <span class="text-gray-900 font-medium">
+        <%= cell.member_slots.map { |s| role_display_name(s.role, nil, show: show) }.to_sentence %>
+      </span>
+    <% else %>
+      <span class="text-gray-500">Not in this show yet</span>
+    <% end %>
+    <span class="text-gray-300 mx-1">·</span>
+    <span class="<%= cell.fully_cast? ? "text-gray-500" : "text-gray-500" %>">
+      show is <%= cell.filled_slots %>/<%= cell.total_slots %> cast
+    </span>
+  </div>
+
+  <%# The lineup %>
+  <div class="overflow-y-auto divide-y divide-gray-100 min-h-0">
+    <% if cell.lineup_slots.any? %>
+      <div class="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <%= cell.act_based? ? "Running order" : casting_structure_label(show) %>
+      </div>
+      <div class="divide-y divide-gray-100">
+        <% cell.lineup_slots.each { |slot| concat slot_row.call(slot) } %>
+      </div>
+    <% end %>
+
+    <% if cell.standing_slots.any? %>
+      <div class="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400 border-t border-gray-200">
+        Show roles
+      </div>
+      <div class="divide-y divide-gray-100">
+        <% cell.standing_slots.each { |slot| concat slot_row.call(slot) } %>
+      </div>
+    <% end %>
+
+    <% if cell.lineup_slots.empty? && cell.standing_slots.empty? %>
+      <div class="px-4 py-6 text-center text-sm text-gray-500">
+        This show has no <%= unit.pluralize %> to cast yet.
+      </div>
+    <% end %>
+  </div>
+
+  <%# Everyone else in the show tonight %>
+  <% others = cell.other_occupants %>
+  <% if others.any? %>
+    <div class="px-4 py-2 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+      <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Also in this show</div>
+      <div class="text-xs text-gray-600 leading-relaxed">
+        <%= others.map { |name, count| count > 1 ? "#{name} (#{count})" : name }.join(" · ") %>
+      </div>
+    </div>
+  <% end %>
+</div>

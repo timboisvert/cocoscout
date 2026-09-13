@@ -1,0 +1,66 @@
+<%#
+  What one grid cell shows: nothing, one role, or several.
+
+  An act-based night routinely gives one person two or three acts, which the old
+  cell couldn't say — it rendered `.first` and the rest were invisible. Several
+  assignments collapse to "Acts 2, 5" rather than stacking and stretching every
+  row on the board.
+
+  Locals:
+    drafts    [CastingTableDraftAssignment] for this show+member
+    existing  [ShowPersonRoleAssignment] already cast, same cell
+    show      the Show (for act numbering)
+    numbers   { role_id => lineup number } for this show
+    availability "available" | "unavailable" | "unset" | nil
+    conflicted  whether this member collides with something else that night
+    clickable   whether the cell opens the picker
+%>
+<%
+  all = drafts + existing
+  labels = all.map { |a| role_display_name(a.role, numbers, show: show) }
+
+  if all.any?
+    # Draft wins the colour — it's the thing this table is proposing. A cell that
+    # holds both gets the pink fill with a grey ring so "some of this is already
+    # cast" is visible.
+    base = drafts.any? ? "bg-pink-500 text-white" : "bg-gray-400 text-white"
+    ring = (drafts.any? && existing.any?) ? " ring-2 ring-inset ring-gray-300" : ""
+
+    text =
+      if all.one?
+        labels.first.truncate(12)
+      elsif show.act_based? && all.all? { |a| numbers[a.role_id] }
+        # "Acts 2, 5" reads better than two truncated names side by side.
+        "Acts #{all.map { |a| numbers[a.role_id] }.sort.join(', ')}"
+      else
+        "#{all.size} roles"
+      end
+    tooltip = labels.join(" · ")
+  end
+%>
+<% if all.any? %>
+  <div class="relative w-full h-full min-h-[40px] <%= base %><%= ring %> rounded flex items-center justify-center <%= "cursor-pointer" if clickable %> text-xs font-medium px-1"
+       title="<%= tooltip %>">
+    <span class="truncate"><%= text %></span>
+    <% if conflicted %>
+      <span class="absolute top-0 right-0 w-0 h-0 border-t-[6px] border-l-[6px] border-t-amber-400 border-l-transparent rounded-tr"
+            title="Also booked elsewhere that night"></span>
+    <% end %>
+  </div>
+<% else %>
+  <%
+    display, colour =
+      case availability
+      when "available" then [ "A", "text-pink-500" ]
+      when "unavailable" then [ "U", "text-gray-400" ]
+      else [ "-", "text-gray-300" ]
+      end
+  %>
+  <div class="relative w-full h-full min-h-[40px] rounded flex items-center justify-center <%= "cursor-pointer hover:bg-gray-100" if clickable %>">
+    <span class="text-sm font-medium <%= colour %>"><%= display %></span>
+    <% if conflicted %>
+      <span class="absolute top-0 right-0 w-0 h-0 border-t-[6px] border-l-[6px] border-t-amber-400 border-l-transparent rounded-tr"
+            title="Also booked elsewhere that night"></span>
+    <% end %>
+  </div>
+<% end %>

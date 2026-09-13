@@ -832,6 +832,7 @@ Rails.application.routes.draw do
     delete "/casting/tables/:id",          to: "casting_tables#destroy"
     get   "/casting/tables/:id/edit",      to: "casting_tables#edit_events", as: "edit_casting_table"
     patch "/casting/tables/:id",           to: "casting_tables#update", as: "update_casting_table"
+    get   "/casting/tables/:id/cell",      to: "casting_tables#cell", as: "casting_table_cell"
     post  "/casting/tables/:id/assign",    to: "casting_tables#assign", as: "casting_table_assign"
     delete "/casting/tables/:id/unassign", to: "casting_tables#unassign", as: "casting_table_unassign"
     get   "/casting/tables/:id/summary",   to: "casting_tables#summary", as: "casting_table_summary"

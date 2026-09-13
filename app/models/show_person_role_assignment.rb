@@ -12,6 +12,11 @@ class ShowPersonRoleAssignment < ApplicationRecord
   validates :assignable_id, uniqueness: { scope: [ :show_id, :role_id, :assignable_type ], message: "is already assigned to this role" }, if: -> { assignable_id.present? }
   # Must have either an assignable (Person/Group) OR guest_name (for guest assignments)
   validate :has_assignable_or_guest
+  # An intermission is a marker in a running order, not something anybody is cast
+  # in. Enforced on the model because three places write casting (the show board,
+  # the casting table, and the org availability grid's cast-from-here action), and
+  # only one of them was checking.
+  validate :role_is_castable
 
   # Order assignments by position within a role
   scope :ordered, -> { order(position: :asc) }
@@ -79,6 +84,12 @@ class ShowPersonRoleAssignment < ApplicationRecord
   end
 
   private
+
+  def role_is_castable
+    return unless role&.break?
+
+    errors.add(:role, "is an intermission — there's nothing to cast")
+  end
 
   def has_assignable_or_guest
     if assignable_id.blank? && guest_name.blank?
