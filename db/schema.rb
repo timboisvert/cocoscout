@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2123,10 +2123,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
     t.datetime "created_at", null: false
     t.bigint "house_role_id", null: false
     t.bigint "shift_id", null: false
+    t.bigint "show_id"
     t.datetime "updated_at", null: false
     t.index ["house_role_id"], name: "index_shift_additional_roles_on_house_role_id"
-    t.index ["shift_id", "house_role_id"], name: "idx_shift_additional_roles_unique", unique: true
+    t.index ["shift_id", "house_role_id", "show_id"], name: "idx_shift_additional_roles_unique_per_show", unique: true, where: "(show_id IS NOT NULL)"
+    t.index ["shift_id", "house_role_id"], name: "idx_shift_additional_roles_unique_all_shows", unique: true, where: "(show_id IS NULL)"
     t.index ["shift_id"], name: "index_shift_additional_roles_on_shift_id"
+    t.index ["show_id"], name: "index_shift_additional_roles_on_show_id"
   end
 
   create_table "shift_assignments", force: :cascade do |t|
@@ -3139,6 +3142,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
   add_foreign_key "sessions", "users"
   add_foreign_key "shift_additional_roles", "house_roles"
   add_foreign_key "shift_additional_roles", "shifts"
+  add_foreign_key "shift_additional_roles", "shows", on_delete: :cascade
   add_foreign_key "shift_assignments", "people"
   add_foreign_key "shift_assignments", "shifts"
   add_foreign_key "shift_shows", "shifts"

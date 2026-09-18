@@ -11,8 +11,11 @@ class Shift < ApplicationRecord
 
   # Extra roles this one shift also covers ("doubling up"), e.g. a bartender who
   # is also the manager and house staff. One shift, one assignment, many duties.
+  # On a shift spanning several shows an extra role may name the shows it covers
+  # (see ShiftAdditionalRole), so one role can have a row per show — distinct
+  # keeps it listed once.
   has_many :shift_additional_roles, dependent: :destroy
-  has_many :additional_roles, through: :shift_additional_roles, source: :house_role
+  has_many :additional_roles, -> { distinct }, through: :shift_additional_roles, source: :house_role
 
   has_many :shift_assignments, dependent: :destroy
   has_many :assigned_people, through: :shift_assignments, source: :person
@@ -47,6 +50,53 @@ class Shift < ApplicationRecord
   # Display label combining all roles, e.g. "Bartender + Manager + Security".
   def role_label
     all_role_names.join(" + ")
+  end
+
+  # The extra roles that apply to one covered show: those covering every show
+  # plus those scoped to this one. Reads the loaded rows, so a preloaded week
+  # costs nothing more.
+  def additional_roles_for(show)
+    shift_additional_roles.select { |r| r.show_id.nil? || r.show_id == show.id }
+                          .map(&:house_role).uniq
+  end
+
+  # { house_role_id => [show_id, ...] } — an empty list means every show. What
+  # the edit modal needs to redraw the current choice.
+  def additional_role_scopes
+    shift_additional_roles.group_by(&:house_role_id).transform_values do |rows|
+      rows.any?(&:all_shows?) ? [] : rows.map(&:show_id).sort
+    end
+  end
+
+  # Replace the "also covers" set. role_ids are the roles to keep; for any role
+  # the caller scoped, show_ids_by_role[role_id] lists the covered shows it
+  # applies to. Absent, or naming every covered show, means every show — stored
+  # as the single unscoped row so the old meaning is untouched. Present but
+  # empty means the scoping was offered and nothing was picked, so the role
+  # comes off.
+  def assign_additional_roles!(role_ids, show_ids_by_role = {})
+    covered_ids = covered_shows.map(&:id)
+    ids = Array(role_ids).map(&:to_i).uniq - [ house_role_id ]
+
+    transaction do
+      shift_additional_roles.destroy_all
+      ids.each do |role_id|
+        if show_ids_by_role.key?(role_id)
+          chosen = Array(show_ids_by_role[role_id]).map(&:to_i).uniq & covered_ids
+          next if chosen.empty?
+
+          if chosen.sort == covered_ids.sort
+            shift_additional_roles.create!(house_role_id: role_id)
+          else
+            chosen.each { |show_id| shift_additional_roles.create!(house_role_id: role_id, show_id: show_id) }
+          end
+        else
+          shift_additional_roles.create!(house_role_id: role_id)
+        end
+      end
+    end
+    shift_additional_roles.reset
+    additional_roles.reset
   end
 
   # Scheduled length in hours (used to prefill a worker's time confirmation).

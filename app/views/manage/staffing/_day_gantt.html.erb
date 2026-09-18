@@ -184,16 +184,22 @@
                 <% if is_secondary %>
                   <%# Echo of a doubled shift in its secondary role's row. Clicking
                       opens the same shift's editor; no separate assign button. %>
+                  <%
+                    # Which covered shows this echoed role applies to, when it's
+                    # scoped — named in the tooltip.
+                    scope_ids = shift.additional_role_scopes[role.id] || []
+                    scoped_to = scope_ids.any? ? shift.covered_shows.select { |cs| scope_ids.include?(cs.id) } : []
+                  %>
                   <button type="button"
                           data-action="click->shift-edit#open"
                           data-shift-id="<%= shift.id %>"
                           data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-role-name="<%= shift.house_role.name %>"
-                          data-shift-additional-role-ids="<%= shift.additional_role_ids.to_json %>" data-shift-house-role-id="<%= shift.house_role_id %>"
+                          <%= shift_edit_role_attrs(shift) %> data-shift-house-role-id="<%= shift.house_role_id %>"
                           class="absolute rounded border <%= block_classes %> px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left transition-colors"
                           style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
-                          title="Also covering <%= role.name %> (primary: <%= shift.house_role.name %>) · <%= time_range %>">
+                          title="Also covering <%= role.name %><%= " for #{scoped_to.map { |cs| shift_show_label(cs) }.to_sentence}" if scoped_to.any? %> (primary: <%= shift.house_role.name %>) · <%= time_range %>">
                     <span class="text-[9px] px-1 rounded bg-indigo-200 text-indigo-800 font-semibold flex-shrink-0">also</span>
                     <% if people.any? %>
                       <span class="truncate text-[11px] font-medium"><%= people.map(&:name).join(", ") %></span>
@@ -222,7 +228,7 @@
                             data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                             data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                             data-shift-role-name="<%= role.name %>"
-                            data-shift-additional-role-ids="<%= shift.additional_role_ids.to_json %>" data-shift-house-role-id="<%= shift.house_role_id %>"
+                            <%= shift_edit_role_attrs(shift) %> data-shift-house-role-id="<%= shift.house_role_id %>"
                             class="flex-1 min-w-0 px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left bg-transparent border-0">
                       <% if empty_unfilled %>
                         <span class="truncate text-[11px] italic opacity-70">empty — click to edit time</span>
@@ -328,7 +334,7 @@
                           data-shift-starts-at="<%= s.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-ends-at="<%= s.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
                           data-shift-role-name="<%= r.name %>"
-                          data-shift-additional-role-ids="<%= s.additional_role_ids.to_json %>" data-shift-house-role-id="<%= s.house_role_id %>"
+                          <%= shift_edit_role_attrs(s) %> data-shift-house-role-id="<%= s.house_role_id %>"
                           data-person-id="<%= person.id %>"
                           data-person-name="<%= person.name %>"
                           class="absolute rounded border bg-white border-gray-300 text-gray-900 hover:bg-gray-50 transition-colors px-1.5 flex items-center overflow-hidden cursor-pointer text-left"

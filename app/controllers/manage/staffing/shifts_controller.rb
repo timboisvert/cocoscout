@@ -9,10 +9,12 @@ module Manage
       before_action :set_shift, only: %i[update destroy assign unassign split merge merge_with_next]
 
       def create
-        attrs = shift_params
-        @shift = Current.organization.shifts.new(sanitize_roles(attrs, attrs[:house_role_id]))
+        @shift = Current.organization.shifts.new(shift_params)
         attach_extra_shows
-        if @shift.save
+        saved = ActiveRecord::Base.transaction do
+          @shift.save && (apply_additional_roles || true)
+        end
+        if saved
           assigned_note = assign_initial_person
           redirect_to_scheduling notice: [ "Shift added.", assigned_note ].compact.join(" ")
         else
@@ -20,16 +22,23 @@ module Manage
         end
       rescue ActiveRecord::RecordNotUnique
         redirect_to_scheduling alert: "There's already a shift for this role at that time."
+      rescue ActiveRecord::RecordInvalid => e
+        redirect_to_scheduling alert: "Couldn't add shift: #{e.record.errors.full_messages.to_sentence}"
       end
 
       def update
-        if @shift.update(sanitize_roles(shift_params, @shift.house_role_id))
+        saved = ActiveRecord::Base.transaction do
+          @shift.update(shift_params) && (apply_additional_roles || true)
+        end
+        if saved
           redirect_to_scheduling notice: "Shift updated."
         else
           redirect_to_scheduling alert: "Couldn't update shift: #{@shift.errors.full_messages.to_sentence}"
         end
       rescue ActiveRecord::RecordNotUnique
         redirect_to_scheduling alert: "There's already a shift for this role at that time."
+      rescue ActiveRecord::RecordInvalid => e
+        redirect_to_scheduling alert: "Couldn't update shift: #{e.record.errors.full_messages.to_sentence}"
       end
 
       def destroy
@@ -92,6 +101,10 @@ module Manage
         new_end   = all_shifts.map(&:ends_at).max
         # The shows the merged shift will cover (its own source + all the others).
         extra_shows = all_shifts.flat_map(&:covered_shows).uniq.reject { |s| s == @shift.source }
+        # Read before anything moves: each shift's extra roles, pinned to the
+        # shows that shift covered. Otherwise a manager "also covers" on one
+        # show's shift would spread to every show in the merge.
+        role_ids, show_ids_by_role = merged_additional_roles(all_shifts)
 
         ActiveRecord::Base.transaction do
           seen = @shift.shift_assignments.pluck(:person_id).to_set
@@ -108,6 +121,7 @@ module Manage
           @shift.update!(starts_at: new_start, ends_at: new_end)
           others.each(&:destroy!)
           @shift.shows = extra_shows if extra_shows.any?
+          @shift.reload.assign_additional_roles!(role_ids, show_ids_by_role)
         end
         redirect_to_scheduling notice: "Merged #{all_shifts.size} shifts."
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
@@ -172,6 +186,12 @@ module Manage
           redirect_to_scheduling(alert: "No adjacent shift to merge with.") and return
         end
 
+        # Same bookkeeping as #merge. This used to drop the next shift's shows,
+        # so the merged shift silently stopped covering them in Role Call — and
+        # its extra roles went with it.
+        extra_shows = [ @shift, next_shift ].flat_map(&:covered_shows).uniq.reject { |s| s == @shift.source }
+        role_ids, show_ids_by_role = merged_additional_roles([ @shift, next_shift ])
+
         ActiveRecord::Base.transaction do
           existing_person_ids = @shift.shift_assignments.pluck(:person_id)
           next_position = (@shift.shift_assignments.maximum(:position) || 0)
@@ -183,6 +203,8 @@ module Manage
           end
           @shift.update!(ends_at: [ next_shift.ends_at, @shift.ends_at ].max)
           next_shift.destroy!
+          @shift.shows = extra_shows if extra_shows.any?
+          @shift.reload.assign_additional_roles!(role_ids, show_ids_by_role)
         end
         redirect_to_scheduling notice: "Shifts merged."
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
@@ -230,12 +252,19 @@ module Manage
           redirect_to_scheduling(alert: "This shift only covers one show.") and return
         end
 
+        # Extra roles pinned to one show follow that show onto its own shift;
+        # ones covering every show stay on the first, as they always did.
+        scoped = @shift.shift_additional_roles.to_a
+        everywhere = scoped.select(&:all_shows?).map(&:house_role_id)
+        by_show = scoped.reject(&:all_shows?).group_by(&:show_id).transform_values { |rows| rows.map(&:house_role_id) }
+
         ActiveRecord::Base.transaction do
           first = shows.first
           @shift.update!(source: first, starts_at: first.date_and_time, ends_at: first.ends_at)
           @shift.shift_shows.destroy_all # back to a single-show shift
+          @shift.reload.assign_additional_roles!((everywhere + by_show.fetch(first.id, [])).uniq)
           shows[1..].each do |show|
-            Current.organization.shifts.create!(
+            split = Current.organization.shifts.create!(
               house_role_id: @shift.house_role_id,
               source: show,
               starts_at: show.date_and_time,
@@ -245,6 +274,7 @@ module Manage
               renter_name: @shift.renter_name,
               notes: @shift.notes
             )
+            split.assign_additional_roles!(by_show.fetch(show.id, []))
           end
         end
         redirect_to_scheduling notice: "Split into #{shows.size} per-show shifts."
@@ -271,12 +301,68 @@ module Manage
         @shift = Current.organization.shifts.find(params[:id])
       end
 
+      # "Also covers" roles are deliberately not mass-assigned: a role can now be
+      # scoped to some of the shows a shift covers, which a flat id list can't
+      # say. apply_additional_roles handles them after the shift is saved.
       def shift_params
         params.require(:shift).permit(
           :house_role_id, :starts_at, :ends_at, :required_count,
-          :coverage_mode, :renter_name, :notes, :source_type, :source_id,
-          additional_role_ids: []
+          :coverage_mode, :renter_name, :notes, :source_type, :source_id
         )
+      end
+
+      # The "also covers" set from the form: which roles, and — on a shift that
+      # covers several shows — which of those shows each role applies to. Only
+      # touched when the form sent the set at all (the modal always does, with a
+      # blank so unchecking everything still arrives).
+      def apply_additional_roles
+        raw = params[:shift]
+        return unless raw.key?(:additional_role_ids)
+
+        role_ids = Array(raw[:additional_role_ids]).map(&:to_s).reject(&:blank?).map(&:to_i).uniq
+        # Only the org's own roles — a posted id from anywhere else is dropped.
+        role_ids &= Current.organization.house_roles.where(id: role_ids).pluck(:id)
+
+        # { role_id => [show_id, ...] } for the roles the modal offered scoping
+        # on. The show ids are narrowed to the shift's own shows in the model.
+        scoped = raw[:additional_role_show_ids]
+        scoped = scoped.respond_to?(:to_unsafe_h) ? scoped.to_unsafe_h : (scoped || {})
+        show_ids_by_role = scoped.to_h.each_with_object({}) do |(role_id, show_ids), h|
+          h[role_id.to_i] = Array(show_ids).map(&:to_s).reject(&:blank?).map(&:to_i)
+        end
+
+        @shift.assign_additional_roles!(role_ids, show_ids_by_role)
+      end
+
+      # The extra roles a merge should end up with: every source shift's roles,
+      # each pinned to the shows its own shift covered. Returns [role_ids,
+      # { role_id => show_ids }] for Shift#assign_additional_roles!, which
+      # collapses a role back to "every show" when it ends up covering them all.
+      # Shifts with no shows (house shifts, free-standing) carry their roles
+      # across unscoped — there's nothing to pin them to.
+      def merged_additional_roles(shifts)
+        role_ids = []
+        show_ids_by_role = Hash.new { |h, k| h[k] = [] }
+        unscoped = Set.new
+
+        shifts.each do |shift|
+          own_show_ids = shift.covered_shows.map(&:id)
+          shift.shift_additional_roles.each do |row|
+            next if row.house_role_id == @shift.house_role_id
+
+            role_ids << row.house_role_id
+            if row.show_id
+              show_ids_by_role[row.house_role_id] << row.show_id
+            elsif own_show_ids.any?
+              show_ids_by_role[row.house_role_id].concat(own_show_ids)
+            else
+              unscoped << row.house_role_id
+            end
+          end
+        end
+
+        pinned = show_ids_by_role.to_h.except(*unscoped).transform_values(&:uniq)
+        [ role_ids.uniq, pinned ]
       end
 
       # Extra shows this shift covers beyond its source anchor — the Add-shift
@@ -291,15 +377,6 @@ module Manage
                              .where(id: ids)
                              .where.not(id: @shift.source_id)
                              .to_a
-      end
-
-      # Clean the "also covers" set: ints, no blanks, no dups, and never the
-      # primary role itself (the UI disables it; this is the server backstop).
-      def sanitize_roles(attrs, primary_id)
-        return attrs unless attrs.key?(:additional_role_ids)
-        ids = Array(attrs[:additional_role_ids]).map(&:to_s).reject(&:blank?).map(&:to_i).uniq
-        ids.delete(primary_id.to_i) if primary_id
-        attrs.merge(additional_role_ids: ids)
       end
 
       # Coerce the segments param into [{ starts_at: Time, ends_at: Time }, ...].

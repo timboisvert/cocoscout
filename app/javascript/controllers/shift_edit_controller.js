@@ -15,7 +15,7 @@ export default class extends Controller {
     static targets = [
         "modal", "form", "title", "dayLabel",
         "startTimeInput", "endTimeInput", "startInput", "endInput",
-        "additionalRoleCheckbox",
+        "additionalRoleCheckbox", "roleShows", "roleShowsHint",
         "removeSection", "removeButton", "removePersonName"
     ]
     static values = {
@@ -68,6 +68,12 @@ export default class extends Controller {
             })
         }
 
+        // Which shows this shift covers, and which of them each extra role is
+        // scoped to ({ roleId: [showId, ...] }, an empty list meaning all).
+        try { this.coveredShows = JSON.parse(btn.dataset.shiftCoveredShows || "[]") } catch (e) { this.coveredShows = [] }
+        try { this.roleScopes = JSON.parse(btn.dataset.shiftAdditionalRoleScopes || "{}") } catch (e) { this.roleScopes = {} }
+        this.buildRoleShows()
+
         this.syncHiddenFields()
 
         if (this.hasFormTarget && this.hasUpdateUrlTemplateValue) {
@@ -85,6 +91,67 @@ export default class extends Controller {
         }
 
         this.show()
+    }
+
+    // --- Extra roles scoped to shows -----------------------------------------
+    // Only a shift covering two or more shows gets the choice. Each checked role
+    // shows a chip per covered show, all ticked unless the role was already
+    // scoped. The blank hidden field makes the key arrive even when every chip
+    // is unticked, which the server reads as "this role covers none of them".
+
+    buildRoleShows() {
+        const multi = (this.coveredShows || []).length >= 2
+        if (this.hasRoleShowsHintTarget) this.roleShowsHintTarget.classList.toggle("hidden", !multi)
+
+        this.roleShowsTargets.forEach(container => {
+            const roleId = container.dataset.roleId
+            const chips = container.querySelector("[data-role-show-chips]")
+            chips.innerHTML = ""
+            if (!multi) {
+                container.classList.add("hidden")
+                return
+            }
+
+            const scoped = (this.roleScopes || {})[roleId] || []
+            const name = `shift[additional_role_show_ids][${roleId}][]`
+            const blank = document.createElement("input")
+            blank.type = "hidden"
+            blank.name = name
+            blank.value = ""
+            chips.appendChild(blank)
+
+            this.coveredShows.forEach(show => {
+                const label = document.createElement("label")
+                label.className = "inline-flex items-center gap-1 text-[11px] text-gray-700 px-1.5 py-0.5 rounded border border-gray-200 bg-white cursor-pointer hover:border-pink-300"
+                const box = document.createElement("input")
+                box.type = "checkbox"
+                box.name = name
+                box.value = show.id
+                box.checked = scoped.length === 0 || scoped.includes(show.id)
+                box.className = "h-3.5 w-3.5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+                const text = document.createElement("span")
+                text.textContent = show.label
+                label.append(box, text)
+                chips.appendChild(label)
+            })
+
+            this.syncRoleShows(roleId)
+        })
+    }
+
+    toggleRoleShows(event) {
+        this.syncRoleShows(event.target.dataset.roleId)
+    }
+
+    // A role's chips show, and submit, only while the role itself is checked.
+    syncRoleShows(roleId) {
+        const box = this.additionalRoleCheckboxTargets.find(cb => cb.dataset.roleId === String(roleId))
+        const container = this.roleShowsTargets.find(c => c.dataset.roleId === String(roleId))
+        if (!box || !container) return
+
+        const on = box.checked && !box.disabled && (this.coveredShows || []).length >= 2
+        container.classList.toggle("hidden", !on)
+        container.querySelectorAll("input").forEach(input => { input.disabled = !on })
     }
 
     // Recompute the hidden full-datetime fields from the time inputs. If the

@@ -79,7 +79,7 @@ module Manage
       week_range = (@week_start..@week_end)
       shifts = Current.organization.shifts
         .for_week(@week_start)
-        .includes(:house_role, :additional_roles, :source, { shows: :production },
+        .includes(:house_role, :additional_roles, { shift_additional_roles: :house_role }, :source, { shows: :production },
                   shift_assignments: { person: HEADSHOT_PRELOAD })
         .ordered
         .to_a
@@ -191,7 +191,7 @@ module Manage
 
       shifts = Current.organization.shifts
         .for_week(@week_start)
-        .includes(:house_role, :additional_roles, :source, shift_assignments: :person)
+        .includes(:house_role, :additional_roles, { shift_additional_roles: :house_role }, :source, shift_assignments: :person)
         .ordered
         .to_a
 
@@ -460,8 +460,11 @@ module Manage
       shifts.each do |shift|
         next unless shift.fully_staffed?
 
-        role_ids = [ shift.house_role_id ] + shift.additional_roles.map(&:id)
-        shift.covered_shows.each { |show| covered[show.id].merge(role_ids) }
+        # The primary role covers every show on the shift; an extra role covers
+        # the shows it was scoped to, or all of them when it wasn't.
+        shift.covered_shows.each do |show|
+          covered[show.id].merge([ shift.house_role_id ] + shift.additional_roles_for(show).map(&:id))
+        end
       end
 
       result = {}
