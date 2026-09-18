@@ -724,16 +724,19 @@ module Manage
       end
     end
 
+    # Each night lists what the person was given there, labelled the way the
+    # cast page labels it: "Magic (Act 3)", or "2 acts as Magic (Acts 1 and 3)"
+    # on an act-based show; plain role names otherwise.
     def build_shows_by_production_html(assignments_by_production)
-      html = ""
+      html = +""
       assignments_by_production.each do |production, prod_assignments|
-        html += "<h3>#{production.name}</h3>\n<ul>\n"
+        html << "<h3>#{ERB::Util.h(production.name)}</h3>\n<ul>\n"
         prod_assignments.group_by(&:show).sort_by { |show, _| show.date_and_time }.each do |show, show_assignments|
-          roles = show_assignments.map { |a| a.role.name }.join(", ")
+          roles = ActAssignmentLabeler.labels(show_assignments.map(&:role), show: show).join(", ")
           date_str = show.date_and_time.strftime("%-m/%-d/%Y %-l %p")
-          html += "<li>#{date_str} (#{show.display_name}): #{roles}</li>\n"
+          html << "<li>#{date_str} (#{ERB::Util.h(show.display_name)}): #{ERB::Util.h(roles)}</li>\n"
         end
-        html += "</ul>\n"
+        html << "</ul>\n"
       end
       html
     end

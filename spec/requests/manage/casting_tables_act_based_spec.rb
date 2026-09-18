@@ -232,6 +232,22 @@ RSpec.describe "Manage::CastingTables on act-based shows", type: :request do
     end
   end
 
+  describe "the finalize message" do
+    it "names each act by its place in the running order" do
+      ada.update!(user: create(:user))
+      ContentTemplate.find_by(key: "casting_table_notification")
+                     .update!(body: "<p>You have been cast:</p>{{shows_by_production}}")
+      assign!(role_named("Magic", ordinal: 1))
+      assign!(role_named("Magic", ordinal: 2))
+      assign!(role_named("MC"), ada, force: true)
+
+      post manage_casting_table_finalize_path(table), params: { notify: "1" }
+
+      body = Message.where(system_generated: true).order(:id).last&.body.to_s
+      expect(body).to include("MC, 2 acts as Magic (Acts 1 and 3)")
+    end
+  end
+
   describe "unfinalizing" do
     it "reopens the shows' casting" do
       assign!(role_named("Magic", ordinal: 1))

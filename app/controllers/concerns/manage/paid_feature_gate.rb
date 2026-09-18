@@ -112,11 +112,11 @@ module Manage
         name: "Casting Table",
         icon: "clipboard-list",
         headline: "Cast a whole run of shows at once on one visual board",
-        subhead: "See every role across every show in a single grid and fill them without conflicts.",
-        description: "The Casting Table is built for producers juggling many shows at once. Lay out your entire schedule, drag performers into open slots, and instantly see collisions and gaps before they become problems.",
+        subhead: "See every show and every performer in a single grid, with availability in each cell, and fill it without conflicts.",
+        description: "The Casting Table is built for producers juggling many shows at once. Lay out your entire schedule against the people you're casting from, open any cell to pick their roles or acts for that night, and see collisions and gaps before they become problems.",
         capabilities: [
-          { title: "One grid, every show", body: "See all your roles across all your shows and events in a single view." },
-          { title: "Drag-and-drop casting", body: "Assign performers to open slots in seconds and rearrange as plans change." },
+          { title: "One grid, every show", body: "Shows down the side, performers across the top, and who's available in every cell." },
+          { title: "Cast from the cell", body: "Open a cell to see that night's whole lineup, who else is on it, and what's still open, then tick a role or act and move on." },
           { title: "Conflict & vacancy detection", body: "Spot double-bookings and unfilled roles instantly, before they cost you." },
           { title: "Finalize & notify", body: "Lock in your cast and notify everyone at once when the board is ready." }
         ],
