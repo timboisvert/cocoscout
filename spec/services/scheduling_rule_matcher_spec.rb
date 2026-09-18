@@ -117,41 +117,39 @@ RSpec.describe SchedulingRuleMatcher do
 
     before { staff!(person, bar_role) }
 
-    context "in unavailable mode (marks are days off)" do
-      it "flags a match covered by an all-day mark, but leaves it selectable" do
-        create(:staff_unavailability, person: person, date: thursday)
-
-        match = matcher.matches.first
-        expect(match.unavailable).to be(true)
-        expect(match).to be_selectable
-        expect(match).not_to be_prechecked
-      end
-
-      it "doesn't flag when the mark covers the other day part" do
-        create(:staff_unavailability, :afternoon, person: person, date: thursday)
-
-        expect(matcher.matches.first.unavailable).to be(false)
-      end
-
-      it "flags an evening shift blocked by an evening mark" do
-        create(:staff_unavailability, :evening, person: person, date: thursday)
-
-        expect(matcher.matches.first.unavailable).to be(true)
-      end
+    def entry!(polarity: :unavailable, from: 0, to: 1440)
+      StaffAvailabilityEntry.create!(person: person, kind: :dated, polarity: polarity, source: :self_reported,
+                                     starts_on: thursday, ends_on: thursday, starts_minute: from, ends_minute: to)
     end
 
-    context "in available mode (marks are the only workable days)" do
-      before { person.update!(availability_mode: "available") }
+    it "flags a slot they can't work at all, but leaves it selectable" do
+      entry!
 
-      it "flags an unmarked day as unavailable" do
-        expect(matcher.matches.first.unavailable).to be(true)
-      end
+      match = matcher.matches.first
+      expect(match.availability).to be_blocked
+      expect(match).to be_selectable
+      expect(match).not_to be_prechecked
+    end
 
-      it "doesn't flag a day they marked as workable" do
-        create(:staff_unavailability, person: person, date: thursday)
+    it "pre-checks a slot their block doesn't touch" do
+      entry!(from: 6 * 60, to: 12 * 60) # the morning; the rule is 6–10pm
 
-        expect(matcher.matches.first.unavailable).to be(false)
-      end
+      expect(matcher.matches.first.availability).to be_free
+      expect(matcher.matches.first).to be_prechecked
+    end
+
+    # The old check read only the 6pm start, so a block from 8pm never showed.
+    it "reads the whole slot: a block from 8pm makes a 6–10pm slot partial, and unticked" do
+      entry!(from: 20 * 60, to: 1440)
+
+      match = matcher.matches.first
+      expect(match.availability).to be_partial
+      expect(match).not_to be_prechecked
+    end
+
+    it "pre-checks someone who hasn't said anything" do
+      expect(matcher.matches.first.availability).to be_unknown
+      expect(matcher.matches.first).to be_prechecked
     end
   end
 

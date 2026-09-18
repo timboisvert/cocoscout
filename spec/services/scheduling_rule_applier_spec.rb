@@ -91,7 +91,7 @@ RSpec.describe SchedulingRuleApplier do
   it "applies unavailable-but-checked matches (the manager's override)" do
     person = create(:person)
     staff!(person, tech_role)
-    create(:staff_unavailability, person: person, date: tuesday)
+    StaffAvailabilityWriter.new(person).save_exception!(starts_on: tuesday, ends_on: tuesday, state: "off")
     create(:scheduling_rule, organization: organization, person: person,
                              house_role: tech_role, production: production)
 

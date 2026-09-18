@@ -1,0 +1,63 @@
+<%# The one vocabulary for any day, used by both sheets: Anytime / Not at all /
+    Only certain hours. The time-of-day chips and the time fields are the same
+    control: tapping "Evening" writes 5:00 PM and 12:00 AM into the fields, so
+    someone who thinks in evenings taps once and someone who thinks in hours
+    just types. An end time before its start runs past midnight. %>
+<% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+<div class="space-y-2">
+  <% [
+       [ "anytime", "Anytime", "I can work any time that day" ],
+       [ "off", "Not at all", "I can't work that day" ],
+       [ "hours", "Only certain hours", "Just the hours I choose" ]
+     ].each do |value, label, hint| %>
+    <label class="flex items-center gap-3 rounded-lg border-2 border-gray-200 bg-white px-4 py-3 cursor-pointer transition-colors hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+      <input type="radio" name="state" value="<%= value %>" required
+             class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+             data-action="change->work-availability#stateChanged">
+      <span class="min-w-0">
+        <span class="block text-sm font-semibold text-gray-900"><%= label %></span>
+        <span class="block text-xs text-gray-500"><%= hint %></span>
+      </span>
+    </label>
+  <% end %>
+</div>
+
+<div data-hours class="hidden mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+  <% if day_parts.any? %>
+    <p class="text-xs text-gray-600 mb-2">Tap a time of day, or set your own hours.</p>
+    <div class="flex flex-wrap gap-1.5 mb-3">
+      <% day_parts.each do |part| %>
+        <%= render "shared/button", text: part["name"], variant: "outline-pink", size: "xs", type: :button,
+              data: { action: "click->work-availability#applyChip", from: part["starts"], to: part["ends"] } %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div data-windows class="space-y-2"></div>
+
+  <div class="mt-2">
+    <%= render "shared/button", text: "Add another window", icon: "plus", variant: "ghost", size: "xs", type: :button,
+          data: { action: "click->work-availability#addWindow" } %>
+  </div>
+  <p data-hours-error class="hidden mt-2 text-xs text-red-600"></p>
+
+  <%# Tighter than the house input padding on a phone, where two time fields
+      and their clock icons share one line. %>
+  <% time_class = input_class.sub("px-3", "px-2 sm:px-3 text-sm sm:text-base") %>
+  <template data-window-template>
+    <div class="flex items-center gap-1.5 sm:gap-2" data-window-row>
+      <label class="flex-1 min-w-0">
+        <span class="sr-only">From</span>
+        <input type="time" step="300" name="windows[__INDEX__][from]" class="<%= time_class %>" data-window-from>
+      </label>
+      <span class="text-xs text-gray-500 flex-shrink-0">to</span>
+      <label class="flex-1 min-w-0">
+        <span class="sr-only">To</span>
+        <input type="time" step="300" name="windows[__INDEX__][to]" class="<%= time_class %>" data-window-to>
+      </label>
+      <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "xs", type: :button,
+            title: "Remove this window", classes: "flex-shrink-0",
+            data: { action: "click->work-availability#removeWindow" } %>
+    </div>
+  </template>
+</div>

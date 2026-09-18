@@ -1,8 +1,8 @@
 <%#
-  Work times: which regions of the day this organization staffs by, picked
-  from the fixed catalog (StaffingDayParts::STAFFING_DAY_PART_CATALOG). Staff
-  mark themselves unavailable "all day" or for one of the regions turned on
-  here, and a shift belongs to every region its start time falls in.
+  Work times: the times of day offered to staff as one-tap shortcuts when they
+  set the hours they can work, picked from the fixed catalog
+  (StaffingDayParts::STAFFING_DAY_PART_CATALOG). Tapping "Evening" fills in
+  5:00 PM to midnight; staff can always type their own hours instead.
   Local from the controller: @day_part_keys — the keys currently on.
 %>
 <div class="bg-white border border-gray-200 rounded-xl p-6">
@@ -13,11 +13,10 @@
     <h2 class="text-xl text-gray-900 coustard-regular">Work times</h2>
   </div>
   <p class="text-sm text-gray-600">
-    The stretches of the day your staff can mark themselves unavailable for.
-    Turn on the ones that fit how you schedule — Morning, Afternoon and Evening
-    to start, or finer slices like Late morning or Early evening. Scheduling
-    reads a shift against every region its start time falls in, and "All day"
-    is always there.
+    The times of day your staff get as shortcuts when they set the hours they
+    can work. Tapping one fills in its hours, and anyone can type their own
+    instead. Turn on the ones that match how you schedule: Morning, Afternoon
+    and Evening to start, or finer slices like Late morning or Early evening.
   </p>
 
   <%= form_with url: manage_staffing_settings_path, method: :patch, class: "mt-5 pt-5 border-t border-gray-200" do %>

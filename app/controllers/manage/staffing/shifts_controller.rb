@@ -61,7 +61,7 @@ module Manage
         next_position = (@shift.shift_assignments.maximum(:position) || 0) + 1
         assignment = @shift.shift_assignments.new(person: person, position: next_position)
         if assignment.save
-          redirect_to_scheduling notice: "Assigned #{person.name}."
+          redirect_to_scheduling notice: "Assigned #{person.name}.#{availability_note(person, @shift)}"
         else
           redirect_to_scheduling alert: assignment.errors.full_messages.to_sentence.presence || "Couldn't assign."
         end
@@ -237,9 +237,19 @@ module Manage
         return "Couldn't assign #{person.name}: not on staff or not qualified for this role." unless qualified_for_shift?(person, @shift)
 
         @shift.shift_assignments.create!(person: person, position: 1)
-        "Assigned #{person.name}."
+        "Assigned #{person.name}.#{availability_note(person, @shift)}"
       rescue ActiveRecord::RecordInvalid => e
         "Couldn't assign #{person&.name}: #{e.message}"
+      end
+
+      # Assigning never refuses someone for what they said about their
+      # availability — the manager may know better — but it doesn't stay quiet
+      # about it either: " Note: Free from 8:30 PM, misses the first 1h 30m
+      # (their usual Friday)."
+      def availability_note(person, shift)
+        verdict = StaffAvailabilityResolver.new([ person.id ], from: shift.starts_at.to_date, to: shift.ends_at.to_date)
+                                           .verdict(person.id, shift.starts_at, shift.ends_at)
+        verdict.flagged? ? " Note: #{StaffAvailabilityWording.detail(verdict)}" : ""
       end
 
       # Split a merged show-based shift back into one shift per show it covers —

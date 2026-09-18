@@ -1,0 +1,32 @@
+<%# Change one weekday of the usual week — or several at once: the day tapped
+    comes ticked, and ticking others gives them the same answer. %>
+<%= render layout: "my/work_availability/sheet_frame", locals: { target: "weekSheet", title: "Your usual week" } do %>
+  <%= form_with url: my_work_availability_week_path(onboarding: onboarding), method: :patch,
+        data: { action: "submit->work-availability#validate" } do %>
+    <div class="px-5 py-5 space-y-5">
+      <div>
+        <p class="text-sm font-medium text-gray-900 mb-2">On a usual <span data-day-name>day</span>, can you work?</p>
+        <%= render "my/work_availability/answer_fields", day_parts: day_parts %>
+      </div>
+
+      <div>
+        <p class="text-sm font-medium text-gray-900 mb-2">Use this answer for</p>
+        <div class="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+          <% WorkAvailabilityPicture::WEEK_ORDER.each do |wday| %>
+            <label class="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs font-medium text-gray-700 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 has-[:checked]:text-pink-700">
+              <input type="checkbox" name="days[]" value="<%= wday %>" data-day-checkbox
+                     class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <%= Date::ABBR_DAYNAMES[wday] %>
+            </label>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-5 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+            data: { action: "click->work-availability#closeSheets" } %>
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
-# Mirrors a person's old-style availability (staff_unavailabilities + the
-# people.availability_mode flag) into StaffAvailabilityEntry rows, so the new
-# resolver can be proven against real data before anything reads it.
+# Carries a person's old-style availability (staff_unavailabilities + the
+# people.availability_mode flag) into StaffAvailabilityEntry rows. Used once,
+# by the cutover migration (CarryStaffAvailabilityIntoTimeBands); nothing else
+# calls it. Once people edit their availability on the new page, running it
+# again would bring back the `migrated` rows they replaced.
 #
 # It rebuilds rather than patches: every `migrated` row for the person is thrown
-# away and recreated from the old table. The old table stays the source of
-# truth until the new staff screen replaces it, and a full rebuild can't drift.
-# Rows from any other source (self_reported, manager) are never touched.
+# away and recreated from the old table. Rows from any other source
+# (self_reported, manager) are never touched.
 #
 # The translation is exact:
 #

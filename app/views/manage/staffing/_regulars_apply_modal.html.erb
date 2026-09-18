@@ -61,8 +61,12 @@
                         <span class="text-xs text-gray-500 flex-shrink-0">Already scheduled</span>
                       <% elsif !match.qualified %>
                         <span class="text-xs text-gray-500 flex-shrink-0">Not qualified for this role</span>
-                      <% elsif match.unavailable %>
-                        <span class="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded flex-shrink-0">Marked unavailable</span>
+                      <% elsif match.availability.blocked? %>
+                        <span class="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded flex-shrink-0"
+                              title="<%= StaffAvailabilityWording.detail(match.availability) %>">Marked unavailable</span>
+                      <% elsif match.availability.partial? %>
+                        <span class="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded flex-shrink-0"
+                              title="<%= StaffAvailabilityWording.detail(match.availability) %>"><%= StaffAvailabilityWording.badge(match.availability) %></span>
                       <% end %>
                     </label>
                   <% end %>

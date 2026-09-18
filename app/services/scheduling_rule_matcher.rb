@@ -17,12 +17,14 @@
 class SchedulingRuleMatcher
   Match = Struct.new(
     :key, :rule, :person, :house_role, :date, :starts_at, :ends_at, :show,
-    :existing_shift, :already_assigned, :qualified, :unavailable,
+    :existing_shift, :already_assigned, :qualified, :availability,
     keyword_init: true
   ) do
     # A row the modal should render pre-checked: nothing stands in its way.
+    # Someone free for only part of the slot is offered but left unticked, the
+    # same as someone who can't make it at all.
     def selectable? = qualified && !already_assigned
-    def prechecked? = selectable? && !unavailable
+    def prechecked? = selectable? && availability.can_work_all?
   end
 
   def initialize(organization:, week_start:, shows_by_day: nil, shifts: nil)
@@ -72,12 +74,9 @@ class SchedulingRuleMatcher
         existing_shift: existing,
         already_assigned: already_assigned?(rule, date, starts_at, ends_at, existing),
         qualified: member_role_ids(member).include?(rule.house_role_id),
-        unavailable: StaffUnavailability.unavailable_for?(
-          mode: availability_modes[rule.person_id] || "unavailable",
-          entries: unavailability_entries[rule.person_id] || [],
-          time: starts_at,
-          organization: @organization
-        )
+        # The whole slot, not just its start: a 4pm–1am slot is read against
+        # the evening it runs into.
+        availability: availability.verdict(rule.person_id, starts_at, ends_at)
       )
     end
   end
@@ -175,14 +174,8 @@ class SchedulingRuleMatcher
     member.staff_role_qualifications.map(&:house_role_id)
   end
 
-  def availability_modes
-    @availability_modes ||= Person.where(id: rule_person_ids).pluck(:id, :availability_mode).to_h
-  end
-
-  def unavailability_entries
-    @unavailability_entries ||= StaffUnavailability
-                                .where(person_id: rule_person_ids, date: @week_start..@week_end)
-                                .group_by(&:person_id)
+  def availability
+    @availability ||= StaffAvailabilityResolver.new(rule_person_ids, from: @week_start, to: @week_end + 1)
   end
 
   def shows_by_day

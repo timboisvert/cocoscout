@@ -1,12 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
-import { dayPartsFor, entryCovers } from "controllers/lib/day_parts"
 
 // The progressive Add-shift modal. Pick a role and the rest reveals itself
 // already filled in: the suggested time window (editable), the show picker for
 // per-show roles, and the qualified people so the shift can be staffed in the
 // same motion. Leaving the person blank creates an unassigned shift.
 //
-// Shares the page root with shift-assign, so the staff pool / unavailability /
+// Shares the page root with shift-assign, so the staff pool / day windows /
 // cast payloads are read straight off the root element's shift-assign values
 // rather than being serialized twice.
 export default class extends Controller {
@@ -28,8 +27,9 @@ export default class extends Controller {
 
         // Sibling controller payloads, shared via the page root.
         this.staffByRole = this.parse(this.element.dataset.shiftAssignStaffByRoleValue, {})
-        this.unavailability = this.parse(this.element.dataset.shiftAssignStaffUnavailabilityValue, {})
-        this.dayParts = this.parse(this.element.dataset.shiftAssignDayPartsValue, [])
+        // { personId: { "YYYY-MM-DD": [[fromMinute, toMinute], ...] } } — only
+        // days that aren't wide open; a day that's absent is free.
+        this.dayWindows = this.parse(this.element.dataset.shiftAssignDayWindowsValue, {})
         this.castByDay = this.parse(this.element.dataset.shiftAssignCastByDayValue, {})
 
         if (this.hasSubtitleTarget) this.subtitleTarget.textContent = btn.dataset.dayLabel || ""
@@ -214,8 +214,12 @@ export default class extends Controller {
         if (this.isPerforming(personId)) {
             return `<span class="block text-[10px] text-purple-600 font-medium">In a show</span>`
         }
-        if (this.isUnavailable(personId)) {
+        const availability = this.availabilityFor(personId)
+        if (availability === "blocked") {
             return `<span class="block text-[10px] text-red-600 font-medium">Unavailable</span>`
+        }
+        if (availability === "partial") {
+            return `<span class="block text-[10px] text-amber-700 font-medium">Free for part of it</span>`
         }
         return ""
     }
@@ -249,16 +253,34 @@ export default class extends Controller {
         return (byDay[String(personId)] || []).length > 0
     }
 
-    isUnavailable(personId) {
-        if (!this.dayIso) return false
-        const data = this.unavailability[personId]
-        if (!data) return false
-
+    // "free" | "partial" | "blocked" for the shift as currently set: how much
+    // of it falls inside the hours they can work that day (and the next, for
+    // a shift that runs past midnight).
+    availabilityFor(personId) {
+        const date = this.baseDate || this.dayIso
         const start = this.hasStartTimeInputTarget ? this.startTimeInputTarget.value : ""
-        const dayParts = dayPartsFor(start.slice(0, 5) || "17:00", this.dayParts)
-        const entries = data.entries || []
-        const covers = entries.some(e => entryCovers(e, this.dayIso, dayParts))
-        return data.mode === "available" ? !covers : covers
+        const end = this.hasEndTimeInputTarget ? this.endTimeInputTarget.value : ""
+        if (!date || !start || !end) return "free"
+
+        const days = this.dayWindows[String(personId)] || {}
+        const from = this.minutes(start)
+        let to = this.minutes(end)
+        if (to <= from) to += 1440
+
+        const windowsOn = (iso, offset) => {
+            if (!(iso in days)) return [[offset, offset + 1440]]
+            return days[iso].map(([a, b]) => [a + offset, b + offset])
+        }
+        const windows = windowsOn(date, 0).concat(to > 1440 ? windowsOn(this.nextDay(date), 1440) : [])
+        const covered = windows.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(b, to) - Math.max(a, from)), 0)
+
+        if (covered >= to - from) return "free"
+        return covered > 0 ? "partial" : "blocked"
+    }
+
+    minutes(hhmm) {
+        const [h, m] = hhmm.split(":").map(Number)
+        return h * 60 + m
     }
 
     // ----- plumbing -----

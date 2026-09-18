@@ -1,0 +1,59 @@
+<% content_for :title, "Work Availability" %>
+
+<%# Every change posts and comes straight back here; morph keeps the page (and
+    the scroll) where the person left it instead of redrawing it. %>
+<% content_for :head do %>
+  <meta name="turbo-refresh-method" content="morph">
+  <meta name="turbo-refresh-scroll" content="preserve">
+<% end %>
+
+<%
+  onboarding = @from_onboarding ? params[:onboarding] : nil
+  confirmed_through = @person.availability_confirmed_through
+  confirmed = confirmed_through.present? && confirmed_through >= Date.current
+%>
+
+<div class="w-full max-w-3xl mb-10"
+     data-controller="work-availability"
+     data-work-availability-day-parts-value="<%= @day_parts.to_json %>">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      @from_onboarding ? [ "Onboarding", @return_path ] : [ "My Shifts", my_shifts_path ]
+    ],
+    text: "Work Availability",
+    links: []
+  } %>
+
+  <p class="text-sm text-gray-600 mb-6">
+    Tell the people who schedule you when you can work. Set your usual week once, then add
+    exceptions for anything different: a trip, a late start, the one Saturday you can do.
+  </p>
+
+  <div class="space-y-6">
+    <%= render "my/work_availability/week", picture: @picture %>
+    <%= render "my/work_availability/exceptions", picture: @picture, months: @months, days: @days, onboarding: onboarding %>
+
+    <%# Vouching for it: the quiet way people tell a scheduler "yes, still right". %>
+    <section class="rounded-xl border <%= confirmed ? "border-green-200 bg-green-50" : "border-gray-200 bg-white" %> px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="min-w-0">
+        <% if confirmed %>
+          <p class="text-sm font-medium text-green-800">Confirmed through <%= confirmed_through.strftime("%B %-d") %></p>
+          <p class="text-xs text-green-700 mt-0.5">Any change you make here counts as checking in again.</p>
+        <% else %>
+          <p class="text-sm font-medium text-gray-900">Is this all right?</p>
+          <p class="text-xs text-gray-500 mt-0.5">Let the people who schedule you know it's up to date.</p>
+        <% end %>
+      </div>
+      <div class="flex-shrink-0">
+        <%= render "shared/button", text: (@from_onboarding ? "Done" : "This is all right"),
+              variant: (confirmed && !@from_onboarding ? "secondary" : "primary"), size: "medium",
+              path: my_confirm_work_availability_path(onboarding: onboarding), method: :post %>
+      </div>
+    </section>
+  </div>
+
+  <%= render "my/work_availability/week_sheet", day_parts: @day_parts, onboarding: onboarding %>
+  <%= render "my/work_availability/exception_sheet", day_parts: @day_parts, onboarding: onboarding %>
+</div>

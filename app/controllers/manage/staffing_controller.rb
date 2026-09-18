@@ -159,24 +159,31 @@ module Manage
         end
       end
 
-      # Staff unavailability for this week, so the assign modal can flag/filter
-      # people who marked themselves unavailable on a shift's date + day part.
+      # When each staff member can work, answered per shift, so the assign
+      # modal can badge, sort and filter people without knowing how
+      # availability works. Only the shifts that aren't simply free are sent.
       staff_person_ids = Current.organization.organization_staff_members.active.pluck(:person_id)
-      modes = Person.where(id: staff_person_ids).pluck(:id, :availability_mode).to_h
-      entries_by_person = StaffUnavailability
-        .where(person_id: staff_person_ids, date: @week_start..@week_end)
-        .group_by(&:person_id)
-      # Include every staff person + their mode so the assign modal can interpret
-      # "available"-mode people (available only where marked) correctly.
-      @staff_unavailability_payload = staff_person_ids.index_with do |pid|
-        {
-          mode: modes[pid] || "unavailable",
-          entries: (entries_by_person[pid] || []).map { |u| { date: u.date.iso8601, scope: u.scope } }
-        }
-      end.transform_keys(&:to_s)
-      # The org's work time regions, so the client can tell which regions a
-      # shift's start time falls in the same way Organization#staffing_day_part_keys_for does.
-      @staffing_day_parts_payload = Current.organization.staffing_day_parts_or_default
+      availability = StaffAvailabilityResolver.new(staff_person_ids, from: @week_start, to: @week_end + 1)
+      @staff_availability_payload = staff_person_ids.each_with_object({}) do |pid, h|
+        verdicts = shifts.each_with_object({}) do |shift, per_shift|
+          verdict = availability.verdict(pid, shift.starts_at, shift.ends_at)
+          next if verdict.free?
+
+          per_shift[shift.id.to_s] = { status: verdict.status, badge: StaffAvailabilityWording.badge(verdict),
+                                       detail: StaffAvailabilityWording.detail(verdict) }
+        end
+        h[pid.to_s] = verdicts if verdicts.any?
+      end
+      # And the hours each person can work on each day that isn't wide open, for
+      # the Add-shift modal, which asks about a shift that doesn't exist yet:
+      # { personId: { "YYYY-MM-DD": [[from_minute, to_minute], ...] } }.
+      @staff_day_windows_payload = staff_person_ids.each_with_object({}) do |pid, h|
+        days = (@week_start..@week_end).each_with_object({}) do |date, per_day|
+          day = availability.day(pid, date)
+          per_day[date.iso8601] = day.windows unless day.free? || day.unknown?
+        end
+        h[pid.to_s] = days if days.any?
+      end
 
       load_availability_overview
     end
@@ -509,23 +516,20 @@ module Manage
       @roots = @staff.select { |m| m.manager_id.nil? || active_ids.exclude?(m.manager_id) }
     end
 
-    # Every active staff member (alphabetical) with their upcoming availability
-    # marks (today onward), for the read-only "Availability" overview modal on the
-    # scheduling page. Anyone with staffing access can see it — the org is flat.
+    # Every active staff member (alphabetical) with their usual week and their
+    # upcoming exceptions, for the read-only "Availability" overview modal on
+    # the scheduling page. Anyone with staffing access can see it — the org is
+    # flat.
     def load_availability_overview
       members = Current.organization.organization_staff_members.active
                        .includes(person: HEADSHOT_PRELOAD)
                        .order("people.name").references(:person).to_a
-      person_ids = members.map(&:person_id)
-      future_by_person = StaffUnavailability
-        .where(person_id: person_ids, date: Date.current..(Date.current + 4.months))
-        .order(:date)
-        .group_by(&:person_id)
+      entries = StaffAvailabilityEntry.where(person_id: members.map(&:person_id)).includes(:created_by)
+                                      .group_by(&:person_id)
       @availability_overview = members.map do |m|
         {
           member: m,
-          mode: m.person&.availability_mode || "unavailable",
-          entries: (future_by_person[m.person_id] || []).map { |u| { date: u.date, label: u.scope_label(Current.organization) } }
+          picture: WorkAvailabilityPicture.new(m.person, entries: entries.fetch(m.person_id, []))
         }
       end
     end

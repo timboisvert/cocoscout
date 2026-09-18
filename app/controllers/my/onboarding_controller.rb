@@ -13,14 +13,11 @@ module My
     def show
       @organization = @staff_member.organization
 
-      # Person-scoped availability, so step 3 can open the same calendar modal
-      # inline instead of bouncing to My Shifts.
-      @availability_mode = @person.availability_mode || "unavailable"
-      @availability_day_parts = @person.staffing_day_parts
-      @unavailability_entries = @person.staff_unavailabilities
-                                       .where(date: Date.current.beginning_of_month..(Date.current + 12.months))
-                                       .order(:date)
-                                       .map { |u| { date: u.date.iso8601, scope: u.scope } }
+      # Step 3 is done once they've said anything about when they can work —
+      # set a day, added an exception, or confirmed it as it stands.
+      @availability_set = @person.staff_availability_entries.exists? || @person.availability_confirmed_through.present?
+      # Back from the Work Availability page with it just finished.
+      @availability_just_done = params[:availability_done].present? && @availability_set
     end
 
     # "I agree & I'm in" — record that they've accepted onboarding (and, when the

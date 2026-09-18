@@ -1,0 +1,20 @@
+<%# The shell both sheets share: pink header, and a bottom sheet on a phone /
+    centered card on a wider screen. Locals: target (the Stimulus target
+    name), title. The body is the block. %>
+<div data-work-availability-target="<%= target %>" data-sheet
+     class="hidden fixed inset-0 z-[60] overflow-y-auto"
+     data-action="keydown.esc@window->work-availability#closeSheets">
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" data-action="click->work-availability#closeSheets"></div>
+  <div class="relative flex min-h-full items-end sm:items-start justify-center sm:p-4 sm:py-12 pointer-events-none">
+    <div class="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-xl shadow-2xl overflow-hidden pointer-events-auto">
+      <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
+        <h3 class="text-lg font-semibold text-white truncate" data-sheet-title><%= title %></h3>
+        <button type="button" data-action="click->work-availability#closeSheets"
+                class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <%= yield %>
+    </div>
+  </div>
+</div>

@@ -77,6 +77,36 @@ class StaffAvailabilityResolver
     )
   end
 
+  # The shape of one calendar day: the stretches they can work (minutes from
+  # that midnight, merged), and how the day reads as a whole. Drives the
+  # month calendar and the manager's day bars.
+  Day = Struct.new(:date, :status, :windows, keyword_init: true) do
+    def free? = status == :free
+    def partial? = status == :partial
+    def blocked? = status == :blocked
+    def unknown? = status == :unknown
+  end
+
+  def day(person_id, date)
+    segments = sweep(person_id, date, 0, DAY)
+    windows = segments.select { |s| s[:available] }.map { |s| [ s[:a], s[:b] ] }
+                      .each_with_object([]) do |(a, b), merged|
+      if merged.any? && merged.last[1] == a
+        merged.last[1] = b
+      else
+        merged << [ a, b ]
+      end
+    end
+
+    status =
+      if windows == [ [ 0, DAY ] ] then :free
+      elsif windows.empty? then :blocked
+      else :partial
+      end
+    status = :unknown if status == :free && segments.none? { |s| s[:winner] } && !told_us_anything?(person_id)
+    Day.new(date: date, status: status, windows: windows)
+  end
+
   private
 
   # Cut a span at local midnights: [[date, from_minute, to_minute], ...].

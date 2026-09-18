@@ -1,0 +1,123 @@
+<%# Exceptions to the usual week, soonest first, over a calendar of how each
+    day actually works out (usual week and exceptions together). Tapping a
+    future day starts an exception on it, or opens the one already there. %>
+<%
+  today = Date.current
+  exception_for = lambda do |date|
+    picture.exceptions.find { |ex| date >= ex.starts_on && date <= ex.ends_on }
+  end
+%>
+<section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-200 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <h2 class="text-base font-semibold text-gray-900">Exceptions</h2>
+      <p class="text-sm text-gray-500 mt-0.5">Days that aren't like your usual week.</p>
+    </div>
+    <%= render "shared/button", text: "Add an exception", icon: "plus", variant: "secondary", size: "small", type: :button,
+          data: { action: "click->work-availability#addException" } %>
+  </div>
+
+  <% if picture.exceptions.empty? %>
+    <p class="px-5 py-4 text-sm text-gray-500">Nothing different coming up.</p>
+  <% else %>
+    <ul class="divide-y divide-gray-100">
+      <% picture.exceptions.each do |ex| %>
+        <% answer = ex.answer %>
+        <% remove_id = "remove-exception-#{ex.starts_on.iso8601}-#{ex.ends_on.iso8601}" %>
+        <li class="flex items-start gap-3 px-5 py-3">
+          <div role="button" tabindex="0" class="flex-1 min-w-0 cursor-pointer"
+               data-action="click->work-availability#editException keydown.enter->work-availability#editException"
+               data-starts-on="<%= ex.starts_on.iso8601 %>"
+               data-ends-on="<%= ex.ends_on.iso8601 %>"
+               data-state="<%= answer.editable_state %>"
+               data-windows="<%= answer.window_fields.to_json %>"
+               data-note="<%= ex.note %>">
+            <div class="text-sm font-medium text-gray-900"><%= ex.dates_label %></div>
+            <div class="text-sm <%= answer.state == :off ? "text-gray-500" : (answer.state == :anytime ? "text-green-700" : "text-gray-700") %>">
+              <%= answer.label %>
+            </div>
+            <% if ex.note.present? %>
+              <div class="text-xs text-gray-500 mt-0.5 italic"><%= ex.note %></div>
+            <% end %>
+            <% if answer.set_by %>
+              <div class="text-xs text-gray-400 mt-0.5">Set by <%= answer.set_by.person&.name || "a manager" %></div>
+            <% end %>
+          </div>
+          <div class="flex-shrink-0" data-controller="modal">
+            <%= render "shared/button", text: "", icon: "trash", variant: "ghost", size: "small", type: :button,
+                  title: "Remove this exception",
+                  data: { action: "click->modal#open", modal_id: remove_id } %>
+          </div>
+          <%= render "shared/confirm_modal", id: remove_id,
+                title: "Remove this exception?",
+                message: "#{ex.dates_label} goes back to your usual week.",
+                confirm_text: "Remove",
+                url: my_work_availability_exceptions_path(onboarding: onboarding),
+                method: :delete,
+                params: { starts_on: ex.starts_on.iso8601, ends_on: ex.ends_on.iso8601 } %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <%# How it all works out, day by day. %>
+  <div class="border-t border-gray-200 px-3 sm:px-5 py-4">
+    <% months.each_with_index do |month, index| %>
+      <div data-work-availability-target="month" class="<%= "hidden" unless index.zero? %>">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-9">
+            <% unless index.zero? %>
+              <%= render "shared/button", text: "", icon: "chevron-left", variant: "ghost", size: "small", type: :button,
+                    title: "Previous month", data: { action: "click->work-availability#prevMonth" } %>
+            <% end %>
+          </div>
+          <div class="text-sm font-semibold text-gray-900"><%= month.strftime("%B %Y") %></div>
+          <div class="w-9 flex justify-end">
+            <% unless index == months.size - 1 %>
+              <%= render "shared/button", text: "", icon: "chevron-right", variant: "ghost", size: "small", type: :button,
+                    title: "Next month", data: { action: "click->work-availability#nextMonth" } %>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-gray-400 mb-1">
+          <% %w[Mon Tue Wed Thu Fri Sat Sun].each do |d| %><div><%= d %></div><% end %>
+        </div>
+        <div class="grid grid-cols-7 gap-1">
+          <% ((month.cwday - 1)).times do %><div></div><% end %>
+          <% (month..month.end_of_month).each do |date| %>
+            <% day = days[date] %>
+            <% past = date < today %>
+            <% ex = exception_for.call(date) %>
+            <%
+              cell = if past then "bg-gray-50 border-gray-100 text-gray-300"
+                     elsif day.blocked? then "bg-gray-100 border-gray-200 text-gray-500"
+                     else "bg-white border-gray-200 text-gray-800"
+                     end
+              ring = ex && !past ? "ring-2 ring-pink-300 ring-inset" : ""
+            %>
+            <div class="min-h-[44px] rounded border px-1 pt-1 pb-1.5 flex flex-col items-center justify-between <%= cell %> <%= ring %> <%= past ? "" : "cursor-pointer hover:border-pink-400" %>"
+                 <% unless past %>
+                   role="button" tabindex="0"
+                   data-action="click->work-availability#pickDay keydown.enter->work-availability#pickDay"
+                   data-date="<%= date.iso8601 %>"
+                 <% end %>
+                 title="<%= date.strftime("%a %b %-d") %>: <%= day.blocked? ? "not working" : (day.partial? ? WorkAvailabilityPicture.windows_label(day.windows) : "any time") %>">
+              <span class="text-xs font-medium <%= "text-pink-600" if date == today %>"><%= date.day %></span>
+              <%# A 24-hour bar: green where they can work. %>
+              <span class="relative block w-full h-1.5 rounded-full bg-gray-200 overflow-hidden <%= "opacity-40" if past %>">
+                <% day.windows.each do |a, b| %>
+                  <span class="absolute inset-y-0 bg-green-500" style="left: <%= (a * 100.0 / 1440).round(2) %>%; width: <%= ((b - a) * 100.0 / 1440).round(2) %>%;"></span>
+                <% end %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    <p class="mt-3 text-xs text-gray-500 flex flex-wrap items-center gap-x-4 gap-y-1">
+      <span class="inline-flex items-center gap-1.5"><span class="w-4 h-1.5 rounded-full bg-green-500"></span> When you can work, midnight to midnight</span>
+      <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded ring-2 ring-pink-300 ring-inset"></span> An exception</span>
+    </p>
+  </div>
+</section>

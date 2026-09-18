@@ -137,13 +137,6 @@ class Shift < ApplicationRecord
     assigned_count >= required_count
   end
 
-  # The keys of the organization's work time regions this shift starts in
-  # (["evening", "late_evening"]), matched against staff unavailability marks;
-  # empty in a gap between regions.
-  def day_parts
-    organization.staffing_day_part_keys_for(starts_at)
-  end
-
   private
 
   def ends_after_starts

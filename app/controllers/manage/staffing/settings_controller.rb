@@ -122,7 +122,7 @@ module Manage
         Current.organization.update_staffing_day_part_keys!(Array(params[:day_part_keys]))
         names = Current.organization.staffing_day_parts_or_default.map { |p| p["name"] }
         redirect_to section_path("work_times"),
-                    notice: Current.organization.staffing_day_parts_declared? ? "Staff can mark #{names.to_sentence} and all day." : "Back to the standard Morning, Afternoon and Evening."
+                    notice: Current.organization.staffing_day_parts_declared? ? "Staff get #{names.to_sentence} as shortcuts when they set their hours." : "Back to the standard Morning, Afternoon and Evening."
       end
 
       # Role Call: when on, the scheduling page checks every show against the

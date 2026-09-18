@@ -174,7 +174,7 @@ RSpec.describe "Manage::Staffing::SchedulingRules", type: :request do
 
     it "flags an unavailable person in the modal, unchecked but still offered" do
       org.update!(staffing_regulars_enabled: true)
-      create(:staff_unavailability, person: person, date: tuesday)
+      StaffAvailabilityWriter.new(person).save_exception!(starts_on: tuesday, ends_on: tuesday, state: "off")
 
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
       expect(response.body).to include("Marked unavailable")

@@ -9,15 +9,9 @@
   HTML
 %>
 
-<%# One wrapper hosts the modal + time-entry-form + availability controllers, so
-    the header quick-actions and the box buttons all reach the same modals. %>
-<div class="w-full mb-10"
-     data-controller="modal time-entry-form unavailability"
-     data-unavailability-entries-value="<%= @unavailability_entries.to_json %>"
-     data-unavailability-create-url-value="<%= my_create_shift_unavailability_path %>"
-     data-unavailability-mode-value="<%= @availability_mode %>"
-     data-unavailability-day-parts-value="<%= @availability_day_parts.to_json %>"
-     data-unavailability-set-mode-url-value="<%= my_set_shift_availability_mode_path %>">
+<%# One wrapper hosts the modal + time-entry-form controllers, so the header
+    quick-actions and the box buttons all reach the same modals. %>
+<div class="w-full mb-10" data-controller="modal time-entry-form">
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
@@ -33,8 +27,7 @@
         { icon: "clipboard-list", text: "Add additional time", description: "Log other hours you worked", path: "#",
           data: { action: "click->modal#open click->time-entry-form#load", "modal-id": "time-entry-modal",
                   mode: "manual", url: my_time_entries_path, title: "Add additional time you worked" } },
-        { icon: "calendar", text: "Work Availability", description: "Set when you can work", path: "#",
-          data: { action: "click->unavailability#open" } }
+        { icon: "calendar", text: "Work Availability", description: "Set when you can work", path: my_work_availability_path }
       ] : [])
     ] %>
 

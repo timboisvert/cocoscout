@@ -9,8 +9,9 @@ class Person < ApplicationRecord
   has_many :socials, as: :sociable, dependent: :destroy
   has_many :staff_time_entries, dependent: :destroy
 
-  # How this person expresses staffing availability: mark the times they're
-  # "unavailable" (available otherwise), or mark only when they're "available".
+  # DEPRECATED with staff_unavailabilities: how the old day marks were meant
+  # ("unavailable" days off, or "available" the only days on). Read once by the
+  # availability cutover migration; the column goes with the old table.
   AVAILABILITY_MODES = %w[unavailable available].freeze
   validates :availability_mode, inclusion: { in: AVAILABILITY_MODES }
 
@@ -36,13 +37,13 @@ class Person < ApplicationRecord
   has_many :shift_assignments, dependent: :destroy
   has_many :organization_staff_members, dependent: :destroy
   has_many :staff_unavailabilities, dependent: :destroy
-  # When they can work, as time bands (StaffAvailabilityEntry). Replacing
-  # staff_unavailabilities; both exist while the new model is proven.
+  # When they can work, as time bands (StaffAvailabilityEntry), set on the Work
+  # Availability page. staff_unavailabilities is the deprecated old model.
   has_many :staff_availability_entries, dependent: :delete_all
 
-  # The work time regions this person can mark availability by: every region
-  # any organization they staff has turned on, in catalog order. Nobody's
-  # staff anywhere → the defaults.
+  # The time-of-day shortcuts this person gets when setting their hours: every
+  # region any organization they staff has turned on, in catalog order.
+  # Nobody's staff anywhere → the defaults.
   def staffing_day_parts
     orgs = Organization.where(id: organization_staff_members.active.select(:organization_id))
     keys = orgs.flat_map(&:staffing_day_part_keys).uniq

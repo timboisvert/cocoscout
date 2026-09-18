@@ -21,8 +21,8 @@
      data-shift-assign-assign-url-template-value="<%= assign_url_template %>"
      data-shift-assign-shift-times-value="<%= @shift_times_payload.to_json %>"
      data-shift-assign-person-busy-value="<%= @person_busy_payload.to_json %>"
-     data-shift-assign-staff-unavailability-value="<%= @staff_unavailability_payload.to_json %>"
-     data-shift-assign-day-parts-value="<%= @staffing_day_parts_payload.to_json %>"
+     data-shift-assign-staff-availability-value="<%= @staff_availability_payload.to_json %>"
+     data-shift-assign-day-windows-value="<%= @staff_day_windows_payload.to_json %>"
      data-shift-assign-cast-by-day-value="<%= @cast_by_day_payload.to_json %>"
      data-shift-edit-update-url-template-value="<%= manage_update_staffing_shift_path(":id") %>"
      data-shift-edit-unassign-url-template-value="<%= manage_unassign_staffing_shift_path(id: "SHIFT_ID", person_id: "PERSON_ID") %>"
@@ -824,12 +824,16 @@
           <input type="hidden" name="person_id" data-shift-assign-target="personIdInput">
         <% end %>
 
-        <div class="px-5 pt-3 flex items-center gap-2">
+        <%# Who to show: everyone, anyone who can work some of it, or only
+            people free for the whole shift. The list is sorted that way too. %>
+        <div class="px-5 pt-3 flex flex-wrap items-center gap-2">
           <span class="text-xs text-gray-500 mr-1">Show</span>
-          <button type="button" data-shift-assign-target="filterAll" data-action="click->shift-assign#showAll"
+          <button type="button" data-shift-assign-target="filterButton" data-filter="all" data-action="click->shift-assign#setFilter"
                   class="px-3 py-1.5 rounded text-xs font-medium transition bg-pink-500 text-white">Everyone</button>
-          <button type="button" data-shift-assign-target="filterAvailable" data-action="click->shift-assign#showAvailableOnly"
-                  class="px-3 py-1.5 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">Available only</button>
+          <button type="button" data-shift-assign-target="filterButton" data-filter="can_work" data-action="click->shift-assign#setFilter"
+                  class="px-3 py-1.5 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">Can work</button>
+          <button type="button" data-shift-assign-target="filterButton" data-filter="free" data-action="click->shift-assign#setFilter"
+                  class="px-3 py-1.5 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">Free the whole shift</button>
         </div>
 
         <div class="px-5 py-4 max-h-[60vh] overflow-y-auto" data-shift-assign-target="results">

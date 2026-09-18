@@ -1,20 +1,66 @@
-<%# Availability manager: mark the times you're (un)available. The unavailability
-    controller lives on the page wrapper (so the header action can open it too);
-    this section just holds the summary + the calendar modal. Uses
-    @unavailability_entries, @availability_mode. %>
+<%# Work availability at a glance: the shape of the usual week, what's coming
+    up that's different, and whether it's been checked lately. Everything is
+    changed on the Work Availability page. Uses @availability_picture and
+    @availability_person. %>
+<%
+  picture = @availability_picture
+  confirmed_through = @availability_person&.availability_confirmed_through
+  upcoming = picture ? picture.exceptions.first(3) : []
+%>
 <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
   <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
-    <div class="flex items-center gap-2">
-      <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-      <h2 class="text-base font-semibold text-gray-900">Work availability</h2>
+    <div class="flex items-center gap-2 min-w-0">
+      <svg class="w-5 h-5 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <h2 class="text-base font-semibold text-gray-900 truncate">Work availability</h2>
     </div>
-    <%= render "shared/button", text: "Manage", variant: "secondary", size: "small", type: :button,
-          data: { action: "click->unavailability#open" } %>
+    <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: my_work_availability_path %>
   </div>
 
-  <div class="p-5">
-    <div class="min-w-0" data-unavailability-target="summary"></div>
-  </div>
+  <div class="p-5 space-y-4">
+    <% if picture.nil? || !picture.anything_said? %>
+      <p class="text-sm text-gray-600">
+        You haven't told anyone when you can work yet, so you're counted as free any time.
+        Set your usual week so you're only scheduled when it suits you.
+      </p>
+    <% else %>
+      <div>
+        <div class="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Usually</div>
+        <dl class="space-y-0.5">
+          <% picture.week_summary.each do |days, label| %>
+            <div class="flex flex-wrap gap-x-2 text-sm">
+              <dt class="font-medium text-gray-900"><%= days %></dt>
+              <dd class="text-gray-600"><%= label %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
 
-  <%= render "my/shifts/availability_modal" %>
+      <div>
+        <div class="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Coming up</div>
+        <% if upcoming.empty? %>
+          <p class="text-sm text-gray-500">Nothing different from your usual week.</p>
+        <% else %>
+          <ul class="space-y-0.5">
+            <% upcoming.each do |ex| %>
+              <li class="text-sm"><span class="font-medium text-gray-900"><%= ex.dates_label %></span> <span class="text-gray-500">· <%= ex.answer.label %></span></li>
+            <% end %>
+          </ul>
+          <% if picture.exceptions.size > upcoming.size %>
+            <%= link_to "#{picture.exceptions.size - upcoming.size} more on your Work Availability page", my_work_availability_path,
+                  class: "inline-block mt-1 text-xs font-medium text-pink-600 hover:text-pink-700" %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+      <% if confirmed_through.present? && confirmed_through >= Date.current %>
+        <span class="text-xs text-green-700">Confirmed through <%= confirmed_through.strftime("%B %-d") %></span>
+      <% else %>
+        <span class="text-xs text-amber-700">Not confirmed lately</span>
+        <%= render "shared/button", text: "Still right", variant: "outline-pink", size: "xs",
+              path: my_confirm_work_availability_path, method: :post %>
+      <% end %>
+    </div>
+  </div>
 </section>

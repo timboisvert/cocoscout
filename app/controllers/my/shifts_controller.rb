@@ -2,8 +2,8 @@
 
 module My
   # Talent-side view of house staffing shifts the user has been assigned to
-  # (the Staffing module's counterpart to "My Shows & Events"), plus the place
-  # where staff mark the dates they're unavailable to work.
+  # (the Staffing module's counterpart to "My Shows & Events"). When they can
+  # work is set on its own page (My::WorkAvailabilityController).
   class ShiftsController < ApplicationController
     def index
       @people = Current.user.people.active.order(:created_at).to_a
@@ -47,23 +47,9 @@ module My
 
       load_timekeeping(people_ids, finalized_weeks)
 
-      # Unavailability for the calendar/summary (the client renders both). Cover
-      # the current month through ~12 months out so month navigation has data.
-      person = Current.user.person
-      @availability_mode = person&.availability_mode || "unavailable"
-      @availability_day_parts = person ? person.staffing_day_parts : Organization.staffing_day_parts_for_keys(StaffingDayParts::DEFAULT_STAFFING_DAY_PART_KEYS)
-      @unavailability_entries =
-        if person
-          person.staff_unavailabilities
-                .where(date: Date.current.beginning_of_month..(Date.current + 12.months))
-                .order(:date)
-                .map { |u| { date: u.date.iso8601, scope: u.scope } }
-        else
-          []
-        end
-
-      today = Date.current.iso8601
-      @availability_upcoming_count = @unavailability_entries.count { |e| e[:date] >= today }
+      # The Work availability card: the shape of their week and what's coming up.
+      @availability_person = Current.user.person
+      @availability_picture = @availability_person && WorkAvailabilityPicture.new(@availability_person)
     end
 
     # "I can't make it" on an assigned shift — records the decline (+ optional
@@ -82,56 +68,6 @@ module My
       assignment = find_my_assignment or return
       assignment.undo_decline!
       redirect_to my_shifts_path, notice: "You're back on for that shift."
-    end
-
-    # Upsert/clear unavailability for one or more dates. Called by the client-side
-    # calendar via fetch; responds JSON.
-    def create_unavailability
-      person = Current.user.person
-      return render(json: { ok: false, error: "No profile" }, status: :unprocessable_entity) unless person
-
-      scope = params[:scope].to_s
-      dates = Array(params[:dates]).map { |d| safe_date(d) }.compact
-      dates << safe_date(params[:date]) if params[:date].present?
-      dates = dates.compact.uniq
-      return render(json: { ok: false, error: "No dates" }, status: :unprocessable_entity) if dates.empty?
-
-      # "all_day", or the key of one of the work time regions this person can mark.
-      allowed = [ StaffUnavailability::ALL_DAY ] + person.staffing_day_parts.map { |p| p["key"] }
-      if scope == "clear"
-        person.staff_unavailabilities.where(date: dates).destroy_all
-      elsif allowed.include?(scope)
-        dates.each do |date|
-          record = person.staff_unavailabilities.find_or_initialize_by(date: date)
-          record.scope = scope
-          record.save!
-        end
-      else
-        return render(json: { ok: false, error: "Invalid scope" }, status: :unprocessable_entity)
-      end
-
-      # Mirror into the new time-band model, which is being proven against this
-      # data before it takes over. Nothing reads it yet.
-      StaffAvailabilityBackfill.rebuild!(person)
-
-      render json: { ok: true }
-    end
-
-    # Switch between marking unavailable-times vs available-times. Because the
-    # marks invert meaning, switching modes clears any existing marks.
-    def set_availability_mode
-      person = Current.user.person
-      return render(json: { ok: false }, status: :unprocessable_entity) unless person
-
-      mode = params[:mode].to_s
-      return render(json: { ok: false, error: "Invalid mode" }, status: :unprocessable_entity) unless Person::AVAILABILITY_MODES.include?(mode)
-
-      if person.availability_mode != mode
-        person.staff_unavailabilities.delete_all
-        person.update!(availability_mode: mode)
-        StaffAvailabilityBackfill.rebuild!(person)
-      end
-      render json: { ok: true }
     end
 
     private
@@ -210,12 +146,6 @@ module My
 
       person = Current.user.person
       @bank_connected = person.respond_to?(:can_receive_payouts?) && person.can_receive_payouts?
-    end
-
-    def safe_date(value)
-      Date.parse(value.to_s)
-    rescue ArgumentError, TypeError
-      nil
     end
   end
 end

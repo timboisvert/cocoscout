@@ -171,6 +171,31 @@ RSpec.describe StaffAvailabilityResolver do
     end
   end
 
+  describe "a whole day's picture" do
+    it "gives the stretches they can work, merged" do
+      entry(starts_minute: 0, ends_minute: 17 * 60)
+
+      picture = described_class.new([ person.id ], from: day, to: day).day(person.id, day)
+      expect(picture).to be_partial
+      expect(picture.windows).to eq([ [ 17 * 60, 1440 ] ])
+    end
+
+    it "reads an untouched day as unknown for someone who's said nothing, and free once they have" do
+      expect(described_class.new([ person.id ], from: day, to: day).day(person.id, day)).to be_unknown
+
+      person.update!(availability_confirmed_through: day + 30)
+      expect(described_class.new([ person.id ], from: day, to: day).day(person.id, day)).to be_free
+    end
+
+    it "reads a day off as blocked, with no windows" do
+      entry
+
+      picture = described_class.new([ person.id ], from: day, to: day).day(person.id, day)
+      expect(picture).to be_blocked
+      expect(picture.windows).to eq([])
+    end
+  end
+
   it "answers many people and shifts from one load" do
     other = create(:person)
     entry

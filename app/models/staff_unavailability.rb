@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# DEPRECATED — nothing reads or writes this any more. Availability lives in
+# StaffAvailabilityEntry (set on the Work Availability page, read through
+# StaffAvailabilityResolver); these rows were carried across once by the
+# CarryStaffAvailabilityIntoTimeBands migration. Kept for one release, then
+# the table goes.
+#
 # A date on which a person has marked themselves unavailable to work house
 # shifts. Person-level (applies across every org they staff). The mark covers
 # the whole day, or one work time region by key — "evening", "late_morning" —

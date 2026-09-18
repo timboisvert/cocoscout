@@ -1,0 +1,43 @@
+<%# Add or change an exception: a date or a run of dates, the same three
+    answers, and an optional note the schedulers can see. Editing carries the
+    dates it started with, so moving them replaces the old exception rather
+    than leaving it behind. %>
+<% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+<%= render layout: "my/work_availability/sheet_frame", locals: { target: "exceptionSheet", title: "Add an exception" } do %>
+  <%= form_with url: my_work_availability_exceptions_path(onboarding: onboarding), method: :post,
+        data: { action: "submit->work-availability#validate" } do %>
+    <input type="hidden" name="replacing_starts_on" data-replacing-starts-on>
+    <input type="hidden" name="replacing_ends_on" data-replacing-ends-on>
+
+    <div class="px-5 py-5 space-y-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label class="block">
+          <span class="block text-sm font-medium text-gray-900 mb-1">From</span>
+          <input type="date" name="starts_on" required min="<%= Date.current.iso8601 %>" class="<%= input_class %>"
+                 data-starts-on data-action="change->work-availability#startChanged">
+        </label>
+        <label class="block">
+          <span class="block text-sm font-medium text-gray-900 mb-1">Through <span class="font-normal text-gray-500">(optional)</span></span>
+          <input type="date" name="ends_on" min="<%= Date.current.iso8601 %>" class="<%= input_class %>" data-ends-on>
+        </label>
+      </div>
+
+      <div>
+        <p class="text-sm font-medium text-gray-900 mb-2">Can you work?</p>
+        <%= render "my/work_availability/answer_fields", day_parts: day_parts %>
+      </div>
+
+      <label class="block">
+        <span class="block text-sm font-medium text-gray-900 mb-1">Note <span class="font-normal text-gray-500">(optional)</span></span>
+        <input type="text" name="note" maxlength="140" placeholder="Out of town, a late class…" class="<%= input_class %>" data-note>
+        <span class="block text-xs text-gray-500 mt-1">The people who schedule you can see this.</span>
+      </label>
+    </div>
+
+    <div class="px-5 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+            data: { action: "click->work-availability#closeSheets" } %>
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

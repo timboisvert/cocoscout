@@ -2,9 +2,8 @@
 
 require "rails_helper"
 
-# Staffing settings → Work times: the regions of the day an organization
-# staffs by (Morning / Afternoon / Evening…), which staff mark availability by
-# and shifts fall into.
+# Staffing settings → Work times: the times of day an organization offers
+# (Morning / Afternoon / Evening…) as shortcuts when staff set their hours.
 RSpec.describe "Staffing work times", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
@@ -33,10 +32,7 @@ RSpec.describe "Staffing work times", type: :request do
     # Stored in catalog order, whatever order the boxes were ticked in
     expect(org.reload.staffing_day_parts).to eq(%w[early_morning morning late_night])
     expect(org.staffing_day_parts_or_default.map { |p| p["name"] }).to eq([ "Early morning", "Morning", "Late night" ])
-    expect(org.staffing_day_part_keys_for(Time.zone.local(2026, 6, 1, 8, 0))).to eq(%w[early_morning morning])
-    expect(org.staffing_day_part_keys_for(Time.zone.local(2026, 6, 1, 23, 0))).to eq(%w[late_night])
-    expect(org.staffing_day_part_keys_for(Time.zone.local(2026, 6, 1, 15, 0))).to eq([])
-    expect(flash[:notice]).to include("Early morning, Morning, and Late night and all day")
+    expect(flash[:notice]).to include("Early morning, Morning, and Late night as shortcuts")
   end
 
   it "unchecking everything goes back to the defaults" do
@@ -55,19 +51,13 @@ RSpec.describe "Staffing work times", type: :request do
       post handle_signin_path, params: { email_address: staffer.user.email_address, password: password }
     end
 
-    it "offers the organization's regions on the availability calendar and accepts a mark by them" do
-      get my_shifts_path
-      expect(response.body).to include("Unavailable Morning")
-      expect(response.body).to include("Unavailable Late night")
-      expect(response.body).not_to include("Unavailable Afternoon")
-
-      post my_create_shift_unavailability_path, params: { dates: [ "2026-06-10" ], scope: "late_night" }, as: :json
+    it "offers the organization's times of day as shortcuts that fill in their hours" do
+      get my_work_availability_path
       expect(response).to have_http_status(:ok)
-      expect(staffer.staff_unavailabilities.find_by(date: "2026-06-10").day_part_key).to eq("late_night")
-
-      # A region no organization of theirs has turned on is refused
-      post my_create_shift_unavailability_path, params: { dates: [ "2026-06-11" ], scope: "afternoon" }, as: :json
-      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('data-from="06:00"').and include('data-to="12:00"')
+      expect(response.body).to include('data-from="22:00"').and include('data-to="02:00"')
+      expect(response.body).to include(">Late night<")
+      expect(response.body).not_to include(">Afternoon<")
     end
   end
 end
