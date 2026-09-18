@@ -110,6 +110,10 @@ module My
         return render(json: { ok: false, error: "Invalid scope" }, status: :unprocessable_entity)
       end
 
+      # Mirror into the new time-band model, which is being proven against this
+      # data before it takes over. Nothing reads it yet.
+      StaffAvailabilityBackfill.rebuild!(person)
+
       render json: { ok: true }
     end
 
@@ -125,6 +129,7 @@ module My
       if person.availability_mode != mode
         person.staff_unavailabilities.delete_all
         person.update!(availability_mode: mode)
+        StaffAvailabilityBackfill.rebuild!(person)
       end
       render json: { ok: true }
     end

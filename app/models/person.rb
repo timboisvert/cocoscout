@@ -36,6 +36,9 @@ class Person < ApplicationRecord
   has_many :shift_assignments, dependent: :destroy
   has_many :organization_staff_members, dependent: :destroy
   has_many :staff_unavailabilities, dependent: :destroy
+  # When they can work, as time bands (StaffAvailabilityEntry). Replacing
+  # staff_unavailabilities; both exist while the new model is proven.
+  has_many :staff_availability_entries, dependent: :delete_all
 
   # The work time regions this person can mark availability by: every region
   # any organization they staff has turned on, in catalog order. Nobody's

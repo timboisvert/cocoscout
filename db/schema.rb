@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_18_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1574,6 +1574,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
 
   create_table "people", force: :cascade do |t|
     t.datetime "archived_at"
+    t.date "availability_confirmed_through"
     t.string "availability_mode", default: "unavailable", null: false
     t.text "bio"
     t.boolean "bio_visible", default: true, null: false
@@ -2712,6 +2713,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
     t.index ["organization_id"], name: "index_staff_agreement_templates_on_organization_id"
   end
 
+  create_table "staff_availability_entries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.integer "day_of_week"
+    t.integer "ends_minute", default: 1440, null: false
+    t.date "ends_on"
+    t.integer "kind", default: 0, null: false
+    t.string "note", limit: 140
+    t.bigint "person_id", null: false
+    t.integer "polarity", default: 0, null: false
+    t.integer "source", default: 0, null: false
+    t.integer "starts_minute", default: 0, null: false
+    t.date "starts_on"
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_staff_availability_entries_on_created_by_id"
+    t.index ["person_id", "kind"], name: "index_staff_availability_entries_on_person_id_and_kind"
+    t.index ["person_id", "starts_on", "ends_on"], name: "idx_staff_availability_dated_span", where: "(kind = 1)"
+    t.index ["person_id"], name: "index_staff_availability_entries_on_person_id"
+    t.check_constraint "ends_minute > starts_minute", name: "staff_availability_band_forward"
+    t.check_constraint "ends_minute >= 1 AND ends_minute <= 2880", name: "staff_availability_ends_within_next_day"
+    t.check_constraint "kind = 0 AND day_of_week >= 0 AND day_of_week <= 6 OR kind = 1 AND day_of_week IS NULL AND starts_on IS NOT NULL AND ends_on IS NOT NULL", name: "staff_availability_kind_shape"
+    t.check_constraint "starts_minute >= 0 AND starts_minute <= 1440", name: "staff_availability_starts_in_day"
+    t.check_constraint "starts_on IS NULL OR ends_on IS NULL OR ends_on >= starts_on", name: "staff_availability_dates_forward"
+  end
+
   create_table "staff_role_qualifications", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "flat_rate_cents"
@@ -3200,6 +3226,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
   add_foreign_key "staff_activations", "organizations"
   add_foreign_key "staff_activations", "people"
   add_foreign_key "staff_agreement_templates", "organizations"
+  add_foreign_key "staff_availability_entries", "people"
+  add_foreign_key "staff_availability_entries", "users", column: "created_by_id"
   add_foreign_key "staff_role_qualifications", "house_roles"
   add_foreign_key "staff_role_qualifications", "organization_staff_members"
   add_foreign_key "staff_schedule_removals", "organizations"
