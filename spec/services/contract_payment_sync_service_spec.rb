@@ -45,6 +45,34 @@ RSpec.describe ContractPaymentSyncService, type: :service do
         expect(payment.amount_tbd).to be false
       end
 
+      # Pavlov, Sep 13: the Booth Tech charge was tied to the same show as the
+      # settlement, and ticket sales landed on the charge instead.
+      it "settles the show's settlement, not a service charge tied to the same show" do
+        contract.update!(draft_data: contract.draft_data.merge(
+          "services" => [ { "name" => "Booth Tech", "unit" => "hourly", "unit_price" => 25.0,
+                            "direction" => "incoming", "settlement" => "payout_deduction" },
+                          { "name" => "Box Office", "unit" => "flat", "unit_price" => 40.0,
+                            "direction" => "incoming", "settlement" => "direct" } ]
+        ))
+        show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
+        booth = create(:contract_payment, contract: contract, show: show, due_date: Date.new(2026, 3, 15),
+                       description: "Booth Tech — Mar 15, 2026", amount: 50.0,
+                       direction: "incoming", settlement_method: "payout_deduction")
+        box = create(:contract_payment, contract: contract, show: show, due_date: Date.new(2026, 3, 15),
+                     description: "Box Office — Mar 15, 2026", amount: 40.0,
+                     direction: "incoming", settlement_method: "direct")
+        settlement = create(:contract_payment, :revenue_share_tbd, contract: contract, show: show,
+                            due_date: Date.new(2026, 3, 15), description: "Mar 15 — 20% to them")
+        create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, other_revenue: 0.0)
+
+        described_class.new(show).call
+
+        expect(contract.find_payment_for_show(show)).to eq(settlement)
+        expect(settlement.reload).to have_attributes(amount: 200.0, amount_tbd: false)
+        expect(booth.reload.amount).to eq(50.0)
+        expect(box.reload.amount).to eq(40.0)
+      end
+
       it "never overwrites a payment that's already been paid" do
         show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
         create(:show_financials, :complete, show: show, ticket_revenue: 1000.0, other_revenue: 0.0)

@@ -1510,8 +1510,16 @@ class Contract < ApplicationRecord
   def find_payment_for_show(show)
     return nil unless revenue_share? || ticket_revenue_minus_fee?
 
-    # First, try direct show_id link
-    direct = contract_payments.find_by(show_id: show.id)
+    # First, try direct show_id link. A show carries more than its settlement:
+    # a per-event service charge (Booth Tech) is tied to the same show, and a
+    # bare find_by handed back whichever row Postgres returned first — so ticket
+    # sales got written onto the Booth Tech charge and the settlement sat TBD.
+    # Only a row that can BE a settlement answers here.
+    direct = contract_payments.where(show_id: show.id)
+                              .where.not(settlement_method: "payout_deduction")
+                              .order(:id).to_a
+                              .reject { |p| service_charge?(p) }
+                              .first
     return direct if direct
 
     # A deal that settles once has a single payment covering every show, so
