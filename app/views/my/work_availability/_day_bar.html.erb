@@ -1,0 +1,11 @@
+<%# One calendar day's hours as a 24-hour bar, green where they can work, with
+    the day in a word or two under it from a small tablet up ("All day",
+    "All evening", "After 5p", "Off").
+    Locals: item ({ day: StaffAvailabilityResolver::Day, label: }), is_past. %>
+<% day = item[:day] %>
+<span class="relative block w-full h-1.5 mt-1 rounded-full bg-gray-200 overflow-hidden">
+  <% day.windows.each do |a, b| %>
+    <span class="absolute inset-y-0 bg-green-500" style="left: <%= (a * 100.0 / 1440).round(2) %>%; width: <%= ((b - a) * 100.0 / 1440).round(2) %>%;"></span>
+  <% end %>
+</span>
+<span class="hidden sm:block mt-1 text-[11px] leading-tight truncate <%= day.blocked? ? "text-gray-400" : "text-gray-700" %>"><%= item[:label] %></span>

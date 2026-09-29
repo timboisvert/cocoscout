@@ -42,6 +42,10 @@
     - anchor: String — give the calendar this DOM id and hang it off the
         prev/next/Today links, so paging months lands you back on the calendar
         instead of at the top of a long page
+    - week_starts_on: :sunday (default) or :monday — the first column
+    - mobile_grid: Boolean — keep the day grid on a phone instead of switching
+        to the day list, for calendars where every day has something to show
+        (default false)
 %>
 <%
   current_month = local_assigns[:current_month]
@@ -69,15 +73,20 @@
 
   last_month = local_assigns[:last_month] || current_month
   heading = local_assigns[:heading] || current_month.strftime("%B %Y")
+
+  # Column 0 is this weekday (0 = Sunday, 1 = Monday).
+  first_wday = local_assigns[:week_starts_on] == :monday ? 1 : 0
+  column_wdays = (0..6).map { |i| (first_wday + i) % 7 }
+  mobile_grid = local_assigns.fetch(:mobile_grid, false)
   prev_label = local_assigns[:prev_label] || prev_month.strftime("%b")
   next_label = local_assigns[:next_label] || next_month.strftime("%b")
 
   month_start_date = current_month.to_date
   month_end_date   = last_month.end_of_month.to_date
   is_current_month = month_start_date == Date.current.beginning_of_month
-  current_week_sunday = Date.current.beginning_of_week(:sunday)
-  cal_start_date = if local_assigns.fetch(:start_from_current_week, false) && is_current_month && current_week_sunday > month_start_date
-    current_week_sunday
+  current_week_start = Date.current.beginning_of_week(first_wday == 1 ? :monday : :sunday)
+  cal_start_date = if local_assigns.fetch(:start_from_current_week, false) && is_current_month && current_week_start > month_start_date
+    current_week_start
   else
     month_start_date
   end
@@ -123,16 +132,16 @@
     </div>
   <% end %>
 
-  <%# Desktop grid %>
-  <div class="hidden md:block p-4">
+  <%# Desktop grid (every width when mobile_grid) %>
+  <div class="<%= mobile_grid ? "p-2 sm:p-4" : "hidden md:block p-4" %>">
     <div class="grid grid-cols-7 gap-1 mb-1">
-      <% %w[Sun Mon Tue Wed Thu Fri Sat].each do |day_name| %>
-        <div class="text-center text-xs font-semibold text-gray-500 py-1"><%= day_name %></div>
+      <% column_wdays.each do |wday| %>
+        <div class="text-center text-xs font-semibold text-gray-500 py-1"><%= Date::ABBR_DAYNAMES[wday] %></div>
       <% end %>
     </div>
 
     <div class="grid grid-cols-7 gap-1">
-      <% cal_start_date.wday.times do %>
+      <% ((cal_start_date.wday - first_wday) % 7).times do %>
         <div class="border border-gray-100 bg-gray-50 <%= min_cell %> p-1"></div>
       <% end %>
 
@@ -157,7 +166,7 @@
         <% current_date += 1.day %>
       <% end %>
 
-      <% remaining_cells = (7 - (month_end_date + 1.day).wday) % 7 %>
+      <% remaining_cells = (7 - ((month_end_date + 1.day).wday - first_wday) % 7) % 7 %>
       <% remaining_cells.times do %>
         <div class="border border-gray-100 bg-gray-50 <%= min_cell %> p-1"></div>
       <% end %>
@@ -165,6 +174,7 @@
   </div>
 
   <%# Mobile list: only days that have items %>
+  <% unless mobile_grid %>
   <div class="md:hidden p-4 space-y-3">
     <% any_items = false %>
     <% mobile_start = (is_current_month && !mobile_show_past) ? Date.current : month_start_date %>
@@ -190,4 +200,5 @@
       <div class="text-sm text-gray-400 text-center py-4"><%= empty_text %></div>
     <% end %>
   </div>
+  <% end %>
 </div>

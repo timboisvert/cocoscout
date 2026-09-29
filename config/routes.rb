@@ -406,11 +406,10 @@ Rails.application.routes.draw do
     post  "/shifts/:id/cant-make-it",       to: "shifts#decline",           as: "decline_shift"
     post  "/shifts/:id/undo-cant-make-it",  to: "shifts#undo_decline",      as: "undo_decline_shift"
 
-    # When house staff can work: their usual week and the exceptions to it.
+    # When house staff can work: their usual week, and dates that differ from it.
     get    "/shifts/availability",            to: "work_availability#show",              as: "work_availability"
-    patch  "/shifts/availability/week",       to: "work_availability#update_week",       as: "work_availability_week"
-    post   "/shifts/availability/exceptions", to: "work_availability#save_exception",    as: "work_availability_exceptions"
-    delete "/shifts/availability/exceptions", to: "work_availability#destroy_exception"
+    post   "/shifts/availability",            to: "work_availability#save"
+    delete "/shifts/availability/dates",      to: "work_availability#destroy_dates",     as: "work_availability_dates"
     post   "/shifts/availability/confirm",    to: "work_availability#confirm",           as: "confirm_work_availability"
 
     # Timekeeping: confirm/adjust worked hours and log ad-hoc time from My Shifts.

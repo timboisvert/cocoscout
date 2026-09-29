@@ -48,7 +48,7 @@ class StaffAvailabilityWriter
       wdays.each do |wday|
         bands.each { |polarity, from, to| create!(kind: :weekly, day_of_week: wday, polarity: polarity, from: from, to: to) }
       end
-      confirm_if_self!
+      unconfirm!
     end
   end
 
@@ -74,7 +74,7 @@ class StaffAvailabilityWriter
       bands.each do |polarity, from, to|
         create!(kind: :dated, starts_on: starts_on, ends_on: ends_on, polarity: polarity, from: from, to: to, note: note)
       end
-      confirm_if_self!
+      unconfirm!
     end
   end
 
@@ -84,12 +84,13 @@ class StaffAvailabilityWriter
 
     StaffAvailabilityEntry.transaction do
       delete_exception(starts_on, to_date(ends_on) || starts_on)
-      confirm_if_self!
+      unconfirm!
     end
   end
 
   # "I've looked, and this is right" — vouches for the next CONFIRM_DAYS days.
-  # Never shortens a confirmation already further out.
+  # Never shortens a confirmation already further out. Ticking the box is the
+  # only thing that confirms; nothing else counts as checking in.
   def confirm!
     through = Date.current + CONFIRM_DAYS
     current = @person.availability_confirmed_through
@@ -175,10 +176,12 @@ class StaffAvailabilityWriter
     StaffAvailabilityEntry.dated.where(person_id: @person.id, starts_on: starts_on, ends_on: ends_on).delete_all
   end
 
-  # Only the person themselves vouches for their availability; a manager
-  # putting in what they were told by text doesn't.
-  def confirm_if_self!
-    confirm! if @source == :self_reported
+  # Any change — theirs or a manager's — means what they vouched for isn't
+  # what's there any more, so they check in again. Lapsed rather than cleared:
+  # a date in the past still says they've been here before.
+  def unconfirm!
+    current = @person.availability_confirmed_through
+    @person.update!(availability_confirmed_through: Date.current - 1) if current && current >= Date.current
   end
 
   def to_date(value)

@@ -11,9 +11,45 @@
   onboarding = @from_onboarding ? params[:onboarding] : nil
   confirmed_through = @person.availability_confirmed_through
   confirmed = confirmed_through.present? && confirmed_through >= Date.current
-%>
+  today = Date.current
+  week_by_wday = @picture.week.index_by(&:wday)
+  covering = ->(date) { @picture.exceptions.find { |ex| date >= ex.starts_on && date <= ex.ends_on } }
 
-<div class="w-full max-w-3xl mb-10"
+  month_link = ->(m) { my_work_availability_path(onboarding: onboarding, month: m.to_date.beginning_of_month.iso8601) }
+
+  items_by_date = @days.transform_values { |day| [ { day: day, label: WorkAvailabilityPicture.day_label(day.windows, @day_parts) } ] }
+
+  # A future date opens the date sheet: on the change already covering it,
+  # or on itself, starting from its usual weekday's answer.
+  cell_attrs = ->(date, day_items) {
+    next {} if date < today
+    day = day_items.first[:day]
+    usual = week_by_wday[date.wday].answer
+    said = day.blocked? ? "not working" : (day.partial? ? WorkAvailabilityPicture.windows_label(day.windows) : "any time")
+    change = covering.call(date)
+    change_data = change ? {
+      change_starts_on: change.starts_on.iso8601, change_ends_on: change.ends_on.iso8601,
+      change_title: change.dates_label, change_state: change.answer.editable_state,
+      change_windows: change.answer.window_fields.to_json, change_note: change.note
+    } : {}
+    {
+      class: "cursor-pointer hover:border-pink-400 focus:outline-none focus:border-pink-400 transition-colors",
+      role: "button", tabindex: 0,
+      title: "#{date.strftime("%a %b %-d")}: #{said}",
+      data: {
+        action: "click->work-availability#editDate keydown.enter->work-availability#editDate",
+        date: date.iso8601, title: date.strftime("%A, %B %-d"),
+        state: usual.editable_state, windows: usual.window_fields.to_json,
+        **change_data
+      }
+    }
+  }
+%>
+<% legend = capture do %>
+  <span class="inline-flex items-center gap-1.5"><span class="w-4 h-1.5 rounded-full bg-green-500"></span> When I'm available to work</span>
+<% end %>
+
+<div class="w-full mb-10"
      data-controller="work-availability"
      data-work-availability-day-parts-value="<%= @day_parts.to_json %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -27,33 +63,48 @@
   } %>
 
   <p class="text-sm text-gray-600 mb-6">
-    Tell the people who schedule you when you can work. Set your usual week once, then add
-    exceptions for anything different: a trip, a late start, the one Saturday you can do.
+    Tell the people who schedule you when you can work. Tap any date on the calendar to change just that date,
+    or set your usual week so every week starts out right.
   </p>
 
-  <div class="space-y-6">
-    <%= render "my/work_availability/week", picture: @picture %>
-    <%= render "my/work_availability/exceptions", picture: @picture, months: @months, days: @days, onboarding: onboarding %>
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6 items-start">
+    <div class="min-w-0 [&>div]:mb-0">
+      <%= render "shared/month_calendar",
+            anchor: "calendar",
+            current_month: @month,
+            last_month: @calendar_last_month,
+            heading: @calendar_heading,
+            month_link: month_link,
+            today_link: my_work_availability_path(onboarding: onboarding),
+            prev_month: @prev_month,
+            next_month: @next_month,
+            prev_label: @prev_label,
+            next_label: @next_label,
+            can_go_prev: @month > @first_month,
+            can_go_next: @next_month <= @final_month,
+            start_from_current_week: true,
+            items_by_date: items_by_date,
+            item_partial: "my/work_availability/day_bar",
+            cell_attrs: cell_attrs,
+            dim_past: true,
+            min_cell: "min-h-[48px] sm:min-h-[72px]",
+            week_starts_on: :monday,
+            mobile_grid: true,
+            legend: legend %>
+    </div>
 
-    <%# Vouching for it: the quiet way people tell a scheduler "yes, still right". %>
-    <section class="rounded-xl border <%= confirmed ? "border-green-200 bg-green-50" : "border-gray-200 bg-white" %> px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <div class="min-w-0">
-        <% if confirmed %>
-          <p class="text-sm font-medium text-green-800">Confirmed through <%= confirmed_through.strftime("%B %-d") %></p>
-          <p class="text-xs text-green-700 mt-0.5">Any change you make here counts as checking in again.</p>
-        <% else %>
-          <p class="text-sm font-medium text-gray-900">Is this all right?</p>
-          <p class="text-xs text-gray-500 mt-0.5">Let the people who schedule you know it's up to date.</p>
-        <% end %>
-      </div>
-      <div class="flex-shrink-0">
-        <%= render "shared/button", text: (@from_onboarding ? "Done" : "This is all right"),
-              variant: (confirmed && !@from_onboarding ? "secondary" : "primary"), size: "medium",
-              path: my_confirm_work_availability_path(onboarding: onboarding), method: :post %>
-      </div>
-    </section>
+    <aside class="space-y-4">
+      <%= render "my/work_availability/up_to_date", confirmed: confirmed, confirmed_through: confirmed_through, onboarding: onboarding, month: @month %>
+      <%= render "my/work_availability/usual_week", picture: @picture %>
+      <% if @from_onboarding %>
+        <div class="flex justify-end">
+          <%= render "shared/button", text: "Done", variant: "primary", size: "medium",
+                path: my_confirm_work_availability_path(onboarding: onboarding), method: :post %>
+        </div>
+      <% end %>
+    </aside>
   </div>
 
-  <%= render "my/work_availability/week_sheet", day_parts: @day_parts, onboarding: onboarding %>
-  <%= render "my/work_availability/exception_sheet", day_parts: @day_parts, onboarding: onboarding %>
+  <%= render "my/work_availability/week_sheet", day_parts: @day_parts, onboarding: onboarding, month: @month %>
+  <%= render "my/work_availability/date_sheet", day_parts: @day_parts, onboarding: onboarding, month: @month %>
 </div>

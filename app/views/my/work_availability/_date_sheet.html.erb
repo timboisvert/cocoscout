@@ -1,0 +1,58 @@
+<%# Just this date (or a run of dates), never the usual week. Opened from a
+    calendar date it starts from that weekday's usual answer; opened on dates
+    that already differ, it edits them and offers the way back. Editing
+    carries the dates it started with, so moving them replaces the old ones
+    rather than leaving them behind. Locals: day_parts, onboarding, month. %>
+<% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+<%= render layout: "my/work_availability/sheet_frame", locals: { target: "dateSheet", title: "This date" } do %>
+  <%# The way back to the usual week — its own form beside the save form,
+      never inside it, and only shown for dates that already differ. %>
+  <div data-revert class="hidden px-5 pt-4">
+    <%= form_with url: my_work_availability_dates_path(onboarding: onboarding), method: :delete,
+          class: "flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2" do %>
+      <input type="hidden" name="starts_on" data-revert-starts-on>
+      <input type="hidden" name="ends_on" data-revert-ends-on>
+      <input type="hidden" name="month" value="<%= month.iso8601 %>">
+      <span class="text-sm text-gray-700">Changed from my usual week</span>
+      <%= render "shared/button", text: "Undo change", variant: "secondary", size: "xs", type: :submit %>
+    <% end %>
+  </div>
+
+  <%= form_with url: my_work_availability_path(onboarding: onboarding), method: :post,
+        data: { action: "submit->work-availability#validate" } do %>
+    <input type="hidden" name="scope" value="dates">
+    <input type="hidden" name="month" value="<%= month.iso8601 %>">
+    <input type="hidden" name="replacing_starts_on" data-replacing-starts-on>
+    <input type="hidden" name="replacing_ends_on" data-replacing-ends-on>
+
+    <div class="px-5 py-4 space-y-4">
+      <div>
+        <p class="text-sm font-medium text-gray-900 mb-2">Can you work?</p>
+        <%= render "my/work_availability/answer_fields", day_parts: day_parts %>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="block text-xs font-medium text-gray-700 mb-1">From</span>
+          <input type="date" name="starts_on" required min="<%= Date.current.iso8601 %>" class="<%= input_class %> text-sm"
+                 data-starts-on data-action="change->work-availability#startChanged">
+        </label>
+        <label class="block">
+          <span class="block text-xs font-medium text-gray-700 mb-1">Through <span class="font-normal text-gray-500">(optional)</span></span>
+          <input type="date" name="ends_on" min="<%= Date.current.iso8601 %>" class="<%= input_class %> text-sm" data-ends-on>
+        </label>
+      </div>
+
+      <label class="block">
+        <span class="block text-xs font-medium text-gray-700 mb-1">Note for your schedulers <span class="font-normal text-gray-500">(optional)</span></span>
+        <input type="text" name="note" maxlength="140" placeholder="Out of town, a late class…" class="<%= input_class %> text-sm" data-note>
+      </label>
+    </div>
+
+    <div class="px-5 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+            data: { action: "click->work-availability#closeSheets" } %>
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

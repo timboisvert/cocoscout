@@ -125,17 +125,30 @@ RSpec.describe StaffAvailabilityWriter do
   end
 
   describe "confirming" do
-    it "counts the person's own changes as checking in" do
+    it "confirms only when asked, for CONFIRM_DAYS" do
       writer.set_weekdays!([ 1 ], state: "off")
+      expect(person.reload.availability_confirmed_through).to be_nil
 
+      writer.confirm!
       expect(person.reload.availability_confirmed_through).to eq(Date.current + described_class::CONFIRM_DAYS)
     end
 
-    it "doesn't let a manager vouch for someone" do
+    it "makes them check in again after any change" do
+      writer.confirm!
+      writer.save_exception!(starts_on: Date.current + 3, ends_on: Date.current + 3, state: "off")
+      expect(person.reload.availability_confirmed_through).to eq(Date.current - 1)
+
+      writer.confirm!
+      writer.remove_exception!(starts_on: Date.current + 3, ends_on: Date.current + 3)
+      expect(person.reload.availability_confirmed_through).to eq(Date.current - 1)
+    end
+
+    it "unconfirms on a manager's change too, and never vouches for them" do
+      writer.confirm!
       manager = create(:user)
       described_class.new(person, source: :manager, created_by: manager).set_weekdays!([ 1 ], state: "off")
 
-      expect(person.reload.availability_confirmed_through).to be_nil
+      expect(person.reload.availability_confirmed_through).to eq(Date.current - 1)
       expect(person.staff_availability_entries.pluck(:source, :created_by_id).uniq).to eq([ [ "manager", manager.id ] ])
     end
   end

@@ -23,6 +23,15 @@ class WorkAvailabilityPicture
     end
 
     def editable_state = state == :limited ? "hours" : state.to_s
+
+    # For a narrow calendar header: "Anytime", "Off", "After 5p", "9a – 1p".
+    def short_label
+      case state
+      when :anytime then "Anytime"
+      when :off then "Off"
+      else windows.size == 1 ? WorkAvailabilityPicture.short_window(*windows.first) : "#{windows.size} windows"
+      end
+    end
   end
 
   Weekday = Struct.new(:wday, :name, :short_name, :answer, keyword_init: true)
@@ -72,13 +81,20 @@ class WorkAvailabilityPicture
   # The usual week in as few lines as it takes: runs of days with the same
   # answer collapse ("Mon – Thu", "Fri, Sat"). [[days_label, answer_label], ...]
   def week_summary
-    groups = week.chunk_while { |a, b| a.answer.label == b.answer.label }.to_a
-    groups.map do |run|
+    week_groups.map { |g| [ g.days_label, g.answer.label ] }
+  end
+
+  WeekGroup = Struct.new(:days_label, :answer, :wdays, keyword_init: true)
+
+  # The same runs, keeping each run's answer and weekdays so a run can be
+  # opened for editing as one.
+  def week_groups
+    @week_groups ||= week.chunk_while { |a, b| a.answer.label == b.answer.label }.map do |run|
       days =
         if run.size >= 3 then "#{run.first.short_name} – #{run.last.short_name}"
         else run.map(&:short_name).join(", ")
         end
-      [ days, run.first.answer.label ]
+      WeekGroup.new(days_label: days, answer: run.first.answer, wdays: run.map(&:wday))
     end
   end
 
@@ -90,6 +106,42 @@ class WorkAvailabilityPicture
       else "#{StaffAvailabilityEntry.minute_label(a)} – #{StaffAvailabilityEntry.minute_label(b)}"
       end
     end.join(", ")
+  end
+
+  # One calendar day in a word or two: "All day", "Off", "All evening" when
+  # the hours are exactly one of the person's day parts, else the hours.
+  def self.day_label(windows, day_parts = [])
+    return "Off" if windows.empty?
+    return "All day" if windows == [ [ 0, DAY ] ]
+    return "#{windows.size} windows" if windows.size > 1
+
+    a, b = windows.first
+    part = day_parts.find { |p| minutes(p["starts"]) == a && minutes(p["ends"]) == b }
+    return short_window(a, b) unless part
+
+    part["name"].include?(" ") ? part["name"] : "All #{part["name"].downcase}"
+  end
+
+  # "17:30" → 1050; "24:00" → 1440.
+  def self.minutes(clock)
+    h, m = clock.to_s.split(":").map(&:to_i)
+    h.to_i * 60 + m.to_i
+  end
+
+  # "After 5p", "Until 1p", "9a – 1p", "5:30p – 12a".
+  def self.short_window(a, b)
+    if a.zero? && b < DAY then "Until #{short_clock(b)}"
+    elsif b == DAY && a.positive? then "After #{short_clock(a)}"
+    else "#{short_clock(a)} – #{short_clock(b)}"
+    end
+  end
+
+  # 1050 → "5:30p"; 0, 1440 and 2880 → "12a".
+  def self.short_clock(minute)
+    m = minute.to_i % DAY
+    hour = m / 60 % 12
+    hour = 12 if hour.zero?
+    "#{hour}#{format(':%02d', m % 60) unless (m % 60).zero?}#{m < 720 ? 'a' : 'p'}"
   end
 
   # 1050 → "17:30"; 1440 and 2880 → "00:00" (a time field has no 24:00).

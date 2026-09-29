@@ -77,7 +77,8 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
     end
 
     it "labels the shows list per show" do
-      get manage_production_shows_path(production)
+      # The "all" view, so a month boundary a few days out can't hide the shows.
+      get manage_production_shows_path(production, view_mode: "all")
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Act 1 · Magic")
       expect(response.body).to include("Act 2 · Variety (not assigned)")

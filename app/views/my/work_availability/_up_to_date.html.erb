@@ -1,0 +1,32 @@
+<%# Checking in: one box to tick that says "my availability is up to date",
+    so the people who schedule you know they can count on it. Once ticked
+    it's a green check until the confirmation runs out or anything changes
+    (StaffAvailabilityWriter#unconfirm!) — only ticking it counts.
+    Locals: confirmed, confirmed_through, onboarding, month. %>
+<% if confirmed %>
+  <section class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-start gap-3">
+    <span class="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m4.5 12.75 6 6 9-13.5"/></svg>
+    </span>
+    <div class="min-w-0">
+      <p class="text-sm font-semibold text-green-800">My availability is up to date</p>
+      <p class="text-xs text-green-700 mt-0.5">
+        Confirmed through <%= confirmed_through.strftime("%B %-d") %>. Changing anything unticks this, so you'll confirm it again after.
+      </p>
+    </div>
+  </section>
+<% else %>
+  <%= form_with url: my_confirm_work_availability_path(onboarding: onboarding, stay: 1, month: month.iso8601), method: :post,
+        class: "rounded-lg border border-pink-200 bg-pink-50" do %>
+    <label class="flex items-start gap-3 px-4 py-3 cursor-pointer">
+      <input type="checkbox" class="flex-shrink-0 mt-0.5 h-5 w-5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+             data-action="change->work-availability#confirm">
+      <span class="min-w-0">
+        <span class="block text-sm font-semibold text-gray-900">My availability is up to date</span>
+        <span class="block text-xs text-gray-600 mt-0.5">
+          Check the calendar, then tick this so the people who schedule you know they can count on it.
+        </span>
+      </span>
+    </label>
+  <% end %>
+<% end %>

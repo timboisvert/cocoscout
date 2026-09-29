@@ -58,7 +58,7 @@
         <span class="text-xs text-green-700">Confirmed through <%= confirmed_through.strftime("%B %-d") %></span>
       <% else %>
         <span class="text-xs text-amber-700">Not confirmed lately</span>
-        <%= render "shared/button", text: "Still right", variant: "outline-pink", size: "xs",
+        <%= render "shared/button", text: "It's up to date", variant: "outline-pink", size: "xs",
               path: my_confirm_work_availability_path, method: :post %>
       <% end %>
     </div>
