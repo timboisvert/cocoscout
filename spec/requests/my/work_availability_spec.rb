@@ -19,7 +19,9 @@ RSpec.describe "My work availability", type: :request do
       expect(body).to include(Date.current.strftime("%B")).and include("My usual week").and include("When I'm available to work")
       # Monday-first, like the staffing week.
       expect(body.index(">Mon<")).to be < body.index(">Sun<")
-      expect(body).to include("Some hours").and include("Change my usual week")
+      expect(body).to include("Some hours")
+      # My usual week lists every day, each opening the week sheet on itself.
+      expect(body.scan(/data-wdays="\[\d\]"/).size).to eq(7)
       # Times are picked from hour / five-minute / AM-PM dropdowns, never typed.
       expect(body).to include(%(data-clock-part="minute")).and include(%(<option value="55">55</option>))
       expect(body).not_to include(%(type="time"))

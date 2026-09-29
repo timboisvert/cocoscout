@@ -1,29 +1,29 @@
-<%# The usual week, beside the calendar: what a normal week looks like, in as
-    few lines as it takes. A line opens the week sheet on those days; the
-    button opens it fresh ("never on Sundays"). Local: picture. %>
+<%# The usual week, beside the calendar: all seven days, each with its
+    answer. A day opens the week sheet on that day, filled in; ticking more
+    days there gives them the same answer ("never on Sundays"). Local: picture. %>
 <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
   <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
     <h2 class="text-sm font-semibold text-gray-900">My usual week</h2>
     <p class="text-xs text-gray-500 mt-0.5">
       <% if picture.week_said? %>
-        Every week starts out like this. Changing a date on the calendar doesn't touch it.
+        Every week starts out like this. Tap a day to change it; changing a date on the calendar doesn't touch it.
       <% else %>
-        Not set yet, so you're counted as free any time. Set the days you never work, or only work certain hours.
+        Not set yet, so you're counted as free any time. Tap a day to set the hours you usually work, or that you never do.
       <% end %>
     </p>
   </div>
 
   <ul class="divide-y divide-gray-100">
-    <% picture.week_groups.each do |group| %>
-      <% answer = group.answer %>
+    <% picture.week.each do |day| %>
+      <% answer = day.answer %>
       <li>
         <div role="button" tabindex="0"
-             class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-pink-50 focus:bg-pink-50 focus:outline-none transition-colors"
+             class="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-pink-50 focus:bg-pink-50 focus:outline-none transition-colors"
              data-action="click->work-availability#editWeek keydown.enter->work-availability#editWeek"
-             data-wdays="<%= group.wdays.to_json %>"
+             data-wdays="<%= [ day.wday ].to_json %>"
              data-state="<%= answer.editable_state %>"
              data-windows="<%= answer.window_fields.to_json %>">
-          <span class="w-20 flex-shrink-0 text-sm font-medium text-gray-900"><%= group.days_label %></span>
+          <span class="w-12 flex-shrink-0 text-sm font-medium text-gray-900"><%= day.short_name %></span>
           <span class="flex-1 min-w-0 text-sm <%= !answer.said ? "text-gray-400" : { anytime: "text-green-700", off: "text-gray-500", hours: "text-gray-900" }[answer.state] %>">
             <%= answer.label %>
             <% if answer.set_by %>
@@ -35,9 +35,4 @@
       </li>
     <% end %>
   </ul>
-
-  <div class="px-4 py-3 border-t border-gray-200">
-    <%= render "shared/button", text: "Change my usual week", variant: "secondary", size: "small", type: :button,
-          classes: "w-full", data: { action: "click->work-availability#editWeek" } %>
-  </div>
 </section>
