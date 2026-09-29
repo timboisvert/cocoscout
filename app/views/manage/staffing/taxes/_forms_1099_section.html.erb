@@ -9,12 +9,16 @@
 <% payer_ready = tax_setting&.complete? %>
 <% ready_forms_count = forms_by_person.values.count { |f| f.status.in?(%w[ready delivered filed]) } %>
 
-<div>
+<div class="mt-10">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-    <% base_taxes_path = manage_staffing_taxes_path %>
-    <%= select_tag :tax_year_switcher, options_for_select(tax_years.map { |y| [ "Tax year #{y}", y ] }, tax_year),
-          class: "px-3 py-1 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500",
-          onchange: "window.location = '#{j base_taxes_path}?tax_year=' + this.value + '#form_1099s'" %>
+    <div class="flex items-center gap-3">
+      <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500">1099-NECs</h3>
+      <%= form_with url: manage_staffing_taxes_path, method: :get, class: "inline-flex" do %>
+        <%= select_tag :tax_year, options_for_select(tax_years.map { |y| [ "Tax year #{y}", y ] }, tax_year),
+              class: "px-3 py-1 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500",
+              onchange: "this.form.requestSubmit()" %>
+      <% end %>
+    </div>
     <div class="flex items-center gap-2">
       <% if payer_ready %>
         <% cid = "generate-1099s" %>

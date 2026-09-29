@@ -159,7 +159,7 @@ RSpec.describe "Manage::Staffing::Taxes", type: :request do
       expect {
         post manage_generate_1099s_staffing_taxes_path, params: { tax_year: 2026 }
       }.to change { org.tax_form_1099s.count }.by(1)
-      expect(response).to redirect_to(manage_staffing_taxes_path(tax_year: 2026, anchor: "form_1099s"))
+      expect(response).to redirect_to(manage_staffing_taxes_path(tax_year: 2026))
       form = org.tax_form_1099s.first
       expect(form.status).to eq("draft")
       expect(form.nec_box1_cents).to eq(5_000_00)

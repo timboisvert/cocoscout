@@ -96,7 +96,7 @@ module Manage
       def generate_1099s
         tax_year = params[:tax_year].to_i
         forms = TaxForm1099.generate_for_year!(organization: Current.organization, tax_year: tax_year, generated_by: Current.user)
-        redirect_to manage_staffing_taxes_path(tax_year: tax_year, anchor: "form_1099s"),
+        redirect_to manage_staffing_taxes_path(tax_year: tax_year),
                     notice: forms.any? ? "Generated #{helpers.pluralize(forms.size, '1099')} for #{tax_year}." : "Nobody needs a 1099 for #{tax_year} — no reportable payments on file."
       rescue ArgumentError => e
         redirect_to manage_staffing_settings_section_path(section: "taxes"), alert: e.message.upcase_first
@@ -119,7 +119,7 @@ module Manage
         }
         attrs[:status] = "ready" if params[:mark_ready] == "1"
         if @form.update(attrs)
-          redirect_to manage_staffing_taxes_path(tax_year: @form.tax_year, anchor: "form_1099s"), notice: "Updated #{@form.recipient_name}'s 1099."
+          redirect_to manage_staffing_taxes_path(tax_year: @form.tax_year), notice: "Updated #{@form.recipient_name}'s 1099."
         else
           redirect_back fallback_location: manage_staffing_taxes_path(tax_year: @form.tax_year), alert: @form.errors.full_messages.to_sentence
         end
@@ -135,14 +135,14 @@ module Manage
 
         StaffTaxFormDeliverer.call(form: @form, sender: Current.user)
         @form.mark_delivered!
-        redirect_to manage_staffing_taxes_path(tax_year: @form.tax_year, anchor: "form_1099s"), notice: "Sent #{@form.recipient_name}'s 1099."
+        redirect_to manage_staffing_taxes_path(tax_year: @form.tax_year), notice: "Sent #{@form.recipient_name}'s 1099."
       end
 
       # Manager confirms they filed the batch with the IRS (e.g. IRIS upload).
       # A reference and notes are optional.
       def mark_1099_filed
         @form.mark_filed!(reference: params[:filing_reference], notes: params[:filing_notes])
-        redirect_to manage_staffing_taxes_path(tax_year: @form.tax_year, anchor: "form_1099s"), notice: "Marked #{@form.recipient_name}'s 1099 as filed."
+        redirect_to manage_staffing_taxes_path(tax_year: @form.tax_year), notice: "Marked #{@form.recipient_name}'s 1099 as filed."
       end
 
       # Open a fresh correction that supersedes this one (see model). The old
@@ -162,7 +162,7 @@ module Manage
           correction.save!
           original.update!(status: "corrected") if original.status.in?(%w[delivered filed])
         end
-        redirect_to manage_staffing_taxes_path(tax_year: original.tax_year, anchor: "form_1099s"),
+        redirect_to manage_staffing_taxes_path(tax_year: original.tax_year),
                     notice: "Started a correction for #{original.recipient_name}. It'll be sent as a fresh CORRECTED 1099."
       end
 
@@ -170,7 +170,7 @@ module Manage
         return redirect_back(fallback_location: manage_staffing_taxes_path, alert: "Already filed 1099s can't be voided — use Correct instead.") if @form.filed_at.present?
 
         @form.void!
-        redirect_to manage_staffing_taxes_path(tax_year: @form.tax_year, anchor: "form_1099s"), notice: "Voided that 1099 draft."
+        redirect_to manage_staffing_taxes_path(tax_year: @form.tax_year), notice: "Voided that 1099 draft."
       end
 
       def iris_export
