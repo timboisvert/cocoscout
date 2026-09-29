@@ -1,0 +1,24 @@
+<%# One time of day as three dropdowns — hour, minutes in fives, AM/PM —
+    writing "17:05" into the hidden field the form sends. The hour starts
+    blank so a window is always chosen, never assumed.
+    Locals: field ("from" or "to"), label ("From" / "To"). %>
+<% select_class = "block min-w-0 pl-2 pr-7 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+<div class="flex items-center gap-1" data-clock role="group" aria-label="<%= label %>">
+  <span class="w-9 flex-shrink-0 text-xs font-medium text-gray-500"><%= label %></span>
+  <input type="hidden" name="windows[__INDEX__][<%= field %>]" data-window-<%= field %>>
+  <select data-clock-part="hour" class="<%= select_class %>" aria-label="<%= label %> hour"
+          data-action="change->work-availability#clockChanged">
+    <option value="">--</option>
+    <% (1..12).each do |h| %><option value="<%= h %>"><%= h %></option><% end %>
+  </select>
+  <span class="text-gray-400">:</span>
+  <select data-clock-part="minute" class="<%= select_class %>" aria-label="<%= label %> minutes"
+          data-action="change->work-availability#clockChanged">
+    <% (0..55).step(5).each do |m| %><option value="<%= m %>"><%= format("%02d", m) %></option><% end %>
+  </select>
+  <select data-clock-part="meridiem" class="<%= select_class %>" aria-label="<%= label %> AM or PM"
+          data-action="change->work-availability#clockChanged">
+    <option value="AM">AM</option>
+    <option value="PM" selected>PM</option>
+  </select>
+</div>

@@ -90,9 +90,9 @@ export default class extends Controller {
         if (this.stateOf(sheet) === "hours" && this.rows(sheet).length === 0) this.appendWindow(sheet)
     }
 
-    // A chip writes its hours into the fields — into the only window, or the
-    // first empty one, or a new one — and the fields flash so it's clear the
-    // chip and the fields are the same thing.
+    // A chip sets its hours in the dropdowns — in the only window, or the
+    // first empty one, or a new one — and they flash so it's clear the chip
+    // and the dropdowns are the same thing.
     applyChip(event) {
         event.preventDefault()
         const sheet = event.currentTarget.closest("[data-sheet]")
@@ -102,13 +102,11 @@ export default class extends Controller {
         let row = rows.length === 1 ? rows[0] : rows.find(r => !r.querySelector("[data-window-from]").value && !r.querySelector("[data-window-to]").value)
         if (!row) row = this.appendWindow(sheet)
 
-        const fromInput = row.querySelector("[data-window-from]")
-        const toInput = row.querySelector("[data-window-to]")
-        fromInput.value = from
-        toInput.value = to
-        ;[fromInput, toInput].forEach(input => {
-            input.classList.add("ring-2", "ring-pink-400")
-            setTimeout(() => input.classList.remove("ring-2", "ring-pink-400"), 600)
+        this.setClock(row.querySelector("[data-window-from]"), from)
+        this.setClock(row.querySelector("[data-window-to]"), to)
+        row.querySelectorAll("[data-clock-part]").forEach(select => {
+            select.classList.add("ring-2", "ring-pink-400")
+            setTimeout(() => select.classList.remove("ring-2", "ring-pink-400"), 600)
         })
         this.clearError(sheet)
     }
@@ -116,7 +114,7 @@ export default class extends Controller {
     addWindow(event) {
         event.preventDefault()
         const row = this.appendWindow(event.currentTarget.closest("[data-sheet]"))
-        row.querySelector("[data-window-from]").focus()
+        row.querySelector("[data-clock-part='hour']").focus()
     }
 
     removeWindow(event) {
@@ -166,13 +164,43 @@ export default class extends Controller {
         ;[this.weekSheetTarget, this.dateSheetTarget].forEach(s => s.classList.add("hidden"))
     }
 
+    // ----- the hour / minute / AM-PM dropdowns -----
+
+    // Any dropdown changing rewrites the hidden "17:05" the form sends; with
+    // no hour picked yet it sends nothing.
+    clockChanged(event) {
+        const clock = event.currentTarget.closest("[data-clock]")
+        const part = name => clock.querySelector(`[data-clock-part='${name}']`).value
+        const hidden = clock.querySelector("input[type='hidden']")
+        if (!part("hour")) { hidden.value = ""; return }
+
+        const hour = Number(part("hour")) % 12 + (part("meridiem") === "PM" ? 12 : 0)
+        hidden.value = `${String(hour).padStart(2, "0")}:${String(part("minute")).padStart(2, "0")}`
+        this.clearError(event.currentTarget.closest("[data-sheet]"))
+    }
+
+    // "17:05" (or "" for none) → the three dropdowns and the hidden field.
+    setClock(hidden, value) {
+        const clock = hidden.closest("[data-clock]")
+        const set = (name, v) => { clock.querySelector(`[data-clock-part='${name}']`).value = v }
+        const match = /^(\d{1,2}):(\d{2})/.exec(value || "")
+        if (!match) { set("hour", ""); hidden.value = ""; return }
+
+        const h = Number(match[1]) % 24
+        const m = Number(match[2]) - Number(match[2]) % 5
+        set("hour", String(h % 12 === 0 ? 12 : h % 12))
+        set("minute", String(m))
+        set("meridiem", h < 12 ? "AM" : "PM")
+        hidden.value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+    }
+
     fillAnswer(sheet, state, windows) {
         sheet.querySelectorAll("input[name='state']").forEach(radio => { radio.checked = radio.value === state })
         this.rows(sheet).forEach(r => r.remove())
         ;(windows || []).forEach(w => {
             const row = this.appendWindow(sheet)
-            row.querySelector("[data-window-from]").value = w.from
-            row.querySelector("[data-window-to]").value = w.to
+            this.setClock(row.querySelector("[data-window-from]"), w.from)
+            this.setClock(row.querySelector("[data-window-to]"), w.to)
         })
         if (state === "hours" && this.rows(sheet).length === 0) this.appendWindow(sheet)
         this.syncHours(sheet)

@@ -1,10 +1,9 @@
 <%# The one vocabulary for any day, used by both sheets: Anytime / Not at all /
-    Some hours, as one row of three. The time-of-day chips and the time
-    fields are the same control: tapping "Evening" writes 5:00 PM and 12:00 AM
-    into the fields, so someone who thinks in evenings taps once and someone
-    who thinks in hours just types. An end time before its start runs past
-    midnight. Kept short on purpose — a sheet on a phone. %>
-<% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+    Some hours, as one row of three. The time-of-day chips and the hour
+    dropdowns are the same control: tapping "Evening" sets 5:00 PM and 12:00 AM,
+    so someone who thinks in evenings taps once and someone who thinks in hours
+    just picks. An end time before its start runs past midnight. Kept short
+    on purpose — a sheet on a phone. %>
 <div class="grid grid-cols-3 gap-1.5">
   <% [ [ "anytime", "Anytime" ], [ "off", "Not at all" ], [ "hours", "Some hours" ] ].each do |value, label| %>
     <label class="flex items-center justify-center rounded-lg border border-gray-300 bg-white px-2 py-2.5 text-sm font-medium text-gray-700 text-center cursor-pointer transition-colors hover:border-pink-300 focus-within:ring-2 focus-within:ring-pink-500 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 has-[:checked]:text-pink-700">
@@ -34,22 +33,16 @@
           classes: "ml-auto", data: { action: "click->work-availability#addWindow" } %>
   </div>
 
-  <%# Tighter than the house input padding on a phone, where two time fields
-      and their clock icons share one line. %>
-  <% time_class = input_class.sub("px-3", "px-2 sm:px-3 text-sm sm:text-base") %>
+  <%# One window: From over To. An end before its start runs past midnight
+      (10 PM to 2 AM is fine). %>
   <template data-window-template>
-    <div class="flex items-center gap-1.5 sm:gap-2" data-window-row>
-      <label class="flex-1 min-w-0">
-        <span class="sr-only">From</span>
-        <input type="time" step="300" name="windows[__INDEX__][from]" class="<%= time_class %>" data-window-from>
-      </label>
-      <span class="text-xs text-gray-500 flex-shrink-0">to</span>
-      <label class="flex-1 min-w-0">
-        <span class="sr-only">To</span>
-        <input type="time" step="300" name="windows[__INDEX__][to]" class="<%= time_class %>" data-window-to>
-      </label>
+    <div class="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2" data-window-row>
+      <div class="flex-1 min-w-0 space-y-2">
+        <%= render "my/work_availability/clock_picker", field: "from", label: "From" %>
+        <%= render "my/work_availability/clock_picker", field: "to", label: "To" %>
+      </div>
       <%= render "shared/button", text: "", icon: "x-mark", variant: "ghost", size: "xs", type: :button,
-            title: "Remove these hours", classes: "flex-shrink-0",
+            title: "Remove these hours", classes: "flex-shrink-0 mt-1.5",
             data: { action: "click->work-availability#removeWindow" } %>
     </div>
   </template>

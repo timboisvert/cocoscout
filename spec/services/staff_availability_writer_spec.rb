@@ -119,6 +119,15 @@ RSpec.describe StaffAvailabilityWriter do
         .to raise_error(described_class::Invalid, /start and an end/)
     end
 
+    it "takes times only in 5-minute steps" do
+      expect { writer.set_weekdays!([ 1 ], state: "hours", windows: [ { from: "00:56", to: "05:00" } ]) }
+        .to raise_error(described_class::Invalid, /5-minute steps/)
+      expect(person.staff_availability_entries).to be_empty
+
+      writer.set_weekdays!([ 1 ], state: "hours", windows: [ { from: "00:55", to: "05:00" } ])
+      expect(person.staff_availability_entries).to be_present
+    end
+
     it "refuses a state it doesn't know" do
       expect { writer.set_weekdays!([ 1 ], state: "sometimes") }.to raise_error(described_class::Invalid)
     end

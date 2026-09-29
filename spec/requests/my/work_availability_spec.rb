@@ -20,6 +20,9 @@ RSpec.describe "My work availability", type: :request do
       # Monday-first, like the staffing week.
       expect(body.index(">Mon<")).to be < body.index(">Sun<")
       expect(body).to include("Some hours").and include("Change my usual week")
+      # Times are picked from hour / five-minute / AM-PM dropdowns, never typed.
+      expect(body).to include(%(data-clock-part="minute")).and include(%(<option value="55">55</option>))
+      expect(body).not_to include(%(type="time"))
       expect(ActionController::Base.helpers.strip_tags(body)).not_to match(/exception/i)
       # The morph + scroll-keeping meta, so saving doesn't jump to the top.
       expect(body).to include('name="turbo-refresh-method" content="morph"')
@@ -90,6 +93,14 @@ RSpec.describe "My work availability", type: :request do
       expect(flash[:notice]).to eq("Saved your usual Monday and Tuesday.")
       labels = WorkAvailabilityPicture.new(person).week.index_by(&:wday).transform_values { |d| d.answer.label }
       expect(labels.values_at(1, 2, 3)).to eq([ "6:00 PM – 11:00 PM", "6:00 PM – 11:00 PM", "Anytime" ])
+    end
+
+    it "says so when a time isn't on a 5-minute step" do
+      post my_work_availability_path, params: { scope: "dates", starts_on: day.iso8601, state: "hours",
+                                                windows: { "0" => { from: "00:56", to: "03:00" } } }
+
+      expect(flash[:alert]).to eq("Times go in 5-minute steps, like 12:55.")
+      expect(person.staff_availability_entries).to be_empty
     end
 
     it "says what's wrong instead of saving nonsense" do

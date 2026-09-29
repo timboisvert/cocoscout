@@ -109,6 +109,7 @@ class StaffAvailabilityWriter
       to = minute_from(w[:to])
       next if from.nil? && to.nil?
       raise Invalid, "Give every window a start and an end time." if from.nil? || to.nil?
+      raise Invalid, "Times go in 5-minute steps, like 12:55." unless (from % 5).zero? && (to % 5).zero?
 
       if to == from
         raise Invalid, "A window needs an end time after its start." unless from.zero?
