@@ -7,6 +7,30 @@ module StaffingHelper
   # aren't modeled.
   DEPOSIT_ESTIMATE_BUSINESS_DAYS = 2..4
 
+  # The W-9 pill for a staff member: { text:, classes:, title: }, or nil when
+  # there's nothing worth flagging (compact: true hides "received" and
+  # "not required" — the staff list only shouts about what needs doing).
+  W9_PILL_COLORS = { green: "bg-green-100 text-green-700", amber: "bg-amber-100 text-amber-700",
+                     gray: "bg-gray-100 text-gray-600" }.freeze
+
+  def w9_pill(member, compact: false)
+    pill = case member.w9_status
+    when :received
+      { text: "W-9 received", color: :green, title: "W-9 on file." }
+    when :exempt
+      { text: "No W-9 needed", color: :gray, title: "Marked as not needing a W-9." }
+    when :not_required
+      { text: "W-9 off", color: :gray, title: "Your organization doesn't collect W-9s." }
+    when :requested
+      { text: "W-9 requested", color: :amber, title: "Asked #{time_ago_in_words(member.w9_requested_at)} ago — waiting on them." }
+    else
+      { text: "W-9 needed", color: :amber, title: "Nobody has asked for their W-9 yet." }
+    end
+    return nil if compact && %i[received exempt not_required].include?(member.w9_status)
+
+    pill.merge(classes: W9_PILL_COLORS.fetch(pill[:color]))
+  end
+
   # Add N business days to a date, skipping weekends. Holidays aren't modeled —
   # these power the estimated pay-timing display, which is explicitly an estimate.
   def add_business_days(date, count)

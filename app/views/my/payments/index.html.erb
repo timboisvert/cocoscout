@@ -185,8 +185,42 @@
         <%= render "shared/button", text: "Manage payment settings", variant: "primary", size: "medium", path: my_payments_setup_path %>
       </div>
 
+      <% if @tax_memberships.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-1">Tax documents</h3>
+          <p class="text-xs text-gray-500 mb-3">The W-9 you've given each place you're on staff.</p>
+          <ul class="divide-y divide-gray-100">
+            <% @tax_memberships.each do |member| %>
+              <% w9 = member.current_w9 %>
+              <li class="py-2.5 first:pt-0 last:pb-0">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-sm font-medium text-gray-900 truncate"><%= member.organization.name %></span>
+                  <% if w9 %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium flex-shrink-0">W-9 on file</span>
+                  <% else %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium flex-shrink-0">W-9 needed</span>
+                  <% end %>
+                </div>
+                <% if w9 %>
+                  <p class="text-xs text-gray-500 mt-0.5">
+                    Signed <%= w9.signed_at.strftime("%b %-d, %Y") %> · <%= w9.masked_tin %> ·
+                    <%= link_to "View", my_w9_copy_path(member.organization_id), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %> ·
+                    <%= link_to "Update", my_w9_path(member.organization_id, return_to: "payments"), class: "text-pink-600 hover:text-pink-700" %>
+                  </p>
+                <% else %>
+                  <div class="mt-2">
+                    <%= render "shared/button", text: "Fill out your W-9", variant: "primary", size: "small",
+                          path: my_w9_path(member.organization_id, return_to: "payments") %>
+                  </div>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
       <div class="rounded-lg bg-gray-50 border border-gray-200 p-4">
-        <p class="text-xs text-gray-500">Payments land straight in your connected bank account. Your bank and tax details stay with Stripe — productions never see them.</p>
+        <p class="text-xs text-gray-500">Payments land straight in your connected bank account. Your bank details stay with Stripe — productions never see them. A W-9 you give an organization is encrypted and shared only with them.</p>
       </div>
     </aside>
   </div>

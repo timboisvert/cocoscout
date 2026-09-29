@@ -52,6 +52,7 @@
 
   <!-- Sign a (now-)required staff agreement to keep working -->
   <%= render "my/shifts/staff_agreement_prompt", memberships: @pending_staff_agreements %>
+  <%= render "my/shifts/w9_prompt", memberships: @pending_w9s %>
 
   <!-- Complete your info — sits with the other action boxes, above the calendar header -->
   <% if primary %>

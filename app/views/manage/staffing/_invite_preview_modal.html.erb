@@ -1,14 +1,15 @@
-<%# Onboarding email draft + send modal. Rendered once inside the
-    data-controller="invite-preview" wrapper (staffing index). Opened by any
-    button carrying the member's draft (invite-path, to-name, to-email,
-    email-subject, email-body). Subject and body are editable before sending. %>
+<%# Email draft + send modal (onboarding invites and W-9 requests). Rendered
+    once inside a data-controller="invite-preview" wrapper. Opened by any button
+    carrying the member's draft (invite-path, to-name, to-email, email-subject,
+    email-body, and optionally modal-title). Subject and body are editable
+    before sending. %>
 <div data-invite-preview-target="modal"
      class="hidden fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm overflow-y-auto"
      data-action="click->invite-preview#backdropClose keydown.esc@window->invite-preview#close">
   <div class="flex min-h-full items-start justify-center p-4 py-12">
     <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl" data-action="click->invite-preview#stopPropagation">
       <div class="flex items-center justify-between px-6 py-4 bg-pink-500 rounded-t-xl">
-        <h3 class="text-lg font-semibold text-white">Send onboarding email</h3>
+        <h3 class="text-lg font-semibold text-white" data-invite-preview-target="title">Send onboarding email</h3>
         <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->invite-preview#close">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -20,7 +21,7 @@
       <%= form_with url: "#", method: :post, authenticity_token: form_authenticity_token, data: { "invite-preview-target": "form" } do %>
         <div class="px-6 py-5 space-y-4">
           <p class="text-sm text-gray-600">
-            This invite is emailed and messaged to
+            This is emailed and messaged to
             <span class="font-medium text-gray-900" data-invite-preview-target="toName"></span>
             &lt;<span data-invite-preview-target="toEmail"></span>&gt;. Edit anything before you send it.
           </p>

@@ -1,0 +1,72 @@
+<%# Taxes: the org's payer details (they go on every 1099) and whether staff
+    must give a W-9. The EIN is never shown back in full — leaving the field
+    blank keeps the one on file. %>
+<% input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+<% label = "block text-sm font-medium text-gray-700 mb-1" %>
+<%= form_with url: manage_staffing_settings_path, method: :patch, class: "space-y-4" do %>
+  <%# Marker param so an unchecked W-9 box still routes to this setting. %>
+  <%= hidden_field_tag :updating_taxes, "1" %>
+
+  <div class="bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-1">W-9s</h2>
+    <p class="text-sm text-gray-600">Your staff are independent contractors. A signed W-9 from each one gives you what you need to send them a 1099-NEC after the year ends.</p>
+    <label class="flex items-start gap-3 cursor-pointer mt-4">
+      <%= check_box_tag :w9_required, "1", @tax_setting.w9_required?,
+            class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+      <span>
+        <span class="block text-sm font-medium text-gray-900">Require a W-9 from all staff</span>
+        <span class="block text-xs text-gray-500 mt-0.5">New staff fill it in during onboarding, and anyone already on staff is prompted on their My Shifts page. You can excuse individuals from their staff page.</span>
+      </span>
+    </label>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl p-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-1">Payer details</h2>
+    <p class="text-sm text-gray-600 mb-5">The legal name, EIN and address your 1099s are issued under. Use exactly what the IRS has on file for your business.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="sm:col-span-2">
+        <label for="legal_name" class="<%= label %>">Legal business name</label>
+        <%= text_field_tag :legal_name, @tax_setting.legal_name, class: input, autocomplete: "organization" %>
+      </div>
+      <div>
+        <label for="ein" class="<%= label %>">EIN</label>
+        <%= text_field_tag :ein, "", class: input, inputmode: "numeric", autocomplete: "off",
+              placeholder: (@tax_setting.masked_ein || "12-3456789") %>
+        <% if @tax_setting.ein_last4.present? %>
+          <p class="mt-1 text-xs text-gray-500">On file. Leave blank to keep it.</p>
+        <% end %>
+      </div>
+      <div>
+        <label for="phone" class="<%= label %>">Phone</label>
+        <%= telephone_field_tag :phone, @tax_setting.phone, class: input, autocomplete: "tel" %>
+      </div>
+      <div class="sm:col-span-2">
+        <label for="address_line1" class="<%= label %>">Street address</label>
+        <%= text_field_tag :address_line1, @tax_setting.address_line1, class: input, autocomplete: "address-line1" %>
+      </div>
+      <div class="sm:col-span-2">
+        <label for="address_line2" class="<%= label %>">Suite / unit <span class="text-gray-400 font-normal">(optional)</span></label>
+        <%= text_field_tag :address_line2, @tax_setting.address_line2, class: input, autocomplete: "address-line2" %>
+      </div>
+      <div>
+        <label for="city" class="<%= label %>">City</label>
+        <%= text_field_tag :city, @tax_setting.city, class: input, autocomplete: "address-level2" %>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="state" class="<%= label %>">State</label>
+          <%= select_tag :state, options_for_select([ [ "—", "" ] ] + W9Submission::US_STATES, @tax_setting.state), class: input %>
+        </div>
+        <div>
+          <label for="zip" class="<%= label %>">ZIP</label>
+          <%= text_field_tag :zip, @tax_setting.zip, class: input, inputmode: "numeric", autocomplete: "postal-code" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex justify-end">
+    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>

@@ -45,6 +45,10 @@ module My
       # sign-to-continue prompt surfaces this right here.
       @pending_staff_agreements = OrganizationStaffMember.pending_agreement_signatures(people_ids)
 
+      # Staff who still owe their org a W-9. Anyone who hasn't accepted
+      # onboarding yet is left out — the onboarding page asks them for it.
+      @pending_w9s = OrganizationStaffMember.pending_w9s(people_ids).select(&:acknowledged?)
+
       load_timekeeping(people_ids, finalized_weeks)
 
       # The Work availability card: the shape of their week and what's coming up.

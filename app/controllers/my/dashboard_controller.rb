@@ -437,12 +437,15 @@ module My
       # onboarding to complete. Completion is computed live (accepted + bank).
       @incomplete_staff_onboardings = OrganizationStaffMember.active
         .where(person_id: people_ids)
-        .includes(:organization, :person)
+        .includes(:person, :w9_submissions, organization: :tax_setting)
         .reject(&:onboarding_completed?)
         .sort_by { |m| m.organization.name.to_s.downcase }
 
       # Staff who owe a signature on their org's (now-)required staff agreement.
       @pending_staff_agreements = OrganizationStaffMember.pending_agreement_signatures(people_ids)
+
+      # Staff who still owe their org a W-9 (people mid-onboarding get it there).
+      @pending_w9s = OrganizationStaffMember.pending_w9s(people_ids).select(&:acknowledged?)
 
       # One-shot greeting after joining an org via its public /join link.
       if flash[:just_joined_organization_id]

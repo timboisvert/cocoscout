@@ -6,9 +6,12 @@
 <% memberships.each do |member| %>
   <%
     org = member.organization
+    owes_w9 = member.needs_w9?
     next_step = case member.onboarding_status
-                when :awaiting_bank then "Connect your bank so you can get paid."
-                else "Accept your spot, set up how you get paid, and add your availability."
+                when :awaiting_bank
+                  owes_w9 ? "Share your tax info and connect your bank so you can get paid." : "Connect your bank so you can get paid."
+                else
+                  owes_w9 ? "Accept your spot, share your tax info, set up how you get paid, and add your availability." : "Accept your spot, set up how you get paid, and add your availability."
                 end
   %>
   <%= render "shared/alert_panel",

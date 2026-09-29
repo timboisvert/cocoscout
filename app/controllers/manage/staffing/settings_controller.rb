@@ -6,15 +6,19 @@ module Manage
     # ContractSettings / MoneySettings): each topic is its own tab with a real
     # URL. Sections: the employee agreements staff sign during onboarding (the
     # agreement-template CRUD lives in AgreementTemplatesController and
-    # redirects back here), and who's hidden from the Pay People grid.
+    # redirects back here), who's hidden from the Pay People grid, and the
+    # org's payer details for W-9s and 1099s.
     class SettingsController < Manage::ManageController
-      SECTIONS = %w[agreements pay_people role_call regulars work_times notifications].freeze
+      SECTIONS = %w[agreements pay_people role_call regulars work_times notifications taxes].freeze
       SECTION_LABELS = { "agreements" => "Staff agreements", "pay_people" => "Pay People list",
                          "role_call" => "Role Call", "regulars" => "Regulars",
-                         "work_times" => "Work times", "notifications" => "Notifications" }.freeze
+                         "work_times" => "Work times", "notifications" => "Notifications",
+                         "taxes" => "Taxes" }.freeze
       DEFAULT_SECTION = "agreements"
 
       before_action :set_section, only: %i[show]
+      # The Taxes section holds the org's EIN — owners and managers only.
+      before_action :ensure_org_owner_or_manager, if: -> { params[:section] == "taxes" || params[:updating_taxes].present? }
 
       def show
         case @section
@@ -37,6 +41,8 @@ module Manage
         when "notifications"
           @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
           @notification_selected_ids = Current.organization.staffing_notification_user_ids
+        when "taxes"
+          @tax_setting = Current.organization.tax_setting || Current.organization.build_tax_setting
         end
       end
 
@@ -56,6 +62,8 @@ module Manage
           update_work_times
         elsif params[:updating_notifications].present?
           update_notification_recipients
+        elsif params[:updating_taxes].present?
+          update_tax_setting
         else
           update_required_agreement
         end
@@ -179,6 +187,28 @@ module Manage
         selected = Array(params[:notification_user_ids]).map(&:to_i) & manager_ids
         Current.organization.update!(staffing_notification_user_ids: selected)
         redirect_to section_path("notifications"), notice: "Notification recipients updated."
+      end
+
+      # Payer details (who issues the 1099s) and whether staff must give a W-9.
+      # A blank EIN field means "keep the one on file" — it's never shown back
+      # in full, so an untouched form mustn't wipe it. (updating_taxes is a
+      # marker param so an unchecked W-9 box still routes here.)
+      def update_tax_setting
+        @tax_setting = Current.organization.tax_setting || Current.organization.build_tax_setting
+        fields = %i[legal_name address_line1 address_line2 city state zip phone]
+        attrs = params.slice(*fields).permit(*fields).to_h
+        attrs.transform_values! { |v| v.to_s.strip.presence }
+        attrs[:state] = attrs[:state]&.upcase
+        attrs[:ein] = params[:ein] if params[:ein].present?
+        attrs[:w9_required] = params[:w9_required].present?
+
+        if @tax_setting.update(attrs)
+          redirect_to section_path("taxes"), notice: "Tax settings saved."
+        else
+          @section = "taxes"
+          flash.now[:alert] = "Couldn't save: #{@tax_setting.errors.full_messages.to_sentence}"
+          render :show, status: :unprocessable_entity
+        end
       end
     end
   end

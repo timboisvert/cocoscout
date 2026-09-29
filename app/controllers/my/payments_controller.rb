@@ -12,6 +12,14 @@ module My
       # settled outside CocoScout. Several in a week is normal — they're paid
       # different ways, and each is its own receipt.
       @payment_history = payment_history_rows
+
+      # Tax documents: the W-9 they've given (or owe) each org they're on
+      # staff at. 1099s will land here too.
+      @tax_memberships = OrganizationStaffMember.active
+                                                .where(person_id: Current.user.people.active.select(:id))
+                                                .includes(:w9_submissions, organization: :tax_setting)
+                                                .select { |m| m.w9_received? || m.needs_w9? }
+                                                .sort_by { |m| m.organization.name.to_s.downcase }
       @total_received = @payment_history.sum { |p| p[:cents] } / 100.0
 
       # What they're owed now, itemized straight from the ledger earnings (the

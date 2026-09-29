@@ -5,7 +5,7 @@
     <%# New to CocoScout — must set a password before they can onboard. %>
     <p class="text-gray-600 mb-6">
       <%= @staff_member.display_name %> is new to CocoScout, so we'll first email them a link to set up their
-      account and join your team. Once they're in, their onboarding steps — accepting the agreement and
+      account and join your team. Once they're in, their onboarding steps — accepting the agreement<%= ", filling out their W-9," if Current.organization.requires_w9? %> and
       connecting their bank — are waiting on their dashboard.
     </p>
 
@@ -21,7 +21,7 @@
 
   <% else %>
     <%# Existing account — send them straight to onboarding, editable draft. %>
-    <p class="text-gray-600 mb-6">This sends <%= @staff_member.display_name %> an email and a matching in-app message inviting them to onboard — accept their agreement, confirm their details, and set up how they get paid.</p>
+    <p class="text-gray-600 mb-6">This sends <%= @staff_member.display_name %> an email and a matching in-app message inviting them to onboard — accept their agreement, <%= "fill out their W-9, " if Current.organization.requires_w9? %>confirm their details, and set up how they get paid.</p>
 
     <%= form_with url: manage_save_send_staffing_staff_wizard_path, method: :post, class: "space-y-4" do %>
       <div class="rounded-lg border border-pink-100 bg-pink-50 p-4">

@@ -52,7 +52,12 @@ module Manage
         if params.key?(:house_role_ids)
           @staff_member.sync_role_qualifications!(role_ids: params[:house_role_ids], rates: params[:role_rates]&.to_unsafe_h)
         end
-        redirect_to manage_staffing_index_path, notice: "#{@staff_member.display_name} updated."
+        # A single-setting form on one tab (e.g. Taxes) lands back on that tab.
+        if (tab = params[:return_tab].presence) && tab.in?(%w[onboarding taxes])
+          redirect_to manage_edit_staffing_staff_path(@staff_member, anchor: tab), notice: "#{@staff_member.display_name} updated."
+        else
+          redirect_to manage_staffing_index_path, notice: "#{@staff_member.display_name} updated."
+        end
       rescue ActiveRecord::RecordInvalid => e
         redirect_to manage_staffing_index_path,
                     alert: "Couldn't update: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
@@ -158,6 +163,7 @@ module Manage
         attrs[:hourly_rate_cents] = parse_rate_cents(params[:hourly_rate]) if params.key?(:hourly_rate)
         attrs[:manager_id] = valid_manager_id(params[:manager_id]) if params.key?(:manager_id)
         attrs[:agreement_exempt] = params[:agreement_exempt] == "1" if params.key?(:agreement_exempt)
+        attrs[:tax_form_exempt] = params[:tax_form_exempt] == "1" if params.key?(:tax_form_exempt)
         attrs
       end
 

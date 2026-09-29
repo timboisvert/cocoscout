@@ -51,11 +51,16 @@
       <% end %>
     </span>
 
-    <%# Invitation status %>
-    <span class="w-28 flex-shrink-0 flex justify-end">
+    <%# Invitation status, plus a W-9 pill while one is still owed. %>
+    <% row_w9_pill = inactive ? nil : w9_pill(member, compact: true) %>
+    <span class="w-28 flex-shrink-0 flex flex-col items-end gap-0.5">
       <% if status_badge %>
         <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-<%= status_badge[:color] %>-100 text-<%= status_badge[:color] %>-700"
               title="<%= status_badge[:title] %>"><%= status_badge[:text] %></span>
+      <% end %>
+      <% if row_w9_pill %>
+        <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium <%= row_w9_pill[:classes] %>"
+              title="<%= row_w9_pill[:title] %>"><%= row_w9_pill[:text] %></span>
       <% end %>
     </span>
   <% end %>

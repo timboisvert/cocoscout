@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_19_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_29_120200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1381,14 +1381,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_120000) do
     t.string "preferred_first_name"
     t.bigint "staff_agreement_template_id"
     t.date "start_date"
+    t.boolean "tax_form_exempt", default: false, null: false
     t.string "title"
     t.datetime "updated_at", null: false
+    t.datetime "w9_last_reminded_at"
+    t.datetime "w9_requested_at"
     t.index ["manager_id"], name: "index_organization_staff_members_on_manager_id"
     t.index ["organization_id", "archived_at"], name: "idx_org_staff_members_org_archived"
     t.index ["organization_id", "person_id"], name: "idx_org_staff_members_unique", unique: true
     t.index ["organization_id"], name: "index_organization_staff_members_on_organization_id"
     t.index ["person_id"], name: "index_organization_staff_members_on_person_id"
     t.index ["staff_agreement_template_id"], name: "idx_on_staff_agreement_template_id_99dbeb01ea"
+  end
+
+  create_table "organization_tax_settings", force: :cascade do |t|
+    t.string "address_line1"
+    t.string "address_line2"
+    t.string "city"
+    t.datetime "created_at", null: false
+    t.text "ein"
+    t.string "ein_last4"
+    t.string "legal_name"
+    t.bigint "organization_id", null: false
+    t.string "phone"
+    t.string "state"
+    t.datetime "updated_at", null: false
+    t.boolean "w9_required", default: true, null: false
+    t.string "zip"
+    t.index ["organization_id"], name: "index_organization_tax_settings_on_organization_id", unique: true
   end
 
   create_table "organizations", force: :cascade do |t|
@@ -2858,6 +2878,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_120000) do
     t.index ["production_id"], name: "index_talent_pools_on_production_id"
   end
 
+  create_table "tax_document_accesses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "ip_address"
+    t.bigint "organization_id", null: false
+    t.bigint "user_id"
+    t.bigint "w9_submission_id", null: false
+    t.index ["organization_id"], name: "index_tax_document_accesses_on_organization_id"
+    t.index ["user_id"], name: "index_tax_document_accesses_on_user_id"
+    t.index ["w9_submission_id"], name: "index_tax_document_accesses_on_w9_submission_id"
+  end
+
   create_table "team_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -2962,6 +2993,41 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_120000) do
     t.index ["city", "state"], name: "index_venues_on_city_and_state"
     t.index ["city_hub_id"], name: "index_venues_on_city_hub_id"
     t.index ["lat", "lng"], name: "index_venues_on_lat_and_lng"
+  end
+
+  create_table "w9_submissions", force: :cascade do |t|
+    t.string "address_line1", null: false
+    t.string "address_line2"
+    t.string "business_name"
+    t.string "city", null: false
+    t.datetime "created_at", null: false
+    t.datetime "e_delivery_consented_at"
+    t.string "exempt_payee_code"
+    t.string "fatca_code"
+    t.string "form_revision", null: false
+    t.string "legal_name", null: false
+    t.string "llc_tax_class"
+    t.bigint "organization_id", null: false
+    t.bigint "organization_staff_member_id"
+    t.string "other_classification"
+    t.bigint "person_id", null: false
+    t.string "signature_name", null: false
+    t.datetime "signed_at", null: false
+    t.string "signed_ip"
+    t.string "signed_user_agent"
+    t.string "state", null: false
+    t.boolean "subject_to_backup_withholding", default: false, null: false
+    t.datetime "superseded_at"
+    t.string "tax_classification", null: false
+    t.text "tin", null: false
+    t.string "tin_last4", null: false
+    t.string "tin_type", null: false
+    t.datetime "updated_at", null: false
+    t.string "zip", null: false
+    t.index ["organization_id", "person_id"], name: "idx_w9_submissions_current", unique: true, where: "(superseded_at IS NULL)"
+    t.index ["organization_id"], name: "index_w9_submissions_on_organization_id"
+    t.index ["organization_staff_member_id"], name: "index_w9_submissions_on_organization_staff_member_id"
+    t.index ["person_id"], name: "index_w9_submissions_on_person_id"
   end
 
   create_table "webhook_events", force: :cascade do |t|
@@ -3110,6 +3176,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_120000) do
   add_foreign_key "organization_staff_members", "organizations"
   add_foreign_key "organization_staff_members", "people"
   add_foreign_key "organization_staff_members", "staff_agreement_templates"
+  add_foreign_key "organization_tax_settings", "organizations"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_batch_items", "payout_batches"
@@ -3246,6 +3313,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_120000) do
   add_foreign_key "talent_pool_shares", "productions"
   add_foreign_key "talent_pool_shares", "talent_pools"
   add_foreign_key "talent_pools", "productions"
+  add_foreign_key "tax_document_accesses", "organizations"
+  add_foreign_key "tax_document_accesses", "users", on_delete: :nullify
+  add_foreign_key "tax_document_accesses", "w9_submissions"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
   add_foreign_key "ticket_sales_lines", "show_financials", column: "show_financials_id"
@@ -3255,4 +3325,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_120000) do
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"
   add_foreign_key "venues", "city_hubs"
+  add_foreign_key "w9_submissions", "organization_staff_members", on_delete: :nullify
+  add_foreign_key "w9_submissions", "organizations"
+  add_foreign_key "w9_submissions", "people"
 end

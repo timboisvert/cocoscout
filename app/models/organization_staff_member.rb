@@ -17,6 +17,9 @@ class OrganizationStaffMember < ApplicationRecord
   # The employee agreement this member was asked to accept during onboarding.
   belongs_to :staff_agreement_template, optional: true
 
+  # W-9s this member signed for the org (history; one is current).
+  has_many :w9_submissions, dependent: :nullify
+
   validates :person_id, uniqueness: { scope: :organization_id }
   validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
   validates :hourly_rate_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
@@ -70,6 +73,58 @@ class OrganizationStaffMember < ApplicationRecord
     active.where(person_id: person_ids)
           .includes(:organization, :person, :staff_agreement_template)
           .select(&:needs_to_sign_agreement?)
+          .sort_by { |m| m.organization.name.to_s.downcase }
+  end
+
+  # --- Taxes (W-9) ---------------------------------------------------------
+  #
+  # The W-9 is a separate requirement from onboarding, like the staff agreement:
+  # it has its own status, prompt, and exempt toggle, and it doesn't change
+  # onboarding_status. Folding it in would push every already-onboarded person
+  # back into "pending" the day this shipped.
+
+  # This person's current W-9 with the org. Reads the loaded association when
+  # it's there (the staff list preloads it), so rows don't each run a query.
+  def current_w9
+    if association(:w9_submissions).loaded?
+      w9_submissions.select { |w| w.superseded_at.nil? }.max_by(&:signed_at)
+    else
+      w9_submissions.current.order(signed_at: :desc).first
+    end
+  end
+
+  def w9_received?
+    current_w9.present?
+  end
+
+  # Does the org want a W-9 from this person, and is it still missing?
+  def needs_w9?
+    return false if tax_form_exempt? || archived?
+    return false unless organization&.requires_w9?
+
+    !w9_received?
+  end
+
+  # Where this person's W-9 stands, for badges and the Taxes page.
+  # :received      → they've signed one
+  # :exempt        → marked as not needing one
+  # :not_required  → the org has turned W-9 collection off
+  # :requested     → asked, waiting on them
+  # :not_requested → nobody has asked yet
+  def w9_status
+    return :received if w9_received?
+    return :exempt if tax_form_exempt?
+    return :not_required unless organization&.requires_w9?
+
+    w9_requested_at.present? ? :requested : :not_requested
+  end
+
+  # Active members (across the given people) who still owe their org a W-9 —
+  # drives the "share your tax info" prompt on My Shifts and the dashboard.
+  def self.pending_w9s(person_ids)
+    active.where(person_id: person_ids)
+          .includes(:w9_submissions, organization: :tax_setting)
+          .select(&:needs_w9?)
           .sort_by { |m| m.organization.name.to_s.downcase }
   end
 

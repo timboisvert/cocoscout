@@ -8,3 +8,7 @@
 Rails.application.config.filter_parameters += %i[
   passw email secret token _key crypt salt certificate otp ssn cvv cvc
 ]
+
+# Tax IDs (W-9s, payer EIN). Exact names: as partial matches "tin" and "ein"
+# would also swallow params like "starting_at" and "being".
+Rails.application.config.filter_parameters += [ /\Atin\z/, /\Aein\z/ ]

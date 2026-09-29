@@ -488,6 +488,10 @@ Rails.application.routes.draw do
     get  "/onboarding/:organization_id",             to: "onboarding#show",        as: "onboarding"
     post "/onboarding/:organization_id/acknowledge", to: "onboarding#acknowledge", as: "acknowledge_onboarding"
     post "/staff-agreement/:organization_id/sign",   to: "staff_agreements#sign",   as: "sign_staff_agreement"
+    # The W-9 a staff member gives each org they work for.
+    get  "/tax-forms/:organization_id/w9",           to: "tax_forms#w9",           as: "w9"
+    post "/tax-forms/:organization_id/w9",           to: "tax_forms#submit_w9"
+    get  "/tax-forms/:organization_id/w9/copy",      to: "tax_forms#w9_copy",      as: "w9_copy"
 
     # Payments (for talent to connect a bank and view payout history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
@@ -1254,6 +1258,13 @@ Rails.application.routes.draw do
     post   "staffing/staff/:id/invite",           to: "staffing/staff#invite",           as: "invite_staffing_staff"
     delete "staffing/staff/:id",                  to: "staffing/staff#destroy",          as: "destroy_staffing_staff"
     post   "staffing/staff/:id/reactivate",       to: "staffing/staff#reactivate",       as: "reactivate_staffing_staff"
+
+    # Taxes — W-9s from every staff member (they're all contractors), and the
+    # 1099s built from them. :id is the staff member.
+    get    "staffing/taxes",                      to: "staffing/taxes#index",            as: "staffing_taxes"
+    post   "staffing/taxes/w9/request",           to: "staffing/taxes#request_w9s",      as: "request_w9s_staffing_taxes"
+    post   "staffing/taxes/w9/:id/request",       to: "staffing/taxes#request_w9",       as: "request_w9_staffing_tax"
+    get    "staffing/taxes/w9/:id",               to: "staffing/taxes#w9",               as: "w9_staffing_tax"
 
     # Shift CRUD + assignment lives at the staffing root (no longer scoped to /schedule).
     post   "staffing/shifts",                     to: "staffing/shifts#create",          as: "create_staffing_shift"

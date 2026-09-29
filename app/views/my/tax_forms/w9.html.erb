@@ -1,0 +1,172 @@
+<% content_for :title, "Your W-9 for #{@member.organization.name}" %>
+<%
+  org = @member.organization
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-sm font-medium text-gray-700 mb-1"
+  hint = "mt-1 text-xs text-gray-500"
+  cancel_path = case return_to
+                when "onboarding" then my_onboarding_path(org.id)
+                when "payments" then my_payments_path
+                else my_shifts_path
+                end
+%>
+
+<div class="max-w-2xl mx-auto px-4 py-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <div class="text-center mb-8">
+    <div class="w-16 h-16 rounded-2xl bg-pink-100 flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    </div>
+    <h1 class="text-3xl coustard-regular text-gray-900">Your tax info (Form W-9)</h1>
+    <p class="text-gray-600 mt-2 max-w-lg mx-auto">
+      <span class="font-medium text-gray-900"><%= org.name %></span> pays you as an independent contractor.
+      This is the IRS Form W-9 they need to send you a 1099 at tax time. It takes about two minutes.
+    </p>
+    <% if @existing %>
+      <p class="text-sm text-gray-500 mt-2">You gave them a W-9 on <%= @existing.signed_at.strftime("%B %-d, %Y") %>. Submitting this replaces it.</p>
+    <% end %>
+  </div>
+
+  <% if @w9.errors.any? %>
+    <div class="rounded-lg border border-red-200 bg-red-50 p-4 mb-6">
+      <p class="text-sm font-medium text-red-800">Please fix the following:</p>
+      <ul class="mt-1 list-disc pl-5 text-sm text-red-700">
+        <% @w9.errors.full_messages.each do |message| %><li><%= message %></li><% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <%= form_with model: @w9, scope: :w9, url: my_w9_path(org.id), method: :post,
+        class: "space-y-4", data: { controller: "w9-form" } do |f| %>
+    <%= hidden_field_tag :return_to, return_to if return_to %>
+
+    <%# ---- Who you are ---- %>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+      <h2 class="font-semibold text-gray-900">Who's getting paid</h2>
+      <div>
+        <%= f.label :legal_name, "Your name, as shown on your tax return", class: label %>
+        <%= f.text_field :legal_name, class: input, autocomplete: "name", required: true %>
+        <p class="<%= hint %>">If you have a business or LLC, still put your own name here unless the business files its own taxes.</p>
+      </div>
+      <div>
+        <%= f.label :business_name, class: label do %>Business name <span class="text-gray-400 font-normal">(optional)</span><% end %>
+        <%= f.text_field :business_name, class: input, autocomplete: "organization" %>
+        <p class="<%= hint %>">Only if you work under a business name or disregarded entity.</p>
+      </div>
+      <div>
+        <%= f.label :tax_classification, "Federal tax classification", class: label %>
+        <%= f.select :tax_classification, W9Submission::TAX_CLASSIFICATIONS.map { |k, v| [ v, k ] }, {},
+              class: input, data: { "w9-form-target": "classification", action: "change->w9-form#update" } %>
+        <p class="<%= hint %>">Most people choose "Individual/sole proprietor".</p>
+      </div>
+      <div data-w9-form-target="llc" class="hidden">
+        <%= f.label :llc_tax_class, "How is your LLC taxed?", class: label %>
+        <%= f.select :llc_tax_class, W9Submission::LLC_TAX_CLASSES.map { |k, v| [ v, k ] }, { include_blank: "Choose…" }, class: input %>
+      </div>
+      <div data-w9-form-target="other" class="hidden">
+        <%= f.label :other_classification, "Describe your classification", class: label %>
+        <%= f.text_field :other_classification, class: input %>
+      </div>
+      <details class="group">
+        <summary class="text-sm text-pink-600 hover:text-pink-700 cursor-pointer select-none">Exemption codes <span class="text-gray-400">(most people skip this)</span></summary>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+          <div>
+            <%= f.label :exempt_payee_code, "Exempt payee code", class: label %>
+            <%= f.text_field :exempt_payee_code, class: input %>
+          </div>
+          <div>
+            <%= f.label :fatca_code, "FATCA exemption code", class: label %>
+            <%= f.text_field :fatca_code, class: input %>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <%# ---- Address ---- %>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+      <h2 class="font-semibold text-gray-900">Mailing address</h2>
+      <p class="text-sm text-gray-600 -mt-2">Where your 1099 would be mailed.</p>
+      <div>
+        <%= f.label :address_line1, "Street address", class: label %>
+        <%= f.text_field :address_line1, class: input, autocomplete: "address-line1", required: true %>
+      </div>
+      <div>
+        <%= f.label :address_line2, class: label do %>Apt / unit <span class="text-gray-400 font-normal">(optional)</span><% end %>
+        <%= f.text_field :address_line2, class: input, autocomplete: "address-line2" %>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <%= f.label :city, class: label %>
+          <%= f.text_field :city, class: input, autocomplete: "address-level2", required: true %>
+        </div>
+        <div>
+          <%= f.label :state, class: label %>
+          <%= f.select :state, W9Submission::US_STATES, { include_blank: "—" }, class: input, autocomplete: "address-level1", required: true %>
+        </div>
+        <div>
+          <%= f.label :zip, "ZIP", class: label %>
+          <%= f.text_field :zip, class: input, inputmode: "numeric", autocomplete: "postal-code", required: true %>
+        </div>
+      </div>
+    </div>
+
+    <%# ---- Tax ID ---- %>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+      <h2 class="font-semibold text-gray-900">Taxpayer identification number</h2>
+      <div class="flex flex-wrap gap-4">
+        <% [ [ "ssn", "Social Security number" ], [ "ein", "EIN" ] ].each do |value, text| %>
+          <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <%= f.radio_button :tin_type, value, class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500",
+                  data: { action: "change->w9-form#update" } %>
+            <%= text %>
+          </label>
+        <% end %>
+      </div>
+      <div>
+        <label for="w9_tin" class="<%= label %>" data-w9-form-target="tinLabel">Social Security number</label>
+        <%= f.password_field :tin, value: "", class: "#{input} tabular-nums", inputmode: "numeric", autocomplete: "off",
+              required: true, data: { "w9-form-target": "tin" } %>
+        <p class="<%= hint %>">Encrypted as soon as you submit, and only shared with <%= org.name %>.<% if @existing %> Enter it again to update your W-9.<% end %></p>
+      </div>
+    </div>
+
+    <%# ---- Certification (Part II, word for word) ---- %>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+      <h2 class="font-semibold text-gray-900">Sign</h2>
+      <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 text-xs text-gray-700 space-y-1.5">
+        <p class="font-medium"><%= W9Submission::CERTIFICATION_INTRO %></p>
+        <ol class="list-decimal pl-5 space-y-1">
+          <% W9Submission::CERTIFICATION_ITEMS.each do |item| %><li><%= item %></li><% end %>
+        </ol>
+      </div>
+      <label class="flex items-start gap-3 cursor-pointer">
+        <%= f.check_box :subject_to_backup_withholding, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-700">The IRS has told me I'm currently subject to backup withholding. <span class="text-gray-500">(Rare — leave unchecked unless you got that letter.)</span></span>
+      </label>
+      <label class="flex items-start gap-3 cursor-pointer">
+        <%= check_box_tag :certify, "1", false, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-900 font-medium">Under penalties of perjury, I certify that the information above is correct.</span>
+      </label>
+      <div>
+        <%= f.label :signature_name, "Type your full name to sign", class: label %>
+        <%= f.text_field :signature_name, class: input, autocomplete: "name", required: true %>
+      </div>
+      <label class="flex items-start gap-3 cursor-pointer pt-3 border-t border-gray-100">
+        <%= check_box_tag :e_delivery_consent, "1", @existing.nil? || @existing.e_delivery_consented?,
+              class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-700">
+          Send me my 1099 electronically instead of by mail.
+          <span class="block text-xs text-gray-500 mt-0.5">It will be in My Payments and we'll email you when it's ready. You can ask <%= org.name %> for a paper copy or withdraw this any time.</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="flex items-center justify-end gap-2">
+      <%= link_to cancel_path do %>
+        <%= render "shared/button", text: "Not now", variant: "secondary", size: "medium", type: :button %>
+      <% end %>
+      <%= render "shared/button", text: "Sign & submit", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

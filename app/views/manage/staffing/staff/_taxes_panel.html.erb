@@ -1,0 +1,81 @@
+<%# Staff edit → Taxes tab: this person's W-9, with its own actions (it sits
+    outside the main edit form, like the Onboarding tab). Rendered inside the
+    page's data-controller="invite-preview" wrapper.
+    Local: staff_member. %>
+<% member = staff_member %>
+<% person = member.person %>
+<% w9 = member.current_w9 %>
+<% pill = w9_pill(member) %>
+<div data-staff-edit-target="panel" data-panel="taxes" class="hidden space-y-5">
+  <div>
+    <h2 class="text-lg font-semibold text-gray-900">Taxes</h2>
+    <p class="text-sm text-gray-500 mt-0.5"><%= member.display_name %> is an independent contractor. Their W-9 is what you'll need for their 1099-NEC.</p>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+    <div class="flex items-start gap-3">
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-gray-900">Form W-9</p>
+        <% if w9 %>
+          <p class="text-sm text-gray-600 mt-0.5">Signed <span class="font-medium text-gray-900"><%= w9.signed_at.strftime("%B %-d, %Y") %></span> by <%= w9.signature_name %>.</p>
+          <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div><dt class="text-xs text-gray-500">Name on the form</dt><dd class="text-gray-900"><%= w9.legal_name %></dd></div>
+            <% if w9.business_name.present? %>
+              <div><dt class="text-xs text-gray-500">Business name</dt><dd class="text-gray-900"><%= w9.business_name %></dd></div>
+            <% end %>
+            <div><dt class="text-xs text-gray-500">Tax classification</dt><dd class="text-gray-900"><%= w9.classification_label %></dd></div>
+            <div><dt class="text-xs text-gray-500"><%= w9.tin_type == "ein" ? "EIN" : "SSN" %></dt><dd class="text-gray-900 tabular-nums"><%= w9.masked_tin %></dd></div>
+            <div class="sm:col-span-2"><dt class="text-xs text-gray-500">Address</dt><dd class="text-gray-900"><%= [ w9.address_line1, w9.address_line2 ].compact_blank.join(", ") %>, <%= w9.city_state_zip %></dd></div>
+            <div class="sm:col-span-2"><dt class="text-xs text-gray-500">1099 delivery</dt><dd class="text-gray-900"><%= w9.e_delivery_consented? ? "Agreed to get it electronically" : "Wants a paper copy mailed" %></dd></div>
+          </dl>
+          <% if w9.subject_to_backup_withholding? %>
+            <p class="text-sm text-amber-700 mt-3">They told us the IRS has put them on backup withholding. Talk to your accountant before paying them.</p>
+          <% end %>
+        <% elsif member.w9_status == :requested %>
+          <p class="text-sm text-gray-600 mt-0.5">Asked on <%= member.w9_requested_at.strftime("%B %-d, %Y") %>. We remind them weekly until they fill it in.</p>
+        <% elsif member.w9_status == :exempt %>
+          <p class="text-sm text-gray-600 mt-0.5">Marked as not needing a W-9.</p>
+        <% elsif member.w9_status == :not_required %>
+          <p class="text-sm text-gray-600 mt-0.5">Your organization doesn't collect W-9s. Turn it on in <%= link_to "Tax settings", manage_staffing_settings_section_path(section: "taxes"), class: "text-pink-600 hover:text-pink-700" %>.</p>
+        <% elsif person.user.nil? %>
+          <p class="text-sm text-gray-600 mt-0.5">They'll fill it in during onboarding, once they've set up their account.</p>
+        <% else %>
+          <p class="text-sm text-gray-600 mt-0.5">Not asked yet.</p>
+        <% end %>
+      </div>
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 <%= pill[:classes] %>" title="<%= pill[:title] %>"><%= pill[:text] %></span>
+    </div>
+
+    <% if w9 %>
+      <%= render "shared/button", text: "View W-9", variant: "secondary", size: "small", icon: "eye",
+            path: manage_w9_staffing_tax_path(member), target: "_blank", rel: "noopener" %>
+    <% elsif member.needs_w9? && StaffW9Requester.requestable?(member) %>
+      <% w9_preview = StaffW9Requester.preview(staff_member: member) %>
+      <%= render "shared/button",
+            text: (member.w9_requested_at ? "Resend W-9 request" : "Ask for their W-9"),
+            variant: "primary", size: "small", icon: "paper-airplane", type: :button,
+            data: {
+              action: "click->invite-preview#open",
+              "invite-path": manage_request_w9_staffing_tax_path(member, from: "staff"),
+              "modal-title": "Ask for a W-9",
+              "to-name": person.name,
+              "to-email": w9_preview[:to_email],
+              "email-subject": w9_preview[:subject],
+              "email-body": w9_preview[:body]
+            } %>
+    <% end %>
+
+    <%# Exempt toggle — its own tiny form; auto-submits on change. Hidden once
+        a W-9 is on file (there's nothing left to excuse). %>
+    <% if w9.nil? && Current.organization.requires_w9? %>
+      <%= form_with url: manage_update_staffing_staff_path(member), method: :patch, class: "flex items-center gap-2 pt-3 border-t border-gray-100" do %>
+        <%= hidden_field_tag :return_tab, "taxes" %>
+        <%= hidden_field_tag :tax_form_exempt, "0", id: nil %>
+        <%= check_box_tag :tax_form_exempt, "1", member.tax_form_exempt?, id: "tax_form_exempt_toggle",
+              class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500",
+              onchange: "this.form.requestSubmit()" %>
+        <label for="tax_form_exempt_toggle" class="text-sm text-gray-700 cursor-pointer">This person doesn't need a W-9 (for example, you pay them through payroll).</label>
+      <% end %>
+    <% end %>
+  </div>
+</div>

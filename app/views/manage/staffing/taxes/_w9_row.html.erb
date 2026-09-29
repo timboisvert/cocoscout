@@ -1,0 +1,57 @@
+<%# One staff member's W-9 on the Taxes page, styled like the staff hub rows.
+    Locals: member, selectable (bool — can be checked for "Ask selected"). %>
+<% person = member.person %>
+<% headshot = person.respond_to?(:safe_headshot_variant) ? person.safe_headshot_variant(:thumb) : nil %>
+<% pill = w9_pill(member) %>
+<% w9 = member.current_w9 %>
+<div class="flex items-center gap-3 px-3 py-2.5">
+  <span class="w-4 flex-shrink-0">
+    <% if selectable %>
+      <%= check_box_tag "staff_member_ids[]", member.id, false, id: "w9-select-#{member.id}",
+            form: "w9-bulk-form", "aria-label": "Select #{member.display_name}",
+            class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+    <% end %>
+  </span>
+
+  <%= link_to manage_edit_staffing_staff_path(member), class: "flex items-center gap-3 flex-1 min-w-0 group" do %>
+    <% if headshot %>
+      <%= image_tag headshot, alt: person.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
+    <% else %>
+      <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= person.initials %></div>
+    <% end %>
+    <span class="flex-1 min-w-0">
+      <span class="block font-medium text-gray-900 text-sm truncate group-hover:text-pink-600"><%= member.display_name %></span>
+      <span class="block text-[11px] text-gray-400 truncate mt-0.5">
+        <% if w9 %>
+          Signed <%= w9.signed_at.strftime("%b %-d, %Y") %> · <%= w9.masked_tin %> · <%= w9.classification_label %>
+        <% elsif member.w9_status == :requested %>
+          Asked <%= member.w9_requested_at.strftime("%b %-d") %><% if member.w9_last_reminded_at && member.w9_last_reminded_at > member.w9_requested_at + 1.minute %> · reminded <%= member.w9_last_reminded_at.strftime("%b %-d") %><% end %>
+        <% else %>
+          <%= member.title.presence || person.email %>
+        <% end %>
+      </span>
+    </span>
+  <% end %>
+
+  <span class="hidden sm:inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 <%= pill[:classes] %>"
+        title="<%= pill[:title] %>"><%= pill[:text] %></span>
+
+  <div class="w-24 flex-shrink-0 flex justify-end">
+    <% if w9 %>
+      <%= render "shared/button", text: "View W-9", variant: "outline", size: "xs", type: :link,
+            path: manage_w9_staffing_tax_path(member), target: "_blank", rel: "noopener" %>
+    <% elsif member.needs_w9? && StaffW9Requester.requestable?(member) %>
+      <% preview = StaffW9Requester.preview(staff_member: member) %>
+      <%= render "shared/button", text: (member.w9_requested_at ? "Resend" : "Ask"), variant: "outline-pink", size: "xs", type: :button,
+            data: {
+              action: "click->invite-preview#open",
+              "invite-path": manage_request_w9_staffing_tax_path(member),
+              "modal-title": "Ask for a W-9",
+              "to-name": person.name,
+              "to-email": preview[:to_email],
+              "email-subject": preview[:subject],
+              "email-body": preview[:body]
+            } %>
+    <% end %>
+  </div>
+</div>

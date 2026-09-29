@@ -34,6 +34,10 @@ class Organization < ApplicationRecord
   has_many :scheduling_rules, dependent: :destroy
   has_many :staff_schedule_removals, dependent: :destroy
   has_many :staff_agreement_templates, dependent: :destroy
+  # Taxes: the org's payer details (for 1099s) and the W-9s its staff gave it.
+  has_one :tax_setting, class_name: "OrganizationTaxSetting", dependent: :destroy
+  has_many :w9_submissions, dependent: :destroy
+  has_many :tax_document_accesses, dependent: :destroy
   # The staff agreement this org requires staff to sign (if any). Nil = not required.
   belongs_to :required_staff_agreement_template, class_name: "StaffAgreementTemplate", optional: true
   has_many :agreement_templates, dependent: :destroy
@@ -83,6 +87,13 @@ class Organization < ApplicationRecord
 
   # Whether staff must sign an agreement before working here. A required pointer to
   # an inactive/deleted template counts as "not required" (defensive).
+  # Staff must hand over a W-9 unless the org has turned that off in
+  # Staffing → Settings → Taxes. On by default: every house staffer is a
+  # contractor, and the org needs a W-9 to send them a 1099.
+  def requires_w9?
+    tax_setting.nil? || tax_setting.w9_required?
+  end
+
   def requires_staff_agreement?
     required_staff_agreement_template&.active? || false
   end

@@ -95,3 +95,7 @@ production:
   contract_signature_reminders:
     class: ContractSignatureRemindersJob
     schedule: at 9am every day
+
+  w9_reminders:
+    class: W9RemindersJob
+    schedule: at 10am every day

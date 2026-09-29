@@ -23,6 +23,17 @@
     </div>
   <% end %>
 
+  <%# Paying someone without a W-9 isn't blocked, just flagged: the org will
+      need it for their 1099. %>
+  <% if @missing_w9_members.any? %>
+    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 mt-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-amber-900">
+        <%= @missing_w9_members.map(&:display_name).to_sentence %> <%= @missing_w9_members.one? ? "hasn't" : "haven't" %> given you a W-9 yet. You can still pay them, but you'll need it for their 1099.
+      </p>
+      <%= render "shared/button", text: "Go to Taxes", variant: "secondary", size: "small", path: manage_staffing_taxes_path %>
+    </div>
+  <% end %>
+
   <% if (@staff_members + @hidden_staff_members).empty? %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center mt-4">
       <p class="text-sm text-gray-600 mb-3">No staff to pay yet.</p>
@@ -139,6 +150,7 @@
                   </div>
                   <div data-acc-summary class="hidden text-xs font-medium text-gray-600 mt-1 lg:hidden"></div>
                   <% unless can_pay %><span class="text-[11px] text-amber-600">Needs to connect a bank to get paid</span><% end %>
+                  <% if member.needs_w9? %><span class="block text-[11px] text-amber-600">No W-9 on file yet</span><% end %>
                   <% if hidden_from_pay %><span class="block text-[11px] text-gray-500"><%= member.inactive? ? "Inactive" : "Usually hidden" %> — shown for a one-off payment</span><% end %>
                 </td>
                 <td data-acc-field class="hidden items-center justify-between gap-3 py-1 lg:table-cell lg:px-3 lg:py-2 lg:text-right lg:align-top">

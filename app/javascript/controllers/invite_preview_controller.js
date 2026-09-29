@@ -1,15 +1,17 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Opens a modal with the onboarding email draft (already interpolated) and lets
-// the org edit the subject and (rich-text) body before (re)sending the invite.
+// Opens a modal with an email draft (already interpolated) — an onboarding
+// invite or a W-9 request — and lets the org edit the subject and (rich-text)
+// body before sending it.
 export default class extends Controller {
-    static targets = ["modal", "toName", "toEmail", "subject", "bodyInput", "bodyEditor", "form"]
+    static targets = ["modal", "title", "toName", "toEmail", "subject", "bodyInput", "bodyEditor", "form"]
 
     open(event) {
         if (event) event.preventDefault()
         const d = event.currentTarget.dataset
 
         if (this.hasFormTarget && d.invitePath) this.formTarget.action = d.invitePath
+        if (this.hasTitleTarget) this.titleTarget.textContent = d.modalTitle || "Send onboarding email"
         this.toNameTargets.forEach(el => { el.textContent = d.toName || "" })
         if (this.hasToEmailTarget) this.toEmailTarget.textContent = d.toEmail || ""
         if (this.hasSubjectTarget) this.subjectTarget.value = d.emailSubject || ""

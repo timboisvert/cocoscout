@@ -16,6 +16,9 @@ module Manage
         # back to hidden on the next visit.
         @hidden_staff_members = all_members.select { |m| m.inactive? || m.excluded_from_pay? }
         @staff_members = all_members - @hidden_staff_members
+        # People on the grid who still owe a W-9. Paying them isn't blocked —
+        # payroll never stalls on paperwork — but it's flagged so it gets chased.
+        @missing_w9_members = @staff_members.select(&:needs_w9?)
         @payday = Date.current
         # Approved (signed-off, unpaid) entries per person — listed with
         # checkboxes in each person's Hours modal, and what the submit-time
@@ -94,7 +97,8 @@ module Manage
       # default and keeps the rest revealable for one-off payments.
       def payable_staff
         Current.organization.organization_staff_members
-               .includes(:person, staff_role_qualifications: :house_role)
+               .includes(:person, :w9_submissions, { organization: :tax_setting },
+                         staff_role_qualifications: :house_role)
                .order("people.name").references(:person).to_a
       end
 

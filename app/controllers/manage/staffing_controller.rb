@@ -23,7 +23,8 @@ module Manage
 
       members = Current.organization.organization_staff_members
                        .active
-                       .includes(:house_roles, person: [ :user, HEADSHOT_PRELOAD ])
+                       .includes(:house_roles, :w9_submissions, { organization: :tax_setting },
+                                 person: [ :user, HEADSHOT_PRELOAD ])
                        .joins(:person)
                        .order("people.name")
       @house_roles = Current.organization.house_roles.active.ordered
@@ -52,6 +53,9 @@ module Manage
       # Worked hours submitted by staff and awaiting a manager's sign-off — the
       # badge on the "Approve Hours" tile.
       @hours_to_approve_count = Current.organization.staff_time_entries.pending.count
+
+      # Staff still owing the org a W-9 — the badge on the "Taxes" tile.
+      @w9s_outstanding_count = members.count(&:needs_w9?)
 
       # Staff who've said "I can't make it" on an upcoming shift.
       @declined_assignments = declined_upcoming_assignments

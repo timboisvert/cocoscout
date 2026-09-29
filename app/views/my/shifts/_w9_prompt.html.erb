@@ -1,0 +1,14 @@
+<%# "Share your tax info" prompt for staff who still owe their org a W-9 —
+    how people already on staff when W-9s were switched on get asked. One alert
+    per org; soft enforcement (nothing is locked).
+    Local: memberships (OrganizationStaffMembers where needs_w9?). %>
+<% return if memberships.blank? %>
+
+<% memberships.each do |member| %>
+  <% org = member.organization %>
+  <%= render "shared/alert_panel",
+        eyebrow: "Tax info needed",
+        headline: org.name,
+        body: "#{org.name} needs a W-9 from you to send you a 1099 at tax time. It takes about two minutes.",
+        actions: [ { text: "Fill out your W-9", path: my_w9_path(org.id) } ] %>
+<% end %>

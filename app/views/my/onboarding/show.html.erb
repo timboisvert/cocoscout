@@ -3,6 +3,13 @@
 <%
   acknowledged = @staff_member.acknowledged?
   bank_done = @staff_member.bank_connected?
+  # The W-9 step shows when the org collects W-9s and this person isn't excused.
+  # It's a separate requirement from onboarding status, but a new hire isn't
+  # "all set" until it's done.
+  w9_step = @staff_member.organization.requires_w9? && !@staff_member.tax_form_exempt?
+  w9_done = @staff_member.w9_received?
+  essentials_done = acknowledged && bank_done && (!w9_step || w9_done)
+  step = 1
   first_name = @staff_member.preferred_first_name.presence || @staff_member.first_name.presence || @person.name.to_s.split(" ").first
 %>
 
@@ -25,7 +32,7 @@
     <%# Step 1 — accept %>
     <div class="bg-white border <%= acknowledged ? "border-green-200" : "border-gray-200" %> rounded-lg p-5">
       <div class="flex items-start gap-4">
-        <%= render "my/onboarding/step_marker", done: acknowledged, number: 1 %>
+        <%= render "my/onboarding/step_marker", done: acknowledged, number: step %>
         <div class="flex-1 min-w-0">
           <% agreement_template = @staff_member.effective_agreement_template %>
           <% agreement_html = @staff_member.rendered_agreement_html %>
@@ -80,10 +87,34 @@
       </div>
     </div>
 
-    <%# Step 2 — get paid %>
+    <%# Tax info (W-9) — they're an independent contractor, so the org needs it
+        for their 1099. Filled in on its own page, which brings them back here. %>
+    <% if w9_step %>
+      <div class="bg-white border <%= w9_done ? "border-green-200" : "border-gray-200" %> rounded-lg p-5">
+        <div class="flex items-start gap-4">
+          <%= render "my/onboarding/step_marker", done: w9_done, number: (step += 1) %>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold text-gray-900">Share your tax info (W-9)</h3>
+            <p class="text-sm text-gray-600 mt-1"><%= @organization.name %> pays you as an independent contractor, so they need a W-9 from you to send you a 1099 at tax time.</p>
+            <% if w9_done %>
+              <p class="text-sm text-green-700 font-medium mt-2">W-9 on file, thanks!</p>
+              <%= link_to "Update your W-9", my_w9_path(@organization.id, return_to: "onboarding"),
+                    class: "inline-block text-sm text-pink-600 hover:text-pink-700 mt-1" %>
+            <% else %>
+              <div class="mt-3">
+                <%= render "shared/button", text: "Fill out your W-9", variant: "primary", size: "medium",
+                      path: my_w9_path(@organization.id, return_to: "onboarding") %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Get paid %>
     <div class="bg-white border <%= bank_done ? "border-green-200" : "border-gray-200" %> rounded-lg p-5">
       <div class="flex items-start gap-4">
-        <%= render "my/onboarding/step_marker", done: bank_done, number: 2 %>
+        <%= render "my/onboarding/step_marker", done: bank_done, number: (step += 1) %>
         <div class="flex-1 min-w-0">
           <h3 class="font-semibold text-gray-900">Set up how you get paid</h3>
           <p class="text-sm text-gray-600 mt-1">Add your legal name and connect your bank so payments land automatically.</p>
@@ -98,12 +129,12 @@
       </div>
     </div>
 
-    <%# Step 3 — initial work availability, set on the Work Availability page,
+    <%# Initial work availability, set on the Work Availability page,
         which brings them back here when they tap Done. %>
     <% availability_set = @availability_set %>
     <div class="bg-white border <%= availability_set ? "border-green-200" : "border-gray-200" %> rounded-lg p-5">
       <div class="flex items-start gap-4">
-        <%= render "my/onboarding/step_marker", done: availability_set, number: 3 %>
+        <%= render "my/onboarding/step_marker", done: availability_set, number: (step += 1) %>
         <div class="flex-1 min-w-0">
           <h3 class="font-semibold text-gray-900">Set your initial work availability</h3>
           <p class="text-sm text-gray-600 mt-1">Tell <%= @organization.name %> when you can work so they can schedule you. You can update this any time from My Shifts.</p>
@@ -123,7 +154,7 @@
     </div>
   </div>
 
-  <% if acknowledged && bank_done %>
+  <% if essentials_done %>
     <div class="mt-8 rounded-lg bg-green-50 border border-green-200 p-5 text-center">
       <p class="text-sm font-medium text-green-800">You're all set — <%= @organization.name %> can now schedule and pay you.</p>
     </div>
@@ -132,7 +163,7 @@
   <%# Celebration overlay: shown when they come back from finishing availability
       and everything else is already done. Rendered only then (not toggled with
       `hidden`, which loses to `flex`), and dismissed by removing it. %>
-  <% if @availability_just_done && acknowledged && bank_done %>
+  <% if @availability_just_done && essentials_done %>
   <div id="onboarding-complete-overlay"
        class="fixed inset-0 z-[80] bg-gray-900/70 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
@@ -141,7 +172,7 @@
       </div>
       <h2 class="text-2xl coustard-regular text-gray-900">Nice work — you're all set!</h2>
       <p class="text-gray-600 mt-2">
-        You've accepted your spot, set up how you get paid, and told <%= @organization.name %> when you can work.
+        You've accepted your spot, set up how you get paid<%= ", shared your tax info" if w9_step %>, and told <%= @organization.name %> when you can work.
         Head to My Shifts to see your assignments.
       </p>
       <div class="mt-6 flex flex-col gap-2">
