@@ -169,7 +169,7 @@
       "check_name": "Render",
       "message": "Render path contains parameter value",
       "file": "app/views/manage/casting_settings/show.html.erb",
-      "line": 13,
+      "line": 14,
       "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
       "code": "render(action => \"manage/casting_settings/sections/#{(params[:section] or \"source\")}\", {})",
       "render_path": [
@@ -177,7 +177,7 @@
           "type": "controller",
           "class": "Manage::CastingSettingsController",
           "method": "show",
-          "line": 20,
+          "line": 22,
           "file": "app/controllers/manage/casting_settings_controller.rb",
           "rendered": {
             "name": "manage/casting_settings/show",
@@ -203,7 +203,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/my/contracts_controller.rb",
-      "line": 95,
+      "line": 104,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:financials, {}).permit!",
       "render_path": null,
@@ -252,6 +252,29 @@
         79
       ],
       "note": "Accepted risk: content_snapshot is ActionText rich text HTML from org admin, sanitized by Rails. Rendered with html_safe intentionally to display agreement content."
+    },
+    {
+      "warning_type": "Remote Code Execution",
+      "warning_code": 24,
+      "fingerprint": "765f25b50e7b653bbb8ed3f6a04ab2542409cb4f9fe3dc5bb2831e3005982455",
+      "check_name": "UnsafeReflection",
+      "message": "Unsafe reflection method `constantize` called on parameter value",
+      "file": "app/controllers/manage/casting_tables_controller.rb",
+      "line": 496,
+      "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
+      "code": "params[:assignable_type].constantize",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Manage::CastingTablesController",
+        "method": "resolve_cell"
+      },
+      "user_input": "params[:assignable_type]",
+      "confidence": "High",
+      "cwe_id": [
+        470
+      ],
+      "note": ""
     },
     {
       "warning_type": "Cross-Site Scripting",
@@ -336,7 +359,7 @@
           "type": "controller",
           "class": "Manage::MoneySettingsController",
           "method": "show",
-          "line": 16,
+          "line": 22,
           "file": "app/controllers/manage/money_settings_controller.rb",
           "rendered": {
             "name": "manage/money_settings/show",
@@ -370,7 +393,7 @@
           "type": "controller",
           "class": "Manage::Staffing::SettingsController",
           "method": "show",
-          "line": 21,
+          "line": 25,
           "file": "app/controllers/manage/staffing/settings_controller.rb",
           "rendered": {
             "name": "manage/staffing/settings/show",
@@ -447,5 +470,5 @@
       "note": ""
     }
   ],
-  "brakeman_version": "8.0.5"
+  "brakeman_version": "8.0.6"
 }
