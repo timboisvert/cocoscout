@@ -48,11 +48,6 @@ export default class extends Controller {
         })
     }
 
-    // Ticking "my availability is up to date" sends it straight away.
-    confirm(event) {
-        event.currentTarget.form.requestSubmit()
-    }
-
     openDateSheet(o) {
         const sheet = this.dateSheetTarget
         this.setTitle(sheet, o.title)

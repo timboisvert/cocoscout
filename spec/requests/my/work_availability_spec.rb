@@ -39,15 +39,15 @@ RSpec.describe "My work availability", type: :request do
       expect(response.body).to include("Lisbon")
       # A change carries its dates and note on the calendar cells it covers.
       expect(response.body).to include(%(data-change-starts-on="#{day.iso8601}")).and include(%(data-change-note="Lisbon"))
-      # Confirmed: a green check, not a box to tick.
+      # Confirmed: a green check, not the button.
       expect(response.body).to include("My availability is up to date").and include("Confirmed through")
-      expect(response.body).not_to include("work-availability#confirm")
+      expect(response.body).not_to include("Confirm my availability")
     end
 
-    it "offers a box to tick until they say it's up to date" do
+    it "offers the confirm button until they say it's up to date" do
       get my_work_availability_path
 
-      expect(response.body).to include("My availability is up to date").and include("change->work-availability#confirm")
+      expect(response.body).to include("Is your availability up to date?").and include("Confirm my availability")
     end
 
     it "pages through the coming year and no further" do
@@ -128,15 +128,15 @@ RSpec.describe "My work availability", type: :request do
   end
 
   describe "confirming" do
-    it "unticks when they change anything" do
+    it "asks them to confirm again when they change anything" do
       StaffAvailabilityWriter.new(person).confirm!
       post my_work_availability_path, params: { scope: "week", days: %w[0], state: "off" }
 
       get my_work_availability_path
-      expect(response.body).to include("change->work-availability#confirm")
+      expect(response.body).to include("Confirm my availability")
     end
 
-    it "stays on the page when ticked from the page" do
+    it "stays on the page when confirmed from the page" do
       post my_confirm_work_availability_path(stay: 1)
 
       expect(person.reload.availability_confirmed_through).to be_present
