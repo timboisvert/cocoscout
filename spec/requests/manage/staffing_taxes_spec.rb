@@ -39,15 +39,40 @@ RSpec.describe "Manage::Staffing::Taxes", type: :request do
     expect(response.body).to include("Ask everyone missing one")
   end
 
-  it "asks everyone missing a W-9, skipping people without an account" do
+  it "shows who'll be asked and the draft before anything is sent" do
+    get manage_staffing_taxes_path
+
+    modal = response.body[/<div id="request-all-w9s".*?Send requests/m]
+    expect(modal).to include("Sending to 1 person").and include("Sam Staffer").and include("sam@example.com")
+    expect(modal).to include(%(name="staff_member_ids[]")).and include(%(value="#{member.id}"))
+    # Nobody who can't sign in yet; onboarding asks them.
+    expect(modal).not_to include("Nia Newbie")
+    # One draft for everyone, with the name left for each send to fill in.
+    expect(modal).to include("{{first_name}}")
+  end
+
+  it "sends the edited draft to the people ticked, each with their own first name" do
     expect {
-      post manage_request_w9s_staffing_taxes_path, params: { all: 1 }
+      post manage_request_w9s_staffing_taxes_path, params: {
+        staff_member_ids: [ member.id, unclaimed.id ],
+        email_subject: "W-9 for {{first_name}}", email_body: "<p>Hi {{first_name}}, one form please.</p>"
+      }
     }.to have_enqueued_mail(StaffTaxFormMailer, :w9_request)
+      .with(member, to: "sam@example.com", subject: "W-9 for Sam", body: "<p>Hi Sam, one form please.</p>")
 
     expect(response).to redirect_to(manage_staffing_taxes_path)
     expect(flash[:notice]).to include("Asked 1 person").and include("Nia Newbie")
     expect(member.reload.w9_requested_at).to be_present
     expect(unclaimed.reload.w9_requested_at).to be_nil
+  end
+
+  it "asks nobody when nobody's ticked" do
+    expect {
+      post manage_request_w9s_staffing_taxes_path, params: { email_subject: "x", email_body: "y" }
+    }.not_to have_enqueued_mail(StaffTaxFormMailer, :w9_request)
+
+    expect(flash[:alert]).to eq("Tick at least one person to ask.")
+    expect(member.reload.w9_requested_at).to be_nil
   end
 
   it "asks one person with the manager's edited copy, back to their staff page" do

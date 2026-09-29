@@ -4,9 +4,9 @@ module Manage
   module Staffing
     # Staffing → Taxes. Every house staffer is an independent contractor, so the
     # org needs a signed W-9 from each one to send them a 1099. This page is the
-    # to-do list for that: who's given one, who's been asked, who hasn't, and the
-    # one-click "ask everyone who's missing" used to roll this out to people
-    # who were already on staff.
+    # to-do list for that: who's given one, who's been asked, who hasn't, and
+    # "ask everyone who's missing" — used to roll this out to people who were
+    # already on staff — which shows who gets it and the draft before sending.
     class TaxesController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
       before_action :set_staff_member, only: %i[request_w9 w9]
@@ -21,6 +21,7 @@ module Manage
         @by_status = @members.group_by(&:w9_status)
         @missing = @members.select(&:needs_w9?)
         @requestable_missing = @missing.select { |m| StaffW9Requester.requestable?(m) }
+        @w9_draft = StaffW9Requester.bulk_draft(organization: Current.organization) if @requestable_missing.any?
 
         # 1099 section — a year switcher, defaulting to the tax year the manager
         # is working toward right now.
@@ -40,20 +41,24 @@ module Manage
         @nec_threshold_cents = TaxForm1099.threshold_cents(@tax_year)
       end
 
-      # Ask a batch for their W-9: the checked people, or (all=1) everyone still
-      # missing one. People who can't sign in yet are skipped and counted — their
-      # onboarding invite covers it.
+      # Ask a batch for their W-9, from the "Ask for W-9s" modal: the people
+      # ticked there, each sent the manager's edited draft with their own first
+      # name filled in. People who can't sign in yet are skipped and counted —
+      # their onboarding invite covers it.
       def request_w9s
-        scope = Current.organization.organization_staff_members.active
-                       .includes(:w9_submissions, organization: :tax_setting, person: :user)
-        scope = scope.where(id: Array(params[:staff_member_ids]).map(&:to_i)) unless params[:all].present?
-        targets = scope.select(&:needs_w9?)
+        ids = Array(params[:staff_member_ids]).map(&:to_i)
+        return redirect_to(manage_staffing_taxes_path, alert: "Tick at least one person to ask.") if ids.empty?
+
+        targets = Current.organization.organization_staff_members.active
+                         .includes(:w9_submissions, organization: :tax_setting, person: :user)
+                         .where(id: ids).select(&:needs_w9?)
 
         sent = 0
         skipped = []
         targets.each do |member|
           if StaffW9Requester.requestable?(member)
-            StaffW9Requester.call(staff_member: member, sender: Current.user)
+            StaffW9Requester.call(staff_member: member, sender: Current.user,
+                                  subject: params[:email_subject], body: params[:email_body])
             sent += 1
           else
             skipped << member.display_name

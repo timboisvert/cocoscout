@@ -1,18 +1,11 @@
 <%# One staff member's W-9 on the Taxes page, styled like the staff hub rows.
-    Locals: member, selectable (bool — can be checked for "Ask selected"). %>
+    Asking several at once goes through the "Ask for W-9s" modal, which shows
+    who gets it and the draft first. Local: member. %>
 <% person = member.person %>
 <% headshot = person.respond_to?(:safe_headshot_variant) ? person.safe_headshot_variant(:thumb) : nil %>
 <% pill = w9_pill(member) %>
 <% w9 = member.current_w9 %>
 <div class="flex items-center gap-3 px-3 py-2.5">
-  <span class="w-4 flex-shrink-0">
-    <% if selectable %>
-      <%= check_box_tag "staff_member_ids[]", member.id, false, id: "w9-select-#{member.id}",
-            form: "w9-bulk-form", "aria-label": "Select #{member.display_name}",
-            class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-    <% end %>
-  </span>
-
   <%= link_to manage_edit_staffing_staff_path(member), class: "flex items-center gap-3 flex-1 min-w-0 group" do %>
     <% if headshot %>
       <%= image_tag headshot, alt: person.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>

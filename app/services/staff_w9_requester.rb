@@ -21,6 +21,20 @@ class StaffW9Requester
     new(staff_member: staff_member, sender: nil).preview
   end
 
+  # The one draft for asking several people at once: the request copy with
+  # {{first_name}} left in, which each send fills with that person's name.
+  def self.bulk_draft(organization:)
+    rendered = ContentTemplateService.render("staff_w9_request", shared_variables(organization))
+    { subject: rendered[:subject], body: rendered[:body] }
+  end
+
+  def self.shared_variables(organization)
+    {
+      organization_name: organization.name,
+      w9_url: Rails.application.routes.url_helpers.my_w9_url(organization.id, **ActionMailer::Base.default_url_options)
+    }
+  end
+
   # Only people who can sign in can fill the W-9 in (it's behind their
   # account). Someone who hasn't set one up yet gets it as part of onboarding.
   def self.requestable?(staff_member)
@@ -72,22 +86,24 @@ class StaffW9Requester
 
   private
 
+  # The manager's edited copy wins; a {{first_name}} left in it (the bulk
+  # draft keeps one) becomes this person's name.
   def copy
     default = default_copy
-    { subject: @subject_override || default[:subject], body: @body_override || default[:body] }
+    personal = ->(text) { ContentTemplate.interpolate(text, { "first_name" => first_name }) }
+    { subject: personal.call(@subject_override || default[:subject]), body: personal.call(@body_override || default[:body]) }
   end
 
   def default_copy
-    first = @staff_member.preferred_first_name.presence ||
-            @staff_member.first_name.presence ||
-            @person&.first_name.presence || "there"
-
-    rendered = ContentTemplateService.render(@reminder ? "staff_w9_reminder" : "staff_w9_request", {
-      first_name: first,
-      organization_name: @organization.name,
-      w9_url: my_w9_url(@organization.id, **ActionMailer::Base.default_url_options)
-    })
+    rendered = ContentTemplateService.render(@reminder ? "staff_w9_reminder" : "staff_w9_request",
+                                             self.class.shared_variables(@organization).merge(first_name: first_name))
     { subject: rendered[:subject], body: rendered[:body] }
+  end
+
+  def first_name
+    @staff_member.preferred_first_name.presence ||
+      @staff_member.first_name.presence ||
+      @person&.first_name.presence || "there"
   end
 
   def recipient_email

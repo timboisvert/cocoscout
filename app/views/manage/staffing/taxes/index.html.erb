@@ -69,11 +69,7 @@
           <% cid = "request-all-w9s" %>
           <%= render "shared/button", text: "Ask everyone missing one", variant: "primary", size: "small", type: :button,
                 data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
-          <%= render "shared/confirm_modal", id: cid,
-                title: "Ask for W-9s?",
-                message: "We'll email and message #{pluralize(@requestable_missing.size, 'person')} asking them to fill out their W-9, and remind them weekly until they do.",
-                confirm_text: "Send requests",
-                url: manage_request_w9s_staffing_taxes_path, method: :post, params: { all: 1 } %>
+          <%= render "manage/staffing/taxes/request_w9s_modal", id: cid, members: @requestable_missing, draft: @w9_draft %>
         <% end %>
       </li>
 
@@ -92,25 +88,17 @@
 
   <%# ---- W-9s ---- %>
   <% if @members.any? %>
-    <%= form_with url: manage_request_w9s_staffing_taxes_path, method: :post, id: "w9-bulk-form" do %>
-      <div class="flex items-center justify-between gap-2 mb-2">
-        <div class="flex items-center gap-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500">W-9s</h3>
-          <span class="inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-medium"><%= @members.size %></span>
-        </div>
-        <% if @requestable_missing.any? %>
-          <%= render "shared/button", text: "Ask selected", variant: "secondary", size: "small", type: :submit %>
+    <div class="flex items-center gap-2 mb-2">
+      <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500">W-9s</h3>
+      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-medium"><%= @members.size %></span>
+    </div>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div class="divide-y divide-gray-100">
+        <% @members.each do |member| %>
+          <%= render "manage/staffing/taxes/w9_row", member: member %>
         <% end %>
       </div>
-      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
-        <div class="divide-y divide-gray-100">
-          <% @members.each do |member| %>
-            <%= render "manage/staffing/taxes/w9_row", member: member,
-                  selectable: @requestable_missing.include?(member) %>
-          <% end %>
-        </div>
-      </div>
-    <% end %>
+    </div>
   <% else %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
       <p class="text-sm text-gray-600">No staff yet. When you add someone, they'll be asked for a W-9 as part of onboarding.</p>
