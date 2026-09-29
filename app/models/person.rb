@@ -37,6 +37,7 @@ class Person < ApplicationRecord
   has_many :shift_assignments, dependent: :destroy
   has_many :organization_staff_members, dependent: :destroy
   has_many :w9_submissions, dependent: :destroy
+  has_many :tax_form_1099s, dependent: :destroy
   has_many :staff_unavailabilities, dependent: :destroy
   # When they can work, as time bands (StaffAvailabilityEntry), set on the Work
   # Availability page. staff_unavailabilities is the deprecated old model.

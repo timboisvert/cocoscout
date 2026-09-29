@@ -1,0 +1,37 @@
+<%# Modal to record that a delivered 1099 has been filed with the IRS.
+    Both fields optional — the "when" is the submit time. %>
+<div id="<%= id %>"
+     class="hidden fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm overflow-y-auto"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
+  <div class="flex min-h-full items-start justify-center p-4 py-12">
+    <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
+        <h3 class="text-lg font-semibold text-white">Mark filed with the IRS</h3>
+        <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <%= form_with url: manage_mark_filed_1099_staffing_tax_path(form), method: :post do %>
+        <div class="px-6 py-5 space-y-4">
+          <p class="text-sm text-gray-600">Only tick this once you've actually uploaded it to IRIS (or your state portal). The recipient copy is separate — that goes out on "Send".</p>
+          <div>
+            <label for="filing_reference_<%= form.id %>" class="block text-sm font-medium text-gray-700 mb-1">Reference (optional)</label>
+            <%= text_field_tag :filing_reference, form.filing_reference, id: "filing_reference_#{form.id}",
+                  placeholder: "e.g. IRIS batch #12345",
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+          <div>
+            <label for="filing_notes_<%= form.id %>" class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+            <%= text_area_tag :filing_notes, form.filing_notes, id: "filing_notes_#{form.id}", rows: 2,
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-200">
+          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", size: "small", type: :button,
+                data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Mark filed", variant: "primary", size: "small", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

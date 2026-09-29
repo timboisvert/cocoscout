@@ -492,6 +492,7 @@ Rails.application.routes.draw do
     get  "/tax-forms/:organization_id/w9",           to: "tax_forms#w9",           as: "w9"
     post "/tax-forms/:organization_id/w9",           to: "tax_forms#submit_w9"
     get  "/tax-forms/:organization_id/w9/copy",      to: "tax_forms#w9_copy",      as: "w9_copy"
+    get  "/tax-forms/:organization_id/1099/:tax_year", to: "tax_forms#form_1099", as: "form_1099"
 
     # Payments (for talent to connect a bank and view payout history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
@@ -1265,6 +1266,16 @@ Rails.application.routes.draw do
     post   "staffing/taxes/w9/request",           to: "staffing/taxes#request_w9s",      as: "request_w9s_staffing_taxes"
     post   "staffing/taxes/w9/:id/request",       to: "staffing/taxes#request_w9",       as: "request_w9_staffing_tax"
     get    "staffing/taxes/w9/:id",               to: "staffing/taxes#w9",               as: "w9_staffing_tax"
+
+    # 1099-NECs — generate, review, deliver, and download for filing.
+    post   "staffing/taxes/1099s/generate",        to: "staffing/taxes#generate_1099s",  as: "generate_1099s_staffing_taxes"
+    get    "staffing/taxes/1099s.csv",             to: "staffing/taxes#iris_export",     as: "iris_export_staffing_taxes"
+    get    "staffing/taxes/1099s/:id",             to: "staffing/taxes#form_1099",       as: "form_1099_staffing_tax"
+    patch  "staffing/taxes/1099s/:id",             to: "staffing/taxes#update_1099",     as: "update_1099_staffing_tax"
+    post   "staffing/taxes/1099s/:id/deliver",     to: "staffing/taxes#deliver_1099",    as: "deliver_1099_staffing_tax"
+    post   "staffing/taxes/1099s/:id/mark_filed",  to: "staffing/taxes#mark_1099_filed", as: "mark_filed_1099_staffing_tax"
+    post   "staffing/taxes/1099s/:id/correct",     to: "staffing/taxes#correct_1099",    as: "correct_1099_staffing_tax"
+    delete "staffing/taxes/1099s/:id",             to: "staffing/taxes#void_1099",       as: "void_1099_staffing_tax"
 
     # Shift CRUD + assignment lives at the staffing root (no longer scoped to /schedule).
     post   "staffing/shifts",                     to: "staffing/shifts#create",          as: "create_staffing_shift"

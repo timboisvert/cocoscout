@@ -12,4 +12,15 @@ class StaffTaxFormMailer < ApplicationMailer
       format.html { render html: body.html_safe, layout: "mailer" }
     end
   end
+
+  # "Your 1099 is ready" — the link inside opens the PDF from My Payments;
+  # the PDF is deliberately not attached (avoids inboxing tax info).
+  def form_1099_ready(form, to:, subject:, body:)
+    @form = form
+    return if to.blank?
+
+    mail(to: to, subject: subject) do |format|
+      format.html { render html: body.html_safe, layout: "mailer" }
+    end
+  end
 end

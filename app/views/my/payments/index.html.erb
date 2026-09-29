@@ -215,6 +215,37 @@
                 <% end %>
               </li>
             <% end %>
+            <% @person_1099s.group_by { |f| [ f.organization_id, f.tax_year ] }.each_value do |forms| %>
+              <% form = forms.max_by(&:created_at) %>
+              <li class="py-2.5">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-sm font-medium text-gray-900 truncate"><%= form.organization.name %> · <%= form.tax_year %> 1099-NEC</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium flex-shrink-0"><%= form.status.humanize %></span>
+                </div>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  Sent <%= form.delivered_at&.strftime("%b %-d, %Y") %> · Box 1 $<%= format("%.2f", form.reported_box1_cents / 100.0) %> ·
+                  <%= link_to "View", my_form_1099_path(form.organization_id, form.tax_year), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+                </p>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% elsif @person_1099s.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 class="font-semibold text-gray-900 mb-1">Tax documents</h3>
+          <ul class="divide-y divide-gray-100">
+            <% @person_1099s.group_by { |f| [ f.organization_id, f.tax_year ] }.each_value do |forms| %>
+              <% form = forms.max_by(&:created_at) %>
+              <li class="py-2.5 first:pt-0 last:pb-0">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-sm font-medium text-gray-900 truncate"><%= form.organization.name %> · <%= form.tax_year %> 1099-NEC</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium flex-shrink-0"><%= form.status.humanize %></span>
+                </div>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  <%= link_to "View", my_form_1099_path(form.organization_id, form.tax_year), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+                </p>
+              </li>
+            <% end %>
           </ul>
         </div>
       <% end %>

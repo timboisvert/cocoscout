@@ -1,0 +1,107 @@
+<%# One person's 1099 for the current year on the Taxes page.
+    Locals: member, form (nullable), earnings (Tax::YearEarnings::Result, nullable), threshold_cents. %>
+<% person = member.person %>
+<% headshot = person.respond_to?(:safe_headshot_variant) ? person.safe_headshot_variant(:thumb) : nil %>
+<% amount_cents = form ? form.reported_box1_cents : (earnings&.net_cents.to_i) %>
+<%
+  status_pill = if form.nil?
+    { text: "Not generated", classes: "bg-gray-100 text-gray-600" }
+  else
+    case form.status
+    when "draft"     then { text: "Draft", classes: "bg-gray-100 text-gray-700" }
+    when "ready"     then { text: "Ready", classes: "bg-blue-100 text-blue-700" }
+    when "delivered" then { text: "Delivered", classes: "bg-green-100 text-green-700" }
+    when "filed"     then { text: "Filed", classes: "bg-green-100 text-green-700" }
+    when "corrected" then { text: "Corrected", classes: "bg-amber-100 text-amber-700" }
+    when "void"      then { text: "Void", classes: "bg-gray-100 text-gray-500" }
+    end
+  end
+%>
+<div class="flex items-center gap-3 px-3 py-2.5">
+  <% if headshot %>
+    <%= image_tag headshot, alt: person.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
+  <% else %>
+    <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= person.initials %></div>
+  <% end %>
+  <div class="flex-1 min-w-0">
+    <div class="text-sm font-medium text-gray-900 truncate"><%= member.display_name %></div>
+    <div class="text-[11px] text-gray-500 truncate mt-0.5">
+      Paid <span class="font-medium text-gray-700 tabular-nums">$<%= format("%.2f", amount_cents / 100.0) %></span>
+      <% if earnings && earnings.reimbursement_cents.positive? %>
+        · <span title="Reimbursements aren't 1099 income">$<%= format("%.2f", earnings.reimbursement_cents / 100.0) %> reimbursed (not on 1099)</span>
+      <% end %>
+      <% if form&.adjustment_cents.to_i.nonzero? %>
+        · <span class="text-amber-700">$<%= format("%.2f", form.adjustment_cents.abs / 100.0) %> adjustment</span>
+      <% end %>
+      <% unless member.w9_received? %>
+        · <span class="text-amber-700">no W-9</span>
+      <% end %>
+      <% if amount_cents < threshold_cents && form.nil? %>
+        · <span class="text-gray-500">below $<%= threshold_cents / 100 %> threshold</span>
+      <% end %>
+    </div>
+  </div>
+
+  <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 <%= status_pill[:classes] %>"><%= status_pill[:text] %></span>
+
+  <div class="flex items-center gap-1 flex-shrink-0">
+    <% if form.nil? %>
+      <% if amount_cents.positive? %>
+        <%= button_to manage_generate_1099s_staffing_taxes_path(tax_year: local_assigns[:tax_year_override] || params[:tax_year] || Tax::Calendar.working_tax_year),
+              method: :post, form: { data: { turbo: false } }, class: "inline-block" do %>
+          <%= render "shared/button", text: "Generate", variant: "outline-pink", size: "xs", type: :submit %>
+        <% end %>
+      <% end %>
+    <% else %>
+      <%= render "shared/button", text: "View", variant: "outline", size: "xs", type: :link,
+            path: manage_form_1099_staffing_tax_path(form), target: "_blank", rel: "noopener" %>
+
+      <% if form.editable? %>
+        <% edit_id = "edit-1099-#{form.id}" %>
+        <%= render "shared/button", text: "Edit", variant: "outline-pink", size: "xs", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: edit_id } %>
+        <%= render "manage/staffing/taxes/form_1099_edit_modal", id: edit_id, form: form %>
+
+        <% if form.deliverable? %>
+          <% send_id = "send-1099-#{form.id}" %>
+          <%= render "shared/button", text: "Send", variant: "primary", size: "xs", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: send_id } %>
+          <%= render "shared/confirm_modal", id: send_id,
+                title: "Send #{form.recipient_name} their #{form.tax_year} 1099?",
+                message: "We'll email and message them a link to open their 1099-NEC. They can download it from My Payments.",
+                confirm_text: "Send it",
+                url: manage_deliver_1099_staffing_tax_path(form), method: :post %>
+        <% end %>
+      <% end %>
+
+      <% if form.status == "delivered" %>
+        <% filed_id = "filed-1099-#{form.id}" %>
+        <%= render "shared/button", text: "Mark filed", variant: "outline-pink", size: "xs", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: filed_id } %>
+        <%= render "manage/staffing/taxes/form_1099_mark_filed_modal", id: filed_id, form: form %>
+      <% end %>
+
+      <% if form.status.in?(%w[delivered filed corrected]) && form.corrects_id.nil? %>
+        <% correct_id = "correct-1099-#{form.id}" %>
+        <%= render "shared/button", text: "Correct", variant: "ghost", size: "xs", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: correct_id } %>
+        <%= render "shared/confirm_modal", id: correct_id,
+              title: "Start a correction?",
+              message: "Opens a fresh CORRECTED 1099 draft — you edit and send it separately. The original stays on file.",
+              confirm_text: "Start correction",
+              url: manage_correct_1099_staffing_tax_path(form), method: :post %>
+      <% end %>
+
+      <% if form.status.in?(%w[draft ready]) %>
+        <% void_id = "void-1099-#{form.id}" %>
+        <%= render "shared/button", text: "Void", variant: "ghost", size: "xs", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: void_id } %>
+        <%= render "shared/confirm_modal", id: void_id,
+              title: "Void this draft?",
+              message: "This draft won't be sent. You can regenerate it later if you change your mind.",
+              confirm_text: "Void draft",
+              url: manage_void_1099_staffing_tax_path(form), method: :delete %>
+      <% end %>
+    <% end %>
+  </div>
+</div>

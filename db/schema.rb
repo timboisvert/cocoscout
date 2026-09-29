@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_29_120200) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_29_120400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -718,7 +718,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_120200) do
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -2889,6 +2889,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_120200) do
     t.index ["w9_submission_id"], name: "index_tax_document_accesses_on_w9_submission_id"
   end
 
+  create_table "tax_form_1099s", force: :cascade do |t|
+    t.bigint "adjustment_cents", default: 0, null: false
+    t.string "adjustment_note"
+    t.bigint "corrects_id"
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.bigint "federal_withheld_cents", default: 0, null: false
+    t.datetime "filed_at"
+    t.text "filing_notes"
+    t.string "filing_reference"
+    t.bigint "generated_by_id"
+    t.bigint "nec_box1_cents", default: 0, null: false
+    t.bigint "organization_id", null: false
+    t.string "payer_address_line1", null: false
+    t.string "payer_address_line2"
+    t.string "payer_city", null: false
+    t.string "payer_ein_last4", null: false
+    t.string "payer_name", null: false
+    t.string "payer_phone"
+    t.string "payer_state", null: false
+    t.string "payer_zip", null: false
+    t.bigint "person_id", null: false
+    t.string "recipient_address_line1", null: false
+    t.string "recipient_address_line2"
+    t.string "recipient_business_name"
+    t.string "recipient_city", null: false
+    t.boolean "recipient_e_delivery_consented", default: false, null: false
+    t.string "recipient_name", null: false
+    t.string "recipient_state", null: false
+    t.string "recipient_tin_last4", null: false
+    t.string "recipient_tin_type", null: false
+    t.string "recipient_zip", null: false
+    t.string "status", default: "draft", null: false
+    t.integer "tax_year", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "w9_submission_id"
+    t.index ["corrects_id"], name: "index_tax_form_1099s_on_corrects_id"
+    t.index ["generated_by_id"], name: "index_tax_form_1099s_on_generated_by_id"
+    t.index ["organization_id", "tax_year", "status"], name: "idx_on_organization_id_tax_year_status_22b31fe756"
+    t.index ["organization_id"], name: "index_tax_form_1099s_on_organization_id"
+    t.index ["person_id", "tax_year"], name: "index_tax_form_1099s_on_person_id_and_tax_year"
+    t.index ["person_id"], name: "index_tax_form_1099s_on_person_id"
+    t.index ["w9_submission_id"], name: "index_tax_form_1099s_on_w9_submission_id"
+  end
+
   create_table "team_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -3316,6 +3361,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_120200) do
   add_foreign_key "tax_document_accesses", "organizations"
   add_foreign_key "tax_document_accesses", "users", on_delete: :nullify
   add_foreign_key "tax_document_accesses", "w9_submissions"
+  add_foreign_key "tax_form_1099s", "organizations"
+  add_foreign_key "tax_form_1099s", "people"
+  add_foreign_key "tax_form_1099s", "tax_form_1099s", column: "corrects_id", on_delete: :nullify
+  add_foreign_key "tax_form_1099s", "users", column: "generated_by_id", on_delete: :nullify
+  add_foreign_key "tax_form_1099s", "w9_submissions", on_delete: :nullify
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
   add_foreign_key "ticket_sales_lines", "show_financials", column: "show_financials_id"

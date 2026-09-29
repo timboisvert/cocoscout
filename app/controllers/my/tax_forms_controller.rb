@@ -39,6 +39,18 @@ module My
       render :w9, status: :unprocessable_entity
     end
 
+    # Your own copy of your 1099-NEC for the year (Copy B).
+    def form_1099
+      form = @member.organization.tax_form_1099s
+                     .where(person_id: @member.person_id, tax_year: params[:tax_year].to_i)
+                     .where(status: %w[ready delivered filed corrected])
+                     .order(created_at: :desc).first
+      return redirect_to(my_payments_path, alert: "No 1099 is available for that year yet.") unless form
+
+      pdf = Tax::Form1099NecPdf.new(form, copy: :recipient)
+      send_data pdf.render, filename: pdf.filename, type: "application/pdf", disposition: "inline"
+    end
+
     # Your own copy of the W-9 you signed.
     def w9_copy
       submission = @member.current_w9

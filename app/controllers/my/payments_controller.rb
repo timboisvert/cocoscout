@@ -20,6 +20,12 @@ module My
                                                 .includes(:w9_submissions, organization: :tax_setting)
                                                 .select { |m| m.w9_received? || m.needs_w9? }
                                                 .sort_by { |m| m.organization.name.to_s.downcase }
+      # 1099s the org has sent (or filed) for this person. Only visible after
+      # delivery — a draft belongs to the payer.
+      person_ids = Current.user.people.active.pluck(:id)
+      @person_1099s = TaxForm1099.where(person_id: person_ids)
+                                  .where(status: %w[delivered filed corrected])
+                                  .includes(:organization).order(tax_year: :desc, created_at: :desc)
       @total_received = @payment_history.sum { |p| p[:cents] } / 100.0
 
       # What they're owed now, itemized straight from the ledger earnings (the

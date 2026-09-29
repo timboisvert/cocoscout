@@ -37,6 +37,7 @@ class Organization < ApplicationRecord
   # Taxes: the org's payer details (for 1099s) and the W-9s its staff gave it.
   has_one :tax_setting, class_name: "OrganizationTaxSetting", dependent: :destroy
   has_many :w9_submissions, dependent: :destroy
+  has_many :tax_form_1099s, dependent: :destroy
   has_many :tax_document_accesses, dependent: :destroy
   # The staff agreement this org requires staff to sign (if any). Nil = not required.
   belongs_to :required_staff_agreement_template, class_name: "StaffAgreementTemplate", optional: true
