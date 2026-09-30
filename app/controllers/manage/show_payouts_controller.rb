@@ -138,7 +138,7 @@ module Manage
         # Stay on the payout page — you can keep working here and pay from the run
         # whenever you're ready (the page shows a "View runs" link once added).
         redirect_to manage_money_show_payout_path(@show),
-                    notice: "Added #{helpers.pluralize(result.added, 'performer payout')} to your open performer payout run."
+                    notice: "Added #{helpers.pluralize(result.added, 'performer payout')} to your open payout run."
       else
         redirect_to manage_money_show_payout_path(@show),
                     alert: "Nothing to add — these payouts are already in a run, or the performers can't be paid through Stripe yet."
@@ -621,7 +621,7 @@ module Manage
       end
 
       if created_count > 0
-        notice = "Added #{created_count} advance#{'s' if created_count != 1} (#{helpers.number_to_currency(total_issued)}) to your open performer run."
+        notice = "Added #{created_count} advance#{'s' if created_count != 1} (#{helpers.number_to_currency(total_issued)}) to your open payout run."
         notice += " Skipped #{skipped_count}." if skipped_count > 0
       else
         notice = "No advances issued."

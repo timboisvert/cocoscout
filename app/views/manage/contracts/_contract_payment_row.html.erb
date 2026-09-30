@@ -4,7 +4,7 @@
   A show_row-style row for displaying a contract payment.
 
   Outgoing payments (we pay them) are paid one way: added to the org's
-  contractor payout run and sent to their bank via Stripe, alongside
+  payout run and sent to their bank via Stripe, alongside
   performers. There is no manual "mark paid" for outgoing money.
 
   Incoming payments (they pay us) can be recorded by hand for money that
@@ -274,8 +274,8 @@
             <%# confirm_modal renders `message` as HTML, so the name is escaped here. %>
             <%= render "shared/confirm_modal", id: add_to_run_cid,
                   title: "Add to payout run?",
-                  message: has_bank ? "Add this payment to your contractor payout run?" :
-                    "Add this payment to your contractor payout run? #{h(contractor&.name)} hasn't connected a bank yet, so their share waits on the run until they do.",
+                  message: has_bank ? "Add this payment to your payout run?" :
+                    "Add this payment to your payout run? #{h(contractor&.name)} hasn't connected a bank yet, so their share waits on the run until they do.",
                   confirm_text: "Add to payout run",
                   url: add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
                   method: :post %>

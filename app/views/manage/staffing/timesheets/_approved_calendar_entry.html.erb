@@ -17,7 +17,7 @@
   </button>
   <%= render "shared/confirm_modal", id: unmark_cid,
         title: "Unmark as already paid?",
-        message: "#{e.person.name}'s #{hrs}h on #{e.started_at.strftime('%b %-d')} is marked as paid outside CocoScout#{" (#{e.offline_payment_note})" if e.offline_payment_note.present?}. Unmark it? The hours go back to approved and can be pulled into a pay run again.",
+        message: "#{e.person.name}'s #{hrs}h on #{e.started_at.strftime('%b %-d')} is marked as paid outside CocoScout#{" (#{e.offline_payment_note})" if e.offline_payment_note.present?}. Unmark it? The hours go back to approved and can be pulled into a payout run again.",
         confirm_text: "Unmark",
         url: manage_unmark_paid_offline_staffing_timesheet_path(e), method: :patch %>
 <% elsif e.paid? %>

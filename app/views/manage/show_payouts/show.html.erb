@@ -839,7 +839,7 @@
                       </div>
                       <%= form_with url: manage_add_to_run_money_show_payout_path(@show), method: :post, data: { controller: "run-picker" } do %>
                         <div class="px-6 py-4">
-                          <p class="text-sm text-gray-600 mb-4">Checked people get added to your open performer payout run — funding covers all of them up front. Uncheck anyone you plan to pay another way; they stay owed on this show instead.</p>
+                          <p class="text-sm text-gray-600 mb-4">Checked people get added to your open payout run — funding covers all of them up front. Uncheck anyone you plan to pay another way; they stay owed on this show instead.</p>
                           <% if run_candidates.any? %>
                             <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg mb-3">
                               <% run_candidates.each do |li| %>
@@ -1101,7 +1101,7 @@
                               it sits next to (here: remove from the run). Confirm via modal. %>
                           <% item_bank_ready = item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts? %>
                           <div class="text-right">
-                          <div class="flex items-center justify-end gap-2" title="<%= item_bank_ready ? "Added to a payout run — pay the run to send this to their bank." : "On the payout run without a bank connected — the run holds their money and pays them the moment they connect." %>">
+                          <div class="flex items-center justify-end gap-2" title="<%= item_bank_ready ? "Added to a payout run — fund and pay it to send this to their bank." : "On the payout run without a bank connected — the run holds their money and pays them the moment they connect." %>">
                             <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">In payout run<% unless item_bank_ready %> · awaiting their bank<% end %></span>
                             <div data-controller="modal">
                               <button type="button"

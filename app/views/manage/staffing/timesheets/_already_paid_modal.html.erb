@@ -26,7 +26,7 @@
           Mark <span class="font-medium"><%= e.person.name %></span>'s
           <span class="font-medium"><%= number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>h on <%= e.started_at.strftime("%b %-d") %></span>
           as paid outside CocoScout. This<%= " approves the hours and" if e.approved_at.blank? %> settles them —
-          they can never be pulled into a pay run, and <%= e.person.name %> will see them as paid.
+          they can never be pulled into a payout run, and <%= e.person.name %> will see them as paid.
         </p>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Date paid</label>

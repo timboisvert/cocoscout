@@ -17,7 +17,7 @@
 
   <% unless Current.organization.funding_payment_method_id.present? %>
     <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p class="text-sm text-amber-900">Connect a bank account to fund pay runs first.</p>
+      <p class="text-sm text-amber-900">Connect a bank account to fund payout runs first.</p>
       <%= render "shared/button", text: "Connect a bank account", variant: "primary", size: "small",
             path: manage_connect_payout_funding_path, method: :post, form: { data: { turbo: false } } %>
     </div>
@@ -46,7 +46,7 @@
       <%# ACH is the only funding method for now — no card option. %>
       <input type="hidden" name="funding_method" value="ach">
 
-      <%# These hours/amounts get added to your one open staffing payout run;
+      <%# These hours/amounts get added to your one open payout run;
           you fund and pay that run separately (on its own schedule) from the
           payout-runs page. %>
       <div class="rounded-lg border border-gray-200 bg-white p-4 mb-4">
@@ -56,7 +56,7 @@
             <%= date_field_tag :payday, @payday, min: Date.current,
                   data: { deposit_estimate_target: "date", action: "change->deposit-estimate#update input->deposit-estimate#update" },
                   class: "w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-            <p class="text-xs text-gray-500 mt-1">The day you plan to fund &amp; pay this run.</p>
+            <p class="text-xs text-gray-500 mt-1">The day you plan to fund &amp; pay the payout run.</p>
             <p data-deposit-estimate-target="error" class="hidden text-xs text-red-600 mt-1"></p>
             <p data-deposit-estimate-target="estimate" class="hidden text-xs font-medium text-gray-700 mt-1"></p>
           </div>
@@ -289,11 +289,11 @@
         <% end %>
       </div>
 
-      <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid — anyone else you add here is recorded on the run as owed, and gets paid once they connect a bank. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are saved to this pay run's record for your files, but not sent through us.</p>
+      <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid — anyone else you add here is recorded on the run as owed, and gets paid once they connect a bank. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are saved to this payout run's record for your files, but not sent through us.</p>
 
       <div class="flex items-center justify-end gap-3 mt-4">
         <%= link_to "Cancel", manage_staffing_index_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
-        <%= render "shared/button", text: "Add to pay run", variant: "primary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "medium", type: :submit %>
       </div>
 
       <%# ===== Missing-hours check (shown on submit when approved hours aren't
@@ -347,11 +347,11 @@
               <label class="flex items-start gap-2 cursor-pointer">
                 <input type="checkbox" data-pay-confirm-target="ack" data-action="change->pay-confirm#ackChanged"
                        class="mt-0.5 h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500">
-                <span class="text-sm text-gray-700">I've reviewed this and want to add it to the pay run.</span>
+                <span class="text-sm text-gray-700">I've reviewed this and want to add it to the payout run.</span>
               </label>
               <div class="flex items-center justify-end gap-2">
                 <%= render "shared/button", text: "Go back", variant: "secondary", size: "small", type: :button, data: { action: "click->pay-confirm#closeAll" } %>
-                <%= render "shared/button", text: "Add to pay run", variant: "primary", size: "small", type: :button,
+                <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "small", type: :button,
                       disabled: true, classes: "disabled:opacity-50 disabled:cursor-not-allowed",
                       data: { action: "click->pay-confirm#confirm", "pay-confirm-target": "confirmButton" } %>
               </div>
@@ -423,7 +423,7 @@
       </div>
       <div>
         <dt class="font-medium text-gray-900">Cash tips</dt>
-        <dd class="text-gray-600">Tips they <strong>already took in cash</strong> (their split from the jar). Saved to this pay run's permanent record — for your files and their pay history — but <strong>we don't send this money again</strong>, so it's excluded from the total. Log them day by day, same as tips.</dd>
+        <dd class="text-gray-600">Tips they <strong>already took in cash</strong> (their split from the jar). Saved to this payout run's permanent record — for your files and their pay history — but <strong>we don't send this money again</strong>, so it's excluded from the total. Log them day by day, same as tips.</dd>
       </div>
       <div>
         <dt class="font-medium text-gray-900">Total</dt>

@@ -170,15 +170,15 @@ export default class extends Controller {
         if (anyHours) anyHours.dispatchEvent(new Event("input", { bubbles: true }))
     }
 
-    // "Pay date Fri, Aug 7 — deposits land ≈2–4 business days after you fund &
-    // pay the run (est. Aug 11 – Aug 13)."
+    // "Pay date Fri, Aug 7 — this adds to your open payout run; once you fund &
+    // pay it, deposits land about 2–4 business days later (est. Aug 11 – Aug 13)."
     timingText() {
         const payday = this.element.querySelector('input[name="payday"]')?.value
         const base = payday ? this.parseLocalDate(payday) : new Date()
         const earliest = this.addBusinessDays(base, MIN_BUSINESS_DAYS)
         const latest = this.addBusinessDays(base, MAX_BUSINESS_DAYS)
         const fmt = d => d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
-        return `Pay date ${fmt(base)} — this adds to your open staff pay run; once you fund & pay the run, ` +
+        return `Pay date ${fmt(base)} — this adds to your open payout run; once you fund & pay it, ` +
                `deposits land about 2–4 business days later (est. ${fmt(earliest)} – ${fmt(latest)}).`
     }
 

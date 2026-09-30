@@ -216,23 +216,23 @@
             <div class="mt-3">
               <% if Current.organization.funding_payment_method_id.present? %>
                 <% fund_pay_cid = "confirm-fund-pay-batch" %>
-                <%= render "shared/button", text: "Fund & pay run", variant: "primary", size: "medium", type: :button,
+                <%= render "shared/button", text: "Fund & pay", variant: "primary", size: "medium", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: fund_pay_cid } %>
                 <%
                   fund_message = if held_cents.positive? && fund_credit_applied.positive?
-                    "Fund and pay this run? CocoScout already holds #{number_to_currency(held_cents / 100.0)} of it; we'll apply your #{number_to_currency(fund_credit_applied / 100.0)} funding credit and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
+                    "CocoScout already holds #{number_to_currency(held_cents / 100.0)} of it; we'll apply your #{number_to_currency(fund_credit_applied / 100.0)} funding credit and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
                   elsif held_cents.positive?
-                    "Fund and pay this run? CocoScout already holds #{number_to_currency(held_cents / 100.0)} of it — we'll debit only #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
+                    "CocoScout already holds #{number_to_currency(held_cents / 100.0)} of it — we'll debit only #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
                   elsif fund_credit_applied.positive?
-                    "Fund and pay this run? We'll apply your #{number_to_currency(fund_credit_applied / 100.0)} funding credit and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
+                    "We'll apply your #{number_to_currency(fund_credit_applied / 100.0)} funding credit and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
                   else
-                    "Fund and pay this run? We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank."
+                    "We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank."
                   end
                 %>
                 <%= render "shared/confirm_modal", id: fund_pay_cid,
-                      title: "Fund and pay this run?",
+                      title: "Fund and pay this payout run?",
                       message: fund_message,
-                      confirm_text: "Fund & pay run",
+                      confirm_text: "Fund & pay",
                       url: manage_fund_payout_batch_path(@batch),
                       method: :post %>
               <% else %>

@@ -41,7 +41,7 @@ module Manage
 
       if result.advance
         redirect_to manage_payout_batch_path(result.batch),
-                    notice: "Advance of #{helpers.number_to_currency(amount_cents / 100.0)} added to your open performer run for #{person.name}. Pay the run to send it."
+                    notice: "Advance of #{helpers.number_to_currency(amount_cents / 100.0)} added to your open payout run for #{person.name}. It goes out when you fund and pay the run."
       else
         flash.now[:alert] = result.error || "Couldn't issue the advance."
         @upcoming_shows = @production.shows.upcoming.order(:date_and_time).limit(30)
