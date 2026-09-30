@@ -33,7 +33,7 @@
       <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= person.initials %></div>
     <% end %>
     <span class="flex-1 min-w-0">
-      <span class="block font-medium text-gray-900 text-sm truncate"><%= member.display_name %></span>
+      <span class="block font-medium text-gray-900 text-sm truncate"><%= staff_name_with_pronouns(member) %></span>
       <span class="block text-[11px] text-gray-400 truncate mt-0.5"><%= member.title.presence || person.email %></span>
     </span>
 

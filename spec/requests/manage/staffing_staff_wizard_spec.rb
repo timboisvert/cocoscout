@@ -48,7 +48,7 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     expect {
       complete_wizard(
         details: { first_name: "Dana", middle_initial: "Q", last_name: "Reed",
-                   preferred_first_name: "Dee", personal_email: "dee@example.com" },
+                   preferred_first_name: "Dee", pronouns: "she/her", personal_email: "dee@example.com" },
         job: { title: "Bartender", department: "Front of House" },
         start_date: "2026-08-01",
         role_ids: [ house_role.id ]
@@ -59,6 +59,7 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     expect(member.first_name).to eq("Dana")
     expect(member.middle_initial).to eq("Q")
     expect(member.preferred_first_name).to eq("Dee")
+    expect(member.pronouns).to eq("she/her")
     expect(member.title).to eq("Bartender")
     expect(member.department).to eq("Front of House")
     expect(member.start_date.to_s).to eq("2026-08-01")

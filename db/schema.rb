@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_29_120400) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1379,6 +1379,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_120400) do
     t.bigint "person_id", null: false
     t.string "personal_email"
     t.string "preferred_first_name"
+    t.string "pronouns"
     t.bigint "staff_agreement_template_id"
     t.date "start_date"
     t.boolean "tax_form_exempt", default: false, null: false

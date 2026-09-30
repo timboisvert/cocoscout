@@ -191,5 +191,24 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
       expect(member.manager).to eq(boss)
       expect(response).to redirect_to(manage_staffing_index_path)
     end
+
+    it "keeps pronouns beside their name, falling back to their own profile's" do
+      member.person.update!(pronouns: "she/her")
+      get manage_staffing_index_path
+      expect(response.body).to include("(she/her)")
+
+      patch manage_update_staffing_staff_path(member), params: { preferred_first_name: "Sam", pronouns: " they/them " }
+      expect(member.reload.pronouns).to eq("they/them")
+      expect(member.display_pronouns).to eq("they/them")
+
+      get manage_edit_staffing_staff_path(member)
+      expect(response.body).to include("(they/them)")
+      get manage_staffing_index_path
+      expect(response.body).to include("(they/them)")
+      expect(response.body).not_to include("(she/her)")
+
+      patch manage_update_staffing_staff_path(member), params: { pronouns: "" }
+      expect(member.reload.display_pronouns).to eq("she/her")
+    end
   end
 end

@@ -203,7 +203,7 @@ export default class extends Controller {
                         class="relative flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 bg-white hover:border-pink-400 hover:bg-pink-50 transition-colors cursor-pointer text-left">
                     ${avatar}
                     <span class="min-w-0">
-                        <span class="block text-xs font-medium text-gray-900 truncate">${this.h(p.name || "(no name)")}</span>
+                        <span class="block text-xs font-medium text-gray-900 truncate">${this.h(p.name || "(no name)")}${p.pronouns ? ` <span class="font-normal text-gray-500">(${this.h(p.pronouns)})</span>` : ""}</span>
                         ${badge}
                     </span>
                 </button>`

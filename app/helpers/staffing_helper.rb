@@ -7,6 +7,16 @@ module StaffingHelper
   # aren't modeled.
   DEPOSIT_ESTIMATE_BUSINESS_DAYS = 2..4
 
+  # A staff member's name with their pronouns beside it in gray —
+  # "Sam Rivera (they/them)". For HTML only; plain-text places (selects,
+  # emails) keep display_name.
+  def staff_name_with_pronouns(member)
+    pronouns = member.display_pronouns
+    return member.display_name unless pronouns
+
+    safe_join([ member.display_name, " ", tag.span("(#{pronouns})", class: "font-normal text-gray-500") ])
+  end
+
   # The W-9 pill for a staff member: { text:, classes:, title: }, or nil when
   # there's nothing worth flagging (compact: true hides "received" and
   # "not required" — the staff list only shouts about what needs doing).

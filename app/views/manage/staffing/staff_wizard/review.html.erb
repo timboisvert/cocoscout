@@ -7,6 +7,7 @@
     <% [
          [ "Legal name", [ @wizard_state[:first_name], @wizard_state[:middle_initial], @wizard_state[:last_name] ].reject(&:blank?).join(" ") ],
          [ "Preferred name", @wizard_state[:preferred_first_name] ],
+         [ "Pronouns", @wizard_state[:pronouns] ],
          [ "Title", @wizard_state[:title] ],
          [ "Department", @wizard_state[:department] ],
          [ "Reports to", @manager&.display_name ],

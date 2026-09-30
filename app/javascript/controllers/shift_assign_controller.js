@@ -13,7 +13,7 @@ export default class extends Controller {
         "collisionModal", "collisionBody", "filterButton"
     ]
     static values = {
-        staffByRole: Object,         // { "<roleId>": [{ id, name, initials, headshot_url }, ...] }
+        staffByRole: Object,         // { "<roleId>": [{ id, name, pronouns, initials, headshot_url }, ...] }
         assignUrlTemplate: String,   // e.g. "/manage/staffing/shifts/:id/assign"
         shiftTimes: Object,          // { "<shiftId>": { starts_at, ends_at, role, day, cast_date, time_range } }
         personBusy: Object,          // { "<personId>": ["<shiftId>", ...] }
@@ -311,6 +311,7 @@ export default class extends Controller {
                     ${badge}
                     ${avatar}
                     <div class="text-sm font-medium text-gray-900 w-full leading-tight break-words">${this.h(p.name || "(no name)")}</div>
+                    ${p.pronouns ? `<div class="-mt-2 text-xs text-gray-500">${this.h(p.pronouns)}</div>` : ""}
                 </button>`
         }).join("")
         this.resultsTarget.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">${cards}</div>`

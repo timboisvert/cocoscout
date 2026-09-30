@@ -27,7 +27,9 @@
         <div class="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xl flex-shrink-0"><%= person.initials %></div>
       <% end %>
       <div class="flex-1 min-w-0">
-        <div class="text-2xl font-bold text-gray-900 truncate coustard-regular"><%= @staff_member.display_name %></div>
+        <div class="text-2xl font-bold text-gray-900 truncate coustard-regular">
+          <%= @staff_member.display_name %><% if @staff_member.display_pronouns %> <span class="text-base font-normal text-gray-500 font-sans">(<%= @staff_member.display_pronouns %>)</span><% end %>
+        </div>
         <div class="text-sm text-gray-500 truncate mt-0.5">
           <% job_line = [ @staff_member.title.presence, @staff_member.department.presence ].compact.join(" · ") %>
           <%= job_line.presence || person.email %>
@@ -82,8 +84,16 @@
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Preferred first name</label>
-            <%= text_field_tag :preferred_first_name, @staff_member.preferred_first_name, placeholder: "If different from their legal first name", class: "block w-full max-w-sm px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-xl">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Preferred first name</label>
+                <%= text_field_tag :preferred_first_name, @staff_member.preferred_first_name, placeholder: "If different from their legal first name", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Pronouns <span class="font-normal text-gray-500">(optional)</span></label>
+                <%= text_field_tag :pronouns, @staff_member.pronouns, placeholder: (person.pronouns.presence ? "#{person.pronouns} (from their profile)" : "e.g. she/her, they/them"), maxlength: 40, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              </div>
+            </div>
             <p class="mt-1 text-xs text-gray-500">This is what we show for them everywhere in staffing.</p>
           </div>
           <% if person.email.present? %>

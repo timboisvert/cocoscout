@@ -38,7 +38,8 @@ module Manage
           first_name: first,
           middle_initial: params[:middle_initial].to_s.strip.first,
           last_name: last,
-          preferred_first_name: params[:preferred_first_name].to_s.strip
+          preferred_first_name: params[:preferred_first_name].to_s.strip,
+          pronouns: params[:pronouns].to_s.strip
         )
         save_wizard_state
         redirect_to manage_job_staffing_staff_wizard_path
@@ -282,6 +283,7 @@ module Manage
           middle_initial: @wizard_state[:middle_initial].to_s.first,
           last_name: @wizard_state[:last_name].presence,
           preferred_first_name: @wizard_state[:preferred_first_name].presence,
+          pronouns: @wizard_state[:pronouns].presence,
           title: @wizard_state[:title].presence,
           department: @wizard_state[:department].presence,
           start_date: @wizard_state[:start_date].presence,

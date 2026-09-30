@@ -617,6 +617,7 @@ module Manage
           {
             id: p.id,
             name: p.name,
+            pronouns: q.organization_staff_member.display_pronouns,
             initials: p.initials,
             headshot_url: variant ? url_for(variant) : nil
           }

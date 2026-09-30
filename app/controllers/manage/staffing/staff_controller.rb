@@ -153,6 +153,7 @@ module Manage
       def editable_employment_attributes
         attrs = {}
         attrs[:preferred_first_name] = params[:preferred_first_name].to_s.strip.presence if params.key?(:preferred_first_name)
+        attrs[:pronouns] = params[:pronouns].to_s.strip.presence if params.key?(:pronouns)
         attrs[:first_name] = params[:first_name].to_s.strip.presence if params.key?(:first_name)
         attrs[:middle_initial] = params[:middle_initial].to_s.strip.first if params.key?(:middle_initial)
         attrs[:last_name] = params[:last_name].to_s.strip.presence if params.key?(:last_name)

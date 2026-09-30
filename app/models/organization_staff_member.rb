@@ -37,6 +37,12 @@ class OrganizationStaffMember < ApplicationRecord
     [ first, last_name.presence ].compact.join(" ").presence || person&.name
   end
 
+  # What a manager recorded here, else what the person put on their own
+  # profile. Shown beside their name ("Sam Rivera (they/them)").
+  def display_pronouns
+    pronouns.presence || person&.pronouns.presence
+  end
+
   # The employee agreement to show this member: the org's REQUIRED one if it has
   # designated one (so onboarding signs the right template), else the one they've
   # already signed, else the org's first active template. Nil when none exist.
