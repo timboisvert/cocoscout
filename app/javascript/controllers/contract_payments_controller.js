@@ -30,7 +30,10 @@ export default class extends Controller {
         existingStructure: { type: String, default: "flat_fee" },
         existingConfig: { type: Object, default: {} },
         bookings: { type: Array, default: [] },
-        bookingsCount: Number
+        bookingsCount: Number,
+        // [[starts_at, event_type], ...] — so event types with their own rate
+        // can leave the deal (see onEventRatesChange).
+        bookingTypes: { type: Array, default: [] }
     }
 
     connect() {
@@ -40,6 +43,8 @@ export default class extends Controller {
         if (this.currentStructure === "custom") this.currentStructure = "flat_fee"
         this.eventCount = this.bookingsCountValue || 0
         this.bookingDates = this.bookingsValue || []
+        // Leave out any kind of event that already carries its own rate.
+        this.applyEventRates()
 
         // Payments added by hand live separately from the ones the deal
         // generates, so editing the deal never wipes them out.
@@ -73,6 +78,34 @@ export default class extends Controller {
     // The radio-card groups mirror their selection into a hidden input, so the
     // rest of this controller keeps reading and writing a plain `.value` and
     // doesn't care that these are cards rather than a <select>.
+    // "Other events on this contract": a non-ticketed type set to its own rate
+    // leaves the deal, so the deal's dates and per-event count drop it. Also
+    // shows/hides each row's rate fields and the "take it out of their share"
+    // choice (only for money they owe us).
+    onEventRatesChange() {
+        this.applyEventRates()
+        this.refreshFlatFeeUi()
+        this.updatePerEventTotal()
+        this.updateSummary()
+    }
+
+    applyEventRates() {
+        const ownTypes = []
+        this.element.querySelectorAll("[data-event-rate-row]").forEach(row => {
+            const own = row.querySelector("input[type=radio][value=own]")?.checked
+            if (own) ownTypes.push(row.dataset.eventType)
+            row.querySelector("[data-event-rate-fields]")?.classList.toggle("hidden", !own)
+            const direction = row.querySelector("[data-event-rate-direction]")?.value
+            row.querySelector("[data-event-rate-settlement]")?.classList.toggle("hidden", direction === "outgoing")
+        })
+        const pairs = this.bookingTypesValue || []
+        if (pairs.length === 0) return
+
+        this.bookingDates = pairs.filter(([, type]) => !ownTypes.includes(type)).map(([date]) => date)
+        this.eventCount = this.bookingDates.length
+        if (this.hasPerEventCountTarget) this.perEventCountTarget.textContent = this.eventCount
+    }
+
     onChoiceChange(event) {
         const group = event.target.closest("[data-choice-group]")
         if (!group) return

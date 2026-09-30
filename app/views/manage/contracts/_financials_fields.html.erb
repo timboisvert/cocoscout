@@ -15,12 +15,16 @@
     offline_payment_methods   - array of allowed offline methods
 %>
 <% booking_dates = bookings.map { |b| b["starts_at"] }.compact.sort %>
+<%# Each booking's date and event type, so the deal can leave out the kinds of
+    event that carry their own rate (see "Other events on this contract"). %>
+<% booking_types = bookings.filter_map { |b| [ b["starts_at"], b["event_type"].presence || "show" ] if b["starts_at"] }.sort_by(&:first) %>
 <div id="payments-app" data-controller="contract-payments"
      data-contract-payments-existing-value="<%= existing_payments.to_json %>"
      data-contract-payments-existing-structure-value="<%= existing_payment_structure %>"
      data-contract-payments-existing-config-value="<%= existing_payment_config.to_json %>"
      data-contract-payments-bookings-value="<%= booking_dates.to_json %>"
-     data-contract-payments-bookings-count-value="<%= bookings_count %>">
+     data-contract-payments-bookings-count-value="<%= bookings_count %>"
+     data-contract-payments-booking-types-value="<%= booking_types.to_json %>">
   <%# novalidate: the real payload is the three hidden JSON fields below. The
       visible config inputs are display-only and half of them sit in panels the
       controller hides — a stored value that trips a step/min constraint in a
@@ -397,6 +401,71 @@
       </div>
     </div>
   </div>
+
+  <%# Non-ticketed events on the same contract (rehearsals, meetings): part of
+      the deal above, or their own rate — "they pay us $50 each rehearsal",
+      taken out of their ticket share. Contract#normalize_event_rates saves it. %>
+  <% other_types = booking_types.map(&:last).uniq & EventTypes.non_revenue_event_types %>
+  <% if other_types.any? %>
+    <% rates_by_type = Array(existing_payment_config["event_rates"]).index_by { |r| r["event_type"] } %>
+    <% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+    <div class="mb-6">
+      <h3 class="text-sm font-semibold text-gray-900 mb-1">Other events on this contract</h3>
+      <p class="text-xs text-gray-500 mb-3">The deal above covers the ticketed nights. Rehearsals and meetings can be part of it too, or have their own rate — like "they pay us $50 each rehearsal," taken out of their ticket share.</p>
+      <div class="space-y-3">
+        <% other_types.each do |type| %>
+          <% rate = rates_by_type[type] %>
+          <% own = rate.present? && rate["amount"].to_f.positive? %>
+          <% label = EventTypes.labels[type] || type.titleize %>
+          <% count = booking_types.count { |_, t| t == type } %>
+          <div class="rounded-lg border border-gray-200 p-4" data-event-rate-row data-event-type="<%= type %>">
+            <p class="text-sm font-semibold text-gray-900"><%= label.pluralize(count) %> <span class="font-normal text-gray-500">· <%= pluralize(count, "date") %></span></p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+              <% [ [ "deal", "Part of the deal above", "Counted like any other night." ], [ "own", "Their own rate", "A set amount for each #{label.downcase}." ] ].each do |value, title, help| %>
+                <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
+                  <input type="radio" name="event_rates[<%= type %>][mode]" value="<%= value %>" <%= "checked" if (value == "own") == own %>
+                         class="mt-0.5 accent-pink-500" data-action="change->contract-payments#onEventRatesChange">
+                  <span><span class="block text-sm font-medium text-gray-900"><%= title %></span><span class="block text-xs text-gray-500"><%= help %></span></span>
+                </label>
+              <% end %>
+            </div>
+            <div data-event-rate-fields class="<%= "hidden" unless own %> mt-3 space-y-3">
+              <input type="hidden" name="event_rates[<%= type %>][event_type]" value="<%= type %>">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Who pays</label>
+                  <select name="event_rates[<%= type %>][direction]" class="<%= input_class %>" data-event-rate-direction data-action="change->contract-payments#onEventRatesChange">
+                    <option value="incoming" <%= "selected" unless rate&.dig("direction") == "outgoing" %>>They pay us</option>
+                    <option value="outgoing" <%= "selected" if rate&.dig("direction") == "outgoing" %>>We pay them</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Amount</label>
+                  <input type="text" inputmode="decimal" name="event_rates[<%= type %>][amount]" value="<%= rate && format("%.2f", rate["amount"].to_f) %>" placeholder="50.00" class="<%= input_class %>">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Per</label>
+                  <select name="event_rates[<%= type %>][unit]" class="<%= input_class %>">
+                    <option value="per_event" <%= "selected" unless rate&.dig("unit") == "hourly" %>><%= label.downcase %></option>
+                    <option value="hourly" <%= "selected" if rate&.dig("unit") == "hourly" %>>hour</option>
+                  </select>
+                </div>
+              </div>
+              <div data-event-rate-settlement class="<%= "hidden" if rate&.dig("direction") == "outgoing" %> grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <% [ [ "payout_deduction", "Take it out of their ticket share", "Netted from what we pay them — no separate bill." ], [ "direct", "Bill it directly", "Its own payment on each #{label.downcase}'s date." ] ].each do |value, title, help| %>
+                  <label class="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
+                    <input type="radio" name="event_rates[<%= type %>][settlement]" value="<%= value %>" <%= "checked" if (rate&.dig("settlement") || "payout_deduction") == value %> class="mt-0.5 accent-pink-500">
+                    <span><span class="block text-sm font-medium text-gray-900"><%= title %></span><span class="block text-xs text-gray-500"><%= help %></span></span>
+                  </label>
+                <% end %>
+              </div>
+              <p class="text-xs text-gray-500">Taken out of their share only works when this deal pays them something (a revenue share on tickets they don't sell, or tickets minus our fee); otherwise it's billed directly.</p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 
   <%# Every payment this contract will create: the ones the deal above
       generates, plus any extras added by hand. %>

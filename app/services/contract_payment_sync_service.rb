@@ -38,7 +38,10 @@ class ContractPaymentSyncService
     # Driven by the CONTRACT, not the production's type flag: any show governed by
     # a revenue-share (or revenue-minus-fee) contract settles its share this way,
     # even if it's linked to an in-house production rather than a third-party one.
-    @contract&.revenue_share? || @contract&.ticket_revenue_minus_fee?
+    return false unless @contract&.revenue_share? || @contract&.ticket_revenue_minus_fee?
+
+    # A night the contract prices on its own (a rehearsal) is outside the deal.
+    !@contract.separately_rated_event_types.include?(@show.event_type)
   end
 
   # Case 3 settling once: we sell, contractor gets all ticket revenue minus our
@@ -50,7 +53,7 @@ class ContractPaymentSyncService
     payment = @contract.settlement_payments.first
     return unless payment
 
-    confirmed = @contract.contract_shows.includes(:show_financials)
+    confirmed = @contract.deal_shows_scope(@contract.contract_shows).includes(:show_financials)
                          .select { |s| s.show_financials&.has_data? }
 
     if summary[:confirmed_count].positive?
@@ -80,7 +83,7 @@ class ContractPaymentSyncService
     revenue_payments = @contract.settlement_payments
 
     # Group shows by period
-    all_shows = @contract.contract_shows.includes(:show_financials).to_a
+    all_shows = @contract.deal_shows_scope(@contract.contract_shows).includes(:show_financials).to_a
 
     revenue_payments.each do |payment|
       period_start = payment.due_date.public_send(period_method)

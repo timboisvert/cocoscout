@@ -629,6 +629,8 @@ module Manage
       # How they may pay us — online always, plus whatever offline methods are ticked.
       offline = Array(params[:offline_payment_methods]) & Contract::OFFLINE_PAYMENT_METHODS
       payment_config["accepted_payment_methods"] = [ "online" ] + offline
+      # Non-ticketed events with their own rate (a rehearsal fee).
+      payment_config["event_rates"] = Contract.normalize_event_rates(params[:event_rates] || {})
 
       # Stamp every payment with the derived direction so the four cases can't
       # produce a wrong-way payment.
@@ -958,9 +960,12 @@ module Manage
     def effective_amend_bookings
       amend = @contract.amend_data
       removed = amend["removed_rental_ids"] || []
-      remaining = @contract.space_rentals.where.not(id: removed).order(:starts_at)
-      remaining.map { |r| { "starts_at" => r.starts_at.iso8601, "duration" => ((r.ends_at - r.starts_at) / 1.hour).round(1) } } +
-        (amend["new_bookings"] || []).map { |b| { "starts_at" => b["starts_at"], "duration" => b["duration"] } }
+      remaining = @contract.space_rentals.where.not(id: removed).includes(:shows).order(:starts_at)
+      remaining.map do |r|
+        { "starts_at" => r.starts_at.iso8601, "duration" => ((r.ends_at - r.starts_at) / 1.hour).round(1),
+          "event_type" => r.shows.first&.event_type || "show" }
+      end +
+        (amend["new_bookings"] || []).map { |b| { "starts_at" => b["starts_at"], "duration" => b["duration"], "event_type" => b["event_type"].presence || "show" } }
     end
 
     # The real scheduling conflicts this amendment's new events would create: a

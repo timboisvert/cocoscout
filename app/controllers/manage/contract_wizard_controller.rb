@@ -258,6 +258,8 @@ module Manage
       # whatever this deal ticks, starting from the org's default.
       offline = Array(params[:offline_payment_methods]) & Contract::OFFLINE_PAYMENT_METHODS
       payment_config["accepted_payment_methods"] = [ "online" ] + offline
+      # Non-ticketed events with their own rate (a rehearsal fee).
+      payment_config["event_rates"] = Contract.normalize_event_rates(params[:event_rates] || {})
 
       @contract.update_draft_step(:payment_structure, payment_structure)
       @contract.update_draft_step(:payment_config, payment_config)

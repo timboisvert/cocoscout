@@ -523,6 +523,100 @@ class Contract < ApplicationRecord
     draft_data["services"] || []
   end
 
+  # --- Rates for non-ticketed events ------------------------------------------
+  #
+  # The deal (revenue share, flat fee, tickets minus a fee) covers the
+  # ticketed nights. Each non-ticketed kind of event on the same contract —
+  # rehearsals, meetings — can carry its own simple rate instead: "they pay
+  # us $50 per rehearsal", taken out of their ticket share or billed
+  # directly. Stored in draft_payment_config["event_rates"]:
+  #   [{ "event_type" => "rehearsal", "unit" => "per_event" | "hourly",
+  #      "amount" => 50.0, "direction" => "incoming" | "outgoing",
+  #      "settlement" => "payout_deduction" | "direct" }]
+  # A rated event type is outside the deal entirely (see #deal_shows_scope):
+  # no ticket settlement, no share of a per-show fee. Billing rides the
+  # per-event services machinery (#event_rate_service_lines).
+  EVENT_RATE_UNITS = %w[per_event hourly].freeze
+
+  def draft_event_rates
+    Array(draft_payment_config["event_rates"])
+  end
+
+  # Wizard/amend form rows → stored rates. Only non-ticketed event types, only
+  # a positive amount; "taken out of their share" only for money they owe us.
+  def self.normalize_event_rates(rows)
+    raw = rows.respond_to?(:values) ? rows.values : Array(rows)
+    raw.filter_map do |row|
+      row = row.to_unsafe_h if row.respond_to?(:to_unsafe_h)
+      row = row.to_h.stringify_keys
+      # The form sends mode "deal" for a type that's simply part of the deal.
+      next if row.key?("mode") && row["mode"] != "own"
+
+      type = row["event_type"].to_s
+      next unless EventTypes.non_revenue_event_types.include?(type)
+
+      amount = row["amount"].to_s.delete("$,").to_f.round(2)
+      next unless amount.positive?
+
+      direction = row["direction"] == "outgoing" ? "outgoing" : "incoming"
+      settlement = direction == "incoming" && row["settlement"] == "payout_deduction" ? "payout_deduction" : "direct"
+      { "event_type" => type, "unit" => (EVENT_RATE_UNITS.include?(row["unit"]) ? row["unit"] : "per_event"),
+        "amount" => amount, "direction" => direction, "settlement" => settlement }
+    end.uniq { |r| r["event_type"] }
+  end
+
+  # Event types this contract prices on their own — outside the deal.
+  def separately_rated_event_types
+    draft_event_rates.select { |r| r["amount"].to_f.positive? }.map { |r| r["event_type"] }.uniq
+  end
+
+  # The shows the deal itself covers: every show, minus any event type with
+  # its own rate. A contract without event rates is unchanged.
+  def deal_shows_scope(scope)
+    types = separately_rated_event_types
+    types.any? ? scope.where.not(event_type: types) : scope
+  end
+
+  # Each rate as a per-event service line over this contract's live shows of
+  # that type (so activation and amendments bill from what's actually booked):
+  # "Rehearsal — Oct 16, 2026", folded or deducted like any service.
+  def event_rate_service_lines
+    draft_event_rates.filter_map do |rate|
+      next unless rate["amount"].to_f.positive?
+
+      shows = contract_shows.where(event_type: rate["event_type"], canceled: false).order(:date_and_time).to_a
+      next if shows.empty?
+
+      events = shows.map do |show|
+        hours = show.duration_minutes.to_i.positive? ? (show.duration_minutes / 60.0).round(2) : 1
+        { "starts_at" => show.date_and_time.iso8601, "hours" => hours }
+      end
+      { "name" => EventTypes.labels[rate["event_type"]] || rate["event_type"].to_s.titleize,
+        "unit" => rate["unit"] == "hourly" ? "hourly" : "flat",
+        "unit_price" => rate["amount"].to_f, "direction" => rate["direction"].presence || "incoming",
+        "settlement" => rate["settlement"].presence || "direct", "per_event" => true, "events" => events }
+    end
+  end
+
+  # Re-bill the event rates after an amendment: pending, uncommitted charges
+  # for them come off (folded ones unfold, standalone rows go), then the
+  # current rates bill against the current shows. Anything paid or already
+  # on a payout run is never touched (bill_services! skips what's billed).
+  def reconcile_event_rate_payments!(previous_types)
+    contract_payments.reset # judge "already paid" from the database, not a stale load
+    names = (Array(previous_types) + separately_rated_event_types).uniq
+                                                                 .map { |t| EventTypes.labels[t] || t.to_s.titleize }
+    if names.any?
+      contract_payments.status_pending.reject(&:in_payout_run?)
+                       .select(&:includes_services?)
+                       .each { |p| p.unfold_services!(names) }
+      conditions = names.map { "description LIKE ?" }.join(" OR ")
+      contract_payments.status_pending.where(conditions, *names.map { |n| "#{n} — %" })
+                       .reject(&:in_payout_run?).each(&:destroy!)
+    end
+    bill_services!(event_rate_service_lines)
+  end
+
   # Normalize the wizard/amend services form rows into draft_services line
   # hashes. One parser for both paths, so amendment can't drift (it used to
   # silently drop the settlement choice). Per-event rows carry their selected
@@ -914,6 +1008,7 @@ class Contract < ApplicationRecord
     staged_name = amend["production_name"].to_s.strip
 
     # The deal config first, so payments derive the right direction.
+    previous_rated_types = separately_rated_event_types
     update_draft_step(:payment_structure, amend["payment_structure"]) if amend.key?("payment_structure")
     update_draft_step(:payment_config, amend["payment_config"]) if amend.key?("payment_config")
     update_draft_step(:ticketing, amend["ticketing"]) if amend.key?("ticketing")
@@ -942,6 +1037,11 @@ class Contract < ApplicationRecord
 
     # After shows exist, so per-event payments can link to them.
     reconcile_amended_payments!(amend["payments"]) if amend.key?("payments")
+
+    # Rates for non-ticketed nights bill from the shows as they now stand.
+    if previous_rated_types.any? || separately_rated_event_types.any?
+      reconcile_event_rate_payments!(previous_rated_types)
+    end
 
     # The term is exactly what's booked now — dropping the last night of a run
     # shortens it, not just adding one lengthens it.
@@ -1305,7 +1405,7 @@ class Contract < ApplicationRecord
   attr_writer :preloaded_money_shows
 
   def money_shows
-    @preloaded_money_shows ||= contract_shows.where(canceled: false).includes(show_financials: :expense_items).to_a
+    @preloaded_money_shows ||= deal_shows_scope(contract_shows.where(canceled: false)).includes(show_financials: :expense_items).to_a
   end
 
   # Preload everything money_summary/money_display need for a list of contracts
@@ -1340,7 +1440,10 @@ class Contract < ApplicationRecord
           end
     end
 
-    contracts.each { |c| c.preloaded_money_shows = shows_by_contract[c.id] }
+    contracts.each do |c|
+      rated = c.separately_rated_event_types
+      c.preloaded_money_shows = shows_by_contract[c.id].reject { |show| rated.include?(show.event_type) }
+    end
     contracts
   end
 
@@ -1509,6 +1612,8 @@ class Contract < ApplicationRecord
   # Find the matching ContractPayment for a given show based on settlement frequency
   def find_payment_for_show(show)
     return nil unless revenue_share? || ticket_revenue_minus_fee?
+    # A night with its own rate (a rehearsal) isn't part of the settlement.
+    return nil if separately_rated_event_types.include?(show.event_type)
 
     # First, try direct show_id link. A show carries more than its settlement:
     # a per-event service charge (Booth Tech) is tied to the same show, and a
@@ -1538,7 +1643,7 @@ class Contract < ApplicationRecord
       # of settlement_payments, linking a show to its neighbor's payment.
       revenue_payments.detect { |p| p.due_date == show.date_and_time.to_date } ||
         begin
-          all_shows = linkable_shows.order(:date_and_time).to_a
+          all_shows = deal_shows_scope(linkable_shows).order(:date_and_time).to_a
           show_index = all_shows.index { |s| s.id == show.id }
           show_index ? revenue_payments.to_a[show_index] : nil
         end
@@ -1587,7 +1692,7 @@ class Contract < ApplicationRecord
     # The money set, deliberately the WIDE one: what a single settlement covers,
     # and what a period's settlement filters down from. Narrowing this would
     # quietly change what a settlement is worked out from.
-    all_shows = contract_shows.includes(:show_financials).order(:date_and_time).to_a
+    all_shows = deal_shows_scope(contract_shows).includes(:show_financials).order(:date_and_time).to_a
 
     # One settlement at the end covers the whole run.
     return all_shows unless settles_periodically?
@@ -1603,7 +1708,7 @@ class Contract < ApplicationRecord
         # actually booked. On a returning production the wide set above also
         # holds earlier runs, and guessing into those is what linked a payment
         # to a show from the year before (see #linkable_shows).
-        candidates = linkable_shows.order(:date_and_time).to_a
+        candidates = deal_shows_scope(linkable_shows).order(:date_and_time).to_a
         revenue_payments = settlement_payments.to_a
         payment_index = revenue_payments.index { |p| p.id == payment.id }
         show = payment_index ? candidates[payment_index] : nil
@@ -1683,7 +1788,7 @@ class Contract < ApplicationRecord
   def flat_fee_per_show
     return flat_fee_amount if flat_fee_basis == "per_show"
 
-    count = contract_shows.where(canceled: false).count
+    count = deal_shows_scope(contract_shows.where(canceled: false)).count
     return 0.0 if count.zero?
 
     (flat_fee_amount / count).round(2)
@@ -1988,6 +2093,11 @@ class Contract < ApplicationRecord
 
   private
 
+  # Who's on the other side of the deal, as the document names them.
+  def counterparty_name
+    contractor_name.presence || production_name.presence || production&.name.to_s
+  end
+
   def deal_money(value)
     format("$%.2f", value.to_f)
   end
@@ -2020,6 +2130,19 @@ class Contract < ApplicationRecord
         out << %(<tr><td>#{esc.(p["description"].presence || "Payment")}</td><td>#{direction}</td><td>#{amount}</td><td>#{due}</td></tr>)
       end
       out << "</tbody></table>"
+    end
+
+    rates = draft_event_rates.select { |r| r["amount"].to_f.positive? }
+    if rates.any?
+      out << "<h4>Other events</h4><ul>"
+      rates.each do |r|
+        label = (EventTypes.labels[r["event_type"]] || r["event_type"].to_s.titleize).pluralize
+        per = r["unit"] == "hourly" ? "an hour" : "each"
+        who = r["direction"] == "outgoing" ? "we pay #{esc.(counterparty_name)}" : "#{esc.(counterparty_name)} pays us"
+        how = r["settlement"] == "payout_deduction" ? ", taken out of their ticket share" : ""
+        out << %(<li><strong>#{esc.(label)}:</strong> #{who} #{deal_money(r["amount"])} #{per}#{how}. Not part of the ticket settlement.</li>)
+      end
+      out << "</ul>"
     end
 
     services = (draft_services rescue [])
@@ -2420,8 +2543,9 @@ class Contract < ApplicationRecord
 
     # Services become their own billable payments (this is what "Tech" never
     # did). Billed AFTER show creation so per-event service payments can carry
-    # their show's id and land on the event's date.
-    bill_services!(draft_services)
+    # their show's id and land on the event's date. Rates for non-ticketed
+    # events (a rehearsal fee) bill the same way, one per night of that type.
+    bill_services!(draft_services + event_rate_service_lines)
 
     # Link per-event payments to their corresponding shows
     link_payments_to_shows(created_payments, created_shows)
@@ -2446,7 +2570,10 @@ class Contract < ApplicationRecord
     # already attributed (or there is none), and pairing a live payment to it
     # points that payment at a show nobody is going to play. Links that already
     # exist are left alone — cancelling a settled date has to keep its link.
-    sorted_shows = shows.reject(&:canceled).sort_by(&:date_and_time)
+    # Nights with their own rate are outside the deal; its payments never pair
+    # with them.
+    rated = separately_rated_event_types
+    sorted_shows = shows.reject { |s| s.canceled || rated.include?(s.event_type) }.sort_by(&:date_and_time)
     return if sorted_shows.empty?
     # Per-event payments are named for their event date now (e.g. "Jul 1 event"),
     # so match the word case-insensitively; revenue-share ones are amount_tbd.
