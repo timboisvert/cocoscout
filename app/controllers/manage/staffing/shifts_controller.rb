@@ -244,7 +244,7 @@ module Manage
 
       # Assigning never refuses someone for what they said about their
       # availability — the manager may know better — but it doesn't stay quiet
-      # about it either: " Note: Free from 8:30 PM, misses the first 1h 30m
+      # about it either: " Note: Available from 8:30 PM, misses the first 1h 30m
       # (their usual Friday)."
       def availability_note(person, shift)
         verdict = StaffAvailabilityResolver.new([ person.id ], from: shift.starts_at.to_date, to: shift.ends_at.to_date)

@@ -47,8 +47,8 @@ RSpec.describe "Manage::Staffing availability verdicts", type: :request do
     verdicts = payload("staff-availability")
 
     expect(verdicts.dig(late.id.to_s, shift.id.to_s)).to include(
-      "status" => "partial", "badge" => "Free from 8:30 PM",
-      "detail" => "Free from 8:30 PM, misses the first 2h 30m (an exception for #{day.strftime('%b %-d')})."
+      "status" => "partial", "badge" => "Available from 8:30 PM",
+      "detail" => "Available from 8:30 PM, misses the first 2h 30m (an exception for #{day.strftime('%b %-d')})."
     )
     expect(verdicts.dig(away.id.to_s, shift.id.to_s)).to include("status" => "blocked", "detail" => "Can't work then (“Lisbon”).")
     expect(verdicts).not_to have_key(open.id.to_s)
@@ -66,7 +66,7 @@ RSpec.describe "Manage::Staffing availability verdicts", type: :request do
     post manage_assign_staffing_shift_path(shift), params: { person_id: late.id }
 
     expect(shift.reload.assigned_people).to include(late)
-    expect(flash[:notice]).to eq("Assigned Lee Late. Note: Free from 8:30 PM, misses the first 2h 30m " \
+    expect(flash[:notice]).to eq("Assigned Lee Late. Note: Available from 8:30 PM, misses the first 2h 30m " \
                                  "(an exception for #{day.strftime('%b %-d')}).")
   end
 

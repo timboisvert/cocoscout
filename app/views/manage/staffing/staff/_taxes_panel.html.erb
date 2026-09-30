@@ -78,7 +78,7 @@
                 } %>
         <% end %>
         <% if can_upload %>
-          <%= render "shared/button", text: "Upload a W-9 you have", variant: "secondary", size: "small", type: :button,
+          <%= render "shared/button", text: "Upload an existing W-9", variant: "secondary", size: "small", type: :button,
                 data: { controller: "modal", action: "click->modal#open", modal_id: upload_cid } %>
         <% end %>
       <% end %>

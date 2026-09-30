@@ -3,7 +3,7 @@
 # How a StaffAvailabilityResolver::Verdict reads to a manager: a short badge
 # for a person card, and a sentence for the collision modal and the flash.
 # Naming the reason and the amount is what makes a "partly free" warning
-# useful rather than noise: "Free from 8:30 PM, misses the first 1h 30m
+# useful rather than noise: "Available from 8:30 PM, misses the first 1h 30m
 # (their usual Friday)".
 module StaffAvailabilityWording
   module_function
@@ -15,10 +15,10 @@ module StaffAvailabilityWording
     when :partial
       # Missing only the start ("from 8:30") or only the end ("until 10") says
       # so; free in the middle or in pieces names the stretches ("6–8 PM").
-      if verdict.free_from && !verdict.free_until then "Free from #{clock(verdict.free_from)}"
-      elsif verdict.free_until && !verdict.free_from then "Free until #{clock(verdict.free_until)}"
-      elsif Array(verdict.free_windows).any? then "Free #{windows(verdict.free_windows)}"
-      else "Free for part of it"
+      if verdict.free_from && !verdict.free_until then "Available from #{clock(verdict.free_from)}"
+      elsif verdict.free_until && !verdict.free_from then "Available until #{clock(verdict.free_until)}"
+      elsif Array(verdict.free_windows).any? then "Available #{windows(verdict.free_windows)}"
+      else "Available for part of it"
       end
     when :unknown then "Hasn't said"
     end

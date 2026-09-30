@@ -71,7 +71,7 @@ RSpec.describe StaffAvailabilityResolver do
     end
   end
 
-  # Free only in the middle of a shift (or in two stretches) used to read
+  # Available only in the middle of a shift (or in two stretches) used to read
   # "Free for part of it" — true, and no use to a manager. It says which part.
   describe "free in the middle, or in pieces" do
     it "names the stretch a shift's middle is free for" do
@@ -81,8 +81,8 @@ RSpec.describe StaffAvailabilityResolver do
 
       expect(v).to be_partial
       expect(v.free_windows).to eq([ [ at(day, 18), at(day, 20) ] ])
-      expect(StaffAvailabilityWording.badge(v)).to eq("Free 6–8 PM")
-      expect(StaffAvailabilityWording.detail(v)).to start_with("Free 6–8 PM, misses 4h")
+      expect(StaffAvailabilityWording.badge(v)).to eq("Available 6–8 PM")
+      expect(StaffAvailabilityWording.detail(v)).to start_with("Available 6–8 PM, misses 4h")
     end
 
     it "lists every stretch, and says AM/PM on both ends when they differ" do
@@ -92,7 +92,7 @@ RSpec.describe StaffAvailabilityResolver do
       v = verdict(at(day, 10), at(day, 17))
 
       expect(v.free_windows.size).to eq(2)
-      expect(StaffAvailabilityWording.badge(v)).to eq("Free 11 AM – 1 PM, 3–4 PM")
+      expect(StaffAvailabilityWording.badge(v)).to eq("Available 11 AM – 1 PM, 3–4 PM")
     end
 
     it "has no windows when the whole shift is free or blocked" do

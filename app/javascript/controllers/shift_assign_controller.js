@@ -56,7 +56,7 @@ export default class extends Controller {
         this.show()
     }
 
-    // Everyone / Can work (any of it) / Free the whole shift.
+    // Everyone / Can work (any of it) / Available the whole shift.
     setFilter(event) {
         if (event) event.preventDefault()
         this.filter = event.currentTarget.dataset.filter || "all"
@@ -282,7 +282,7 @@ export default class extends Controller {
             } else if (unavailable) {
                 badge = `<span class="${pill} bg-red-100 text-red-700">Unavailable</span>`
             } else if (partial) {
-                badge = `<span class="${pill} bg-amber-100 text-amber-800">${this.h(v.badge || "Partly free")}</span>`
+                badge = `<span class="${pill} bg-amber-100 text-amber-800">${this.h(v.badge || "Partly available")}</span>`
             } else if (v.status === "unknown") {
                 badge = `<span class="${pill} bg-gray-100 text-gray-500">Hasn't said</span>`
             }

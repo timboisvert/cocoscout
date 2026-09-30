@@ -219,7 +219,7 @@ export default class extends Controller {
             return `<span class="block text-[10px] text-red-600 font-medium">Unavailable</span>`
         }
         if (status === "partial") {
-            return `<span class="block text-[10px] text-amber-700 font-medium">Free ${this.h(this.windowsLabel(windows))}</span>`
+            return `<span class="block text-[10px] text-amber-700 font-medium">Available ${this.h(this.windowsLabel(windows))}</span>`
         }
         return ""
     }
@@ -257,7 +257,7 @@ export default class extends Controller {
     // "partial" | "blocked" — how much of it falls inside the hours they can
     // work that day (and the next, for a shift that runs past midnight) — and
     // windows are the stretches of the shift they can work, in minutes from
-    // the shift day's midnight, so a partial reads "Free 6–8 PM".
+    // the shift day's midnight, so a partial reads "Available 6–8 PM".
     availabilityFor(personId) {
         const date = this.baseDate || this.dayIso
         const start = this.hasStartTimeInputTarget ? this.startTimeInputTarget.value : ""
