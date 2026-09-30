@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
+require Rails.root.join("db/migrate/20260930160000_label_open_runs_as_payouts")
 
 # One payout run for everything: staff pay rides the same open run as show
 # payouts, course money and contract payments. A person paid for both gets one
@@ -121,6 +122,22 @@ RSpec.describe "One payout run" do
 
     PayoutBatchService.build_for(organization: org)
     expect(batch.reload.items.sole.amount_cents).to eq(17_000)
+  end
+
+  # A draft from before the merge is the org's open run now, carrying every
+  # kind of money — it mustn't keep calling itself "Staffing" on the run page
+  # and on payees' deposit receipts.
+  it "relabels open drafts as plain payout runs, leaving paid and course runs as they were" do
+    open_staff = org.payout_batches.create!(kind: "staff_pay", status: "draft", trigger: "manual")
+    funded = org.payout_batches.create!(kind: "performer", status: "funded", trigger: "manual")
+    course = org.payout_batches.create!(kind: "course", status: "draft", trigger: "manual")
+
+    ActiveRecord::Migration.suppress_messages { LabelOpenRunsAsPayouts.new.up }
+
+    expect(open_staff.reload.kind).to eq("payout")
+    expect(open_staff.kind_label).to eq("Payouts")
+    expect(funded.reload.kind).to eq("performer")
+    expect(course.reload.kind).to eq("course")
   end
 
   describe "folding the open drafts left from before the merge" do
