@@ -54,7 +54,7 @@
         locals: { title: "Needs financials", section: @todo.financials, label: "Show",
                   path: manage_money_financials_path, link_text: "Financials",
                   empty: "You're all caught up on financials." } do %>
-    <%= render "manage/money_financials/financials_show_rows", shows: @todo.financials.items %>
+    <%= render "manage/money_financials/financials_show_rows", rows: @todo.financials.items %>
   <% end %>
 
   <%= render layout: "manage/money/todo_section",

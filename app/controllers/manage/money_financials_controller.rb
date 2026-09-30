@@ -20,8 +20,11 @@ module Manage
         if @is_course
           # Course production - money in (registrations) − money out (platform fee
           # + instructor payouts) = profit. Same shape as everything else.
-          # A course can hold many runs — focus on the latest (most current) one.
-          @course_offering = @production.course_offerings.includes(feature_credit_redemption: :feature_credit).order(:created_at).last
+          # A course can hold many runs — the one asked for (a "Needs financials"
+          # row links to the run that needs settling), else the latest.
+          offerings = @production.course_offerings.includes(feature_credit_redemption: :feature_credit)
+          @course_offering = (params[:course_offering_id].present? && offerings.find_by(id: params[:course_offering_id])) ||
+                             offerings.order(:created_at).last
           @course = course_financials(@production)
           @money_in = (@course[:gross_cents] || 0) / 100.0
           @money_out = ((@course[:fee_cents] || 0) + (@course[:payout_cents] || 0)) / 100.0
@@ -59,20 +62,17 @@ module Manage
         @financial_summary = FinancialSummaryService.new(@productions).summary_for_period(@selected_period)
 
         # The actionable to-do at the top of the page: revenue shows that have
-        # already started but don't yet have confirmed financials. One flat,
-        # most-recent-first list the user can click into. The predicate lives in
-        # MoneyTodoService so this page, the /all counts, the events accordion
-        # and the Money hub can't drift apart — they used to.
+        # already started but don't yet have confirmed financials, and course
+        # runs still to settle (each opens its course's financials page). One
+        # flat, most-recent-first list. The predicates live in MoneyTodoService
+        # so this page, the /all counts, the events accordion and the Money hub
+        # can't drift apart — they used to.
         # Capped: an org that has never entered financials has as many of these
         # as it has ever had shows, and rendering all of them helps nobody. The
         # count is the real one — only the rows are cut.
-        awaiting = MoneyTodoService.shows_awaiting_financials(@productions)
+        awaiting = MoneyTodoService.financials_section(@productions, limit: AWAITING_FINANCIALS_LIMIT)
         @awaiting_financials_count = awaiting.count
-        @awaiting_financials_shows = awaiting
-          .includes(:production, :show_financials)
-          .order(date_and_time: :desc)
-          .limit(AWAITING_FINANCIALS_LIMIT)
-          .to_a
+        @awaiting_financials_rows = awaiting.items
       end
 
       # Apply filter if provided (for both in-house and third-party productions with shows)

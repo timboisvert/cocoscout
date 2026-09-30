@@ -115,6 +115,34 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
       expect(response.body).not_to include("prod-events-#{course_production.id}")
     end
 
+    # A course needing attention is the course, opening the course's own
+    # financials page, never a show-style worksheet for one of its sessions.
+    it "lists a started, unsettled course in Needs Financials as the course" do
+      session = create(:show, production: course_production, course_offering: course_offering,
+                              event_type: :class, date_and_time: 2.days.ago)
+
+      get manage_money_financials_path
+      course_href = manage_money_production_financials_path(course_production, course_offering_id: course_offering.id)
+      expect(response.body).to include("Improv 101").and include(ERB::Util.html_escape(course_href))
+      expect(response.body).not_to include(manage_money_show_financials_path(session))
+
+      get manage_money_index_path
+      expect(response.body).to include(ERB::Util.html_escape(course_href))
+      expect(response.body).not_to include(manage_money_show_financials_path(session))
+    end
+
+    it "opens the run a row asks for on a course with several" do
+      older = create(:course_offering, production: course_production, title: "Improv 101 · Spring")
+      older.update_column(:created_at, 1.year.ago)
+      create(:course_registration, course_offering: older, amount_cents: 7000, status: "confirmed")
+
+      get manage_money_production_financials_path(course_production, course_offering_id: older.id)
+      expect(response.body).to include("Improv 101 · Spring")
+
+      get manage_money_production_financials_path(course_production, course_offering_id: create(:course_offering).id)
+      expect(response).to have_http_status(:ok) # another production's run is ignored, not an error
+    end
+
     it "filters to only courses / only productions" do
       get manage_money_all_financials_path(type: "courses")
       expect(response.body).to include("Improv 101")

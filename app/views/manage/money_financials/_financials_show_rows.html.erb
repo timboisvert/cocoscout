@@ -1,14 +1,15 @@
 <%#
-  Slim rows for shows that have started but still need their financials entered.
-  Each row links to that show's financials worksheet. Cross-production, so the
-  production name rides along as the subtitle.
+  Slim rows for what still needs its financials: shows that have started with
+  no confirmed numbers (each opens its financials worksheet), and course runs
+  still to settle (each opens the course's own financials page, never a show
+  worksheet). Built by MoneyTodoService.financials_section.
 
-  Locals: shows
+  Locals: rows — [{ title:, subtitle:, badge:, href: }, ...]
 %>
-<% shows.each do |show| %>
+<% rows.each do |row| %>
   <%= render "shared/slim_list_row",
-        title: "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}",
-        subtitle: show.production&.name,
-        badge: { text: "Needs financials", color: "amber" },
-        href: manage_money_show_financials_path(show) %>
+        title: row[:title],
+        subtitle: row[:subtitle],
+        badge: row[:badge],
+        href: row[:href] %>
 <% end %>

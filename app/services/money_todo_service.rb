@@ -47,25 +47,86 @@ class MoneyTodoService
   # Revenue shows that have already started but whose financials nobody has
   # confirmed. Canceled shows are excluded — there's nothing to enter — and the
   # cutoff is "has it happened yet", not "will it have happened by tomorrow".
+  # Course sessions are never shows here: a course's money is its
+  # registrations, settled on the course (see courses_awaiting_financials).
+  # Excluded by production type, not course_offering_id, which is nulled when
+  # an offering is deleted.
   def self.shows_awaiting_financials(productions, as_of: Time.current)
     ids = production_ids_for(productions)
     return Show.none if ids.empty?
 
     Show.where(production_id: ids, event_type: EventTypes.revenue_event_types)
+        .where.not(production_id: Production.courses.where(id: ids).select(:id))
         .where(canceled: false)
         .where("date_and_time <= ?", as_of)
         .left_joins(:show_financials)
         .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
   end
 
+  # Runs of a course whose money hasn't been settled yet: started (a session
+  # has happened), took paid registrations, and has no calculated payout. One
+  # per run, handled on the course's own financials page. A run with nothing
+  # paid in has nothing to settle; draft, cancelled and archived runs never
+  # nag.
+  def self.courses_awaiting_financials(productions, as_of: Time.current)
+    ids = production_ids_for(productions)
+    return CourseOffering.none if ids.empty?
+
+    started = Show.where(canceled: false).where("date_and_time <= ?", as_of)
+                  .where.not(course_offering_id: nil).select(:course_offering_id)
+    paid_in = CourseRegistration.where(status: "confirmed").where("amount_cents > 0").select(:course_offering_id)
+    settled = CourseOfferingPayout.where.not(status: "pending").select(:course_offering_id)
+
+    CourseOffering.where(production_id: ids, status: %w[open closed completed])
+                  .where(id: started).where(id: paid_in).where.not(id: settled)
+  end
+
   def self.pending_financials_counts_by_production(productions, as_of: Time.current)
-    shows_awaiting_financials(productions, as_of: as_of).group("shows.production_id").count
+    shows = shows_awaiting_financials(productions, as_of: as_of).group("shows.production_id").count
+    courses = courses_awaiting_financials(productions, as_of: as_of).group(:production_id).count
+    shows.merge(courses) { |_id, a, b| a + b }
+  end
+
+  # "Needs financials" as rows to render: shows still owing numbers, and course
+  # runs still to settle, newest first. A course row opens the course's own
+  # financials page — never a show worksheet. count covers everything; items
+  # stops at limit.
+  def self.financials_section(productions, limit: nil, as_of: Time.current)
+    shows = shows_awaiting_financials(productions, as_of: as_of)
+    courses = courses_awaiting_financials(productions, as_of: as_of)
+
+    show_rows = shows.includes(:production).order(date_and_time: :desc).limit(limit).map do |show|
+      { at: show.date_and_time,
+        title: "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}",
+        subtitle: show.production&.name,
+        badge: { text: "Needs financials", color: "amber" },
+        href: Rails.application.routes.url_helpers.manage_money_show_financials_path(show) }
+    end
+
+    offerings = courses.includes(:production).to_a
+    past = Show.where(course_offering_id: offerings.map(&:id), canceled: false).where("date_and_time <= ?", as_of)
+    last_session = past.group(:course_offering_id).maximum(:date_and_time)
+    session_counts = past.group(:course_offering_id).count
+    course_rows = offerings.map do |offering|
+      at = last_session[offering.id] || offering.created_at
+      held = session_counts[offering.id].to_i
+      { at: at,
+        title: "#{at.strftime('%b %-d, %Y')} · #{offering.title}",
+        subtitle: "#{held} #{'session'.pluralize(held)} so far · settle it to pay instructors",
+        badge: { text: "Course", color: "purple" },
+        href: Rails.application.routes.url_helpers.manage_money_production_financials_path(offering.production, course_offering_id: offering.id) }
+    end
+
+    rows = (show_rows + course_rows).sort_by { |r| r[:at] }.reverse
+    rows = rows.first(limit) if limit
+    Section.new(count: shows.count + offerings.size, items: rows)
   end
 
   # The same question asked of a show that's already loaded — for filtering an
   # in-memory list without a second round trip.
   def self.awaiting_financials?(show, as_of: Time.current)
     return false unless EventTypes.revenue_event_types.include?(show.event_type)
+    return false if show.production&.type_course?
     return false if show.canceled?
     return false if show.date_and_time > as_of
 
@@ -109,14 +170,7 @@ class MoneyTodoService
   attr_reader :user, :organization, :row_limit
 
   def financials
-    @financials ||= begin
-      base = self.class.shows_awaiting_financials(productions)
-      items = base.includes(:production, :show_financials)
-                  .order(date_and_time: :desc)
-                  .limit(row_limit)
-                  .to_a
-      Section.new(count: base.count, items: items)
-    end
+    @financials ||= self.class.financials_section(productions, limit: row_limit)
   end
 
   # Productions, courses and contracts with money still to move, oldest debt

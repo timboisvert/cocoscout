@@ -132,6 +132,61 @@ RSpec.describe MoneyTodoService do
 
       expect(service.financials.count).to eq(0)
     end
+
+    # A course's money is its registrations, settled on the course. Its
+    # sessions used to show up here one by one, each opening a show-style
+    # worksheet that means nothing for a course.
+    describe "courses" do
+      let!(:course_production) { create(:production, organization: org, name: "Improv 101", production_type: "course") }
+      let!(:offering) { create(:course_offering, production: course_production, title: "Improv 101 · Fall") }
+      let!(:session) do
+        create(:show, production: course_production, course_offering: offering, event_type: :class, date_and_time: 2.days.ago)
+      end
+
+      before { create(:course_registration, course_offering: offering) }
+
+      it "lists a started, paid-into course once, as the course, opening its financials page" do
+        create(:show, production: course_production, course_offering: offering, event_type: :class, date_and_time: 9.days.ago)
+
+        expect(described_class.shows_awaiting_financials([ course_production ])).to be_empty
+        expect(described_class.awaiting_financials?(session)).to be(false)
+        expect(described_class.courses_awaiting_financials([ course_production ])).to contain_exactly(offering)
+
+        section = service.financials
+        expect(section.count).to eq(1)
+        row = section.items.first
+        expect(row[:title]).to include("Improv 101 · Fall")
+        expect(row[:subtitle]).to include("2 sessions so far")
+        expect(row[:badge][:text]).to eq("Course")
+        expect(row[:href]).to eq("/manage/money/financials/#{course_production.id}?course_offering_id=#{offering.id}")
+      end
+
+      it "drops the course once its payout is settled" do
+        CourseOfferingPayout.create!(course_offering: offering, status: "calculated", payout_mode: "lump_sum")
+
+        expect(service.financials.count).to eq(0)
+      end
+
+      it "leaves out a course that hasn't started, took no money, or was cancelled" do
+        session.update!(date_and_time: 2.days.from_now)
+        expect(described_class.courses_awaiting_financials([ course_production ])).to be_empty
+
+        session.update!(date_and_time: 2.days.ago)
+        CourseRegistration.where(course_offering: offering).update_all(status: "refunded")
+        expect(described_class.courses_awaiting_financials([ course_production ])).to be_empty
+
+        CourseRegistration.where(course_offering: offering).update_all(status: "confirmed")
+        offering.update!(status: :cancelled)
+        expect(described_class.courses_awaiting_financials([ course_production ])).to be_empty
+      end
+
+      it "counts the course, not its sessions, per production" do
+        create(:show, production: production, event_type: :show, date_and_time: 2.days.ago)
+
+        expect(described_class.pending_financials_counts_by_production([ production, course_production ]))
+          .to eq(production.id => 1, course_production.id => 1)
+      end
+    end
   end
 
   describe "payouts still to pay" do
