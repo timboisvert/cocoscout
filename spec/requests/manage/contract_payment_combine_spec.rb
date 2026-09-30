@@ -78,7 +78,10 @@ RSpec.describe "Manage::ContractPayments combine and split", type: :request do
     get manage_contract_path(contract)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("incl. Rehearsal — Sep 10, 2026 $100.00")
+    # Itemized under the row, always open: each thing it covers, then the total.
+    html = response.body.gsub(/\s+/, " ")
+    expect(html).to match(%r{Rehearsal — Sep 10, 2026</dt> <dd[^>]*> \$100\.00 </dd>})
+    expect(html).to include("They pay us</dt>")
     expect(response.body).to include("Split combined payments")
   end
 end

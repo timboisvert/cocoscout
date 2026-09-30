@@ -1,50 +1,36 @@
 <%#
-  One ticket-sales line on the financials worksheet: which source sold them,
-  how many, and for how much.
+  One row of the ticket-sales grid on the financials worksheet: a ticket
+  source (named in Money settings), how many it sold, and for how much. The
+  source is fixed by the row — there's no picker; every source gets its own
+  row. Leaving both blank means that source sold nothing (a saved row left
+  blank is removed on save, see ShowFinancialsController).
 
   Locals:
-    line          the fields_for builder for this ticket_sales_lines row
-    source_options [[name, id], ...] for the picker (empty when the org hasn't
-                   named any sources — then the line is just a count and an amount)
-    line_input     shared input class string
-    persisted      whether this row already exists (only those get a _destroy flag)
+    line       the fields_for builder for this ticket_sales_lines row
+    label      what the row is called ("Ticket Tailor", "Other", "Tickets")
+    line_input shared input class string
+    persisted  whether this row already exists (only those carry an id)
 %>
-<div class="flex flex-wrap items-end gap-2" data-ticket-line>
+<div class="grid grid-cols-[minmax(0,1fr)_6rem_8rem] sm:grid-cols-[minmax(0,1fr)_7rem_9rem] items-center gap-2 px-3 py-2" data-ticket-line>
   <% if persisted %>
     <%= line.hidden_field :id %>
-    <%= line.hidden_field :_destroy, value: "0", data: { financials_form_target: "ticketLineDestroy" } %>
   <% end %>
+  <%= line.hidden_field :ticket_source_id %>
 
-  <% if source_options.any? %>
-    <div class="flex-1 min-w-[9rem]">
-      <label class="block text-xs font-medium text-gray-600 mb-1">Sold through</label>
-      <%= line.select :ticket_source_id, options_for_select(source_options, line.object.ticket_source_id),
-            { include_blank: "—" }, class: line_input %>
-    </div>
-  <% end %>
+  <span class="min-w-0 truncate text-sm font-medium text-gray-900"><%= label %></span>
 
-  <div class="w-24 sm:w-28">
-    <label class="block text-xs font-medium text-gray-600 mb-1">Tickets</label>
-    <%= line.number_field :tickets_sold, min: 0, placeholder: "0",
-          class: "#{line_input} tabular-nums",
-          data: { action: "input->financials-form#recalcTicketTotal", financials_form_target: "ticketCount" } %>
+  <%# Blank rather than 0 / 0.0 when a source sold nothing, so the placeholder
+      shows; money always to the cent. %>
+  <% tickets = line.object.tickets_sold.to_i %>
+  <% amount = line.object.amount.to_f %>
+  <%= line.number_field :tickets_sold, value: (tickets.positive? ? tickets : nil), min: 0, placeholder: "0", "aria-label": "#{label} tickets",
+        class: "#{line_input} tabular-nums text-right",
+        data: { action: "input->financials-form#recalcTicketTotal", financials_form_target: "ticketCount" } %>
+
+  <div class="relative">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">$</span>
+    <%= line.number_field :amount, value: (amount.positive? ? format("%.2f", amount) : nil), min: 0, step: 0.01, placeholder: "0.00", "aria-label": "#{label} amount",
+          class: "#{line_input} pl-7 tabular-nums text-right",
+          data: { action: "input->financials-form#recalcTicketTotal", financials_form_target: "ticketAmount" } %>
   </div>
-
-  <div class="w-28 sm:w-32">
-    <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
-    <div class="relative">
-      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">$</span>
-      <%= line.number_field :amount, min: 0, step: 0.01, placeholder: "0.00",
-            class: "#{line_input} pl-7 tabular-nums",
-            data: { action: "input->financials-form#recalcTicketTotal", financials_form_target: "ticketAmount" } %>
-    </div>
-  </div>
-
-  <button type="button" data-action="click->financials-form#removeTicketLine"
-          title="Remove this line"
-          class="text-gray-400 hover:text-pink-600 cursor-pointer bg-transparent border-0 w-8 h-10 inline-flex items-center justify-center flex-shrink-0">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-    </svg>
-  </button>
 </div>

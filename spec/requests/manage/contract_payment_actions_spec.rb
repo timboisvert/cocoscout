@@ -77,10 +77,15 @@ RSpec.describe "Manage contract payment actions", type: :request do
       get manage_contract_path(contract)
 
       expect(response).to have_http_status(:ok)
-      # The big number is what actually moves; the gross and deduction sit under it.
-      expect(response.body).to include("$207.50")
-      expect(response.body).to include("$257.50 − $50.00 services")
-      expect(response.body).to include("1 charge deducted from this payment")
+      # The big number is what actually moves; the working is listed under the
+      # row, always open: the share, what's taken out of it, what they get.
+      html = response.body.gsub(/\s+/, " ")
+      expect(html).to include("$207.50")
+      expect(html).to include("Aug 9 — 50% to them</dt>")
+      expect(html).to include("Taken out of their share")
+      expect(html).to match(%r{Booth Tech — Aug 9, 2026</dt> <dd[^>]*>−\$50\.00</dd>})
+      expect(html).to match(%r{We pay them</dt> <dd[^>]*> \$207\.50 </dd>})
+      expect(html).not_to include("<details")
     end
 
     it "says an unsettled ticket-linked payment is waiting on sales" do
@@ -168,7 +173,7 @@ RSpec.describe "Manage contract payment actions", type: :request do
     it "folds the charge into its settlement instead of offering pay-link actions" do
       service.update!(settlement_method: "payout_deduction")
       get manage_contract_path(contract)
-      expect(response.body).to include("charge deducted from this payment")
+      expect(response.body).to include("Taken out of their share")
       expect(response.body).not_to include("Copy pay link")
     end
 

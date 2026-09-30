@@ -52,7 +52,11 @@ RSpec.describe "Manage::Contracts settlement amount before ticket sales", type: 
 
     body = response.body
     expect(body).to include("$350.00")
-    expect(body).to include("our $300.00 fee + $50.00 services")
+    html = body.gsub(/\s+/, " ")
+    expect(html).to match(%r{Our fee, held back from ticket sales</dt> <dd[^>]*>\$300\.00</dd>})
+    expect(html).to match(%r{Booth Tech[^<]*</dt> <dd[^>]*>\$50\.00</dd>})
+    expect(html).to match(%r{We keep</dt> <dd[^>]*>\$350\.00</dd>})
+    expect(html).to include("The rest of ticket sales goes back to them.")
   end
 
   it "says what comes off first on the show payout page, where the figure is what we owe" do

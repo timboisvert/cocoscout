@@ -39,11 +39,9 @@ export default class extends Controller {
     "receiptUploadButton",
     // Ticket sales lines
     "ticketLines",
-    "ticketLineTemplate",
     "ticketCount",
     "ticketAmount",
     "ticketTotal",
-    "ticketLineDestroy",
     // Cleared sentinels
     "otherRevenueClearedInput",
     "expenseClearedInput"
@@ -55,35 +53,8 @@ export default class extends Controller {
     this.recalcTicketTotal()
   }
 
-  // --- Ticket sales lines ---------------------------------------------------
-  // One row per ticket source. Rails reads them as nested attributes, so a new
-  // row only needs a child index nothing else is using.
-
-  addTicketLine() {
-    if (!this.hasTicketLineTemplateTarget) return
-
-    const html = this.ticketLineTemplateTarget.innerHTML.replace(/NEW_RECORD/g, `new_${Date.now()}`)
-    this.ticketLinesTarget.insertAdjacentHTML("beforeend", html)
-    this.ticketLinesTarget.lastElementChild?.querySelector("select, input")?.focus()
-    this.recalcTicketTotal()
-  }
-
-  // A row that was never saved can simply go. One that exists has to stay in the
-  // form carrying _destroy, or Rails never hears that it was removed.
-  removeTicketLine(event) {
-    const row = event.target.closest("[data-ticket-line]")
-    if (!row) return
-
-    const destroy = row.querySelector('input[name*="[_destroy]"]')
-    if (destroy) {
-      destroy.value = "1"
-      row.classList.add("hidden")
-      row.querySelectorAll("input[type=number], select").forEach((el) => { el.disabled = true })
-    } else {
-      row.remove()
-    }
-    this.recalcTicketTotal()
-  }
+  // --- Ticket sales grid ---------------------------------------------------
+  // One row per ticket source; the total underneath follows what's typed.
 
   recalcTicketTotal() {
     if (!this.hasTicketTotalTarget) return
@@ -91,8 +62,6 @@ export default class extends Controller {
     let tickets = 0
     let amount = 0
     this.ticketLinesTarget.querySelectorAll("[data-ticket-line]").forEach((row) => {
-      const destroy = row.querySelector('input[name*="[_destroy]"]')
-      if (destroy && destroy.value === "1") return
       tickets += parseInt(row.querySelector('input[name*="[tickets_sold]"]')?.value || "0", 10) || 0
       amount += parseFloat(row.querySelector('input[name*="[amount]"]')?.value || "0") || 0
     })

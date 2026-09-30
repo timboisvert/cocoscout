@@ -106,6 +106,13 @@ RSpec.describe "Combining contract payments", type: :model do
       expect(rehearsal_one.display_name).to eq("Rehearsal — Sep 10, 2026")
     end
 
+    it "doesn't date a settlement twice when its name already says the day" do
+      expect(ContractPayment.dated_label("Oct 1 — 70% to them", Date.new(2026, 10, 1))).to eq("Oct 1 — 70% to them")
+      expect(ContractPayment.dated_label("Oct 1 — 70% to them", Date.new(2026, 10, 15)))
+        .to eq("Oct 1 — 70% to them — Oct 15, 2026")
+      expect(ContractPayment.dated_label("Oct 10 fee", Date.new(2026, 10, 1))).to eq("Oct 10 fee — Oct 1, 2026")
+    end
+
     it "itemizes what a combined payment covers, own fee first" do
       rehearsal_one.fold_service!(name: "Booth Tech", amount: 25.0, billed_for: Date.new(2026, 9, 10))
       event_payment.merge_in!([ rehearsal_one, rehearsal_two ])

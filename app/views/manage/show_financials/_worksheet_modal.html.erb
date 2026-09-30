@@ -87,61 +87,67 @@
 
             <!-- Ticket Sales Fields -->
             <%#
-              One line per ticket source. The lines are what gets stored;
-              show_financials.ticket_count / .ticket_revenue are kept as rollups
-              of them, so nothing downstream changes.
+              A grid: one row per ticket source the org has named (Money
+              settings → Ticket sources), plus any archived source or
+              source-less line that already carries numbers. The lines are what
+              gets stored; show_financials.ticket_count / .ticket_revenue stay
+              rollups of them, so nothing downstream changes.
 
-              A financials row entered before sources existed has no lines, so
-              it's seeded with a single source-less line carrying whatever the
-              old figures were — saving it migrates that row and changes nothing.
+              With no sources named there's a single "Tickets" row, seeded from
+              the old figures on a row entered before sources existed — saving
+              it migrates that row and changes nothing.
             %>
             <div data-financials-form-target="ticketSalesFields" class="<%= @show_financials.flat_fee? ? 'hidden' : '' %>">
               <%
-                ticket_lines = @show_financials.ticket_sales_lines.to_a
-                seeded = ticket_lines.empty?
-                line_input = "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-pink-500"
-                source_options = @ticket_sources.map { |ts| [ ts.name, ts.id ] }
+                line_input = "w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                existing = @show_financials.ticket_sales_lines.to_a
+                by_source = existing.group_by(&:ticket_source_id)
+                rows = []
+                sources = (@ticket_sources + existing.filter_map(&:ticket_source)).uniq
+                sources.each do |source|
+                  lines = by_source.delete(source.id) || []
+                  if lines.empty?
+                    rows << [ TicketSalesLine.new(ticket_source: source), source.name ]
+                  else
+                    lines.each { |l| rows << [ l, source.name ] }
+                  end
+                end
+                unsourced = by_source.delete(nil) || []
+                if unsourced.any?
+                  unsourced.each { |l| rows << [ l, @ticket_sources.any? ? "Other" : "Tickets" ] }
+                elsif @ticket_sources.empty?
+                  rows << [ TicketSalesLine.new(tickets_sold: (existing.empty? ? @show_financials.ticket_count : nil),
+                                                amount: (existing.empty? ? @show_financials.ticket_revenue : nil)), "Tickets" ]
+                end
               %>
               <div class="flex items-baseline justify-between gap-3 mb-2">
                 <label class="block text-sm font-medium text-gray-700">Ticket sales</label>
-                <% if @ticket_sources.empty? %>
-                  <%= link_to "Name your ticket sources", manage_money_settings_section_path(section: "ticket_sources"),
-                        class: "text-xs text-pink-600 hover:text-pink-700" %>
-                <% end %>
+                <%= link_to (@ticket_sources.empty? ? "Name your ticket sources" : "Edit ticket sources"),
+                      manage_money_settings_section_path(section: "ticket_sources"),
+                      class: "text-xs text-pink-600 hover:text-pink-700" %>
               </div>
 
-              <div class="space-y-2" data-financials-form-target="ticketLines">
-                <% if seeded %>
-                  <%= form.fields_for :ticket_sales_lines, TicketSalesLine.new(tickets_sold: @show_financials.ticket_count, amount: @show_financials.ticket_revenue), child_index: 0 do |line| %>
-                    <%= render "manage/show_financials/ticket_line", line: line, source_options: source_options,
-                          line_input: line_input, persisted: false %>
-                  <% end %>
-                <% else %>
-                  <% ticket_lines.each_with_index do |record, index| %>
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="grid grid-cols-[minmax(0,1fr)_6rem_8rem] sm:grid-cols-[minmax(0,1fr)_7rem_9rem] gap-2 px-3 py-1.5 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  <span>Sold through</span><span class="text-right">Tickets</span><span class="text-right">Amount</span>
+                </div>
+                <div class="divide-y divide-gray-100" data-financials-form-target="ticketLines">
+                  <% rows.each_with_index do |(record, label), index| %>
                     <%= form.fields_for :ticket_sales_lines, record, child_index: index do |line| %>
-                      <%= render "manage/show_financials/ticket_line", line: line, source_options: source_options,
-                            line_input: line_input, persisted: true %>
+                      <%= render "manage/show_financials/ticket_line", line: line, label: label,
+                            line_input: line_input, persisted: record.persisted? %>
                     <% end %>
                   <% end %>
-                <% end %>
+                </div>
+                <div class="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border-t border-gray-200">
+                  <span class="text-sm font-medium text-gray-700">Total</span>
+                  <% total_tickets = rows.sum { |(record, _)| record.tickets_sold.to_i } %>
+                  <span class="text-sm font-semibold text-gray-900 tabular-nums" data-financials-form-target="ticketTotal"><%= pluralize(total_tickets, "ticket") %> · <%= number_to_currency(rows.sum { |(record, _)| record.amount.to_f }) %></span>
+                </div>
               </div>
-
-              <%# Template the controller clones for a new line. NEW_RECORD is
-                  swapped for a unique index so Rails sees a separate row. %>
-              <template data-financials-form-target="ticketLineTemplate">
-                <%= form.fields_for :ticket_sales_lines, TicketSalesLine.new, child_index: "NEW_RECORD" do |line| %>
-                  <%= render "manage/show_financials/ticket_line", line: line, source_options: source_options,
-                        line_input: line_input, persisted: false %>
-                <% end %>
-              </template>
-
-              <div class="flex flex-wrap items-center justify-between gap-2 mt-3">
-                <button type="button" data-action="click->financials-form#addTicketLine"
-                        class="text-sm text-pink-600 hover:text-pink-700 font-medium bg-transparent border-0 p-0 cursor-pointer">
-                  + Add a line
-                </button>
-                <div class="text-sm text-gray-600 tabular-nums" data-financials-form-target="ticketTotal"></div>
-              </div>
+              <% if @ticket_sources.empty? %>
+                <p class="mt-1.5 text-xs text-gray-500">Name the places you sell tickets (Ticket Tailor, Eventbrite, at the door…) and each gets its own row here.</p>
+              <% end %>
             </div>
 
             <!-- Flat Fee Field -->

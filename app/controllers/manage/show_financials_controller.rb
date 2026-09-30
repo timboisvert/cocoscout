@@ -111,6 +111,19 @@ module Manage
         ticket_sales_lines_attributes: [ :id, :ticket_source_id, :tickets_sold, :amount, :position, :_destroy ]
       )
 
+      # A blank box is a zero (30 comps, no money, is a real row). A saved
+      # ticket-source row cleared to nothing goes — the grid shows every
+      # source, so "blank" means "sold nothing", not "leave the old numbers".
+      if permitted[:ticket_sales_lines_attributes].present?
+        permitted[:ticket_sales_lines_attributes].each_value do |line|
+          line[:tickets_sold] = "0" if line.key?(:tickets_sold) && line[:tickets_sold].blank?
+          line[:amount] = "0" if line.key?(:amount) && line[:amount].blank?
+          next if line[:id].blank?
+
+          line[:_destroy] = "1" if line[:tickets_sold].to_i.zero? && line[:amount].to_f.zero?
+        end
+      end
+
       # Convert hash-style params to arrays for details fields
       # Rails sends {"0" => {desc: x}, "1" => {desc: y}} but we need [{desc: x}, {desc: y}]
       # Note: permitted params are ActionController::Parameters objects, need deep conversion

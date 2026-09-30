@@ -25,6 +25,17 @@ module Manage
     def name
       @wizard_state[:name] ||= ""
       @wizard_state[:description] ||= ""
+      # Started from "Create a show → new production": skip our own shows step
+      # and land in the new show's wizard at the end.
+      if params[:next] == "show_wizard"
+        @wizard_state[:next] = "show_wizard"
+        save_wizard_state
+      elsif show_first? && !request.referer.to_s.include?("/productions/wizard/")
+        # A fresh start from anywhere else (not Back from step 2): an abandoned
+        # show-first run doesn't carry its detour over.
+        @wizard_state.delete(:next)
+        save_wizard_state
+      end
     end
 
     def save_name
@@ -179,6 +190,14 @@ module Manage
 
     # Step 5: Shows - Do you know when your shows are?
     def shows
+      # Came here to make a show: that's the very next thing, so don't ask.
+      if show_first?
+        @wizard_state[:has_shows] = "no"
+        @wizard_state[:shows] = []
+        save_wizard_state
+        redirect_to manage_productions_wizard_review_path and return
+      end
+
       @wizard_state[:has_shows] ||= nil
     end
 
@@ -255,7 +274,9 @@ module Manage
           name: @wizard_state[:name],
           description: @wizard_state[:description],
           genre: @wizard_state[:genre].presence,
-          casting_source: @wizard_state[:casting_source] || "talent_pool",
+          # "No casting" isn't a source — it's switched off on each show (see
+          # casting_enabled below) — so the production keeps the default.
+          casting_source: Production.casting_sources.key?(@wizard_state[:casting_source].to_s) ? @wizard_state[:casting_source] : "talent_pool",
           casting_mode: wizard_casting_mode,
           # "Will performers be paid?" — only asked on a paid plan; otherwise
           # the production keeps the default (on) until someone says otherwise.
@@ -337,7 +358,8 @@ module Manage
         pay_outcome = apply_wizard_pay_choice!
       end
 
-      # Clear wizard state
+      # Clear wizard state (remembering whether a show comes next)
+      continue_to_show = @wizard_state[:next] == "show_wizard"
       clear_wizard_state
 
       # Set production in session
@@ -353,6 +375,9 @@ module Manage
                       return_to: edit_manage_production_path(@production, tab: 6)
                     ),
                     notice: "#{@production.name} is ready — now set up how its performers are paid."
+      elsif continue_to_show
+        redirect_to manage_shows_wizard_path(@production),
+                    notice: "#{@production.name} has been created. Now set up its first show or event."
       else
         redirect_to manage_path, notice: "#{@production.name} has been created!"
       end
@@ -403,6 +428,32 @@ module Manage
       @wizard_state[:casting_source] != "none" && Current.organization.feature_available?(:money)
     end
     helper_method :pay_step_available?
+
+    # Started from "Create a show → Create a new production": the show wizard
+    # comes right after, so this one skips its own Shows and Schedule steps.
+    def show_first?
+      @wizard_state[:next] == "show_wizard"
+    end
+    helper_method :show_first?
+
+    # Review's Back: the step before it, which is never Shows on a show-first
+    # run (Shows would just bounce straight back to Review).
+    def review_back_path
+      if show_first?
+        if @wizard_state[:casting_source] == "none"
+          manage_productions_wizard_casting_path
+        elsif pay_step_available?
+          manage_productions_wizard_pay_path
+        else
+          manage_productions_wizard_roles_path
+        end
+      elsif @wizard_state[:has_shows] == "yes"
+        manage_productions_wizard_schedule_path
+      else
+        manage_productions_wizard_shows_path
+      end
+    end
+    helper_method :review_back_path
 
     def org_payout_calculations
       Current.organization.payout_schemes.active

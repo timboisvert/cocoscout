@@ -12,8 +12,10 @@ class ShowFinancials < ApplicationRecord
   has_many :ticket_sales_lines, -> { ordered }, dependent: :destroy
 
   accepts_nested_attributes_for :expense_items, allow_destroy: true, reject_if: :all_blank
+  # The worksheet sends a row for every ticket source; a new one with no
+  # tickets and no money is simply a source that sold nothing.
   accepts_nested_attributes_for :ticket_sales_lines, allow_destroy: true,
-                                reject_if: ->(attrs) { attrs[:ticket_source_id].blank? && attrs[:tickets_sold].to_i.zero? && attrs[:amount].to_f.zero? }
+                                reject_if: ->(attrs) { attrs[:tickets_sold].to_i.zero? && attrs[:amount].to_f.zero? }
 
   REVENUE_TYPES = %w[ticket_sales flat_fee].freeze
 
@@ -136,8 +138,12 @@ class ShowFinancials < ApplicationRecord
   # A row with no lines is left alone. Financials entered before sources existed
   # keep the figures they were given, the same way calculated_expenses falls
   # back to the legacy expense_details.
+  #
+  # A fresh query rather than ticket_sales_lines.reload: this runs from each
+  # line's after_save while nested attributes may still be saving the rest,
+  # and reloading an association mid-save can drop lines not saved yet.
   def recalculate_ticket_totals!
-    lines = ticket_sales_lines.reload
+    lines = TicketSalesLine.where(show_financials_id: id).to_a
     return if lines.empty?
 
     update_columns(

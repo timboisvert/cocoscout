@@ -56,6 +56,16 @@
             url: manage_shows_save_production_selection_path,
             cancel_path: manage_shows_path,
             badges: badges %>
+
+      <%# Not listed? Make the production, then come straight back to the show.
+          Only for people who can create productions. %>
+      <% if Current.user&.manager? %>
+      <div class="mt-6 pt-6 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-gray-600">Is this for a production you haven't set up yet?</p>
+        <%= render "shared/button", text: "Create a new production", variant: "secondary", size: "small", icon: "plus",
+              path: manage_productions_wizard_path(next: "show_wizard") %>
+      </div>
+      <% end %>
     </div>
   </div>
 </div>

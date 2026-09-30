@@ -80,6 +80,45 @@ RSpec.describe "Production wizard", type: :request do
     end
   end
 
+  # Shows & Events → New show → "Create a new production": make it, then go
+  # straight on to the show — no Shows step of its own in between.
+  describe "starting from the show wizard" do
+    it "skips its own Shows step and lands in the new production's show wizard" do
+      set_up_org(pro: true)
+
+      get manage_productions_wizard_path(next: "show_wizard")
+      post manage_productions_wizard_save_name_path, params: { name: "Late Night" }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
+      post manage_productions_wizard_save_casting_path, params: { casting_source: "none" }
+
+      get manage_productions_wizard_shows_path
+      expect(response).to redirect_to(manage_productions_wizard_review_path)
+
+      get manage_productions_wizard_review_path
+      expect(response.body).not_to include(">Shows<")
+      expect(response.body).to include(manage_productions_wizard_casting_path) # Back skips Shows
+      expect(response.body).to include("set up its first show or event")
+
+      post manage_productions_wizard_create_path
+      production = Production.find_by(name: "Late Night")
+      expect(response).to redirect_to(manage_shows_wizard_path(production))
+      expect(production.shows).to be_empty
+    end
+
+    it "doesn't carry the detour into a later, ordinary start" do
+      set_up_org(pro: true)
+
+      get manage_productions_wizard_path(next: "show_wizard")
+      get manage_productions_wizard_path, headers: { "HTTP_REFERER" => "http://www.example.com/manage/productions" }
+      post manage_productions_wizard_save_name_path, params: { name: "Plain" }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
+      post manage_productions_wizard_save_casting_path, params: { casting_source: "none" }
+
+      get manage_productions_wizard_shows_path
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
   describe "casting style" do
     def walk_to_casting_style(name: "Velvet Hour")
       post manage_productions_wizard_save_name_path, params: { name: name }

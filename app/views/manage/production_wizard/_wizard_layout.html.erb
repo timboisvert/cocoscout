@@ -28,11 +28,15 @@
       wizard_steps << { key: :pay, name: "Pay", path: manage_productions_wizard_pay_path } if pay_step_available?
     end
 
-    wizard_steps << { key: :shows, name: "Shows", path: manage_productions_wizard_shows_path }
+    # A production made on the way to a new show skips Shows: the show wizard
+    # comes right after.
+    unless show_first?
+      wizard_steps << { key: :shows, name: "Shows", path: manage_productions_wizard_shows_path }
 
-    # Add Schedule step if user said they have shows
-    if @wizard_state[:has_shows] == "yes"
-      wizard_steps << { key: :schedule, name: "Schedule", path: manage_productions_wizard_schedule_path }
+      # Add Schedule step if user said they have shows
+      if @wizard_state[:has_shows] == "yes"
+        wizard_steps << { key: :schedule, name: "Schedule", path: manage_productions_wizard_schedule_path }
+      end
     end
     wizard_steps << { key: :review, name: "Review", path: manage_productions_wizard_review_path }
 

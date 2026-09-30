@@ -162,7 +162,8 @@
       <% end %>
     <% end %>
 
-    <!-- Shows -->
+    <!-- Shows (skipped when the show wizard comes next) -->
+    <% unless show_first? %>
     <div class="flex items-start justify-between py-3 border-b border-gray-200">
       <div class="flex-1">
         <p class="text-sm font-medium text-gray-500">Shows</p>
@@ -210,9 +211,18 @@
       <% back_path = @wizard_state[:has_shows] == 'yes' ? manage_productions_wizard_schedule_path : manage_productions_wizard_shows_path %>
       <%= link_to "Edit", back_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
     </div>
+    <% end %>
   </div>
 
   <!-- Summary Box -->
+  <% if show_first? %>
+  <div class="mt-6 p-4 bg-pink-50 rounded-lg border border-pink-200">
+    <p class="text-sm text-gray-700">
+      <strong>What happens next?</strong>
+      You'll go straight on to set up its first show or event.
+    </p>
+  </div>
+  <% else %>
   <div class="mt-6 p-4 bg-pink-50 rounded-lg border border-pink-200">
     <p class="text-sm text-gray-700">
       <strong>What happens next?</strong>
@@ -245,11 +255,11 @@
       </li>
     </ul>
   </div>
+  <% end %>
 
   <%= form_with url: manage_productions_wizard_create_path, method: :post, local: true do |form| %>
     <div class="mt-8 flex justify-between items-center">
-      <% back_path = @wizard_state[:has_shows] == 'yes' ? manage_productions_wizard_schedule_path : manage_productions_wizard_shows_path %>
-      <%= link_to back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+      <%= link_to review_back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
         ← Back
       <% end %>
       <%= render "shared/button", text: "Create #{@wizard_state[:name]}", variant: "primary", size: "medium", type: :submit, icon: "check" %>

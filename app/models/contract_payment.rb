@@ -89,13 +89,14 @@ class ContractPayment < ApplicationRecord
   # A name that stands on its own away from the contract page, where a bare
   # description tells the payer nothing: "Event 2 fee" → "Event 2 fee —
   # Oct 19, 2026". The event's own date when the payment is tied to a show,
-  # the due date otherwise; descriptions already carrying a date keep it.
+  # the due date otherwise; descriptions already carrying a date keep it
+  # ("Oct 1 — 70% to them" doesn't become "… — Oct 1, 2026").
   def display_name
     self.class.dated_label(description.presence || "Payment", show&.date_and_time&.to_date || due_date)
   end
 
   def self.dated_label(name, date)
-    return name if date.nil? || name.match?(/\d{4}/)
+    return name if date.nil? || name.match?(/\d{4}/) || name.match?(/\b#{date.strftime('%b %-d')}\b/)
     "#{name} — #{date.strftime('%b %-d, %Y')}"
   end
 

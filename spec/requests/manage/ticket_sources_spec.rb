@@ -107,6 +107,65 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       expect(show.reload.show_financials.ticket_sales_lines).to be_empty
     end
 
+    # The worksheet is a grid: a row per source, no picker, no "add a line".
+    it "lays out a row for every source, each already naming its source" do
+      get manage_money_show_financials_path(show)
+
+      body = response.body
+      expect(body).to include("Sold through").and include("Total")
+      expect(body).not_to include("Add a line")
+      field = ->(i) { body[/<input[^>]*name="show_financials\[ticket_sales_lines_attributes\]\[#{i}\]\[ticket_source_id\]"[^>]*>/] }
+      expect(field.call(0)).to include(%(value="#{eventbrite.id}"))
+      expect(field.call(1)).to include(%(value="#{door.id}"))
+    end
+
+    it "saves a row with tickets and no money — comps are a real row" do
+      patch manage_update_money_show_financials_path(show), params: {
+        show_financials: { revenue_type: "ticket_sales", ticket_sales_lines_attributes: {
+          "0" => { ticket_source_id: eventbrite.id, tickets_sold: "30", amount: "400" },
+          "1" => { ticket_source_id: door.id, tickets_sold: "12", amount: "" }
+        } }
+      }
+      lines = show.reload.show_financials.ticket_sales_lines
+      expect(lines.map { |l| [ l.ticket_source_id, l.tickets_sold, l.amount.to_f ] })
+        .to contain_exactly([ eventbrite.id, 30, 400.0 ], [ door.id, 12, 0.0 ])
+      expect(show.show_financials.ticket_count).to eq(42)
+    end
+
+    it "keeps both sources when the second is filled in on a later save, and drops one cleared to nothing" do
+      patch manage_update_money_show_financials_path(show), params: {
+        show_financials: { revenue_type: "ticket_sales", ticket_sales_lines_attributes: {
+          "0" => { ticket_source_id: eventbrite.id, tickets_sold: "30", amount: "400" },
+          "1" => { ticket_source_id: door.id, tickets_sold: "", amount: "" }
+        } }
+      }
+      financials = show.reload.show_financials
+      tt = financials.ticket_sales_lines.sole
+      expect(tt.ticket_source).to eq(eventbrite)
+
+      patch manage_update_money_show_financials_path(show), params: {
+        show_financials: { revenue_type: "ticket_sales", ticket_sales_lines_attributes: {
+          "0" => { id: tt.id, ticket_source_id: eventbrite.id, tickets_sold: "30", amount: "400" },
+          "1" => { ticket_source_id: door.id, tickets_sold: "10", amount: "200" }
+        } }
+      }
+      financials.reload
+      expect(financials.ticket_sales_lines.map { |l| [ l.ticket_source.name, l.tickets_sold, l.amount.to_f ] })
+        .to contain_exactly([ "Eventbrite", 30, 400.0 ], [ "At the door", 10, 200.0 ])
+      expect(financials.ticket_count).to eq(40)
+      expect(financials.ticket_revenue).to eq(600)
+
+      door_line = financials.ticket_sales_lines.find_by(ticket_source: door)
+      patch manage_update_money_show_financials_path(show), params: {
+        show_financials: { revenue_type: "ticket_sales", ticket_sales_lines_attributes: {
+          "0" => { id: tt.id, ticket_source_id: eventbrite.id, tickets_sold: "30", amount: "400" },
+          "1" => { id: door_line.id, ticket_source_id: door.id, tickets_sold: "", amount: "" }
+        } }
+      }
+      expect(financials.reload.ticket_sales_lines.map(&:ticket_source)).to eq([ eventbrite ])
+      expect(financials.ticket_revenue).to eq(400)
+    end
+
     it "shows the breakdown back on the financials page" do
       financials = show.create_show_financials!(revenue_type: "ticket_sales", data_confirmed: true)
       financials.ticket_sales_lines.create!(ticket_source: eventbrite, tickets_sold: 40, amount: 400)
@@ -143,7 +202,7 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       # The worksheet seeds a line from whatever was already there, so saving it
       # migrates the row and changes no number.
       expect(response.body).to include('value="33"')
-      expect(response.body).to include('value="330.0"')
+      expect(response.body).to include('value="330.00"')
     end
   end
 

@@ -89,12 +89,23 @@
   combine_modal_id = "combine-payment-#{payment.id}"
   split_confirm_id = "confirm-split-payment-#{payment.id}"
   can_split = show_actions && payment.combined? && payment.status_pending? && !in_run
+  # A payment that's more than one number (services folded into it, charges
+  # taken out of it) shows its working as a short itemized list under the
+  # row, always open, so the row itself stays one clean line.
+  folded_items = payment.breakdown_items
+  itemized = deductions.any? || folded_items.any?
+  moved_label =
+    if is_incoming
+      payment.status_paid? ? "They paid us" : "They pay us"
+    else
+      payment.status_paid? ? "We paid them" : "We pay them"
+    end
 %>
 
 <div data-controller="payment-modal">
 <%# No "Late" badge: the pink wash and the "overdue" line under the amount
     already say it. %>
-<div class="flex items-stretch px-3 py-2 border rounded-lg transition-all group <%= is_late ? 'bg-pink-50 border-pink-300' : 'bg-white border-gray-200 hover:border-gray-400' %><%= ' opacity-60' if is_cancelled %>">
+<div class="px-3 py-2 border rounded-lg transition-all group <%= is_late ? 'bg-pink-50 border-pink-300' : 'bg-white border-gray-200 hover:border-gray-400' %><%= ' opacity-60' if is_cancelled %>">
   <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
     <%# Left Section: Date & Payment Details %>
     <div class="w-full md:w-1/2 flex items-center gap-4">
@@ -117,38 +128,19 @@
             <%= link_to (contract.production_name.presence || contract.contractor_name), payment_link, class: "hover:text-pink-600" %>
           </span>
         </div>
-        <div class="text-sm text-gray-600">
+        <% if itemized %>
+          <%# What it's for is the first line of the list below. %>
           <% if contract.production_name.present? %>
-            <%= contract.contractor_name %> &middot;
+            <div class="text-sm text-gray-600"><%= contract.contractor_name %></div>
           <% end %>
-          <%= payment.display_name %><%= " and #{number_to_currency(deduction_total)} services" if deductions.any? %>
-          <span class="text-gray-400"><%= is_incoming ? "(they pay us)" : "(we pay them)" %></span>
-        </div>
-        <% if payment.includes_services? || payment.combined? %>
-          <%# Services they pay for on this event — and any payments combined
-              into this one — ride inside this one payment: one amount, one
-              pay link, not a second row to chase. %>
-          <div class="text-xs text-gray-500 mt-0.5">
-            <%= number_to_currency(payment.base_amount) %> <%= payment.folded_services_summary %>
+        <% else %>
+          <div class="text-sm text-gray-600">
+            <% if contract.production_name.present? %>
+              <%= contract.contractor_name %> &middot;
+            <% end %>
+            <%= payment.display_name %>
+            <span class="text-gray-400"><%= is_incoming ? "(they pay us)" : "(we pay them)" %></span>
           </div>
-        <% end %>
-
-        <% if deductions.any? %>
-          <%# Netted out of this payment when it settles — never invoiced, so
-              they sit inside this row instead of standing beside it. %>
-          <details class="mt-1 group/deductions">
-            <summary class="text-xs text-purple-700 hover:text-purple-900 cursor-pointer select-none">
-              <%= pluralize(deductions.size, "charge") %> deducted from this payment
-            </summary>
-            <ul class="mt-1 ml-1 space-y-0.5 border-l-2 border-purple-200 pl-3">
-              <% deductions.each do |charge| %>
-                <li class="text-xs text-gray-600 flex items-baseline justify-between gap-3">
-                  <span class="truncate"><%= charge.description %></span>
-                  <span class="tabular-nums text-gray-700 flex-shrink-0">−<%= number_to_currency(charge.amount) %></span>
-                </li>
-              <% end %>
-            </ul>
-          </details>
         <% end %>
       </div>
     </div>
@@ -163,21 +155,18 @@
             TBD
           <% elsif deductions.any? %>
             <%# The number that matters is what actually moves: the share net of
-                the services deducted from it. The gross is in the line below. %>
+                the services deducted from it. The working is listed below. %>
             <%= number_to_currency(payment.amount.to_f - deduction_total) %>
           <% else %>
             <%= number_to_currency(payment.amount) %>
           <% end %>
         </div>
-        <% if deductions.any? && !awaiting_amount %>
-          <div class="text-xs text-gray-500 tabular-nums">
-            <%= number_to_currency(payment.amount) %> − <%= number_to_currency(deduction_total) %> services
-          </div>
-        <% end %>
         <% if our_take %>
-          <div class="text-xs text-gray-500">
-            our <%= number_to_currency(held_back_fee) %> fee<%= " + #{number_to_currency(deduction_total)} services" if deductions.any? %> — the rest of ticket sales goes back to them
-          </div>
+          <% unless itemized %>
+            <div class="text-xs text-gray-500">
+              our <%= number_to_currency(held_back_fee) %> fee — the rest of ticket sales goes back to them
+            </div>
+          <% end %>
         <% elsif payment.amount_tbd? && payment.amount.to_f > 0 %>
           <div class="text-xs text-amber-600">
             Partial — some shows still pending
@@ -371,6 +360,51 @@
       <% end %>
     </div>
   </div>
+
+  <% if itemized %>
+    <%# The working behind the amount, lined up under the title: what the
+        payment is made of, what's taken out of it, and what actually moves.
+        Services they pay for on the night ride inside an incoming payment
+        (one amount, one pay link); charges netted out of a settlement are
+        never invoiced, so they're listed here instead of as rows of their own. %>
+    <div class="mt-2 pt-2 border-t <%= is_late ? 'border-pink-200' : 'border-gray-100' %> md:pl-[4.5rem]">
+      <dl class="max-w-xl grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1 text-sm">
+        <% if our_take %>
+          <%# Nothing to hand back yet: the fee and the charges are ours
+              however the night sells. %>
+          <dt class="text-gray-600">Our fee, held back from ticket sales</dt>
+          <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(held_back_fee) %></dd>
+          <% deductions.each do |charge| %>
+            <dt class="min-w-0 text-gray-600"><%= charge.description %></dt>
+            <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(charge.amount) %></dd>
+          <% end %>
+          <div class="col-span-2 border-t border-gray-200 my-0.5" aria-hidden="true"></div>
+          <dt class="font-medium text-gray-900">We keep</dt>
+          <dd class="text-right tabular-nums font-semibold text-gray-900"><%= number_to_currency(our_take) %></dd>
+          <dd class="col-span-2 text-xs text-gray-500">The rest of ticket sales goes back to them.</dd>
+        <% else %>
+          <% (folded_items.presence || [ [ payment.display_name, payment.amount.to_f ] ]).each do |label, amount| %>
+            <dt class="min-w-0 text-gray-600"><%= label %></dt>
+            <dd class="text-right tabular-nums <%= awaiting_amount ? 'text-gray-400' : 'text-gray-900' %>">
+              <%= awaiting_amount ? "TBD" : number_to_currency(amount) %>
+            </dd>
+          <% end %>
+          <% if deductions.any? %>
+            <dt class="col-span-2 pt-1 text-xs font-medium text-purple-700">Taken out of their share</dt>
+            <% deductions.each do |charge| %>
+              <dt class="min-w-0 text-gray-600"><%= charge.description %></dt>
+              <dd class="text-right tabular-nums text-gray-900">−<%= number_to_currency(charge.amount) %></dd>
+            <% end %>
+          <% end %>
+          <div class="col-span-2 border-t border-gray-200 my-0.5" aria-hidden="true"></div>
+          <dt class="font-medium text-gray-900"><%= moved_label %></dt>
+          <dd class="text-right tabular-nums font-semibold text-gray-900">
+            <% if awaiting_amount %><%= deductions.any? ? "TBD − #{number_to_currency(deduction_total)}" : "TBD" %><% else %><%= number_to_currency(payment.amount.to_f - deduction_total) %><% end %>
+          </dd>
+        <% end %>
+      </dl>
+    </div>
+  <% end %>
 </div>
 
 <%# Fold other payments they owe into this one — one amount, one pay link %>
