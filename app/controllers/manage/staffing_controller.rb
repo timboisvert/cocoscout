@@ -188,9 +188,8 @@ module Manage
         end
         h[pid.to_s] = days if days.any?
       end
-
-      load_availability_overview
     end
+
     # Publish/notify a week's schedule. The FIRST time (never finalized) this
     # publishes the week and notifies everyone assigned. Once published, it's a
     # targeted "Notify updates": only people with a new/changed/removed shift are
@@ -524,20 +523,6 @@ module Manage
     # upcoming exceptions, for the read-only "Availability" overview modal on
     # the scheduling page. Anyone with staffing access can see it — the org is
     # flat.
-    def load_availability_overview
-      members = Current.organization.organization_staff_members.active
-                       .includes(person: HEADSHOT_PRELOAD)
-                       .order("people.name").references(:person).to_a
-      entries = StaffAvailabilityEntry.where(person_id: members.map(&:person_id)).includes(:created_by)
-                                      .group_by(&:person_id)
-      @availability_overview = members.map do |m|
-        {
-          member: m,
-          picture: WorkAvailabilityPicture.new(m.person, entries: entries.fetch(m.person_id, []))
-        }
-      end
-    end
-
     def build_finalize_recipients(shifts)
       by_person = Hash.new(0)
       shifts.each do |shift|

@@ -100,46 +100,25 @@ module My
       redirect_to my_work_availability_path(onboarding: onboarding_org_id, month: month_param, anchor: "calendar"), **flash
     end
 
-    # The months the calendar shows and pages to. This month starts at the
-    # current week (past days can't be changed); in its last week it folds
-    # next month in, so the grid never runs out at the weekend. Mirrors the
-    # My Dashboard calendar.
+    # The months the calendar shows and pages to (see ForwardMonthCalendar).
     def calendar_months
-      @month = month
-      @first_month = Date.current.beginning_of_month
-      @final_month = @first_month >> (CALENDAR_MONTHS - 1)
-      tail = (@first_month.end_of_month - Date.current).to_i < 7
-      @calendar_combined = tail && @month == @first_month
-
-      @prev_month = @month << 1
-      @next_month = @month >> 1
-      if @calendar_combined
-        @next_month = @first_month >> 2
-      elsif tail && @month == @first_month >> 1
-        @month = @first_month                    # the folded month lives in the combined view
-        @calendar_combined = true
-        @next_month = @first_month >> 2
-      elsif tail && @month == @first_month >> 2
-        @prev_month = @first_month
-      end
-      @calendar_last_month = @calendar_combined ? @first_month >> 1 : @month
-
-      short = ->(m) { m == @first_month && tail ? "#{m.strftime('%b')} / #{(m >> 1).strftime('%b')}" : m.strftime("%b") }
-      @prev_label = short.call(@prev_month)
-      @next_label = short.call(@next_month)
-      @calendar_heading =
-        if !@calendar_combined then @month.strftime("%B %Y")
-        elsif @month.year == @calendar_last_month.year then "#{@month.strftime('%B')} / #{@calendar_last_month.strftime('%B %Y')}"
-        else "#{@month.strftime('%B %Y')} / #{@calendar_last_month.strftime('%B %Y')}"
-        end
+      cal = ForwardMonthCalendar.new(params[:month], months: CALENDAR_MONTHS)
+      @month = cal.month
+      @first_month = cal.first_month
+      @final_month = cal.final_month
+      @prev_month = cal.prev_month
+      @next_month = cal.next_month
+      @prev_label = cal.prev_label
+      @next_label = cal.next_label
+      @calendar_last_month = cal.last_month
+      @calendar_heading = cal.heading
     end
 
     # The month asked for: ?month=2026-11-01, kept within the months the
     # calendar pages through.
     def month
       first = Date.current.beginning_of_month
-      asked = Date.iso8601(params[:month].to_s).beginning_of_month rescue first
-      asked.clamp(first, first >> (CALENDAR_MONTHS - 1))
+      ForwardMonthCalendar.clamp(params[:month], first: first, final: first >> (CALENDAR_MONTHS - 1))
     end
 
     # "Sat, Oct 10" / "Sat, Oct 10 – 12", as the Coming up list says it.

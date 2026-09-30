@@ -1186,6 +1186,10 @@ Rails.application.routes.draw do
     delete "staffing/scheduling/regulars/:id",    to: "staffing/scheduling_rules#destroy", as: "destroy_staffing_scheduling_rule"
     get  "staffing/scheduling/regulars",          to: "staffing/scheduling_rules#index",   as: "staffing_scheduling_rules"
     get  "staffing/org-chart",                    to: "staffing#org_chart",              as: "staffing_org_chart"
+    # Staffing → Availability: the whole staff's availability on a month calendar.
+    get   "staffing/availability",                to: "staffing/availability#index",     as: "staffing_availability"
+    get   "staffing/availability/day/:date",      to: "staffing/availability#day",       as: "staffing_availability_day"
+    post  "staffing/availability/nudge",          to: "staffing/availability#nudge",     as: "staffing_availability_nudge"
     get   "staffing/pay",                         to: "staffing/pay#new",                as: "staffing_pay"
     post  "staffing/pay",                         to: "staffing/pay#create",             as: "create_staffing_pay"
     patch "staffing/pay/draft",                   to: "staffing/pay#save_draft",         as: "staffing_pay_draft"

@@ -76,10 +76,13 @@ RSpec.describe "Manage::Staffing availability verdicts", type: :request do
     expect(flash[:notice]).to eq("Assigned Oli Open.")
   end
 
-  it "shows each person's week and exceptions in the overview" do
-    get manage_staffing_scheduling_path(week_start: week_start.to_s)
-
+  # The scheduling page's overview pop-up became Staffing → Availability and
+  # each person's Availability tab; the dates they changed show there.
+  it "shows each person's changed dates on their Availability tab" do
+    get manage_edit_staffing_staff_path(org.organization_staff_members.find_by(person: away))
     expect(response.body).to include("Lisbon")
-    expect(response.body).to include("After 8:30 PM")
+
+    get manage_edit_staffing_staff_path(org.organization_staff_members.find_by(person: late))
+    expect(response.body).to include("8:30 PM")
   end
 end

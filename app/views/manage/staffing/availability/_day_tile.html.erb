@@ -1,0 +1,27 @@
+<%# One calendar day on Staffing → Availability: how many can work, a few of
+    their faces, and how many only for part of the day. On a phone, the
+    counts only. Locals: item ({ date:, free:, part:, off: }), is_past. %>
+<% free = item[:free] %>
+<% part = item[:part] %>
+<div class="<%= "opacity-60" if is_past %>">
+  <div class="text-[11px] sm:text-xs font-medium <%= free.any? ? "text-green-700" : "text-gray-400" %>">
+    <%= free.size %><span class="hidden sm:inline"> can work</span>
+  </div>
+  <div class="hidden sm:flex -space-x-1 mt-1">
+    <% free.first(4).each do |member| %>
+      <% person = member.person %>
+      <% variant = person&.safe_headshot_variant(:thumb) %>
+      <% if variant %>
+        <%= image_tag variant, alt: member.display_name, title: member.display_name, class: "w-5 h-5 rounded-lg object-cover ring-1 ring-white" %>
+      <% else %>
+        <span title="<%= member.display_name %>" class="w-5 h-5 rounded-lg bg-gray-200 ring-1 ring-white flex items-center justify-center text-[8px] font-bold text-gray-600"><%= person&.initials %></span>
+      <% end %>
+    <% end %>
+    <% if free.size > 4 %>
+      <span class="w-5 h-5 rounded-lg bg-gray-100 ring-1 ring-white flex items-center justify-center text-[8px] font-bold text-gray-500">+<%= free.size - 4 %></span>
+    <% end %>
+  </div>
+  <% if part.any? %>
+    <div class="mt-1 text-[10px] sm:text-[11px] text-amber-700"><%= part.size %><span class="hidden sm:inline"> part of the day</span></div>
+  <% end %>
+</div>

@@ -1,0 +1,107 @@
+<%# Who has confirmed their availability lately, and a way to ask the rest —
+    a pink-header modal listing who'll get it (ticked; untick to leave someone
+    out) above the editable draft, like every send to several people.
+    Locals: confirmed_count, staff_count, unconfirmed, nudgeable, draft. %>
+<% nudge_cid = "availability-nudge" %>
+<section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+  <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+    <h2 class="text-sm font-semibold text-gray-900">Who's confirmed</h2>
+    <p class="text-xs text-gray-500 mt-0.5">
+      <span class="font-medium <%= confirmed_count == staff_count ? "text-green-700" : "text-gray-900" %>"><%= confirmed_count %> of <%= staff_count %></span>
+      have confirmed their availability is up to date.
+    </p>
+  </div>
+
+  <% if unconfirmed.empty? %>
+    <p class="px-4 py-3 text-sm text-green-700">Everyone's up to date.</p>
+  <% else %>
+    <ul class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+      <% unconfirmed.each do |member| %>
+        <% person = member.person %>
+        <li>
+          <%= link_to manage_edit_staffing_staff_path(member, anchor: "availability"), class: "flex items-center justify-between gap-2 px-4 py-2 hover:bg-gray-50" do %>
+            <span class="min-w-0 text-sm text-gray-900 truncate"><%= staff_name_with_pronouns(member) %></span>
+            <span class="flex-shrink-0 text-xs <%= person&.availability_confirmed_at ? "text-amber-700" : "text-gray-400" %>">
+              <%= person&.availability_confirmed_at ? "Last #{person.availability_confirmed_at.strftime('%b %-d')}" : "Never" %>
+            </span>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+    <% if nudgeable.any? %>
+      <div class="px-4 py-3 border-t border-gray-200">
+        <%= render "shared/button", text: "Ask them to confirm", variant: "primary", size: "small", type: :button, classes: "w-full",
+              data: { controller: "modal", action: "click->modal#open", modal_id: nudge_cid } %>
+      </div>
+    <% end %>
+  <% end %>
+</section>
+
+<% if nudgeable.any? && draft %>
+  <% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+  <div id="<%= nudge_cid %>" class="hidden fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="flex min-h-full items-start justify-center p-4 py-12" data-action="click->modal#closeOnBackdrop">
+      <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden" data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white">Ask staff to confirm their availability</h3>
+          <button type="button" data-action="click->modal#close"
+                  class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <%= form_with url: manage_staffing_availability_nudge_path, method: :post do %>
+          <%= hidden_field_tag :month, params[:month] %>
+          <%= hidden_field_tag :role_id, params[:role_id] %>
+          <div class="px-6 py-5 space-y-5">
+            <div>
+              <p class="text-sm font-medium text-gray-900 mb-2">
+                Sending to <%= pluralize(nudgeable.size, "person") %>
+                <span class="font-normal text-gray-500">— untick anyone to leave them out</span>
+              </p>
+              <ul class="max-h-56 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                <% nudgeable.each do |member| %>
+                  <li>
+                    <label class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50">
+                      <%= check_box_tag "staff_member_ids[]", member.id, true, id: "nudge-#{member.id}",
+                            class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+                      <span class="flex-1 min-w-0">
+                        <span class="block text-sm font-medium text-gray-900 truncate"><%= member.display_name %></span>
+                        <span class="block text-xs text-gray-500 truncate"><%= StaffAvailabilityNudger.email_for(member) %></span>
+                      </span>
+                    </label>
+                  </li>
+                <% end %>
+              </ul>
+              <% if unconfirmed.size > nudgeable.size %>
+                <p class="mt-1 text-xs text-gray-500">
+                  <%= (unconfirmed - nudgeable).map(&:display_name).to_sentence %>
+                  <%= (unconfirmed - nudgeable).one? ? "hasn't" : "haven't" %> set up an account yet — they set their availability during onboarding.
+                </p>
+              <% end %>
+            </div>
+
+            <div>
+              <label for="availability_nudge_subject" class="block text-sm font-medium text-gray-900 mb-1">Subject</label>
+              <%= text_field_tag :email_subject, draft[:subject], id: "availability_nudge_subject", class: input_class %>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-900 mb-1">Message</label>
+              <input type="hidden" name="email_body" id="availability_nudge_body" value="<%= draft[:body] %>">
+              <trix-editor input="availability_nudge_body"
+                           class="trix-content block w-full bg-white border border-gray-300 rounded-lg shadow-sm min-h-[180px] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></trix-editor>
+              <p class="mt-1 text-xs text-gray-500">{{first_name}} becomes each person's first name. It goes out by email and as a CocoScout message.</p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+                  data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: "Send", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

@@ -1,11 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Tabs for the staff edit modal. Details/Job/Roles share one save form; the
-// Onboarding, Taxes and Danger Zone tabs have their own actions, so the Save
+// Onboarding, Availability, Taxes and Danger Zone tabs have their own actions, so the Save
 // footer is hidden on those.
 export default class extends Controller {
     static targets = ["tab", "panel", "saveFooter"]
-    static FOOTERLESS = ["onboarding", "taxes", "danger"]
+    static FOOTERLESS = ["onboarding", "availability", "taxes", "danger"]
 
     connect() {
         // A #tab in the URL (e.g. back from a Taxes-tab action) opens that tab.

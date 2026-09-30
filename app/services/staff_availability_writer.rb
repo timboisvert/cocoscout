@@ -94,7 +94,9 @@ class StaffAvailabilityWriter
   def confirm!
     through = Date.current + CONFIRM_DAYS
     current = @person.availability_confirmed_through
-    @person.update!(availability_confirmed_through: through) if current.nil? || current < through
+    attrs = { availability_confirmed_at: Time.current }
+    attrs[:availability_confirmed_through] = through if current.nil? || current < through
+    @person.update!(attrs)
   end
 
   # [{ from: "17:00", to: "00:00" }, ...] (or string-keyed params) → sorted,

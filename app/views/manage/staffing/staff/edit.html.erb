@@ -50,7 +50,7 @@
 
     <%# ---- Tabs ---- %>
     <div class="flex gap-1 px-8 border-b border-gray-200 overflow-x-auto">
-      <% [ [ "details", "Details" ], [ "job", "Job" ], [ "roles", "Roles &amp; pay" ], [ "onboarding", "Onboarding" ], [ "taxes", "Taxes" ], [ "danger", "Danger Zone" ] ].each do |key, label| %>
+      <% [ [ "details", "Details" ], [ "job", "Job" ], [ "roles", "Roles &amp; pay" ], [ "onboarding", "Onboarding" ], [ "availability", "Availability" ], [ "taxes", "Taxes" ], [ "danger", "Danger Zone" ] ].each do |key, label| %>
         <button type="button" data-staff-edit-target="tab" data-tab="<%= key %>" data-action="click->staff-edit#switch"
                 class="px-4 py-3.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 cursor-pointer whitespace-nowrap">
           <%= label.html_safe %>
@@ -230,6 +230,9 @@
       </div>
 
       <%# --- Status (mark inactive / reactivate — reversible, not a delete) --- %>
+      <%# --- Availability (read-only, own actions) --- %>
+      <%= render "manage/staffing/staff/availability_panel", staff_member: @staff_member %>
+
       <%# --- Taxes (own actions, outside the edit form) --- %>
       <%= render "manage/staffing/staff/taxes_panel", staff_member: @staff_member %>
 

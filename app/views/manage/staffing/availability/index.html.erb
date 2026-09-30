@@ -1,0 +1,89 @@
+<% content_for :title, "Staff Availability" %>
+<%
+  role_id = @role&.id
+  month_link = ->(m) { manage_staffing_availability_path(month: m.to_date.beginning_of_month.iso8601, role_id: role_id) }
+  items_by_date = @days.transform_values { |summary| [ summary ] }
+  cell_attrs = ->(date, _items) {
+    {
+      class: "cursor-pointer hover:border-pink-400 focus:outline-none focus:border-pink-400 transition-colors",
+      role: "button", tabindex: 0,
+      data: {
+        action: "click->staff-availability#openDay keydown.enter->staff-availability#openDay",
+        url: manage_staffing_availability_day_path(date: date.iso8601, role_id: role_id),
+        title: date.strftime("%A, %B %-d")
+      }
+    }
+  }
+%>
+<% legend = capture do %>
+  <span class="inline-flex items-center gap-1.5"><span class="text-green-700 font-medium">12 can work</span> free all day, or hasn't said otherwise</span>
+  <span class="inline-flex items-center gap-1.5"><span class="text-amber-700">3 part of the day</span> only some hours</span>
+<% end %>
+
+<div class="w-full mb-10" data-controller="staff-availability">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Staffing", manage_staffing_index_path ], [ "Scheduling", manage_staffing_scheduling_path ] ],
+    text: "Availability",
+    links: []
+  } %>
+
+  <p class="text-sm text-gray-600 mb-4">
+    When your staff can work, day by day. Click a day to see everyone — who's free, who's free only some hours, and who can't.
+  </p>
+
+  <% if @house_roles.any? %>
+    <div class="mb-3">
+      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+        {
+          label: "Role",
+          filters: [ { text: "Everyone", path: manage_staffing_availability_path(month: params[:month]), active: @role.nil? } ] +
+                   @house_roles.map { |r| { text: r.name, path: manage_staffing_availability_path(month: params[:month], role_id: r.id), active: @role&.id == r.id } }
+        }
+      ] %>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6 items-start">
+    <div class="min-w-0 [&>div]:mb-0">
+      <%= render "shared/month_calendar",
+            **@calendar.month_calendar_locals,
+            anchor: "calendar",
+            month_link: month_link,
+            today_link: manage_staffing_availability_path(role_id: role_id),
+            items_by_date: items_by_date,
+            item_partial: "manage/staffing/availability/day_tile",
+            cell_attrs: cell_attrs,
+            dim_past: true,
+            min_cell: "min-h-[56px] sm:min-h-[88px]",
+            week_starts_on: :monday,
+            mobile_grid: true,
+            legend: legend %>
+    </div>
+
+    <aside>
+      <%= render "manage/staffing/availability/confirmations",
+            confirmed_count: @confirmed_count, staff_count: @staff_count,
+            unconfirmed: @unconfirmed, nudgeable: @nudgeable, draft: @nudge_draft %>
+    </aside>
+  </div>
+
+  <%# The day: loaded into this frame when a day is clicked. %>
+  <div data-staff-availability-target="modal" class="hidden fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-action="click->staff-availability#backdropClose keydown.esc@window->staff-availability#close">
+    <div class="flex min-h-full items-start justify-center p-4 py-10">
+      <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white" data-staff-availability-target="title">Availability</h3>
+          <button type="button" data-action="click->staff-availability#close"
+                  class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <turbo-frame id="staff-availability-day" data-staff-availability-target="frame">
+          <p class="px-6 py-10 text-center text-sm text-gray-400">Loading…</p>
+        </turbo-frame>
+      </div>
+    </div>
+  </div>
+</div>

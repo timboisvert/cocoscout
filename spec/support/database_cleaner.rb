@@ -80,6 +80,7 @@ def seed_content_templates
     { key: "staff_w9_request", name: "Staff W-9 Request", subject: "{{organization_name}} needs your W-9", body: "Hi {{first_name}}, fill out your W-9 at {{w9_url}}", category: "staffing", channel: "both" },
     { key: "staff_w9_reminder", name: "Staff W-9 Reminder", subject: "Reminder: {{organization_name}} needs your W-9", body: "Hi {{first_name}}, your W-9: {{w9_url}}", category: "staffing", channel: "both" },
     { key: "staff_1099_ready", name: "Staff 1099 Ready", subject: "Your {{tax_year}} 1099-NEC", body: "Hi {{first_name}}, view at {{form_1099_url}}", category: "staffing", channel: "both" },
+    { key: "staff_availability_confirm_request", name: "Staff Availability Confirmation Request", subject: "Is your availability up to date for {{organization_name}}?", body: "<p>Hi {{first_name}}, check it at {{availability_url}}</p>", category: "staffing", channel: "both" },
     # Migration-owned templates still need seeding here — the cleaner truncates
     # and re-seeds from this list, so anything a job renders must be present.
     { key: "contract_signature_nudge", name: "Contract Signature Reminder",

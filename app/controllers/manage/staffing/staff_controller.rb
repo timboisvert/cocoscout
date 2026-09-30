@@ -22,6 +22,7 @@ module Manage
         @departments = Current.organization.departments.ordered
         @managers = Current.organization.organization_staff_members.active
                            .includes(:person).order("people.name").references(:person).to_a
+        load_availability
       end
 
       def create
@@ -150,6 +151,22 @@ module Manage
 
       # Only assign employment fields that were actually submitted, so a partial
       # form (e.g. the Roles tab alone) never blanks out other details.
+      # The Availability tab: their usual week, a month of how each day works
+      # out (?availability_month= pages it), and when they last confirmed.
+      def load_availability
+        person = @staff_member.person
+        @availability_picture = WorkAvailabilityPicture.new(person)
+        @availability_calendar = ForwardMonthCalendar.new(params[:availability_month], months: 12)
+        range = @availability_calendar.range
+        resolver = StaffAvailabilityResolver.new([ person.id ], from: range.first, to: range.last)
+        day_parts = person.staffing_day_parts
+        @availability_days = range.index_with do |date|
+          day = resolver.day(person.id, date)
+          [ { day: day, label: WorkAvailabilityPicture.day_label(day.windows, day_parts) } ]
+        end
+        @availability_nudge = StaffAvailabilityNudger.new(staff_member: @staff_member, sender: nil).preview if StaffAvailabilityNudger.requestable?(@staff_member)
+      end
+
       def editable_employment_attributes
         attrs = {}
         attrs[:preferred_first_name] = params[:preferred_first_name].to_s.strip.presence if params.key?(:preferred_first_name)

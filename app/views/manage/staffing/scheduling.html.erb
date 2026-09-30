@@ -32,9 +32,7 @@
 
   <%
     top_links = [
-      { text: "Availability", icon: "calendar", type: :button,
-        data: { controller: "modal", modal_id: "staff-availability-modal" },
-        data_action: "click->modal#open" },
+      { text: "Availability", icon: "calendar", path: manage_staffing_availability_path },
       { text: "Manage roles", icon: "cog", path: manage_staffing_house_roles_path }
     ]
     top_links.unshift({ text: "Regulars", icon: "star", path: manage_staffing_scheduling_rules_path }) if @regulars_enabled
@@ -46,8 +44,6 @@
     text: "Scheduling",
     links: top_links
   } %>
-
-  <%= render "manage/staffing/availability_overview_modal" %>
 
   <%= render "manage/staffing/regulars_apply_modal" if @regulars_enabled %>
 
