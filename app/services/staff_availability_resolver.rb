@@ -4,7 +4,8 @@
 # StaffAvailabilityEntry rows, and never as a bare yes/no.
 #
 #   :free     — they're available for the whole span
-#   :partial  — available for some of it (free_from / free_until say which part)
+#   :partial  — available for some of it (free_from / free_until say which
+#               part when it's a start or an end; free_windows always does)
 #   :blocked  — available for none of it
 #   :unknown  — nothing they've said touches it, and they've never told us
 #               anything at all. Treated as free, reported as unconfirmed.
@@ -26,7 +27,7 @@
 #   resolver.verdict(person_id, shift.starts_at, shift.ends_at)
 class StaffAvailabilityResolver
   Verdict = Struct.new(:status, :available_minutes, :total_minutes, :free_from, :free_until, :reasons,
-                       keyword_init: true) do
+                       :free_windows, keyword_init: true) do
     def free? = status == :free
     def partial? = status == :partial
     def blocked? = status == :blocked
@@ -53,7 +54,7 @@ class StaffAvailabilityResolver
 
   def verdict(person_id, starts_at, ends_at)
     total = ((ends_at - starts_at) / 60).round
-    return Verdict.new(status: :free, available_minutes: 0, total_minutes: 0, reasons: []) if total <= 0
+    return Verdict.new(status: :free, available_minutes: 0, total_minutes: 0, reasons: [], free_windows: []) if total <= 0
 
     segments = day_slices(starts_at, ends_at).flat_map { |date, a, b| sweep(person_id, date, a, b) }
     available = segments.sum { |s| s[:available] ? s[:b] - s[:a] : 0 }
@@ -67,13 +68,26 @@ class StaffAvailabilityResolver
 
     first_free = segments.find { |s| s[:available] }
     last_free = segments.reverse.find { |s| s[:available] }
+    # The stretches of the span they can work, as times, joined where they
+    # touch (including across midnight) — what a manager needs to read
+    # "free for part of it" as "free 6–8 PM".
+    free_windows = segments.select { |s| s[:available] }
+                           .map { |s| [ at(s[:date], s[:a]), at(s[:date], s[:b]) ] }
+                           .each_with_object([]) do |(a, b), merged|
+      if merged.any? && merged.last[1] == a
+        merged.last[1] = b
+      else
+        merged << [ a, b ]
+      end
+    end
     Verdict.new(
       status: status,
       available_minutes: available,
       total_minutes: total,
       free_from: (status == :partial && !segments.first[:available] && first_free) ? at(first_free[:date], first_free[:a]) : nil,
       free_until: (status == :partial && !segments.last[:available] && last_free) ? at(last_free[:date], last_free[:b]) : nil,
-      reasons: segments.reject { |s| s[:available] }.filter_map { |s| s[:winner] }.uniq
+      reasons: segments.reject { |s| s[:available] }.filter_map { |s| s[:winner] }.uniq,
+      free_windows: status == :partial ? free_windows : []
     )
   end
 

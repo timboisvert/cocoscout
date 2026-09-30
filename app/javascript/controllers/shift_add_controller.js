@@ -214,12 +214,12 @@ export default class extends Controller {
         if (this.isPerforming(personId)) {
             return `<span class="block text-[10px] text-purple-600 font-medium">In a show</span>`
         }
-        const availability = this.availabilityFor(personId)
-        if (availability === "blocked") {
+        const { status, windows } = this.availabilityFor(personId)
+        if (status === "blocked") {
             return `<span class="block text-[10px] text-red-600 font-medium">Unavailable</span>`
         }
-        if (availability === "partial") {
-            return `<span class="block text-[10px] text-amber-700 font-medium">Free for part of it</span>`
+        if (status === "partial") {
+            return `<span class="block text-[10px] text-amber-700 font-medium">Free ${this.h(this.windowsLabel(windows))}</span>`
         }
         return ""
     }
@@ -253,14 +253,16 @@ export default class extends Controller {
         return (byDay[String(personId)] || []).length > 0
     }
 
-    // "free" | "partial" | "blocked" for the shift as currently set: how much
-    // of it falls inside the hours they can work that day (and the next, for
-    // a shift that runs past midnight).
+    // { status, windows } for the shift as currently set: status is "free" |
+    // "partial" | "blocked" — how much of it falls inside the hours they can
+    // work that day (and the next, for a shift that runs past midnight) — and
+    // windows are the stretches of the shift they can work, in minutes from
+    // the shift day's midnight, so a partial reads "Free 6–8 PM".
     availabilityFor(personId) {
         const date = this.baseDate || this.dayIso
         const start = this.hasStartTimeInputTarget ? this.startTimeInputTarget.value : ""
         const end = this.hasEndTimeInputTarget ? this.endTimeInputTarget.value : ""
-        if (!date || !start || !end) return "free"
+        if (!date || !start || !end) return { status: "free", windows: [] }
 
         const days = this.dayWindows[String(personId)] || {}
         const from = this.minutes(start)
@@ -272,10 +274,36 @@ export default class extends Controller {
             return days[iso].map(([a, b]) => [a + offset, b + offset])
         }
         const windows = windowsOn(date, 0).concat(to > 1440 ? windowsOn(this.nextDay(date), 1440) : [])
-        const covered = windows.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(b, to) - Math.max(a, from)), 0)
+        const overlaps = windows
+            .map(([a, b]) => [Math.max(a, from), Math.min(b, to)])
+            .filter(([a, b]) => b > a)
+            .sort((x, y) => x[0] - y[0])
+            .reduce((merged, [a, b]) => {
+                const last = merged[merged.length - 1]
+                if (last && last[1] >= a) last[1] = Math.max(last[1], b)
+                else merged.push([a, b])
+                return merged
+            }, [])
+        const covered = overlaps.reduce((sum, [a, b]) => sum + (b - a), 0)
 
-        if (covered >= to - from) return "free"
-        return covered > 0 ? "partial" : "blocked"
+        if (covered >= to - from) return { status: "free", windows: [] }
+        return { status: covered > 0 ? "partial" : "blocked", windows: overlaps }
+    }
+
+    // [[1080, 1200], [1260, 1380]] → "6–8 PM, 9–11 PM"; AM/PM said once when
+    // both ends share it. Minutes can run past 1440 for a shift over midnight.
+    windowsLabel(windows) {
+        const clock = total => {
+            const m = ((total % 1440) + 1440) % 1440
+            const hh = Math.floor(m / 60), mm = m % 60
+            return { text: `${hh % 12 || 12}${mm ? `:${String(mm).padStart(2, "0")}` : ""}`, half: hh >= 12 ? "PM" : "AM" }
+        }
+        return windows.map(([a, b]) => {
+            const from = clock(a), to = clock(b)
+            return from.half === to.half
+                ? `${from.text}–${to.text} ${to.half}`
+                : `${from.text} ${from.half} – ${to.text} ${to.half}`
+        }).join(", ")
     }
 
     minutes(hhmm) {

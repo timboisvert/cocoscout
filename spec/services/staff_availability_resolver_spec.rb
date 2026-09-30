@@ -71,6 +71,37 @@ RSpec.describe StaffAvailabilityResolver do
     end
   end
 
+  # Free only in the middle of a shift (or in two stretches) used to read
+  # "Free for part of it" — true, and no use to a manager. It says which part.
+  describe "free in the middle, or in pieces" do
+    it "names the stretch a shift's middle is free for" do
+      entry(starts_minute: 0, ends_minute: 18 * 60)             # busy until 6 PM
+      entry(starts_minute: 20 * 60, ends_minute: 1440)          # and from 8 PM
+      v = verdict(at(day, 17), at(day, 23))
+
+      expect(v).to be_partial
+      expect(v.free_windows).to eq([ [ at(day, 18), at(day, 20) ] ])
+      expect(StaffAvailabilityWording.badge(v)).to eq("Free 6–8 PM")
+      expect(StaffAvailabilityWording.detail(v)).to start_with("Free 6–8 PM, misses 4h")
+    end
+
+    it "lists every stretch, and says AM/PM on both ends when they differ" do
+      entry(starts_minute: 0, ends_minute: 11 * 60)
+      entry(starts_minute: 13 * 60, ends_minute: 15 * 60)
+      entry(starts_minute: 16 * 60, ends_minute: 1440)
+      v = verdict(at(day, 10), at(day, 17))
+
+      expect(v.free_windows.size).to eq(2)
+      expect(StaffAvailabilityWording.badge(v)).to eq("Free 11 AM – 1 PM, 3–4 PM")
+    end
+
+    it "has no windows when the whole shift is free or blocked" do
+      expect(verdict(at(day, 19), at(day, 23)).free_windows).to eq([])
+      entry
+      expect(verdict(at(day, 19), at(day, 23)).free_windows).to eq([])
+    end
+  end
+
   describe "hour-level and whole-evening in one model" do
     it "reads 'free after 8:30' as partial for a 7pm shift, with when they're free" do
       entry(starts_minute: 0, ends_minute: 20 * 60 + 30)

@@ -13,8 +13,11 @@ module StaffAvailabilityWording
     case verdict.status
     when :blocked then "Unavailable"
     when :partial
-      if verdict.free_from then "Free from #{clock(verdict.free_from)}"
-      elsif verdict.free_until then "Free until #{clock(verdict.free_until)}"
+      # Missing only the start ("from 8:30") or only the end ("until 10") says
+      # so; free in the middle or in pieces names the stretches ("6–8 PM").
+      if verdict.free_from && !verdict.free_until then "Free from #{clock(verdict.free_from)}"
+      elsif verdict.free_until && !verdict.free_from then "Free until #{clock(verdict.free_until)}"
+      elsif Array(verdict.free_windows).any? then "Free #{windows(verdict.free_windows)}"
       else "Free for part of it"
       end
     when :unknown then "Hasn't said"
@@ -54,6 +57,16 @@ module StaffAvailabilityWording
 
   def clock(time)
     time.strftime(time.min.zero? ? "%-l %p" : "%-l:%M %p")
+  end
+
+  # [[6 PM, 8 PM], [9 PM, 11 PM]] → "6–8 PM, 9–11 PM". The AM/PM is said once
+  # when both ends share it: "6–8 PM", but "11 AM – 1 PM".
+  def windows(pairs)
+    pairs.map do |from, to|
+      same_half = from.strftime("%p") == to.strftime("%p")
+      start = same_half ? clock(from).sub(/ (AM|PM)\z/, "") : clock(from)
+      "#{start}#{same_half ? "–" : " – "}#{clock(to)}"
+    end.join(", ")
   end
 
   # 90 → "1h 30m", 60 → "1h", 45 → "45m".
