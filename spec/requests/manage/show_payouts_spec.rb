@@ -703,7 +703,7 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
 
       nobank = ShowPayoutLineItem.create!(show_payout: payout, payee: create(:person, name: "Nobank Nel"), amount: 30)
       post manage_add_to_run_money_show_payout_path(show)
-      batch = PayoutBatch.where(kind: "performer").order(:id).last
+      batch = PayoutBatch.current_open_draft(org)
       PayoutBatchService.fund!(batch, method: "ach")
       expect(batch.reload.status).to eq("partially_paid") # Nobank Nel is waiting
 

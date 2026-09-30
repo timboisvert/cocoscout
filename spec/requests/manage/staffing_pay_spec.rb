@@ -169,7 +169,7 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
     }.to change(PayoutBatch, :count).by(1)
 
     batch = PayoutBatch.last
-    expect(batch.kind).to eq("staff_pay")
+    expect(batch.kind).to eq("payout")
     expect(batch.open?).to be(true) # still a draft — funded later from the runs page
     expect(batch.total_cents).to eq(9000) # 4 * $20 + $10 bonus
     expect(org.payout_balance_cents_for(person)).to eq(9000) # earned, awaiting payout

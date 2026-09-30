@@ -72,4 +72,31 @@ RSpec.describe "Manage::CoursePayoutRuns", type: :request do
     expect(line.reload.paid?).to be(true)
     expect(payout.reload.status).to eq("paid")
   end
+  # One place per org: a free org uses this page (course money only); a Pro
+  # org has the one run in Money and is sent there.
+  describe "by plan" do
+    it "shows a free org only its course money, even when other lines share the run" do
+      batch = build_run
+      staffer = create(:person, name: "Staff Sal", stripe_account_id: "acct_sal", payouts_enabled: true)
+      staff_item = batch.items.create!(payee: staffer, amount_cents: 10_000)
+      StaffPayRunService.add_contribution!(batch, staff_item, staffer, label: "Worked hours (5h)", amount_cents: 10_000)
+
+      get manage_course_payout_run_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(org.name)
+      expect(response.body).not_to include("Staff Sal")
+    end
+
+    it "sends a Pro org to the one payout run in Money" do
+      batch = build_run
+      allow_any_instance_of(Organization).to receive(:feature_available?).and_call_original
+      allow_any_instance_of(Organization).to receive(:feature_available?).with(:money).and_return(true)
+
+      get manage_course_payout_run_path
+      expect(response).to redirect_to(manage_payout_batch_path(batch))
+
+      post manage_course_payout_run_pay_path
+      expect(response).to redirect_to(manage_payout_batch_path(batch))
+    end
+  end
 end

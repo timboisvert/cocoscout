@@ -256,8 +256,7 @@ module Manage
     end
 
     def current_course_run
-      PayoutBatch.of_kind("performer").open_runs
-        .where(organization: Current.organization).order(:created_at).first
+      PayoutBatch.current_open_draft(Current.organization)
     end
   end
 end

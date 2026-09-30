@@ -86,7 +86,7 @@ RSpec.describe StaffPayRunService do
       }.to change(PayoutBatch, :count).by(1)
 
       batch = result.batch
-      expect(batch.kind).to eq("staff_pay")
+      expect(batch.kind).to eq("payout")
       expect(batch.open?).to be(true)
       expect(batch.items.map(&:payee)).to match_array([ ready.person, nobank.person ])
       expect(batch.total_cents).to eq(16_000)

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
-# One payee's line in a payout batch. When paid, it posts a negative `payout`
-# ledger entry that debits the payee's company-wide balance.
+# One payee's line in a payout batch — one Stripe transfer. When paid, it posts
+# a negative `payout` ledger entry per kind of money it carries (performer
+# and/or staffing, see #category_split) that debits the payee's company-wide
+# balance.
 class PayoutBatchItem < ApplicationRecord
   # "failed": the transfer never happened (Stripe refused it). "returned": the
   # money did leave, reached the payee's Stripe balance, and their bank rejected
@@ -45,16 +47,20 @@ class PayoutBatchItem < ApplicationRecord
       # Posting here would record a payout with no matching earning.
       next if payout_batch.kind == "course" || payee_type == "Organization"
 
-      PayoutLedgerEntry.post!(
-        organization: organization,
-        payee: payee,
-        entry_type: "payout",
-        amount_cents: -amount_cents,
-        source: self,
-        description: "Payout ##{payout_batch_id}",
-        occurred_at: paid_at || Time.current,
-        category: payout_batch.kind == "staff_pay" ? "staffing" : "performer"
-      )
+      category_split.each do |category, cents|
+        next if cents.zero?
+
+        PayoutLedgerEntry.post!(
+          organization: organization,
+          payee: payee,
+          entry_type: "payout",
+          amount_cents: -cents,
+          source: self,
+          description: "Payout ##{payout_batch_id}",
+          occurred_at: paid_at || Time.current,
+          category: category
+        )
+      end
     end
   end
 
@@ -101,25 +107,47 @@ class PayoutBatchItem < ApplicationRecord
       # so there's nothing to reverse.
       next if payout_batch.kind == "course" || payee_type == "Organization"
 
-      PayoutLedgerEntry.post!(
-        organization: organization,
-        payee: payee,
-        entry_type: "reversal",
-        amount_cents: amount_cents,
-        source: self,
-        description: "Payout returned by the bank",
-        category: payout_batch.kind == "staff_pay" ? "staffing" : "performer"
-      )
+      category_split.each do |category, cents|
+        next if cents.zero?
+
+        PayoutLedgerEntry.post!(
+          organization: organization,
+          payee: payee,
+          entry_type: "reversal",
+          amount_cents: cents,
+          source: self,
+          description: "Payout returned by the bank",
+          category: category
+        )
+      end
     end
   end
 
-  # Set a performer-run item to what the payee is actually net-owed: their net
-  # performer ledger balance (earnings minus advances/prior payouts, floored at
-  # 0) plus any advances being issued in THIS run (money paid ahead of earnings,
-  # not yet on the ledger). Destroys the item and returns nil when nothing is
-  # owed (e.g. an outstanding advance still exceeds their earnings). Only for
-  # performer-scoped runs; staff runs keep item = sum of contributions.
-  def settle_performer_amount!
+  # How this item's amount divides between the kinds of money it carries,
+  # summing to amount_cents: { "performer" => cents, "staffing" => cents }.
+  # Staff lines are paid exactly as entered, so they take their literal sum
+  # (never more than the whole transfer); performer money is the rest. An item
+  # with no staff lines — every item before the merge, and every legacy
+  # performer run — is all performer, exactly as it posted before.
+  def category_split
+    staffing = payout_contributions.payable.where(category: "staffing").sum(:amount_cents)
+    staffing = staffing.clamp(0, amount_cents.to_i)
+    { "performer" => amount_cents.to_i - staffing, "staffing" => staffing }
+  end
+
+  # Set the item to what the payee is actually owed on this run, per kind of
+  # money:
+  #   staffing  — the literal sum of their staff lines: the manager typed those
+  #               amounts, and advances (performer money) must never eat them;
+  #   performer — their net performer ledger balance (earnings minus advances
+  #               and prior payouts, floored at 0), capped at the performer
+  #               earnings actually on this run;
+  #   advances  — any advance being issued in THIS run (paid ahead of
+  #               earnings, not yet on the ledger).
+  # Destroys the item and returns nil when nothing is owed (e.g. an
+  # outstanding advance still exceeds their earnings and they have no staff
+  # pay here).
+  def settle_amount!
     # Never re-settle a paid item — the transfer already happened and its payout
     # ledger entry is history that must stand.
     return self if paid?
@@ -137,16 +165,21 @@ class PayoutBatchItem < ApplicationRecord
       return nil
     end
 
+    staffing_cents = payout_contributions.payable.where(category: "staffing").sum(:amount_cents)
+
     net_owed = [ organization.payout_balance_cents_for(payee, category: "performer"), 0 ].max
-    # Pay only for the earning lines actually in THIS run (show payouts + contract
-    # payments), capped at what's still net-owed so advances and prior payouts
-    # still reduce it. This is what makes "Remove from run" work: dropping a line
-    # lowers what the run pays, instead of always settling the payee's whole
-    # balance. (Removing the last line settles to 0 and drops the item.)
-    in_run_earnings = payout_contributions.payable.where.not(source_type: "PersonAdvance").sum(:amount_cents)
-    owed = [ net_owed, in_run_earnings ].min
+    # Pay only for the performer lines actually in THIS run (show payouts,
+    # contract and course money), capped at what's still net-owed so advances
+    # and prior payouts still reduce it. This is what makes "Remove from run"
+    # work: dropping a line lowers what the run pays, instead of always
+    # settling the payee's whole balance.
+    # IS DISTINCT FROM, not !=: a balance-payout line has no source, and a
+    # plain != would silently drop it (NULL != 'x' is not true).
+    in_run_earnings = payout_contributions.payable.where(category: "performer")
+                                          .where("source_type IS DISTINCT FROM ?", "PersonAdvance").sum(:amount_cents)
+    performer_owed = [ net_owed, in_run_earnings ].min
     pending_advance_cents = payout_contributions.where(source_type: "PersonAdvance").sum(:amount_cents)
-    total = owed + pending_advance_cents
+    total = staffing_cents + performer_owed + pending_advance_cents
 
     if total.positive?
       update!(amount_cents: total)

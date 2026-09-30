@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 namespace :payouts do
+  desc "Fold each org's open draft payout runs into one (one payout run for everything)"
+  task fold_open_drafts: :environment do
+    results = PayoutDraftFolder.fold_all!
+    results.each do |r|
+      puts "#{r.organization.name}: folded #{r.folded} draft run(s) into run ##{r.survivor.id} " \
+           "(#{r.survivor.items.count} payees, $#{format('%.2f', r.survivor.total_cents / 100.0)})"
+    end
+    puts "Done. #{results.size} organization(s) had more than one open draft."
+  end
+
   desc "Fold open course-kind draft runs into each org's performer run (one payout rail)"
   task fold_course_drafts: :environment do
     drafts = PayoutBatch.of_kind("course").open_runs.includes(payout_contributions: :source)

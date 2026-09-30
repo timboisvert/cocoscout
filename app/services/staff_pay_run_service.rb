@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
-# Adds staff pay to the organization's open "staff_pay" payout run — the same
-# accumulate-then-pay model as performer runs. The manager enters hours (and any
-# bonus / reimbursement / tips) per staff member; each visit appends to the one
-# open staffing run, which is funded and paid later from the payout-runs page (on
-# its own schedule, separate from performers).
+# Adds staff pay to the organization's one open payout run — the same run
+# performers, course money and contract payments ride. The manager enters
+# hours (and any bonus / reimbursement / tips) per staff member; each visit
+# appends to the open run, which is funded and paid later from the payout-runs
+# page. Staff lines are category "staffing": paid exactly as entered, never
+# netted against a performer's advances.
 #
 # One PayoutBatchItem per payee (their running total = one Stripe transfer), with
 # a PayoutContribution per component (worked hours, bonus, reimbursement, tips) —
@@ -60,7 +61,7 @@ class StaffPayRunService
     added = 0
 
     ActiveRecord::Base.transaction do
-      batch = PayoutBatch.open_for(organization, kind: "staff_pay", created_by: created_by)
+      batch = PayoutBatch.open_for(organization, created_by: created_by)
       batch.update!(payday: payday) if payday.present? && batch.payday.blank?
 
       lines.each do |line|
@@ -88,7 +89,9 @@ class StaffPayRunService
                             description: line[:notes], excluded_from_payout: part[:excluded],
                             worksheet: part[:worksheet], details: part[:details])
         end
-        item.update!(amount_cents: item.payout_contributions.payable.sum(:amount_cents))
+        # The same item may already carry this person's show pay — settle both
+        # kinds together (staff as entered, performer netted).
+        item.settle_amount!
 
         tie_time_entries!(organization, payee, line[:time_entry_ids], batch)
         added += 1
@@ -140,7 +143,7 @@ class StaffPayRunService
 
   def self.add_contribution!(batch, item, payee, label:, amount_cents:, description: nil, excluded_from_payout: false, worksheet: nil, details: nil)
     contribution = PayoutContribution.create!(
-      payout_batch: batch, payout_batch_item: item, payee: payee,
+      payout_batch: batch, payout_batch_item: item, payee: payee, category: "staffing",
       amount_cents: amount_cents, label: label, description: description,
       excluded_from_payout: excluded_from_payout, worksheet: worksheet.presence, details: details.presence
     )

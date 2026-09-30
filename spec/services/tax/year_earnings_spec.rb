@@ -11,10 +11,10 @@ RSpec.describe Tax::YearEarnings, type: :service do
   def paid_batch_item(cents:, paid_at:, reimbursement_cents: 0)
     batch = create(:payout_batch, organization: org, kind: "staff_pay", status: "completed", payday: paid_at.to_date)
     item = PayoutBatchItem.create!(payout_batch: batch, payee: person, amount_cents: cents, status: "pending")
-    PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: person,
+    PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: person, category: "staffing",
                                amount_cents: cents - reimbursement_cents, label: "Worked hours (5h)")
     if reimbursement_cents.positive?
-      PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: person,
+      PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: person, category: "staffing",
                                  amount_cents: reimbursement_cents, label: "Reimbursement")
     end
     item.update!(status: "paid", paid_at: paid_at)

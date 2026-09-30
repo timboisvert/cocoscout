@@ -10,7 +10,7 @@
     ],
     text: "Payout Runs",
     links: [
-      { text: "New payout run", icon: "banknotes", path: manage_new_payout_batch_path }
+      { text: "Add everyone owed", icon: "banknotes", path: manage_new_payout_batch_path }
     ]
   } %>
 
@@ -64,7 +64,7 @@
       <div>
         <div class="flex items-center justify-between gap-3 mb-3">
           <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Active runs</h2>
-          <%= link_to "New run", manage_new_payout_batch_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+          <%= link_to "Add everyone owed", manage_new_payout_batch_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
         </div>
 
         <% if @active_batches.any? %>

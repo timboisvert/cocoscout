@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
 module Manage
-  # The Courses-side window onto the org's ONE payout run (kind "performer" —
-  # performers, contractors, course money, and contract remittances all ride
-  # it; staff pay is the only separate run). Lives in Courses (a free module),
-  # not the Pro-only Money section — the run pages under money/ are Pro-gated.
+  # The Courses-side window onto the org's ONE payout run, for orgs WITHOUT
+  # Pro: Money (and its payout-run pages) is Pro-only, but courses are free, so
+  # a free org sees and pays its course money here — only the course lines.
+  # A Pro org never uses this page: it goes straight to the one run in Money,
+  # so nobody has to check two places.
   #
   # Paying from here only works when everything pending is held money (course
   # sales, collected contract payments) — no bank debit. A run that also
   # carries bank-funded payouts (show pay, contractor payments) must be funded
   # from the Money page instead.
   class CoursePayoutRunsController < Manage::ManageController
+    before_action :send_pro_orgs_to_the_one_run
     before_action :require_org_manager, only: :pay
 
     def show
@@ -19,7 +21,9 @@ module Manage
       ContractPaymentCollection.remit_pending!(Current.organization)
 
       @run = current_run || recent_run
-      @items = @run ? @run.items.includes(:payee, :payout_contributions).order(:created_at).to_a : []
+      # Course money only (and any other money held for the org): staff pay and
+      # show payouts are Pro, and never shown on this free page.
+      @items = @run ? @run.items.includes(:payee, :payout_contributions).order(:created_at).to_a.select { |i| held_item?(i) } : []
       @held_cents = @run&.open? ? @run.held_cents(@items) : 0
       pending_cents = @items.sum { |i| i.status == "pending" ? i.amount_cents : 0 }
       @bank_funded_cents = [ pending_cents - @held_cents, 0 ].max
@@ -57,18 +61,30 @@ module Manage
 
     private
 
-    # The one open run everything joins. Falls back to legacy open course-kind
-    # drafts only through recent_run (they no longer accept new money).
+    # The one open run everything joins. Legacy course-kind drafts only show
+    # through recent_run (they no longer accept new money).
     def current_run
-      PayoutBatch.of_kind("performer").open_runs
-        .where(organization: Current.organization).order(:created_at).first
+      PayoutBatch.current_open_draft(Current.organization)
     end
 
     # Something to show when nothing is open: the most recent run that carried
-    # course-style money — a performer run or a legacy course run.
+    # course-style money.
     def recent_run
-      PayoutBatch.of_kind(%w[performer course])
+      PayoutBatch.of_kind(%w[payout performer course])
         .where(organization: Current.organization).recent.first
+    end
+
+    def held_item?(item)
+      item.payout_contributions.any?(&:held_funds?)
+    end
+
+    # Pro orgs have the one payout run in Money; this page is only for orgs
+    # without it.
+    def send_pro_orgs_to_the_one_run
+      return unless Current.organization&.feature_available?(:money)
+
+      run = current_run
+      redirect_to(run ? manage_payout_batch_path(run) : manage_payout_batches_path)
     end
 
     def require_org_manager

@@ -34,15 +34,14 @@ RSpec.describe "Payout net-balance and advances" do
   # ledger via `earn`). An item now pays min(net balance, in-run earnings), so the
   # run must actually carry the earning as a contribution. Returns the item or nil.
   def settle_run(earning_cents)
-    batch = PayoutBatch.open_for(org, kind: "performer")
+    batch = PayoutBatch.open_for(org)
     item = batch.items.create!(payee: person, amount_cents: 1, status: "pending")
     if earning_cents.positive?
-      # A real performer earning contribution carries a source (a ShowPayoutLineItem);
-      # the in-run-earnings query excludes NULL source_type, so give it a source.
+      # A real performer earning contribution carries a source (a ShowPayoutLineItem).
       item.payout_contributions.create!(payout_batch: batch, payee: person, label: "Show pay",
                                         amount_cents: earning_cents, source: create(:show, production: production))
     end
-    item.settle_performer_amount!
+    item.settle_amount!
   end
 
   it "pays an advance ALONGSIDE earnings in the same run, leaving the advance owed" do
@@ -52,7 +51,7 @@ RSpec.describe "Payout net-balance and advances" do
     # The $200 show pay rides the same run as a contribution (real flow).
     item.payout_contributions.create!(payout_batch: result.batch, payee: person, label: "Show pay",
                                       amount_cents: 20_000, source: create(:show, production: production))
-    item.settle_performer_amount!
+    item.settle_amount!
     expect(item.amount_cents).to eq(30_000) # gets paid $200 owed + $100 advance
 
     pay!(result.batch)

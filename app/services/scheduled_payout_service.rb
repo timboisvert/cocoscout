@@ -11,6 +11,9 @@ class ScheduledPayoutService
   def self.run_due!(organization, on: Date.current)
     return Result.new(ran: false, reason: :not_due) unless organization.due_for_scheduled_payout?(on: on)
 
+    # Tops up the org's one open run (see build_for) and funds it — which pays
+    # everything already staged on that run too, not just the balances this
+    # sweep added. The feature is dormant; mind that if it's ever re-enabled.
     batch = PayoutBatchService.build_for(organization: organization, created_by: nil, trigger: "scheduled")
 
     if batch.items.empty?

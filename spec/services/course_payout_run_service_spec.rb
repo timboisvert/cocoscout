@@ -32,7 +32,7 @@ RSpec.describe CoursePayoutRunService do
 
     result = described_class.add_to_run!(payout)
 
-    expect(result.batch.kind).to eq("performer")
+    expect(result.batch.kind).to eq("payout")
     expect(result.added).to eq(2)
     expect(result.batch.items.find_by(payee: instructor).amount_cents).to eq(1000)
     expect(result.batch.items.find_by(payee: org).amount_cents).to eq(2800) # 3800 - 1000

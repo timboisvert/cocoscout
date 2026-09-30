@@ -1,4 +1,4 @@
-<% content_for :title, "New Payout Run" %>
+<% content_for :title, "Add Everyone Owed" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -8,17 +8,17 @@
       ["Money", manage_money_index_path],
       ["Payout Runs", manage_payout_batches_path]
     ],
-    text: "New Payout Run",
+    text: "Add everyone owed",
     links: []
   } %>
 
   <div class="max-w-3xl">
-    <%# These are separate payments — a new run never pulls from your other runs. %>
+    <%# There's one payout run: this adds the balances not on it yet. %>
     <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-6 flex items-start gap-2.5">
       <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       <p class="text-sm text-gray-600">
-        This is a <strong class="text-gray-900">new, separate</strong> payment run for balances that aren't already queued elsewhere.
-        Starting it doesn't touch or pull money out of your other runs — anything already sitting in an open run is left out of the amounts below.
+        These are balances owed that aren't on your payout run yet. Adding them puts them on the run beside everything
+        already there — nothing is paid until you review the run and fund it.
       </p>
     </div>
 
@@ -62,26 +62,9 @@
         </div>
       </div>
 
-      <%= form_with url: manage_create_payout_batch_path, method: :post, class: "bg-white border border-gray-200 rounded-lg p-5 mb-6" do %>
-        <h3 class="font-semibold text-gray-900 mb-1">How do you want to fund it?</h3>
-        <p class="text-sm text-gray-500 mb-4">We debit your organization for the total, then deposit each payee's share to their bank.</p>
-        <div class="space-y-2 mb-5">
-          <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500">
-            <%= radio_button_tag "funding_method", "ach", true, class: "mt-1 h-4 w-4 accent-pink-500" %>
-            <span>
-              <span class="block text-sm font-semibold text-gray-900">Bank debit (ACH)</span>
-              <span class="block text-xs text-gray-500">Lowest cost. Funds settle in a few business days, then payouts go out.</span>
-            </span>
-          </label>
-          <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500">
-            <%= radio_button_tag "funding_method", "card", false, class: "mt-1 h-4 w-4 accent-pink-500" %>
-            <span>
-              <span class="block text-sm font-semibold text-gray-900">Card (instant)</span>
-              <span class="block text-xs text-gray-500">Pay now — a card processing fee applies.</span>
-            </span>
-          </label>
-        </div>
-        <%= render "shared/button", text: "Run payout — #{number_to_currency(@ready_total_cents / 100.0)}", variant: "primary", size: "medium", type: :submit %>
+      <%= form_with url: manage_create_payout_batch_path, method: :post, class: "bg-white border border-gray-200 rounded-lg p-5 mb-6 flex flex-wrap items-center justify-between gap-3" do %>
+        <p class="text-sm text-gray-600">You'll review the whole run and choose how to fund it before anything is paid.</p>
+        <%= render "shared/button", text: "Add to payout run — #{number_to_currency(@ready_total_cents / 100.0)}", variant: "primary", size: "medium", type: :submit %>
       <% end %>
     <% else %>
       <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center mb-6">

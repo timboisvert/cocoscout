@@ -12,13 +12,17 @@
 #   payout    → negative  (money actually sent / recorded as paid)
 #   adjustment/reversal → signed as needed
 #
-# Idempotency: `post!` upserts on (source, entry_type), so re-posting the same
-# source (e.g. a payout line item on every recalculation) never double-counts.
+# Idempotency: `post!` upserts on (source, entry_type, category), so re-posting
+# the same source (e.g. a payout line item on every recalculation) never
+# double-counts. The category is part of the key because one payout item paying
+# someone for both staff work and performing posts one payout entry per
+# category (see PayoutBatchItem#category_split).
 class PayoutLedgerEntry < ApplicationRecord
   ENTRY_TYPES = %w[earning advance payout adjustment reversal].freeze
-  # Which run scope an entry belongs to, so a run pays a payee's net owed *within
-  # its scope*: "performer" (shows, contractors, advances — they share the
-  # performer run) or "staffing" (staff pay, its own run/schedule).
+  # Which kind of money an entry is: "performer" (shows, contractors, course
+  # and contract money, advances — netted against each other) or "staffing"
+  # (staff pay — paid as entered, never netted against advances). Both ride
+  # the one payout run; the category keeps their balances apart.
   CATEGORIES = %w[performer staffing].freeze
 
   belongs_to :organization
@@ -57,7 +61,8 @@ class PayoutLedgerEntry < ApplicationRecord
       entry = find_or_initialize_by(
         source_type: source.class.polymorphic_name,
         source_id: source.id,
-        entry_type: entry_type
+        entry_type: entry_type,
+        category: category
       )
       entry.assign_attributes(attrs)
       entry.save!

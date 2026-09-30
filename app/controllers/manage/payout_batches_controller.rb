@@ -60,22 +60,24 @@ module Manage
       load_preview
     end
 
+    # "Add everyone owed": stage every balance not on a run yet onto the one
+    # open payout run, then show the run to review. Nothing is funded here —
+    # money only moves when the manager funds the run.
     def create
+      before_cents = PayoutBatch.current_open_draft(organization)&.total_cents.to_i
       batch = PayoutBatchService.build_for(organization: organization, created_by: Current.user)
+      added_cents = batch.reload.total_cents.to_i - before_cents
 
       if batch.items.empty?
         batch.destroy
-        redirect_to manage_new_payout_batch_path, alert: "No one has a connected bank and a positive balance to pay right now." and return
+        redirect_to manage_new_payout_batch_path, alert: "No one has a connected bank and a balance owed that isn't already on your payout run." and return
+      end
+      if added_cents <= 0
+        redirect_to manage_payout_batch_path(batch), notice: "Everyone owed is already on your payout run." and return
       end
 
-      method = params[:funding_method].presence_in(PayoutBatchService::FUNDING_METHODS) || "ach"
-      PayoutBatchService.fund!(batch, method: method)
-
       redirect_to manage_payout_batch_path(batch),
-                  notice: "Payout run started — #{helpers.number_to_currency(batch.total_cents / 100.0)} to #{batch.items.size} #{'person'.pluralize(batch.items.size)}."
-    rescue PayoutBatchService::Error => e
-      redirect_to manage_new_payout_batch_path,
-                  alert: "Couldn't start the payout: #{e.message}. Make sure your organization has a payment method set up to fund payouts."
+                  notice: "Added #{helpers.number_to_currency(added_cents / 100.0)} to your payout run. Review it, then fund it to pay everyone."
     end
 
     def show
@@ -87,6 +89,23 @@ module Manage
       @breakdown = @batch.money_by_item_state(@items)
       @state_filter = params[:state].to_s.to_sym.presence_in(PayoutBatch::ITEM_STATES)
       @visible_items = @state_filter ? @items.select { |i| PayoutBatch.item_state(i) == @state_filter } : @items
+
+      # What's in the run, by kind of money (staff pay, show payouts, course
+      # money, contract payments, advances, balance payouts): the lines' own
+      # amounts, and the payees carrying each. Filterable like the states.
+      @money_kinds = Hash.new { |h, k| h[k] = { cents: 0, payees: Set.new } }
+      @items.each do |item|
+        item.payout_contributions.each do |c|
+          next if c.excluded_from_payout?
+
+          @money_kinds[c.money_kind][:cents] += c.amount_cents
+          @money_kinds[c.money_kind][:payees] << item.id
+        end
+      end
+      @kind_filter = params[:type].to_s.to_sym.presence_in(PayoutContribution::MONEY_KINDS.keys)
+      if @kind_filter
+        @visible_items = @visible_items.select { |i| i.payout_contributions.any? { |c| c.money_kind == @kind_filter } }
+      end
 
       # Payees who can't be paid yet (no connected bank): in an open run they're
       # a pre-funding warning; in a funded, partially-paid run they're who the

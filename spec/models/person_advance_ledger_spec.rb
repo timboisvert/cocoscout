@@ -46,7 +46,7 @@ RSpec.describe "Advance via payout run (ledger)" do
   it "puts the advance on the open performer run as a contribution" do
     result = issue(4000)
     item = result.batch.items.find_by(payee: person)
-    expect(result.batch.kind).to eq("performer")
+    expect(result.batch.kind).to eq("payout")
     expect(item.amount_cents).to eq(4000)
     expect(item.payout_contributions.first.source).to eq(result.advance)
     expect(result.advance.in_payout_run?).to be(true)

@@ -31,7 +31,7 @@ class CoursePayoutRunService
       batch = nil
 
       ActiveRecord::Base.transaction do
-        batch = PayoutBatch.open_for(organization, kind: "performer", created_by: added_by)
+        batch = PayoutBatch.open_for(organization, created_by: added_by)
 
         # CoursePayoutSettlement decides the final amounts (incl. the contract
         # rule that instructor pay comes out of the contractor's share), so the
@@ -65,7 +65,7 @@ class CoursePayoutRunService
 
         existing.update!(amount_cents: cents, label: label)
         post_earning!(existing)
-        existing.payout_batch_item&.settle_performer_amount!
+        existing.payout_batch_item&.settle_amount!
         return :added
       end
 
@@ -76,7 +76,7 @@ class CoursePayoutRunService
         source: source, amount_cents: cents, label: label, description: payee.try(:name)
       )
       post_earning!(contribution)
-      item.settle_performer_amount!
+      item.settle_amount!
       :added
     end
 

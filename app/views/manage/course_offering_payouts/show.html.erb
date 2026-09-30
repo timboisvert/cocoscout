@@ -261,8 +261,8 @@
                 <%= icon("check-circle", class: "w-5 h-5") %>
                 In the payout run
               </span>
-              <p class="text-xs text-gray-500 mt-1 mb-3">Pay everyone at once from the course payout run.</p>
-              <%= link_to manage_course_payout_run_path do %>
+              <p class="text-xs text-gray-500 mt-1 mb-3">Pay everyone at once from the payout run.</p>
+              <%= link_to payout_run_home_path do %>
                 <%= render "shared/button", text: "Go to payout run", variant: "primary", size: "small" %>
               <% end %>
             </div>

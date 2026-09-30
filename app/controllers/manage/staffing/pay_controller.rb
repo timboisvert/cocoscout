@@ -88,7 +88,7 @@ module Manage
 
         PayDraft.clear(Current.organization)
         redirect_to manage_payout_batch_path(result.batch),
-                    notice: "Added #{helpers.pluralize(result.added, 'person')} to your staff payout run. Fund and pay it when you're ready."
+                    notice: "Added #{helpers.pluralize(result.added, 'payee')} to your payout run. Fund and pay it when you're ready."
       end
 
       private

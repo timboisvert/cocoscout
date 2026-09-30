@@ -12,7 +12,8 @@
                   end
   in_flight = %w[funding funded processing].include?(@batch.status)
   remaining_cents = @batch.total_cents - @breakdown[:paid][:cents]
-  state_path = ->(state) { state ? manage_payout_batch_path(@batch, state: state) : manage_payout_batch_path(@batch) }
+  state_path = ->(state) { manage_payout_batch_path(@batch, state: state, type: @kind_filter) }
+  kind_path = ->(kind) { manage_payout_batch_path(@batch, state: @state_filter, type: kind) }
 %>
 
 <div class="w-full mb-10">
@@ -316,8 +317,29 @@
       </div>
     </aside>
 
-    <%# ---- Main: the payments, filterable by state. ---- %>
+    <%# ---- Main: the payments, filterable by state and by kind of money. ---- %>
     <div class="lg:col-span-2 lg:order-1">
+      <%# What's in this run — one run carries every kind of money now. %>
+      <% kinds = PayoutContribution::MONEY_KINDS.keys.select { |k| @money_kinds.key?(k) && @money_kinds[k][:cents].nonzero? } %>
+      <% if kinds.any? %>
+        <div class="mb-4">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">What's in this run</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <% kinds.each do |kind| %>
+              <% data = @money_kinds[kind] %>
+              <%= link_to kind_path.call(@kind_filter == kind ? nil : kind),
+                    class: "block rounded-lg border px-3 py-2 transition-colors #{@kind_filter == kind ? "border-pink-400 bg-pink-50" : "border-pink-200 bg-pink-50/50 hover:border-pink-300"}" do %>
+                <div class="text-xs text-gray-600"><%= PayoutContribution::MONEY_KINDS[kind] %></div>
+                <div class="text-base font-semibold text-gray-900 tabular-nums"><%= number_to_currency(data[:cents] / 100.0) %></div>
+                <div class="text-[11px] text-gray-500"><%= pluralize(data[:payees].size, "payee") %></div>
+              <% end %>
+            <% end %>
+          </div>
+          <% if kinds.include?(:advance) && kinds.include?(:staff) %>
+            <p class="mt-1.5 text-[11px] text-gray-400">An outstanding advance comes out of someone's performer money, never their staff pay.</p>
+          <% end %>
+        </div>
+      <% end %>
       <%
         filter_defs = [ [ nil, "All", @items.size ] ] +
                       PayoutBatch::ITEM_STATES.filter_map { |s|
@@ -327,17 +349,20 @@
                         [ s, label, n ]
                       }
       %>
-      <% if filter_defs.size > 2 %>
-        <%= render "shared/filters/filter_bar",
-              bare: true,
-              filter_groups: [
-                {
-                  label: "Show",
-                  filters: filter_defs.map { |state, label, n|
-                    { text: "#{label} (#{n})", path: state_path.call(state), active: @state_filter == state }
-                  }
-                }
-              ] %>
+      <%
+        groups = []
+        if filter_defs.size > 2
+          groups << { label: "Show", filters: filter_defs.map { |state, label, n|
+            { text: "#{label} (#{n})", path: state_path.call(state), active: @state_filter == state } } }
+        end
+        if kinds.size > 1
+          groups << { separator: true } if groups.any?
+          groups << { label: "Type", filters: [ { text: "All", path: kind_path.call(nil), active: @kind_filter.nil? } ] +
+            kinds.map { |k| { text: PayoutContribution::MONEY_KINDS[k], path: kind_path.call(k), active: @kind_filter == k } } }
+        end
+      %>
+      <% if groups.any? %>
+        <%= render "shared/filters/filter_bar", bare: true, filter_groups: groups %>
       <% end %>
 
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">

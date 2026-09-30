@@ -205,7 +205,7 @@ RSpec.describe PayoutBatchService do
         line
       end
 
-      batch = PayoutBatch.where(kind: "performer").order(:id).last
+      batch = PayoutBatch.current_open_draft(org)
       PayoutBatchService.process!(batch)
 
       # Both lines share the one transfer's reference — no unique-index blowup.
@@ -215,20 +215,34 @@ RSpec.describe PayoutBatchService do
       end
     end
 
-    it "marks a performer a billable active performer for the payout's month when a performer run pays them" do
+    it "marks a performer a billable active performer for the payout's month when a run pays them performer money" do
       allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_p"))
 
-      batch = org.payout_batches.create!(kind: "performer", status: "draft", trigger: "manual")
-      batch.items.create!(payee: ready, amount_cents: 5000, status: "pending")
+      batch = org.payout_batches.create!(kind: "payout", status: "draft", trigger: "manual")
+      item = batch.items.create!(payee: ready, amount_cents: 5000, status: "pending")
+      batch.payout_contributions.create!(payout_batch_item: item, payee: ready, amount_cents: 5000, label: "Show pay")
 
       expect { PayoutBatchService.process!(batch) }
         .to change { PerformerActivation.for_month(Date.current).where(person: ready).count }.by(1)
     end
 
-    it "does not create performer activations for a non-performer (balance) run" do
+    # One rule (Tim): paid performer money that month, charged — the old
+    # balance-sweep exemption was an accident of the run's kind.
+    it "charges for performer money paid as a balance payout too" do
       allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_b"))
 
-      batch = PayoutBatchService.build_for(organization: org) # kind: balance
+      batch = PayoutBatchService.build_for(organization: org)
+      expect { PayoutBatchService.process!(batch) }.to change(PerformerActivation, :count).by(1)
+    end
+
+    it "doesn't charge for someone paid only staff pay" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_s"))
+
+      batch = org.payout_batches.create!(kind: "payout", status: "draft", trigger: "manual")
+      item = batch.items.create!(payee: ready, amount_cents: 5000, status: "pending")
+      batch.payout_contributions.create!(payout_batch_item: item, payee: ready, amount_cents: 5000,
+                                         label: "Worked hours (5h)", category: "staffing")
+
       expect { PayoutBatchService.process!(batch) }.not_to change(PerformerActivation, :count)
     end
   end

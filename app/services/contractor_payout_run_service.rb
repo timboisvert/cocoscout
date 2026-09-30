@@ -38,7 +38,7 @@ class ContractorPayoutRunService
       batch = nil
       ActiveRecord::Base.transaction do
         organization = contractor.organization
-        batch = PayoutBatch.open_for(organization, kind: "performer", created_by: added_by)
+        batch = PayoutBatch.open_for(organization, created_by: added_by)
 
         item = batch.items.find_by(payee: payee) ||
                batch.items.create!(payee: payee, amount_cents: cents, status: "pending")
@@ -60,7 +60,7 @@ class ContractorPayoutRunService
         # A full wash (deductions ate the whole share) may have removed the
         # contribution — and its item along with it — inside the netting.
         if PayoutBatchItem.exists?(item.id)
-          item.reload.settle_performer_amount!
+          item.reload.settle_amount!
         end
         batch.recalculate_total!
       end
@@ -80,7 +80,7 @@ class ContractorPayoutRunService
     # - Deductions >= the share (a full wash): nothing rides the run at all.
     #   The share's contribution is reversed and BOTH sides settle explicitly —
     #   the outgoing share paid "by offset", the services paid by deduction —
-    #   because leaving a zero-sum item would let settle_performer_amount!
+    #   because leaving a zero-sum item would let settle_amount!
     #   destroy the trail while the outgoing payment stayed pending and
     #   re-addable, silently costing the org the service fee.
     def apply_service_deductions!(batch, item, outgoing_payment, share_contribution, payee, organization)

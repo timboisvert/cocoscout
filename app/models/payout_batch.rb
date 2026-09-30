@@ -24,11 +24,25 @@ class PayoutBatch < ApplicationRecord
   scope :open_runs, -> { where(status: "draft") }
   scope :of_kind, ->(kind) { where(kind: kind) }
 
-  # The org's single open run of a given kind — created on first use. This is
-  # what "add to payout run" appends to.
-  def self.open_for(organization, kind:, created_by: nil)
-    organization.payout_batches.of_kind(kind).open_runs.order(:created_at).first ||
-      organization.payout_batches.create!(kind: kind, status: "draft", trigger: "manual", created_by: created_by)
+  # Every kind a still-open draft can be. Anything that was open before the
+  # runs merged (performer, staff_pay, the old balance sweep) keeps accepting
+  # money as the org's one open run; only a legacy course run doesn't.
+  OPEN_KINDS = %w[payout performer staff_pay balance].freeze
+
+  # The org's ONE open payout run — created on first use. Everything "add to
+  # payout run" appends here: staff pay, show payouts, course money, contract
+  # payments, advances, balance payouts.
+  def self.open_for(organization, created_by: nil, trigger: "manual")
+    current_open_draft(organization) ||
+      organization.payout_batches.create!(kind: "payout", status: "draft", trigger: trigger, created_by: created_by)
+  rescue ActiveRecord::RecordNotUnique
+    # Two requests raced to open the run; the unique index let one win.
+    current_open_draft(organization) || raise
+  end
+
+  # The open run, if there is one — never creates. For pages that only look.
+  def self.current_open_draft(organization)
+    organization.payout_batches.where(kind: OPEN_KINDS).open_runs.order(:created_at).first
   end
 
   def open?
@@ -83,6 +97,7 @@ class PayoutBatch < ApplicationRecord
 
   def kind_label
     case kind
+    when "payout" then "Payouts"
     when "performer" then "Performer payouts"
     when "staff_pay" then "Staffing"
     when "course" then "Course payouts"

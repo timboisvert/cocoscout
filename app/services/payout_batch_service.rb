@@ -17,29 +17,56 @@ class PayoutBatchService
   # offsetting payout, so a balance sweep must NOT grab it again.
   UNSETTLED_BATCH_STATUSES = %w[draft funding funded processing partially_paid].freeze
 
-  # Create a draft batch with one item per eligible payee. The amount is the
-  # payee's ledger balance MINUS anything already committed to another open/
-  # in-flight run — so this balance sweep never double-pays money that's already
-  # sitting in an open staff_pay/performer draft. Returns the batch (no items if
-  # nobody has an un-committed positive balance).
+  # "Everyone owed": top up the org's ONE open run with each payee's balance
+  # that isn't on a run yet, per kind of money. For every payee and category
+  # the available amount is their ledger balance MINUS what another open or
+  # in-flight run already holds MINUS what this run already carries — so the
+  # sweep never double-pays money that's already staged. Each positive amount
+  # becomes a "Balance payout" line of that category on the payee's item.
+  # Nothing is funded here: the manager reviews the run and funds it.
+  # Returns the open run (possibly with nothing new on it).
   def self.build_for(organization:, created_by: nil, trigger: "manual")
-    batch = PayoutBatch.create!(organization: organization, created_by: created_by, trigger: trigger, status: "draft")
-    committed = committed_by_payee(organization, except_batch: batch)
+    batch = PayoutBatch.open_for(organization, created_by: created_by, trigger: trigger)
+    elsewhere = committed_by_payee_and_category(organization, except_batch: batch)
+    here = committed_by_payee_and_category(organization, only_batch: batch)
 
-    organization.payout_balances_by_payee.each do |(payee_type, payee_id), cents|
-      next unless PAYABLE_TYPES.include?(payee_type)
+    ActiveRecord::Base.transaction do
+      organization.payout_ledger_entries
+                  .group(:payee_type, :payee_id, :category).sum(:amount_cents)
+                  .each do |(payee_type, payee_id, category), cents|
+        next unless PAYABLE_TYPES.include?(payee_type)
 
-      available = cents - committed[[ payee_type, payee_id ]].to_i
-      next unless available.positive?
+        key = [ payee_type, payee_id, category ]
+        available = cents - elsewhere[key].to_i - here[key].to_i
+        next unless available.positive?
 
-      payee = payee_type.constantize.find_by(id: payee_id)
-      next unless payee&.can_receive_payouts?
+        payee = payee_type.constantize.find_by(id: payee_id)
+        next unless payee&.can_receive_payouts?
 
-      batch.items.create!(payee: payee, amount_cents: available)
+        item = batch.items.find_by(payee: payee) || batch.items.create!(payee: payee, amount_cents: available)
+        batch.payout_contributions.create!(payout_batch_item: item, payee: payee, amount_cents: available,
+                                           category: category, label: "Balance payout")
+        item.settle_amount!
+      end
+      batch.recalculate_total!
     end
-
-    batch.recalculate_total!
     batch
+  end
+
+  # Cents each payee's pending items hold, per kind of money, across runs that
+  # still hold money (open drafts and runs in flight):
+  # { [payee_type, payee_id, category] => cents }. Uses each item's
+  # category_split, so it's what the item will actually debit per ledger.
+  def self.committed_by_payee_and_category(organization, except_batch: nil, only_batch: nil)
+    scope = PayoutBatchItem
+      .joins(:payout_batch)
+      .where(payout_batches: { organization_id: organization.id, status: UNSETTLED_BATCH_STATUSES })
+      .where(status: "pending")
+    scope = scope.where.not(payout_batch_id: except_batch.id) if except_batch&.persisted?
+    scope = scope.where(payout_batch_id: only_batch.id) if only_batch
+    scope.includes(:payout_contributions).each_with_object(Hash.new(0)) do |item, out|
+      item.category_split.each { |category, cents| out[[ item.payee_type, item.payee_id, category ]] += cents }
+    end
   end
 
   # Cents each payee already has staged in an open/in-flight run (pending items
@@ -59,15 +86,16 @@ class PayoutBatchService
   # then destroys the batch — cascading to its items, contributions, and the
   # earning ledger entries those posted. Draft-only: never touch money in flight.
   #
-  # For a staff run, everything hand-entered (tips + their per-day worksheets,
-  # bonuses, reimbursements, ad-hoc hours, included time entries) is first
-  # written back into the org's shared Pay People draft — a tips number read
-  # off the bar's POS exists nowhere else, so a discard must never eat it.
+  # Any staff pay on it — everything hand-entered (tips + their per-day
+  # worksheets, bonuses, reimbursements, ad-hoc hours, included time entries)
+  # — is first written back into the org's shared Pay People draft: a tips
+  # number read off the bar's POS exists nowhere else, so a discard must never
+  # eat it. Performer lines simply come off and can be added again.
   def self.discard!(batch)
     raise Error, "Only a draft run can be discarded." unless batch.status == "draft"
 
     ActiveRecord::Base.transaction do
-      rebuild_staff_pay_draft!(batch) if batch.kind == "staff_pay"
+      rebuild_staff_pay_draft!(batch)
       batch.staff_time_entries.update_all(paid_at: nil, updated_at: Time.current)
       batch.destroy!
     end
@@ -75,9 +103,11 @@ class PayoutBatchService
   end
 
   # Reconstruct the Pay People draft blob (the same shape the grid's autosave
-  # writes — see pay_draft_controller.js #serialize) from a draft staff run's
-  # items and contributions, and store it as the org's shared draft. Multiple
-  # add-to-run visits merge: amounts sum, worksheets and ad-hoc lines concatenate.
+  # writes — see pay_draft_controller.js #serialize) from a draft run's staff
+  # lines, and store it as the org's shared draft. Multiple add-to-run visits
+  # merge: amounts sum, worksheets and ad-hoc lines concatenate. Only
+  # "staffing" lines count — a performer line that happens to be labeled
+  # "Bonus" is not staff pay. No staff lines, nothing written.
   def self.rebuild_staff_pay_draft!(batch)
     org = batch.organization
     members_by_person = org.organization_staff_members.index_by(&:person_id)
@@ -95,7 +125,7 @@ class PayoutBatchService
 
       line = Hash.new { |h, k| h[k] = 0 }
       arrays = Hash.new { |h, k| h[k] = [] }
-      item.payout_contributions.each do |c|
+      item.payout_contributions.select { |c| c.category == "staffing" }.each do |c|
         case c.label
         when /\AWorked hours/
           arrays["adhoc"].concat(Array(c.details&.dig("adhoc")))
@@ -409,19 +439,18 @@ class PayoutBatchService
 
   # Mark a paid performer a billable "active performer" for the payout's month —
   # this is the month Stripe bills us the active-account fee, so our $3 charge
-  # lands in the same month. Only performer runs paying an individual Person;
-  # staff are billed separately (StaffActivation, on scheduling). Best-effort:
-  # a billing hiccup must never fail an already-completed payout.
+  # lands in the same month. One rule: a Person paid performer money that
+  # month is charged, whichever button put the line on the run (show payouts,
+  # advances, a balance payout). Staff pay, contract payments and course money
+  # don't count — staff are billed separately (StaffActivation, on
+  # scheduling). Best-effort: a billing hiccup must never fail an
+  # already-completed payout.
   def self.record_performer_activation!(batch, item)
-    return unless batch.kind == "performer" && item.payee.is_a?(Person)
+    return if batch.kind == "course" || !item.payee.is_a?(Person)
 
-    # Don't count a person paid *only* as a contractor or course instructor
-    # (contract payments and course money ride the performer run too) toward the
-    # $3/active-performer charge — that's for performing. A person with any
-    # show-payout contribution still counts.
-    contributions = item.payout_contributions.to_a
     non_performing = PayoutContribution::HELD_SOURCE_TYPES + %w[ContractPayment]
-    return if contributions.any? && contributions.all? { |c| non_performing.include?(c.source_type) }
+    performing = item.payout_contributions.any? { |c| c.category == "performer" && !non_performing.include?(c.source_type) }
+    return unless performing
 
     PerformerActivation.record!(
       organization: batch.organization, person: item.payee, month: item.paid_at || Time.current

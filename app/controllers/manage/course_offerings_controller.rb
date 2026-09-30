@@ -29,8 +29,7 @@ module Manage
 
       # Held money (course sales, collected contract payments) still to send on
       # the org's open payout run — surfaced so it's one click from the hub.
-      run = PayoutBatch.of_kind("performer").open_runs
-        .where(organization: Current.organization).order(:created_at).first
+      run = PayoutBatch.current_open_draft(Current.organization)
       @course_run_pending_cents = run ? run.held_cents : 0
     end
 

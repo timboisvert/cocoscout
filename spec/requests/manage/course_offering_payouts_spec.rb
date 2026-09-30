@@ -35,9 +35,9 @@ RSpec.describe "Manage::CourseOfferingPayouts", type: :request do
 
     expect {
       post manage_course_offering_payout_add_to_run_path(offering)
-    }.to change { PayoutBatch.of_kind("performer").count }.by(1)
+    }.to change { PayoutBatch.of_kind("payout").count }.by(1)
 
-    run = PayoutBatch.of_kind("performer").last
+    run = PayoutBatch.of_kind("payout").last
     expect(run.items.find_by(payee: org)).to be_present
     expect(response).to redirect_to(manage_course_offering_payout_path(offering))
   end

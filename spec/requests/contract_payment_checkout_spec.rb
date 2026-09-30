@@ -125,7 +125,7 @@ RSpec.describe "Contract payment checkout", type: :request do
       # $250 collected less $10 in processing fees.
       expect(contribution.amount_cents).to eq(24_000)
       # One payout rail: the remittance rides the performer run as held funds.
-      expect(contribution.payout_batch.kind).to eq("performer")
+      expect(contribution.payout_batch.kind).to eq("payout")
       expect(contribution.held_funds?).to be(true)
     end
 

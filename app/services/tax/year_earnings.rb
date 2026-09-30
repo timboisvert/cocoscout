@@ -123,10 +123,13 @@ module Tax
     # Sum the payable contributions on a paid batch item, split into
     # reimbursement (not on 1099) and everything else. Excluded contributions
     # (cash tips) are already ignored.
+    # Only the item's staff lines: since the runs merged, one item can also
+    # carry a person's show pay, which posts to the performer ledger and isn't
+    # part of this staffing payout entry.
     def split_item(item)
       reimbursement = 0
       reportable = 0
-      item.payout_contributions.payable.each do |c|
+      item.payout_contributions.payable.where(category: "staffing").each do |c|
         if REIMBURSEMENT_LABELS.include?(c.label)
           reimbursement += c.amount_cents
         else

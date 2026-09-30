@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_140100) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_150100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1504,11 +1504,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_140100) do
     t.datetime "updated_at", null: false
     t.index ["created_by_id"], name: "index_payout_batches_on_created_by_id"
     t.index ["organization_id", "status"], name: "idx_payout_batches_org_status"
+    t.index ["organization_id"], name: "idx_payout_batches_one_open_run_per_org", unique: true, where: "(((status)::text = 'draft'::text) AND ((kind)::text <> 'course'::text))"
     t.index ["organization_id"], name: "index_payout_batches_on_organization_id"
   end
 
   create_table "payout_contributions", force: :cascade do |t|
     t.bigint "amount_cents", default: 0, null: false
+    t.string "category", default: "performer", null: false
     t.datetime "created_at", null: false
     t.string "description"
     t.jsonb "details"
@@ -1559,7 +1561,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_140100) do
     t.index ["organization_id", "payee_type", "payee_id"], name: "index_payout_ledger_entries_on_org_and_payee"
     t.index ["organization_id"], name: "index_payout_ledger_entries_on_organization_id"
     t.index ["payee_type", "payee_id", "category"], name: "idx_ledger_entries_on_payee_and_category"
-    t.index ["source_type", "source_id", "entry_type"], name: "index_payout_ledger_entries_on_source_and_type", unique: true, where: "(source_id IS NOT NULL)"
+    t.index ["source_type", "source_id", "entry_type", "category"], name: "index_payout_ledger_entries_on_source_type_and_category", unique: true, where: "(source_id IS NOT NULL)"
   end
 
   create_table "payout_scheme_defaults", force: :cascade do |t|

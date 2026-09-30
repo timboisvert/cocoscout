@@ -63,22 +63,28 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Ready Rita").and include("$40.00")     # connected → ready
     expect(response.body).to include("Nobank Ned").and include("$25.00")     # no bank → waiting
-    expect(response.body).to include("Run payout")
+    expect(response.body).to include("Add to payout run")
   end
 
-  it "runs a payout for connected payees and pays them" do
-    allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
-    allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
+  # "Add everyone owed" stages balances onto the ONE open run for review —
+  # it never funds anything by itself (Tim: no automatic funding anywhere).
+  it "stages connected payees' balances onto the open run, then shows it — nothing is funded" do
+    expect(Stripe::PaymentIntent).not_to receive(:create)
 
-    expect { post manage_create_payout_batch_path, params: { funding_method: "ach" } }
+    expect { post manage_create_payout_batch_path }
       .to change { PayoutBatch.count }.by(1)
 
-    batch = PayoutBatch.last
+    batch = PayoutBatch.current_open_draft(org)
     expect(batch.items.map(&:payee)).to eq([ ready ])          # only the connected payee
-    expect(batch.status).to eq("completed")
-    expect(org.payout_balance_cents_for(ready)).to eq(0)       # paid, balance cleared
-    expect(org.payout_balance_cents_for(not_ready)).to eq(2500) # untouched
+    expect(batch.status).to eq("draft")
+    expect(batch.payout_contributions.pluck(:label)).to eq([ "Balance payout" ])
+    expect(org.payout_balance_cents_for(ready)).to eq(4000)    # owed until the run is funded
     expect(response).to redirect_to(manage_payout_batch_path(batch))
+
+    # Again: nothing new to add, same run.
+    expect { post manage_create_payout_batch_path }.not_to change { PayoutBatch.count }
+    expect(batch.reload.items.count).to eq(1)
+    expect(batch.total_cents).to eq(4000)
   end
 
   describe "a run with someone still waiting on a bank" do
@@ -215,7 +221,7 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     ShowPayoutLineItem.create!(show_payout: payout, payee: ready, amount: 40)
     PerformerPayoutRunService.add_show_payout!(payout)
 
-    batch = PayoutBatch.where(kind: "performer").order(:id).last
+    batch = PayoutBatch.current_open_draft(org)
     get manage_payout_batch_path(batch)
 
     expect(response).to have_http_status(:ok)

@@ -62,7 +62,7 @@ class ContractPaymentCollection
       return if cents.zero? || !organization.can_receive_payouts?
 
       ActiveRecord::Base.transaction do
-        batch = PayoutBatch.open_for(organization, kind: "performer")
+        batch = PayoutBatch.open_for(organization)
         item = batch.items.find_by(payee: organization) ||
           batch.items.create!(payee: organization, amount_cents: cents, status: "pending")
 
@@ -76,7 +76,7 @@ class ContractPaymentCollection
         end
 
         # Org items live off the performer ledger; this sums their lines.
-        item.settle_performer_amount!
+        item.settle_amount!
         batch.recalculate_total!
       end
     end

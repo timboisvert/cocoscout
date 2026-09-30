@@ -19,6 +19,10 @@ class PayoutContribution < ApplicationRecord
   # the deduction itemized (see ContractorPayoutRunService).
   validates :amount_cents, presence: true, numericality: { only_integer: true }
   validates :label, presence: true
+  # What kind of money the line is — "staffing" (staff pay, paid as entered) or
+  # "performer" (everything else, netted against the performer ledger). It
+  # decides how the item settles and which ledger the payout debits.
+  validates :category, inclusion: { in: PayoutLedgerEntry::CATEGORIES }
 
   # Contributions that count toward the payee's transfer and ledger. Excludes
   # recorded-only lines like cash tips, which are kept for the record but never
@@ -38,6 +42,22 @@ class PayoutContribution < ApplicationRecord
   # ContractPayment, which is why direction is judged by payee, not source.
   def held_funds?
     payee_type == "Organization" || HELD_SOURCE_TYPES.include?(source_type)
+  end
+
+  # What kind of money this line is, for "what's in this run" on the run page.
+  MONEY_KINDS = {
+    staff: "Staff pay", show: "Show payouts", course: "Course payouts",
+    contract: "Contract payments", advance: "Advances", balance: "Balance payouts"
+  }.freeze
+
+  def money_kind
+    return :staff if category == "staffing"
+    return :advance if source_type == "PersonAdvance"
+    return :course if HELD_SOURCE_TYPES.include?(source_type)
+    return :contract if source_type == "ContractPayment"
+    return :balance if source_type.nil?
+
+    :show
   end
 
   def worksheet_entries
@@ -79,13 +99,13 @@ class PayoutContribution < ApplicationRecord
     if item.nil? || item.paid?
       # leave the paid item and its ledger entry untouched
     elsif item.payout_contributions.payable.exists?
-      # Performer-scoped runs pay the net ledger balance; staff/legacy runs are
-      # the sum of their contributions. Recorded-only lines (cash tips) never
-      # count toward the item amount.
-      if payout_batch&.kind == "performer"
-        item.settle_performer_amount!
-      else
+      # Staff lines settle as entered and performer lines net against the
+      # ledger (PayoutBatchItem#settle_amount!). Legacy course runs are the
+      # plain sum of their lines. Recorded-only lines (cash tips) never count.
+      if payout_batch&.kind == "course"
         item.update_columns(amount_cents: item.payout_contributions.payable.sum(:amount_cents), updated_at: Time.current)
+      else
+        item.settle_amount!
       end
     elsif item.persisted?
       item.destroy
