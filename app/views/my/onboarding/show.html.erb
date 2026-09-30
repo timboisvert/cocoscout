@@ -97,7 +97,7 @@
             <h3 class="font-semibold text-gray-900">Share your tax info (W-9)</h3>
             <p class="text-sm text-gray-600 mt-1"><%= @organization.name %> pays you as an independent contractor, so they need a W-9 from you to send you a 1099 at tax time.</p>
             <% if w9_done %>
-              <p class="text-sm text-green-700 font-medium mt-2">W-9 on file, thanks!</p>
+              <p class="text-sm text-green-700 font-medium mt-2"><%= @staff_member.current_w9&.uploaded? ? "Your W-9 is on file with #{@organization.name}." : "W-9 on file, thanks!" %></p>
               <%= link_to "Update your W-9", my_w9_path(@organization.id, return_to: "onboarding"),
                     class: "inline-block text-sm text-pink-600 hover:text-pink-700 mt-1" %>
             <% else %>

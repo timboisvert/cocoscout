@@ -17,7 +17,7 @@ module Manage
                                                invite save_invite select_invite_person invite_new_person clear_invite_person]
       # Agreement + Send operate on the staff member persisted at the Invite step
       # (once we know which CocoScout account they're tied to).
-      before_action :require_persisted_member, only: %i[agreement save_agreement send_step save_send]
+      before_action :require_persisted_member, only: %i[agreement save_agreement tax_info save_tax_info send_step save_send]
 
       # Step 1: Personal details
       def details
@@ -226,6 +226,43 @@ module Manage
       def save_agreement
         template = Current.organization.staff_agreement_templates.find_by(id: params[:template_id])
         @staff_member.update(staff_agreement_template: template) if template
+        redirect_to next_after_agreement_path
+      end
+
+      # Staged step: their W-9, when the org collects them. Ask them for it
+      # during onboarding (the default), record one the org already has, or
+      # say they don't need one.
+      def tax_info
+        return redirect_to(manage_send_staffing_staff_wizard_path) unless Current.organization.requires_w9?
+
+        @w9_choice = if @staff_member.w9_received? then "upload"
+        elsif @staff_member.tax_form_exempt? then "exempt"
+        else "ask"
+        end
+        @w9_values = {}
+      end
+
+      def save_tax_info
+        case params[:w9_choice]
+        when "exempt"
+          @staff_member.update!(tax_form_exempt: true)
+        when "upload"
+          # One already on file and no new file: nothing to replace.
+          if @staff_member.w9_received? && params.dig(:w9, :document).blank?
+            return redirect_to(manage_send_staffing_staff_wizard_path)
+          end
+
+          upload = StaffW9Upload.new(staff_member: @staff_member, uploaded_by: Current.user, params: params[:w9])
+          unless upload.save
+            @w9_choice = "upload"
+            @w9_values = upload.values
+            flash.now[:alert] = "Couldn't save that W-9: #{upload.error_sentence}."
+            return render :tax_info, status: :unprocessable_content
+          end
+          @staff_member.update!(tax_form_exempt: false)
+        else
+          @staff_member.update!(tax_form_exempt: false)
+        end
         redirect_to manage_send_staffing_staff_wizard_path
       end
 
@@ -258,6 +295,11 @@ module Manage
       end
 
       private
+
+      # Agreement → Tax info when the org collects W-9s, else straight to Send.
+      def next_after_agreement_path
+        Current.organization.requires_w9? ? manage_tax_info_staffing_staff_wizard_path : manage_send_staffing_staff_wizard_path
+      end
 
       def require_started
         redirect_to manage_new_staffing_staff_wizard_path if @wizard_state[:first_name].blank?

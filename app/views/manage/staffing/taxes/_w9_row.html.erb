@@ -16,7 +16,7 @@
       <span class="block font-medium text-gray-900 text-sm truncate group-hover:text-pink-600"><%= member.display_name %></span>
       <span class="block text-[11px] text-gray-400 truncate mt-0.5">
         <% if w9 %>
-          Signed <%= w9.signed_at.strftime("%b %-d, %Y") %> · <%= w9.masked_tin %> · <%= w9.classification_label %>
+          Signed <%= w9.signed_at.strftime("%b %-d, %Y") %> · <%= w9.masked_tin %> · <%= w9.classification_label %><%= " · uploaded" if w9.uploaded? %>
         <% elsif member.w9_status == :requested %>
           Asked <%= member.w9_requested_at.strftime("%b %-d") %><% if member.w9_last_reminded_at && member.w9_last_reminded_at > member.w9_requested_at + 1.minute %> · reminded <%= member.w9_last_reminded_at.strftime("%b %-d") %><% end %>
         <% else %>

@@ -9,7 +9,7 @@ module Manage
     # already on staff — which shows who gets it and the draft before sending.
     class TaxesController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
-      before_action :set_staff_member, only: %i[request_w9 w9]
+      before_action :set_staff_member, only: %i[request_w9 w9 upload_w9]
       before_action :set_form_1099, only: %i[form_1099 update_1099 deliver_1099 mark_1099_filed correct_1099 void_1099]
 
       def index
@@ -85,15 +85,33 @@ module Manage
         redirect_to return_path, alert: e.message
       end
 
-      # The signed W-9 as a PDF. It shows the full TIN, so every open is logged.
+      # The signed W-9: the PDF of one filled in online, or the file a manager
+      # uploaded. Either shows the full TIN, so every open is logged, and an
+      # upload is streamed from here — never a storage link someone could keep.
       def w9
         submission = @staff_member.current_w9
         return redirect_to(return_path, alert: "#{@staff_member.display_name} hasn't given you a W-9 yet.") unless submission
 
         TaxDocumentAccess.create!(organization: Current.organization, user: Current.user,
                                   w9_submission: submission, ip_address: request.remote_ip)
-        pdf = Tax::W9Pdf.new(submission)
-        send_data pdf.render, filename: pdf.filename, type: "application/pdf", disposition: "inline"
+        if submission.uploaded? && submission.document.attached?
+          blob = submission.document.blob
+          send_data blob.download, filename: blob.filename.to_s, type: blob.content_type, disposition: "inline"
+        else
+          pdf = Tax::W9Pdf.new(submission)
+          send_data pdf.render, filename: pdf.filename, type: "application/pdf", disposition: "inline"
+        end
+      end
+
+      # Record a W-9 the org already has (paper, or another system): the file
+      # plus what a 1099 needs, typed in. It becomes their current W-9.
+      def upload_w9
+        upload = StaffW9Upload.new(staff_member: @staff_member, uploaded_by: Current.user, params: params[:w9])
+        if upload.save
+          redirect_to return_path, notice: "Saved #{@staff_member.display_name}'s W-9."
+        else
+          redirect_to return_path, alert: "Couldn't save that W-9: #{upload.error_sentence}."
+        end
       end
 
       # ----- 1099-NECs -----------------------------------------------------

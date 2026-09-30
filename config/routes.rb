@@ -1248,6 +1248,8 @@ Rails.application.routes.draw do
     post   "staffing/staff/onboard/invite/clear",  to: "staffing/staff_wizard#clear_invite_person",  as: "clear_invite_person_staffing_staff_wizard"
     get    "staffing/staff/onboard/agreement",  to: "staffing/staff_wizard#agreement",    as: "agreement_staffing_staff_wizard"
     post   "staffing/staff/onboard/agreement",  to: "staffing/staff_wizard#save_agreement", as: "save_agreement_staffing_staff_wizard"
+    get    "staffing/staff/onboard/tax-info",   to: "staffing/staff_wizard#tax_info",     as: "tax_info_staffing_staff_wizard"
+    post   "staffing/staff/onboard/tax-info",   to: "staffing/staff_wizard#save_tax_info", as: "save_tax_info_staffing_staff_wizard"
     get    "staffing/staff/onboard/send",       to: "staffing/staff_wizard#send_step",    as: "send_staffing_staff_wizard"
     post   "staffing/staff/onboard/send",       to: "staffing/staff_wizard#save_send",    as: "save_send_staffing_staff_wizard"
     delete "staffing/staff/onboard/cancel",     to: "staffing/staff_wizard#cancel",       as: "cancel_staffing_staff_wizard"
@@ -1265,6 +1267,7 @@ Rails.application.routes.draw do
     post   "staffing/taxes/w9/request",           to: "staffing/taxes#request_w9s",      as: "request_w9s_staffing_taxes"
     post   "staffing/taxes/w9/:id/request",       to: "staffing/taxes#request_w9",       as: "request_w9_staffing_tax"
     get    "staffing/taxes/w9/:id",               to: "staffing/taxes#w9",               as: "w9_staffing_tax"
+    post   "staffing/taxes/w9/:id/upload",        to: "staffing/taxes#upload_w9",        as: "upload_w9_staffing_tax"
 
     # 1099-NECs — generate, review, deliver, and download for filing.
     post   "staffing/taxes/1099s/generate",        to: "staffing/taxes#generate_1099s",  as: "generate_1099s_staffing_taxes"

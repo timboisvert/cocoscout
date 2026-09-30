@@ -11,7 +11,7 @@
   } %>
 
   <%
-    # The data-collection steps. On the staged steps (Invite/Agreement/Send) they
+    # The data-collection steps. On the staged steps (Invite/Agreement/Tax info/Send) they
     # collapse into a single "Set up" group node, exactly like the contract wizard.
     setup_steps = [
       { name: "Details", path: manage_new_staffing_staff_wizard_path },
@@ -23,13 +23,16 @@
     ]
 
     if current_step >= 7
-      wizard_steps = [
-        { name: "Set up", path: manage_review_staffing_staff_wizard_path, substeps: setup_steps },
-        { name: "Invite", path: manage_invite_staffing_staff_wizard_path },
-        { name: "Agreement", path: manage_agreement_staffing_staff_wizard_path },
-        { name: "Send", path: manage_send_staffing_staff_wizard_path }
-      ]
-      current_index = { 7 => 1, 8 => 2, 9 => 3 }[current_step] || 0
+      # Tax info only when the org collects W-9s.
+      staged = [
+        { step: 7, name: "Invite", path: manage_invite_staffing_staff_wizard_path },
+        { step: 8, name: "Agreement", path: manage_agreement_staffing_staff_wizard_path },
+        ({ step: 9, name: "Tax info", path: manage_tax_info_staffing_staff_wizard_path } if Current.organization.requires_w9?),
+        { step: 10, name: "Send", path: manage_send_staffing_staff_wizard_path }
+      ].compact
+      wizard_steps = [ { name: "Set up", path: manage_review_staffing_staff_wizard_path, substeps: setup_steps } ] +
+                     staged.map { |s| s.except(:step) }
+      current_index = (staged.index { |s| s[:step] == current_step } || -1) + 1
     else
       wizard_steps = setup_steps
       current_index = current_step - 1

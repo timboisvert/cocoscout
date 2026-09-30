@@ -1,11 +1,16 @@
 # frozen_string_literal: true
 
-# One signed Form W-9 a person gave an organization (the payer), collected
-# electronically on the staff member's W-9 page. History is kept: submitting a
-# new W-9 supersedes the old one, and the newest un-superseded row is current.
+# One signed Form W-9 a person gave an organization (the payer). Either
+# collected electronically on the staff member's W-9 page (source "online"),
+# or one the org already had — signed on paper or through another system —
+# uploaded by a manager with the fields a 1099 needs typed in ("uploaded").
+# History is kept: a new W-9 of either kind supersedes the old one, and the
+# newest un-superseded row is current.
 #
 # The TIN (SSN or EIN) is encrypted at rest. Screens only ever show
-# `masked_tin`; the full number appears only in the on-demand W-9 PDF.
+# `masked_tin`; the full number appears only in the on-demand W-9 PDF, or in
+# the uploaded file, which is only ever streamed through the Taxes controller
+# (and logged), never linked.
 class W9Submission < ApplicationRecord
   # The IRS revision of Form W-9 this substitute form follows.
   FORM_REVISION = "2024-03"
@@ -23,6 +28,10 @@ class W9Submission < ApplicationRecord
   # For an LLC: how it's taxed (C, S, or P).
   LLC_TAX_CLASSES = { "C" => "C corporation", "S" => "S corporation", "P" => "Partnership" }.freeze
   TIN_TYPES = %w[ssn ein].freeze
+  SOURCES = %w[online uploaded].freeze
+  # What an uploaded W-9 may be: a PDF or a photo of the paper form.
+  DOCUMENT_TYPES = %w[application/pdf image/jpeg image/png].freeze
+  DOCUMENT_MAX_BYTES = 10.megabytes
 
   US_STATES = %w[
     AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY
@@ -42,7 +51,9 @@ class W9Submission < ApplicationRecord
   belongs_to :organization
   belongs_to :person
   belongs_to :organization_staff_member, optional: true
+  belongs_to :uploaded_by, class_name: "User", optional: true
   has_many :tax_document_accesses, dependent: :destroy
+  has_one_attached :document
 
   encrypts :tin
 
@@ -50,7 +61,11 @@ class W9Submission < ApplicationRecord
 
   before_validation :normalize
 
-  validates :legal_name, :address_line1, :city, :signature_name, presence: true
+  validates :source, inclusion: { in: SOURCES }
+  validates :legal_name, :address_line1, :city, presence: true
+  # Signed online, in their own words; an upload was signed on the paper form.
+  validates :signature_name, presence: true, unless: :uploaded?
+  validate :document_attached_and_sane, if: :uploaded?
   validates :tax_classification, inclusion: { in: TAX_CLASSIFICATIONS.keys }
   validates :llc_tax_class, inclusion: { in: LLC_TAX_CLASSES.keys, message: "is required for an LLC" }, if: -> { tax_classification == "llc" }
   validates :other_classification, presence: true, if: -> { tax_classification == "other" }
@@ -68,6 +83,10 @@ class W9Submission < ApplicationRecord
           .where.not(id: id).update_all(superseded_at: Time.current, updated_at: Time.current)
       save!
     end
+  end
+
+  def uploaded?
+    source == "uploaded"
   end
 
   def masked_tin
@@ -99,6 +118,15 @@ class W9Submission < ApplicationRecord
   end
 
   private
+
+  def document_attached_and_sane
+    unless document.attached?
+      errors.add(:document, "is required — attach the W-9 you have")
+      return
+    end
+    errors.add(:document, "must be a PDF, JPG or PNG") unless DOCUMENT_TYPES.include?(document.blob.content_type)
+    errors.add(:document, "must be 10 MB or smaller") if document.blob.byte_size.to_i > DOCUMENT_MAX_BYTES
+  end
 
   def normalize
     digits = tin.to_s.gsub(/\D/, "")

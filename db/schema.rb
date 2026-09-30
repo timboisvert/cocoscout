@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3057,10 +3057,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
     t.bigint "organization_staff_member_id"
     t.string "other_classification"
     t.bigint "person_id", null: false
-    t.string "signature_name", null: false
+    t.string "signature_name"
     t.datetime "signed_at", null: false
     t.string "signed_ip"
     t.string "signed_user_agent"
+    t.string "source", default: "online", null: false
     t.string "state", null: false
     t.boolean "subject_to_backup_withholding", default: false, null: false
     t.datetime "superseded_at"
@@ -3069,11 +3070,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
     t.string "tin_last4", null: false
     t.string "tin_type", null: false
     t.datetime "updated_at", null: false
+    t.bigint "uploaded_by_id"
     t.string "zip", null: false
     t.index ["organization_id", "person_id"], name: "idx_w9_submissions_current", unique: true, where: "(superseded_at IS NULL)"
     t.index ["organization_id"], name: "index_w9_submissions_on_organization_id"
     t.index ["organization_staff_member_id"], name: "index_w9_submissions_on_organization_staff_member_id"
     t.index ["person_id"], name: "index_w9_submissions_on_person_id"
+    t.index ["uploaded_by_id"], name: "index_w9_submissions_on_uploaded_by_id"
   end
 
   create_table "webhook_events", force: :cascade do |t|
@@ -3379,4 +3382,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
   add_foreign_key "w9_submissions", "organization_staff_members", on_delete: :nullify
   add_foreign_key "w9_submissions", "organizations"
   add_foreign_key "w9_submissions", "people"
+  add_foreign_key "w9_submissions", "users", column: "uploaded_by_id"
 end

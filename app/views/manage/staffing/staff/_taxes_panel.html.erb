@@ -17,7 +17,14 @@
       <div class="flex-1 min-w-0">
         <p class="text-sm font-medium text-gray-900">Form W-9</p>
         <% if w9 %>
-          <p class="text-sm text-gray-600 mt-0.5">Signed <span class="font-medium text-gray-900"><%= w9.signed_at.strftime("%B %-d, %Y") %></span> by <%= w9.signature_name %>.</p>
+          <% if w9.uploaded? %>
+            <p class="text-sm text-gray-600 mt-0.5">
+              Signed <span class="font-medium text-gray-900"><%= w9.signed_at.strftime("%B %-d, %Y") %></span> on the form they gave you ·
+              uploaded by <%= w9.uploaded_by&.person&.name || "a manager" %> on <%= w9.created_at.strftime("%B %-d, %Y") %>.
+            </p>
+          <% else %>
+            <p class="text-sm text-gray-600 mt-0.5">Signed <span class="font-medium text-gray-900"><%= w9.signed_at.strftime("%B %-d, %Y") %></span> by <%= w9.signature_name %>.</p>
+          <% end %>
           <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <div><dt class="text-xs text-gray-500">Name on the form</dt><dd class="text-gray-900"><%= w9.legal_name %></dd></div>
             <% if w9.business_name.present? %>
@@ -46,24 +53,36 @@
       <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 <%= pill[:classes] %>" title="<%= pill[:title] %>"><%= pill[:text] %></span>
     </div>
 
-    <% if w9 %>
-      <%= render "shared/button", text: "View W-9", variant: "secondary", size: "small", icon: "eye",
-            path: manage_w9_staffing_tax_path(member), target: "_blank", rel: "noopener" %>
-    <% elsif member.needs_w9? && StaffW9Requester.requestable?(member) %>
-      <% w9_preview = StaffW9Requester.preview(staff_member: member) %>
-      <%= render "shared/button",
-            text: (member.w9_requested_at ? "Resend W-9 request" : "Ask for their W-9"),
-            variant: "primary", size: "small", icon: "paper-airplane", type: :button,
-            data: {
-              action: "click->invite-preview#open",
-              "invite-path": manage_request_w9_staffing_tax_path(member, from: "staff"),
-              "modal-title": "Ask for a W-9",
-              "to-name": person.name,
-              "to-email": w9_preview[:to_email],
-              "email-subject": w9_preview[:subject],
-              "email-body": w9_preview[:body]
-            } %>
-    <% end %>
+    <% upload_cid = "upload-w9-#{member.id}" %>
+    <% can_upload = Current.organization.requires_w9? && !member.tax_form_exempt? %>
+    <div class="flex flex-wrap items-center gap-2">
+      <% if w9 %>
+        <%= render "shared/button", text: "View W-9", variant: "secondary", size: "small", icon: "eye",
+              path: manage_w9_staffing_tax_path(member), target: "_blank", rel: "noopener" %>
+        <%= render "shared/button", text: "Upload a newer one", variant: "ghost", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: upload_cid } %>
+      <% else %>
+        <% if member.needs_w9? && StaffW9Requester.requestable?(member) %>
+          <% w9_preview = StaffW9Requester.preview(staff_member: member) %>
+          <%= render "shared/button",
+                text: (member.w9_requested_at ? "Resend W-9 request" : "Ask for their W-9"),
+                variant: "primary", size: "small", icon: "paper-airplane", type: :button,
+                data: {
+                  action: "click->invite-preview#open",
+                  "invite-path": manage_request_w9_staffing_tax_path(member, from: "staff"),
+                  "modal-title": "Ask for a W-9",
+                  "to-name": person.name,
+                  "to-email": w9_preview[:to_email],
+                  "email-subject": w9_preview[:subject],
+                  "email-body": w9_preview[:body]
+                } %>
+        <% end %>
+        <% if can_upload %>
+          <%= render "shared/button", text: "Upload a W-9 you have", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: upload_cid } %>
+        <% end %>
+      <% end %>
+    </div>
 
     <%# Exempt toggle — its own tiny form; auto-submits on change. Hidden once
         a W-9 is on file (there's nothing left to excuse). %>
@@ -77,5 +96,31 @@
         <label for="tax_form_exempt_toggle" class="text-sm text-gray-700 cursor-pointer">This person doesn't need a W-9 (for example, you pay them through payroll).</label>
       <% end %>
     <% end %>
+  </div>
+
+  <%# Upload a W-9 the org already has — its own form, outside every other. %>
+  <div id="<%= upload_cid %>" class="hidden fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm overflow-y-auto"
+       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="flex min-h-full items-start justify-center p-4 py-12" data-action="click->modal#closeOnBackdrop">
+      <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden" data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white">Upload <%= member.display_name %>'s W-9</h3>
+          <button type="button" data-action="click->modal#close"
+                  class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <%= form_with url: manage_upload_w9_staffing_tax_path(member, from: "staff"), method: :post, multipart: true do %>
+          <div class="px-6 py-5">
+            <%= render "manage/staffing/taxes/w9_upload_fields", values: {}, required: true %>
+          </div>
+          <div class="flex items-center justify-end gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+                  data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: "Save W-9", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
   </div>
 </div>

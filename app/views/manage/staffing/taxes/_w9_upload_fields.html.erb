@@ -1,0 +1,114 @@
+<%# The fields for recording a W-9 the org already has: the file, and what a
+    1099 needs, typed in from it. Shared by the add-staff wizard's Tax info
+    step and the staff page's "Upload a W-9" modal. Params nest under w9[...];
+    StaffW9Upload does the saving. Reuses the online form's w9-form controller
+    for the LLC / Other follow-ups and the SSN/EIN label.
+
+    Locals:
+      values   — typed-in values to put back after an error (default {})
+      required — mark fields required (true when the fields are always shown;
+                 false in the wizard, where they only show for "upload") %>
+<%
+  values = (local_assigns[:values] || {}).with_indifferent_access
+  req = local_assigns.fetch(:required, true)
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  label = "block text-sm font-medium text-gray-700 mb-1"
+  optional = tag.span("(optional)", class: "font-normal text-gray-400")
+  tin_type = values[:tin_type].presence || "ssn"
+%>
+<div class="space-y-4" data-controller="w9-form">
+  <div>
+    <label for="w9_document" class="<%= label %>">The W-9</label>
+    <input type="file" name="w9[document]" id="w9_document" accept="application/pdf,image/jpeg,image/png" <%= "required" if req %>
+           class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border file:border-gray-300 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-50 file:cursor-pointer">
+    <p class="mt-1 text-xs text-gray-500">A PDF or a photo of the signed form, up to 10 MB. It's kept private and every view is logged.</p>
+  </div>
+
+  <p class="text-sm text-gray-600">Type in what's on it — this is what goes on their 1099.</p>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div>
+      <label for="w9_legal_name" class="<%= label %>">Name (line 1)</label>
+      <input type="text" name="w9[legal_name]" id="w9_legal_name" value="<%= values[:legal_name] %>" class="<%= input %>" <%= "required" if req %>>
+    </div>
+    <div>
+      <label for="w9_business_name" class="<%= label %>">Business name <%= optional %></label>
+      <input type="text" name="w9[business_name]" id="w9_business_name" value="<%= values[:business_name] %>" class="<%= input %>">
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div>
+      <label for="w9_tax_classification" class="<%= label %>">Tax classification</label>
+      <%= select_tag "w9[tax_classification]", options_for_select(W9Submission::TAX_CLASSIFICATIONS.map { |k, v| [ v, k ] }, values[:tax_classification] || "individual"),
+            id: "w9_tax_classification", class: input,
+            data: { "w9-form-target": "classification", action: "change->w9-form#update" } %>
+    </div>
+    <div>
+      <label for="w9_signed_on" class="<%= label %>">Date signed</label>
+      <input type="date" name="w9[signed_on]" id="w9_signed_on" value="<%= values[:signed_on] %>" max="<%= Date.current.iso8601 %>" class="<%= input %>" <%= "required" if req %>>
+    </div>
+  </div>
+  <div data-w9-form-target="llc" class="hidden">
+    <label for="w9_llc_tax_class" class="<%= label %>">How the LLC is taxed</label>
+    <%= select_tag "w9[llc_tax_class]", options_for_select(W9Submission::LLC_TAX_CLASSES.map { |k, v| [ v, k ] }, values[:llc_tax_class]),
+          include_blank: "Choose…", id: "w9_llc_tax_class", class: input %>
+  </div>
+  <div data-w9-form-target="other" class="hidden">
+    <label for="w9_other_classification" class="<%= label %>">Classification written on the form</label>
+    <input type="text" name="w9[other_classification]" id="w9_other_classification" value="<%= values[:other_classification] %>" class="<%= input %>">
+  </div>
+
+  <div>
+    <div class="flex flex-wrap gap-4 mb-2">
+      <% [ [ "ssn", "Social Security number" ], [ "ein", "EIN" ] ].each do |value, text| %>
+        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="radio" name="w9[tin_type]" value="<%= value %>" <%= "checked" if tin_type == value %>
+                 class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+                 data-action="change->w9-form#update">
+          <%= text %>
+        </label>
+      <% end %>
+    </div>
+    <label for="w9_tin" class="<%= label %>" data-w9-form-target="tinLabel">Social Security number</label>
+    <input type="password" name="w9[tin]" id="w9_tin" value="" inputmode="numeric" autocomplete="off" <%= "required" if req %>
+           class="<%= input %> tabular-nums max-w-xs" data-w9-form-target="tin">
+    <p class="mt-1 text-xs text-gray-500">Encrypted as soon as you save. Screens only ever show the last four digits.</p>
+  </div>
+
+  <div>
+    <label for="w9_address_line1" class="<%= label %>">Street address</label>
+    <input type="text" name="w9[address_line1]" id="w9_address_line1" value="<%= values[:address_line1] %>" class="<%= input %>" <%= "required" if req %>>
+  </div>
+  <div>
+    <label for="w9_address_line2" class="<%= label %>">Apt / unit <%= optional %></label>
+    <input type="text" name="w9[address_line2]" id="w9_address_line2" value="<%= values[:address_line2] %>" class="<%= input %>">
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div>
+      <label for="w9_city" class="<%= label %>">City</label>
+      <input type="text" name="w9[city]" id="w9_city" value="<%= values[:city] %>" class="<%= input %>" <%= "required" if req %>>
+    </div>
+    <div>
+      <label for="w9_state" class="<%= label %>">State</label>
+      <%= select_tag "w9[state]", options_for_select(W9Submission::US_STATES, values[:state]), include_blank: "—", id: "w9_state", class: input, required: req %>
+    </div>
+    <div>
+      <label for="w9_zip" class="<%= label %>">ZIP</label>
+      <input type="text" name="w9[zip]" id="w9_zip" value="<%= values[:zip] %>" inputmode="numeric" class="<%= input %>" <%= "required" if req %>>
+    </div>
+  </div>
+
+  <div class="space-y-2">
+    <label class="flex items-start gap-3 cursor-pointer">
+      <input type="checkbox" name="w9[e_delivery]" value="1" <%= "checked" if values[:e_delivery] == "1" %>
+             class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+      <span class="text-sm text-gray-700">They agreed to get their 1099 electronically. <span class="text-gray-500">Otherwise it's mailed on paper.</span></span>
+    </label>
+    <label class="flex items-start gap-3 cursor-pointer">
+      <input type="checkbox" name="w9[backup_withholding]" value="1" <%= "checked" if values[:backup_withholding] == "1" %>
+             class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+      <span class="text-sm text-gray-700">The form says the IRS has them on backup withholding. <span class="text-gray-500">(Rare.)</span></span>
+    </label>
+  </div>
+</div>
