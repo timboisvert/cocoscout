@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_01_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3148,8 +3148,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_130000) do
     t.datetime "expires_at"
     t.string "external_order_id"
     t.string "fee_mode", null: false
+    t.bigint "issued_by_id"
     t.boolean "marketing_opt_in", default: false, null: false
     t.string "money_path", default: "cocoscout", null: false
+    t.string "note"
     t.integer "org_net_cents", default: 0, null: false
     t.bigint "organization_id", null: false
     t.datetime "paid_at"
@@ -3175,6 +3177,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_130000) do
     t.index ["buyer_email"], name: "index_ticket_orders_on_buyer_email"
     t.index ["code"], name: "index_ticket_orders_on_code", unique: true
     t.index ["expires_at"], name: "index_ticket_orders_on_expires_at", where: "((status)::text = 'pending'::text)"
+    t.index ["issued_by_id"], name: "index_ticket_orders_on_issued_by_id"
     t.index ["organization_id", "created_at"], name: "index_ticket_orders_on_organization_id_and_created_at"
     t.index ["organization_id"], name: "index_ticket_orders_on_organization_id"
     t.index ["stripe_payment_intent_id"], name: "index_ticket_orders_on_stripe_payment_intent_id", unique: true, where: "(stripe_payment_intent_id IS NOT NULL)"
@@ -3729,6 +3732,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_130000) do
   add_foreign_key "ticket_orders", "organizations"
   add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
   add_foreign_key "ticket_orders", "ticket_listings"
+  add_foreign_key "ticket_orders", "users", column: "issued_by_id", on_delete: :nullify
   add_foreign_key "ticket_orders", "users", on_delete: :nullify
   add_foreign_key "ticket_refunds", "organizations"
   add_foreign_key "ticket_refunds", "ticket_orders"

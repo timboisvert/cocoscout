@@ -1,0 +1,38 @@
+<%# Who's coming to a show: one row per order still holding tickets.
+    Locals: orders (TicketOrder, tickets loaded), read_only (producers see
+    names and counts, never emails or links to orders). %>
+<%
+  read_only = local_assigns.fetch(:read_only, false)
+  channel_badges = { "comp" => [ "Comp", "bg-blue-100 text-blue-700" ], "door_cash" => [ "Door", "bg-green-100 text-green-700" ] }
+%>
+<% if orders.empty? %>
+  <p class="px-5 py-6 text-sm text-gray-500">Nobody yet.</p>
+<% else %>
+  <ul class="divide-y divide-gray-100">
+    <% orders.each do |order| %>
+      <% held = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
+      <% inside = held.count(&:checked_in?) %>
+      <% by_tier = held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} × #{tier.name}" }.join(", ") %>
+      <% badge = channel_badges[order.channel] %>
+      <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2.5">
+        <div class="min-w-[12rem] flex-1">
+          <div class="text-sm font-medium text-gray-900">
+            <% if read_only %>
+              <%= order.buyer_name.presence || "No name" %>
+            <% else %>
+              <%= link_to order.buyer_name.presence || "No name", manage_ticket_order_path(order.id), class: "hover:text-pink-600" %>
+            <% end %>
+            <% if badge %><span class="ml-1 inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= badge[1] %>"><%= badge[0] %></span><% end %>
+          </div>
+          <% unless read_only %>
+            <div class="text-xs text-gray-500"><%= [ order.code, order.buyer_email ].compact_blank.join(" · ") %><%= " · #{order.note}" if order.note.present? %></div>
+          <% end %>
+        </div>
+        <div class="text-sm text-gray-700"><%= by_tier.presence || "Refunded" %></div>
+        <div class="sm:w-28 sm:text-right text-xs <%= inside == held.size && held.any? ? 'text-green-700 font-medium' : 'text-gray-500' %>">
+          <%= held.empty? ? "" : (inside.zero? ? "Not in yet" : "#{inside} of #{held.size} in") %>
+        </div>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

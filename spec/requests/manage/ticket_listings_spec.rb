@@ -81,7 +81,7 @@ RSpec.describe "Manage ticket listings", type: :request do
 
     it "lists it under drafts, then upcoming once it's on sale" do
       get manage_ticket_listings_path(filter: "drafts")
-      expect(response.body).to include(manage_edit_ticket_listing_path(listing)).and include("Draft")
+      expect(response.body).to include(manage_ticket_listing_path(listing)).and include("Draft")
 
       post manage_ticket_listing_status_path(listing), params: { status: "on_sale" }
       expect(listing.reload.status).to eq("on_sale")

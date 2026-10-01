@@ -1,0 +1,51 @@
+<% content_for :title, "Give tickets · #{@listing.display_title}" %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  remaining = @listing.inventory.remaining
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ], [ @listing.display_title, manage_ticket_listing_path(@listing) ] ],
+    text: "Give tickets",
+    links: []
+  } %>
+
+  <%= form_with url: manage_ticket_listing_comps_path(@listing), method: :post, class: "max-w-2xl bg-white border border-gray-200 rounded-xl overflow-hidden" do %>
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Who's coming as your guest?</h2>
+      <p class="text-sm text-gray-600 mt-1">
+        <%= @listing.show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %>.
+        Free tickets with no fees. They take seats<%= remaining ? " (#{remaining} left)" : "" %>, and each person with an email gets the usual email with their tickets.
+      </p>
+    </div>
+    <div class="px-6 py-5 space-y-5">
+      <div>
+        <label for="guests" class="block text-sm font-medium text-gray-700 mb-1.5">One person per line</label>
+        <%= text_area_tag :guests, @guests_text, rows: 7, class: "#{input_class} font-mono",
+              placeholder: "Dana Scully, dana@example.com, 2\nFox Mulder, fox@example.com\nWalter Skinner" %>
+        <p class="text-xs text-gray-500 mt-1">Name, then email, then how many tickets (one if you leave it off). You can paste a list straight from a spreadsheet.</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="tier_id" class="block text-sm font-medium text-gray-700 mb-1.5">Ticket type</label>
+          <%= select_tag :tier_id, options_for_select(@tiers.map { |t| [ "#{t.name} (#{ticket_price(t.price_cents)})", t.id ] }, @tier_id), class: input_class %>
+          <p class="text-xs text-gray-500 mt-1">They pay nothing whichever you pick; it's what their ticket says.</p>
+        </div>
+        <div>
+          <label for="note" class="block text-sm font-medium text-gray-700 mb-1.5">Note for your records <span class="font-normal text-gray-500">(optional)</span></label>
+          <%= text_field_tag :note, @note, placeholder: "Guest of the cast", class: input_class %>
+        </div>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-gray-700">
+        <%= check_box_tag :email_them, "1", @email_them != false, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        Email them their tickets
+      </label>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap gap-2">
+      <%= render "shared/button", text: "Give tickets", variant: "primary", size: "medium", type: :submit %>
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_ticket_listing_path(@listing) %>
+    </div>
+  <% end %>
+</div>

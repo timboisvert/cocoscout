@@ -1,10 +1,10 @@
-<% content_for :title, "Shows on sale" %>
+<% content_for :title, "Shows" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
-    text: "Shows on sale",
+    text: "Shows",
     links: [ { text: "Put shows on sale", path: manage_new_ticket_listing_path } ]
   } %>
 
@@ -26,7 +26,7 @@
       <% @listings.each do |listing| %>
         <%= render "shared/show_row",
               show: listing.show,
-              link_path: manage_edit_ticket_listing_path(listing),
+              link_path: manage_ticket_listing_path(listing),
               show_production: true,
               show_canceled: true,
               right_panel: :ticket_sales,

@@ -1,0 +1,97 @@
+<% content_for :title, @listing.display_title %>
+<%
+  show = @listing.show
+  inventory = @stats.inventory
+  status_label, status_classes = ticket_listing_status_badge(@listing, inventory)
+  filters = [ [ "all", "Everyone" ], [ "waiting", "Not in yet" ], [ "in", "Checked in" ], [ "comps", "Comps" ], [ "refunded", "Refunded" ] ]
+  filter_path = ->(f) { manage_ticket_listing_path(@listing, guests: f == "all" ? nil : f, q: @query.presence, anchor: "guests") }
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ] ],
+    text: @listing.display_title,
+    links: [
+      ({ text: "Door", path: door_path(@listing) } unless @listing.status.in?(%w[draft canceled])),
+      { text: "Settings", path: manage_edit_ticket_listing_path(@listing) }
+    ].compact
+  } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-6">
+    <div class="space-y-6 min-w-0">
+      <%# Where it stands, and the one thing to do next. %>
+      <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
+            <span class="text-sm text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></span>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">
+            <%= link_to ticket_public_path_text(@listing), tickets_event_path(org: ticketing_profile.slug, event: @listing.slug), target: "_blank", rel: "noopener", class: "hover:text-pink-600" %>
+          </p>
+        </div>
+        <%= render "manage/ticket_listings/status_actions", listing: @listing %>
+      </div>
+
+      <%= render "shared/ticketing/show_numbers", stats: @stats %>
+
+      <div id="guests" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-sm font-semibold text-gray-900">Guest list <span class="font-normal text-gray-500">· <%= pluralize(@stats.sold, "ticket") %></span></h2>
+          <div class="flex flex-wrap gap-2">
+            <%= render "shared/button", text: "Download (CSV)", variant: "secondary", size: "small", path: manage_ticket_listing_guests_path(@listing, format: :csv), data: { turbo: false } %>
+            <%= render "shared/button", text: "Print door list", variant: "secondary", size: "small", path: manage_ticket_listing_door_list_path(@listing), target: "_blank", rel: "noopener" %>
+          </div>
+        </div>
+        <%= form_with url: manage_ticket_listing_path(@listing, anchor: "guests"), method: :get, class: "px-5 py-3 border-b border-gray-100" do %>
+          <%= hidden_field_tag :guests, @guest_filter unless @guest_filter == "all" %>
+          <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+            { label: "Find", partial: "shared/filters/search_input", locals: { placeholder: "Name, email or code", value: @query } },
+            { separator: true },
+            { label: "Show", filters: filters.map { |key, label| { text: label, path: filter_path.call(key), active: @guest_filter == key } } }
+          ] %>
+        <% end %>
+        <%= render "shared/ticketing/guest_list", orders: @guest_orders %>
+      </div>
+    </div>
+
+    <aside class="space-y-4">
+      <% unless @listing.status == "canceled" || show.canceled %>
+        <div class="bg-white border border-gray-200 rounded-xl p-4">
+          <h2 class="text-sm font-semibold text-gray-900">Give tickets</h2>
+          <p class="text-xs text-gray-600 mt-1">Comps for the cast's guests, press, or anyone you're treating. They get the usual email with their tickets.</p>
+          <div class="mt-3">
+            <%= render "shared/button", text: "Give tickets", variant: "primary", size: "small", path: manage_new_ticket_listing_comps_path(@listing) %>
+          </div>
+        </div>
+      <% end %>
+      <div class="bg-white border border-gray-200 rounded-xl p-4 text-sm">
+        <h2 class="font-semibold text-gray-900">Money for this show</h2>
+        <p class="text-gray-600 mt-1">
+          <% if @listing.released_at %>
+            It's in your available balance.
+          <% elsif @listing.status == "canceled" %>
+            Canceled: buyers get it back.
+          <% else %>
+            Held until the day after the show, then it's yours to spend.
+          <% end %>
+        </p>
+        <% if @stats.tax_cents.positive? %>
+          <p class="text-gray-600 mt-1">Includes <%= number_to_currency(@stats.tax_cents / 100.0) %> tax collected.</p>
+        <% end %>
+        <p class="mt-2 space-x-3">
+          <%= link_to "Your balance", manage_ticket_balance_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
+          <%= link_to "Show financials", manage_money_show_financials_path(show), class: "font-medium text-pink-600 hover:text-pink-700" %>
+        </p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl p-4 text-sm space-y-2">
+        <%= link_to "Orders for this show", manage_ticket_orders_path(listing_id: @listing.id), class: "block font-medium text-pink-600 hover:text-pink-700" %>
+        <%= link_to "Prices, seats and the page", manage_edit_ticket_listing_path(@listing), class: "block font-medium text-pink-600 hover:text-pink-700" %>
+        <% if @listing.status != "canceled" && show.date_and_time > Time.current %>
+          <%= link_to "Cancel this show", manage_ticket_listing_cancel_path(@listing), class: "block font-medium text-gray-600 hover:text-gray-900" %>
+        <% end %>
+      </div>
+    </aside>
+  </div>
+</div>

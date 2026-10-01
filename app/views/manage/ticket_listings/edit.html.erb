@@ -14,8 +14,8 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows on sale", manage_ticket_listings_path ] ],
-    text: @listing.display_title,
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ], [ @listing.display_title, manage_ticket_listing_path(@listing) ] ],
+    text: "Settings",
     links: @listing.status.in?(%w[draft canceled]) ? [] : [ { text: "Door", path: door_path(@listing) } ]
   } %>
 
@@ -38,26 +38,7 @@
           </div>
           <p class="text-xs text-gray-500 mt-1"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %> · <%= ticket_public_path_text(@listing) %></p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <% case @listing.status %>
-          <% when "draft" %>
-            <%= render "shared/button", text: "Put on sale", variant: "primary", size: "small", type: :button,
-                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-put-on-sale" } %>
-          <% when "on_sale" %>
-            <%= render "shared/button", text: "Pause sales", variant: "secondary", size: "small",
-                  path: manage_ticket_listing_status_path(@listing, status: "paused"), method: :post %>
-            <%= render "shared/button", text: "Close online sales", variant: "secondary", size: "small", type: :button,
-                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-close-sales" } %>
-          <% when "paused" %>
-            <%= render "shared/button", text: "Resume sales", variant: "primary", size: "small",
-                  path: manage_ticket_listing_status_path(@listing, status: "on_sale"), method: :post %>
-            <%= render "shared/button", text: "Close online sales", variant: "secondary", size: "small", type: :button,
-                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-close-sales" } %>
-          <% when "closed" %>
-            <%= render "shared/button", text: "Reopen sales", variant: "primary", size: "small",
-                  path: manage_ticket_listing_status_path(@listing, status: "on_sale"), method: :post %>
-          <% end %>
-        </div>
+        <%= render "manage/ticket_listings/status_actions", listing: @listing %>
       </div>
     </div>
 
@@ -253,12 +234,6 @@
   </div>
 </div>
 
-<%= render "shared/confirm_modal", id: "confirm-put-on-sale", title: "Put this show on sale?",
-      message: "Buyers can get tickets at #{h(ticket_public_path_text(@listing))}#{' once ticketing is on for your organization' unless ticketing_profile.enabled?}.",
-      confirm_text: "Put on sale", url: manage_ticket_listing_status_path(@listing), method: :post, params: { status: "on_sale" } %>
-<%= render "shared/confirm_modal", id: "confirm-close-sales", title: "Close online sales?",
-      message: "Nobody can buy online after this. Door sales and check-in keep working, and you can reopen sales any time.",
-      confirm_text: "Close online sales", url: manage_ticket_listing_status_path(@listing), method: :post, params: { status: "closed" } %>
 <%= render "shared/confirm_modal", id: "confirm-remove-listing", title: "Remove this show from Ticketing?",
       message: "Its page and prices are deleted. The show itself stays on your calendar.",
       confirm_text: "Remove", url: manage_ticket_listing_path(@listing), method: :delete %>

@@ -12,7 +12,9 @@ module Manage
       "closed" => %w[on_sale paused]
     }.freeze
 
-    before_action :set_listing, only: %i[edit update change_status destroy create_code destroy_code cancel_review cancel]
+    GUEST_FILTERS = %w[all waiting in comps refunded].freeze
+
+    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel_review cancel]
 
     def index
       @filter = params[:filter].presence_in(FILTERS) || "upcoming"
@@ -24,6 +26,42 @@ module Manage
         when "past" then scope.where("shows.date_and_time < ?", Time.current).order("shows.date_and_time DESC").limit(100)
         else scope.where("shows.date_and_time >= ?", Time.current).where.not(status: "draft").order("shows.date_and_time")
         end
+    end
+
+    # One show's tickets: the numbers (Ticketing::ListingStats), the guest
+    # list, and what to do next.
+    def show
+      @stats = Ticketing::ListingStats.of(@listing)
+      @guest_filter = params[:guests].presence_in(GUEST_FILTERS) || "all"
+      @query = params[:q].to_s.strip
+      @guest_orders = guest_orders(@guest_filter, @query)
+    end
+
+    # Everyone holding tickets, as a spreadsheet.
+    def guests
+      require "csv"
+      csv = CSV.generate do |rows|
+        rows << [ "Name", "Email", "Phone", "Order", "Tickets", "Ticket types", "Checked in", "How", "Note", "OK to email news" ]
+        guest_orders("all", "").each do |order|
+          held = held_tickets(order)
+          rows << [ order.buyer_name, order.buyer_email, order.buyer_phone, order.code, held.size,
+                    held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} #{tier.name}" }.join("; "),
+                    held.count(&:checked_in?), Ticketing::ListingStats::CHANNELS.fetch(order.channel, order.channel),
+                    order.note, order.marketing_opt_in ? "Yes" : "No" ]
+        end
+      end
+      send_data csv, type: "text/csv", filename: "guests-#{@listing.slug}.csv"
+    end
+
+    # The guest list on paper, by last name, for a door with no signal.
+    def door_list
+      @rows = guest_orders("all", "").map do |order|
+        held = held_tickets(order)
+        { name: order.buyer_name.presence || "No name", count: held.size, inside: held.count(&:checked_in?),
+          tiers: held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} × #{tier.name}" }.join(", "),
+          code: order.code, comp: order.channel == "comp" }
+      end.sort_by { |row| [ row[:name].split.last.to_s.downcase, row[:name].downcase ] }
+      render layout: false
     end
 
     # Which production? Single-production orgs skip the picker.
@@ -84,7 +122,7 @@ module Manage
       attrs = { status: to }
       attrs[:on_sale_at] = nil if to == "on_sale" && @listing.on_sale_at&.future? && params[:now] == "1"
       @listing.update!(attrs)
-      redirect_to manage_edit_ticket_listing_path(@listing), notice: status_notice(to)
+      redirect_back_or_to manage_ticket_listing_path(@listing), notice: status_notice(to)
     end
 
     def destroy
@@ -145,6 +183,27 @@ module Manage
 
     def show_started?
       @listing.show.date_and_time <= Time.current
+    end
+
+    def held_tickets(order)
+      order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
+    end
+
+    # The show's orders for the guest list, narrowed by a filter and a search.
+    def guest_orders(filter, query)
+      orders = @listing.ticket_orders.where(status: %w[paid partially_refunded refunded])
+                       .includes(tickets: :ticket_tier).order(:buyer_name, :id).to_a
+      if query.present?
+        q = query.downcase
+        orders = orders.select { |o| [ o.buyer_name, o.buyer_email, o.code ].compact.any? { |v| v.downcase.include?(q) } }
+      end
+      case filter
+      when "waiting" then orders.select { |o| held_tickets(o).any? { |t| !t.checked_in? } }
+      when "in" then orders.select { |o| held_tickets(o).any?(&:checked_in?) }
+      when "comps" then orders.select { |o| o.channel == "comp" && held_tickets(o).any? }
+      when "refunded" then orders.select { |o| o.status.in?(%w[refunded partially_refunded]) }
+      else orders.select { |o| held_tickets(o).any? }
+      end
     end
 
     # Scoped to the current org: a bare find here would reach another org's show.

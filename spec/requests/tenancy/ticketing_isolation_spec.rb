@@ -31,6 +31,15 @@ RSpec.describe "Cross-org isolation (ticketing)", type: :request do
   it "can't see, change, cancel or remove another theater's show" do
     get manage_edit_ticket_listing_path(victim_listing)
     expect(response).to have_http_status(:not_found)
+    get manage_ticket_listing_path(victim_listing)
+    expect(response).to have_http_status(:not_found)
+    get manage_ticket_listing_guests_path(victim_listing, format: :csv)
+    expect(response).to have_http_status(:not_found)
+    get manage_ticket_listing_door_list_path(victim_listing)
+    expect(response).to have_http_status(:not_found)
+    post manage_ticket_listing_comps_path(victim_listing), params: { guests: "Me, 2", tier_id: victim_tier.id }
+    expect(response).to have_http_status(:not_found)
+    expect(victim_listing.ticket_orders.where(channel: "comp")).to be_empty
 
     patch manage_ticket_listing_path(victim_listing), params: { ticket_listing: { title: "Mine now" } }
     expect(response).to have_http_status(:not_found)

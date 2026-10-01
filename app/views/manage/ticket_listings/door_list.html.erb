@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <title>Door list · <%= @listing.display_title %></title>
+  <style>
+    @page { size: Letter; margin: 0.5in; }
+    body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 11pt; color: #111827; }
+    h1 { font-size: 16pt; margin: 0; }
+    .meta { color: #4b5563; font-size: 10pt; margin: 4px 0 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 9pt; color: #6b7280; border-bottom: 1px solid #9ca3af; padding: 4px 6px; }
+    td { border-bottom: 1px solid #e5e7eb; padding: 6px; vertical-align: top; }
+    tr { break-inside: avoid; }
+    .box { width: 14px; height: 14px; border: 1.5px solid #374151; display: inline-block; margin-right: 3px; }
+    .in { background: #374151; }
+    .muted { color: #6b7280; font-size: 9pt; }
+    .print { margin-bottom: 12px; }
+    @media print { .print { display: none; } }
+  </style>
+</head>
+<body>
+  <%# Not a styled button on purpose: this page is plain HTML for paper, and the control never prints. %>
+  <div class="print"><a href="javascript:window.print()">Print this list</a></div>
+  <h1><%= @listing.display_title %></h1>
+  <div class="meta">
+    <%= @listing.show.date_and_time.strftime("%A, %B %-d, %Y · %-l:%M %p") %> · <%= @listing.organization.name %> ·
+    <%= pluralize(@rows.sum { |r| r[:count] }, "ticket") %>, printed <%= Time.current.strftime("%b %-d at %-l:%M %p") %>
+  </div>
+  <table>
+    <thead><tr><th style="width: 70px">In</th><th>Name</th><th>Tickets</th><th>Order</th></tr></thead>
+    <tbody>
+      <% @rows.each do |row| %>
+        <tr>
+          <td><% row[:count].times do |i| %><span class="box <%= 'in' if i < row[:inside] %>"></span><% end %></td>
+          <td><%= row[:name] %><% if row[:comp] %> <span class="muted">(comp)</span><% end %></td>
+          <td><%= row[:tiers] %></td>
+          <td class="muted"><%= row[:code] %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</body>
+</html>

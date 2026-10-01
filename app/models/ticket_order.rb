@@ -22,6 +22,8 @@ class TicketOrder < ApplicationRecord
   belongs_to :ticket_listing
   belongs_to :ticket_discount_code, optional: true
   belongs_to :user, optional: true
+  # Who gave a comp from the show page.
+  belongs_to :issued_by, class_name: "User", optional: true
 
   has_many :tickets, dependent: :destroy
   has_many :ticket_refunds, dependent: :delete_all

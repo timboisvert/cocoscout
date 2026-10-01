@@ -1,0 +1,29 @@
+<%# The one thing to do next with a show's sales — put on sale, pause, close,
+    reopen — and the confirm modals two of them need. Render it outside any
+    form (confirm_modal brings its own). Locals: listing. %>
+<div class="flex flex-wrap items-center gap-2">
+  <% case listing.status %>
+  <% when "draft" %>
+    <%= render "shared/button", text: "Put on sale", variant: "primary", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-put-on-sale" } %>
+  <% when "on_sale" %>
+    <%= render "shared/button", text: "Pause sales", variant: "secondary", size: "small",
+          path: manage_ticket_listing_status_path(listing, status: "paused"), method: :post %>
+    <%= render "shared/button", text: "Close online sales", variant: "secondary", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-close-sales" } %>
+  <% when "paused" %>
+    <%= render "shared/button", text: "Resume sales", variant: "primary", size: "small",
+          path: manage_ticket_listing_status_path(listing, status: "on_sale"), method: :post %>
+    <%= render "shared/button", text: "Close online sales", variant: "secondary", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-close-sales" } %>
+  <% when "closed" %>
+    <%= render "shared/button", text: "Reopen sales", variant: "primary", size: "small",
+          path: manage_ticket_listing_status_path(listing, status: "on_sale"), method: :post %>
+  <% end %>
+</div>
+<%= render "shared/confirm_modal", id: "confirm-put-on-sale", title: "Put this show on sale?",
+      message: "Buyers can get tickets at #{h(ticket_public_path_text(listing))}#{' once ticketing is on for your organization' unless ticketing_profile.enabled?}.",
+      confirm_text: "Put on sale", url: manage_ticket_listing_status_path(listing), method: :post, params: { status: "on_sale" } %>
+<%= render "shared/confirm_modal", id: "confirm-close-sales", title: "Close online sales?",
+      message: "Nobody can buy online after this. Door sales and check-in keep working, and you can reopen sales any time.",
+      confirm_text: "Close online sales", url: manage_ticket_listing_status_path(listing), method: :post, params: { status: "closed" } %>
