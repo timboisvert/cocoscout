@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+module Manage
+  # The theater's CocoScout balance (see TicketBalance): what's waiting on
+  # upcoming shows, what's settling, what's spendable — and withdrawing it to
+  # the theater's bank, by hand or automatically.
+  class TicketBalanceController < Manage::TicketingBaseController
+    def show
+      @summary = TicketBalance.summary(Current.organization)
+      @run_need_cents = BalanceWithdrawalService.open_run_need_cents(Current.organization)
+      @withdrawals = Current.organization.balance_withdrawals.order(created_at: :desc).limit(20).includes(:requested_by)
+      @upcoming = upcoming_by_show
+    end
+
+    def withdraw
+      cents = (BigDecimal(params[:amount].to_s.delete(",$ ").presence || "0") * 100).round
+      withdrawal = BalanceWithdrawalService.withdraw!(Current.organization, amount_cents: cents, by: Current.user)
+      redirect_to manage_ticket_balance_path,
+                  notice: "#{helpers.number_to_currency(withdrawal.amount_cents / 100.0)} is on its way to your bank."
+    rescue ArgumentError
+      redirect_to manage_ticket_balance_path, alert: "Enter an amount like 250.00."
+    rescue BalanceWithdrawalService::Error => e
+      redirect_to manage_ticket_balance_path, alert: e.message
+    end
+
+    def update_auto_withdraw
+      choice = params[:auto_withdraw].presence_in(TicketingProfile::AUTO_WITHDRAW) || "off"
+      ticketing_profile.update!(auto_withdraw: choice)
+      redirect_to manage_ticket_balance_path, notice: choice == "off" ? "Automatic withdrawal is off." : "Automatic withdrawal is on."
+    end
+
+    private
+
+    # Upcoming shows and what each holds for the theater: what it sold
+    # through CocoScout, less what it refunded.
+    def upcoming_by_show
+      Current.organization.ticket_listings.where(released_at: nil).where.not(status: "canceled")
+             .joins(:show).where(shows: { canceled: false })
+             .includes(:show).order("shows.date_and_time").limit(30)
+             .map { |listing| [ listing, held_for(listing) ] }
+             .select { |_, cents| cents.positive? }
+    end
+
+    def held_for(listing)
+      orders = listing.ticket_orders.where(money_path: "cocoscout", status: %w[paid partially_refunded refunded])
+      orders.sum(:org_net_cents) - TicketRefund.succeeded.where(ticket_order_id: orders.select(:id)).sum(:org_debit_cents)
+    end
+  end
+end

@@ -1,0 +1,146 @@
+<% content_for :title, "Your CocoScout balance" %>
+<%
+  s = @summary
+  org = Current.organization
+  input_class = "block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  tiles = [
+    [ "Upcoming shows", s.upcoming_cents, "Sold for shows that haven't happened. It becomes yours to spend the day after each show.", "bg-blue-50 border-blue-200" ],
+    [ "Settling", s.settling_cents, "From shows that have happened, still reaching the bank network. About two days.", "bg-amber-50 border-amber-200" ],
+    [ "Available", s.available_cents, "Yours to spend. Payout runs use it first, so they go out without a bank debit.", "bg-green-50 border-green-200" ]
+  ]
+  auto_choices = [
+    [ "off", "Keep it here (recommended)", "Payout runs pay your people from it the same day. Withdraw whenever you like." ],
+    [ "weekly", "Every Monday", "Sends everything available to your bank each Monday." ],
+    [ "after_shows", "The day after each show", "Sends each show's money to your bank as soon as it's available." ]
+  ]
+  profile = ticketing_profile
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
+    text: "Your CocoScout balance",
+    links: []
+  } %>
+
+  <div class="max-w-3xl space-y-6">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <% tiles.each do |label, cents, explanation, tint| %>
+        <div class="rounded-xl border px-5 py-4 <%= cents.positive? ? tint : 'bg-white border-gray-200' %>">
+          <div class="text-sm text-gray-600"><%= label %></div>
+          <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= number_to_currency(cents / 100.0) %></div>
+          <p class="text-xs text-gray-600 mt-1"><%= explanation %></p>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Withdraw to the bank. %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Withdraw to your bank</h2>
+        <p class="text-sm text-gray-600 mt-1">It goes to your organization's connected bank, usually within two business days.</p>
+      </div>
+      <div class="px-6 py-5">
+        <% if !org.can_receive_payouts? %>
+          <p class="text-sm text-gray-600">Connect your organization's bank first: it's where withdrawals go. You can still spend your balance on payout runs.</p>
+        <% elsif s.available_cents.zero? %>
+          <p class="text-sm text-gray-600">Nothing is available to withdraw right now.</p>
+        <% else %>
+          <% if @run_need_cents.positive? %>
+            <p class="text-sm text-gray-700 mb-3">Your open payout run needs <%= number_to_currency(@run_need_cents / 100.0) %>. Keep at least that here to pay it without a bank debit.</p>
+          <% end %>
+          <%= form_with url: manage_ticket_balance_withdraw_path, method: :post, id: "withdraw-form", class: "flex flex-wrap items-end gap-3" do %>
+            <div class="w-44">
+              <label for="amount" class="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+                <%= text_field_tag :amount, format("%.2f", s.available_cents / 100.0), inputmode: "decimal", class: input_class %>
+              </div>
+            </div>
+            <%= render "shared/button", text: "Withdraw", variant: "primary", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-withdraw" } %>
+          <% end %>
+          <%# The form carries its own amount, so the modal submits it. %>
+          <div id="confirm-withdraw" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+               data-controller="modal" data-action="click->modal#closeOnBackdrop">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+              <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+                <h3 class="text-lg font-semibold text-white">Withdraw to your bank?</h3>
+                <button type="button" data-action="click->modal#close" aria-label="Close"
+                        class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              <div class="px-6 py-5 text-sm text-gray-600">
+                The amount you entered leaves your CocoScout balance and goes to your bank.<%= " Your open payout run would then need a bank debit for whatever the balance can't cover." if @run_need_cents.positive? %>
+              </div>
+              <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+                <%= render "shared/button", text: "Withdraw", variant: "primary", size: "medium", type: :submit, form_id: "withdraw-form" %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Automatic withdrawal: off by default, and say what turning it on costs. %>
+    <%= form_with url: manage_ticket_balance_auto_withdraw_path, method: :patch, class: "bg-white border border-gray-200 rounded-xl overflow-hidden" do %>
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Automatic withdrawal</h2>
+        <p class="text-sm text-gray-600 mt-1">Money you keep here pays your payout runs the same day. Once it's withdrawn, a run needs a bank debit first, which takes 2 to 4 business days.</p>
+      </div>
+      <fieldset class="px-6 py-4 space-y-2">
+        <legend class="sr-only">When to withdraw automatically</legend>
+        <% auto_choices.each do |value, title, explanation| %>
+          <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <%= radio_button_tag :auto_withdraw, value, profile.auto_withdraw == value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+            <span>
+              <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+              <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+            </span>
+          </label>
+        <% end %>
+      </fieldset>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+
+    <% if @upcoming.any? %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Waiting on upcoming shows</h2>
+        </div>
+        <ul class="divide-y divide-gray-100">
+          <% @upcoming.each do |listing, cents| %>
+            <li class="flex items-center justify-between gap-4 px-6 py-2.5 text-sm">
+              <span class="min-w-0 truncate text-gray-900"><%= listing.show.date_and_time.strftime("%a %b %-d") %> · <%= listing.display_title %></span>
+              <span class="tabular-nums text-gray-700"><%= number_to_currency(cents / 100.0) %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if @withdrawals.any? %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Withdrawals</h2>
+        </div>
+        <ul class="divide-y divide-gray-100">
+          <% @withdrawals.each do |withdrawal| %>
+            <li class="flex items-center justify-between gap-4 px-6 py-2.5 text-sm">
+              <span class="text-gray-900"><%= withdrawal.created_at.strftime("%b %-d, %Y") %>
+                <span class="text-gray-500">· <%= withdrawal.automatic ? "Automatic" : (withdrawal.requested_by&.person&.name || "By hand") %></span>
+                <% if withdrawal.status == "failed" %><span class="text-xs text-red-600">· Didn't go through</span><% end %>
+              </span>
+              <span class="tabular-nums text-gray-700"><%= number_to_currency(withdrawal.amount_cents / 100.0) %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+</div>

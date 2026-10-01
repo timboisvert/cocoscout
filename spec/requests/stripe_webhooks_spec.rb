@@ -175,4 +175,35 @@ RSpec.describe "StripeWebhooksController", type: :request do
         .to change { ActiveJob::Base.queue_adapter.enqueued_jobs.count { |j| j["job_class"] == "RetryParkedPayoutsJob" } }.by(1)
     end
   end
+  describe "ticket orders" do
+    let(:listing) { create(:ticket_listing, organization: org) }
+    let!(:tier) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000) }
+    let(:order) { TicketCheckout.start!(listing: listing, quantities: { tier.id.to_s => "2" }) }
+
+    def intent
+      Stripe::PaymentIntent.construct_from(id: "pi_tix", amount: order.total_cents, latest_charge: "ch_tix",
+                                           metadata: { type: "ticket_order", ticket_order_id: order.id.to_s })
+    end
+
+    it "settles a paid order once, however many times Stripe delivers it" do
+      deliver("payment_intent.succeeded", intent, id: "evt_tix")
+      deliver("payment_intent.succeeded", intent, id: "evt_tix")
+      deliver("payment_intent.succeeded", intent, id: "evt_tix_retry")
+
+      expect([ order.reload.status, order.stripe_charge_id ]).to eq([ "paid", "ch_tix" ])
+      expect(OrgCashEntry.where(source: order).count).to eq(1)
+      expect(JournalEntry.live.where(source: order).count).to eq(1)
+    end
+
+    it "takes a disputed charge out of the theater's money, and gives it back on a win" do
+      deliver("payment_intent.succeeded", intent)
+      dispute = ->(status) { Stripe::Dispute.construct_from(id: "dp_1", payment_intent: "pi_tix", charge: "ch_tix", amount: order.total_cents, status: status) }
+
+      deliver("charge.dispute.created", dispute.call("needs_response"))
+      expect(OrgCashEntry.where(source: order, entry_type: "ticket_dispute").sum(:amount_cents)).to eq(-(order.total_cents + 1_500))
+
+      deliver("charge.dispute.closed", dispute.call("won"))
+      expect(OrgCashEntry.where(source: order, entry_type: "ticket_dispute")).to be_empty
+    end
+  end
 end

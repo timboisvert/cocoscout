@@ -85,8 +85,10 @@ class OrgCashEntry < ApplicationRecord
   end
 
   # What the org can actually spend on an unfunded draw (course runs, refunds).
+  # Ticket money for shows that haven't happened (or whose card money is still
+  # settling) is in the balance but not spendable — see TicketBalance.
   def self.available_cents(organization, except: nil)
-    balance_cents(organization) - committed_cents(organization, except: except)
+    balance_cents(organization) - committed_cents(organization, except: except) - TicketBalance.held_cents(organization)
   end
 
   # Idempotently record (or restate) the entry for a given source — same

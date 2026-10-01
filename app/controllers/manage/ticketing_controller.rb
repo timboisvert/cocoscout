@@ -5,6 +5,7 @@ module Manage
   class TicketingController < Manage::TicketingBaseController
     def index
       @tax = TicketTaxSetting.current(Current.organization)
+      @balance = TicketBalance.summary(Current.organization)
     end
   end
 end

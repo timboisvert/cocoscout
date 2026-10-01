@@ -24,6 +24,7 @@ class TicketOrder < ApplicationRecord
   belongs_to :user, optional: true
 
   has_many :tickets, dependent: :destroy
+  has_many :ticket_refunds, dependent: :delete_all
 
   normalizes :buyer_email, with: ->(e) { e.to_s.strip.downcase.presence }
 

@@ -32,6 +32,8 @@ class StripeWebhooksController < ApplicationController
       handle_transfer_reversed(event.data.object)
     when "payout.failed"
       handle_connect_payout_failed(event.data.object, event.account)
+    when "charge.dispute.created", "charge.dispute.closed"
+      TicketDispute.handle(event.data.object, event.type)
     when "payment_intent.succeeded", "payment_intent.payment_failed"
       intent = event.data.object
       if intent.metadata&.[]("type") == "ticket_order"

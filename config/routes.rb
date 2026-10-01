@@ -1238,6 +1238,17 @@ Rails.application.routes.draw do
     post   "ticketing/shows/:id/status",          to: "ticket_listings#change_status",   as: "ticket_listing_status"
     post   "ticketing/shows/:id/codes",           to: "ticket_listings#create_code",     as: "ticket_listing_codes"
     delete "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#destroy_code",    as: "ticket_listing_code"
+    get    "ticketing/shows/:id/cancel",          to: "ticket_listings#cancel_review",   as: "ticket_listing_cancel"
+    post   "ticketing/shows/:id/cancel",          to: "ticket_listings#cancel"
+    get    "ticketing/orders",                    to: "ticket_orders#index",             as: "ticket_orders"
+    get    "ticketing/orders/:id",                to: "ticket_orders#show",              as: "ticket_order"
+    get    "ticketing/orders/:id/refund",         to: "ticket_orders#refund_review",     as: "ticket_order_refund"
+    post   "ticketing/orders/:id/refund",         to: "ticket_orders#refund"
+    post   "ticketing/orders/:id/resend",         to: "ticket_orders#resend",            as: "ticket_order_resend"
+    get    "ticketing/balance",                   to: "ticket_balance#show",             as: "ticket_balance"
+    post   "ticketing/balance/withdraw",          to: "ticket_balance#withdraw",         as: "ticket_balance_withdraw"
+    patch  "ticketing/balance/auto-withdraw",     to: "ticket_balance#update_auto_withdraw", as: "ticket_balance_auto_withdraw"
+    get    "ticketing/taxes",                     to: "ticket_taxes#show",               as: "ticket_taxes"
 
     # Staffing → Availability: the whole staff's availability on a month calendar.
     get   "staffing/availability",                to: "staffing/availability#index",     as: "staffing_availability"

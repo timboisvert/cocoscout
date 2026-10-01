@@ -1,0 +1,76 @@
+<% content_for :title, "Orders" %>
+<%
+  status_path = ->(status) { manage_ticket_orders_path(status: status, listing_id: @listing&.id, q: @query.presence) }
+  show_options = [ { value: "", text: "All shows" } ] +
+                 @listings.map { |l| { value: l.id, text: "#{l.show.date_and_time.strftime('%b %-d')} · #{l.display_title}" } }
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
+    text: "Orders",
+    links: []
+  } %>
+
+  <%= form_with url: manage_ticket_orders_path, method: :get, class: "mb-3" do %>
+    <%= hidden_field_tag :listing_id, @listing&.id %>
+    <%= hidden_field_tag :status, @status %>
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      { label: "Find", partial: "shared/filters/search_input", locals: { placeholder: "Name, email or code", value: @query } },
+      { separator: true },
+      { label: "Orders", filters: [
+        { text: "All", path: status_path.call(nil), active: @status.nil? },
+        { text: "Paid", path: status_path.call("paid"), active: @status == "paid" },
+        { text: "Refunded", path: status_path.call("refunded"), active: @status == "refunded" }
+      ] },
+      { separator: true },
+      { label: "Show", partial: "shared/filters/dropdown_filter",
+        locals: { label: "Show", name: "listing_id", options: show_options, selected: @listing&.id.to_s,
+                  data_attributes: { filter_select_param_value: "listing_id" } } }
+    ] %>
+  <% end %>
+
+  <% if @orders.any? %>
+    <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+      <% @orders.each do |order| %>
+        <% listing = order.ticket_listing %>
+        <% count = order.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
+        <%= link_to manage_ticket_order_path(order.id), class: "flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 hover:bg-gray-50" do %>
+          <div class="min-w-[12rem] flex-1">
+            <div class="text-sm font-medium text-gray-900 truncate"><%= order.buyer_name.presence || "No name" %></div>
+            <div class="text-xs text-gray-500 truncate"><%= order.code %><%= " · #{order.buyer_email}" if order.buyer_email.present? %></div>
+          </div>
+          <div class="min-w-[12rem] flex-1 text-sm text-gray-700 truncate">
+            <%= listing.show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %> · <%= listing.display_title %>
+          </div>
+          <div class="flex w-full sm:w-auto items-center gap-4">
+            <div class="text-sm text-gray-700 tabular-nums sm:w-20"><%= pluralize(count, "ticket") %></div>
+            <div class="text-sm font-medium text-gray-900 tabular-nums sm:w-20 sm:text-right"><%= ticket_price(order.total_cents) %></div>
+            <div class="ml-auto sm:ml-0 sm:w-32 sm:text-right"><%= render "manage/ticket_orders/status_badge", order: order %></div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if @pagy.pages > 1 %>
+      <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-500">Page <%= @pagy.page %> of <%= @pagy.pages %></div>
+        <div class="flex gap-2">
+          <% if @pagy.previous %>
+            <%= render "shared/button", text: "Previous", variant: "secondary", size: "small",
+                  path: manage_ticket_orders_path(page: @pagy.previous, status: @status, listing_id: @listing&.id, q: @query.presence) %>
+          <% end %>
+          <% if @pagy.next %>
+            <%= render "shared/button", text: "Next", variant: "secondary", size: "small",
+                  path: manage_ticket_orders_path(page: @pagy.next, status: @status, listing_id: @listing&.id, q: @query.presence) %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center">
+      <p class="text-sm text-gray-600"><%= @query.present? || @listing || @status ? "No orders match." : "No orders yet. They'll appear here as people buy tickets." %></p>
+    </div>
+  <% end %>
+</div>

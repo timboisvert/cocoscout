@@ -12,7 +12,7 @@ module Manage
       "closed" => %w[on_sale paused]
     }.freeze
 
-    before_action :set_listing, only: %i[edit update change_status destroy create_code destroy_code]
+    before_action :set_listing, only: %i[edit update change_status destroy create_code destroy_code cancel_review cancel]
 
     def index
       @filter = params[:filter].presence_in(FILTERS) || "upcoming"
@@ -114,6 +114,28 @@ module Manage
         code.destroy!
       end
       redirect_to manage_edit_ticket_listing_path(@listing, anchor: "discount-codes"), notice: "#{code.code} no longer works."
+    end
+
+    # Canceling a show that sold tickets: who gets refunded, and the email
+    # they'll get (editable), before anything happens.
+    def cancel_review
+      if @listing.status == "canceled"
+        redirect_to manage_edit_ticket_listing_path(@listing), notice: "This show's ticket sales are already canceled." and return
+      end
+
+      @draft = TicketShowCancellation.draft(@listing)
+    end
+
+    def cancel
+      if @listing.status == "canceled"
+        redirect_to manage_edit_ticket_listing_path(@listing) and return
+      end
+
+      count = TicketShowCancellation.orders(@listing).count
+      TicketShowCancellation.start!(@listing, subject: params[:subject], body: params[:body], by: Current.user,
+                                              cancel_show: params[:cancel_show] == "1")
+      notice = count.zero? ? "Ticket sales canceled." : "Ticket sales canceled. Refunds are on their way to #{helpers.pluralize(count, 'buyer')}."
+      redirect_to manage_edit_ticket_listing_path(@listing), notice: notice
     end
 
     private

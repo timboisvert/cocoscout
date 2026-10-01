@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_01_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -267,6 +267,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_110000) do
     t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
     t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"
     t.index ["auditionable_type", "auditionable_id"], name: "index_auditions_on_auditionable"
+  end
+
+  create_table "balance_withdrawals", force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.boolean "automatic", default: false, null: false
+    t.datetime "created_at", null: false
+    t.string "error"
+    t.bigint "organization_id", null: false
+    t.bigint "requested_by_id"
+    t.string "status", default: "pending", null: false
+    t.string "stripe_transfer_id"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_balance_withdrawals_on_organization_id"
+    t.index ["requested_by_id"], name: "index_balance_withdrawals_on_requested_by_id"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
@@ -718,7 +732,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_110000) do
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -1546,6 +1560,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_110000) do
   end
 
   create_table "payout_batches", force: :cascade do |t|
+    t.integer "balance_applied_cents", default: 0, null: false
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.bigint "created_by_id"
@@ -3170,6 +3185,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_110000) do
     t.index ["user_id"], name: "index_ticket_orders_on_user_id"
   end
 
+  create_table "ticket_refunds", force: :cascade do |t|
+    t.integer "amount_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "error"
+    t.integer "face_cents", default: 0, null: false
+    t.integer "fees_cents", default: 0, null: false
+    t.boolean "keep_fees", default: false, null: false
+    t.integer "org_debit_cents", default: 0, null: false
+    t.bigint "organization_id", null: false
+    t.integer "platform_fee_waived_cents", default: 0, null: false
+    t.string "reason"
+    t.bigint "refunded_by_id"
+    t.string "status", default: "pending", null: false
+    t.string "stripe_refund_id"
+    t.integer "tax_cents", default: 0, null: false
+    t.jsonb "ticket_ids", default: [], null: false
+    t.bigint "ticket_order_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_refunds_on_organization_id"
+    t.index ["refunded_by_id"], name: "index_ticket_refunds_on_refunded_by_id"
+    t.index ["ticket_order_id"], name: "index_ticket_refunds_on_ticket_order_id"
+  end
+
   create_table "ticket_sales_lines", force: :cascade do |t|
     t.decimal "amount", precision: 10, scale: 2, default: "0.0", null: false
     t.datetime "created_at", null: false
@@ -3232,6 +3270,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_110000) do
   end
 
   create_table "ticketing_profiles", force: :cascade do |t|
+    t.string "auto_withdraw", default: "off", null: false
     t.datetime "created_at", null: false
     t.string "default_fee_mode", default: "buyer", null: false
     t.integer "default_max_per_order", default: 10, null: false
@@ -3411,6 +3450,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_110000) do
   add_foreign_key "audition_wizard_states", "users"
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
+  add_foreign_key "balance_withdrawals", "organizations"
+  add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "casting_table_draft_assignments", "casting_tables"
   add_foreign_key "casting_table_draft_assignments", "roles"
@@ -3688,6 +3729,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_110000) do
   add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
   add_foreign_key "ticket_orders", "ticket_listings"
   add_foreign_key "ticket_orders", "users", on_delete: :nullify
+  add_foreign_key "ticket_refunds", "organizations"
+  add_foreign_key "ticket_refunds", "ticket_orders"
+  add_foreign_key "ticket_refunds", "users", column: "refunded_by_id", on_delete: :nullify
   add_foreign_key "ticket_sales_lines", "show_financials", column: "show_financials_id"
   add_foreign_key "ticket_sales_lines", "ticket_sources"
   add_foreign_key "ticket_sources", "organizations"

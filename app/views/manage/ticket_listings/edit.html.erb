@@ -20,6 +20,14 @@
   } %>
 
   <div class="max-w-2xl space-y-6">
+    <% if show.canceled && @listing.status != "canceled" && @listing.ticket_orders.paid_like.exists? %>
+      <%= render "shared/alert_panel",
+            eyebrow: "Show canceled",
+            headline: "This show is canceled on your calendar",
+            body: "People still hold tickets for it. Cancel its ticket sales to refund them and let them know.",
+            actions: [ { text: "Refund buyers", path: manage_ticket_listing_cancel_path(@listing) } ] %>
+    <% end %>
+
     <%# Where it stands, and the one thing to do next. %>
     <div class="bg-white border border-gray-200 rounded-xl px-6 py-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -225,6 +233,10 @@
       <div class="pt-2">
         <%= render "shared/button", text: "Remove from Ticketing", variant: "ghost", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-listing" } %>
+      </div>
+    <% elsif @listing.status != "canceled" && @listing.released_at.nil? %>
+      <div class="pt-2">
+        <%= render "shared/button", text: "Cancel this show", variant: "ghost", size: "small", path: manage_ticket_listing_cancel_path(@listing) %>
       </div>
     <% end %>
   </div>

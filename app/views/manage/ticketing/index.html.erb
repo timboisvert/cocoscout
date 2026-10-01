@@ -13,7 +13,7 @@
         description: "<p>Sell tickets to your shows right here: your own box office page, checkout, and the door. Ticket money lands in your CocoScout balance, where it pays your people first and fills in each show's financials for you.</p>",
         actions: [
           { icon: "calendar", text: "Shows on sale", description: "Prices, seats and sales for each date", path: manage_ticket_listings_path },
-          { icon: "clipboard-list", text: "Put shows on sale", description: "Pick a production's dates and set prices", path: manage_new_ticket_listing_path },
+          { icon: "clipboard-list", text: "Orders", description: "Find a buyer, resend tickets, refund", path: manage_ticket_orders_path },
           { icon: "user-group", text: "Door", description: "Check people in and sell at the door", path: door_index_path },
           { icon: "cog", text: "Settings", description: "Box office, fees, tax and door access", path: manage_ticketing_settings_path }
         ] %>
@@ -24,6 +24,17 @@
           headline: "Ticketing is off for #{Current.organization.name}",
           body: "Your box office page and checkout stay hidden until it's switched on in Settings.",
           actions: [ { text: "Open settings", path: manage_ticketing_settings_path } ] %>
+  <% end %>
+
+  <%= link_to manage_ticket_balance_path, class: "mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-5 py-4 transition-colors hover:border-pink-400 #{@balance.available_cents.positive? ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}" do %>
+    <div>
+      <div class="text-sm text-gray-600">Your CocoScout balance</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900"><%= number_to_currency(@balance.available_cents / 100.0) %> <span class="text-sm font-normal text-gray-600">available</span></div>
+    </div>
+    <div class="text-sm text-gray-600 text-right">
+      <%= number_to_currency(@balance.upcoming_cents / 100.0) %> waiting on upcoming shows<br>
+      <span class="font-medium text-pink-600">View balance</span>
+    </div>
   <% end %>
 
   <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
@@ -37,7 +48,7 @@
     </div>
     <div class="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
       <span class="text-sm text-gray-500">Tax</span>
-      <span class="text-sm font-medium text-gray-900"><%= tax_words %></span>
+      <span class="text-sm font-medium text-gray-900"><%= tax_words %><%= link_to "Taxes collected", manage_ticket_taxes_path, class: "ml-3 font-normal text-pink-600 hover:text-pink-700" if @tax.set? %></span>
     </div>
   </div>
 </div>

@@ -1,0 +1,159 @@
+<% content_for :title, "Order #{@order.code}" %>
+<%
+  listing = @order.ticket_listing
+  show = listing.show
+  money_rows = [
+    [ "Tickets", @order.subtotal_cents ],
+    ([ "Discount#{" (#{@order.ticket_discount_code&.code})" if @order.ticket_discount_code}", -@order.discount_cents ] if @order.discount_cents.positive?),
+    ([ "Tax", @order.tax_cents ] if @order.tax_cents.positive?),
+    ([ "Fees the buyer paid", @order.buyer_fee_cents ] if @order.buyer_fee_cents.positive?),
+    [ "Buyer paid", @order.total_cents ]
+  ].compact
+  cost_rows = [
+    ([ "CocoScout fee", @order.platform_fee_cents ] if @order.platform_fee_cents.positive?),
+    ([ "Card processing", @order.processing_cents ] if @order.processing_cents.positive?)
+  ].compact
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Orders", manage_ticket_orders_path ] ],
+    text: "Order #{@order.code}",
+    links: []
+  } %>
+
+  <div class="max-w-2xl space-y-6">
+    <% if @disputed %>
+      <%= render "shared/alert_panel",
+            eyebrow: "Disputed",
+            headline: "The buyer disputed this charge with their bank",
+            body: "The amount and Stripe's $15 fee came out of your balance. If the dispute is won, both come back. Respond to it in Stripe; the check-in times below are good evidence." %>
+    <% end %>
+
+    <div class="bg-white border border-gray-200 rounded-xl px-6 py-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="text-lg font-semibold text-gray-900"><%= @order.buyer_name.presence || "No name" %></h2>
+          <p class="text-sm text-gray-600"><%= [ @order.buyer_email, @order.buyer_phone ].compact_blank.join(" · ").presence || "No contact details" %></p>
+          <p class="text-sm text-gray-600 mt-2">
+            <%= link_to listing.display_title, manage_edit_ticket_listing_path(listing), class: "font-medium text-gray-900 hover:text-pink-600" %>
+            · <%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %>
+          </p>
+          <p class="text-xs text-gray-500 mt-1">
+            <%= @order.paid_at ? "Bought #{@order.paid_at.strftime('%b %-d at %-l:%M %p')}" : "Not paid" %>
+            · <%= { "online" => "Online", "embed" => "On your website", "door_cash" => "Cash at the door", "comp" => "Comp at the door" }.fetch(@order.channel, @order.channel) %>
+          </p>
+        </div>
+        <%= render "manage/ticket_orders/status_badge", order: @order %>
+      </div>
+      <% if @order.buyer_email.present? && @order.paid? %>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <%= render "shared/button", text: "Resend tickets", variant: "secondary", size: "small",
+                path: manage_ticket_order_resend_path(@order.id), method: :post %>
+          <%= render "shared/button", text: "Buyer's tickets page", variant: "ghost", size: "small",
+                path: tickets_order_path(token: @order.token), target: "_blank", rel: "noopener" %>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Tickets: tick the ones to refund (all of them, by default). %>
+    <%= form_with url: manage_ticket_order_refund_path(@order.id), method: :get, local: true do %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900"><%= pluralize(@tickets.size, "ticket") %></h2>
+        </div>
+        <ul class="divide-y divide-gray-100">
+          <% @tickets.each do |ticket| %>
+            <% refundable = @refundable_ids.include?(ticket.id) %>
+            <li class="flex items-center gap-3 px-6 py-3">
+              <% if refundable && @refundable_ids.any? %>
+                <%= check_box_tag "ticket_ids[]", ticket.id, true, id: "refund_ticket_#{ticket.id}", "aria-label": "Refund #{ticket.ticket_tier.name}",
+                      class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+              <% else %>
+                <span class="w-4"></span>
+              <% end %>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-medium text-gray-900"><%= ticket.ticket_tier.name %> <span class="font-normal text-gray-500"><%= ticket_price(ticket.price_cents - ticket.discount_cents) %></span></div>
+                <div class="text-xs text-gray-500">
+                  <% case ticket.status %>
+                  <% when "checked_in" %>
+                    Checked in <%= ticket.checked_in_at&.strftime("%b %-d at %-l:%M %p") %><%= " by #{ticket.checked_in_by.person&.name || ticket.checked_in_by.email_address}" if ticket.checked_in_by %>
+                  <% when "valid" %>
+                    Not checked in
+                  <% when "refunded" %>
+                    Refunded <%= ticket.refunded_at&.strftime("%b %-d") %>
+                  <% else %>
+                    <%= ticket.status.humanize %>
+                  <% end %>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+        <% if @refundable_ids.any? && @order.total_cents.positive? %>
+          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
+            <% if @order.buyer_fee_cents.positive? %>
+              <label class="flex items-center gap-2 text-sm text-gray-700">
+                <%= check_box_tag :keep_fees, "1", false, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+                Keep the fees (refund the price and tax only)
+              </label>
+            <% else %>
+              <span></span>
+            <% end %>
+            <%= render "shared/button", text: "Review refund", variant: "secondary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Money</h2>
+      </div>
+      <dl class="px-6 py-4 space-y-1.5 text-sm">
+        <% money_rows.each do |label, cents| %>
+          <div class="flex justify-between gap-4 <%= 'font-semibold text-gray-900 pt-1.5 border-t border-gray-100' if label == 'Buyer paid' %>">
+            <dt class="text-gray-600"><%= label %></dt><dd class="tabular-nums"><%= number_to_currency(cents / 100.0) %></dd>
+          </div>
+        <% end %>
+        <% cost_rows.each do |label, cents| %>
+          <div class="flex justify-between gap-4">
+            <dt class="text-gray-600"><%= label %></dt><dd class="tabular-nums">−<%= number_to_currency(cents / 100.0) %></dd>
+          </div>
+        <% end %>
+        <% if @order.money_path == "cocoscout" %>
+          <div class="flex justify-between gap-4 font-semibold text-gray-900 pt-1.5 border-t border-gray-100">
+            <dt>You keep</dt><dd class="tabular-nums"><%= number_to_currency(@order.org_net_cents / 100.0) %></dd>
+          </div>
+        <% end %>
+        <% if @order.refunded_cents.positive? %>
+          <div class="flex justify-between gap-4 text-gray-600">
+            <dt>Refunded to the buyer</dt><dd class="tabular-nums">−<%= number_to_currency(@order.refunded_cents / 100.0) %></dd>
+          </div>
+        <% end %>
+      </dl>
+    </div>
+
+    <% if @refunds.any? %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Refunds</h2>
+        </div>
+        <ul class="divide-y divide-gray-100">
+          <% @refunds.each do |refund| %>
+            <li class="px-6 py-3 text-sm">
+              <div class="flex justify-between gap-4">
+                <span class="text-gray-900"><%= number_to_currency(refund.amount_cents / 100.0) %> for <%= pluralize(refund.ticket_ids.size, "ticket") %><%= " (fees kept)" if refund.keep_fees %></span>
+                <span class="text-gray-500"><%= refund.created_at.strftime("%b %-d, %-l:%M %p") %></span>
+              </div>
+              <div class="text-xs text-gray-500 mt-0.5">
+                <%= refund.status == "failed" ? "Didn't go through: #{refund.error}" : [ refund.reason, refund.refunded_by&.person&.name ].compact_blank.join(" · ").presence || "Refunded" %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+</div>

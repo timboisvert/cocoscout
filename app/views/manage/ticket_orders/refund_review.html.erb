@@ -1,0 +1,82 @@
+<% content_for :title, "Refund order #{@order.code}" %>
+<%
+  q = @quote
+  listing = @order.ticket_listing
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  tickets_cents = q.amount_cents - q.fees_cents
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Orders", manage_ticket_orders_path ], [ "Order #{@order.code}", manage_ticket_order_path(@order.id) ] ],
+    text: "Refund",
+    links: []
+  } %>
+
+  <div class="max-w-xl space-y-6">
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Refund <%= number_to_currency(q.amount_cents / 100.0) %> to <%= @order.buyer_name.presence || "the buyer" %></h2>
+        <p class="text-sm text-gray-600 mt-1"><%= listing.display_title %> · <%= listing.show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
+      </div>
+      <dl class="px-6 py-4 space-y-1.5 text-sm">
+        <div class="flex justify-between gap-4">
+          <dt class="text-gray-600"><%= pluralize(q.tickets.size, "ticket") %><%= " (incl. #{number_to_currency(q.tax_cents / 100.0)} tax)" if q.tax_cents.positive? %></dt>
+          <dd class="tabular-nums"><%= number_to_currency(tickets_cents / 100.0) %></dd>
+        </div>
+        <% if q.fees_cents.positive? %>
+          <div class="flex justify-between gap-4">
+            <dt class="text-gray-600">Fees they paid</dt><dd class="tabular-nums"><%= number_to_currency(q.fees_cents / 100.0) %></dd>
+          </div>
+        <% elsif @keep_fees %>
+          <div class="flex justify-between gap-4 text-gray-500">
+            <dt>Fees they paid</dt><dd>Kept</dd>
+          </div>
+        <% end %>
+        <div class="flex justify-between gap-4 font-semibold text-gray-900 pt-1.5 border-t border-gray-100">
+          <dt>Back to the buyer</dt><dd class="tabular-nums"><%= number_to_currency(q.amount_cents / 100.0) %></dd>
+        </div>
+      </dl>
+      <div class="px-6 pb-4 text-sm text-gray-600 space-y-1">
+        <% case @order.money_path %>
+        <% when "cash" %>
+          <p>This was a cash sale at the door: hand the money back from the cash box.</p>
+        <% when "none" %>
+          <p>These were comps, so no money moves. The tickets just stop working.</p>
+        <% else %>
+          <p>It goes back to the card they paid with.
+            <% if q.platform_fee_waived_cents.positive? %>
+              CocoScout's <%= number_to_currency(q.platform_fee_waived_cents / 100.0) %> fee on these tickets comes back too, so your balance gives up <%= number_to_currency(q.org_debit_cents / 100.0) %>.
+            <% else %>
+              It comes out of your balance.
+            <% end %>
+            The card company keeps its processing fee.</p>
+          <p><%= listing.released_at ? "This show has happened, so the refund comes from your available balance." : "The show hasn't happened yet, so the refund comes from what it sold." %></p>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @short %>
+      <%= render "shared/alert_panel",
+            eyebrow: "Not enough in your balance",
+            headline: "Your CocoScout balance has #{number_to_currency(@available_cents / 100.0)}",
+            body: "This refund needs #{number_to_currency(q.org_debit_cents / 100.0)}. The money for this show was already spent on payout runs or withdrawn, so there's nothing to refund it from yet." %>
+    <% else %>
+      <%= form_with url: manage_ticket_order_refund_path(@order.id), method: :post, local: true, class: "bg-white border border-gray-200 rounded-xl px-6 py-5 space-y-4" do %>
+        <% q.tickets.each do |ticket| %>
+          <%= hidden_field_tag "ticket_ids[]", ticket.id, id: nil %>
+        <% end %>
+        <%= hidden_field_tag :keep_fees, @keep_fees ? "1" : "0" %>
+        <div>
+          <label for="reason" class="block text-sm font-medium text-gray-700 mb-1.5">Note for your records <span class="font-normal text-gray-500">(optional)</span></label>
+          <%= text_field_tag :reason, nil, placeholder: "Can't make it; asked by email", class: input_class %>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <%= render "shared/button", text: "Refund #{number_to_currency(q.amount_cents / 100.0)}", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_ticket_order_path(@order.id) %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

@@ -5,6 +5,9 @@
 # No branding in v1 — every org gets the same standard pages.
 class TicketingProfile < ApplicationRecord
   FEE_MODES = %w[buyer org].freeze
+  # Automatic withdrawal of the CocoScout balance to the theater's bank. Off
+  # by default: money left here pays payout runs without a bank debit.
+  AUTO_WITHDRAW = %w[off weekly after_shows].freeze
   # Path words under /t that an org's slug must never shadow.
   RESERVED_SLUGS = %w[orders checkout embed embed-js v p go door api assets help admin].freeze
 
@@ -18,6 +21,7 @@ class TicketingProfile < ApplicationRecord
                              message: "can use lowercase letters, numbers and dashes" }
   validate :slug_not_reserved
   validates :default_fee_mode, inclusion: { in: FEE_MODES }
+  validates :auto_withdraw, inclusion: { in: AUTO_WITHDRAW }
   validates :default_max_per_order, numericality: { only_integer: true, in: 1..100 }
   validates :support_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_nil: true
 

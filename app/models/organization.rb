@@ -54,8 +54,10 @@ class Organization < ApplicationRecord
   has_many :ledger_accounts, dependent: :delete_all
   # Ticketing. Orders go before listings (a listing with orders refuses to be
   # destroyed on its own), and tax lines before the rates they name.
+  has_many :ticket_refunds, dependent: :delete_all
   has_many :ticket_orders, dependent: :destroy
   has_many :ticket_listings, dependent: :destroy
+  has_many :balance_withdrawals, dependent: :delete_all
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :ticketing_access_grants, dependent: :delete_all
   has_one :ticketing_profile, dependent: :destroy

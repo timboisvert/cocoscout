@@ -1,0 +1,14 @@
+<%# An order's state as a small badge. Locals: order. %>
+<%
+  label, classes = case order.status
+                   when "refunded" then [ "Refunded", "bg-gray-100 text-gray-600" ]
+                   when "partially_refunded" then [ "Part refunded", "bg-amber-100 text-amber-700" ]
+                   else
+                     case order.channel
+                     when "door_cash" then [ "Cash at the door", "bg-green-100 text-green-700" ]
+                     when "comp" then [ "Comp", "bg-blue-100 text-blue-700" ]
+                     else [ "Paid", "bg-green-100 text-green-700" ]
+                     end
+                   end
+%>
+<span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium <%= classes %>"><%= label %></span>

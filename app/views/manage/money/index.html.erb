@@ -46,6 +46,8 @@
       refresh_url: manage_refresh_money_path(period: @selected_period) %>
   </div>
 
+  <%= render "manage/money/cocoscout_balance" %>
+
   <%# What needs doing, in the order it costs you: numbers you owe yourself,
       money you owe other people, money other people owe you. Each section is a
       window onto its own page and links there for the rest. %>

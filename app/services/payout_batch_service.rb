@@ -182,6 +182,13 @@ class PayoutBatchService
     credit_used = PayoutFundingCredit.consume!(org, fundable_cents)
     debit_cents = fundable_cents - credit_used
 
+    # The theater's CocoScout balance — ticket money from shows that have
+    # happened — pays next, so the run goes out today instead of waiting on
+    # an ACH debit. Claimed under the org's cash lock so two runs can't spend
+    # the same dollars. An org with no ticket money has nothing to claim.
+    balance_used = claim_balance!(batch, debit_cents)
+    debit_cents -= balance_used
+
     if debit_cents <= 0
       # Nothing to debit (held money and/or credit covers the run): no
       # PaymentIntent at all — the balance already holds the money, so the run
@@ -193,8 +200,9 @@ class PayoutBatchService
     end
 
     if payment_method.blank?
-      # Nothing was debited — hand back the credit this attempt consumed so the
-      # org's available balance stays truthful.
+      # Nothing was debited — hand back the credit and balance this attempt
+      # claimed so the org's available balance stays truthful.
+      batch.update!(balance_applied_cents: 0) if balance_used.positive?
       if credit_used.positive?
         PayoutFundingCredit.create!(organization: org, amount_cents: credit_used,
                                     note: "Restored after failed funding of run ##{batch.id}")
@@ -225,13 +233,27 @@ class PayoutBatchService
     batch
   rescue Stripe::StripeError => e
     # The debit never happened — give back any credit this attempt consumed so
-    # the org's available balance stays truthful.
+    # the org's available balance stays truthful. (A failed run's balance
+    # claim stops counting on its own; zeroing it keeps the record plain.)
     if defined?(credit_used) && credit_used.to_i.positive?
       PayoutFundingCredit.create!(organization: batch.organization, amount_cents: credit_used,
                                   note: "Restored after failed funding of run ##{batch.id}")
     end
-    batch.update!(status: "failed", funding_status: "failed")
+    batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0)
     raise Error, e.message
+  end
+
+  # How much of the theater's CocoScout balance (TicketBalance) this run
+  # spends instead of debiting the bank — at most what's left to debit.
+  # Recorded on the run, which is what takes it out of the balance.
+  def self.claim_balance!(batch, debit_cents)
+    return 0 unless debit_cents.positive?
+
+    OrgCashEntry.with_org_lock(batch.organization) do
+      cents = [ TicketBalance.available_cents(batch.organization), debit_cents ].min
+      batch.update!(balance_applied_cents: cents) if cents.positive?
+      [ cents, 0 ].max
+    end
   end
 
   # Move a batch forward based on its funding PaymentIntent status. Called from

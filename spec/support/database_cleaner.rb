@@ -131,6 +131,12 @@ def seed_content_templates
     { key: "ticket_order_confirmation", name: "Ticket Order Confirmation", subject: "Your tickets for {{show_title}}",
       body: "<p>Hi {{first_name}}, you're going to {{show_title}} on {{show_date}}. Here {{ticket_count_verb}} your {{ticket_count}}. Order {{order_code}}: <a href=\"{{order_url}}\">View</a></p>",
       category: "ticketing", channel: "email" },
+    { key: "ticket_order_refunded", name: "Ticket Order Refunded", subject: "Your refund from {{organization_name}}",
+      body: "<p>Hi {{first_name}}, {{organization_name}} refunded {{refund_amount}} for {{ticket_count}} to {{show_title}}. Order {{order_code}}</p>",
+      category: "ticketing", channel: "email" },
+    { key: "ticket_event_canceled", name: "Ticketed Show Canceled", subject: "{{show_title}} on {{show_date}} is canceled",
+      body: "<p>Hi {{first_name}}, {{show_title}} on {{show_date}} is canceled. We've refunded {{refund_amount}} for your {{ticket_count}}.</p>",
+      category: "ticketing", channel: "email" },
     { key: "course_cancelled_registrant", name: "Course Cancelled", subject: "{{course_title}} has been cancelled",
       body: "<p>Hi {{recipient_name}}, {{course_title}} with {{organization_name}} has been cancelled.</p>{{#refund_amount}}<p>Your {{refund_amount}} has been refunded.</p>{{/refund_amount}}",
       category: "courses", channel: "both" }
