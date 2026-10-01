@@ -32,11 +32,16 @@ module Manage
       @tickets = @order.tickets.includes(:ticket_tier, :checked_in_by, :tax_lines).order(:id).to_a
       @refunds = @order.ticket_refunds.order(:created_at).includes(:refunded_by).to_a
       @refundable_ids = TicketOrderRefund.refundable(@order).pluck(:id)
+      @refunds_allowed = TicketOrderRefund.allowed?(@order)
       @disputed = TicketDispute.open?(@order)
     end
 
     # What a refund of the chosen tickets gives back, before it happens.
     def refund_review
+      unless TicketOrderRefund.allowed?(@order)
+        redirect_to manage_ticket_order_path(@order.id), alert: "Refunds after the show are off. You can turn them on in Ticketing settings." and return
+      end
+
       @keep_fees = params[:keep_fees] == "1"
       @quote = TicketOrderRefund.quote(@order, ticket_ids: Array(params[:ticket_ids]).compact_blank, keep_fees: @keep_fees)
       if @quote.tickets.empty?

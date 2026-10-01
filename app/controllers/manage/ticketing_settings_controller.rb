@@ -19,7 +19,7 @@ module Manage
 
     def update
       attrs = params.require(:ticketing_profile)
-                    .permit(:slug, :support_email, :default_fee_mode, :default_max_per_order, :enabled)
+                    .permit(:slug, :support_email, :default_fee_mode, :default_max_per_order, :refunds_after_show, :enabled)
       # The pilot switch is a superadmin's call, even once managers can get here.
       attrs.delete(:enabled) unless Current.user.superadmin?
 

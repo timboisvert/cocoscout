@@ -50,7 +50,8 @@ module Manage
       "manage/ticket_listings" => :ticketing,
       "manage/ticket_orders" => :ticketing,
       "manage/ticket_balance" => :ticketing,
-      "manage/ticket_taxes" => :ticketing
+      "manage/ticket_taxes" => :ticketing,
+      "manage/books" => :money
     }.freeze
 
     # What every Pro plan includes, shown as reinforcement on each upgrade screen.

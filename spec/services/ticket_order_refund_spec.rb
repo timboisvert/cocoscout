@@ -14,11 +14,11 @@ RSpec.describe TicketOrderRefund do
 
   before { allow(Stripe::Refund).to receive(:create).and_return(double("refund", id: "re_1")) }
 
-  def sold(count, fee_mode: "buyer")
+  def sold(count, fee_mode: "buyer", intent: "pi_sale")
     listing.update!(fee_mode: fee_mode)
     order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => count.to_s })
     order.update!(buyer_name: "Avery Buyer", buyer_email: "avery@example.com")
-    TicketOrderSettlement.settle!(order, payment_intent_id: "pi_sale")
+    TicketOrderSettlement.settle!(order, payment_intent_id: intent)
     order.reload
   end
 
@@ -102,6 +102,22 @@ RSpec.describe TicketOrderRefund do
     expect(order.ticket_refunds.sole.status).to eq("failed")
     expect(OrgCashEntry.balance_cents(org)).to eq(2_000)
     expect(order.tickets.pluck(:status)).to eq([ "valid" ])
+  end
+
+  it "after the show, refunds only when the theater allows them" do
+    order = sold(1)
+    listing.show.update!(date_and_time: 2.hours.ago)
+
+    expect(described_class.allowed?(order)).to be(false)
+    expect { described_class.issue!(order) }.to raise_error(described_class::Error, /Refunds after the show are off/)
+    expect(Stripe::Refund).not_to have_received(:create)
+
+    # Canceling a show (started before showtime) isn't stopped by the setting.
+    expect(described_class.issue!(order, allow_after_show: true).status).to eq("succeeded")
+
+    second = sold(1, intent: "pi_second")
+    TicketingProfile.for(org).update!(refunds_after_show: true)
+    expect(described_class.issue!(second).status).to eq("succeeded")
   end
 
   it "hands cash back from the box, with no Stripe and no balance" do

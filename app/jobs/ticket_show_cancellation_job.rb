@@ -14,7 +14,7 @@ class TicketShowCancellationJob < ApplicationJob
 
     user = User.find_by(id: user_id)
     TicketShowCancellation.orders(listing).find_each do |order|
-      refund = TicketOrderRefund.issue!(order, by: user, reason: "Show canceled", notify: false)
+      refund = TicketOrderRefund.issue!(order, by: user, reason: "Show canceled", notify: false, allow_after_show: true)
       TicketOrderMailer.canceled(refund, subject: subject, body: body).deliver_later if order.buyer_email.present?
     rescue TicketOrderRefund::Error => e
       Rails.logger.warn("[TicketShowCancellationJob] order #{order.id}: #{e.message}")

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_01_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3276,6 +3276,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_120100) do
     t.integer "default_max_per_order", default: 10, null: false
     t.boolean "enabled", default: false, null: false
     t.bigint "organization_id", null: false
+    t.boolean "refunds_after_show", default: false, null: false
     t.string "slug", null: false
     t.string "support_email"
     t.datetime "updated_at", null: false

@@ -20,7 +20,7 @@
   } %>
 
   <div class="max-w-2xl space-y-6">
-    <% if show.canceled && @listing.status != "canceled" && @listing.ticket_orders.paid_like.exists? %>
+    <% if show.canceled && @listing.status != "canceled" && show.date_and_time > Time.current && @listing.ticket_orders.paid_like.exists? %>
       <%= render "shared/alert_panel",
             eyebrow: "Show canceled",
             headline: "This show is canceled on your calendar",
@@ -245,7 +245,7 @@
         <%= render "shared/button", text: "Remove from Ticketing", variant: "ghost", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-listing" } %>
       </div>
-    <% elsif @listing.status != "canceled" && @listing.released_at.nil? %>
+    <% elsif @listing.status != "canceled" && show.date_and_time > Time.current %>
       <div class="pt-2">
         <%= render "shared/button", text: "Cancel this show", variant: "ghost", size: "small", path: manage_ticket_listing_cancel_path(@listing) %>
       </div>

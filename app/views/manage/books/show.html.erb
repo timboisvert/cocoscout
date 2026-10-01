@@ -1,0 +1,173 @@
+<% content_for :title, "Books" %>
+<%
+  tab_path = ->(tab, extra = {}) { manage_money_books_path({ tab: tab, basis: @report.basis == :cash ? "cash" : nil }.merge(extra).compact) }
+  money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
+  # Where an entry came from, as a link a manager can follow.
+  refund_orders = @entries ? TicketRefund.where(id: @entries.select { |e| e.source_type == "TicketRefund" }.map(&:source_id)).pluck(:id, :ticket_order_id).to_h : {}
+  source_link = lambda do |entry|
+    case entry.source_type
+    when "TicketOrder" then [ "Order", manage_ticket_order_path(entry.source_id) ]
+    when "TicketRefund" then refund_orders[entry.source_id] && [ "Order", manage_ticket_order_path(refund_orders[entry.source_id]) ]
+    when "TicketListing" then [ "Show", manage_edit_ticket_listing_path(entry.source_id) ]
+    when "BalanceWithdrawal" then [ "Balance", manage_ticket_balance_path ]
+    end
+  end
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Money", manage_money_index_path ] ],
+    text: "Books",
+    links: []
+  } %>
+
+  <p class="max-w-3xl text-sm text-gray-600 mb-4">Every dollar CocoScout handles for you, kept as real double-entry books. Read-only for now, and only superadmins see it while we test. Ticketing writes here today; payouts, staff pay, courses and contracts join next.</p>
+
+  <div class="mb-4">
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      { label: "View", filters: [
+        { text: "Accounts", path: tab_path.call("accounts"), active: @tab == "accounts" },
+        { text: "Entries", path: tab_path.call("entries"), active: @tab == "entries" },
+        { text: "By show", path: tab_path.call("shows"), active: @tab == "shows" },
+        { text: "Checks", path: tab_path.call("checks"), active: @tab == "checks" }
+      ] },
+      ({ separator: true } if @tab == "accounts"),
+      ({ label: "Count money", filters: [
+        { text: "When earned", path: manage_money_books_path(tab: "accounts"), active: @report.basis == :accrual },
+        { text: "When it moved", path: manage_money_books_path(tab: "accounts", basis: "cash"), active: @report.basis == :cash }
+      ] } if @tab == "accounts")
+    ].compact %>
+  </div>
+
+  <% case @tab %>
+  <% when "accounts" %>
+    <% groups = @report.groups %>
+    <% if groups.empty? %>
+      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">Nothing's on the books yet. The first ticket sale starts them.</div>
+    <% else %>
+      <div class="max-w-3xl space-y-4">
+        <% groups.each do |label, rows, total| %>
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50">
+              <h2 class="text-sm font-semibold text-gray-900"><%= label %></h2>
+              <span class="text-sm font-semibold tabular-nums text-gray-900"><%= money.call(total) %></span>
+            </div>
+            <ul class="divide-y divide-gray-100">
+              <% rows.each do |row| %>
+                <li>
+                  <%= link_to tab_path.call("entries", account_id: row.account.id), class: "flex items-center justify-between gap-4 px-5 py-2.5 text-sm hover:bg-gray-50" do %>
+                    <span class="text-gray-900"><%= row.account.name %></span>
+                    <span class="tabular-nums <%= row.cents.zero? ? 'text-gray-400' : 'text-gray-900' %>"><%= money.call(row.cents) %></span>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        <div class="bg-white border border-gray-200 rounded-xl px-5 py-3 flex items-center justify-between text-sm">
+          <span class="font-semibold text-gray-900">Profit (income less spending)</span>
+          <span class="font-semibold tabular-nums text-gray-900"><%= money.call(@report.profit_cents) %></span>
+        </div>
+      </div>
+    <% end %>
+
+  <% when "entries" %>
+    <% if @account %>
+      <p class="text-sm text-gray-700 mb-3">Entries touching <span class="font-medium"><%= @account.name %></span> · <%= link_to "Show all entries", tab_path.call("entries"), class: "text-pink-600 hover:text-pink-700" %></p>
+    <% end %>
+    <% if @entries.any? %>
+      <div class="max-w-4xl bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+        <% @entries.each do |entry| %>
+          <% link = source_link.call(entry) %>
+          <details class="group">
+            <summary class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 cursor-pointer list-none hover:bg-gray-50">
+              <span class="w-24 text-sm text-gray-500 tabular-nums"><%= entry.entry_date.strftime("%b %-d, %Y") %></span>
+              <span class="min-w-[12rem] flex-1 text-sm text-gray-900">
+                <%= BooksReport::KIND_LABELS.fetch(entry.kind, entry.kind.humanize) %>
+                <% unless entry.kind == "withdrawal" %><span class="text-gray-500"><%= entry.memo %></span><% end %>
+                <% if entry.reversal_of_id %><span class="ml-1 inline-flex rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Reverses an earlier entry</span><% end %>
+                <% if entry.reversed_at %><span class="ml-1 inline-flex rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Reversed</span><% end %>
+              </span>
+              <% if link %>
+                <%= link_to link[0], link[1], class: "text-sm text-pink-600 hover:text-pink-700" %>
+              <% end %>
+            </summary>
+            <table class="w-full text-sm mb-3">
+              <tbody>
+                <% entry.journal_lines.sort_by { |l| -l.amount_cents }.each do |line| %>
+                  <tr>
+                    <td class="pl-[8.25rem] pr-3 py-1 text-gray-700"><%= line.ledger_account.name %></td>
+                    <td class="px-3 py-1 text-right tabular-nums text-gray-900 w-28"><%= line.amount_cents.positive? ? number_to_currency(line.amount_cents / 100.0) : "" %></td>
+                    <td class="px-5 py-1 text-right tabular-nums text-gray-900 w-28"><%= line.amount_cents.negative? ? number_to_currency(-line.amount_cents / 100.0) : "" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </details>
+        <% end %>
+      </div>
+      <% if @pagy.pages > 1 %>
+        <div class="max-w-4xl mt-4 flex items-center justify-between">
+          <div class="text-sm text-gray-500">Page <%= @pagy.page %> of <%= @pagy.pages %></div>
+          <div class="flex gap-2">
+            <% if @pagy.previous %><%= render "shared/button", text: "Previous", variant: "secondary", size: "small", path: tab_path.call("entries", account_id: @account&.id, page: @pagy.previous) %><% end %>
+            <% if @pagy.next %><%= render "shared/button", text: "Next", variant: "secondary", size: "small", path: tab_path.call("entries", account_id: @account&.id, page: @pagy.next) %><% end %>
+          </div>
+        </div>
+      <% end %>
+      <p class="max-w-4xl mt-2 text-xs text-gray-500">Open an entry to see its lines: money coming into an account on the left, going out on the right. Every entry balances.</p>
+    <% else %>
+      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">No entries yet.</div>
+    <% end %>
+
+  <% when "shows" %>
+    <% if @show_rows.any? %>
+      <div class="max-w-4xl bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-xs text-gray-500">
+            <tr>
+              <th class="px-5 py-2 text-left font-medium">Show</th>
+              <th class="px-3 py-2 text-right font-medium">Waiting on the show</th>
+              <th class="px-3 py-2 text-right font-medium">Ticket income</th>
+              <th class="px-5 py-2 text-right font-medium">Tax collected</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% @show_rows.each do |row| %>
+              <tr>
+                <td class="px-5 py-2.5 text-gray-900"><%= row.show.date_and_time.strftime("%b %-d, %Y") %> · <%= row.show.secondary_name.presence || row.show.production&.name %></td>
+                <td class="px-3 py-2.5 text-right tabular-nums"><%= money.call(row.waiting_cents) %></td>
+                <td class="px-3 py-2.5 text-right tabular-nums"><%= money.call(row.income_cents) %></td>
+                <td class="px-5 py-2.5 text-right tabular-nums"><%= money.call(row.tax_cents) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <p class="max-w-4xl mt-2 text-xs text-gray-500">Ticket money waits as "Tickets sold for upcoming shows" until the day after the show, then becomes income.</p>
+    <% else %>
+      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">No ticket money on the books yet.</div>
+    <% end %>
+
+  <% when "checks" %>
+    <div class="max-w-3xl space-y-4">
+      <% trial = @report.trial_balance_cents %>
+      <div class="rounded-xl border px-5 py-4 <%= trial.zero? ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200' %>">
+        <div class="text-sm font-semibold text-gray-900"><%= trial.zero? ? "The books balance" : "The books are out of balance by #{money.call(trial)}" %></div>
+        <p class="text-xs text-gray-600 mt-1">Every entry's lines add up to zero, so all of them together must too.</p>
+      </div>
+      <div class="rounded-xl border px-5 py-4 <%= @mismatches.empty? ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200' %>">
+        <div class="text-sm font-semibold text-gray-900"><%= @mismatches.empty? ? "The books agree with the records behind them" : "#{pluralize(@mismatches.size, 'account')} disagree with the records behind them" %></div>
+        <p class="text-xs text-gray-600 mt-1">The CocoScout balance is checked against the cash ledger and withdrawals; tax to pay against the tax on every paid ticket. This also runs every night.</p>
+        <% if @mismatches.any? %>
+          <ul class="mt-3 space-y-1 text-sm text-gray-900">
+            <% @mismatches.each do |m| %>
+              <li><%= ChartOfAccounts::SYSTEM.dig(m.account.to_sym, :name) || m.account %>: books say <%= money.call(m.books_cents) %>, records say <%= money.call(m.expected_cents) %></li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

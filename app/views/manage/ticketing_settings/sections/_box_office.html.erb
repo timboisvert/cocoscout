@@ -54,6 +54,17 @@
         <%= f.number_field :default_max_per_order, min: 1, max: 100, class: "#{input_class} max-w-[8rem]" %>
       </div>
 
+      <div>
+        <div class="block text-sm font-medium text-gray-700 mb-1.5">Refunds</div>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <%= f.check_box :refunds_after_show, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <span>
+            <span class="block text-sm font-medium text-gray-900">Allow refunds after a show has happened</span>
+            <span class="block text-xs text-gray-600 mt-0.5">When this is off, refunding stops being an option once a show starts. Before the show, you can always refund.</span>
+          </span>
+        </label>
+      </div>
+
       <% if Current.user.superadmin? %>
         <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
           <label class="flex items-start gap-3 cursor-pointer">

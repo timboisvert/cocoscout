@@ -1369,6 +1369,7 @@ Rails.application.routes.draw do
 
     # Money / Payouts section - org-level
     get "money", to: "money#index", as: "money_index"
+    get "money/books", to: "books#show", as: "money_books"
     post "money/refresh", to: "money#refresh", as: "refresh_money"
     # Money settings — org-level config. Fixed sub-paths before the :section catch-all.
     get    "money/settings", to: "money_settings#show", as: "money_settings"

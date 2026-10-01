@@ -122,12 +122,15 @@ module Manage
       if @listing.status == "canceled"
         redirect_to manage_edit_ticket_listing_path(@listing), notice: "This show's ticket sales are already canceled." and return
       end
+      if show_started?
+        redirect_to manage_edit_ticket_listing_path(@listing), alert: "This show has already started, so it can't be canceled here." and return
+      end
 
       @draft = TicketShowCancellation.draft(@listing)
     end
 
     def cancel
-      if @listing.status == "canceled"
+      if @listing.status == "canceled" || show_started?
         redirect_to manage_edit_ticket_listing_path(@listing) and return
       end
 
@@ -139,6 +142,10 @@ module Manage
     end
 
     private
+
+    def show_started?
+      @listing.show.date_and_time <= Time.current
+    end
 
     # Scoped to the current org: a bare find here would reach another org's show.
     def set_listing

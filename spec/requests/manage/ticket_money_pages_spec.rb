@@ -68,6 +68,31 @@ RSpec.describe "Manage ticketing money", type: :request do
       expect(response.body).not_to include("Refund $21.42</span>")
     end
 
+    it "hides refunds after the show unless the theater allows them" do
+      order = sold(1)
+      listing.show.update!(date_and_time: 1.hour.ago)
+
+      get manage_ticket_order_path(order.id)
+      expect(response.body).to include("refunds after the show are off")
+      expect(response.body).not_to include("Review refund")
+      get manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id) }
+      expect(response).to redirect_to(manage_ticket_order_path(order.id))
+
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { refunds_after_show: "1" } }
+      expect(TicketingProfile.find_by!(organization: org).refunds_after_show).to be(true)
+      get manage_ticket_order_path(order.id)
+      expect(response.body).to include("Review refund")
+    end
+
+    it "won't cancel a show that has started" do
+      sold(1)
+      listing.show.update!(date_and_time: 1.hour.ago)
+      get manage_ticket_listing_cancel_path(listing)
+      expect(flash[:alert]).to include("already started")
+      post manage_ticket_listing_cancel_path(listing), params: { subject: "x", body: "y" }
+      expect(listing.reload.status).to eq("on_sale")
+    end
+
     it "resends the tickets" do
       order = sold(1)
       expect { post manage_ticket_order_resend_path(order.id) }.to have_enqueued_job(TicketOrderConfirmationJob).with(order.id)

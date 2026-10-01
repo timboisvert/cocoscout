@@ -22,6 +22,12 @@ class TicketOrderRefund
     end
   end
 
+  # Once a show has started, refunds need the theater's say-so: the
+  # "refunds after the show" setting is off by default.
+  def self.allowed?(order)
+    order.ticket_listing.show.date_and_time > Time.current || TicketingProfile.for(order.organization).refunds_after_show
+  end
+
   def self.refundable(order)
     order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:tax_lines).order(:id)
   end
@@ -60,8 +66,13 @@ class TicketOrderRefund
     [ order.tickets.where("price_cents > discount_cents").count, 1 ].max
   end
 
-  def self.issue!(order, ticket_ids: nil, keep_fees: false, by: nil, reason: nil, notify: true)
+  # allow_after_show: the show-cancellation job, which only ever starts before
+  # showtime, isn't stopped by the setting if it finishes after.
+  def self.issue!(order, ticket_ids: nil, keep_fees: false, by: nil, reason: nil, notify: true, allow_after_show: false)
     raise Error, "Only a paid order can be refunded." unless order.paid?
+    unless allow_after_show || allowed?(order)
+      raise Error, "Refunds after the show are off. You can turn them on in Ticketing settings."
+    end
 
     quote = quote(order, ticket_ids: ticket_ids, keep_fees: keep_fees)
     raise Error, "Those tickets were already refunded." if quote.tickets.empty?
