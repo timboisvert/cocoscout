@@ -96,21 +96,42 @@ RSpec.describe "Public ticketing", type: :request do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(intent)
       allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(intent)
 
-      post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "", buyer_email: "nope" }, as: :json
+      travel 5.seconds do
+        post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "", buyer_email: "nope" }, as: :json
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(Stripe::PaymentIntent).not_to have_received(:create)
+
+        post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery Buyer", buyer_email: "Avery@Example.com" }, as: :json
+        expect(response.parsed_body).to eq("client_secret" => "pi_123_secret")
+        expect(Stripe::PaymentIntent).to have_received(:create).with(
+          hash_including(amount: 4_253, currency: "usd", metadata: hash_including(type: "ticket_order", ticket_order_id: order.id)),
+          hash_including(:idempotency_key)
+        )
+        expect(order.reload.attributes.slice("buyer_name", "buyer_email", "stripe_payment_intent_id"))
+          .to eq("buyer_name" => "Avery Buyer", "buyer_email" => "avery@example.com", "stripe_payment_intent_id" => "pi_123")
+
+        post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery Buyer", buyer_email: "avery@example.com" }, as: :json
+        expect(Stripe::PaymentIntent).to have_received(:create).once
+      end
+    end
+
+    it "turns away scripts: a filled-in honeypot, or paying faster than a person could" do
+      allow(Stripe::PaymentIntent).to receive(:create)
+
+      post tickets_start_checkout_path(org: "starsandgarters", event: listing.slug),
+           params: { quantities: { general.id => 2 }, website: "http://spam.example" }
+      expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: listing.slug))
+      expect(TicketOrder.count).to eq(0)
+
+      order = buy(1)
+      post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery", buyer_email: "avery@example.com" }, as: :json
       expect(response).to have_http_status(:unprocessable_entity)
+      travel 5.seconds do
+        post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery", buyer_email: "avery@example.com", website: "x" }, as: :json
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
       expect(Stripe::PaymentIntent).not_to have_received(:create)
-
-      post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery Buyer", buyer_email: "Avery@Example.com" }, as: :json
-      expect(response.parsed_body).to eq("client_secret" => "pi_123_secret")
-      expect(Stripe::PaymentIntent).to have_received(:create).with(
-        hash_including(amount: 4_253, currency: "usd", metadata: hash_including(type: "ticket_order", ticket_order_id: order.id)),
-        hash_including(:idempotency_key)
-      )
-      expect(order.reload.attributes.slice("buyer_name", "buyer_email", "stripe_payment_intent_id"))
-        .to eq("buyer_name" => "Avery Buyer", "buyer_email" => "avery@example.com", "stripe_payment_intent_id" => "pi_123")
-
-      post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery Buyer", buyer_email: "avery@example.com" }, as: :json
-      expect(Stripe::PaymentIntent).to have_received(:create).once
+      expect(order.reload.buyer_email).to be_nil
     end
 
     it "settles when the buyer comes back from Stripe, and shows their tickets" do
@@ -133,7 +154,9 @@ RSpec.describe "Public ticketing", type: :request do
       order = TicketOrder.last
       allow(Stripe::PaymentIntent).to receive(:create)
 
-      post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery", buyer_email: "avery@example.com" }, as: :json
+      travel 5.seconds do
+        post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery", buyer_email: "avery@example.com" }, as: :json
+      end
       expect(response.parsed_body).to eq("redirect" => tickets_order_path(token: order.token))
       expect(order.reload.status).to eq("paid")
       expect(Stripe::PaymentIntent).not_to have_received(:create)

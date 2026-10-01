@@ -1,0 +1,7 @@
+<%# Bot defense on buying (see TicketCheckoutsController): an off-screen field
+    no person sees or tabs into, and browsers don't autofill. Scripts that
+    fill every input fill it. %>
+<div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+  <label for="<%= local_assigns[:id] || "ticket_website" %>">Website</label>
+  <input type="text" name="website" id="<%= local_assigns[:id] || "ticket_website" %>" tabindex="-1" autocomplete="off" value="">
+</div>

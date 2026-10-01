@@ -70,6 +70,7 @@
             ticket_checkout_return_url_value: tickets_checkout_done_url(token: @order.token, **embed_params),
             ticket_checkout_expires_at_value: @order.expires_at&.iso8601
           } do %>
+      <%= render "tickets/bot_trap", id: "checkout_website" %>
       <p class="text-sm text-gray-600" data-ticket-checkout-target="countdown" aria-live="polite"></p>
 
       <div>

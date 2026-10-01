@@ -18,9 +18,19 @@ class TicketCheckoutsController < ApplicationController
   # our session cookie, so a forgery token could never verify there.
   skip_forgery_protection only: %i[create pay]
 
+  # Nobody loads checkout, types their details and pays this fast; a script
+  # posting straight through does.
+  MIN_SECONDS_TO_PAY = 3
+
   before_action :set_order, except: :create
 
   def create
+    # A filled-in honeypot (tickets/_bot_trap): no seats held, nothing to learn.
+    if params[:website].present?
+      Rails.logger.warn("[TicketCheckouts] honeypot tripped on start ip=#{request.remote_ip}")
+      return redirect_to(tickets_event_path(org: params[:org], event: params[:event], **embed_params))
+    end
+
     profile = TicketingProfile.find_by(slug: params[:org].to_s.downcase)
     listing = profile && profile.organization.ticket_listings.find_by(slug: params[:event])
     raise ActiveRecord::RecordNotFound unless listing && (profile.enabled? || superadmin_viewer?)
@@ -43,6 +53,7 @@ class TicketCheckoutsController < ApplicationController
   def pay
     return render(json: { redirect: tickets_order_path(token: @order.token, **embed_params) }) if @order.paid?
     return render(json: { error: "Your hold on these seats ran out. Please start again." }, status: :unprocessable_entity) if @order.hold_expired? || @order.status != "pending"
+    return render(json: { error: "Please check your details and try again." }, status: :unprocessable_entity) unless human_pace?
 
     buyer = params.permit(:buyer_name, :buyer_email, :buyer_phone, :marketing_opt_in)
     @order.assign_attributes(buyer_name: buyer[:buyer_name].to_s.squish.presence, buyer_email: buyer[:buyer_email],
@@ -100,6 +111,18 @@ class TicketCheckoutsController < ApplicationController
 
   # One PaymentIntent per order, reused if the buyer tries again, re-priced if
   # the amount somehow moved.
+  # The honeypot is empty and the buyer spent a human amount of time here.
+  def human_pace?
+    if params[:website].present?
+      Rails.logger.warn("[TicketCheckouts] honeypot tripped on pay order=#{@order.id} ip=#{request.remote_ip}")
+      return false
+    end
+    return true if @order.created_at <= MIN_SECONDS_TO_PAY.seconds.ago
+
+    Rails.logger.warn("[TicketCheckouts] paid too fast order=#{@order.id} ip=#{request.remote_ip}")
+    false
+  end
+
   def payment_intent
     if @order.stripe_payment_intent_id.present?
       intent = Stripe::PaymentIntent.retrieve(@order.stripe_payment_intent_id)

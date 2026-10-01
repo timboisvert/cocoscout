@@ -115,3 +115,8 @@ production:
   balance_auto_withdraw:
     class: BalanceAutoWithdrawJob
     schedule: at 7am every day America/Chicago
+
+  # The books checked against the cash ledger and tax lines they summarize.
+  books_reconciliation:
+    class: BooksReconciliationJob
+    schedule: at 5am every day America/Chicago

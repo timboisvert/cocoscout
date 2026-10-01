@@ -114,6 +114,7 @@
               data: { turbo: false }, class: "mt-4" do %>
           <%= hidden_field_tag :code, @code if @code %>
           <%= hidden_field_tag :embed, "1" if embed? %>
+          <%= render "tickets/bot_trap", id: "event_website" %>
           <div class="space-y-4">
             <% @tiers.each do |tier| %>
               <% left = @inventory.remaining(tier: tier) %>
