@@ -40,6 +40,7 @@ class ContentTemplate < ApplicationRecord
     contracts
     courses
     messages
+    ticketing
   ].freeze
 
   # Template types - describes how the template is used in the app

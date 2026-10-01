@@ -14,6 +14,7 @@ gem "pagy", "~> 43.2.2"
 gem "pg"
 gem "prawn"        # PDF generation (signed contract documents)
 gem "prawn-table"  # tables inside those PDFs
+gem "rqrcode", "~> 3.2" # ticket QR codes (SVG on pages, PNG in emails)
 # prawn requires matrix at load time but does not declare it, and matrix stopped
 # being a default gem in Ruby 3.1. It used to arrive via poppler -> cairo.
 gem "matrix"

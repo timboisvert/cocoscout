@@ -25,8 +25,8 @@ module Manage
         @notification_managers = Current.organization.contract_notification_manager_users.order(:email_address)
         @notification_selected_ids = Current.organization.payout_notification_user_ids
       when "ticket_sources"
-        @ticket_sources = Current.organization.ticket_sources.active.ordered.to_a
-        @archived_ticket_sources = Current.organization.ticket_sources.archived.ordered.to_a
+        @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
+        @archived_ticket_sources = Current.organization.ticket_sources.hand_made.archived.ordered.to_a
       end
     end
 
@@ -105,7 +105,7 @@ module Manage
 
     # Scoped to the current org — a bare find here would reach another org's list.
     def set_ticket_source
-      @ticket_source = Current.organization.ticket_sources.find(params[:id])
+      @ticket_source = Current.organization.ticket_sources.hand_made.find(params[:id])
     end
 
     def ticket_source_params

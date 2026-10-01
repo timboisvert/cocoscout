@@ -101,6 +101,10 @@
               <%
                 line_input = "w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 existing = @show_financials.ticket_sales_lines.to_a
+                # CocoScout Ticketing fills its own row from real sales: shown,
+                # counted in the total, never typed into.
+                built_in_lines = existing.select { |l| l.ticket_source&.built_in? }
+                existing -= built_in_lines
                 by_source = existing.group_by(&:ticket_source_id)
                 rows = []
                 sources = (@ticket_sources + existing.filter_map(&:ticket_source)).uniq
@@ -116,8 +120,9 @@
                 if unsourced.any?
                   unsourced.each { |l| rows << [ l, @ticket_sources.any? ? "Other" : "Tickets" ] }
                 elsif @ticket_sources.empty?
-                  rows << [ TicketSalesLine.new(tickets_sold: (existing.empty? ? @show_financials.ticket_count : nil),
-                                                amount: (existing.empty? ? @show_financials.ticket_revenue : nil)), "Tickets" ]
+                  seed_legacy = existing.empty? && built_in_lines.empty?
+                  rows << [ TicketSalesLine.new(tickets_sold: (seed_legacy ? @show_financials.ticket_count : nil),
+                                                amount: (seed_legacy ? @show_financials.ticket_revenue : nil)), "Tickets" ]
                 end
               %>
               <div class="flex items-baseline justify-between gap-3 mb-2">
@@ -132,6 +137,14 @@
                   <span>Sold through</span><span class="text-right">Tickets</span><span class="text-right">Amount</span>
                 </div>
                 <div class="divide-y divide-gray-100" data-financials-form-target="ticketLines">
+                  <% built_in_lines.each do |fixed| %>
+                    <div class="grid grid-cols-[minmax(0,1fr)_6rem_8rem] sm:grid-cols-[minmax(0,1fr)_7rem_9rem] items-center gap-2 px-3 py-2.5 bg-pink-50/40"
+                         data-ticket-line data-fixed-tickets="<%= fixed.tickets_sold %>" data-fixed-amount="<%= fixed.amount.to_f %>">
+                      <span class="min-w-0 truncate text-sm font-medium text-gray-900"><%= fixed.ticket_source.name %> <span class="font-normal text-xs text-gray-500">· from ticket sales</span></span>
+                      <span class="text-sm text-right tabular-nums text-gray-900"><%= fixed.tickets_sold %></span>
+                      <span class="text-sm text-right tabular-nums text-gray-900"><%= number_to_currency(fixed.amount) %></span>
+                    </div>
+                  <% end %>
                   <% rows.each_with_index do |(record, label), index| %>
                     <%= form.fields_for :ticket_sales_lines, record, child_index: index do |line| %>
                       <%= render "manage/show_financials/ticket_line", line: line, label: label,
@@ -141,8 +154,9 @@
                 </div>
                 <div class="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border-t border-gray-200">
                   <span class="text-sm font-medium text-gray-700">Total</span>
-                  <% total_tickets = rows.sum { |(record, _)| record.tickets_sold.to_i } %>
-                  <span class="text-sm font-semibold text-gray-900 tabular-nums" data-financials-form-target="ticketTotal"><%= pluralize(total_tickets, "ticket") %> · <%= number_to_currency(rows.sum { |(record, _)| record.amount.to_f }) %></span>
+                  <% total_tickets = rows.sum { |(record, _)| record.tickets_sold.to_i } + built_in_lines.sum(&:tickets_sold) %>
+                  <% total_amount = rows.sum { |(record, _)| record.amount.to_f } + built_in_lines.sum { |l| l.amount.to_f } %>
+                  <span class="text-sm font-semibold text-gray-900 tabular-nums" data-financials-form-target="ticketTotal"><%= pluralize(total_tickets, "ticket") %> · <%= number_to_currency(total_amount) %></span>
                 </div>
               </div>
               <% if @ticket_sources.empty? %>

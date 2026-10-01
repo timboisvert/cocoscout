@@ -171,7 +171,7 @@ RSpec.describe "Ticketing models" do
       listing.ticket_tiers.create!(name: "Industry", price_cents: 1_000, hidden: true, unlock_code: "INDUSTRY")
 
       payload = Ticketing::ListingPayload.for(listing)
-      expect(payload.slice(:title, :production, :organizer)).to eq(title: show.display_name, production: "Improvised Animorphs", organizer: "Stars & Garters")
+      expect(payload.slice(:title, :production, :organizer)).to eq(title: "Improvised Animorphs", production: "Improvised Animorphs", organizer: "Stars & Garters")
       expect(payload[:tiers].map { |t| t.slice(:name, :price_cents, :all_in_price_cents, :remaining) })
         .to eq([ { name: "General", price_cents: 2_000, all_in_price_cents: 2_142, remaining: 40 } ])
       expect(payload[:venue][:city]).to eq(show.location.city)

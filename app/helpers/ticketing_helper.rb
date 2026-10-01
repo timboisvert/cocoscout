@@ -26,4 +26,35 @@ module TicketingHelper
   def ticket_public_path_text(listing)
     "cocoscout.com/t/#{listing.organization.ticketing_profile&.slug || TicketingProfile.for(listing.organization).slug}/#{listing.slug}"
   end
+
+  # How a show's sales read to a buyer: nil when it's simply on sale.
+  def public_listing_note(listing, inventory = listing.inventory, at: Time.current)
+    return "Sold out" if inventory.sold_out?
+    return "Not on sale right now" if listing.status == "paused"
+    return "Tickets at the door" if listing.status == "closed" || (listing.off_sale_at && listing.off_sale_at <= at)
+    return "On sale #{listing.on_sale_at.strftime('%b %-d')}" if listing.on_sale_at&.>(at)
+
+    left = inventory.remaining
+    "Only #{left} left" if left && left <= 10
+  end
+
+  # The lowest all-in price a buyer can see for a show, for "From $21.42".
+  def listing_from_price_cents(listing)
+    listing.ticket_tiers.select { |tier| tier.archived_at.nil? && !tier.hidden? }
+           .map { |tier| TicketPricing.all_in_price_cents(listing, tier) }.min
+  end
+
+  # The QR a ticket carries: its own /t/v page, which the door scanner reads
+  # and a phone camera opens.
+  def ticket_qr_svg(ticket)
+    RQRCode::QRCode.new(tickets_ticket_url(code: ticket.code))
+                   .as_svg(module_size: 4, standalone: true, use_path: true, viewbox: true, svg_attributes: { class: "w-full h-auto" })
+                   .html_safe
+  end
+
+  # Stripe's browser-side key, read like the secret key in the Stripe
+  # initializer: the environment first, then credentials.
+  def stripe_publishable_key
+    ENV["STRIPE_PUBLISHABLE_KEY"].presence || Rails.application.credentials.dig(:stripe, :publishable_key)
+  end
 end

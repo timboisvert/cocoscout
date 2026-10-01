@@ -72,7 +72,7 @@ module Manage
       @show_financials.ticket_sales_lines.load
       # The sources the worksheet's per-line picker offers. Archived ones are
       # left out of the picker but keep labelling the lines already using them.
-      @ticket_sources = Current.organization.ticket_sources.active.ordered.to_a
+      @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
     end
 
     def require_manage_permission

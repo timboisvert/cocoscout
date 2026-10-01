@@ -8,5 +8,10 @@
   sections: sections,
   current: @section
 } do %>
-  <%= render "manage/ticketing_settings/sections/#{@section}" %>
+  <% case @section %>
+  <% when "tax" %>
+    <%= render "manage/ticketing_settings/sections/tax" %>
+  <% else %>
+    <%= render "manage/ticketing_settings/sections/box_office" %>
+  <% end %>
 <% end %>

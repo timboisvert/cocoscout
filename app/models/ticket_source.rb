@@ -17,8 +17,16 @@ class TicketSource < ApplicationRecord
   validates :name, uniqueness: { scope: :organization_id, case_sensitive: false }
 
   scope :ordered, -> { order(:position, :name) }
+  # Sources the theater named itself. The built-in one ("CocoScout Tickets",
+  # system_key "cocoscout") fills its own rows from ticket sales and can't be
+  # renamed, archived or typed into.
+  scope :hand_made, -> { where(system_key: nil) }
   scope :active, -> { where(archived_at: nil) }
   scope :archived, -> { where.not(archived_at: nil) }
+
+  def built_in?
+    system_key.present?
+  end
 
   def archived?
     archived_at.present?

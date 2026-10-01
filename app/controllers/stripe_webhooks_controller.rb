@@ -33,7 +33,12 @@ class StripeWebhooksController < ApplicationController
     when "payout.failed"
       handle_connect_payout_failed(event.data.object, event.account)
     when "payment_intent.succeeded", "payment_intent.payment_failed"
-      handle_payout_funding(event.data.object, event.type)
+      intent = event.data.object
+      if intent.metadata&.[]("type") == "ticket_order"
+        handle_ticket_order_payment(intent, event.type)
+      else
+        handle_payout_funding(intent, event.type)
+      end
     end
 
     head :ok
@@ -83,6 +88,18 @@ class StripeWebhooksController < ApplicationController
       # while everyone assumed the money was moving.
       PayoutFundingFailedNotificationJob.perform_later(batch.id)
     end
+  end
+
+  # A ticket buyer's payment. Success settles the order (idempotently — the
+  # buyer's return page may already have); a failure leaves the hold to run
+  # out so they can try another card.
+  def handle_ticket_order_payment(intent, event_type)
+    return unless event_type == "payment_intent.succeeded"
+
+    order = TicketOrder.find_by(id: intent.metadata["ticket_order_id"])
+    return unless order && order.stripe_payment_intent_id.in?([ nil, intent.id ])
+
+    TicketOrderSettlement.settle!(order, payment_intent_id: intent.id, charge_id: intent.latest_charge)
   end
 
   # A Connect transfer was reversed — the money never reached the payee. Route

@@ -52,8 +52,11 @@ class TicketListing < ApplicationRecord
       .where("ticket_listings.off_sale_at IS NULL OR ticket_listings.off_sale_at > ?", at)
   }
 
+  # What buyers see a show called: the listing's own title, else the show's
+  # own name, else the production's. (Never the calendar's suggested name —
+  # "The Late Show Show" — which is for managers' lists.)
   def display_title
-    title.presence || show.display_name
+    title.presence || show.secondary_name.presence || production&.name || show.display_name
   end
 
   def starts_at

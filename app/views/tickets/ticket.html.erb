@@ -1,0 +1,23 @@
+<%
+  show = @listing.show
+  order = @ticket.ticket_order
+%>
+<% content_for :title, "Ticket · #{@listing.display_title}" %>
+
+<div class="mx-auto max-w-sm rounded-2xl border border-gray-200 p-6 text-center">
+  <div class="text-sm font-medium text-pink-600"><%= @listing.organization.name %></div>
+  <h1 class="mt-1 text-2xl coustard-regular text-gray-900"><%= @listing.display_title %></h1>
+  <p class="mt-2 text-gray-700"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
+  <% if show.location %><p class="text-sm text-gray-500"><%= show.location.name %></p><% end %>
+
+  <div class="mt-5 mx-auto w-48"><%= ticket_qr_svg(@ticket) %></div>
+
+  <p class="mt-4 text-sm text-gray-900"><%= @ticket.ticket_tier.name %><%= " · #{@ticket.holder_name.presence || order.buyer_name}" if (@ticket.holder_name.presence || order.buyer_name).present? %></p>
+  <p class="text-xs text-gray-500">Order <%= order.code %></p>
+  <% case @ticket.status %>
+  <% when "checked_in" %>
+    <p class="mt-3 text-sm font-medium text-gray-600">Checked in <%= @ticket.checked_in_at.strftime("%-l:%M %p") %></p>
+  <% when "refunded", "void" %>
+    <p class="mt-3 text-sm font-medium text-red-600">This ticket is no longer valid.</p>
+  <% end %>
+</div>

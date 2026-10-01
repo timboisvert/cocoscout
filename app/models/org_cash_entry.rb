@@ -19,12 +19,16 @@
 #   transfer_reversal   → positive  (a sent transfer came back to the pool)
 #   opening_balance     → positive  (one-time backfill residue per org)
 #   adjustment          → signed    (superadmin correction)
+#   ticket_sale         → positive  (a ticket order's net, held for the theater)
+#   ticket_refund       → negative  (a ticket refund drawn from the theater's money)
+#   ticket_dispute      → negative  (a disputed ticket charge, plus Stripe's fee)
 #
 # Balances are always derived by summing — never cached. Posts are idempotent
 # on (source, entry_type), mirroring PayoutLedgerEntry.
 class OrgCashEntry < ApplicationRecord
   ENTRY_TYPES = %w[course_registration contract_payment funding transfer
-                   refund transfer_reversal opening_balance adjustment].freeze
+                   refund transfer_reversal opening_balance adjustment
+                   ticket_sale ticket_refund ticket_dispute].freeze
 
   # Namespace for pg_advisory_xact_lock so our (ns, org_id) pairs can't collide
   # with any other advisory-lock user in the app.

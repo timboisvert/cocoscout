@@ -1,0 +1,31 @@
+<% content_for :title, "Tickets · #{@organization.name}" %>
+<% content_for :head do %>
+  <meta name="description" content="Upcoming shows and tickets at <%= @organization.name %>.">
+  <meta property="og:title" content="Tickets · <%= @organization.name %>">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="<%= tickets_box_office_url(org: @ticketing_profile.slug) %>">
+<% end %>
+
+<h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @organization.name %></h1>
+<p class="text-gray-600 mt-2">Upcoming shows</p>
+
+<% if @productions.size > 1 %>
+  <nav class="mt-6 flex flex-wrap gap-2" aria-label="Filter by production">
+    <%= link_to "Everything", tickets_box_office_path(org: @ticketing_profile.slug),
+          class: "rounded-full px-3 py-1.5 text-sm #{@production_filter ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-pink-500 text-white'}" %>
+    <% @productions.each do |production| %>
+      <%= link_to production.name, tickets_box_office_path(org: @ticketing_profile.slug, production: production.id),
+            class: "rounded-full px-3 py-1.5 text-sm #{@production_filter == production ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" %>
+    <% end %>
+  </nav>
+<% end %>
+
+<div class="mt-6 space-y-2">
+  <% if @listings.any? %>
+    <% @listings.each do |listing| %>
+      <%= render "tickets/listing_row", listing: listing, profile: @ticketing_profile %>
+    <% end %>
+  <% else %>
+    <p class="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-600">No shows on sale right now. Check back soon.</p>
+  <% end %>
+</div>

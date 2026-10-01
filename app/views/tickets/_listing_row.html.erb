@@ -1,0 +1,30 @@
+<%# One upcoming show on a public box office page. Locals: listing, profile. %>
+<%
+  show = listing.show
+  note = public_listing_note(listing)
+  from = listing_from_price_cents(listing)
+  place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
+%>
+<%= link_to tickets_event_path(org: profile.slug, event: listing.slug),
+      class: "flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-pink-400 transition-colors" do %>
+  <div class="flex-shrink-0 w-12 text-center">
+    <div class="text-[11px] font-semibold uppercase text-pink-600"><%= show.date_and_time.strftime("%b") %></div>
+    <div class="text-2xl font-bold leading-tight text-gray-900"><%= show.date_and_time.day %></div>
+    <div class="text-[11px] uppercase text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+  </div>
+  <div class="min-w-0 flex-1">
+    <% if listing.display_title != listing.production.name %>
+      <div class="text-xs text-gray-500 truncate"><%= listing.production.name %></div>
+    <% end %>
+    <div class="font-semibold text-gray-900 truncate"><%= listing.display_title %></div>
+    <div class="text-sm text-gray-600 truncate"><%= show.date_and_time.strftime("%-l:%M %p") %><%= " · #{place}" if place.present? %></div>
+  </div>
+  <div class="flex-shrink-0 text-right">
+    <% if note %>
+      <div class="text-xs font-medium <%= note == 'Sold out' ? 'text-gray-500' : 'text-pink-600' %>"><%= note %></div>
+    <% end %>
+    <% if from && note != "Sold out" %>
+      <div class="text-sm font-semibold text-gray-900"><%= from.zero? ? "Free" : "From #{number_to_currency(from / 100.0)}" %></div>
+    <% end %>
+  </div>
+<% end %>

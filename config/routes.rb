@@ -330,6 +330,23 @@ Rails.application.routes.draw do
   # Short URL for sign-up forms
   get "/s/:code", to: "sign_up_shortlink#show", as: "sign_up_shortlink"
 
+  # CocoScout Ticketing: the public box office (no sign-in). Orders, checkout
+  # and ticket links come first so an org's address can never shadow them
+  # (they're also reserved slugs).
+  scope "/t", as: "tickets" do
+    get  "orders/:token",              to: "ticket_orders#show",      as: "order"
+    get  "orders/:token/calendar",     to: "ticket_orders#calendar",  as: "order_calendar"
+    post "orders/:token/resend",       to: "ticket_orders#resend",    as: "order_resend"
+    get  "checkout/:token",            to: "ticket_checkouts#show",   as: "checkout"
+    post "checkout/:token/pay",        to: "ticket_checkouts#pay",    as: "checkout_pay"
+    get  "checkout/:token/done",       to: "ticket_checkouts#done",   as: "checkout_done"
+    get  "v/:code",                    to: "tickets#ticket",          as: "ticket"
+    get  ":org",                       to: "tickets#box_office",      as: "box_office"
+    get  ":org/p/:production",         to: "tickets#production",      as: "production"
+    get  ":org/:event",                to: "tickets#event",           as: "event"
+    post ":org/:event/checkout",       to: "ticket_checkouts#create", as: "start_checkout"
+  end
+
   # Short URL for course registrations
   get "/c/:code", to: "course_shortlink#show", as: "course_shortlink"
 

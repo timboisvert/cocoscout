@@ -1,0 +1,153 @@
+<%
+  show = @listing.show
+  payload = Ticketing::ListingPayload.for(@listing)
+  venue = payload[:venue]
+  place = [ venue&.dig(:name), venue&.dig(:room) ].compact.uniq.join(" · ")
+  address = venue && [ venue[:address1], venue[:city], venue[:state] ].compact_blank.join(", ")
+  map_url = address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ venue[:name], address ].compact.join(', '))}" : nil
+  note = public_listing_note(@listing, @inventory)
+  selling = @listing.selling? && !@inventory.sold_out? && !@preview
+  max_per_order = @listing.effective_max_per_order
+  tax_note = @tax && @tax.mode == "added" && @tax.lines.any? { |line| !line.exempt } ? "+ #{@tax.lines.map { |l| "#{format('%g', l.rate_bps / 100.0)}% #{l.name.downcase}" }.join(' + ')}" : nil
+  page_url = tickets_event_url(org: @ticketing_profile.slug, event: @listing.slug)
+  image_url = @listing.image.attached? ? url_for(@listing.image) : nil
+  poster = @listing.image.attached? ? nil : @listing.production.primary_poster
+  description = @listing.description.presence || @listing.production.description.presence
+  # Search engines read this to list the show (schema.org Event with all-in offers).
+  structured = {
+    "@context" => "https://schema.org",
+    "@type" => "Event",
+    "name" => payload[:title],
+    "startDate" => payload[:starts_at],
+    "endDate" => payload[:ends_at],
+    "eventStatus" => show.canceled ? "https://schema.org/EventCancelled" : "https://schema.org/EventScheduled",
+    "eventAttendanceMode" => show.is_online ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
+    "description" => description.to_s.truncate(500).presence,
+    "image" => image_url,
+    "organizer" => { "@type" => "Organization", "name" => @organization.name, "url" => tickets_box_office_url(org: @ticketing_profile.slug) },
+    "location" => venue && { "@type" => "Place", "name" => venue[:name],
+                             "address" => { "@type" => "PostalAddress", "streetAddress" => venue[:address1], "addressLocality" => venue[:city],
+                                            "addressRegion" => venue[:state], "postalCode" => venue[:postal_code], "addressCountry" => "US" }.compact },
+    "offers" => payload[:tiers].map { |tier|
+      { "@type" => "Offer", "name" => tier[:name], "price" => format("%.2f", tier[:all_in_price_cents] / 100.0), "priceCurrency" => "USD",
+        "availability" => tier[:remaining]&.zero? ? "https://schema.org/SoldOut" : "https://schema.org/InStock", "url" => page_url }
+    }
+  }.compact
+%>
+<% content_for :title, "#{@listing.display_title} · #{show.date_and_time.strftime('%b %-d')} · #{@organization.name}" %>
+<% content_for :head do %>
+  <meta name="description" content="<%= description.to_s.truncate(160) %>">
+  <meta property="og:title" content="<%= @listing.display_title %> · <%= show.date_and_time.strftime('%a, %b %-d') %>">
+  <meta property="og:description" content="<%= description.to_s.truncate(200) %>">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="<%= page_url %>">
+  <% if image_url %>
+    <meta property="og:image" content="<%= image_url %>">
+    <meta name="twitter:card" content="summary_large_image">
+  <% end %>
+  <% unless @preview %>
+    <script type="application/ld+json"><%= json_escape(structured.to_json).html_safe %></script>
+  <% end %>
+<% end %>
+
+<% if image_url %>
+  <%= image_tag image_url, alt: "", class: "w-full aspect-video object-cover rounded-2xl border border-gray-100" %>
+<% end %>
+
+<div class="<%= image_url ? 'mt-6' : '' %> grid gap-8 md:grid-cols-[minmax(0,1fr)_20rem]">
+  <div class="min-w-0">
+    <% if @listing.display_title != @listing.production.name %>
+      <%= link_to @listing.production.name, tickets_production_path(org: @ticketing_profile.slug, production: @listing.production_id),
+            class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+    <% end %>
+    <h1 class="mt-1 text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @listing.display_title %></h1>
+
+    <dl class="mt-4 space-y-1.5 text-gray-700">
+      <div>
+        <dt class="sr-only">When</dt>
+        <dd class="font-medium text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d, %Y · %-l:%M %p") %>
+          <%= link_to "Other dates", tickets_production_path(org: @ticketing_profile.slug, production: @listing.production_id),
+                class: "ml-1 text-sm font-normal text-pink-600 hover:text-pink-700" %>
+        </dd>
+      </div>
+      <% if show.is_online %>
+        <div><dt class="sr-only">Where</dt><dd>Online</dd></div>
+      <% elsif place.present? %>
+        <div>
+          <dt class="sr-only">Where</dt>
+          <dd><%= place %><% if address.present? %><span class="text-gray-500"> · <%= address %></span><% end %>
+            <% if map_url %> <%= link_to "Map", map_url, target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %><% end %>
+          </dd>
+        </div>
+      <% end %>
+      <% [ @listing.door_note, @listing.age_note, @listing.accessibility_note ].compact_blank.each do |line| %>
+        <div><dd class="text-sm text-gray-600"><%= line %></dd></div>
+      <% end %>
+    </dl>
+
+    <% if description %>
+      <div class="mt-6 text-gray-700 space-y-3 leading-relaxed"><%= simple_format(description) %></div>
+    <% end %>
+
+    <% if poster&.image&.attached? %>
+      <% variant = poster.safe_image_variant(:small) %>
+      <% if variant %>
+        <%= image_tag variant, alt: "#{@listing.production.name} poster", class: "mt-6 w-48 rounded-lg border border-gray-100" %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <aside class="md:sticky md:top-6 self-start">
+    <div class="rounded-2xl border border-gray-200 p-5">
+      <h2 class="text-lg font-semibold text-gray-900">Tickets</h2>
+
+      <% if show.canceled || @listing.status == "canceled" %>
+        <p class="mt-3 text-sm text-gray-600">This show was canceled.</p>
+      <% elsif !selling %>
+        <p class="mt-3 text-sm text-gray-600">
+          <%= note || (@preview ? "This page is a preview. Buyers can't see it until the show is on sale." : "Tickets aren't on sale right now.") %>
+        </p>
+      <% elsif @tiers.empty? %>
+        <p class="mt-3 text-sm text-gray-600">No tickets are on sale right now.</p>
+      <% else %>
+        <%= form_with url: tickets_start_checkout_path(org: @ticketing_profile.slug, event: @listing.slug), method: :post,
+              data: { turbo: false }, class: "mt-4" do %>
+          <%= hidden_field_tag :code, @code if @code %>
+          <div class="space-y-4">
+            <% @tiers.each do |tier| %>
+              <% left = @inventory.remaining(tier: tier) %>
+              <% most = [ left || max_per_order, max_per_order ].min %>
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-medium text-gray-900"><%= tier.name %></div>
+                  <% if tier.description.present? %><div class="text-xs text-gray-500"><%= tier.description %></div><% end %>
+                  <div class="text-sm text-gray-900 mt-0.5">
+                    <%= ticket_price(TicketPricing.all_in_price_cents(@listing, tier)) %>
+                    <% unless tier.free? %><span class="text-xs text-gray-500"><%= @listing.buyer_pays_fees? ? "incl. fees" : "" %><%= " #{tax_note}" if tax_note %></span><% end %>
+                  </div>
+                  <% if left && left.positive? && left <= 10 %><div class="text-xs text-pink-600">Only <%= left %> left</div><% end %>
+                </div>
+                <% if most.positive? %>
+                  <%= select_tag "quantities[#{tier.id}]", options_for_select((0..most).to_a, 0), "aria-label": "#{tier.name} tickets",
+                        class: "w-20 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                <% else %>
+                  <span class="text-sm text-gray-500">Sold out</span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <div class="mt-5">
+            <%= render "shared/button", text: "Get tickets", variant: "primary", size: "medium", type: :submit, classes: "w-full justify-center" %>
+          </div>
+        <% end %>
+
+        <%= form_with url: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug), method: :get,
+              data: { turbo: false }, class: "mt-4 pt-4 border-t border-gray-100 flex gap-2" do %>
+          <%= text_field_tag :code, @code, placeholder: "Have a code?", "aria-label": "Discount or access code",
+                class: "flex-1 min-w-0 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 uppercase placeholder:normal-case placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          <%= render "shared/button", text: "Apply", variant: "secondary", size: "small", type: :submit %>
+        <% end %>
+      <% end %>
+    </div>
+  </aside>
+</div>

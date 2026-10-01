@@ -1,0 +1,23 @@
+<% content_for :title, "#{@production.name} · #{@organization.name}" %>
+<% content_for :head do %>
+  <meta name="description" content="<%= @production.description.to_s.truncate(160) %>">
+  <meta property="og:title" content="<%= @production.name %> · <%= @organization.name %>">
+  <meta property="og:type" content="website">
+<% end %>
+
+<%= link_to "← All shows", tickets_box_office_path(org: @ticketing_profile.slug), class: "text-sm text-gray-500 hover:text-gray-800" %>
+<h1 class="mt-3 text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @production.name %></h1>
+<% if @production.description.present? %>
+  <div class="mt-3 max-w-2xl text-gray-700 space-y-2"><%= simple_format(@production.description) %></div>
+<% end %>
+
+<h2 class="mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">Dates</h2>
+<div class="mt-3 space-y-2">
+  <% if @listings.any? %>
+    <% @listings.each do |listing| %>
+      <%= render "tickets/listing_row", listing: listing, profile: @ticketing_profile %>
+    <% end %>
+  <% else %>
+    <p class="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-600">No dates on sale right now.</p>
+  <% end %>
+</div>

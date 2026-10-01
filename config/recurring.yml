@@ -99,3 +99,8 @@ production:
   w9_reminders:
     class: W9RemindersJob
     schedule: at 10am every day
+
+  # Ticket checkouts nobody paid for: their seat holds lapse after ten minutes.
+  expire_ticket_holds:
+    class: ExpireTicketHoldsJob
+    schedule: every 5 minutes

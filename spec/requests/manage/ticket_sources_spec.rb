@@ -237,4 +237,44 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       expect(night_net).to eq(one_figure)
     end
   end
+
+  # CocoScout Ticketing fills its own "CocoScout Tickets" row from real sales.
+  describe "the built-in CocoScout Tickets source" do
+    let(:built_in) { TicketSalesSync.source_for(org) }
+
+    before do
+      financials = show.create_show_financials!(revenue_type: "ticket_sales")
+      financials.ticket_sales_lines.create!(ticket_source: built_in, tickets_sold: 12, amount: 240)
+    end
+
+    it "shows on the worksheet as a fixed row that counts in the total" do
+      get manage_money_show_financials_path(show)
+      expect(response.body).to include("CocoScout Tickets").and include("from ticket sales")
+      expect(response.body).to include(%(data-fixed-tickets="12"))
+      expect(response.body).not_to match(/ticket_sales_lines_attributes\]\[\d+\]\[ticket_source_id\]"[^>]*value="#{built_in.id}"/)
+      expect(response.body).to include("12 tickets · $240.00")
+    end
+
+    it "survives a save of the rest of the worksheet" do
+      eventbrite = org.ticket_sources.create!(name: "Eventbrite")
+      patch manage_update_money_show_financials_path(show), params: {
+        show_financials: { revenue_type: "ticket_sales", ticket_sales_lines_attributes: {
+          "0" => { ticket_source_id: eventbrite.id, tickets_sold: "5", amount: "100" }
+        } }
+      }
+      financials = show.reload.show_financials
+      expect(financials.ticket_sales_lines.map { |l| [ l.ticket_source.name, l.tickets_sold ] })
+        .to contain_exactly([ "CocoScout Tickets", 12 ], [ "Eventbrite", 5 ])
+      expect(financials.ticket_count).to eq(17)
+    end
+
+    it "stays out of Money settings' list and can't be renamed or archived" do
+      get manage_money_settings_section_path(section: "ticket_sources")
+      expect(response.body).not_to include("CocoScout Tickets")
+
+      patch manage_money_settings_ticket_source_path(built_in), params: { ticket_source: { name: "Mine" } }
+      expect(response).to have_http_status(:not_found)
+      expect(built_in.reload.name).to eq("CocoScout Tickets")
+    end
+  end
 end

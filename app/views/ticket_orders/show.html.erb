@@ -1,0 +1,67 @@
+<%
+  show = @listing.show
+  tickets = @order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }.sort_by(&:id)
+  place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
+  waiting = @order.pending? && @order.stripe_payment_intent_id.present?
+%>
+<% content_for :title, "Your tickets · #{@listing.display_title}" %>
+<% content_for :head do %>
+  <%# Waiting on Stripe to confirm: look again in a few seconds. %>
+  <% if waiting %><meta http-equiv="refresh" content="4"><% end %>
+  <meta name="robots" content="noindex">
+<% end %>
+
+<div class="mx-auto max-w-lg">
+  <% if @order.paid? %>
+    <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">You're going!</h1>
+  <% elsif waiting %>
+    <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">Confirming your payment…</h1>
+    <p class="mt-2 text-gray-600">This usually takes a few seconds. This page updates by itself.</p>
+  <% elsif @order.status == "canceled" %>
+    <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">This order was canceled</h1>
+    <p class="mt-2 text-gray-600">The seats were gone by the time your payment arrived, so it was refunded in full.</p>
+  <% elsif @order.status == "refunded" %>
+    <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">This order was refunded</h1>
+  <% else %>
+    <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">This order wasn't completed</h1>
+    <div class="mt-4">
+      <%= render "shared/button", text: "Back to tickets", variant: "primary", size: "medium",
+            path: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug) %>
+    </div>
+  <% end %>
+
+  <div class="mt-6 rounded-xl border border-gray-200 p-5">
+    <div class="text-sm font-medium text-pink-600"><%= @listing.organization.name %></div>
+    <div class="mt-1 text-lg font-semibold text-gray-900"><%= @listing.display_title %></div>
+    <div class="mt-1 text-gray-700"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></div>
+    <% if place.present? %><div class="text-sm text-gray-500"><%= place %></div><% end %>
+    <% if @order.paid? %>
+      <div class="mt-3 flex flex-wrap gap-3 text-sm">
+        <%= link_to "Add to calendar", tickets_order_calendar_path(token: @order.token), class: "text-pink-600 hover:text-pink-700" %>
+        <% if show.location&.address1.present? %>
+          <%= link_to "Directions", "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ show.location.name, show.location.address1, show.location.city ].compact.join(', '))}",
+                target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @order.paid? %>
+    <p class="mt-6 text-sm text-gray-600">Show these at the door — on your phone or printed. We also emailed them to <%= @order.buyer_email %>.</p>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      <% tickets.each_with_index do |ticket, index| %>
+        <div class="rounded-xl border border-gray-200 p-4 text-center">
+          <div class="text-xs text-gray-500">Ticket <%= index + 1 %> of <%= tickets.size %> · <%= ticket.ticket_tier.name %></div>
+          <div class="mx-auto mt-3 w-40"><%= ticket_qr_svg(ticket) %></div>
+          <% if ticket.checked_in? %><div class="mt-2 text-xs font-medium text-gray-500">Checked in</div><% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
+      <span>Order <%= @order.code %> · <%= number_to_currency(@order.total_cents / 100.0) %></span>
+      <%= render "shared/button", text: "Email my tickets again", variant: "secondary", size: "small",
+            path: tickets_order_resend_path(token: @order.token), method: :post %>
+    </div>
+  <% end %>
+</div>

@@ -62,6 +62,12 @@ export default class extends Controller {
     let tickets = 0
     let amount = 0
     this.ticketLinesTarget.querySelectorAll("[data-ticket-line]").forEach((row) => {
+      // CocoScout Ticketing's own row: fixed numbers, no inputs.
+      if (row.dataset.fixedTickets !== undefined) {
+        tickets += parseInt(row.dataset.fixedTickets, 10) || 0
+        amount += parseFloat(row.dataset.fixedAmount) || 0
+        return
+      }
       tickets += parseInt(row.querySelector('input[name*="[tickets_sold]"]')?.value || "0", 10) || 0
       amount += parseFloat(row.querySelector('input[name*="[amount]"]')?.value || "0") || 0
     })
