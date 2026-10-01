@@ -1,0 +1,16 @@
+<%# The Check in / Box office choice under a door-access form. Locals: level_choices, prefix (keeps ids unique). %>
+<fieldset class="px-6 py-4">
+  <legend class="block text-sm font-medium text-gray-700 mb-1.5">What they can do</legend>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <% level_choices.each_with_index do |(value, title, explanation), index| %>
+      <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+        <%= radio_button_tag :access_level, value, index.zero?, id: "#{prefix}_access_level_#{value}",
+              class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+        <span>
+          <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+          <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+        </span>
+      </label>
+    <% end %>
+  </div>
+</fieldset>

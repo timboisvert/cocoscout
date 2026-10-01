@@ -351,6 +351,17 @@ Rails.application.routes.draw do
     post ":org/:event/checkout",       to: "ticket_checkouts#create", as: "start_checkout"
   end
 
+  # The door on show night: check-in and door sales, for managers and anyone a
+  # theater granted door access (Ticketing settings → Door access).
+  get  "/door",                           to: "door#index",          as: "door_index"
+  get  "/door/:listing_id",               to: "door#show",           as: "door"
+  post "/door/:listing_id/check-in",      to: "door#check_in",       as: "door_check_in"
+  post "/door/:listing_id/check-in-order", to: "door#check_in_order", as: "door_check_in_order"
+  post "/door/:listing_id/undo",          to: "door#undo",           as: "door_undo"
+  get  "/door/:listing_id/search",        to: "door#search",         as: "door_search"
+  get  "/door/:listing_id/stats",         to: "door#stats",          as: "door_stats"
+  post "/door/:listing_id/sell",          to: "door#sell",           as: "door_sell"
+
   # Short URL for course registrations
   get "/c/:code", to: "course_shortlink#show", as: "course_shortlink"
 
@@ -1213,6 +1224,10 @@ Rails.application.routes.draw do
     patch "ticketing/settings",                   to: "ticketing_settings#update"
     patch "ticketing/settings/tax",               to: "ticketing_settings#update_tax",   as: "ticketing_settings_tax"
     get   "ticketing/settings/:section",          to: "ticketing_settings#show",         as: "ticketing_settings_section"
+    get    "ticketing/settings/door/search",      to: "ticketing_settings#door_search",  as: "ticketing_door_search"
+    post   "ticketing/settings/door",             to: "ticketing_settings#grant_door_access", as: "ticketing_door_access"
+    patch  "ticketing/settings/door/:id",         to: "ticketing_settings#update_door_access", as: "ticketing_door_access_grant"
+    delete "ticketing/settings/door/:id",         to: "ticketing_settings#revoke_door_access"
     get    "ticketing/shows",                     to: "ticket_listings#index",           as: "ticket_listings"
     get    "ticketing/shows/new",                 to: "ticket_listings#new",             as: "new_ticket_listing"
     post   "ticketing/shows/production",          to: "ticket_listings#select_production", as: "ticket_listings_select_production"

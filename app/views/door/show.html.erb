@@ -1,0 +1,84 @@
+<%
+  show = @listing.show
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  box_office = TicketingDoorAccess.at_least?(@level, :box_office)
+%>
+<% content_for :title, "Door · #{@listing.display_title}" %>
+
+<div data-controller="door"
+     data-door-check-in-url-value="<%= door_check_in_path(@listing) %>"
+     data-door-stats-url-value="<%= door_stats_path(@listing) %>"
+     data-door-search-url-value="<%= door_search_path(@listing) %>"
+     data-door-undo-url-value="<%= door_undo_path(@listing) %>">
+
+  <h1 class="text-xl font-semibold text-gray-900"><%= @listing.display_title %></h1>
+  <p class="text-sm text-gray-600"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %> · <%= @listing.organization.name %></p>
+
+  <%# The numbers that matter tonight; refreshed every few seconds. %>
+  <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+    <div class="rounded-xl border border-gray-200 bg-white py-3">
+      <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="checkedIn"><%= @counts[:checked_in] %></div>
+      <div class="text-xs text-gray-500">In</div>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white py-3">
+      <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="sold"><%= @counts[:sold] %></div>
+      <div class="text-xs text-gray-500">Sold</div>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white py-3">
+      <div class="text-2xl font-bold tabular-nums text-gray-900"><%= @counts[:capacity] || "—" %></div>
+      <div class="text-xs text-gray-500">Seats</div>
+    </div>
+  </div>
+
+  <%# What the last scan or tap came to: green, amber or red, big. %>
+  <div data-door-target="banner" class="hidden mt-4 rounded-xl px-4 py-4 text-center text-lg font-semibold" role="status" aria-live="assertive"></div>
+
+  <div class="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+    <div class="relative overflow-hidden rounded-lg bg-black aspect-square sm:aspect-video hidden" data-door-target="viewport">
+      <video data-door-target="video" class="h-full w-full object-cover" muted playsinline></video>
+    </div>
+    <div class="mt-3 flex gap-2">
+      <span class="flex-1" data-door-target="startButton">
+        <%= render "shared/button", text: "Scan tickets", variant: "primary", size: "medium", type: :button, classes: "w-full justify-center",
+              data: { action: "click->door#startScanning" } %>
+      </span>
+      <%# hidden sits on a plain wrapper: on the button itself inline-flex would win. %>
+      <span class="hidden" data-door-target="stopButton">
+        <%= render "shared/button", text: "Stop", variant: "secondary", size: "medium", type: :button, data: { action: "click->door#stopScanning" } %>
+      </span>
+    </div>
+  </div>
+
+  <div class="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+    <label for="door-search" class="block text-sm font-medium text-gray-700 mb-1.5">Find someone</label>
+    <input id="door-search" type="search" autocomplete="off" placeholder="Name, email or order code" data-door-target="searchInput"
+           data-action="input->door#search" class="<%= input_class %>">
+    <div class="mt-3" data-door-target="results"></div>
+  </div>
+
+  <% if box_office && @listing.status != "canceled" %>
+    <%= form_with url: door_sell_path(@listing), method: :post, class: "mt-4 rounded-xl border border-gray-200 bg-white p-4" do %>
+      <h2 class="text-sm font-semibold text-gray-900">At the door</h2>
+      <p class="text-xs text-gray-500 mt-0.5">Walk-ups paying cash, and comps. They're checked in as you record them.</p>
+      <div class="mt-3 space-y-2">
+        <% @tiers.each do |tier| %>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-sm text-gray-900"><%= tier.name %> <span class="text-gray-500"><%= ticket_price(tier.price_cents) %></span></span>
+            <%= select_tag "quantities[#{tier.id}]", options_for_select((0..10).to_a, 0), "aria-label": "#{tier.name} at the door",
+                  class: "w-20 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+        <% end %>
+      </div>
+      <div class="mt-3">
+        <%= text_field_tag :buyer_name, nil, placeholder: "Name (optional)", "aria-label": "Name", class: input_class %>
+      </div>
+      <div class="mt-3 flex gap-4">
+        <label class="flex items-center gap-2 text-sm text-gray-900"><%= radio_button_tag :kind, "cash", true, class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %> Cash</label>
+        <label class="flex items-center gap-2 text-sm text-gray-900"><%= radio_button_tag :kind, "comp", false, class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %> Comp</label>
+      </div>
+      <div class="mt-3">
+        <%= render "shared/button", text: "Record and check in", variant: "primary", size: "medium", type: :submit, classes: "w-full justify-center" %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

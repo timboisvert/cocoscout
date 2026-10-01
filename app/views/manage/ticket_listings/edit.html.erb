@@ -16,7 +16,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows on sale", manage_ticket_listings_path ] ],
     text: @listing.display_title,
-    links: []
+    links: @listing.status.in?(%w[draft canceled]) ? [] : [ { text: "Door", path: door_path(@listing) } ]
   } %>
 
   <div class="max-w-2xl space-y-6">

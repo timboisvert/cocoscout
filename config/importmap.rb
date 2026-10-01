@@ -13,3 +13,5 @@ pin "chart.js", to: "chart.js" # @4.4.1 - ESM wrapper
 pin "chart.umd.js", to: "chart.umd.js" # Chart.js UMD build
 pin "@hotwired/hotwire-native-bridge", to: "@hotwired--hotwire-native-bridge.js" # @1.2.2
 pin "leaflet", to: "https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.esm.js"
+# Door QR scanning; imported only when the camera starts (door_controller.js).
+pin "qr-scanner", to: "https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js", preload: false

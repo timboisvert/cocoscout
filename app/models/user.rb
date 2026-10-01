@@ -343,6 +343,17 @@ class User < ApplicationRecord
     on_staff? || has_assigned_shifts?
   end
 
+  # Whether a theater with ticketing switched on has given this user door
+  # access (Ticketing settings → Door access) — drives the "Door" nav entry.
+  # Managers reach the door from Ticketing instead.
+  def works_the_door?
+    return @works_the_door if defined?(@works_the_door)
+
+    @works_the_door = TicketingAccessGrant.active.where(user_id: id)
+                                          .joins(organization: :ticketing_profile)
+                                          .where(ticketing_profiles: { enabled: true }).exists?
+  end
+
   # Whether any of this user's people are the backing Person of a contractor with
   # a contract — drives the "My Contracts" nav entry.
   def has_contracts?

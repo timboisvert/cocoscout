@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= content_for(:title) || "Door" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="robots" content="noindex">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <%# The door on show night: a phone-first page with nothing in the way. %>
+  <body class="inter-regular text-slate-700 bg-gray-50">
+    <header class="sticky top-0 z-10 border-b border-gray-200 bg-white">
+      <div class="mx-auto max-w-2xl px-4 py-3 flex items-center justify-between gap-3">
+        <%= link_to "Door", door_index_path, class: "text-lg font-semibold text-gray-900" %>
+        <%= link_to "Back to CocoScout", root_path, class: "text-sm text-gray-500 hover:text-gray-800" %>
+      </div>
+    </header>
+    <main class="mx-auto max-w-2xl px-4 py-5">
+      <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

@@ -107,6 +107,7 @@ module NavigationHelper
       { label: "My Shows & Events", path: my_shows_path, icon: "shows", active: controller_name == "shows" }
     ]
     items << { label: "My Shifts", path: my_shifts_path, icon: "shifts", active: controller_name == "shifts" } if Current.user&.shows_my_shifts?
+    items << { label: "Door", path: door_index_path, icon: "ticketing", active: controller_name == "door" } if Current.user&.works_the_door?
     items += [
       { label: "My Courses", path: my_courses_path, icon: "courses", active: controller_name == "courses" },
       { label: "My Auditions", path: my_auditions_path, icon: "auditions", active: controller_name == "auditions" },

@@ -14,7 +14,8 @@
         actions: [
           { icon: "calendar", text: "Shows on sale", description: "Prices, seats and sales for each date", path: manage_ticket_listings_path },
           { icon: "clipboard-list", text: "Put shows on sale", description: "Pick a production's dates and set prices", path: manage_new_ticket_listing_path },
-          { icon: "cog", text: "Settings", description: "Box office, fees and tax", path: manage_ticketing_settings_path }
+          { icon: "user-group", text: "Door", description: "Check people in and sell at the door", path: door_index_path },
+          { icon: "cog", text: "Settings", description: "Box office, fees, tax and door access", path: manage_ticketing_settings_path }
         ] %>
 
   <% unless profile.enabled? %>

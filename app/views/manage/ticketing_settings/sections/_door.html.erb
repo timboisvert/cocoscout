@@ -1,0 +1,118 @@
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  select_class = "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  level_choices = [
+    [ "check_in", "Check in", "Scan tickets, find people by name, and check them in." ],
+    [ "box_office", "Box office", "Everything in Check in, plus cash sales and comps at the door." ]
+  ]
+  staff_with_accounts, staff_without_accounts = @door_staff.partition { |member| member.person&.user_id.present? }
+%>
+
+<div class="space-y-6">
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Who can work the door</h2>
+      <p class="text-sm text-gray-600 mt-1">Managers can always work the door. Give access to anyone else who checks people in or sells at the door on show nights. They sign in to CocoScout on their phone and open <span class="font-medium text-gray-900">cocoscout.com/door</span>. Refunds, prices and settings stay with managers.</p>
+    </div>
+
+    <% if @door_grants.any? %>
+      <ul class="divide-y divide-gray-100">
+        <% @door_grants.each do |grant| %>
+          <% person = grant.user.person %>
+          <% name = person&.name || grant.user.email_address %>
+          <% headshot_variant = person&.safe_headshot_variant(:thumb) %>
+          <li class="flex flex-wrap items-center gap-3 px-6 py-3">
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0"><%= person&.initials %></div>
+            <% end %>
+            <div class="min-w-[9rem] flex-1">
+              <div class="text-sm font-medium text-gray-900 truncate"><%= name %></div>
+              <div class="text-xs text-gray-500 truncate"><%= grant.user.email_address %></div>
+            </div>
+            <%= form_with url: manage_ticketing_door_access_grant_path(grant), method: :patch, data: { controller: "auto-submit" } do %>
+              <%= select_tag :access_level, options_for_select(TicketingAccessGrant::LEVEL_LABELS.invert, grant.access_level),
+                    "aria-label": "What #{name} can do", class: select_class, data: { action: "change->auto-submit#submit" } %>
+            <% end %>
+            <% modal_id = "revoke-door-access-#{grant.id}" %>
+            <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+            <%= render "shared/confirm_modal", id: modal_id,
+                  title: "Remove door access?",
+                  message: "#{name} won't be able to check people in or sell at the door. You can add them again any time.",
+                  confirm_text: "Remove access",
+                  url: manage_ticketing_door_access_grant_path(grant), method: :delete %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="px-6 py-5 text-sm text-gray-500">Nobody else yet. Add staff or anyone on CocoScout below.</p>
+    <% end %>
+  </div>
+
+  <%# Staff: tick several at once. %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Add staff</h2>
+    </div>
+    <% if staff_with_accounts.any? %>
+      <%= form_with url: manage_ticketing_door_access_path, method: :post do %>
+        <div class="px-6 py-4 max-h-80 overflow-y-auto space-y-1">
+          <% staff_with_accounts.each do |member| %>
+            <label class="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-gray-50 cursor-pointer">
+              <%= check_box_tag "staff_member_ids[]", member.id, false, id: "door_staff_#{member.id}",
+                    class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+              <span class="text-sm text-gray-900"><%= staff_name_with_pronouns(member) %></span>
+            </label>
+          <% end %>
+          <% if staff_without_accounts.any? %>
+            <p class="px-2 pt-3 text-xs text-gray-500">Not on CocoScout yet, so they can't be added: <%= staff_without_accounts.map(&:display_name).to_sentence %>.</p>
+          <% end %>
+        </div>
+        <%= render "manage/ticketing_settings/door_level_choice", level_choices: level_choices, prefix: "staff" %>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <%= render "shared/button", text: "Give door access", variant: "primary", size: "small", type: :submit %>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="px-6 py-5 text-sm text-gray-500">
+        <% if staff_without_accounts.any? %>
+          Your staff who aren't managers or already listed above don't have CocoScout accounts yet.
+        <% else %>
+          Every staff member is a manager or already has door access.
+        <% end %>
+      </p>
+    <% end %>
+  </div>
+
+  <%# Anyone else on CocoScout: search, choose, pick a level. %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden"
+       data-controller="door-access-search" data-door-access-search-url-value="<%= manage_ticketing_door_search_path %>">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Add someone else</h2>
+      <p class="text-sm text-gray-600 mt-1">A volunteer or a friend of the theater: anyone with a CocoScout account.</p>
+    </div>
+    <div class="px-6 py-4" data-door-access-search-target="searchSection">
+      <label for="door-access-search" class="block text-sm font-medium text-gray-700 mb-1.5">Find them by name or email</label>
+      <input id="door-access-search" type="search" autocomplete="off" class="<%= input_class %>"
+             data-door-access-search-target="input" data-action="input->door-access-search#search">
+      <div class="mt-3" data-door-access-search-target="results"></div>
+    </div>
+    <%= form_with url: manage_ticketing_door_access_path, method: :post, class: "hidden", data: { door_access_search_target: "form" } do %>
+      <%= hidden_field_tag :person_id, nil, data: { door_access_search_target: "personId" } %>
+      <div class="px-6 pt-4 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-gray-900 truncate" data-door-access-search-target="selectedName"></div>
+          <div class="text-xs text-gray-500 truncate" data-door-access-search-target="selectedEmail"></div>
+        </div>
+        <%= render "shared/button", text: "Choose someone else", variant: "ghost", size: "small", type: :button,
+              data: { action: "click->door-access-search#back" } %>
+      </div>
+      <%= render "manage/ticketing_settings/door_level_choice", level_choices: level_choices, prefix: "person" %>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Give door access", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,31 @@
+<%# People found for door access. Locals: people, query, granted_user_ids, manager_user_ids. %>
+<% if query.length < 2 %>
+  <%# Nothing typed yet. %>
+<% elsif people.empty? %>
+  <p class="text-sm text-gray-600">Nobody on CocoScout matches “<%= query %>”. They need a CocoScout account first: once they've signed up at cocoscout.com, find them here.</p>
+<% else %>
+  <ul class="divide-y divide-gray-100">
+    <% people.each do |person| %>
+      <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+      <li class="flex items-center gap-3 py-2.5">
+        <% if headshot_variant %>
+          <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0"><%= person.initials %></div>
+        <% end %>
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-medium text-gray-900 truncate"><%= person.name %></div>
+          <div class="text-xs text-gray-500 truncate"><%= person.email %></div>
+        </div>
+        <% if manager_user_ids.include?(person.user_id) %>
+          <span class="text-xs text-gray-500 flex-shrink-0">Manager</span>
+        <% elsif granted_user_ids.include?(person.user_id) %>
+          <span class="text-xs text-gray-500 flex-shrink-0">Has access</span>
+        <% else %>
+          <%= render "shared/button", text: "Choose", variant: "secondary", size: "small", type: :button,
+                data: { action: "click->door-access-search#choose", person_id: person.id, person_name: person.name, person_email: person.email } %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>
