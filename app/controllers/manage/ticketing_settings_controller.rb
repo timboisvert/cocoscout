@@ -2,11 +2,12 @@
 
 module Manage
   # Ticketing settings, a routed-section page like Money and Contract settings:
-  # the box office itself (its address, who pays fees, the pilot switch) and
-  # tax on tickets. No branding in v1 — every org gets the same pages.
+  # the box office itself (its address, who pays fees, the pilot switch), tax
+  # on tickets, and the code for selling on the theater's own website. No
+  # branding in v1 — every org gets the same pages.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office tax].freeze
-    SECTION_LABELS = { "box_office" => "Box office", "tax" => "Tax" }.freeze
+    SECTIONS = %w[box_office tax embed].freeze
+    SECTION_LABELS = { "box_office" => "Box office", "tax" => "Tax", "embed" => "Your website" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]

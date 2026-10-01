@@ -11,6 +11,8 @@
   <% case @section %>
   <% when "tax" %>
     <%= render "manage/ticketing_settings/sections/tax" %>
+  <% when "embed" %>
+    <%= render "manage/ticketing_settings/sections/embed" %>
   <% else %>
     <%= render "manage/ticketing_settings/sections/box_office" %>
   <% end %>

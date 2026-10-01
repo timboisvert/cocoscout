@@ -11,10 +11,10 @@
 
 <% if @productions.size > 1 %>
   <nav class="mt-6 flex flex-wrap gap-2" aria-label="Filter by production">
-    <%= link_to "Everything", tickets_box_office_path(org: @ticketing_profile.slug),
+    <%= link_to "Everything", tickets_box_office_path(org: @ticketing_profile.slug, **embed_params),
           class: "rounded-full px-3 py-1.5 text-sm #{@production_filter ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-pink-500 text-white'}" %>
     <% @productions.each do |production| %>
-      <%= link_to production.name, tickets_box_office_path(org: @ticketing_profile.slug, production: production.id),
+      <%= link_to production.name, tickets_box_office_path(org: @ticketing_profile.slug, production: production.id, **embed_params),
             class: "rounded-full px-3 py-1.5 text-sm #{@production_filter == production ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" %>
     <% end %>
   </nav>

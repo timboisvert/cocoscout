@@ -6,8 +6,9 @@
 # Only theaters with ticketing switched on are public. A signed-in superadmin
 # can preview one that isn't yet (with a banner saying so).
 class TicketsController < ApplicationController
+  include TicketingEmbeddable
+
   allow_unauthenticated_access
-  layout "ticketing"
 
   before_action :set_box_office, except: :ticket
 

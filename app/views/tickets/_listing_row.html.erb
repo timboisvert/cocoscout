@@ -5,7 +5,7 @@
   from = listing_from_price_cents(listing)
   place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
 %>
-<%= link_to tickets_event_path(org: profile.slug, event: listing.slug),
+<%= link_to tickets_event_path(org: profile.slug, event: listing.slug, **embed_params),
       class: "flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-pink-400 transition-colors" do %>
   <div class="flex-shrink-0 w-12 text-center">
     <div class="text-[11px] font-semibold uppercase text-pink-600"><%= show.date_and_time.strftime("%b") %></div>

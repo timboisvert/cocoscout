@@ -334,6 +334,10 @@ Rails.application.routes.draw do
   # and ticket links come first so an org's address can never shadow them
   # (they're also reserved slugs).
   scope "/t", as: "tickets" do
+    # The widget a theater puts on its own website, and the pages it frames.
+    get  "embed.js",                   to: "ticket_embeds#script",    as: "embed_script", format: false
+    get  "embed/:org",                 to: "tickets#box_office",      as: "embed_box_office", defaults: { embed: "1" }
+    get  "embed/:org/:event",          to: "tickets#event",           as: "embed_event", defaults: { embed: "1" }
     get  "orders/:token",              to: "ticket_orders#show",      as: "order"
     get  "orders/:token/calendar",     to: "ticket_orders#calendar",  as: "order_calendar"
     post "orders/:token/resend",       to: "ticket_orders#resend",    as: "order_resend"

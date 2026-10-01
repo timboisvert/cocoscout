@@ -4,8 +4,12 @@
 # in their confirmation email. No account needed: the token is the key, and it
 # names exactly one order.
 class TicketOrdersController < ApplicationController
+  include TicketingEmbeddable
+
   allow_unauthenticated_access
-  layout "ticketing"
+  # The token is the key, and the embed has no session cookie (see
+  # TicketCheckoutsController).
+  skip_forgery_protection only: :resend
 
   before_action :set_order
 
@@ -32,7 +36,7 @@ class TicketOrdersController < ApplicationController
 
   def resend
     TicketOrderConfirmationJob.perform_later(@order.id) if @order.paid? && @order.buyer_email.present?
-    redirect_to tickets_order_path(token: @order.token), notice: "We've sent your tickets to #{@order.buyer_email} again."
+    redirect_to tickets_order_path(token: @order.token, **embed_params), notice: "We've sent your tickets to #{@order.buyer_email} again."
   end
 
   private

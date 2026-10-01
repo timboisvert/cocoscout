@@ -57,7 +57,7 @@
 <div class="<%= image_url ? 'mt-6' : '' %> grid gap-8 md:grid-cols-[minmax(0,1fr)_20rem]">
   <div class="min-w-0">
     <% if @listing.display_title != @listing.production.name %>
-      <%= link_to @listing.production.name, tickets_production_path(org: @ticketing_profile.slug, production: @listing.production_id),
+      <%= link_to @listing.production.name, tickets_production_path(org: @ticketing_profile.slug, production: @listing.production_id, **embed_params),
             class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
     <% end %>
     <h1 class="mt-1 text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @listing.display_title %></h1>
@@ -66,7 +66,7 @@
       <div>
         <dt class="sr-only">When</dt>
         <dd class="font-medium text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d, %Y · %-l:%M %p") %>
-          <%= link_to "Other dates", tickets_production_path(org: @ticketing_profile.slug, production: @listing.production_id),
+          <%= link_to "Other dates", tickets_production_path(org: @ticketing_profile.slug, production: @listing.production_id, **embed_params),
                 class: "ml-1 text-sm font-normal text-pink-600 hover:text-pink-700" %>
         </dd>
       </div>
@@ -113,6 +113,7 @@
         <%= form_with url: tickets_start_checkout_path(org: @ticketing_profile.slug, event: @listing.slug), method: :post,
               data: { turbo: false }, class: "mt-4" do %>
           <%= hidden_field_tag :code, @code if @code %>
+          <%= hidden_field_tag :embed, "1" if embed? %>
           <div class="space-y-4">
             <% @tiers.each do |tier| %>
               <% left = @inventory.remaining(tier: tier) %>
@@ -143,6 +144,7 @@
 
         <%= form_with url: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug), method: :get,
               data: { turbo: false }, class: "mt-4 pt-4 border-t border-gray-100 flex gap-2" do %>
+          <%= hidden_field_tag :embed, "1" if embed? %>
           <%= text_field_tag :code, @code, placeholder: "Have a code?", "aria-label": "Discount or access code",
                 class: "flex-1 min-w-0 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 uppercase placeholder:normal-case placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
           <%= render "shared/button", text: "Apply", variant: "secondary", size: "small", type: :submit %>

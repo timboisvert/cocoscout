@@ -10,8 +10,13 @@
 # says the money arrived (webhook, or the buyer's return here — whichever is
 # first). Free orders skip Stripe.
 class TicketCheckoutsController < ApplicationController
+  include TicketingEmbeddable
+
   allow_unauthenticated_access
-  layout "ticketing"
+  # Buying never rides on a signed-in session: the order's secret token is the
+  # key. And inside a theater's own website (the embed) browsers don't send
+  # our session cookie, so a forgery token could never verify there.
+  skip_forgery_protection only: %i[create pay]
 
   before_action :set_order, except: :create
 
@@ -22,13 +27,13 @@ class TicketCheckoutsController < ApplicationController
 
     order = TicketCheckout.start!(listing: listing, quantities: requested_quantities,
                                   code: params[:code], client_ip: request.remote_ip, referrer: request.referer)
-    redirect_to tickets_checkout_path(token: order.token)
+    redirect_to tickets_checkout_path(token: order.token, **embed_params)
   rescue TicketCheckout::Error => e
-    redirect_to tickets_event_path(org: params[:org], event: params[:event], code: params[:code].presence), alert: e.message
+    redirect_to tickets_event_path(org: params[:org], event: params[:event], code: params[:code].presence, **embed_params), alert: e.message
   end
 
   def show
-    return redirect_to(tickets_order_path(token: @order.token)) if @order.paid?
+    return redirect_to(tickets_order_path(token: @order.token, **embed_params)) if @order.paid?
 
     @expired = @order.hold_expired? || @order.status != "pending"
   end
@@ -36,7 +41,7 @@ class TicketCheckoutsController < ApplicationController
   # The buyer's details are in: record them, then either finish a free order
   # or hand back the PaymentIntent's client secret for Stripe to confirm.
   def pay
-    return render(json: { redirect: tickets_order_path(token: @order.token) }) if @order.paid?
+    return render(json: { redirect: tickets_order_path(token: @order.token, **embed_params) }) if @order.paid?
     return render(json: { error: "Your hold on these seats ran out. Please start again." }, status: :unprocessable_entity) if @order.hold_expired? || @order.status != "pending"
 
     buyer = params.permit(:buyer_name, :buyer_email, :buyer_phone, :marketing_opt_in)
@@ -50,7 +55,7 @@ class TicketCheckoutsController < ApplicationController
 
     if @order.total_cents.zero?
       TicketOrderSettlement.settle!(@order)
-      return render(json: { redirect: tickets_order_path(token: @order.token) })
+      return render(json: { redirect: tickets_order_path(token: @order.token, **embed_params) })
     end
 
     render json: { client_secret: payment_intent.client_secret }
@@ -67,13 +72,13 @@ class TicketCheckoutsController < ApplicationController
       if intent.status == "succeeded"
         TicketOrderSettlement.settle!(@order, payment_intent_id: intent.id, charge_id: intent.latest_charge)
       elsif intent.status == "requires_payment_method"
-        return redirect_to(tickets_checkout_path(token: @order.token), alert: "That payment didn't go through. Please try another way to pay.")
+        return redirect_to(tickets_checkout_path(token: @order.token, **embed_params), alert: "That payment didn't go through. Please try another way to pay.")
       end
     end
-    redirect_to tickets_order_path(token: @order.token)
+    redirect_to tickets_order_path(token: @order.token, **embed_params)
   rescue Stripe::StripeError => e
     Rails.logger.error("[TicketCheckouts] done for order #{@order.id}: #{e.message}")
-    redirect_to tickets_order_path(token: @order.token)
+    redirect_to tickets_order_path(token: @order.token, **embed_params)
   end
 
   private

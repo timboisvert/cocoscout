@@ -1,0 +1,46 @@
+<%
+  profile = ticketing_profile
+  base = request.base_url
+  upcoming = Current.organization.ticket_listings.where.not(status: "draft").joins(:show)
+                    .where("shows.date_and_time >= ?", Time.current).order("shows.date_and_time").limit(50).to_a
+  example_event = upcoming.first&.slug || "your-show-oct-10"
+  snippets = [
+    [ "Your box office", "Every show on sale, on your own site. Buyers pick a date and check out without leaving the page.",
+      %(<div data-cocoscout-tickets="#{profile.slug}"></div>\n<script src="#{base}/t/embed.js" async></script>) ],
+    [ "One show", "Just one date's tickets. Use the show's address from Shows on sale.",
+      %(<div data-cocoscout-tickets="#{profile.slug}" data-event="#{example_event}"></div>\n<script src="#{base}/t/embed.js" async></script>) ],
+    [ "A Buy tickets button", "A pink button that opens the show's tickets over your page.",
+      %(<div data-cocoscout-tickets="#{profile.slug}" data-event="#{example_event}" data-view="button">Buy tickets</div>\n<script src="#{base}/t/embed.js" async></script>) ]
+  ]
+%>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Sell on your own website</h2>
+    <p class="text-sm text-gray-600 mt-1">Paste one of these into your site's HTML. Prices, seats and sold-out shows stay up to date by themselves. Add the script line once per page, however many widgets you use.</p>
+  </div>
+  <div class="divide-y divide-gray-100">
+    <% snippets.each_with_index do |(title, explanation, code), index| %>
+      <div class="px-6 py-5">
+        <h3 class="text-sm font-semibold text-gray-900"><%= title %></h3>
+        <p class="text-xs text-gray-600 mt-0.5"><%= explanation %></p>
+        <div class="mt-3" data-controller="clipboard">
+          <textarea readonly rows="3" data-clipboard-target="textField" id="embed-snippet-<%= index %>" aria-label="<%= title %> code"
+                    class="block w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg shadow-sm font-mono text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"><%= code %></textarea>
+          <div class="mt-2">
+            <%= render "shared/button", text: "Copy", variant: "secondary", size: "small", type: :button, data: { action: "click->clipboard#copy" } %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  <% if upcoming.any? %>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Show addresses</h3>
+      <ul class="mt-2 space-y-1 text-sm">
+        <% upcoming.each do |listing| %>
+          <li class="flex flex-wrap justify-between gap-2"><span class="text-gray-700"><%= listing.display_title %> · <%= listing.starts_at.strftime("%b %-d") %></span><code class="text-xs text-gray-600"><%= listing.slug %></code></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+</div>

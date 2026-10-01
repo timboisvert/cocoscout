@@ -26,7 +26,7 @@
     <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">This order wasn't completed</h1>
     <div class="mt-4">
       <%= render "shared/button", text: "Back to tickets", variant: "primary", size: "medium",
-            path: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug) %>
+            path: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params) %>
     </div>
   <% end %>
 
@@ -61,7 +61,7 @@
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
       <span>Order <%= @order.code %> · <%= number_to_currency(@order.total_cents / 100.0) %></span>
       <%= render "shared/button", text: "Email my tickets again", variant: "secondary", size: "small",
-            path: tickets_order_resend_path(token: @order.token), method: :post %>
+            path: tickets_order_resend_path(token: @order.token, **embed_params), method: :post %>
     </div>
   <% end %>
 </div>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= content_for(:title) || "Tickets" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex">
+    <%= csrf_meta_tags %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Coustard:wght@400;900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <%= yield :head %>
+    <%= stylesheet_link_tag :app %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <%# The public ticket pages inside a theater's own website (/t/embed.js):
+      no header or footer, a transparent background, and the page's height
+      sent up so the frame grows to fit — no inner scrollbar. %>
+  <body class="inter-regular text-slate-700 bg-transparent">
+    <main class="px-1 py-2">
+      <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+      <%= yield %>
+      <p class="mt-4 text-right text-[11px] text-gray-400">
+        <%= link_to "Tickets by CocoScout", root_url, target: "_blank", rel: "noopener", class: "hover:text-gray-600" %>
+      </p>
+    </main>
+    <script>
+      (function () {
+        if (window.parent === window) return;
+        var last = 0;
+        function send() {
+          var height = document.documentElement.scrollHeight;
+          if (height === last) return;
+          last = height;
+          window.parent.postMessage({ type: "cocoscout:height", height: height }, "*");
+        }
+        new ResizeObserver(send).observe(document.body);
+        window.addEventListener("load", send);
+        send();
+      })();
+    </script>
+  </body>
+</html>
