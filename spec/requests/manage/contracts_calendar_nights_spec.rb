@@ -17,9 +17,12 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
 
   def month_param(date) = date.strftime("%Y-%m-01")
 
-  # A night in the same month as today that has already happened; a night still
-  # to come in the same month when there is one, else next month.
-  let(:past_at) { (Date.current.day > 3 ? 2.days.ago : Date.current.beginning_of_month.to_time).change(hour: 20) }
+  # Mid-month, so there's always a night earlier this month that has happened
+  # (the calendar counts nights before today) and one still to come. Pinned,
+  # because the first days of a month have no earlier night at all.
+  around { |example| travel_to(Time.current.beginning_of_month.change(day: 15, hour: 12)) { example.run } }
+
+  let(:past_at) { 2.days.ago.change(hour: 20) }
   let(:future_at) { 3.days.from_now.change(hour: 20) }
 
   context "a revenue split where we sell" do
