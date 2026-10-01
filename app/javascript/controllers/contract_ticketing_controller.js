@@ -2,10 +2,13 @@ import { Controller } from "@hotwired/stimulus"
 
 // Ticket tiers and discount codes, each managed as a list you add to through a
 // modal. Everything serializes into a hidden JSON field for the wizard submit:
-//   { tiers: [{name, price}], discounts: [{code, amount, amount_type, applies_to, tier_names}] }
+//   { tiers: [{name, price, quantity}], discounts: [{code, amount, amount_type, applies_to, tier_names}],
+//     list_on_cocoscout }
+// quantity is the tier's seats (null = no limit). list_on_cocoscout asks for
+// the contract's shows to be listed on CocoScout Ticketing (see TicketListingSync).
 export default class extends Controller {
     static targets = [
-        "tierList", "tierModal", "tierName", "tierPrice", "tierError",
+        "tierList", "tierModal", "tierName", "tierPrice", "tierSeats", "tierError", "listOnCocoscout",
         "discountList", "discountModal", "discountError",
         "discountCode", "discountAmount", "discountType",
         "discountTierWrapper", "discountTiers",
@@ -30,6 +33,7 @@ export default class extends Controller {
     openTierModal() {
         this.tierNameTarget.value = ""
         this.tierPriceTarget.value = ""
+        if (this.hasTierSeatsTarget) this.tierSeatsTarget.value = ""
         this.hideError(this.tierErrorTarget)
         this.showModal(this.tierModalTarget)
         this.tierNameTarget.focus()
@@ -43,11 +47,14 @@ export default class extends Controller {
 
         if (!name) return this.showError(this.tierErrorTarget, "Give the tier a name.")
         if (isNaN(price) || price < 0) return this.showError(this.tierErrorTarget, "Enter a price of zero or more.")
+        const seatsText = this.hasTierSeatsTarget ? this.tierSeatsTarget.value.trim() : ""
+        const quantity = seatsText === "" ? null : parseInt(seatsText, 10)
+        if (quantity !== null && (isNaN(quantity) || quantity < 1)) return this.showError(this.tierErrorTarget, "Seats must be at least 1, or blank for no limit.")
         if (this.tiers.some(t => t.name.toLowerCase() === name.toLowerCase())) {
             return this.showError(this.tierErrorTarget, "You already have a tier with that name.")
         }
 
-        this.tiers.push({ name, price })
+        this.tiers.push({ name, price, quantity })
         this.closeTierModal()
         this.renderTiers()
         this.serialize()
@@ -76,7 +83,7 @@ export default class extends Controller {
         }
         this.tierListTarget.innerHTML = this.tiers.map((tier, index) => `
       <div class="flex items-center justify-between gap-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-        <span class="font-medium text-gray-900">${this.escape(tier.name)}</span>
+        <span class="font-medium text-gray-900">${this.escape(tier.name)}${tier.quantity ? `<span class="font-normal text-gray-500"> · ${Number(tier.quantity)} seats</span>` : ""}</span>
         <div class="flex items-center gap-3">
           <span class="font-semibold text-gray-900">$${Number(tier.price).toFixed(2)}</span>
           <button type="button" data-action="click->contract-ticketing#removeTier" data-index="${index}" class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" aria-label="Remove tier">
@@ -194,14 +201,21 @@ export default class extends Controller {
 
     // --- Shared -----------------------------------------------------------
 
+    toggleListing() { this.serialize() }
+
     serialize() {
         // Keep a single `discount` alongside `discounts` so older readers that
         // expect one code still see the first.
-        this.ticketingJsonTarget.value = JSON.stringify({
+        const payload = {
             tiers: this.tiers,
             discounts: this.discounts,
             discount: this.discounts[0] || {}
-        })
+        }
+        // Only sent when the switch is on the page, so saving without it never
+        // turns off a listing someone else asked for.
+        if (this.hasListOnCocoscoutTarget) payload.list_on_cocoscout = this.listOnCocoscoutTarget.checked
+        else if (this.existingValue && this.existingValue.list_on_cocoscout !== undefined) payload.list_on_cocoscout = this.existingValue.list_on_cocoscout
+        this.ticketingJsonTarget.value = JSON.stringify(payload)
     }
 
     emptyBox(title, hint) {

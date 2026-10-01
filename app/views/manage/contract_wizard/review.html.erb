@@ -181,7 +181,7 @@
           <ul class="space-y-1 text-sm text-gray-700">
             <% tiers.each do |tier| %>
               <li class="flex items-center justify-between">
-                <span><%= tier["name"] %></span>
+                <span><%= tier["name"] %><% if tier["quantity"].present? %> <span class="text-gray-500">· <%= tier["quantity"] %> seats</span><% end %></span>
                 <span class="font-medium"><%= number_to_currency(tier["price"]) %></span>
               </li>
             <% end %>

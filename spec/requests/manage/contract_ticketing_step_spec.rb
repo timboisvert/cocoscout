@@ -41,6 +41,21 @@ RSpec.describe "Contract wizard ticketing step", type: :request do
     expect(Contract.ticketing_discounts(ticketing).map { |d| d["code"] }).to contain_exactly("FRIENDS", "VIPONLY")
   end
 
+  it "takes seats per tier, and offers selling on CocoScout Ticketing only to superadmins" do
+    get manage_ticketing_contract_wizard_path(contract)
+    expect(response.body).to include(%(data-contract-ticketing-target="tierSeats"))
+    expect(response.body).not_to include("Sell these on CocoScout Ticketing")
+
+    owner.update!(email_address: "boisvert@gmail.com")
+    get manage_ticketing_contract_wizard_path(contract)
+    expect(response.body).to include("Sell these on CocoScout Ticketing")
+
+    payload = { tiers: [ { name: "General", price: 20, quantity: 60 } ], discounts: [], list_on_cocoscout: true }
+    post manage_ticketing_contract_wizard_path(contract), params: { ticketing: payload.to_json }
+    ticketing = contract.reload.draft_ticketing
+    expect([ ticketing["tiers"].first["quantity"], ticketing["list_on_cocoscout"] ]).to eq([ 60, true ])
+  end
+
   it "normalizes a legacy single discount into the list" do
     contract.update_draft_step(:ticketing, {
       "tiers" => [ { "name" => "GA", "price" => 15 } ],

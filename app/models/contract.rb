@@ -7,6 +7,7 @@ class Contract < ApplicationRecord
   has_many :contract_documents, dependent: :destroy
   has_many :contract_payments, dependent: :destroy
   has_many :space_rentals, dependent: :destroy
+  has_many :ticket_listings, dependent: :nullify
   # A contract is FOR one production (the real-world show). A production can be the
   # subject of many contracts over time — see Production#contracts.
   belongs_to :production, optional: true
@@ -1052,6 +1053,9 @@ class Contract < ApplicationRecord
         contract_end_date: rentals.maximum(:ends_at).to_date
       )
     end
+
+    # Ticket pages follow the amended prices, seats, codes and nights.
+    TicketListingSync.for_contract(self)
     true
   end
 
@@ -2549,6 +2553,9 @@ class Contract < ApplicationRecord
 
     # Link per-event payments to their corresponding shows
     link_payments_to_shows(created_payments, created_shows)
+
+    # Draft ticket pages for its shows, when it asked to sell on CocoScout.
+    TicketListingSync.for_contract(self)
   end
 
   # Link per-event contract payments to their corresponding shows by matching dates

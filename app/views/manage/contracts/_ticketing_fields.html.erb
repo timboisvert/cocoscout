@@ -1,5 +1,5 @@
 <%#
-  Ticketing fields: ticket tiers (name + price) and any number of discount codes,
+  Ticketing fields: ticket tiers (name, price, seats) and any number of discount codes,
   each managed as a list you add to through a modal. Wrapped in the
   `contract-ticketing` Stimulus controller with a hidden JSON input named
   "ticketing". The caller supplies the surrounding <form> and nav buttons.
@@ -36,6 +36,23 @@
     </div>
   </div>
 
+  <%# Sell the contract's shows on CocoScout Ticketing: drafts with these
+      prices, seats and codes (TicketListingSync). Experimental, so only
+      superadmins on an org with Ticketing see it. %>
+  <% if Current.user&.superadmin? && Current.organization&.feature_available?(:ticketing) %>
+    <div class="mb-6 pt-6 border-t border-gray-200">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input type="checkbox" data-contract-ticketing-target="listOnCocoscout" data-action="change->contract-ticketing#toggleListing"
+               <%= "checked" if ActiveModel::Type::Boolean.new.cast(ticketing["list_on_cocoscout"]) %>
+               class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+        <span>
+          <span class="block text-sm font-medium text-gray-900">Sell these on CocoScout Ticketing</span>
+          <span class="block text-xs text-gray-600 mt-0.5">Each show gets a draft ticket page with these prices, seats and codes. Nothing goes on sale until you put it on sale in Ticketing.</span>
+        </span>
+      </label>
+    </div>
+  <% end %>
+
   <input type="hidden" name="ticketing" data-contract-ticketing-target="ticketingJson" value="<%= ticketing.to_json %>">
 
   <%# Add-a-tier modal %>
@@ -62,6 +79,12 @@
               <input type="number" step="0.01" min="0" data-contract-ticketing-target="tierPrice" placeholder="0.00"
                      class="block w-full pl-8 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
             </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Seats <span class="font-normal text-gray-500">(optional)</span></label>
+            <input type="number" min="1" step="1" data-contract-ticketing-target="tierSeats" placeholder="No limit"
+                   class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+            <p class="text-xs text-gray-500 mt-1">How many of these each show can sell.</p>
           </div>
           <p data-contract-ticketing-target="tierError" class="hidden text-sm text-red-600"></p>
           <div class="flex gap-3 pt-1">
