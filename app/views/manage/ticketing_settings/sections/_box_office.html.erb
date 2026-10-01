@@ -1,0 +1,74 @@
+<%
+  profile = ticketing_profile
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  # The fee switch explained with a real ticket, so the choice isn't abstract.
+  example = [ { price_cents: 2_000 } ]
+  buyer_total = TicketPricing.quote(items: example, fee_mode: "buyer").total_cents
+  absorbed_net = TicketPricing.quote(items: example, fee_mode: "org").org_net_cents
+  fee_choices = [
+    [ "buyer", "Buyers pay the fees", "A $20 ticket costs the buyer #{number_to_currency(buyer_total / 100.0)}, and you keep the full $20." ],
+    [ "org", "You absorb the fees", "A $20 ticket costs the buyer $20, and you keep #{number_to_currency(absorbed_net / 100.0)}." ]
+  ]
+%>
+<%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Your box office</h2>
+      <p class="text-sm text-gray-600 mt-1">Where buyers find your shows and how checkout works. Every organization gets the same page design.</p>
+    </div>
+
+    <div class="px-6 py-5 space-y-6">
+      <div>
+        <label for="ticketing_profile_slug" class="block text-sm font-medium text-gray-700 mb-1.5">Web address</label>
+        <div class="flex items-stretch">
+          <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-sm text-gray-500">cocoscout.com/t/</span>
+          <%= f.text_field :slug, class: "#{input_class} rounded-l-none" %>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">Lowercase letters, numbers and dashes.</p>
+      </div>
+
+      <div>
+        <label for="ticketing_profile_support_email" class="block text-sm font-medium text-gray-700 mb-1.5">Email for buyers' questions</label>
+        <%= f.email_field :support_email, placeholder: "boxoffice@yourtheater.com", class: input_class %>
+        <p class="text-xs text-gray-500 mt-1">Replies to ticket emails go here.</p>
+      </div>
+
+      <fieldset>
+        <legend class="block text-sm font-medium text-gray-700 mb-1.5">Who pays our 50¢ and card processing</legend>
+        <div class="space-y-2">
+          <% fee_choices.each do |value, title, explanation| %>
+            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= f.radio_button :default_fee_mode, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <span>
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Each show can change this. Prices on your pages always include the fees.</p>
+      </fieldset>
+
+      <div>
+        <label for="ticketing_profile_default_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
+        <%= f.number_field :default_max_per_order, min: 1, max: 100, class: "#{input_class} max-w-[8rem]" %>
+      </div>
+
+      <% if Current.user.superadmin? %>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+          <label class="flex items-start gap-3 cursor-pointer">
+            <%= f.check_box :enabled, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+            <span>
+              <span class="block text-sm font-medium text-gray-900">Ticketing is on</span>
+              <span class="block text-xs text-gray-600 mt-0.5">The box office page and checkout are live for this organization. While ticketing is experimental, only superadmins can switch this.</span>
+            </span>
+          </label>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  </div>
+<% end %>

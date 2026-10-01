@@ -43,7 +43,11 @@ module Manage
       "manage/casting_tables" => :casting_table,
       "manage/casting_table_wizard" => :casting_table,
       # Performer agreements
-      "manage/agreement_templates" => :agreements
+      "manage/agreement_templates" => :agreements,
+      # Ticketing
+      "manage/ticketing" => :ticketing,
+      "manage/ticketing_settings" => :ticketing,
+      "manage/ticket_listings" => :ticketing
     }.freeze
 
     # What every Pro plan includes, shown as reinforcement on each upgrade screen.

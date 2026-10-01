@@ -24,6 +24,12 @@ class TicketListing < ApplicationRecord
 
   has_one_attached :image
 
+  # Prices are edited in place on the listing page; an empty new row is skipped.
+  accepts_nested_attributes_for :ticket_tiers, allow_destroy: true,
+                                reject_if: ->(attrs) { attrs["id"].blank? && attrs["name"].blank? && attrs["price_cents"].to_i.zero? }
+
+  IMAGE_TYPES = %w[image/jpeg image/png image/webp].freeze
+
   validates :status, inclusion: { in: STATUSES }
   validates :slug, presence: true, uniqueness: { scope: :organization_id },
                    format: { with: /\A[a-z0-9][a-z0-9-]*\z/ }
@@ -31,6 +37,7 @@ class TicketListing < ApplicationRecord
   validates :capacity, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   validate :show_belongs_to_organization
+  validate :image_is_a_usable_picture
 
   before_validation :take_production_and_organization_from_show, on: :create
   before_validation :default_slug, on: :create
@@ -121,6 +128,13 @@ class TicketListing < ApplicationRecord
 
     errors.add(:show, "belongs to another organization") unless show.production&.organization_id == organization_id
     errors.add(:production, "doesn't match the show") if production_id && show.production_id != production_id
+  end
+
+  def image_is_a_usable_picture
+    return unless image.attached?
+
+    errors.add(:image, "must be a JPG, PNG or WebP") unless IMAGE_TYPES.include?(image.blob.content_type)
+    errors.add(:image, "must be 10 MB or smaller") if image.blob.byte_size > 10.megabytes
   end
 
   def keep_listings_with_orders

@@ -24,7 +24,8 @@
     - cant_make_it_person: Person to generate vacancy token for (default: nil)
     - my_vacancies: Array of vacancies user created for this show (default: [])
     - has_groups: Whether the user has any groups (used to determine if headshot should be shown)
-    - right_panel: Type of right panel content (:cast_assignment, :availability, :cast_summary, :countdown, or nil for no panel)
+    - right_panel: Type of right panel content (:cast_assignment, :availability, :cast_summary, :countdown, :ticket_sales, or nil for no panel)
+    - ticket_listing: TicketListing for the ticket sales right panel (when right_panel: :ticket_sales)
     - entity_assignments: Array of {entity:, role_assignments:} for multiple stacked cast assignment panels
     - cast_summary: Hash with {assignments_count:, roles_count:, vacancies:} for cast summary panel
     - closes_at: DateTime for countdown right panel (when right_panel: :countdown)
@@ -525,6 +526,9 @@
       <% end %>
     </div>
 
+
+  <% elsif right_panel == :ticket_sales && local_assigns[:ticket_listing].present? %>
+    <%= render "shared/ticket_sales_panel", listing: local_assigns[:ticket_listing] %>
 
   <% elsif right_panel == :countdown && local_assigns[:closes_at].present? && local_assigns[:closes_at] > Time.current %>
     <%# Right Section: Countdown timer for closing time %>

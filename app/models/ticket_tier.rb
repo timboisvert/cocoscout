@@ -15,6 +15,7 @@ class TicketTier < ApplicationRecord
   validates :min_per_order, numericality: { only_integer: true, greater_than: 0 }
   validates :max_per_order, numericality: { only_integer: true, greater_than_or_equal_to: :min_per_order }, allow_nil: true
   validates :unlock_code, presence: true, if: :hidden?
+  validate :seats_cover_tickets_sold, if: -> { persisted? && quantity_changed? && quantity }
 
   scope :active, -> { where(archived_at: nil) }
 
@@ -22,9 +23,20 @@ class TicketTier < ApplicationRecord
     price_cents.zero?
   end
 
+  def sold_count
+    tickets.where(status: Ticket::SOLD_STATUSES).count
+  end
+
   def selling?(at = Time.current)
     archived_at.nil? &&
       (sales_start_at.nil? || sales_start_at <= at) &&
       (sales_end_at.nil? || at < sales_end_at)
+  end
+
+  private
+
+  def seats_cover_tickets_sold
+    sold = sold_count
+    errors.add(:quantity, "can't be fewer than the #{sold} already sold") if quantity < sold
   end
 end

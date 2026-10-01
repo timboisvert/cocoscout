@@ -1186,6 +1186,23 @@ Rails.application.routes.draw do
     delete "staffing/scheduling/regulars/:id",    to: "staffing/scheduling_rules#destroy", as: "destroy_staffing_scheduling_rule"
     get  "staffing/scheduling/regulars",          to: "staffing/scheduling_rules#index",   as: "staffing_scheduling_rules"
     get  "staffing/org-chart",                    to: "staffing#org_chart",              as: "staffing_org_chart"
+    # Ticketing (Pro; superadmin-only while it's experimental).
+    get   "ticketing",                            to: "ticketing#index",                 as: "ticketing"
+    get   "ticketing/settings",                   to: "ticketing_settings#show",         as: "ticketing_settings"
+    patch "ticketing/settings",                   to: "ticketing_settings#update"
+    patch "ticketing/settings/tax",               to: "ticketing_settings#update_tax",   as: "ticketing_settings_tax"
+    get   "ticketing/settings/:section",          to: "ticketing_settings#show",         as: "ticketing_settings_section"
+    get    "ticketing/shows",                     to: "ticket_listings#index",           as: "ticket_listings"
+    get    "ticketing/shows/new",                 to: "ticket_listings#new",             as: "new_ticket_listing"
+    post   "ticketing/shows/production",          to: "ticket_listings#select_production", as: "ticket_listings_select_production"
+    post   "ticketing/shows",                     to: "ticket_listings#create"
+    get    "ticketing/shows/:id/edit",            to: "ticket_listings#edit",            as: "edit_ticket_listing"
+    patch  "ticketing/shows/:id",                 to: "ticket_listings#update",          as: "ticket_listing"
+    delete "ticketing/shows/:id",                 to: "ticket_listings#destroy"
+    post   "ticketing/shows/:id/status",          to: "ticket_listings#change_status",   as: "ticket_listing_status"
+    post   "ticketing/shows/:id/codes",           to: "ticket_listings#create_code",     as: "ticket_listing_codes"
+    delete "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#destroy_code",    as: "ticket_listing_code"
+
     # Staffing → Availability: the whole staff's availability on a month calendar.
     get   "staffing/availability",                to: "staffing/availability#index",     as: "staffing_availability"
     get   "staffing/availability/day/:date",      to: "staffing/availability#day",       as: "staffing_availability_day"

@@ -1,0 +1,119 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+# Ticketing is a Pro module, open only to superadmins while it's experimental.
+# Its settings hold the box office (address, fee switch, pilot switch) and the
+# v1 tax setup: one name and percentage for every ticket.
+RSpec.describe "Manage ticketing settings", type: :request do
+  let(:password) { "Password123!" }
+  let(:superadmin) { create(:user, email_address: "boisvert@gmail.com", password: password) }
+  let(:org) { create(:organization, :pro, name: "Stars & Garters", owner: superadmin) }
+
+  def sign_in(user)
+    create(:organization_role, :manager, user: user, organization: org)
+    post handle_signin_path, params: { email_address: user.email_address, password: password }
+    get manage_path
+  end
+
+  describe "who gets in" do
+    it "opens for a superadmin on a Pro org, and says ticketing is off until switched on" do
+      sign_in(superadmin)
+      get manage_ticketing_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Ticketing is off for Stars &amp; Garters")
+      expect(response.body).to include("cocoscout.com/t/stars-garters")
+    end
+
+    it "keeps managers who aren't superadmins out while it's experimental" do
+      manager = create(:user, password: password)
+      sign_in(manager)
+      get manage_ticketing_path
+      expect(response).to redirect_to(manage_path)
+    end
+
+    it "shows the upgrade page on a free org, superadmins included" do
+      org.update!(comped_indefinitely: false)
+      sign_in(superadmin)
+      get manage_ticketing_settings_path
+      expect(response).to have_http_status(:payment_required)
+    end
+
+    it "puts Ticketing in the Pro nav only for superadmins" do
+      sign_in(superadmin)
+      get manage_path
+      expect(response.body).to include(manage_ticketing_path)
+    end
+  end
+
+  describe "box office" do
+    before { sign_in(superadmin) }
+
+    it "saves the address, the fee switch and the pilot switch" do
+      patch manage_ticketing_settings_path, params: { ticketing_profile: {
+        slug: "starsandgarters", default_fee_mode: "org", default_max_per_order: 8,
+        support_email: "Box@StarsAndGarters.com", enabled: "1"
+      } }
+      expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "box_office"))
+      profile = org.reload.ticketing_profile
+      expect(profile.attributes.slice("slug", "default_fee_mode", "default_max_per_order", "support_email", "enabled"))
+        .to eq("slug" => "starsandgarters", "default_fee_mode" => "org", "default_max_per_order" => 8,
+               "support_email" => "box@starsandgarters.com", "enabled" => true)
+    end
+
+    it "explains the fee switch with a real $20 ticket" do
+      get manage_ticketing_settings_section_path(section: "box_office")
+      expect(response.body).to include("$21.42").and include("$18.62")
+    end
+
+    it "refuses an address the /t pages already use" do
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { slug: "orders" } }
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(org.reload.ticketing_profile.slug).to eq("stars-garters")
+    end
+  end
+
+  describe "tax" do
+    before { sign_in(superadmin) }
+
+    def save_tax(percent, name: "Sales tax", mode: "added")
+      patch manage_ticketing_settings_tax_path, params: { tax: { name: name, percent: percent, mode: mode } }
+    end
+
+    it "sets one percentage for every ticket, and shows what it does to a $20 ticket" do
+      save_tax("10.25")
+      rule = org.tax_rules.sole
+      expect([ rule.money_kind, rule.scope_type, rule.mode, rule.tax_rates.sole.rate_bps ]).to eq([ "tickets", nil, "added", 1_025 ])
+
+      get manage_ticketing_settings_section_path(section: "tax")
+      expect(response.body).to include('value="10.25"').and include("$2.05")
+    end
+
+    it "takes the tax off when the percentage is cleared" do
+      save_tax("10.25")
+      save_tax("")
+      expect(org.tax_rules).to be_empty
+      expect(flash[:notice]).to eq("Tickets now carry no tax.")
+    end
+
+    it "retires a rate sales have used instead of changing it" do
+      save_tax("10.25")
+      old_rate = org.tax_rates.sole
+      listing = create(:ticket_listing, organization: org)
+      ticket = create(:ticket, ticket_order: create(:ticket_order, ticket_listing: listing))
+      TaxLine.create!(organization: org, taxable: ticket, tax_rate: old_rate, name: "Sales tax", rate_bps: 1_025,
+                      base_cents: 2_000, tax_cents: 205, sale_date: Date.current)
+
+      save_tax("9", mode: "included")
+      expect(old_rate.reload.archived_at).to be_present
+      rule = org.tax_rules.sole
+      expect([ rule.mode, rule.tax_rates.sole.rate_bps ]).to eq([ "included", 900 ])
+    end
+
+    it "explains a number that isn't a percentage" do
+      save_tax("ten")
+      expect(flash[:alert]).to eq("Enter the tax as a percentage, like 10.25")
+      expect(org.tax_rules).to be_empty
+    end
+  end
+end

@@ -1,0 +1,46 @@
+<% content_for :title, "Shows on sale" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
+    text: "Shows on sale",
+    links: [ { text: "Put shows on sale", path: manage_new_ticket_listing_path } ]
+  } %>
+
+  <div class="mb-3">
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      {
+        label: "Show",
+        filters: [
+          { text: "Upcoming", path: manage_ticket_listings_path(filter: "upcoming"), active: @filter == "upcoming" },
+          { text: "Drafts", path: manage_ticket_listings_path(filter: "drafts"), active: @filter == "drafts" },
+          { text: "Past", path: manage_ticket_listings_path(filter: "past"), active: @filter == "past" }
+        ]
+      }
+    ] %>
+  </div>
+
+  <% if @listings.any? %>
+    <div class="space-y-2">
+      <% @listings.each do |listing| %>
+        <%= render "shared/show_row",
+              show: listing.show,
+              link_path: manage_edit_ticket_listing_path(listing),
+              show_production: true,
+              show_canceled: true,
+              right_panel: :ticket_sales,
+              ticket_listing: listing %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center">
+      <p class="text-sm text-gray-600">
+        <%= { "upcoming" => "No upcoming shows are on sale yet.", "drafts" => "No drafts waiting.", "past" => "No past shows were sold here yet." }.fetch(@filter) %>
+      </p>
+      <div class="mt-4 inline-block">
+        <%= render "shared/button", text: "Put shows on sale", variant: "primary", size: "small", path: manage_new_ticket_listing_path %>
+      </div>
+    </div>
+  <% end %>
+</div>

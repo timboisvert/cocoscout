@@ -89,7 +89,7 @@ class Organization < ApplicationRecord
   # Modules that require the Pro tier. Everything else (Shows,
   # Casting, Auditions, Availability, basic Sign-ups, Messages, Contacts,
   # Documents, and Courses) is included on the Producer plan.
-  PAID_FEATURES = %i[money contracts staffing casting_table reports agreements].freeze
+  PAID_FEATURES = %i[money contracts staffing casting_table reports agreements ticketing].freeze
 
   # Producer plan may schedule at most this many (non-canceled) shows/events per
   # calendar month, counting every event type including rehearsals.
