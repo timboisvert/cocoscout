@@ -11,6 +11,7 @@ class Production < ApplicationRecord
 
   has_many :posters, dependent: :destroy
   has_many :shows, dependent: :destroy
+  has_many :ticket_discount_codes, dependent: :destroy
   has_many :scheduling_rules, dependent: :destroy
   has_many :event_linkages, dependent: :destroy
   has_many :audition_cycles, dependent: :destroy

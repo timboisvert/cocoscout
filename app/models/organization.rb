@@ -47,6 +47,21 @@ class Organization < ApplicationRecord
   has_many :org_payouts, dependent: :destroy
   has_many :payout_ledger_entries, dependent: :destroy
   has_many :payout_batches, dependent: :destroy
+  # The books (see LedgerPosting). Entries are permanent, so deleting an org
+  # clears them in bulk, lines first — the order these are declared in.
+  has_many :journal_lines, dependent: :delete_all
+  has_many :journal_entries, dependent: :delete_all
+  has_many :ledger_accounts, dependent: :delete_all
+  # Ticketing. Orders go before listings (a listing with orders refuses to be
+  # destroyed on its own), and tax lines before the rates they name.
+  has_many :ticket_orders, dependent: :destroy
+  has_many :ticket_listings, dependent: :destroy
+  has_many :ticket_discount_codes, dependent: :destroy
+  has_many :ticketing_access_grants, dependent: :delete_all
+  has_one :ticketing_profile, dependent: :destroy
+  has_many :tax_lines, dependent: :delete_all
+  has_many :tax_rules, dependent: :delete_all
+  has_many :tax_rates, dependent: :delete_all
   has_and_belongs_to_many :people
   has_and_belongs_to_many :groups
 

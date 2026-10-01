@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_100100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -972,6 +972,62 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_160000) do
     t.index ["location_id"], name: "index_house_roles_on_location_id"
     t.index ["organization_id", "archived_at", "position"], name: "idx_house_roles_org_position"
     t.index ["organization_id"], name: "index_house_roles_on_organization_id"
+  end
+
+  create_table "journal_entries", force: :cascade do |t|
+    t.date "cash_date"
+    t.datetime "created_at", null: false
+    t.date "entry_date", null: false
+    t.string "kind", null: false
+    t.string "memo"
+    t.bigint "organization_id", null: false
+    t.datetime "posted_at", null: false
+    t.bigint "reversal_of_id"
+    t.datetime "reversed_at"
+    t.bigint "source_id"
+    t.string "source_type"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "cash_date"], name: "index_journal_entries_on_organization_id_and_cash_date"
+    t.index ["organization_id", "entry_date"], name: "index_journal_entries_on_organization_id_and_entry_date"
+    t.index ["reversal_of_id"], name: "index_journal_entries_on_reversal_of_id"
+    t.index ["source_type", "source_id", "kind"], name: "idx_journal_entries_one_live_per_source_kind", unique: true, where: "((reversed_at IS NULL) AND (reversal_of_id IS NULL))"
+  end
+
+  create_table "journal_lines", force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.bigint "fund_id"
+    t.bigint "journal_entry_id", null: false
+    t.bigint "ledger_account_id", null: false
+    t.string "memo"
+    t.bigint "organization_id", null: false
+    t.bigint "payee_id"
+    t.string "payee_type"
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.datetime "updated_at", null: false
+    t.index ["fund_id"], name: "index_journal_lines_on_fund_id"
+    t.index ["journal_entry_id"], name: "index_journal_lines_on_journal_entry_id"
+    t.index ["ledger_account_id"], name: "index_journal_lines_on_ledger_account_id"
+    t.index ["organization_id", "ledger_account_id"], name: "index_journal_lines_on_organization_id_and_ledger_account_id"
+    t.index ["payee_type", "payee_id"], name: "index_journal_lines_on_payee_type_and_payee_id"
+    t.index ["production_id"], name: "index_journal_lines_on_production_id"
+    t.index ["show_id"], name: "index_journal_lines_on_show_id"
+  end
+
+  create_table "ledger_accounts", force: :cascade do |t|
+    t.string "account_type", null: false
+    t.boolean "active", default: true, null: false
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.string "key"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.string "subtype"
+    t.boolean "system", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "code"], name: "index_ledger_accounts_on_organization_id_and_code", unique: true
+    t.index ["organization_id", "key"], name: "index_ledger_accounts_on_organization_id_and_key", unique: true, where: "(key IS NOT NULL)"
   end
 
   create_table "location_spaces", force: :cascade do |t|
@@ -2938,6 +2994,67 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_160000) do
     t.index ["w9_submission_id"], name: "index_tax_form_1099s_on_w9_submission_id"
   end
 
+  create_table "tax_lines", force: :cascade do |t|
+    t.integer "base_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.date "event_date"
+    t.boolean "exempt", default: false, null: false
+    t.string "exemption_reason"
+    t.boolean "included", default: false, null: false
+    t.string "jurisdiction"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "rate_bps", default: 0, null: false
+    t.string "remitter", default: "organization", null: false
+    t.bigint "reversal_of_id"
+    t.date "sale_date", null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.bigint "tax_rate_id"
+    t.bigint "taxable_id", null: false
+    t.string "taxable_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "event_date"], name: "index_tax_lines_on_organization_id_and_event_date"
+    t.index ["organization_id", "sale_date"], name: "index_tax_lines_on_organization_id_and_sale_date"
+    t.index ["organization_id"], name: "index_tax_lines_on_organization_id"
+    t.index ["reversal_of_id"], name: "index_tax_lines_on_reversal_of_id"
+    t.index ["tax_rate_id"], name: "index_tax_lines_on_tax_rate_id"
+    t.index ["taxable_type", "taxable_id"], name: "index_tax_lines_on_taxable_type_and_taxable_id"
+  end
+
+  create_table "tax_rates", force: :cascade do |t|
+    t.boolean "applies_to_fees", default: false, null: false
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.date "effective_from"
+    t.date "effective_to"
+    t.string "jurisdiction"
+    t.string "kind", default: "sales", null: false
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "rate_bps", null: false
+    t.string "receipt_label"
+    t.string "registration_number"
+    t.string "remitter", default: "organization", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_tax_rates_on_organization_id"
+  end
+
+  create_table "tax_rules", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "exempt", default: false, null: false
+    t.string "exemption_reason"
+    t.string "mode", default: "added", null: false
+    t.string "money_kind", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "scope_id"
+    t.string "scope_type"
+    t.jsonb "tax_rate_ids", default: [], null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "money_kind", "scope_type", "scope_id"], name: "idx_tax_rules_one_per_scope", unique: true, where: "(scope_type IS NOT NULL)"
+    t.index ["organization_id", "money_kind"], name: "idx_tax_rules_one_default", unique: true, where: "(scope_type IS NULL)"
+    t.index ["organization_id"], name: "index_tax_rules_on_organization_id"
+  end
+
   create_table "team_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -2951,6 +3068,106 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_160000) do
     t.index ["organization_id"], name: "index_team_invitations_on_organization_id"
     t.index ["production_id"], name: "index_team_invitations_on_production_id"
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
+  end
+
+  create_table "ticket_discount_codes", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.integer "amount_cents"
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.datetime "ends_at"
+    t.string "kind", default: "fixed", null: false
+    t.integer "max_uses"
+    t.bigint "organization_id", null: false
+    t.decimal "percent", precision: 5, scale: 2
+    t.bigint "production_id"
+    t.datetime "starts_at"
+    t.bigint "ticket_listing_id"
+    t.jsonb "ticket_tier_ids", default: [], null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "code"], name: "index_ticket_discount_codes_on_organization_id_and_code"
+    t.index ["organization_id"], name: "index_ticket_discount_codes_on_organization_id"
+    t.index ["production_id"], name: "index_ticket_discount_codes_on_production_id"
+    t.index ["ticket_listing_id"], name: "index_ticket_discount_codes_on_ticket_listing_id"
+  end
+
+  create_table "ticket_listings", force: :cascade do |t|
+    t.string "accessibility_note"
+    t.string "age_note"
+    t.integer "capacity"
+    t.bigint "contract_id"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "door_note"
+    t.string "fee_mode"
+    t.integer "max_per_order"
+    t.datetime "off_sale_at"
+    t.datetime "on_sale_at"
+    t.bigint "organization_id", null: false
+    t.bigint "production_id", null: false
+    t.datetime "released_at"
+    t.bigint "show_id", null: false
+    t.string "slug", null: false
+    t.string "status", default: "draft", null: false
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["contract_id"], name: "index_ticket_listings_on_contract_id"
+    t.index ["organization_id", "slug"], name: "index_ticket_listings_on_organization_id_and_slug", unique: true
+    t.index ["organization_id", "status"], name: "index_ticket_listings_on_organization_id_and_status"
+    t.index ["organization_id"], name: "index_ticket_listings_on_organization_id"
+    t.index ["production_id"], name: "index_ticket_listings_on_production_id"
+    t.index ["show_id"], name: "index_ticket_listings_on_show_id", unique: true
+  end
+
+  create_table "ticket_orders", force: :cascade do |t|
+    t.string "buyer_email"
+    t.integer "buyer_fee_cents", default: 0, null: false
+    t.string "buyer_name"
+    t.string "buyer_phone"
+    t.datetime "canceled_at"
+    t.string "channel", default: "online", null: false
+    t.string "client_ip"
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.integer "discount_cents", default: 0, null: false
+    t.datetime "expires_at"
+    t.string "external_order_id"
+    t.string "fee_mode", null: false
+    t.boolean "marketing_opt_in", default: false, null: false
+    t.string "money_path", default: "cocoscout", null: false
+    t.integer "org_net_cents", default: 0, null: false
+    t.bigint "organization_id", null: false
+    t.datetime "paid_at"
+    t.integer "platform_fee_cents", default: 0, null: false
+    t.integer "processing_cents", default: 0, null: false
+    t.string "referrer"
+    t.datetime "refunded_at"
+    t.integer "refunded_cents", default: 0, null: false
+    t.string "status", default: "pending", null: false
+    t.string "stripe_charge_id"
+    t.integer "stripe_fee_cents"
+    t.string "stripe_payment_intent_id"
+    t.integer "subtotal_cents", default: 0, null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.bigint "ticket_channel_id"
+    t.bigint "ticket_discount_code_id"
+    t.bigint "ticket_listing_id", null: false
+    t.string "token", null: false
+    t.integer "total_cents", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.jsonb "utm", default: {}, null: false
+    t.index ["buyer_email"], name: "index_ticket_orders_on_buyer_email"
+    t.index ["code"], name: "index_ticket_orders_on_code", unique: true
+    t.index ["expires_at"], name: "index_ticket_orders_on_expires_at", where: "((status)::text = 'pending'::text)"
+    t.index ["organization_id", "created_at"], name: "index_ticket_orders_on_organization_id_and_created_at"
+    t.index ["organization_id"], name: "index_ticket_orders_on_organization_id"
+    t.index ["stripe_payment_intent_id"], name: "index_ticket_orders_on_stripe_payment_intent_id", unique: true, where: "(stripe_payment_intent_id IS NOT NULL)"
+    t.index ["ticket_discount_code_id"], name: "index_ticket_orders_on_ticket_discount_code_id"
+    t.index ["ticket_listing_id", "status"], name: "index_ticket_orders_on_ticket_listing_id_and_status"
+    t.index ["ticket_listing_id"], name: "index_ticket_orders_on_ticket_listing_id"
+    t.index ["token"], name: "index_ticket_orders_on_token", unique: true
+    t.index ["user_id"], name: "index_ticket_orders_on_user_id"
   end
 
   create_table "ticket_sales_lines", force: :cascade do |t|
@@ -2972,9 +3189,83 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_160000) do
     t.string "name", null: false
     t.bigint "organization_id", null: false
     t.integer "position", default: 0, null: false
+    t.string "system_key"
     t.datetime "updated_at", null: false
     t.index ["organization_id", "position"], name: "index_ticket_sources_on_organization_id_and_position"
+    t.index ["organization_id", "system_key"], name: "index_ticket_sources_on_organization_id_and_system_key", unique: true, where: "(system_key IS NOT NULL)"
     t.index ["organization_id"], name: "index_ticket_sources_on_organization_id"
+  end
+
+  create_table "ticket_tiers", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.boolean "hidden", default: false, null: false
+    t.integer "max_per_order"
+    t.integer "min_per_order", default: 1, null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "price_cents", default: 0, null: false
+    t.integer "quantity"
+    t.datetime "sales_end_at"
+    t.datetime "sales_start_at"
+    t.bigint "ticket_listing_id", null: false
+    t.string "unlock_code"
+    t.datetime "updated_at", null: false
+    t.index ["ticket_listing_id"], name: "index_ticket_tiers_on_ticket_listing_id"
+  end
+
+  create_table "ticketing_access_grants", force: :cascade do |t|
+    t.string "access_level", default: "check_in", null: false
+    t.datetime "created_at", null: false
+    t.bigint "granted_by_id"
+    t.bigint "organization_id", null: false
+    t.datetime "revoked_at"
+    t.bigint "revoked_by_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["granted_by_id"], name: "index_ticketing_access_grants_on_granted_by_id"
+    t.index ["organization_id", "user_id"], name: "idx_ticketing_access_grants_one_active", unique: true, where: "(revoked_at IS NULL)"
+    t.index ["organization_id"], name: "index_ticketing_access_grants_on_organization_id"
+    t.index ["revoked_by_id"], name: "index_ticketing_access_grants_on_revoked_by_id"
+    t.index ["user_id"], name: "index_ticketing_access_grants_on_user_id"
+  end
+
+  create_table "ticketing_profiles", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "default_fee_mode", default: "buyer", null: false
+    t.integer "default_max_per_order", default: 10, null: false
+    t.boolean "enabled", default: false, null: false
+    t.bigint "organization_id", null: false
+    t.string "slug", null: false
+    t.string "support_email"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticketing_profiles_on_organization_id", unique: true
+    t.index ["slug"], name: "index_ticketing_profiles_on_slug", unique: true
+  end
+
+  create_table "tickets", force: :cascade do |t|
+    t.datetime "checked_in_at"
+    t.bigint "checked_in_by_id"
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.integer "discount_cents", default: 0, null: false
+    t.string "external_barcode"
+    t.string "holder_name"
+    t.integer "price_cents", default: 0, null: false
+    t.datetime "refunded_at"
+    t.string "status", default: "reserved", null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_order_id", null: false
+    t.bigint "ticket_tier_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["checked_in_by_id"], name: "index_tickets_on_checked_in_by_id"
+    t.index ["code"], name: "index_tickets_on_code", unique: true
+    t.index ["ticket_listing_id", "external_barcode"], name: "index_tickets_on_ticket_listing_id_and_external_barcode", unique: true, where: "(external_barcode IS NOT NULL)"
+    t.index ["ticket_listing_id", "status"], name: "index_tickets_on_ticket_listing_id_and_status"
+    t.index ["ticket_order_id"], name: "index_tickets_on_ticket_order_id"
+    t.index ["ticket_tier_id"], name: "index_tickets_on_ticket_tier_id"
   end
 
   create_table "training_credits", force: :cascade do |t|
@@ -3190,6 +3481,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_160000) do
   add_foreign_key "group_memberships", "people"
   add_foreign_key "house_roles", "locations"
   add_foreign_key "house_roles", "organizations"
+  add_foreign_key "journal_entries", "journal_entries", column: "reversal_of_id"
+  add_foreign_key "journal_entries", "organizations"
+  add_foreign_key "journal_lines", "journal_entries"
+  add_foreign_key "journal_lines", "ledger_accounts"
+  add_foreign_key "journal_lines", "organizations"
+  add_foreign_key "ledger_accounts", "organizations"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
   add_foreign_key "message_poll_options", "message_polls"
@@ -3373,11 +3670,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_160000) do
   add_foreign_key "tax_form_1099s", "tax_form_1099s", column: "corrects_id", on_delete: :nullify
   add_foreign_key "tax_form_1099s", "users", column: "generated_by_id", on_delete: :nullify
   add_foreign_key "tax_form_1099s", "w9_submissions", on_delete: :nullify
+  add_foreign_key "tax_lines", "organizations"
+  add_foreign_key "tax_lines", "tax_lines", column: "reversal_of_id"
+  add_foreign_key "tax_lines", "tax_rates"
+  add_foreign_key "tax_rates", "organizations"
+  add_foreign_key "tax_rules", "organizations"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
+  add_foreign_key "ticket_discount_codes", "organizations"
+  add_foreign_key "ticket_discount_codes", "productions"
+  add_foreign_key "ticket_discount_codes", "ticket_listings"
+  add_foreign_key "ticket_listings", "contracts", on_delete: :nullify
+  add_foreign_key "ticket_listings", "organizations"
+  add_foreign_key "ticket_listings", "productions"
+  add_foreign_key "ticket_listings", "shows"
+  add_foreign_key "ticket_orders", "organizations"
+  add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
+  add_foreign_key "ticket_orders", "ticket_listings"
+  add_foreign_key "ticket_orders", "users", on_delete: :nullify
   add_foreign_key "ticket_sales_lines", "show_financials", column: "show_financials_id"
   add_foreign_key "ticket_sales_lines", "ticket_sources"
   add_foreign_key "ticket_sources", "organizations"
+  add_foreign_key "ticket_tiers", "ticket_listings"
+  add_foreign_key "ticketing_access_grants", "organizations"
+  add_foreign_key "ticketing_access_grants", "users", column: "granted_by_id", on_delete: :nullify
+  add_foreign_key "ticketing_access_grants", "users", column: "revoked_by_id", on_delete: :nullify
+  add_foreign_key "ticketing_access_grants", "users", on_delete: :cascade
+  add_foreign_key "ticketing_profiles", "organizations"
+  add_foreign_key "tickets", "ticket_listings"
+  add_foreign_key "tickets", "ticket_orders"
+  add_foreign_key "tickets", "ticket_tiers"
+  add_foreign_key "tickets", "users", column: "checked_in_by_id", on_delete: :nullify
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"

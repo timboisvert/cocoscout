@@ -67,6 +67,9 @@ class Show < ApplicationRecord
 
   # Payouts
   has_one :show_financials, dependent: :destroy
+  # On sale through CocoScout Ticketing. A draft goes with its show; one with
+  # orders refuses (the show gets cancelled and refunded instead).
+  has_one :ticket_listing, dependent: :destroy
   has_one :show_payout, dependent: :destroy
   has_many :production_expense_allocations, dependent: :destroy
 
