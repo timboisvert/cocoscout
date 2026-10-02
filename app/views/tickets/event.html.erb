@@ -10,7 +10,11 @@
   max_per_order = @listing.effective_max_per_order
   taxed = @tax && @tax.lines.any? { |line| !line.exempt }
   tax_added = taxed && @tax.mode == "added"
-  tax_label = taxed ? (@tax.lines.reject(&:exempt).map(&:name).uniq.one? ? @tax.lines.reject(&:exempt).first.name : "Tax") : "Tax"
+  tax_label = taxed ? ticket_tax_label(@tax.lines.reject(&:exempt)) : "Tax"
+  # Tap a price (or the total) to see what it's made of: a small panel
+  # opens under it. Tap, not hover, so phones get it too.
+  summary_class = "list-none [&::-webkit-details-marker]:hidden cursor-pointer"
+  panel_class = "mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 space-y-1"
   # What each price includes, so the total never surprises anyone.
   price_note = if @listing.buyer_pays_fees?
     taxed ? "incl. fees & tax" : "incl. fees"
@@ -115,15 +119,33 @@
             <% left = @inventory.remaining(tier: tier) %>
             <% most = [ left || max_per_order, max_per_order ].min %>
             <% added_tax = tax_added ? TaxCalculator.for_ticket(@listing, tier, tier.price_cents).added_cents : 0 %>
-            <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row"
+            <% breakdown = tier.free? ? nil : ticket_price_breakdown(@listing, tier) %>
+            <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>"
                 data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>">
               <div class="min-w-0 flex-1">
                 <div class="font-semibold text-gray-900"><%= tier.name %></div>
                 <% if tier.description.present? %><div class="text-sm text-gray-600"><%= tier.description %></div><% end %>
-                <div class="text-sm font-semibold text-gray-900 mt-0.5">
-                  <%= ticket_price(TicketPricing.all_in_price_cents(@listing, tier)) %>
-                  <% if !tier.free? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
-                </div>
+                <% if breakdown && breakdown.rows.size > 1 %>
+                  <details class="mt-0.5">
+                    <summary class="<%= summary_class %> text-sm font-semibold text-gray-900">
+                      <span class="underline decoration-dotted decoration-gray-400 underline-offset-4"><%= ticket_price(breakdown.total_cents) %></span>
+                      <% if price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
+                    </summary>
+                    <dl class="<%= panel_class %> max-w-[17rem]">
+                      <% breakdown.rows.each do |label, cents| %>
+                        <div class="flex justify-between gap-4"><dt><%= label %></dt><dd class="tabular-nums"><%= number_to_currency(cents / 100.0) %></dd></div>
+                      <% end %>
+                      <div class="flex justify-between gap-4 pt-1 border-t border-gray-200 font-semibold text-gray-900">
+                        <dt>One ticket</dt><dd class="tabular-nums"><%= number_to_currency(breakdown.total_cents / 100.0) %></dd>
+                      </div>
+                    </dl>
+                  </details>
+                <% else %>
+                  <div class="text-sm font-semibold text-gray-900 mt-0.5">
+                    <%= ticket_price(TicketPricing.all_in_price_cents(@listing, tier)) %>
+                    <% if !tier.free? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
+                  </div>
+                <% end %>
                 <% if left && left.positive? && left <= 10 %><div class="text-xs font-semibold text-amber-700">Only <%= left %> left</div><% end %>
               </div>
               <%= hidden_field_tag "quantities[#{tier.id}]", 0, data: { ticket_picker_target: "input" } %>
@@ -144,20 +166,19 @@
           <% end %>
         </ul>
         <div class="px-5 py-4 border-t border-gray-100 space-y-3">
-          <div>
-            <div class="flex items-baseline justify-between">
+          <%# Tap the total for every cent named, the same lines checkout shows. %>
+          <details data-ticket-picker-target="totalDetails">
+            <summary class="<%= summary_class %> flex items-baseline justify-between" data-ticket-picker-target="totalSummary">
               <span class="text-gray-700" data-ticket-picker-target="summary">Choose your tickets</span>
-              <span class="text-lg font-bold tabular-nums text-gray-900" data-ticket-picker-target="total"></span>
-            </div>
-            <%# Every cent named, the same three lines checkout shows. %>
-            <p class="text-xs text-gray-600 text-right tabular-nums" data-ticket-picker-target="breakdown"></p>
-          </div>
+              <span class="text-lg font-bold tabular-nums text-gray-900 decoration-dotted decoration-gray-400 underline-offset-4" data-ticket-picker-target="total"></span>
+            </summary>
+            <dl class="<%= panel_class %> text-sm" data-ticket-picker-target="breakdown"></dl>
+          </details>
           <%= render "shared/button", text: "Continue to checkout", variant: "primary", size: "jumbo", type: :submit, classes: "rounded-xl disabled:opacity-50",
                 data: { ticket_picker_target: "submit" } %>
-          <p class="text-xs text-center text-gray-600">
-            <%= { "incl. fees & tax" => "Prices include fees and tax.", "incl. fees" => "Prices include fees.", "incl. tax" => "Prices include tax. No booking fees." }.fetch(price_note, "No booking fees.") %>
-            <% if @code %>Your code <span class="font-medium uppercase"><%= @code %></span> is applied at checkout.<% end %>
-          </p>
+          <% if @code %>
+            <p class="text-xs text-center text-gray-600">Your code <span class="font-medium uppercase"><%= @code %></span> is applied at checkout.</p>
+          <% end %>
         </div>
       <% end %>
       <details class="border-t border-gray-100 px-5 py-3 text-sm" <%= "open" if @code %>>

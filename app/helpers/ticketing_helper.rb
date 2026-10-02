@@ -46,6 +46,36 @@ module TicketingHelper
     cents.to_i.zero? ? "Free" : number_to_currency(cents / 100.0)
   end
 
+  PriceBreakdown = Data.define(:rows, :total_cents)
+
+  # What one ticket of a tier is made of, for the panel under its price on
+  # the show's page: the ticket, the fees, the tax, adding up to the all-in
+  # price shown (TicketPricing's own math). One row means there's nothing to
+  # break down.
+  def ticket_price_breakdown(listing, tier)
+    tax = TaxCalculator.for_ticket(listing, tier, tier.price_cents)
+    taxed = tax.lines.reject(&:exempt)
+    label = ticket_tax_label(taxed, rate: false)
+    included = taxed.select(&:included).sum(&:tax_cents)
+    added = tax.added_cents
+    total = TicketPricing.all_in_price_cents(listing, tier)
+    fees = total - tier.price_cents - added
+
+    # Tax inside the price is shown apart too, so the rows always add up.
+    rows = [ [ "Ticket", tier.price_cents - included ] ]
+    rows << [ "Fees", fees ] if fees.positive?
+    rows << [ label, included + added ] if (included + added).positive?
+    PriceBreakdown.new(rows: rows, total_cents: total)
+  end
+
+  # "Sales tax 10.25%" ("Sales tax" where space is tight), or just "Tax"
+  # when several apply.
+  def ticket_tax_label(lines, rate: true)
+    return "Tax" unless lines.map { |line| [ line.name, line.rate_bps ] }.uniq.one?
+
+    rate ? "#{lines.first.name} #{format('%g', lines.first.rate_bps / 100.0)}%" : lines.first.name
+  end
+
   def ticket_public_path_text(listing)
     "cocoscout.com/t/#{listing.organization.ticketing_profile&.slug || TicketingProfile.for(listing.organization).slug}/#{listing.slug}"
   end
