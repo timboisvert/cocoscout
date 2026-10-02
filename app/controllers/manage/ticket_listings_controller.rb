@@ -14,7 +14,8 @@ module Manage
 
     GUEST_FILTERS = %w[all waiting in comps refunded].freeze
 
-    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel_review cancel]
+    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel_review cancel
+                                           change_review tell_change mark_change_told]
 
     def index
       @filter = params[:filter].presence_in(FILTERS) || "upcoming"
@@ -177,6 +178,32 @@ module Manage
                                               cancel_show: params[:cancel_show] == "1")
       notice = count.zero? ? "Ticket sales canceled." : "Ticket sales canceled. Refunds are on their way to #{helpers.pluralize(count, 'buyer')}."
       redirect_to manage_edit_ticket_listing_path(@listing), notice: notice
+    end
+
+    # The show moved after people bought: who to tell, and the email they'll
+    # get (editable), before anything goes out.
+    def change_review
+      unless TicketShowChange.pending?(@listing)
+        redirect_to manage_ticket_listing_path(@listing), notice: "Everyone who bought knows the show's date, time and place." and return
+      end
+
+      @draft = TicketShowChange.draft(@listing)
+    end
+
+    def tell_change
+      count = TicketShowChange.orders(@listing).count
+      redirect_to manage_ticket_listing_path(@listing) and return if count.zero?
+      if params[:subject].blank? || params[:body].blank?
+        redirect_to manage_ticket_listing_change_path(@listing), alert: "Write a subject and a message first." and return
+      end
+
+      TicketShowChange.start!(@listing, subject: params[:subject], body: params[:body])
+      redirect_to manage_ticket_listing_path(@listing), notice: "Emailing #{helpers.pluralize(count, 'buyer')} about the change."
+    end
+
+    def mark_change_told
+      count = TicketShowChange.mark_told!(@listing)
+      redirect_to manage_ticket_listing_path(@listing), notice: "Marked #{helpers.pluralize(count, 'buyer')} as told. No emails went out."
     end
 
     private

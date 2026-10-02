@@ -21,6 +21,7 @@ class TicketOrderSettlement
       next if order.paid? || %w[refunded canceled].include?(order.status)
 
       ensure_seats_still_free!(order) if order.hold_expired? || order.status == "expired"
+      order.told_current_show!
       order.update!(status: "paid", paid_at: Time.current, expires_at: nil,
                     stripe_payment_intent_id: payment_intent_id || order.stripe_payment_intent_id,
                     stripe_charge_id: charge_id || order.stripe_charge_id)

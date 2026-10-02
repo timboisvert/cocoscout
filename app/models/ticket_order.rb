@@ -38,6 +38,7 @@ class TicketOrder < ApplicationRecord
   validates :buyer_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_nil: true
 
   before_validation :assign_code_and_token, on: :create
+  before_validation :remember_what_buyer_was_told, on: :create
 
   scope :paid_like, -> { where(status: %w[paid partially_refunded]) }
   scope :holding, ->(at = Time.current) { where(status: "pending").where("ticket_orders.expires_at > ?", at) }
@@ -59,7 +60,19 @@ class TicketOrder < ApplicationRecord
     token
   end
 
+  # The show as it stood when this order was made: the date, time and place
+  # its buyer was told (see TicketShowChange).
+  def told_current_show!
+    show = ticket_listing.show
+    assign_attributes(told_starts_at: show.date_and_time, told_location_id: show.location_id,
+                      told_location_space_id: show.location_space_id)
+  end
+
   private
+
+  def remember_what_buyer_was_told
+    told_current_show! if ticket_listing&.show && told_starts_at.nil?
+  end
 
   def assign_code_and_token
     self.token ||= SecureRandom.urlsafe_base64(24)

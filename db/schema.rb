@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_02_130100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3187,6 +3187,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_120100) do
     t.bigint "ticket_discount_code_id"
     t.bigint "ticket_listing_id", null: false
     t.string "token", null: false
+    t.bigint "told_location_id"
+    t.bigint "told_location_space_id"
+    t.datetime "told_starts_at"
     t.integer "total_cents", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"

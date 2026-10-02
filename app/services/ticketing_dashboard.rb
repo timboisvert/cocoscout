@@ -111,6 +111,13 @@ class TicketingDashboard
                         body: "Cancel its ticket sales to refund them and let them know.",
                         actions: [ { text: "Refund buyers", path: routes.manage_ticket_listing_cancel_path(listing) } ], tone: :amber)
     end
+    changed = listings.where(id: TicketShowChange.changed_orders.select(:ticket_listing_id)).where.not(status: %w[draft canceled])
+                      .where(shows: { canceled: false }).where("shows.date_and_time > ?", Time.current).order("shows.date_and_time")
+    changed.each do |listing|
+      list << Alert.new(eyebrow: "The show changed", headline: "#{listing.display_title} moved after people bought tickets",
+                        body: "It's now #{listing.show.date_and_time.strftime('%A, %B %-d at %-l:%M %p')}. Let its buyers know.",
+                        actions: [ { text: "Tell buyers", path: routes.manage_ticket_listing_change_path(listing) } ], tone: :amber)
+    end
     failed_refunds = TicketRefund.where(organization_id: @organization.id, status: "failed").where(created_at: 30.days.ago..)
     if failed_refunds.exists?
       list << Alert.new(eyebrow: "Refunds", headline: "#{failed_refunds.count} #{failed_refunds.count == 1 ? 'refund' : 'refunds'} didn't go through",

@@ -18,7 +18,7 @@ class TicketShowCancellation
     refund_cents = orders.sum { |order| TicketOrderRefund.quote(order).amount_cents }
     template = ContentTemplateService.find_template("ticket_event_canceled")
     Draft.new(orders: orders, refund_cents: refund_cents,
-              subject: template&.subject.to_s, body: plain_text(template&.body))
+              subject: template&.subject.to_s, body: TicketOrderMailer.plain_text(template&.body))
   end
 
   def self.start!(listing, subject:, body:, by:, cancel_show: false)
@@ -26,13 +26,4 @@ class TicketShowCancellation
     listing.show.update!(canceled: true) if cancel_show && !listing.show.canceled
     TicketShowCancellationJob.perform_later(listing.id, subject.to_s, body.to_s, by&.id)
   end
-
-  # The template's HTML as the plain text a manager edits: paragraphs
-  # separated by blank lines.
-  def self.plain_text(html)
-    text = html.to_s.gsub(%r{</p>\s*}i, "\n\n").gsub(/<br\s*\/?>/i, "\n")
-    ActionView::Base.full_sanitizer.sanitize(text).to_s.gsub(/\n{3,}/, "\n\n").strip
-  end
-
-  private_class_method :plain_text
 end

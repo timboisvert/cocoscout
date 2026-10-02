@@ -34,6 +34,15 @@
         <%= render "manage/ticket_listings/status_actions", listing: @listing %>
       </div>
 
+      <% if TicketShowChange.pending?(@listing) %>
+        <% told = TicketShowChange.orders(@listing).count %>
+        <%= render "shared/alert_panel",
+              eyebrow: "The show changed",
+              headline: "#{pluralize(told, 'buyer')} #{told == 1 ? 'was' : 'were'} told a different date, time or place",
+              body: "It's now #{show.date_and_time.strftime('%A, %B %-d at %-l:%M %p')}. Nothing has gone out to them yet.",
+              actions: [ { text: "Tell buyers", path: manage_ticket_listing_change_path(@listing) } ] %>
+      <% end %>
+
       <%= render "shared/ticketing/show_numbers", stats: @stats %>
 
       <div id="guests" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
