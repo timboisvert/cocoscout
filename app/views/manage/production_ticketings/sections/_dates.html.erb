@@ -9,14 +9,12 @@
   option_class = ->(value) { "block cursor-pointer p-4 rounded-lg border-2 transition-colors hover:border-pink-300 #{matching == value ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50'}" }
 %>
 <%= form_with model: setup, scope: :production_ticketing, url: manage_update_production_ticketing_path(production, section: "dates"), method: :patch, class: "space-y-6" do |f| %>
-  <div class="bg-white border border-gray-200 rounded-lg p-5">
-    <label class="flex items-start gap-3 cursor-pointer">
-      <%= f.check_box :enabled, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-      <span>
-        <span class="block text-sm font-medium text-gray-900">Sell tickets for <%= production.name %></span>
-        <span class="block text-xs text-gray-600 mt-0.5">When this is on, every date you choose below is listed and goes on sale on its schedule.<%= " Set the ticket prices on the Tickets tab first." unless setup.persisted? && setup.ticket_tiers.any? %></span>
-      </span>
-    </label>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 flex items-center justify-between gap-4">
+    <div>
+      <div class="text-sm font-medium text-gray-900">Sell tickets for <%= production.name %></div>
+      <div class="text-xs text-gray-600 mt-0.5">When this is on, every date you choose below is listed and goes on sale on its schedule.<%= " Set the ticket prices on the Tickets tab first." unless setup.persisted? && setup.ticket_tiers.any? %></div>
+    </div>
+    <%= render "shared/toggle_switch", form: f, field: :enabled %>
   </div>
 
   <div class="bg-white border border-gray-200 rounded-lg p-5" data-controller="event-matching" data-event-matching-selected-value="<%= matching %>">

@@ -20,16 +20,17 @@ RSpec.describe TicketShowCancellation do
     order.reload
   end
 
-  it "drafts the email and lists who's refunded, before anything happens" do
+  it "drafts the email and adds up who's refunded, before anything happens" do
     sold(2, name: "Dana Scully", email: "dana@example.com")
     sold(1, name: "Fox Mulder", email: "fox@example.com")
 
-    draft = described_class.draft(listing)
-    expect(draft.orders.map(&:buyer_name)).to eq([ "Dana Scully", "Fox Mulder" ])
-    expect(draft.refund_cents).to eq(4_253 + 2_142)
-    expect(draft.subject).to eq("{{show_title}} on {{show_date}} is canceled")
-    expect(draft.body).to start_with("Hi {{first_name}}")
-    expect(draft.body).not_to include("<p>")
+    summary = described_class.summary([ listing.show ])
+    expect(summary.orders.map(&:buyer_name)).to eq([ "Dana Scully", "Fox Mulder" ])
+    expect(summary.refund_cents).to eq(4_253 + 2_142)
+    subject, body = described_class.default_email
+    expect(subject).to eq("{{show_title}} on {{show_date}} is canceled")
+    expect(body).to start_with("Hi {{first_name}}")
+    expect(body).not_to include("<p>")
   end
 
   it "stops sales, refunds everyone, and sends each buyer the manager's words" do
@@ -38,10 +39,10 @@ RSpec.describe TicketShowCancellation do
 
     perform_enqueued_jobs do
       described_class.start!(listing, subject: "{{show_title}} is off", body: "Hi {{first_name}},\n\nYou get {{refund_amount}} back.",
-                                      by: manager, cancel_show: true)
+                                      by: manager)
     end
 
-    expect([ listing.reload.status, listing.show.reload.canceled ]).to eq([ "canceled", true ])
+    expect(listing.reload.status).to eq("canceled")
     expect([ dana.reload.status, fox.reload.status ]).to eq(%w[refunded refunded])
     expect(dana.ticket_refunds.sole.refunded_by).to eq(manager)
 

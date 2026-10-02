@@ -48,7 +48,7 @@ RSpec.describe "Production ticketing", type: :request do
     expect(response.body).to include("Not set up", "Sell tickets for every date of Rising Stars", "Set it up")
 
     get manage_edit_production_ticketing_path(production, section: "tickets")
-    expect(response.body).to include('value="General admission"', "Drag to reorder", "Move up")
+    expect(response.body).to include('value="General admission"', "Drag to reorder", "Move up", "Add a ticket type")
 
     save_tickets("0" => { name: "General", price: "20", quantity: "60", position: "1" },
                  "1" => { name: "Student", price: "$15.00", quantity: "", position: "0" },
@@ -89,10 +89,10 @@ RSpec.describe "Production ticketing", type: :request do
 
   it "saves seats, fees and words for every date, and production-wide codes" do
     patch manage_update_production_ticketing_path(production, section: "sales"),
-          params: { production_ticketing: { capacity: "80", fee_mode: "org", title: "Rising Stars Showcase", door_note: "" } }
+          params: { production_ticketing: { max_per_order: "6", fee_mode: "org", title: "Rising Stars Showcase", door_note: "" } }
     setup = production.reload.production_ticketing
-    expect(setup.attributes.slice("capacity", "fee_mode", "title", "door_note"))
-      .to eq("capacity" => 80, "fee_mode" => "org", "title" => "Rising Stars Showcase", "door_note" => nil)
+    expect(setup.attributes.slice("max_per_order", "fee_mode", "title", "door_note"))
+      .to eq("max_per_order" => 6, "fee_mode" => "org", "title" => "Rising Stars Showcase", "door_note" => nil)
 
     post manage_production_ticketing_codes_path(production), params: { ticket_discount_code: { code: "friends", kind: "fixed", amount: "5" } }
     code = org.ticket_discount_codes.sole
@@ -111,5 +111,46 @@ RSpec.describe "Production ticketing", type: :request do
     patch manage_update_production_ticketing_path(other, section: "dates"), params: { production_ticketing: { enabled: "1" } }
     expect(response).to have_http_status(:not_found)
     expect(ProductionTicketing.where(production: other)).to be_empty
+  end
+
+  # Tim (2026-10-02): a date's Settings work like the production's, with a
+  # bar saying it's this date only; the date sits under its production.
+  describe "one date's settings" do
+    before do
+      save_tickets("0" => { name: "General", price: "20", quantity: "60", position: "0" })
+      save_dates
+    end
+
+    let(:listing) { first_show.reload.ticket_listing }
+
+    it "says it's this date only, shows the production's prices, and can give the date its own" do
+      get manage_ticket_listing_path(listing)
+      expect(response.body).to include(manage_production_ticketing_path(production), ">Rising Stars<")
+
+      get manage_edit_ticket_listing_path(listing)
+      expect(response.body).to include("Settings for #{listing.show.date_and_time.strftime('%a, %b %-d')}", "only.",
+                                       "uses Rising Stars&#39; ticketing", "Set prices for this date only", "Discount codes")
+
+      post manage_ticket_listing_own_prices_path(listing)
+      expect(listing.reload.inherits_tiers).to be(false)
+      get manage_edit_ticket_listing_path(listing, section: "tickets")
+      expect(response.body).to include("Add a ticket type", "Use the production&#39;s prices")
+
+      setup = ProductionTicketing.find_by!(production: production)
+      setup.ticket_tiers.sole.update!(price_cents: 2_500)
+      ProductionTicketingSync.sync_all!(setup)
+      expect(listing.ticket_tiers.active.sole.price_cents).to eq(2_000)
+
+      post manage_ticket_listing_inherit_prices_path(listing)
+      expect(listing.reload.inherits_tiers).to be(true)
+      expect(listing.ticket_tiers.active.sole.price_cents).to eq(2_500)
+    end
+
+    it "keeps each tab's form to itself" do
+      get manage_edit_ticket_listing_path(listing, section: "sales")
+      expect(response.body).to include("When sales open and close", "Who pays the fees")
+      get manage_edit_ticket_listing_path(listing, section: "codes")
+      expect(response.body).to include("Discount codes for this date")
+    end
   end
 end

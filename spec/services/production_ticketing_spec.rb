@@ -16,7 +16,7 @@ RSpec.describe ProductionTicketing do
   let(:setup) do
     described_class.for(production).tap do |pt|
       pt.update!(enabled: true, schedule_mode: "relative", opens_days_before: 30, online_close_minutes: 60,
-                 door_note: "Doors at 7", max_per_order: 6, capacity: 80)
+                 door_note: "Doors at 7", max_per_order: 6)
       pt.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 70, position: 0)
       pt.ticket_tiers.create!(name: "Student", price_cents: 1_500, position: 1)
     end
@@ -116,18 +116,18 @@ RSpec.describe ProductionTicketing do
   end
 
   describe "a show reads the production's settings unless it has its own" do
-    it "inherits the title, words, notes, fees, limit and seats" do
+    it "inherits the title, words, notes, fees and limit" do
       setup.update!(title: "Rising Stars Showcase", description: "New comics.", fee_mode: "org")
       show_on(2)
       listing = ProductionTicketingDates.sync!(setup).added.sole
 
       expect([ listing.display_title, listing.effective_description, listing.effective_door_note,
-               listing.effective_fee_mode, listing.effective_max_per_order, listing.inventory.capacity ])
-        .to eq([ "Rising Stars Showcase", "New comics.", "Doors at 7", "org", 6, 80 ])
+               listing.effective_fee_mode, listing.effective_max_per_order ])
+        .to eq([ "Rising Stars Showcase", "New comics.", "Doors at 7", "org", 6 ])
 
-      listing.update!(title: "Holiday Showcase", door_note: "Doors at 6:30", fee_mode: "buyer", capacity: 60)
-      expect([ listing.display_title, listing.effective_door_note, listing.effective_fee_mode, listing.inventory.capacity ])
-        .to eq([ "Holiday Showcase", "Doors at 6:30", "buyer", 60 ])
+      listing.update!(title: "Holiday Showcase", door_note: "Doors at 6:30", fee_mode: "buyer")
+      expect([ listing.display_title, listing.effective_door_note, listing.effective_fee_mode ])
+        .to eq([ "Holiday Showcase", "Doors at 6:30", "buyer" ])
     end
   end
 

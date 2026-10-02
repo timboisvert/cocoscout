@@ -7,7 +7,7 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ], [ @listing.display_title, manage_ticket_listing_path(@listing) ] ],
+    breadcrumbs: ticket_listing_breadcrumbs(@listing),
     text: "Give tickets",
     links: []
   } %>

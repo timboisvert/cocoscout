@@ -794,6 +794,14 @@ module Manage
       if @show.recurring?
         @future_count = @show.recurrence_group.where("date_and_time >= ?", @show.date_and_time).count
       end
+
+      # Ticket buyers to refund, for each way of canceling (Ticketing).
+      @ticket_buyers = { "this" => TicketShowCancellation.summary([ @show ]) }
+      if @show.recurring?
+        @ticket_buyers["this_and_future"] = TicketShowCancellation.summary(@show.recurrence_group.where("date_and_time >= ?", @show.date_and_time).to_a)
+        @ticket_buyers["all"] = TicketShowCancellation.summary(@show.recurrence_group.to_a)
+      end
+      @ticket_email_subject, @ticket_email_body = TicketShowCancellation.default_email if @ticket_buyers.values.any?(&:any?)
     end
 
     def cancel_show
@@ -807,6 +815,7 @@ module Manage
         shows_to_cancel = @show.recurrence_group.where(canceled: false).to_a
         count = @show.recurrence_group.update_all(canceled: true)
         dropped = drop_contract_payments_for(shows_to_cancel)
+        refunding = cancel_ticket_sales_for(shows_to_cancel)
 
         # Send notifications if requested (uses template automatically)
         if notify_cast
@@ -814,7 +823,7 @@ module Manage
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}",
+                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}",
                     status: :see_other
       elsif scope == "this_and_future" && @show.recurring?
         # Cancel this and all future occurrences
@@ -825,18 +834,20 @@ module Manage
                      .where("date_and_time >= ?", @show.date_and_time)
                      .update_all(canceled: true)
         dropped = drop_contract_payments_for(shows_to_cancel)
+        refunding = cancel_ticket_sales_for(shows_to_cancel)
 
         if notify_cast
           send_cancellation_notifications(shows_to_cancel, nil, nil, role_categories)
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}",
+                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}",
                     status: :see_other
       else
         # Cancel just this occurrence
         @show.update!(canceled: true)
         dropped = drop_contract_payments_for([ @show ])
+        refunding = cancel_ticket_sales_for([ @show ])
 
         # Send notifications if requested (uses template automatically)
         if notify_cast
@@ -844,9 +855,20 @@ module Manage
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "#{event_label} was successfully canceled#{cancellation_money_note(dropped)}",
+                    notice: "#{event_label} was successfully canceled#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}",
                     status: :see_other
       end
+    end
+
+    # Its ticket sales stop too, and, when the manager chose to, every buyer is
+    # refunded and gets the email they read and edited on the cancel screen.
+    def cancel_ticket_sales_for(shows)
+      TicketShowCancellation.cancel_shows!(shows, subject: params[:ticket_email_subject], body: params[:ticket_email_body],
+                                                  by: Current.user, refund: params[:refund_tickets] == "1")
+    end
+
+    def ticket_refund_note(count)
+      count.positive? ? " Refunds are on their way to #{helpers.pluralize(count, 'ticket buyer')}." : ""
     end
 
     # A cancelled show shouldn't leave its contract payment standing. Only

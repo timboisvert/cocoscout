@@ -1,13 +1,14 @@
 <%# The production's ticket types, set once for every date that uses them.
-    Drag the handle (or use the arrows) to change their order. Locals: setup,
-    production. %>
+    Drag the handle (or use the arrows) to change their order; "Add a ticket
+    type" adds one row at a time. Locals: setup, production. %>
 <%
-  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  rows = setup.ticket_tiers.to_a.sort_by { |t| [ t.position, t.id.to_i ] } + [ TicketTier.new, TicketTier.new ]
+  rows = setup.ticket_tiers.to_a.sort_by { |t| [ t.position, t.id.to_i ] }
+  rows = [ TicketTier.new(position: 0) ] if rows.empty?
   inheriting = setup.persisted? ? setup.listings.where(inherits_tiers: true).count : 0
 %>
 <%= form_with model: setup, scope: :production_ticketing, url: manage_update_production_ticketing_path(production, section: "tickets"), method: :patch, class: "space-y-6" do |f| %>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-controller="reorderable nested-form"
+       data-reorderable-handle-value=".tier-drag-handle" data-reorderable-auto-save-value="false">
     <div class="px-5 py-4 border-b border-gray-200">
       <h3 class="font-semibold text-gray-900">Tickets</h3>
       <p class="text-sm text-gray-600 mt-1">
@@ -15,45 +16,19 @@
         A new price applies to sales from now on. Leave seats blank for no limit.
       </p>
     </div>
-    <div class="px-5 py-4" data-controller="reorderable" data-reorderable-handle-value=".tier-drag-handle" data-reorderable-auto-save-value="false">
-      <div class="space-y-3" data-reorderable-target="list">
+    <div class="px-5 py-4 space-y-3">
+      <div class="space-y-3" data-reorderable-target="list" data-nested-form-target="children">
         <%= f.fields_for :ticket_tiers, rows do |tf| %>
-          <% tier = tf.object %>
-          <div class="rounded-lg border border-gray-200 bg-white p-3" data-position="<%= tf.index %>">
-            <%= tf.hidden_field :position, value: tf.index %>
-            <div class="flex items-start gap-2">
-              <div class="flex flex-col items-center gap-0.5 pt-1">
-                <span class="tier-drag-handle cursor-grab text-gray-400 hover:text-gray-600 p-1" title="Drag to reorder" aria-hidden="true">
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm9-12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg>
-                </span>
-                <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Move up", icon: "chevron-up",
-                      classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveUp" } %>
-                <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Move down", icon: "chevron-down",
-                      classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveDown" } %>
-              </div>
-              <div class="flex-1 min-w-0 space-y-2">
-                <div class="grid grid-cols-[minmax(0,1fr)_7rem_6rem] gap-2">
-                  <%= tf.text_field :name, placeholder: tier.persisted? ? nil : "Add a ticket type", "aria-label": "Ticket name", class: input_class %>
-                  <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
-                    <%= tf.text_field :price, value: (tier.persisted? || tier.name.present? ? format("%.2f", tier.price_cents / 100.0) : nil), inputmode: "decimal", placeholder: "0.00", "aria-label": "Price", class: "#{input_class} pl-7" %>
-                  </div>
-                  <%= tf.number_field :quantity, min: 1, placeholder: "Seats", "aria-label": "Seats", class: input_class %>
-                </div>
-                <%= tf.text_field :description, placeholder: "Short description (optional), like “Front row and a drink”", "aria-label": "Description", class: input_class %>
-              </div>
-              <% if tier.persisted? %>
-                <label class="flex h-10 items-center justify-center cursor-pointer text-gray-400 hover:text-pink-600" title="Remove this ticket type">
-                  <%= tf.check_box :_destroy, class: "sr-only peer" %>
-                  <svg class="w-5 h-5 peer-checked:text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </label>
-              <% else %>
-                <span class="w-5"></span>
-              <% end %>
-            </div>
-          </div>
+          <%= render "manage/ticketing/tier_row", tf: tf %>
         <% end %>
       </div>
+      <template data-nested-form-target="template">
+        <%= f.fields_for :ticket_tiers, TicketTier.new(position: 999), child_index: "NEW_CHILD_RECORD" do |tf| %>
+          <%= render "manage/ticketing/tier_row", tf: tf %>
+        <% end %>
+      </template>
+      <%= render "shared/button", text: "Add a ticket type", variant: "secondary", size: "small", type: :button, icon: "plus",
+            data: { action: "nested-form#add" } %>
     </div>
   </div>
 

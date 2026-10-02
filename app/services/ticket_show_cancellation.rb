@@ -5,25 +5,53 @@
 # can edit first (the ticket_event_canceled template). The listing stops
 # selling at once; the refunds and emails run in TicketShowCancellationJob.
 # The show's money never becomes spendable: the refunds use it up.
+#
+# Canceling happens where shows are canceled (Shows & Events): that screen
+# shows the ticket buyers and the email, and cancel_shows! does the
+# ticketing part for every date being canceled.
 class TicketShowCancellation
-  Draft = Data.define(:orders, :refund_cents, :subject, :body)
+  Summary = Data.define(:orders, :refund_cents) do
+    def any?
+      orders.any?
+    end
+  end
 
   def self.orders(listing)
     listing.ticket_orders.paid_like.where(money_path: "cocoscout").includes(:tickets).order(:buyer_name)
   end
 
-  # Who gets a refund and what the email says, before anything happens.
-  def self.draft(listing)
-    orders = orders(listing).to_a
-    refund_cents = orders.sum { |order| TicketOrderRefund.quote(order).amount_cents }
+
+  # The email every buyer gets, before the manager edits it.
+  def self.default_email
     template = ContentTemplateService.find_template("ticket_event_canceled")
-    Draft.new(orders: orders, refund_cents: refund_cents,
-              subject: template&.subject.to_s, body: TicketOrderMailer.plain_text(template&.body))
+    [ template&.subject.to_s, TicketOrderMailer.plain_text(template&.body) ]
   end
 
-  def self.start!(listing, subject:, body:, by:, cancel_show: false)
+  # Who'd be refunded, and how much, if these shows were canceled.
+  def self.summary(shows)
+    listings = TicketListing.where(show_id: shows.map(&:id)).where.not(status: "canceled").to_a
+    found = listings.flat_map { |listing| orders(listing).to_a }
+    Summary.new(orders: found, refund_cents: found.sum { |order| TicketOrderRefund.quote(order).amount_cents })
+  end
+
+  # The ticketing part of canceling shows: every listing stops selling, and
+  # (when the manager chose to) every buyer is refunded and emailed. Returns
+  # how many orders are being refunded.
+  def self.cancel_shows!(shows, subject:, body:, by:, refund:)
+    TicketListing.where(show_id: shows.map(&:id)).where.not(status: "canceled").to_a.sum do |listing|
+      count = orders(listing).count
+      if count.positive? && refund
+        start!(listing, subject: subject, body: body, by: by)
+        count
+      else
+        listing.update!(status: "canceled") if count.zero?
+        0
+      end
+    end
+  end
+
+  def self.start!(listing, subject:, body:, by:)
     listing.update!(status: "canceled")
-    listing.show.update!(canceled: true) if cancel_show && !listing.show.canceled
     TicketShowCancellationJob.perform_later(listing.id, subject.to_s, body.to_s, by&.id)
   end
 end

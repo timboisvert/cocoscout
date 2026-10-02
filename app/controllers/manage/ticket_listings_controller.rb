@@ -13,9 +13,12 @@ module Manage
     }.freeze
 
     GUEST_FILTERS = %w[all waiting in comps refunded].freeze
+    # A date's Settings, a tab each with its own Save.
+    SETTINGS = { "tickets" => "Tickets", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes" }.freeze
 
-    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel_review cancel
-                                           change_review tell_change mark_change_told]
+    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
+                                           change_review tell_change mark_change_told own_prices inherit_prices]
+    before_action :set_settings_section, only: %i[edit update]
 
     # Productions first: every production selling tickets, by its next date.
     def index
@@ -72,11 +75,31 @@ module Manage
     def update
       attrs = listing_params
       if @listing.update(attrs)
-        redirect_to manage_edit_ticket_listing_path(@listing), notice: "Saved."
+        redirect_to settings_path(@section), notice: "Saved."
       else
         flash.now[:alert] = @listing.errors.full_messages.to_sentence
         render :edit, status: :unprocessable_entity
       end
+    end
+
+    # This date gets its own ticket types, starting from the production's.
+    def own_prices
+      @listing.update!(inherits_tiers: false)
+      @listing.ticket_tiers.update_all(source_tier_id: nil, updated_at: Time.current)
+      redirect_to settings_path("tickets"), notice: "This date has its own prices now. Changes to the production's prices won't reach it."
+    end
+
+    # Back to the production's ticket types. This date's own types stop
+    # selling; tickets already sold keep theirs.
+    def inherit_prices
+      setup = @listing.production_ticketing
+      return redirect_to(settings_path("tickets")) unless setup
+
+      own = @listing.ticket_tiers.active.where(source_tier_id: nil).to_a
+      @listing.update!(inherits_tiers: true)
+      own.each { |tier| tier.update_columns(archived_at: Time.current, updated_at: Time.current) }
+      ProductionTicketingSync.sync!(@listing, setup)
+      redirect_to settings_path("tickets"), notice: "This date uses #{helpers.possessive(@listing.production.name)} prices again."
     end
 
     # Put on sale, pause, resume, close sales. Cancelling (with refunds) is
@@ -84,7 +107,7 @@ module Manage
     def change_status
       to = params[:status].to_s
       unless STATUS_ACTIONS.fetch(to, []).include?(@listing.status)
-        redirect_to manage_edit_ticket_listing_path(@listing), alert: "That can't be done from here." and return
+        redirect_to manage_ticket_listing_path(@listing), alert: "That can't be done from here." and return
       end
 
       attrs = { status: to }
@@ -97,16 +120,16 @@ module Manage
       if @listing.destroy
         redirect_to manage_production_ticketing_path(@listing.production), notice: "Removed #{@listing.display_title} from Ticketing."
       else
-        redirect_to manage_edit_ticket_listing_path(@listing), alert: @listing.errors.full_messages.to_sentence
+        redirect_to settings_path("sales"), alert: @listing.errors.full_messages.to_sentence
       end
     end
 
     def create_code
       code = Current.organization.ticket_discount_codes.new(code_params.merge(ticket_listing: @listing))
       if code.save
-        redirect_to manage_edit_ticket_listing_path(@listing, anchor: "discount-codes"), notice: "Added #{code.code}."
+        redirect_to settings_path("codes"), notice: "Added #{code.code}."
       else
-        redirect_to manage_edit_ticket_listing_path(@listing, anchor: "discount-codes"), alert: code.errors.full_messages.to_sentence
+        redirect_to settings_path("codes"), alert: code.errors.full_messages.to_sentence
       end
     end
 
@@ -119,32 +142,21 @@ module Manage
       else
         code.destroy!
       end
-      redirect_to manage_edit_ticket_listing_path(@listing, anchor: "discount-codes"), notice: "#{code.code} no longer works."
+      redirect_to settings_path("codes"), notice: "#{code.code} no longer works."
     end
 
-    # Canceling a show that sold tickets: who gets refunded, and the email
-    # they'll get (editable), before anything happens.
-    def cancel_review
-      if @listing.status == "canceled"
-        redirect_to manage_edit_ticket_listing_path(@listing), notice: "This show's ticket sales are already canceled." and return
-      end
-      if show_started?
-        redirect_to manage_edit_ticket_listing_path(@listing), alert: "This show has already started, so it can't be canceled here." and return
-      end
-
-      @draft = TicketShowCancellation.draft(@listing)
-    end
-
+    # A show already canceled on the calendar whose buyers still hold tickets:
+    # refund them now (from the show's cancel screen in Shows & Events, where
+    # canceling happens).
     def cancel
-      if @listing.status == "canceled" || show_started?
-        redirect_to manage_edit_ticket_listing_path(@listing) and return
+      cancel_path = manage_cancel_show_form_path(@listing.production, @listing.show)
+      if @listing.status == "canceled" || show_started? || !@listing.show.canceled
+        redirect_to cancel_path and return
       end
 
       count = TicketShowCancellation.orders(@listing).count
-      TicketShowCancellation.start!(@listing, subject: params[:subject], body: params[:body], by: Current.user,
-                                              cancel_show: params[:cancel_show] == "1")
-      notice = count.zero? ? "Ticket sales canceled." : "Ticket sales canceled. Refunds are on their way to #{helpers.pluralize(count, 'buyer')}."
-      redirect_to manage_edit_ticket_listing_path(@listing), notice: notice
+      TicketShowCancellation.start!(@listing, subject: params[:subject], body: params[:body], by: Current.user)
+      redirect_to cancel_path, notice: "Refunds are on their way to #{helpers.pluralize(count, 'ticket buyer')}."
     end
 
     # The show moved after people bought: who to tell, and the email they'll
@@ -205,6 +217,20 @@ module Manage
       @listing = Current.organization.ticket_listings.find(params[:id])
     end
 
+    def set_settings_section
+      @section = params[:section].presence || "tickets"
+      redirect_to settings_path("tickets") unless SETTINGS.key?(@section)
+    end
+
+    def settings_path(section)
+      manage_edit_ticket_listing_path(@listing, section: section)
+    end
+
+    def settings_sections
+      SETTINGS.map { |key, label| { key: key, label: label, path: settings_path(key) } }
+    end
+    helper_method :settings_sections
+
     def status_notice(to)
       { "on_sale" => "On sale.", "paused" => "Sales paused.", "closed" => "Online sales closed." }.fetch(to)
     end
@@ -213,7 +239,7 @@ module Manage
       permitted = params.require(:ticket_listing).permit(
         :title, :description, :on_sale_at, :off_sale_at, :capacity, :max_per_order, :fee_mode,
         :door_note, :age_note, :accessibility_note,
-        ticket_tiers_attributes: %i[id name price quantity description _destroy]
+        ticket_tiers_attributes: %i[id name price quantity description position _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
       permitted[:capacity] = permitted[:capacity].presence if permitted.key?(:capacity)

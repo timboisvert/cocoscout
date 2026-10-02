@@ -59,7 +59,7 @@ RSpec.describe "Manage ticket listings", type: :request do
         }
       } }
 
-      expect(response).to redirect_to(manage_edit_ticket_listing_path(listing))
+      expect(response).to redirect_to(manage_edit_ticket_listing_path(listing, section: "tickets"))
       expect(listing.reload.effective_fee_mode).to eq("org")
       expect(listing.ticket_tiers.active.map { |t| [ t.name, t.price_cents, t.quantity ] })
         .to eq([ [ "General", 2_250, 50 ], [ "Student", 1_200, 10 ] ])

@@ -81,9 +81,10 @@ class TicketListing < ApplicationRecord
     accessibility_note.presence || production_ticketing&.accessibility_note.presence
   end
 
-  # Seats in the room: this show's, else the production's.
+  # A cap on the whole show, when one was set (older listings); otherwise
+  # each ticket type's seats are the limit.
   def effective_capacity
-    capacity || production_ticketing&.capacity
+    capacity
   end
 
   def starts_at

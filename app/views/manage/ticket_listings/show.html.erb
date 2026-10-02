@@ -18,20 +18,19 @@
     cancel: "M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
   }
   actions = [
-    ({ text: "Open the door", description: "Scan tickets and sell at the door", path: door_path(@listing), icon: icons[:door] } if live && @listing.status != "draft"),
+    ({ text: "Door", description: "Scan tickets and sell at the door", path: door_path(@listing), icon: icons[:door] } if live && @listing.status != "draft"),
     ({ text: "Give tickets", description: "Comps for guests and press", path: manage_new_ticket_listing_comps_path(@listing), icon: icons[:gift] } if live),
     { text: "Orders", description: "Every order for this show", path: manage_ticket_orders_path(listing_id: @listing.id), icon: icons[:orders] },
-    { text: "Ticket page", description: "What buyers see", path: public_url, icon: icons[:eye], target: "_blank" },
     { text: "Settings", description: "Prices, seats, sales window", path: manage_edit_ticket_listing_path(@listing), icon: icons[:cog] },
-    ({ text: "Cancel this show", description: "Refund everyone and tell them", path: manage_ticket_listing_cancel_path(@listing), icon: icons[:cancel], tone: :muted } if @listing.status != "canceled" && upcoming)
+    ({ text: "Cancel this show", description: "In Shows & Events, with refunds for buyers", path: manage_cancel_show_form_path(@listing.production, show), icon: icons[:cancel], tone: :muted } if @listing.status != "canceled" && !show.canceled && upcoming)
   ]
 %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ] ],
-    text: @listing.display_title,
+    breadcrumbs: ticket_listing_breadcrumbs(@listing, include_date: false),
+    text: ticket_listing_date_label(@listing),
     links: []
   } %>
 
@@ -54,7 +53,7 @@
               eyebrow: "Show canceled",
               headline: "This show is canceled on your calendar",
               body: "People still hold tickets for it. Cancel its ticket sales to refund them and let them know.",
-              actions: [ { text: "Refund buyers", path: manage_ticket_listing_cancel_path(@listing) } ] %>
+              actions: [ { text: "Refund buyers", path: manage_cancel_show_form_path(@listing.production, show) } ] %>
       <% end %>
       <% if TicketShowChange.pending?(@listing) %>
         <% told = TicketShowChange.orders(@listing).count %>

@@ -10,16 +10,10 @@
 %>
 <%= form_with model: setup, scope: :production_ticketing, url: manage_update_production_ticketing_path(production, section: "sales"), method: :patch, class: "space-y-6" do |f| %>
   <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
-    <h3 class="font-semibold text-gray-900">Seats and fees</h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <label for="production_ticketing_capacity" class="block text-sm font-medium text-gray-700 mb-1.5">Seats in the room</label>
-        <%= f.number_field :capacity, min: 1, placeholder: "Add up the ticket types' seats", class: input_class %>
-      </div>
-      <div>
-        <label for="production_ticketing_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
-        <%= f.number_field :max_per_order, min: 1, max: 100, placeholder: ticketing_profile.default_max_per_order.to_s, class: input_class %>
-      </div>
+    <h3 class="font-semibold text-gray-900">Orders and fees</h3>
+    <div>
+      <label for="production_ticketing_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
+      <%= f.number_field :max_per_order, min: 1, max: 100, placeholder: ticketing_profile.default_max_per_order.to_s, class: "#{input_class} max-w-[8rem]" %>
     </div>
     <div>
       <label for="production_ticketing_fee_mode" class="block text-sm font-medium text-gray-700 mb-1.5">Who pays the fees</label>

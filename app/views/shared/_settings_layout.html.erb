@@ -17,6 +17,9 @@
                   when there's only one, so a single-topic page looks plain
     current     — key of the section being shown
     intro       — optional sentence under the title, for the whole page
+    banner      — optional html_safe content for a bar above the tabs, for a
+                  page that changes one thing within something bigger (one
+                  date's ticket settings within its production's)
     width       — optional max-width class for the body (default max-w-2xl);
                   pass something wider for sections holding tables or lists
     show_single_tab — pass true to show the strip even with one section, for a
@@ -41,6 +44,10 @@
 
   <% if intro.present? %>
     <p class="text-sm text-gray-600 max-w-2xl -mt-2 mb-5"><%= intro %></p>
+  <% end %>
+
+  <% if local_assigns[:banner].present? %>
+    <div class="mb-5 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-pink-900"><%= local_assigns[:banner] %></div>
   <% end %>
 
   <% if sections.size > 1 || (show_single_tab && sections.any?) %>

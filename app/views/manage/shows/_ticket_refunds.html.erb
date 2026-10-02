@@ -1,0 +1,58 @@
+<%# Inside the cancel form: the people who bought tickets for the dates being
+    canceled, what they'd get back, and the email they'd get (editable, with
+    {{first_name}} and friends filled in per buyer). On by default; turning it
+    off cancels the show and leaves their tickets as they are. Locals:
+    buyers ({ scope => TicketShowCancellation::Summary }), subject, body. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  this = buyers["this"]
+  scope_lines = { "this" => "This date", "this_and_future" => "This and future dates", "all" => "Every date" }
+%>
+<div class="py-3 border-b border-gray-100">
+  <div class="flex items-center justify-between gap-4">
+    <div>
+      <p class="text-sm font-medium text-gray-700">Refund ticket buyers and email them</p>
+      <p class="text-xs text-gray-500 mt-1">Everyone who bought online gets everything back, price, tax and fees, to the card they paid with.</p>
+    </div>
+    <label class="relative inline-flex items-center cursor-pointer">
+      <input type="hidden" name="refund_tickets" value="0">
+      <input type="checkbox" name="refund_tickets" value="1" checked class="sr-only peer">
+      <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+    </label>
+  </div>
+
+  <div class="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm space-y-1">
+    <% buyers.each do |scope, summary| %>
+      <div class="flex justify-between gap-4">
+        <span class="text-gray-700"><%= scope_lines.fetch(scope) %></span>
+        <span class="tabular-nums text-gray-900"><%= pluralize(summary.orders.size, "buyer") %> · <%= number_to_currency(summary.refund_cents / 100.0) %></span>
+      </div>
+    <% end %>
+  </div>
+
+  <% if this.any? %>
+    <details class="mt-3">
+      <summary class="cursor-pointer text-sm font-medium text-pink-600 hover:text-pink-700">Who bought for this date</summary>
+      <ul class="mt-2 divide-y divide-gray-100 max-h-56 overflow-y-auto text-sm">
+        <% this.orders.each do |order| %>
+          <li class="py-1.5 flex justify-between gap-4">
+            <span class="truncate text-gray-900"><%= order.buyer_name.presence || "No name" %> <span class="text-gray-500"><%= order.buyer_email %></span></span>
+            <span class="tabular-nums text-gray-700"><%= number_to_currency(TicketOrderRefund.quote(order).amount_cents / 100.0) %></span>
+          </li>
+        <% end %>
+      </ul>
+    </details>
+  <% end %>
+
+  <div class="mt-4 space-y-3">
+    <p class="text-xs text-gray-500">The email each buyer gets. Words in double braces, like {{first_name}}, are filled in for each person.</p>
+    <div>
+      <label for="ticket_email_subject" class="block text-sm font-medium text-gray-700 mb-1.5">Subject</label>
+      <%= text_field_tag :ticket_email_subject, subject, class: input_class %>
+    </div>
+    <div>
+      <label for="ticket_email_body" class="block text-sm font-medium text-gray-700 mb-1.5">Message</label>
+      <%= text_area_tag :ticket_email_body, body, rows: 7, class: input_class %>
+    </div>
+  </div>
+</div>

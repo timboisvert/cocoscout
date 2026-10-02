@@ -111,7 +111,7 @@ class TicketingDashboard
     canceled_with_holders.each do |listing|
       list << Alert.new(eyebrow: "Show canceled", headline: "#{listing.display_title} is canceled but people hold tickets",
                         body: "Cancel its ticket sales to refund them and let them know.",
-                        actions: [ { text: "Refund buyers", path: routes.manage_ticket_listing_cancel_path(listing) } ], tone: :amber)
+                        actions: [ { text: "Refund buyers", path: routes.manage_cancel_show_form_path(listing.production, listing.show) } ], tone: :amber)
     end
     changed = listings.where(id: TicketShowChange.changed_orders.select(:ticket_listing_id)).where.not(status: %w[draft canceled])
                       .where(shows: { canceled: false }).where("shows.date_and_time > ?", Time.current).order("shows.date_and_time")

@@ -234,6 +234,10 @@
             <% end %>
           </div>
 
+          <% if @ticket_email_subject %>
+            <%= render "manage/shows/ticket_refunds", buyers: @ticket_buyers, subject: @ticket_email_subject, body: @ticket_email_body %>
+          <% end %>
+
           <div class="mt-6">
             <%= render "shared/button", text: "Cancel #{@show.event_type.titleize}", variant: "warning", size: "medium", type: :button,
                 data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-cancel-show" } %>
@@ -241,6 +245,11 @@
         <% end %>
       </div>
     </div>
+  <% end %>
+
+  <% if @show.canceled && @ticket_email_subject && (listing = @show.ticket_listing) && @ticket_buyers["this"].any? %>
+    <%= render "manage/shows/ticket_refunds_after", show: @show, listing: listing, summary: @ticket_buyers["this"],
+          subject: @ticket_email_subject, body: @ticket_email_body %>
   <% end %>
 
   <!-- Delete Section -->

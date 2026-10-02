@@ -9,8 +9,8 @@
 #   when sales open — as soon as a date is listed, or N days before it
 #                   (schedule_mode: immediate / relative), and online sales
 #                   close at showtime or a set time before
-#   the rest      — ticket types and prices, fees, the most per order, seats,
-#                   the page's words and notes
+#   the rest      — ticket types (each with its own seats) and prices, fees,
+#                   the most per order, the page's words and notes
 #
 # Every included show gets a listing from this setup (ProductionTicketingDates),
 # and shows added to the calendar later join on their own. A show can still
@@ -39,7 +39,6 @@ class ProductionTicketing < ApplicationRecord
   validates :online_close_minutes, numericality: { only_integer: true, in: 0..1440 }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
-  validates :capacity, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validate :production_belongs_to_organization
 
   before_validation { self.organization ||= production&.organization }

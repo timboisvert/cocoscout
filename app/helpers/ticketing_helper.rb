@@ -41,6 +41,25 @@ module TicketingHelper
     "#{whose} #{page_image.wide? ? 'wide image' : 'poster'}"
   end
 
+  # "Rising Stars'" / "Improv Night's".
+  def possessive(name)
+    name.to_s.end_with?("s") ? "#{name}'" : "#{name}'s"
+  end
+
+  # A date as its pages name it: "Sat, Oct 5 · 7:30 PM".
+  def ticket_listing_date_label(listing)
+    listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p")
+  end
+
+  # The trail above every page about one date: Ticketing / Shows / its
+  # production / the date (left off on the date's own page).
+  def ticket_listing_breadcrumbs(listing, include_date: true)
+    crumbs = [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ],
+               [ listing.production.name, manage_production_ticketing_path(listing.production) ] ]
+    crumbs << [ ticket_listing_date_label(listing), manage_ticket_listing_path(listing) ] if include_date
+    crumbs
+  end
+
   # "$20.00" / "Free"
   def ticket_price(cents)
     cents.to_i.zero? ? "Free" : number_to_currency(cents / 100.0)

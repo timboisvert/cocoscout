@@ -100,7 +100,7 @@ RSpec.describe "Wide images", type: :request do
       expect(response.body).to include("Ticket page image", "No wide image or poster yet")
 
       production.posters.create!(image: picture, name: "Poster", is_primary: true)
-      get manage_edit_ticket_listing_path(listing)
+      get manage_edit_ticket_listing_path(listing, section: "page")
       expect(response.body).to include("No wide image, so the page uses the production&#39;s poster")
 
       show.wide_image.attach(picture)
