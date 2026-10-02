@@ -35,8 +35,8 @@ class TicketCheckoutsController < ApplicationController
     listing = profile && profile.organization.ticket_listings.find_by(slug: params[:event])
     raise ActiveRecord::RecordNotFound unless listing && (profile.enabled? || superadmin_viewer?)
 
-    order = TicketCheckout.start!(listing: listing, quantities: requested_quantities,
-                                  code: params[:code], client_ip: request.remote_ip, referrer: request.referer)
+    order = TicketCheckout.start!(listing: listing, quantities: requested_quantities, code: params[:code],
+                                  client_ip: request.remote_ip, referrer: request.referer, replacing: params[:hold])
     redirect_to tickets_checkout_path(token: order.token, **embed_params)
   rescue TicketCheckout::Error => e
     redirect_to tickets_event_path(org: params[:org], event: params[:event], code: params[:code].presence, **embed_params), alert: e.message
@@ -46,6 +46,20 @@ class TicketCheckoutsController < ApplicationController
     return redirect_to(tickets_order_path(token: @order.token, **embed_params)) if @order.paid?
 
     @expired = @order.hold_expired? || @order.status != "pending"
+  end
+
+  # Is this hold still the buyer's? The show's page asks when they come back
+  # from checkout, so it can put their tickets back in the pickers. Only the
+  # secret token gets an answer, and only about its own order.
+  def hold
+    holding = @order.ticket_listing.ticket_orders.holding.exists?(id: @order.id)
+    render json: {
+      holding: holding,
+      listing_id: @listing.id,
+      quantities: holding ? TicketCheckout.held_quantities(@order).transform_keys(&:to_s) : {},
+      code: holding ? @order.ticket_discount_code&.code : nil,
+      expires_at: holding ? @order.expires_at.iso8601 : nil
+    }
   end
 
   # The buyer's details are in: record them, then either finish a free order

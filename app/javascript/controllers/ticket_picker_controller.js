@@ -2,17 +2,101 @@ import { Controller } from "@hotwired/stimulus"
 
 // Choosing tickets on a show's page: − / + steppers per ticket type, a live
 // total, and — tap the total — a small panel naming every cent: each ticket
-// type, the fees, the tax. The math is
+// type, the fees, the tax. Coming back from checkout, the buyer's held
+// tickets go back into the pickers (the hold is checked with the server and
+// reused, or swapped if they change their mind). The math is
 // TicketPricing's (our 50¢ per paid ticket, card processing grossed up once
 // per order when buyers pay the fees, tax added on top), so the total is what
 // checkout charges — before any code — and never more than the ticket prices
 // shown added up.
 export default class extends Controller {
-    static targets = ["row", "count", "input", "minus", "plus", "summary", "total", "totalDetails", "totalSummary", "breakdown", "submit"]
-    static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, taxLabel: String }
+    static targets = ["row", "count", "input", "minus", "plus", "summary", "total", "totalDetails", "totalSummary", "breakdown", "submit",
+        "holdInput", "holdNote", "code"]
+    static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, taxLabel: String,
+        listingId: Number, holdUrl: String }
 
     connect() {
         this.render()
+        this.restoreHold()
+        // Back/forward can show the page from the browser's cache: check again.
+        this.onPageShow = (event) => { if (event.persisted) this.restoreHold() }
+        window.addEventListener("pageshow", this.onPageShow)
+    }
+
+    disconnect() {
+        window.removeEventListener("pageshow", this.onPageShow)
+        clearInterval(this.holdTimer)
+    }
+
+    holdKey() {
+        return `cocoscout:ticket-hold:${this.listingIdValue}`
+    }
+
+    async restoreHold() {
+        let token = null
+        try {
+            token = window.localStorage.getItem(this.holdKey())
+        } catch (_e) {
+            return
+        }
+        if (!token || !this.holdUrlValue) return
+
+        try {
+            const response = await fetch(this.holdUrlValue.replace("TOKEN", encodeURIComponent(token)), { headers: { Accept: "application/json" } })
+            if (!response.ok) return this.forgetHold()
+            const hold = await response.json()
+            if (!hold.holding || hold.listing_id !== this.listingIdValue) return this.forgetHold()
+            this.applyHold(token, hold)
+        } catch (_e) {
+            // Without the check the page still works; they just pick again.
+        }
+    }
+
+    applyHold(token, hold) {
+        this.rowTargets.forEach((row) => {
+            const held = Number(hold.quantities[row.dataset.tierId] || 0)
+            // Their own held seats are theirs to pick again, not taken.
+            const left = row.dataset.left === "" ? Infinity : Number(row.dataset.left) + held
+            row.dataset.max = Math.min(left, Number(row.dataset.perOrder))
+            row.querySelector("[data-ticket-picker-target='input']").value = held
+        })
+        this.holdInputTarget.value = token
+        if (hold.code && !this.hasCodeTarget) {
+            const code = document.createElement("input")
+            code.type = "hidden"
+            code.name = "code"
+            code.value = hold.code
+            this.element.appendChild(code)
+        }
+        this.startHoldClock(new Date(hold.expires_at).getTime())
+        this.render()
+    }
+
+    startHoldClock(expiresAt) {
+        clearInterval(this.holdTimer)
+        const tick = () => {
+            const left = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
+            if (left === 0) {
+                clearInterval(this.holdTimer)
+                this.holdNoteTarget.classList.add("hidden")
+                this.holdInputTarget.value = ""
+                return this.forgetHold()
+            }
+            const count = this.inputTargets.reduce((sum, input) => sum + Number(input.value), 0)
+            this.holdNoteTarget.textContent =
+                `Your ${count} ${count === 1 ? "ticket is" : "tickets are"} held for ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}.`
+            this.holdNoteTarget.classList.remove("hidden")
+        }
+        tick()
+        this.holdTimer = setInterval(tick, 1000)
+    }
+
+    forgetHold() {
+        try {
+            window.localStorage.removeItem(this.holdKey())
+        } catch (_e) {
+            // Nothing to forget.
+        }
     }
 
     increment(event) {
@@ -48,9 +132,13 @@ export default class extends Controller {
             base += n * (price + Number(row.dataset.tax))
             if (price > 0) paid += n
             if (n > 0) lines.push([`${n} × ${row.dataset.name}`, n * price])
-            row.querySelector("[data-ticket-picker-target='count']").textContent = n
-            row.querySelector("[data-ticket-picker-target='minus']").disabled = n === 0
-            row.querySelector("[data-ticket-picker-target='plus']").disabled = n >= Number(row.dataset.max)
+            // A sold-out type has no steppers.
+            const counter = row.querySelector("[data-ticket-picker-target='count']")
+            if (counter) counter.textContent = n
+            const minus = row.querySelector("[data-ticket-picker-target='minus']")
+            if (minus) minus.disabled = n === 0
+            const plus = row.querySelector("[data-ticket-picker-target='plus']")
+            if (plus) plus.disabled = n >= Number(row.dataset.max)
         })
 
         const total = this.totalCents(base, paid)

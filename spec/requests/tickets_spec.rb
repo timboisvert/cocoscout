@@ -84,6 +84,25 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).to include("2 × General").and include("Service and card fees").and include("$2.53").and include("Pay $42.53")
     end
 
+    it "keeps the hold when the buyer goes back: the page can ask about it, and the same tickets reuse it" do
+      order = buy(2)
+      get tickets_checkout_hold_path(token: order.token)
+      expect(response.parsed_body).to include("holding" => true, "listing_id" => listing.id, "quantities" => { general.id.to_s => 2 })
+
+      get event_path
+      expect(response.body).to include('data-ticket-picker-target="holdInput"', %(data-tier-id="#{general.id}"),
+                                       tickets_checkout_hold_path(token: "TOKEN"))
+
+      post tickets_start_checkout_path(org: "starsandgarters", event: listing.slug),
+           params: { quantities: { general.id => 2 }, hold: order.token }
+      expect(response).to redirect_to(tickets_checkout_path(token: order.token))
+      expect(TicketOrder.count).to eq(1)
+
+      order.update!(expires_at: 1.minute.ago)
+      get tickets_checkout_hold_path(token: order.token)
+      expect(response.parsed_body).to include("holding" => false, "quantities" => {})
+    end
+
     it "sends a buyer back to the page with a reason when it can't" do
       post tickets_start_checkout_path(org: "starsandgarters", event: listing.slug), params: { quantities: { general.id => 0 } }
       expect(response).to redirect_to(event_path)

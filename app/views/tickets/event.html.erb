@@ -106,12 +106,15 @@
     <% else %>
       <%= form_with url: tickets_start_checkout_path(org: @ticketing_profile.slug, event: @listing.slug), method: :post,
             data: { turbo: false, controller: "ticket-picker",
+                    ticket_picker_listing_id_value: @listing.id,
+                    ticket_picker_hold_url_value: tickets_checkout_hold_path(token: "TOKEN", **embed_params),
                     ticket_picker_fee_mode_value: @listing.effective_fee_mode,
                     ticket_picker_platform_fee_value: TicketPricing::PLATFORM_FEE_CENTS,
                     ticket_picker_per_mille_value: TicketPricing::PROCESSING_PER_MILLE,
                     ticket_picker_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS,
                     ticket_picker_tax_label_value: tax_label } do %>
-        <%= hidden_field_tag :code, @code if @code %>
+        <%= hidden_field_tag :code, @code, data: { ticket_picker_target: "code" } if @code %>
+        <%= hidden_field_tag :hold, nil, id: nil, data: { ticket_picker_target: "holdInput" } %>
         <%= hidden_field_tag :embed, "1" if embed? %>
         <%= render "tickets/bot_trap", id: "event_website" %>
         <ul class="divide-y divide-gray-100">
@@ -120,8 +123,9 @@
             <% most = [ left || max_per_order, max_per_order ].min %>
             <% added_tax = tax_added ? TaxCalculator.for_ticket(@listing, tier, tier.price_cents).added_cents : 0 %>
             <% breakdown = tier.free? ? nil : ticket_price_breakdown(@listing, tier) %>
-            <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>"
-                data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>">
+            <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>" data-tier-id="<%= tier.id %>"
+                data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
+                data-left="<%= left %>" data-per-order="<%= max_per_order %>">
               <div class="min-w-0 flex-1">
                 <div class="font-semibold text-gray-900"><%= tier.name %></div>
                 <% if tier.description.present? %><div class="text-sm text-gray-600"><%= tier.description %></div><% end %>
@@ -166,6 +170,8 @@
           <% end %>
         </ul>
         <div class="px-5 py-4 border-t border-gray-100 space-y-3">
+          <%# Back from checkout: their tickets are still held, and say so. %>
+          <p class="hidden text-sm text-center text-pink-700 bg-pink-50 rounded-lg px-3 py-2" data-ticket-picker-target="holdNote" aria-live="polite"></p>
           <%# Tap the total for every cent named, the same lines checkout shows. %>
           <details data-ticket-picker-target="totalDetails">
             <summary class="<%= summary_class %> flex items-baseline justify-between" data-ticket-picker-target="totalSummary">

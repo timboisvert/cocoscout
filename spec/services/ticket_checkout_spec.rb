@@ -22,6 +22,43 @@ RSpec.describe TicketCheckout do
     expect(listing.inventory.remaining(tier: general)).to eq(1)
   end
 
+  # Tim (2026-10-02): going back from checkout mustn't lose the tickets or
+  # hold a second set.
+  describe "coming back to a live hold" do
+    let!(:vip) { listing.ticket_tiers.create!(name: "VIP", price_cents: 3_500, quantity: 2) }
+
+    it "reopens the same order and clock for the same tickets" do
+      held = start({ general => 2 })
+      again = start({ general => "2" }, replacing: held.token)
+      expect(again).to eq(held)
+      expect(TicketOrder.count).to eq(1)
+      expect(listing.inventory.remaining(tier: general)).to eq(1)
+    end
+
+    it "swaps the hold when the tickets change, freeing the old seats" do
+      held = start({ general => 2 })
+      swapped = start({ general => 3 }, replacing: held.token)
+      expect(swapped).not_to eq(held)
+      expect(held.reload.status).to eq("expired")
+      expect(listing.inventory.remaining(tier: general)).to eq(0)
+    end
+
+    it "keeps the old hold when the new one doesn't fit" do
+      held = start({ general => 2 })
+      expect { start({ general => 2, vip => 3 }, replacing: held.token) }.to raise_error(described_class::Error)
+      expect(held.reload.status).to eq("pending")
+      expect(listing.inventory.remaining(tier: general)).to eq(1)
+    end
+
+    it "ignores a token that isn't a live hold for this show" do
+      other = start({ general => 1 })
+      other.update!(expires_at: 1.minute.ago)
+      fresh = start({ general => 1 }, replacing: other.token)
+      expect(fresh).not_to eq(other)
+      expect(described_class.held_quantities(fresh)).to eq(general.id => 1)
+    end
+  end
+
   it "adds the theater's tax and records it per ticket" do
     TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
     order = start({ general => 1 })

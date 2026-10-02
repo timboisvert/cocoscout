@@ -346,6 +346,7 @@ Rails.application.routes.draw do
     get  "checkout/:token",            to: "ticket_checkouts#show",   as: "checkout"
     post "checkout/:token/pay",        to: "ticket_checkouts#pay",    as: "checkout_pay"
     get  "checkout/:token/done",       to: "ticket_checkouts#done",   as: "checkout_done"
+    get  "checkout/:token/hold",       to: "ticket_checkouts#hold",   as: "checkout_hold", defaults: { format: :json }
     get  "v/:code",                    to: "tickets#ticket",          as: "ticket"
     get  ":org",                       to: "tickets#box_office",      as: "box_office"
     get  ":org/p/:production",         to: "tickets#production",      as: "production"

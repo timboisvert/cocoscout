@@ -5,7 +5,9 @@ import { Controller } from "@hotwired/stimulus"
 // submit we send the buyer's details, the server creates the intent (or
 // finishes a free order) and hands back its client secret, and Stripe
 // confirms the payment and returns the buyer to the done page. Also counts
-// down the ten-minute hold on their seats.
+// down the ten-minute hold on their seats, and remembers the hold in the
+// browser so going back to the show's page puts the tickets back
+// (ticket_picker_controller).
 export default class extends Controller {
     static targets = ["form", "payment", "error", "submit", "countdown"]
     static values = {
@@ -13,10 +15,13 @@ export default class extends Controller {
         amount: Number,
         free: Boolean,
         returnUrl: String,
-        expiresAt: String
+        expiresAt: String,
+        listingId: Number,
+        token: String
     }
 
     connect() {
+        this.rememberHold()
         this.startCountdown()
         if (this.freeValue) return
 
@@ -40,6 +45,15 @@ export default class extends Controller {
 
     disconnect() {
         clearInterval(this.timer)
+    }
+
+    rememberHold() {
+        if (!this.listingIdValue || !this.tokenValue) return
+        try {
+            window.localStorage.setItem(`cocoscout:ticket-hold:${this.listingIdValue}`, this.tokenValue)
+        } catch (_e) {
+            // Private windows can refuse storage; checkout works without it.
+        }
     }
 
     async submit(event) {
