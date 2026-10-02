@@ -41,11 +41,15 @@ class Show < ApplicationRecord
   has_many :show_links, dependent: :destroy
   accepts_nested_attributes_for :show_links, allow_destroy: true
 
+  include HasWideImage
+
   has_one_attached :poster, dependent: :purge_later do |attachable|
     # Posters display at 3:4 aspect ratio (Instagram portrait, 1080x1440 source).
     # resize_to_limit preserves the user's uploaded aspect; the CSS container
     # at the display site forces 3:4 via object-cover.
     attachable.variant :small, resize_to_limit: [ 300, 400 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+    # Big enough to lead a ticket page, shown whole (never cropped).
+    attachable.variant :large, resize_to_limit: [ 1200, 1600 ], format: :jpeg, saver: { quality: 85 }
   end
 
   has_many :show_availabilities, dependent: :destroy
@@ -418,6 +422,27 @@ class Show < ApplicationRecord
     show_person_role_assignments.reject do |assignment|
       already_notified.include?([ assignment.assignable_type, assignment.assignable_id, assignment.role_id ])
     end
+  end
+
+  # The picture a ticket page leads with, in Tim's order (2026-10-01): this
+  # show's wide image, this show's poster, the production's wide image, then
+  # the production's primary poster. Nil when there's none. Shown whole, at its
+  # own shape.
+  PageImage = Data.define(:attachment, :kind, :owner) do
+    def wide? = kind == :wide
+    def own? = owner == :show
+  end
+
+  def ticket_page_image
+    poster_record = production&.primary_poster
+    candidates = [
+      [ wide_image, :wide, :show ],
+      [ poster, :poster, :show ],
+      [ production&.wide_image, :wide, :production ],
+      [ poster_record&.image, :poster, :production ]
+    ]
+    found = candidates.find { |attachment, _, _| attachment&.attached? }
+    found && PageImage.new(attachment: found[0], kind: found[1], owner: found[2])
   end
 
   def safe_poster_variant(variant_name)

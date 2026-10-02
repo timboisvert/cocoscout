@@ -98,6 +98,26 @@ module Manage
       end
     end
 
+    # The production's wide image (16:9, HasWideImage): with the poster, one
+    # of the two pictures every production has. Shows can use their own.
+    def update_wide_image
+      file = params.dig(:production, :wide_image)
+      if file.blank?
+        redirect_to edit_manage_production_path(@production, tab: 1), alert: "Choose a picture to upload." and return
+      end
+
+      if @production.update(wide_image: file)
+        redirect_to edit_manage_production_path(@production, tab: 1), notice: "Wide image saved."
+      else
+        redirect_to edit_manage_production_path(@production, tab: 1), alert: @production.errors.full_messages_for(:wide_image).to_sentence
+      end
+    end
+
+    def remove_wide_image
+      @production.wide_image.purge_later if @production.wide_image.attached?
+      redirect_to edit_manage_production_path(@production, tab: 1), notice: "Wide image removed."
+    end
+
     private
 
     def set_production

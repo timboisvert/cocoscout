@@ -677,6 +677,8 @@ Rails.application.routes.draw do
     get "/shows/:production_id/visual_assets/:id/edit_logo", to: "visual_assets#edit_logo", as: "edit_logo_production_visual_asset"
     patch "/shows/:production_id/visual_assets/:id/update_logo", to: "visual_assets#update_logo", as: "update_logo_production_visual_asset"
     post "/shows/:production_id/visual_assets/promote_show_poster/:show_id", to: "visual_assets#promote_show_poster", as: "promote_show_poster_production_visual_asset"
+    patch  "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#update_wide_image", as: "wide_image_production_visual_asset"
+    delete "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#remove_wide_image"
 
     # Sign-ups - org-level (aggregates all productions)
     get  "/signups",            to: "signups#org_index", as: "signups"

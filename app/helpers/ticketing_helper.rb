@@ -18,6 +18,29 @@ module TicketingHelper
     end
   end
 
+  # The picture a show's ticket page leads with (Show#ticket_page_image), as a
+  # display-sized image that keeps its own shape (never cropped). Returns
+  # [image, page_image], or nil when the show and production have no picture.
+  def ticket_page_picture(listing)
+    page_image = listing.show.ticket_page_image
+    return nil unless page_image
+
+    image = begin
+      page_image.attachment.variant(page_image.wide? ? :display : :large)
+    rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError
+      page_image.attachment
+    end
+    [ image, page_image ]
+  end
+
+  # Which picture that is, in words a manager reads.
+  def ticket_page_picture_source(page_image)
+    return "No picture yet" unless page_image
+
+    whose = page_image.own? ? "This show's" : "The production's"
+    "#{whose} #{page_image.wide? ? 'wide image' : 'poster'}"
+  end
+
   # "$20.00" / "Free"
   def ticket_price(cents)
     cents.to_i.zero? ? "Free" : number_to_currency(cents / 100.0)

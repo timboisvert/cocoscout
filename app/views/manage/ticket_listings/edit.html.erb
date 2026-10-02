@@ -140,26 +140,7 @@
             <label for="ticket_listing_description" class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
             <%= f.text_area :description, rows: 5, placeholder: @listing.production.description.to_s.truncate(200), class: input_class %>
           </div>
-          <% current_image = @listing.image.attached? ? url_for(@listing.image) : nil %>
-          <div data-controller="image-crops">
-            <label for="ticket_listing_image" class="block text-sm font-medium text-gray-700 mb-1.5">Event image</label>
-            <%# How the picture is cut where it appears: the show page, and link previews when it's shared. %>
-            <div class="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl <%= 'hidden' unless current_image %>" data-image-crops-target="preview">
-              <figure>
-                <img src="<%= current_image %>" alt="" class="w-full aspect-video object-cover rounded-lg border border-gray-200 bg-gray-100" data-image-crops-target="frame">
-                <figcaption class="text-xs text-gray-500 mt-1">Show page</figcaption>
-              </figure>
-              <figure>
-                <img src="<%= current_image %>" alt="" class="w-full aspect-[1.91/1] object-cover rounded-lg border border-gray-200 bg-gray-100" data-image-crops-target="frame">
-                <figcaption class="text-xs text-gray-500 mt-1">When it's shared</figcaption>
-              </figure>
-            </div>
-            <%= f.file_field :image, accept: "image/jpeg,image/png,image/webp",
-                  data: { image_crops_target: "input", action: "change->image-crops#choose" },
-                  class: "block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-pink-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-pink-700 hover:file:bg-pink-100" %>
-            <p class="hidden text-xs text-amber-700 mt-1" data-image-crops-target="warning"></p>
-            <p class="text-xs text-gray-500 mt-1">16:9, ideally 1920×1080 (at least 1200×675). JPG, PNG or WebP up to 10 MB. Keep faces and words near the middle: that's what every crop keeps.</p>
-          </div>
+          <%= render "manage/ticket_listings/page_picture", listing: @listing %>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label for="ticket_listing_door_note" class="block text-sm font-medium text-gray-700 mb-1.5">Doors</label>

@@ -26,6 +26,41 @@
     </div>
   </div>
 
+  <%# Wide image (16:9): this show's own, overriding the production's. Shown whole. %>
+  <div class="border-t border-gray-200 pt-6" data-controller="image-crops">
+    <% own_wide = @show.wide_image.attached? && @show.wide_image.blob&.persisted? %>
+    <% production_wide = @show.production&.wide_image&.attached? %>
+    <% wide_src = own_wide ? url_for(@show.safe_wide_image_variant || @show.wide_image) : (production_wide ? url_for(@show.production.safe_wide_image_variant || @show.production.wide_image) : nil) %>
+    <div class="flex items-center gap-3 mb-1">
+      <h4 class="text-sm font-semibold text-gray-900">Wide image (16:9)</h4>
+      <% if own_wide %>
+        <label class="inline-flex items-center gap-1.5 text-xs text-gray-600">
+          <%= form.check_box :remove_wide_image, { class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" }, "1", "0" %>
+          Remove this show's wide image
+        </label>
+      <% end %>
+    </div>
+    <p class="text-xs text-gray-500 mb-2">
+      <% if own_wide %>
+        This show uses its own wide image.
+      <% elsif production_wide %>
+        Using the production's wide image. Upload one to use a different picture for this date.
+      <% else %>
+        No wide image yet. Add one here for this date, or for every date in the production's Visual Assets.
+      <% end %>
+    </p>
+    <div class="mb-3 max-w-md <%= 'hidden' unless wide_src %>" data-image-crops-target="preview">
+      <img src="<%= wide_src %>" alt="" class="w-full h-auto rounded-lg border border-gray-200 bg-gray-50" data-image-crops-target="frame">
+    </div>
+    <div class="block w-full max-w-md rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm">
+      <%= form.file_field :wide_image, accept: "image/jpeg,image/png,image/webp",
+            data: { image_crops_target: "input", action: "change->image-crops#choose" },
+            class: "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600" %>
+    </div>
+    <p class="hidden text-xs text-amber-700 mt-2" data-image-crops-target="warning"></p>
+    <p class="text-xs text-gray-500 mt-1">16:9, ideally 1920×1080. JPG, PNG or WebP up to 10 MB. Always shown whole, never cropped.</p>
+  </div>
+
   <%# Links %>
   <div class="border-t border-gray-200 pt-6" data-controller="show-links">
     <h4 class="text-sm font-semibold text-gray-900">Links</h4>

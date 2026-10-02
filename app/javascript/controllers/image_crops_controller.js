@@ -1,10 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Shows how a show's event image will be cut in each place it appears — the
-// show page (16:9) and link previews when it's shared (about 1.91:1) — as
-// soon as a picture is chosen, and warns when it's smaller than the 1200×675
-// minimum. Nothing is cropped for real: every place fills its frame from the
-// middle of the picture.
+// Previews a chosen picture before it's saved — whole, at its own shape,
+// never cropped — and warns when it's smaller than the recommended minimum.
 export default class extends Controller {
     static targets = ["input", "preview", "frame", "warning"]
     static values = { minWidth: { type: Number, default: 1200 }, minHeight: { type: Number, default: 675 } }

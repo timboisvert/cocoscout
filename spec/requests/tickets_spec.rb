@@ -174,6 +174,18 @@ RSpec.describe "Public ticketing", type: :request do
     end
   end
 
+  describe "choosing tickets (layout A)" do
+    it "lists each ticket type with steppers that carry its price, tax and limit" do
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      page = response.body
+      expect(page).to include('data-controller="ticket-picker"', 'data-ticket-picker-fee-mode-value="buyer"',
+                              "data-price=\"2000\"", "data-tax=\"205\"", "name=\"quantities[#{general.id}]\"",
+                              "One more General", "Continue to checkout", "Prices include fees.", "The total includes tax.")
+      expect(page).not_to include("<select")
+    end
+  end
+
   describe "the payment webhook" do
     it "settles the order Stripe says was paid" do
       order = buy(1)

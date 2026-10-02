@@ -62,6 +62,8 @@ class Production < ApplicationRecord
     end
   end
 
+  include HasWideImage
+
   has_one_attached :logo, dependent: :purge_later do |attachable|
     # Production logos display as a square (1:1). Posters use 3:4 (Instagram
     # portrait) — see Production#posters / Show#poster.

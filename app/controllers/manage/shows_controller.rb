@@ -493,13 +493,19 @@ module Manage
                                              :recurrence_pattern, :recurrence_start_datetime,
                                              :recurrence_end_date, :recurrence_end_type, :recurrence_custom_end_date)
 
-          # Handle poster removal for all events in the group
+          # Handle poster and wide image removal for all events in the group
           if update_params[:remove_poster] == "1"
             @show.recurrence_group.each do |show|
               show.poster.purge if show.poster.attached?
             end
           end
+          if update_params[:remove_wide_image] == "1"
+            @show.recurrence_group.each do |show|
+              show.wide_image.purge if show.wide_image.attached?
+            end
+          end
           update_params.delete(:remove_poster)
+          update_params.delete(:remove_wide_image)
 
           updated_count = 0
 
@@ -526,9 +532,11 @@ module Manage
         # Keep the show in its recurrence group even if date/time changes.
         # Users can remove a show from the series explicitly if needed.
 
-        # Handle poster removal
+        # Handle poster and wide image removal
         @show.poster.purge if update_params[:remove_poster] == "1" && @show.poster.attached?
         update_params.delete(:remove_poster)
+        @show.wide_image.purge if update_params[:remove_wide_image] == "1" && @show.wide_image.attached?
+        update_params.delete(:remove_wide_image)
 
         # If the date/time is changing AND existing sign-up registrations are tied to
         # this show, divert to a confirm screen so the manager picks how to handle them.
@@ -1653,7 +1661,7 @@ module Manage
 
     # Only allow a list of trusted parameters through.
     def show_params
-      permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :production_id, :location_id, :location_space_id,
+      permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :wide_image, :remove_wide_image, :production_id, :location_id, :location_space_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_date, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :casting_mode, :is_online, :online_location_info,
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,

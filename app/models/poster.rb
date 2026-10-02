@@ -9,6 +9,8 @@ class Poster < ApplicationRecord
     # Posters display at 3:4 aspect (Instagram portrait, 1080x1440 source).
     # See Show#poster for the same convention.
     attachable.variant :small, resize_to_limit: [ 300, 400 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+    # Big enough to lead a ticket page, shown whole (never cropped).
+    attachable.variant :large, resize_to_limit: [ 1200, 1600 ], format: :jpeg, saver: { quality: 85 }
   end
 
   validates :name, length: { maximum: 255 }, allow_blank: true
