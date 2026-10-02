@@ -48,12 +48,14 @@ class BalanceWithdrawalService
                           { account: :bank, amount_cents: amount_cents },
                           { account: :cocoscout_balance, amount_cents: -amount_cents }
                         ])
+    TicketingNotifier.notify(organization, :withdrawal, variables: TicketingNotificationContent.withdrawal(withdrawal))
     withdrawal
   rescue Stripe::StripeError => e
     # Nothing left: the money stays in the balance.
     if withdrawal
       OrgCashEntry.unpost!(source: withdrawal, entry_type: "transfer")
       withdrawal.update!(status: "failed", error: e.message)
+      TicketingNotifier.notify(organization, :withdrawal, variables: TicketingNotificationContent.withdrawal(withdrawal))
     end
     raise Error, "Stripe couldn't send it: #{e.message}"
   end

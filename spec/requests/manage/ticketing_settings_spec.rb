@@ -116,4 +116,21 @@ RSpec.describe "Manage ticketing settings", type: :request do
       expect(org.tax_rules).to be_empty
     end
   end
+  describe "notifications" do
+    before { sign_in(superadmin) }
+
+    it "shows who gets what, and saves the theater's choices with extra addresses" do
+      get manage_ticketing_settings_section_path(section: "notifications")
+      expect(response.body).to include("Who hears about what", "Each sale", "Daily summary", "Disputed charge", "Other email addresses")
+
+      patch manage_ticketing_settings_notifications_path,
+            params: { updating: "1", emails: "box@starsandgarters.com", rules: { "sale" => [ "email:box@starsandgarters.com" ] } }
+      expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "notifications"))
+      expect(TicketingNotifications.new(org).emails_for("sale")).to eq([ "box@starsandgarters.com" ])
+      expect(TicketingNotifications.new(org).emails_for("daily_summary")).to be_empty
+
+      patch manage_ticketing_settings_notifications_path, params: { updating: "1", emails: "nope" }
+      expect(flash[:alert]).to eq("nope isn't an email address.")
+    end
+  end
 end

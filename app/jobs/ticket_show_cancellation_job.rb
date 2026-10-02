@@ -13,11 +13,19 @@ class TicketShowCancellationJob < ApplicationJob
     return unless listing&.status == "canceled"
 
     user = User.find_by(id: user_id)
+    refunded = []
+    failed = 0
     TicketShowCancellation.orders(listing).find_each do |order|
       refund = TicketOrderRefund.issue!(order, by: user, reason: "Show canceled", notify: false, allow_after_show: true)
+      refunded << refund
       TicketOrderMailer.canceled(refund, subject: subject, body: body).deliver_later if order.buyer_email.present?
     rescue TicketOrderRefund::Error => e
+      failed += 1
       Rails.logger.warn("[TicketShowCancellationJob] order #{order.id}: #{e.message}")
     end
+
+    TicketingNotifier.notify(listing.organization, :cancellation_done,
+                             variables: TicketingNotificationContent.cancellation_done(listing, refunded_count: refunded.size,
+                                                                                                refunded_cents: refunded.sum(&:amount_cents), failed_count: failed))
   end
 end

@@ -101,6 +101,7 @@ class TicketDoor
       post_cash_sale!(order) if kind == "cash"
     end
     TicketSalesSync.sync!(@listing.show)
+    TicketingAfterSaleJob.perform_later(order.id)
     order
   rescue Ticketing::Inventory::SoldOut
     raise TicketCheckout::Error, "That's more than the seats left. Raise the seats on the show if the room has space."

@@ -35,6 +35,27 @@ development:
     class: BackfillStripeFeeJob
     schedule: every hour
 
+  # Ticketing (the same schedule production runs).
+  expire_ticket_holds:
+    class: ExpireTicketHoldsJob
+    schedule: every 5 minutes
+
+  ticket_money_release:
+    class: TicketMoneyReleaseJob
+    schedule: at 4am every day America/Chicago
+
+  books_reconciliation:
+    class: BooksReconciliationJob
+    schedule: at 5am every day America/Chicago
+
+  ticketing_daily_notices:
+    class: TicketingDailyNoticesJob
+    schedule: at 7am every day America/Chicago
+
+  ticketing_sales_opened:
+    class: TicketingSalesOpenedJob
+    schedule: every 15 minutes
+
 production:
   mics_signup_alert_scheduler:
     class: MicSignupAlertSchedulerJob
@@ -120,3 +141,13 @@ production:
   books_reconciliation:
     class: BooksReconciliationJob
     schedule: at 5am every day America/Chicago
+
+  # Ticketing notices: yesterday's sales and each show day's note (7am), and
+  # shows whose scheduled sales just opened.
+  ticketing_daily_notices:
+    class: TicketingDailyNoticesJob
+    schedule: at 7am every day America/Chicago
+
+  ticketing_sales_opened:
+    class: TicketingSalesOpenedJob
+    schedule: every 15 minutes

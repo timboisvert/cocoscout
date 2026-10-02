@@ -100,10 +100,16 @@ class TicketOrderRefund
 
     complete!(order, listing, refund)
     TicketRefundEmailJob.perform_later(refund.id) if notify && order.buyer_email.present? && refund.amount_cents.positive?
+    # The theater's team hears about refunds one by one; a canceled show's
+    # refunds are summed up when the cancellation finishes.
+    TicketingNotifier.notify(order.organization, :refund_issued, variables: TicketingNotificationContent.refund(refund)) if notify
     refund
   rescue Stripe::StripeError => e
     OrgCashEntry.unpost!(source: refund, entry_type: "ticket_refund") if refund
-    refund&.update!(status: "failed", error: e.message)
+    if refund
+      refund.update!(status: "failed", error: e.message)
+      TicketingNotifier.notify(order.organization, :refund_problem, variables: TicketingNotificationContent.refund(refund, problem: e.message))
+    end
     raise Error, "Stripe couldn't refund it: #{e.message}"
   end
 

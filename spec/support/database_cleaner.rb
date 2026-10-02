@@ -152,4 +152,18 @@ def seed_content_templates
       t.active = true
     end
   end
+
+  # Ticketing's notices to theaters, straight from the migration that seeds
+  # them, so the two can't drift.
+  require Rails.root.join("db/migrate/20261002090100_add_ticketing_notification_templates.rb")
+  AddTicketingNotificationTemplates::TEMPLATES.each do |spec|
+    ContentTemplate.find_or_create_by!(key: spec[:key]) do |t|
+      t.name = spec[:name]
+      t.subject = spec[:subject]
+      t.body = spec[:body] + AddTicketingNotificationTemplates::FOOTER
+      t.category = "ticketing"
+      t.channel = "email"
+      t.active = true
+    end
+  end
 end

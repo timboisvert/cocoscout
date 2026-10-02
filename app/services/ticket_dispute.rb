@@ -24,6 +24,8 @@ class TicketDispute
     listing = order.ticket_listing
     OrgCashEntry.post!(organization: order.organization, entry_type: "ticket_dispute", amount_cents: -cents,
                        source: order, description: "Disputed ticket charge #{order.code}")
+    TicketingNotifier.notify(order.organization, :dispute, variables: TicketingNotificationContent.dispute(order, opened: true, amount_cents: amount_cents),
+                                                         about: order, occasion: "opened", once: true)
     LedgerPosting.post!(organization: order.organization, source: order, kind: "dispute",
                         entry_date: Date.current, cash_date: Date.current, memo: "Disputed ticket charge #{order.code}",
                         lines: [
@@ -33,8 +35,13 @@ class TicketDispute
   end
 
   def self.closed!(order)
+    entry = OrgCashEntry.find_by(source_type: "TicketOrder", source_id: order.id, entry_type: "ticket_dispute")
     OrgCashEntry.unpost!(source: order, entry_type: "ticket_dispute")
     LedgerPosting.unpost!(source: order, kind: "dispute")
+    return unless entry
+
+    TicketingNotifier.notify(order.organization, :dispute, variables: TicketingNotificationContent.dispute(order, opened: false, amount_cents: -entry.amount_cents - STRIPE_FEE_CENTS),
+                                                         about: order, occasion: "won", once: true)
   end
 
   def self.open?(order)

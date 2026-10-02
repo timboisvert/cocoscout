@@ -50,6 +50,7 @@ class TicketComps
     end
 
     orders.each { |order| TicketOrderConfirmationJob.perform_later(order.id) if email_them && order.buyer_email.present? }
+    TicketingAfterSaleJob.perform_later(orders.last.id)
     orders
   rescue Ticketing::Inventory::SoldOut
     raise Error, "That's more than the seats left. Raise the seats on the show if the room has space."

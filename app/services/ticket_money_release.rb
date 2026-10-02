@@ -25,6 +25,10 @@ class TicketMoneyRelease
       recognize_income!(listing, at.to_date)
       released = true
     end
+    if released
+      TicketingNotifier.notify(listing.organization, :after_show, variables: TicketingNotificationContent.after_show(listing),
+                                                                about: listing, once: true)
+    end
     released
   end
 

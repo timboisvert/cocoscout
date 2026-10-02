@@ -6,8 +6,9 @@ module Manage
   # on tickets, who can work the door, and the code for selling on the
   # theater's own website. No branding in v1 — every org gets the same pages.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office tax door embed].freeze
-    SECTION_LABELS = { "box_office" => "Box office", "tax" => "Tax", "door" => "Door access", "embed" => "Your website" }.freeze
+    SECTIONS = %w[box_office tax notifications door embed].freeze
+    SECTION_LABELS = { "box_office" => "Box office", "tax" => "Tax", "notifications" => "Notifications",
+                       "door" => "Door access", "embed" => "Your website" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -15,6 +16,18 @@ module Manage
     def show
       @tax = TicketTaxSetting.current(Current.organization) if @section == "tax"
       load_door_access if @section == "door"
+      @notifications = TicketingNotifications.new(Current.organization) if @section == "notifications"
+    end
+
+    # Who gets which Ticketing emails: the ticked managers and addresses per
+    # kind, and the extra addresses themselves.
+    def update_notifications
+      rules = params[:rules].respond_to?(:each_pair) ? params[:rules].each_pair.to_h { |kind, keys| [ kind.to_s, Array(keys) ] } : {}
+      emails = params[:emails].to_s.split(/[\s,;]+/)
+      TicketingNotifications.new(Current.organization).save!(rules: rules, emails: emails)
+      redirect_to section_path("notifications"), notice: "Notifications saved."
+    rescue ArgumentError => e
+      redirect_to section_path("notifications"), alert: e.message
     end
 
     def update

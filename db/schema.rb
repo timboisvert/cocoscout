@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_01_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_02_090100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3272,12 +3272,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_140000) do
     t.index ["user_id"], name: "index_ticketing_access_grants_on_user_id"
   end
 
+  create_table "ticketing_notification_logs", force: :cascade do |t|
+    t.bigint "about_id", default: 0, null: false
+    t.string "about_type", default: "", null: false
+    t.datetime "created_at", null: false
+    t.string "kind", null: false
+    t.string "occasion", default: "", null: false
+    t.bigint "organization_id", null: false
+    t.index ["organization_id", "kind", "about_type", "about_id", "occasion"], name: "index_ticketing_notification_logs_once", unique: true
+    t.index ["organization_id"], name: "index_ticketing_notification_logs_on_organization_id"
+  end
+
   create_table "ticketing_profiles", force: :cascade do |t|
     t.string "auto_withdraw", default: "off", null: false
     t.datetime "created_at", null: false
     t.string "default_fee_mode", default: "buyer", null: false
     t.integer "default_max_per_order", default: 10, null: false
     t.boolean "enabled", default: false, null: false
+    t.jsonb "notification_emails", default: [], null: false
+    t.jsonb "notification_rules", default: {}, null: false
     t.bigint "organization_id", null: false
     t.boolean "refunds_after_show", default: false, null: false
     t.string "slug", null: false
@@ -3745,6 +3758,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_140000) do
   add_foreign_key "ticketing_access_grants", "users", column: "granted_by_id", on_delete: :nullify
   add_foreign_key "ticketing_access_grants", "users", column: "revoked_by_id", on_delete: :nullify
   add_foreign_key "ticketing_access_grants", "users", on_delete: :cascade
+  add_foreign_key "ticketing_notification_logs", "organizations"
   add_foreign_key "ticketing_profiles", "organizations"
   add_foreign_key "tickets", "ticket_listings"
   add_foreign_key "tickets", "ticket_orders"

@@ -33,6 +33,7 @@ class TicketOrderSettlement
     if settled
       TicketSalesSync.sync!(order.ticket_listing.show)
       TicketOrderConfirmationJob.perform_later(order.id) if order.buyer_email.present?
+      TicketingAfterSaleJob.perform_later(order.id)
     end
     order
   rescue SeatsGone
