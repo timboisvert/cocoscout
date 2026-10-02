@@ -45,9 +45,17 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).to include("Preview — not public yet")
     end
 
-    it "has a page for each production's dates" do
-      get tickets_production_path(org: "starsandgarters", production: production.id)
+    it "has a page for each production's dates, at its public key, never its id" do
+      get tickets_event_path(org: "starsandgarters", event: production.public_key)
       expect(response.body).to include("Every scene turns into an animal.").and include(event_path)
+      expect(production.public_key).to be_present
+
+      get event_path
+      expect(response.body).to include(%(href="/t/starsandgarters/#{production.public_key}"))
+      expect(response.body).not_to include("/p/#{production.id}")
+
+      get tickets_event_path(org: "starsandgarters", event: production.id.to_s)
+      expect(response).to have_http_status(:not_found)
     end
   end
 

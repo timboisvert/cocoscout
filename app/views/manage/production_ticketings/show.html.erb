@@ -2,7 +2,7 @@
 <%
   setup = @setup
   on = setup&.enabled?
-  public_url = tickets_production_url(org: ticketing_profile.slug, production: @production.id)
+  public_url = ticket_production_url(ticketing_profile, @production)
   settings_path = manage_edit_production_ticketing_path(@production)
   which = if setup.nil? then nil
   elsif setup.event_matching == "manual" then "Dates picked by hand"

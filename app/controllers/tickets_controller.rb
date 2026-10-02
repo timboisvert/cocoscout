@@ -14,20 +14,15 @@ class TicketsController < ApplicationController
 
   def box_office
     @productions = selling_listings.map(&:production).uniq.sort_by(&:name)
-    @production_filter = @productions.find { |p| p.id.to_s == params[:production].to_s }
+    @production_filter = @productions.find { |p| p.public_key.present? && p.public_key == params[:production].to_s }
     @listings = selling_listings.select { |l| @production_filter.nil? || l.production_id == @production_filter.id }
   end
 
-  def production
-    @production = @organization.productions.find_by(id: params[:production].to_s.to_i)
-    raise ActiveRecord::RecordNotFound unless @production
-
-    @listings = selling_listings.select { |l| l.production_id == @production.id }
-  end
-
+  # /t/<org>/<slug>: a date's ticket page, or — when the slug is a
+  # production's public key — the production's page with all its dates.
   def event
     @listing = @organization.ticket_listings.find_by(slug: params[:event])
-    raise ActiveRecord::RecordNotFound unless @listing
+    return production(@organization.productions.find_by(public_key: params[:event].to_s.downcase)) unless @listing
 
     # A draft's page is only for a superadmin checking it before it goes on sale.
     if @listing.status == "draft"
@@ -50,6 +45,14 @@ class TicketsController < ApplicationController
   end
 
   private
+
+  def production(production)
+    raise ActiveRecord::RecordNotFound unless production
+
+    @production = production
+    @listings = selling_listings.select { |l| l.production_id == @production.id }
+    render :production
+  end
 
   def set_box_office
     @ticketing_profile = TicketingProfile.find_by(slug: params[:org].to_s.downcase)

@@ -349,7 +349,8 @@ Rails.application.routes.draw do
     get  "checkout/:token/hold",       to: "ticket_checkouts#hold",   as: "checkout_hold", defaults: { format: :json }
     get  "v/:code",                    to: "tickets#ticket",          as: "ticket"
     get  ":org",                       to: "tickets#box_office",      as: "box_office"
-    get  ":org/p/:production",         to: "tickets#production",      as: "production"
+    # A date's page by its slug, or a production's page by its public key
+    # (never an internal id).
     get  ":org/:event",                to: "tickets#event",           as: "event"
     post ":org/:event/checkout",       to: "ticket_checkouts#create", as: "start_checkout"
   end

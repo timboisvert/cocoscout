@@ -74,7 +74,7 @@
 
   <div class="text-center space-y-1.5">
     <% if @listing.display_title != @listing.production.name %>
-      <%= link_to @listing.production.name, tickets_production_path(org: @ticketing_profile.slug, production: @listing.production_id, **embed_params),
+      <%= link_to @listing.production.name, ticket_production_path(@ticketing_profile, @listing.production, **embed_params),
             class: "text-sm font-medium text-pink-700 hover:text-pink-800" %>
     <% end %>
     <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @listing.display_title %></h1>
@@ -89,7 +89,7 @@
     <% end %>
     <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
     <p class="text-sm">
-      <%= link_to "Other dates", tickets_production_path(org: @ticketing_profile.slug, production: @listing.production_id, **embed_params),
+      <%= link_to "Other dates", ticket_production_path(@ticketing_profile, @listing.production, **embed_params),
             class: "text-pink-700 hover:text-pink-800" %>
     </p>
   </div>
