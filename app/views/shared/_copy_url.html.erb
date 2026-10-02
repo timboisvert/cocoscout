@@ -7,6 +7,7 @@
   # - help_text: Help text below the URL box (default: nil)
   # - copy_button_text: Text for the copy button (default: "Copy")
   # - show_qr: Show QR code button (default: false)
+  # - qr_title: Heading on the QR code modal (default: "Scan to Sign Up")
 %>
 
 <%
@@ -14,6 +15,7 @@
   help_text ||= nil
   copy_button_text ||= "Copy"
   show_qr ||= false
+  qr_title ||= "Scan to Sign Up"
 %>
 
 <div data-controller="copy-url<%= ' qr-code' if show_qr %>"
@@ -79,7 +81,7 @@
           </svg>
         </button>
 
-        <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center">Scan to Sign Up</h3>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center"><%= qr_title %></h3>
 
         <!-- QR Code Canvas -->
         <div class="flex justify-center mb-4">

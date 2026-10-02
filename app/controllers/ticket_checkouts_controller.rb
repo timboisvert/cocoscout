@@ -55,10 +55,9 @@ class TicketCheckoutsController < ApplicationController
     return render(json: { error: "Your hold on these seats ran out. Please start again." }, status: :unprocessable_entity) if @order.hold_expired? || @order.status != "pending"
     return render(json: { error: "Please check your details and try again." }, status: :unprocessable_entity) unless human_pace?
 
-    buyer = params.permit(:buyer_name, :buyer_email, :buyer_phone, :marketing_opt_in)
+    buyer = params.permit(:buyer_name, :buyer_email, :buyer_phone)
     @order.assign_attributes(buyer_name: buyer[:buyer_name].to_s.squish.presence, buyer_email: buyer[:buyer_email],
-                             buyer_phone: buyer[:buyer_phone].to_s.strip.presence,
-                             marketing_opt_in: ActiveModel::Type::Boolean.new.cast(buyer[:marketing_opt_in]) || false)
+                             buyer_phone: buyer[:buyer_phone].to_s.strip.presence)
     if @order.buyer_name.blank? || @order.buyer_email.blank? || !@order.valid?
       return render(json: { error: "Add your name and a valid email so we can send your tickets." }, status: :unprocessable_entity)
     end

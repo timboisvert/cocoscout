@@ -1,9 +1,8 @@
-<% content_for :title, "Door" %>
+<% content_for :title, "Working the door" %>
 
-<h1 class="text-2xl font-semibold text-gray-900">Shows</h1>
-<p class="mt-1 text-sm text-gray-600">Pick the show you're working.</p>
+<h1 class="text-lg font-semibold text-gray-900">Pick the show you're working</h1>
 
-<div class="mt-5 space-y-2">
+<div class="mt-4 space-y-2">
   <% if @listings.any? %>
     <% @listings.each do |listing| %>
       <% show = listing.show %>

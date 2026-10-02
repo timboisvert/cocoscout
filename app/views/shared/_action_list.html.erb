@@ -1,0 +1,33 @@
+<%# A sidebar card of things to do next, the way Money's show pages list them:
+    a pink icon tile, a name, one line on what it does, a chevron.
+    Locals:
+      title (optional, default "Actions")
+      items — array of hashes: text:, description:, path:, icon: (one SVG path
+              "d", or an array of them), target: (optional), tone: (:muted
+              for the quiet ones, like canceling) %>
+<% title = local_assigns.fetch(:title, "Actions") %>
+<div class="bg-white rounded-lg border border-gray-200 p-5">
+  <h3 class="font-semibold text-gray-900 mb-4"><%= title %></h3>
+  <div class="space-y-3">
+    <% items.compact.each do |item| %>
+      <% muted = item[:tone] == :muted %>
+      <%= link_to item[:path], target: item[:target], rel: ("noopener" if item[:target]),
+            class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
+        <div class="w-10 h-10 rounded-lg <%= muted ? 'bg-gray-100' : 'bg-pink-100' %> flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 <%= muted ? 'text-gray-500' : 'text-pink-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <% Array(item[:icon]).each do |d| %>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= d %>"/>
+            <% end %>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium <%= muted ? 'text-gray-700' : 'text-gray-900' %>"><%= item[:text] %></div>
+          <% if item[:description].present? %><div class="text-xs text-gray-500"><%= item[:description] %></div><% end %>
+        </div>
+        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      <% end %>
+    <% end %>
+  </div>
+</div>

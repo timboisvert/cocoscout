@@ -1,22 +1,22 @@
-<%# Which picture a show's ticket page leads with, and whether it has a wide
+<%# Which image a show's ticket page leads with, and whether it has a wide
     image — the order is the show's wide image, the show's poster, the
     production's wide image, the production's poster (Show#ticket_page_image).
     Shown whole, at its own shape. Locals: listing. %>
 <%
   show = listing.show
-  image, page_image = ticket_page_picture(listing)
+  image, page_image = ticket_page_image(listing)
   has_wide = page_image&.wide?
   media_path = manage_edit_show_path(listing.production, show)
   assets_path = edit_manage_production_path(listing.production, tab: 1)
 %>
-<div class="bg-white border border-gray-200 rounded-xl p-4">
-  <h2 class="text-sm font-semibold text-gray-900">Ticket page picture</h2>
+<div class="bg-white rounded-lg border border-gray-200 p-5">
+  <h3 class="font-semibold text-gray-900">Ticket page image</h3>
   <% if image %>
     <%= image_tag image, alt: "", class: "mt-3 #{page_image.wide? ? 'w-full' : 'max-h-56 w-auto mx-auto'} h-auto rounded-lg border border-gray-200 bg-gray-50" %>
   <% end %>
   <p class="text-xs mt-2 <%= has_wide ? 'text-gray-600' : 'text-amber-700' %>">
     <% if has_wide %>
-      <%= ticket_page_picture_source(page_image) %>.
+      <%= ticket_page_image_source(page_image) %>.
     <% elsif page_image %>
       No wide image, so the page uses <%= page_image.own? ? "this show's" : "the production's" %> poster.
     <% else %>

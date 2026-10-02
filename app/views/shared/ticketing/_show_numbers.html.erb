@@ -23,7 +23,7 @@
   <%# Literal class names, so Tailwind sees each one. %>
   <div class="grid grid-cols-2 <%= { 4 => 'lg:grid-cols-4', 5 => 'lg:grid-cols-5' }.fetch(tiles.size, 'lg:grid-cols-6') %> gap-3">
     <% tiles.each do |label, value, note, tint| %>
-      <div class="rounded-xl border px-4 py-3 <%= tint || 'bg-white border-gray-200' %>">
+      <div class="rounded-lg border px-4 py-3 <%= tint || 'bg-white border-gray-200' %>">
         <div class="text-xs text-gray-500"><%= label %></div>
         <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= value %></div>
         <div class="text-xs text-gray-500 mt-0.5"><%= note %></div>
@@ -36,7 +36,7 @@
     </div>
   <% end %>
 
-  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
     <div class="px-5 py-3 border-b border-gray-200"><h2 class="text-sm font-semibold text-gray-900">By ticket type</h2></div>
     <div class="overflow-x-auto">
       <table class="min-w-full text-sm">
@@ -67,7 +67,7 @@
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-xl px-5 py-4">
+    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg px-5 py-4">
       <h2 class="text-sm font-semibold text-gray-900">Tickets over time</h2>
       <% if series.size > 1 %>
         <div class="mt-3 h-40" data-controller="line-chart" data-line-chart-data-value="<%= series.to_json %>" data-line-chart-label-value="tickets">
@@ -78,7 +78,7 @@
       <% end %>
     </div>
     <div class="space-y-6">
-      <div class="bg-white border border-gray-200 rounded-xl px-5 py-4">
+      <div class="bg-white border border-gray-200 rounded-lg px-5 py-4">
         <h2 class="text-sm font-semibold text-gray-900">Where they came from</h2>
         <% if channels.any? %>
           <ul class="mt-2 space-y-1 text-sm">
@@ -91,7 +91,7 @@
         <% end %>
       </div>
       <% if codes.any? %>
-        <div class="bg-white border border-gray-200 rounded-xl px-5 py-4">
+        <div class="bg-white border border-gray-200 rounded-lg px-5 py-4">
           <h2 class="text-sm font-semibold text-gray-900">Discount codes</h2>
           <ul class="mt-2 space-y-1 text-sm">
             <% codes.each do |code, orders, cents| %>

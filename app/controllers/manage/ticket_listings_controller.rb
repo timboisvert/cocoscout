@@ -42,13 +42,13 @@ module Manage
     def guests
       require "csv"
       csv = CSV.generate do |rows|
-        rows << [ "Name", "Email", "Phone", "Order", "Tickets", "Ticket types", "Checked in", "How", "Note", "OK to email news" ]
+        rows << [ "Name", "Email", "Phone", "Order", "Tickets", "Ticket types", "Checked in", "How", "Note" ]
         guest_orders("all", "").each do |order|
           held = held_tickets(order)
           rows << [ order.buyer_name, order.buyer_email, order.buyer_phone, order.code, held.size,
                     held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} #{tier.name}" }.join("; "),
                     held.count(&:checked_in?), Ticketing::ListingStats::CHANNELS.fetch(order.channel, order.channel),
-                    order.note, order.marketing_opt_in ? "Yes" : "No" ]
+                    order.note ]
         end
       end
       send_data csv, type: "text/csv", filename: "guests-#{@listing.slug}.csv"

@@ -22,8 +22,8 @@
     "incl. tax"
   end
   page_url = tickets_event_url(org: @ticketing_profile.slug, event: @listing.slug)
-  picture, page_image = ticket_page_picture(@listing)
-  image_url = picture && url_for(picture)
+  image, page_image = ticket_page_image(@listing)
+  image_url = image && url_for(image)
   description = @listing.description.presence || @listing.production.description.presence
   notes = [ @listing.door_note, @listing.age_note, @listing.accessibility_note ].compact_blank
   # Search engines read this to list the show (schema.org Event with all-in offers).
@@ -65,7 +65,7 @@
 
 <%# Layout A (Tim, 2026-10-01): one calm centered column, the same on a phone and a desktop. %>
 <div class="mx-auto max-w-xl space-y-5">
-  <%# The whole picture at its own shape, never cropped: a wide image spans the
+  <%# The whole image at its own shape, never cropped: a wide image spans the
       column, a poster sits centered. %>
   <% if image_url %>
     <%= image_tag image_url, alt: (page_image.wide? ? "" : "#{@listing.production.name} poster"),

@@ -5,6 +5,26 @@
   status_label, status_classes = ticket_listing_status_badge(@listing, inventory)
   filters = [ [ "all", "Everyone" ], [ "waiting", "Not in yet" ], [ "in", "Checked in" ], [ "comps", "Comps" ], [ "refunded", "Refunded" ] ]
   filter_path = ->(f) { manage_ticket_listing_path(@listing, guests: f == "all" ? nil : f, q: @query.presence, anchor: "guests") }
+  live = !@listing.status.in?(%w[canceled]) && !show.canceled
+  upcoming = show.date_and_time > Time.current
+  public_url = tickets_event_url(org: ticketing_profile.slug, event: @listing.slug)
+  # Heroicons (outline), one per action.
+  icons = {
+    door: "M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z",
+    gift: "M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7",
+    orders: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01",
+    eye: [ "M15 12a3 3 0 11-6 0 3 3 0 016 0z", "M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" ],
+    cog: [ "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z", "M15 12a3 3 0 11-6 0 3 3 0 016 0z" ],
+    cancel: "M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+  }
+  actions = [
+    ({ text: "Open the door", description: "Scan tickets and sell at the door", path: door_path(@listing), icon: icons[:door] } if live && @listing.status != "draft"),
+    ({ text: "Give tickets", description: "Comps for guests and press", path: manage_new_ticket_listing_comps_path(@listing), icon: icons[:gift] } if live),
+    { text: "Orders", description: "Every order for this show", path: manage_ticket_orders_path(listing_id: @listing.id), icon: icons[:orders] },
+    { text: "Ticket page", description: "What buyers see", path: public_url, icon: icons[:eye], target: "_blank" },
+    { text: "Settings", description: "Prices, seats, sales window", path: manage_edit_ticket_listing_path(@listing), icon: icons[:cog] },
+    ({ text: "Cancel this show", description: "Refund everyone and tell them", path: manage_ticket_listing_cancel_path(@listing), icon: icons[:cancel], tone: :muted } if @listing.status != "canceled" && upcoming)
+  ]
 %>
 
 <div class="w-full mb-10">
@@ -12,26 +32,21 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ] ],
     text: @listing.display_title,
-    links: [
-      ({ text: "Door", path: door_path(@listing) } unless @listing.status.in?(%w[draft canceled])),
-      { text: "Settings", path: manage_edit_ticket_listing_path(@listing) }
-    ].compact
+    links: []
   } %>
 
-  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">
     <div class="space-y-6 min-w-0">
       <%# Where it stands, and the one thing to do next. %>
-      <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
+      <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2 min-w-0">
             <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
             <span class="text-sm text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></span>
           </div>
-          <p class="text-xs text-gray-500 mt-1">
-            <%= link_to ticket_public_path_text(@listing), tickets_event_path(org: ticketing_profile.slug, event: @listing.slug), target: "_blank", rel: "noopener", class: "hover:text-pink-600" %>
-          </p>
+          <%= render "manage/ticket_listings/status_actions", listing: @listing %>
         </div>
-        <%= render "manage/ticket_listings/status_actions", listing: @listing %>
+        <%= render "shared/copy_url", url: public_url, show_qr: true, qr_title: "Scan for tickets" %>
       </div>
 
       <% if TicketShowChange.pending?(@listing) %>
@@ -45,7 +60,7 @@
 
       <%= render "shared/ticketing/show_numbers", stats: @stats %>
 
-      <div id="guests" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div id="guests" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div class="px-5 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-sm font-semibold text-gray-900">Guest list <span class="font-normal text-gray-500">· <%= pluralize(@stats.sold, "ticket") %></span></h2>
           <div class="flex flex-wrap gap-2">
@@ -65,43 +80,41 @@
       </div>
     </div>
 
-    <aside class="space-y-4">
-      <%= render "manage/ticket_listings/page_picture", listing: @listing %>
-      <% unless @listing.status == "canceled" || show.canceled %>
-        <div class="bg-white border border-gray-200 rounded-xl p-4">
-          <h2 class="text-sm font-semibold text-gray-900">Give tickets</h2>
-          <p class="text-xs text-gray-600 mt-1">Comps for the cast's guests, press, or anyone you're treating. They get the usual email with their tickets.</p>
-          <div class="mt-3">
-            <%= render "shared/button", text: "Give tickets", variant: "primary", size: "small", path: manage_new_ticket_listing_comps_path(@listing) %>
+    <aside class="space-y-6">
+      <%= render "shared/action_list", items: actions %>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">Money</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between gap-4">
+            <span class="text-gray-600">
+              <% if @listing.status == "canceled" %>Going back to buyers<% elsif @listing.released_at %>In your available balance<% else %>Held for this show<% end %>
+            </span>
+            <span class="font-medium tabular-nums text-gray-900"><%= number_to_currency(@stats.net_cents / 100.0) %></span>
           </div>
+          <% if @stats.tax_cents.positive? %>
+            <div class="flex justify-between gap-4">
+              <span class="text-gray-600">Tax collected, yours to pay</span>
+              <span class="tabular-nums text-gray-900"><%= number_to_currency(@stats.tax_cents / 100.0) %></span>
+            </div>
+          <% end %>
         </div>
-      <% end %>
-      <div class="bg-white border border-gray-200 rounded-xl p-4 text-sm">
-        <h2 class="font-semibold text-gray-900">Money for this show</h2>
-        <p class="text-gray-600 mt-1">
+        <p class="text-xs text-gray-500 mt-3">
           <% if @listing.released_at %>
-            It's in your available balance.
+            The show happened, so it's yours to spend or withdraw.
           <% elsif @listing.status == "canceled" %>
-            Canceled: buyers get it back.
+            The show was canceled, so its money refunds its buyers.
           <% else %>
-            Held until the day after the show, then it's yours to spend.
+            It becomes yours to spend the day after the show.
           <% end %>
         </p>
-        <% if @stats.tax_cents.positive? %>
-          <p class="text-gray-600 mt-1">Includes <%= number_to_currency(@stats.tax_cents / 100.0) %> tax collected.</p>
-        <% end %>
-        <p class="mt-2 space-x-3">
-          <%= link_to "Your balance", manage_ticket_balance_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
+        <div class="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <%= link_to "Show financials", manage_money_show_financials_path(show), class: "font-medium text-pink-600 hover:text-pink-700" %>
-        </p>
+          <%= link_to "Your balance", manage_ticket_balance_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
+        </div>
       </div>
-      <div class="bg-white border border-gray-200 rounded-xl p-4 text-sm space-y-2">
-        <%= link_to "Orders for this show", manage_ticket_orders_path(listing_id: @listing.id), class: "block font-medium text-pink-600 hover:text-pink-700" %>
-        <%= link_to "Prices, seats and the page", manage_edit_ticket_listing_path(@listing), class: "block font-medium text-pink-600 hover:text-pink-700" %>
-        <% if @listing.status != "canceled" && show.date_and_time > Time.current %>
-          <%= link_to "Cancel this show", manage_ticket_listing_cancel_path(@listing), class: "block font-medium text-gray-600 hover:text-gray-900" %>
-        <% end %>
-      </div>
+
+      <%= render "manage/ticket_listings/page_image", listing: @listing %>
     </aside>
   </div>
 </div>

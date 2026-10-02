@@ -18,10 +18,10 @@ module TicketingHelper
     end
   end
 
-  # The picture a show's ticket page leads with (Show#ticket_page_image), as a
+  # The image a show's ticket page leads with (Show#ticket_page_image), as a
   # display-sized image that keeps its own shape (never cropped). Returns
-  # [image, page_image], or nil when the show and production have no picture.
-  def ticket_page_picture(listing)
+  # [image, page_image], or nil when the show and production have no image.
+  def ticket_page_image(listing)
     page_image = listing.show.ticket_page_image
     return nil unless page_image
 
@@ -33,9 +33,9 @@ module TicketingHelper
     [ image, page_image ]
   end
 
-  # Which picture that is, in words a manager reads.
-  def ticket_page_picture_source(page_image)
-    return "No picture yet" unless page_image
+  # Which image that is, in words a manager reads.
+  def ticket_page_image_source(page_image)
+    return "No image yet" unless page_image
 
     whose = page_image.own? ? "This show's" : "The production's"
     "#{whose} #{page_image.wide? ? 'wide image' : 'poster'}"

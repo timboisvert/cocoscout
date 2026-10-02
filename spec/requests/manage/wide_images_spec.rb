@@ -23,7 +23,7 @@ RSpec.describe "Wide images", type: :request do
     get manage_path
   end
 
-  it "picks the ticket page picture in Tim's order" do
+  it "picks the ticket page image in Tim's order" do
     expect(show.ticket_page_image).to be_nil
 
     production.posters.create!(image: picture, name: "Poster", is_primary: true)
@@ -80,7 +80,7 @@ RSpec.describe "Wide images", type: :request do
 
     it "says plainly whether there's a wide image, and which picture the page uses" do
       get manage_ticket_listing_path(listing)
-      expect(response.body).to include("Ticket page picture", "No wide image or poster yet")
+      expect(response.body).to include("Ticket page image", "No wide image or poster yet")
 
       production.posters.create!(image: picture, name: "Poster", is_primary: true)
       get manage_edit_ticket_listing_path(listing)
