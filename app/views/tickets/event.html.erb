@@ -8,7 +8,15 @@
   note = public_listing_note(@listing, @inventory)
   selling = @listing.selling? && !@inventory.sold_out? && !@preview
   max_per_order = @listing.effective_max_per_order
-  tax_added = @tax && @tax.mode == "added" && @tax.lines.any? { |line| !line.exempt }
+  taxed = @tax && @tax.lines.any? { |line| !line.exempt }
+  tax_added = taxed && @tax.mode == "added"
+  tax_label = taxed ? (@tax.lines.reject(&:exempt).map(&:name).uniq.one? ? @tax.lines.reject(&:exempt).first.name : "Tax") : "Tax"
+  # What each price includes, so the total never surprises anyone.
+  price_note = if @listing.buyer_pays_fees?
+    taxed ? "incl. fees & tax" : "incl. fees"
+  elsif taxed
+    "incl. tax"
+  end
   page_url = tickets_event_url(org: @ticketing_profile.slug, event: @listing.slug)
   picture, page_image = ticket_page_picture(@listing)
   image_url = picture && url_for(picture)
@@ -97,7 +105,8 @@
                     ticket_picker_fee_mode_value: @listing.effective_fee_mode,
                     ticket_picker_platform_fee_value: TicketPricing::PLATFORM_FEE_CENTS,
                     ticket_picker_per_mille_value: TicketPricing::PROCESSING_PER_MILLE,
-                    ticket_picker_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS } do %>
+                    ticket_picker_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS,
+                    ticket_picker_tax_label_value: tax_label } do %>
         <%= hidden_field_tag :code, @code if @code %>
         <%= hidden_field_tag :embed, "1" if embed? %>
         <%= render "tickets/bot_trap", id: "event_website" %>
@@ -113,7 +122,7 @@
                 <% if tier.description.present? %><div class="text-sm text-gray-600"><%= tier.description %></div><% end %>
                 <div class="text-sm font-semibold text-gray-900 mt-0.5">
                   <%= ticket_price(TicketPricing.all_in_price_cents(@listing, tier)) %>
-                  <% if !tier.free? && @listing.buyer_pays_fees? %><span class="text-xs font-normal text-gray-600">incl. fees</span><% end %>
+                  <% if !tier.free? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
                 </div>
                 <% if left && left.positive? && left <= 10 %><div class="text-xs font-semibold text-amber-700">Only <%= left %> left</div><% end %>
               </div>
@@ -135,15 +144,18 @@
           <% end %>
         </ul>
         <div class="px-5 py-4 border-t border-gray-100 space-y-3">
-          <div class="flex items-baseline justify-between">
-            <span class="text-gray-700" data-ticket-picker-target="summary">Choose your tickets</span>
-            <span class="text-lg font-bold tabular-nums text-gray-900" data-ticket-picker-target="total"></span>
+          <div>
+            <div class="flex items-baseline justify-between">
+              <span class="text-gray-700" data-ticket-picker-target="summary">Choose your tickets</span>
+              <span class="text-lg font-bold tabular-nums text-gray-900" data-ticket-picker-target="total"></span>
+            </div>
+            <%# Every cent named, the same three lines checkout shows. %>
+            <p class="text-xs text-gray-600 text-right tabular-nums" data-ticket-picker-target="breakdown"></p>
           </div>
           <%= render "shared/button", text: "Continue to checkout", variant: "primary", size: "jumbo", type: :submit, classes: "rounded-xl disabled:opacity-50",
                 data: { ticket_picker_target: "submit" } %>
           <p class="text-xs text-center text-gray-600">
-            <%= @listing.buyer_pays_fees? ? "Prices include fees." : "No booking fees." %>
-            <%= tax_added ? "The total includes tax." : "" %>
+            <%= { "incl. fees & tax" => "Prices include fees and tax.", "incl. fees" => "Prices include fees.", "incl. tax" => "Prices include tax. No booking fees." }.fetch(price_note, "No booking fees.") %>
             <% if @code %>Your code <span class="font-medium uppercase"><%= @code %></span> is applied at checkout.<% end %>
           </p>
         </div>

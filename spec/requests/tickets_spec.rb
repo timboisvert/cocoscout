@@ -180,9 +180,25 @@ RSpec.describe "Public ticketing", type: :request do
       get tickets_event_path(org: "starsandgarters", event: listing.slug)
       page = response.body
       expect(page).to include('data-controller="ticket-picker"', 'data-ticket-picker-fee-mode-value="buyer"',
+                              'data-ticket-picker-tax-label-value="Sales tax"', 'data-ticket-picker-target="breakdown"',
                               "data-price=\"2000\"", "data-tax=\"205\"", "name=\"quantities[#{general.id}]\"",
-                              "One more General", "Continue to checkout", "Prices include fees.", "The total includes tax.")
+                              "One more General", "Continue to checkout")
       expect(page).not_to include("<select")
+    end
+
+    # Tim (2026-10-01): the price on each ticket is what one really costs —
+    # fees and tax in — so the total never jumps above it.
+    it "shows each ticket's real price, fees and tax in" do
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(response.body).to include("$21.42", "incl. fees", "Prices include fees.")
+
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(response.body).to include("$23.53", "incl. fees &amp; tax", "Prices include fees and tax.")
+
+      listing.update!(fee_mode: "org")
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(response.body).to include("$22.05", "incl. tax", "Prices include tax. No booking fees.")
     end
   end
 

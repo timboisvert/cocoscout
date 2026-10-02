@@ -83,4 +83,26 @@ RSpec.describe TicketPricing do
     listing.update!(fee_mode: "org")
     expect(described_class.all_in_price_cents(listing, tier)).to eq(2_000)
   end
+  describe ".all_in_price_cents" do
+    let(:org) { create(:organization, :pro) }
+    let(:listing) { create(:ticket_listing, organization: org) }
+    let(:tier) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000) }
+
+    it "is what one ticket really costs: fees in, and tax added on top in too" do
+      expect(described_class.all_in_price_cents(listing, tier)).to eq(2_142)
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+      expect(described_class.all_in_price_cents(listing, tier)).to eq(2_353)
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "included")
+      expect(described_class.all_in_price_cents(listing, tier)).to eq(2_142)
+    end
+
+    it "never totals more at checkout than the prices shown added up" do
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+      one = described_class.all_in_price_cents(listing, tier)
+      (1..10).each do |n|
+        items = Array.new(n) { { price_cents: 2_000, discount_cents: 0, tax_cents: 205 } }
+        expect(described_class.quote(items: items, fee_mode: "buyer").total_cents).to be <= n * one
+      end
+    end
+  end
 end

@@ -61,10 +61,14 @@ class TicketPricing
     total
   end
 
-  # What one ticket of a tier costs a buyer, fees in — the number every page
-  # must show (FTC all-in pricing). Tax added on top is shown separately.
+  # What one ticket of a tier really costs a buyer: fees in, and tax in too
+  # when it's added on top — the one number every page shows. A bigger order
+  # can only cost less per ticket (processing's 30¢ is charged once), so the
+  # total at checkout is never more than the prices added up. (The FTC rule
+  # requires fees in the price; including tax as well means no surprise.)
   def self.all_in_price_cents(listing, tier)
-    quote(items: [ { price_cents: tier.price_cents, discount_cents: 0, tax_cents: 0 } ],
+    tax = TaxCalculator.for_ticket(listing, tier, tier.price_cents).added_cents
+    quote(items: [ { price_cents: tier.price_cents, discount_cents: 0, tax_cents: tax } ],
           fee_mode: listing.effective_fee_mode).total_cents
   end
 end
