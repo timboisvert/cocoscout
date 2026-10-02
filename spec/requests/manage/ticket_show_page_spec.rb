@@ -59,23 +59,28 @@ RSpec.describe "Manage a show's tickets", type: :request do
     expect(response.body.index("Fox Mulder")).to be < response.body.index("Dana Scully")
   end
 
-  it "gives tickets away and says so" do
+  # Tim (2026-10-02): one person at a time, no pasted list.
+  it "gives tickets away one person at a time, and says so" do
     get manage_new_ticket_listing_comps_path(listing)
-    expect(response.body).to include("One person per line")
+    expect(response.body).to include("coming as your guest?", 'name="name"', 'name="quantity"')
+    expect(response.body).not_to include("One person per line")
 
     expect {
       post manage_ticket_listing_comps_path(listing),
-           params: { guests: "Walter Skinner, walter@example.com, 2\nMonica Reyes", tier_id: general.id, note: "Press", email_them: "1" }
+           params: { name: "Walter Skinner", email: "walter@example.com", quantity: "2", tier_id: general.id, note: "Press", email_them: "1" }
     }.to have_enqueued_job(TicketOrderConfirmationJob).once
-    expect(response).to redirect_to(manage_ticket_listing_path(listing, anchor: "guests"))
-    expect(flash[:notice]).to eq("Gave 3 tickets to 2 people.")
+    expect(response).to redirect_to(manage_new_ticket_listing_comps_path(listing, tier_id: general.id, note: "Press"))
+    expect(flash[:notice]).to start_with("Gave 2 tickets to Walter Skinner.")
 
+    expect {
+      post manage_ticket_listing_comps_path(listing), params: { name: "Monica Reyes", quantity: "1", tier_id: general.id, email_them: "1" }
+    }.not_to have_enqueued_job(TicketOrderConfirmationJob) # no email to send to
     get manage_ticket_listing_path(listing, guests: "comps")
     expect(response.body).to include("Walter Skinner", "Monica Reyes", "Comp")
 
-    post manage_ticket_listing_comps_path(listing), params: { guests: "Too Many, 50", tier_id: general.id }
+    post manage_ticket_listing_comps_path(listing), params: { name: "Too Many", quantity: "50", tier_id: general.id }
     expect(response).to have_http_status(:unprocessable_entity)
-    expect(response.body).to include("more than the seats left", "Too Many, 50")
+    expect(response.body).to include("more than the seats left", 'value="Too Many"')
   end
 
   it "goes back where it came from after a status change" do

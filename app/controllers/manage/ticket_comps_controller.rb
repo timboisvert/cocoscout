@@ -1,24 +1,27 @@
 # frozen_string_literal: true
 
 module Manage
-  # Giving tickets away from a show's page (TicketComps): names and emails,
-  # typed or pasted, one ticket type, and each guest gets their tickets.
+  # Giving tickets away from a show's page (TicketComps): one person at a
+  # time — name, email, how many, which ticket type — and they get their
+  # tickets. (A pasted list can come back if a theater asks for it.)
   class TicketCompsController < Manage::TicketingBaseController
     before_action :set_listing
 
     def new
-      @tier_id = (@tiers.find { |t| t.price_cents.zero? } || @tiers.first)&.id
+      @tier_id = params[:tier_id].presence&.to_i || (@tiers.find { |t| t.price_cents.zero? } || @tiers.first)&.id
+      @note = params[:note]
     end
 
     def create
       tier = @tiers.find { |t| t.id == params[:tier_id].to_i }
-      guests = TicketComps.parse(params[:guests], listing: @listing, default_tier: tier)
-      orders = TicketComps.give!(@listing, guests, by: Current.user, note: params[:note], email_them: params[:email_them] == "1")
-      count = orders.sum { |order| order.tickets.size }
-      redirect_to manage_ticket_listing_path(@listing, anchor: "guests"),
-                  notice: "Gave #{helpers.pluralize(count, 'ticket')} to #{helpers.pluralize(orders.size, 'person')}."
+      guest = TicketComps::Guest.new(name: params[:name].to_s.squish, email: params[:email].to_s.strip.downcase.presence,
+                                     tier: tier, quantity: params[:quantity].to_i)
+      order = TicketComps.give!(@listing, [ guest ], by: Current.user, note: params[:note], email_them: params[:email_them] == "1").sole
+      # Back here for the next guest; the show page lists them all.
+      redirect_to manage_new_ticket_listing_comps_path(@listing, tier_id: tier&.id, note: params[:note].presence),
+                  notice: "Gave #{helpers.pluralize(order.tickets.size, 'ticket')} to #{guest.name}. They're on the guest list; add the next person below."
     rescue TicketComps::Error => e
-      @guests_text = params[:guests]
+      @name, @email, @quantity = params[:name], params[:email], params[:quantity]
       @tier_id = tier&.id
       @note = params[:note]
       @email_them = params[:email_them] == "1"
