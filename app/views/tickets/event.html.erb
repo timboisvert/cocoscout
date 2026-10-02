@@ -5,22 +5,6 @@
   place = [ venue&.dig(:name), venue&.dig(:room) ].compact.uniq.join(" · ")
   address = venue && [ venue[:address1], venue[:city], venue[:state] ].compact_blank.join(", ")
   map_url = address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ venue[:name], address ].compact.join(', '))}" : nil
-  note = public_listing_note(@listing, @inventory)
-  selling = @listing.selling? && !@inventory.sold_out? && !@preview
-  max_per_order = @listing.effective_max_per_order
-  taxed = @tax && @tax.lines.any? { |line| !line.exempt }
-  tax_added = taxed && @tax.mode == "added"
-  tax_label = taxed ? ticket_tax_label(@tax.lines.reject(&:exempt)) : "Tax"
-  # Tap a price (or the total) to see what it's made of: a small panel
-  # opens under it. Tap, not hover, so phones get it too.
-  summary_class = "list-none [&::-webkit-details-marker]:hidden cursor-pointer"
-  panel_class = "mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 space-y-1"
-  # What each price includes, so the total never surprises anyone.
-  price_note = if @listing.buyer_pays_fees?
-    taxed ? "incl. fees & tax" : "incl. fees"
-  elsif taxed
-    "incl. tax"
-  end
   page_url = tickets_event_url(org: @ticketing_profile.slug, event: @listing.slug)
   image, page_image = ticket_page_image(@listing)
   image_url = image && url_for(image)
@@ -94,111 +78,8 @@
     </p>
   </div>
 
-  <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-    <% if show.canceled || @listing.status == "canceled" %>
-      <p class="px-5 py-6 text-center text-gray-700">This show was canceled.</p>
-    <% elsif !selling %>
-      <p class="px-5 py-6 text-center text-gray-700">
-        <%= note || (@preview ? "This page is a preview. Buyers can't see it until the show is on sale." : "Tickets aren't on sale right now.") %>
-      </p>
-    <% elsif @tiers.empty? %>
-      <p class="px-5 py-6 text-center text-gray-700">No tickets are on sale right now.</p>
-    <% else %>
-      <%= form_with url: tickets_start_checkout_path(org: @ticketing_profile.slug, event: @listing.slug), method: :post,
-            data: { turbo: false, controller: "ticket-picker",
-                    ticket_picker_listing_id_value: @listing.id,
-                    ticket_picker_hold_url_value: tickets_checkout_hold_path(token: "TOKEN", **embed_params),
-                    ticket_picker_fee_mode_value: @listing.effective_fee_mode,
-                    ticket_picker_platform_fee_value: TicketPricing::PLATFORM_FEE_CENTS,
-                    ticket_picker_per_mille_value: TicketPricing::PROCESSING_PER_MILLE,
-                    ticket_picker_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS,
-                    ticket_picker_tax_label_value: tax_label } do %>
-        <%= hidden_field_tag :code, @code, data: { ticket_picker_target: "code" } if @code %>
-        <%= hidden_field_tag :hold, nil, id: nil, data: { ticket_picker_target: "holdInput" } %>
-        <%= hidden_field_tag :embed, "1" if embed? %>
-        <%= render "tickets/bot_trap", id: "event_website" %>
-        <ul class="divide-y divide-gray-100">
-          <% @tiers.each do |tier| %>
-            <% left = @inventory.remaining(tier: tier) %>
-            <% most = [ left || max_per_order, max_per_order ].min %>
-            <% added_tax = tax_added ? TaxCalculator.for_ticket(@listing, tier, tier.price_cents).added_cents : 0 %>
-            <% breakdown = tier.free? ? nil : ticket_price_breakdown(@listing, tier) %>
-            <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>" data-tier-id="<%= tier.id %>"
-                data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
-                data-left="<%= left %>" data-per-order="<%= max_per_order %>">
-              <div class="min-w-0 flex-1">
-                <div class="font-semibold text-gray-900"><%= tier.name %></div>
-                <% if tier.description.present? %><div class="text-sm text-gray-600"><%= tier.description %></div><% end %>
-                <% if breakdown && breakdown.rows.size > 1 %>
-                  <details class="mt-0.5">
-                    <summary class="<%= summary_class %> text-sm font-semibold text-gray-900">
-                      <span class="underline decoration-dotted decoration-gray-400 underline-offset-4"><%= ticket_price(breakdown.total_cents) %></span>
-                      <% if price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
-                    </summary>
-                    <dl class="<%= panel_class %> max-w-[17rem]">
-                      <% breakdown.rows.each do |label, cents| %>
-                        <div class="flex justify-between gap-4"><dt><%= label %></dt><dd class="tabular-nums"><%= number_to_currency(cents / 100.0) %></dd></div>
-                      <% end %>
-                      <div class="flex justify-between gap-4 pt-1 border-t border-gray-200 font-semibold text-gray-900">
-                        <dt>One ticket</dt><dd class="tabular-nums"><%= number_to_currency(breakdown.total_cents / 100.0) %></dd>
-                      </div>
-                    </dl>
-                  </details>
-                <% else %>
-                  <div class="text-sm font-semibold text-gray-900 mt-0.5">
-                    <%= ticket_price(TicketPricing.all_in_price_cents(@listing, tier)) %>
-                    <% if !tier.free? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
-                  </div>
-                <% end %>
-                <% if left && left.positive? && left <= 10 %><div class="text-xs font-semibold text-amber-700">Only <%= left %> left</div><% end %>
-              </div>
-              <%= hidden_field_tag "quantities[#{tier.id}]", 0, data: { ticket_picker_target: "input" } %>
-              <% if most.positive? %>
-                <div class="flex items-center gap-2">
-                  <%= render "shared/button", text: "−", variant: "secondary", size: "xs", type: :button, title: "One fewer #{tier.name}",
-                        classes: "w-11 h-11 !p-0 !rounded-full !text-xl disabled:opacity-40 disabled:cursor-default",
-                        data: { ticket_picker_target: "minus", action: "ticket-picker#decrement" } %>
-                  <span class="w-6 text-center text-lg font-semibold tabular-nums" data-ticket-picker-target="count" aria-live="polite">0</span>
-                  <%= render "shared/button", text: "+", variant: "outline-pink", size: "xs", type: :button, title: "One more #{tier.name}",
-                        classes: "w-11 h-11 !p-0 !rounded-full !text-xl disabled:opacity-40 disabled:cursor-default",
-                        data: { ticket_picker_target: "plus", action: "ticket-picker#increment" } %>
-                </div>
-              <% else %>
-                <span class="text-sm font-medium text-gray-600">Sold out</span>
-              <% end %>
-            </li>
-          <% end %>
-        </ul>
-        <div class="px-5 py-4 border-t border-gray-100 space-y-3">
-          <%# Back from checkout: their tickets are still held, and say so. %>
-          <p class="hidden text-sm text-center text-pink-700 bg-pink-50 rounded-lg px-3 py-2" data-ticket-picker-target="holdNote" aria-live="polite"></p>
-          <%# Tap the total for every cent named, the same lines checkout shows. %>
-          <details data-ticket-picker-target="totalDetails">
-            <summary class="<%= summary_class %> flex items-baseline justify-between" data-ticket-picker-target="totalSummary">
-              <span class="text-gray-700" data-ticket-picker-target="summary">Choose your tickets</span>
-              <span class="text-lg font-bold tabular-nums text-gray-900 decoration-dotted decoration-gray-400 underline-offset-4" data-ticket-picker-target="total"></span>
-            </summary>
-            <dl class="<%= panel_class %> text-sm" data-ticket-picker-target="breakdown"></dl>
-          </details>
-          <%= render "shared/button", text: "Continue to checkout", variant: "primary", size: "jumbo", type: :submit, classes: "disabled:opacity-50",
-                data: { ticket_picker_target: "submit" } %>
-          <% if @code %>
-            <p class="text-xs text-center text-gray-600">Your code <span class="font-medium uppercase"><%= @code %></span> is applied at checkout.</p>
-          <% end %>
-        </div>
-      <% end %>
-      <details class="border-t border-gray-100 px-5 py-3 text-sm" <%= "open" if @code %>>
-        <summary class="cursor-pointer text-pink-700 hover:text-pink-800 text-center list-none">Have a code?</summary>
-        <%= form_with url: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug), method: :get,
-              data: { turbo: false }, class: "mt-3 flex gap-2" do %>
-          <%= hidden_field_tag :embed, "1" if embed? %>
-          <%= text_field_tag :code, @code, placeholder: "Discount or access code", "aria-label": "Discount or access code",
-                class: "flex-1 min-w-0 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 uppercase placeholder:normal-case placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-          <%= render "shared/button", text: "Apply", variant: "secondary", size: "small", type: :submit %>
-        <% end %>
-      </details>
-    <% end %>
-  </div>
+  <%= render "tickets/picker", listing: @listing, tiers: @tiers, inventory: @inventory, tax: @tax, code: @code, preview: @preview,
+        profile: @ticketing_profile, code_url: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug) %>
 
   <% if description %>
     <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">

@@ -45,10 +45,25 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).to include("Preview — not public yet")
     end
 
+    # The production's page is where most people buy: pick a date, then that
+    # date's tickets, on one page (R3-C).
     it "has a page for each production's dates, at its public key, never its id" do
+      later = create(:show, production: production, date_and_time: 12.days.from_now.change(hour: 19, min: 30))
+      later_listing = TicketListing.create!(show: later, status: "on_sale")
+      later_listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 1)
+      create(:ticket, ticket_order: create(:ticket_order, ticket_listing: later_listing, status: "paid", expires_at: nil),
+                      ticket_tier: later_listing.ticket_tiers.first)
+
       get tickets_event_path(org: "starsandgarters", event: production.public_key)
-      expect(response.body).to include("Every scene turns into an animal.").and include(event_path)
+      page = response.body
+      expect(page).to include("Every scene turns into an animal.", 'aria-label="Pick a date"', "Sold out", "Continue to checkout",
+                              %(name="quantities[#{general.id}]"), show.date_and_time.strftime("%A, %B %-d · %-l:%M %p"))
+      expect(page).to include(%(href="/t/starsandgarters/#{production.public_key}?date=#{later_listing.slug}"))
       expect(production.public_key).to be_present
+
+      get tickets_event_path(org: "starsandgarters", event: production.public_key, date: later.date_and_time.to_date.iso8601)
+      expect(response.body).to include(later.date_and_time.strftime("%A, %B %-d · %-l:%M %p"), "Sold out")
+      expect(response.body).not_to include("Continue to checkout")
 
       get event_path
       expect(response.body).to include(%(href="/t/starsandgarters/#{production.public_key}"))
