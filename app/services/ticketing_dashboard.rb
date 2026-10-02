@@ -136,7 +136,7 @@ class TicketingDashboard
     if count.positive?
       list << Alert.new(eyebrow: "Not on sale yet", headline: "#{count} #{count == 1 ? 'show' : 'shows'} in the next two weeks #{count == 1 ? "isn't" : "aren't"} on sale",
                         body: "They're drafts: nobody can buy tickets until you put them on sale.",
-                        actions: [ { text: "See drafts", path: routes.manage_ticket_listings_path(filter: "drafts") } ], tone: :amber)
+                        actions: [ count == 1 ? { text: "Open it", path: routes.manage_ticket_listing_path(drafts_soon.first) } : { text: "See shows", path: routes.manage_ticket_listings_path } ], tone: :amber)
     end
     if BalanceWithdrawal.where(organization_id: @organization.id, status: "failed").where(created_at: 14.days.ago..).exists?
       list << Alert.new(eyebrow: "Withdrawal", headline: "A withdrawal to your bank didn't go through",

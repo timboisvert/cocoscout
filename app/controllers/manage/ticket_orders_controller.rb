@@ -17,6 +17,8 @@ module Manage
                      .includes(:tickets, ticket_listing: %i[show production]).order(paid_at: :desc, id: :desc)
       @listing = Current.organization.ticket_listings.find_by(id: params[:listing_id]) if params[:listing_id].present?
       scope = scope.where(ticket_listing: @listing) if @listing
+      @production = Current.organization.productions.find_by(id: params[:production_id]) if params[:production_id].present? && !@listing
+      scope = scope.where(ticket_listing_id: Current.organization.ticket_listings.where(production: @production).select(:id)) if @production
       @status = params[:status].presence_in(STATUS_FILTERS)
       scope = scope.where(status: @status == "paid" ? %w[paid partially_refunded] : %w[refunded partially_refunded]) if @status
       @query = params[:q].to_s.strip

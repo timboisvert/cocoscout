@@ -1,0 +1,145 @@
+<% content_for :title, "#{@production.name} · Ticketing" %>
+<%
+  setup = @setup
+  on = setup&.enabled?
+  public_url = tickets_production_url(org: ticketing_profile.slug, production: @production.id)
+  settings_path = manage_edit_production_ticketing_path(@production)
+  which = if setup.nil? then nil
+  elsif setup.event_matching == "manual" then "Dates picked by hand"
+  elsif setup.event_matching == "event_types" then "#{setup.event_type_filter.map { |t| t.humanize.pluralize }.to_sentence.presence || 'All performances'}"
+  else "All performances"
+  end
+  opens = setup && (setup.schedule_mode == "relative" ? "sales open #{pluralize(setup.opens_days_before, 'day')} before each date" : "sales open as soon as a date is listed")
+  auto_sync = on && setup.event_matching != "manual"
+  held_cents = @listings.reject(&:released_at).sum { |listing| @stats[listing.id]&.net_cents.to_i }
+  sold_upcoming = @filter == "upcoming" ? @listings.sum { |listing| @stats[listing.id]&.sold.to_i } : nil
+  icons = {
+    cog: [ "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z", "M15 12a3 3 0 11-6 0 3 3 0 016 0z" ],
+    orders: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01",
+    eye: [ "M15 12a3 3 0 11-6 0 3 3 0 016 0z", "M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" ],
+    calendar: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+    tag: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+  }
+  actions = [
+    { text: "Which dates", description: which ? "#{which}; #{opens}" : "Choose the dates to sell", path: manage_edit_production_ticketing_path(@production, section: "dates"), icon: icons[:calendar] },
+    { text: "Tickets and prices", description: setup&.ticket_tiers&.any? ? setup.ticket_tiers.map(&:name).to_sentence : "Set the ticket types", path: manage_edit_production_ticketing_path(@production, section: "tickets"), icon: icons[:tag] },
+    { text: "Sales & page", description: "Seats, fees, words and notes", path: manage_edit_production_ticketing_path(@production, section: "sales"), icon: icons[:cog] },
+    { text: "Orders", description: "Every order for these dates", path: manage_ticket_orders_path(production_id: @production.id), icon: icons[:orders] },
+    ({ text: "Ticket page", description: "What buyers see", path: public_url, icon: icons[:eye], target: "_blank" } if on || @listings.any?)
+  ]
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ] ],
+    text: @production.name,
+    links: []
+  } %>
+
+  <%# Where it stands: on or off, which dates, and the link to share. %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 mb-6">
+    <div class="flex flex-wrap items-center gap-2">
+      <% if on %>
+        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-100 text-green-700">Selling</span>
+      <% elsif setup %>
+        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600">Off</span>
+      <% else %>
+        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600">Not set up</span>
+      <% end %>
+      <span class="text-sm text-gray-900"><%= which ? "#{which} · #{opens}" : "Ticketing isn't set up for this production yet." %></span>
+    </div>
+    <% if on || @listings.any? %>
+      <%= render "shared/copy_url", url: public_url, show_qr: true, qr_title: "Scan for tickets" %>
+    <% end %>
+  </div>
+
+  <% unless on %>
+    <%= render "shared/alert_panel",
+          eyebrow: setup ? "Off" : "Set up",
+          headline: setup ? "Ticketing is off for #{@production.name}" : "Sell tickets for every date of #{@production.name}",
+          body: "Choose which dates are included and when their sales open, set the ticket prices once, then turn it on.",
+          actions: [ { text: setup ? "Turn it on" : "Set it up", path: manage_edit_production_ticketing_path(@production, section: "dates") } ] %>
+  <% end %>
+  <% if @unmatched.any? %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Still on sale",
+          headline: "#{pluralize(@unmatched.size, 'date')} no longer #{@unmatched.one? ? 'matches' : 'match'} your settings",
+          body: "#{@unmatched.one? ? 'It has' : 'They have'} tickets sold, so #{@unmatched.one? ? 'it stays' : 'they stay'} on sale. Cancel one from its page if it isn't happening.",
+          tone: :amber %>
+  <% end %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">
+    <div class="min-w-0">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-sm font-semibold text-gray-900">Dates <span class="font-normal text-gray-500">· <%= pluralize(@listings.size, @filter == "past" ? "past date" : "date") %></span></h2>
+          <% if auto_sync %>
+            <span class="inline-flex items-center gap-1 text-xs font-medium text-pink-600">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              New dates join on their own
+            </span>
+          <% end %>
+        </div>
+        <div class="px-5 py-3 border-b border-gray-100">
+          <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+            { label: "Show", filters: [
+              { text: "Upcoming", path: manage_production_ticketing_path(@production), active: @filter == "upcoming" },
+              { text: "Past", path: manage_production_ticketing_path(@production, dates: "past"), active: @filter == "past" }
+            ] }
+          ] %>
+        </div>
+        <% if @listings.any? %>
+          <div class="p-3 space-y-2">
+            <% @listings.each do |listing| %>
+              <div>
+                <%= render "shared/show_row", show: listing.show, link_path: manage_ticket_listing_path(listing), show_canceled: true,
+                      right_panel: :ticket_sales, ticket_listing: listing, ticket_stats: @stats[listing.id] %>
+                <% chips = [ ("Own prices" unless listing.inherits_tiers || setup.nil?), ("Not in your selection" if @unmatched.include?(listing)) ].compact %>
+                <% if chips.any? %>
+                  <div class="mt-1 ml-1 flex gap-1.5">
+                    <% chips.each do |chip| %><span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600"><%= chip %></span><% end %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="px-5 py-8 text-center text-sm text-gray-600">
+            <% if @filter == "past" %>
+              No past dates were sold here.
+            <% elsif on %>
+              No upcoming dates match yet. <%= auto_sync ? "New ones join as soon as they're on the calendar." : "Pick some on the Dates tab." %>
+            <% else %>
+              No dates are on sale.
+            <% end %>
+          </p>
+        <% end %>
+      </div>
+    </div>
+
+    <aside class="space-y-6">
+      <%= render "shared/action_list", items: actions %>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">Money</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between gap-4">
+            <span class="text-gray-600">Held for upcoming dates</span>
+            <span class="font-medium tabular-nums text-gray-900"><%= number_to_currency(held_cents / 100.0) %></span>
+          </div>
+          <% if sold_upcoming %>
+            <div class="flex justify-between gap-4">
+              <span class="text-gray-600">Tickets sold for them</span>
+              <span class="tabular-nums text-gray-900"><%= sold_upcoming %></span>
+            </div>
+          <% end %>
+        </div>
+        <p class="text-xs text-gray-500 mt-3">Each date's money becomes yours to spend the day after it.</p>
+        <div class="mt-4 pt-4 border-t border-gray-100 text-sm">
+          <%= link_to "Your balance", manage_ticket_balance_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>

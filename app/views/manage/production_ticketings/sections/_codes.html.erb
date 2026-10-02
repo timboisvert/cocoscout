@@ -1,0 +1,43 @@
+<%# Discount codes for every date of the production. Each has its own form,
+    so the remove modals sit outside any other form. Locals: setup, production. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  codes = production.organization.ticket_discount_codes.where(production: production, active: true).order(:code).to_a
+%>
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-200">
+    <h3 class="font-semibold text-gray-900">Discount codes</h3>
+    <p class="text-sm text-gray-600 mt-1">Codes buyers can enter at checkout, good for every date of <%= production.name %>. A single date can have its own codes too, on its Settings.</p>
+  </div>
+  <% if codes.any? %>
+    <div class="divide-y divide-gray-100">
+      <% codes.each do |code| %>
+        <div class="flex items-center justify-between gap-3 px-5 py-3">
+          <div class="min-w-0">
+            <span class="font-mono text-sm font-semibold text-gray-900"><%= code.code %></span>
+            <span class="text-sm text-gray-600"> · <%= code.kind == "percent" ? "#{format('%g', code.percent)}% off" : "#{number_to_currency(code.amount_cents / 100.0)} off" %></span>
+            <span class="text-xs text-gray-500"> · used <%= pluralize(code.uses_count, "time") %><%= " of #{code.max_uses}" if code.max_uses %></span>
+          </div>
+          <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-code-#{code.id}" } %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  <%= form_with scope: :ticket_discount_code, url: manage_production_ticketing_codes_path(production), method: :post, class: "px-5 py-5 border-t border-gray-100" do |cf| %>
+    <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem] gap-2">
+      <%= cf.text_field :code, placeholder: "FRIENDS", "aria-label": "Code", class: "#{input_class} uppercase" %>
+      <%= cf.select :kind, options_for_select([ [ "$ off", "fixed" ], [ "% off", "percent" ] ]), {}, "aria-label": "Kind", class: input_class %>
+      <%= cf.text_field :amount, inputmode: "decimal", placeholder: "5", "aria-label": "Amount", class: input_class %>
+      <%= cf.number_field :max_uses, min: 1, placeholder: "Uses", "aria-label": "Most uses", class: input_class %>
+    </div>
+    <div class="mt-3">
+      <%= render "shared/button", text: "Add code", variant: "secondary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>
+<% codes.each do |code| %>
+  <%= render "shared/confirm_modal", id: "confirm-remove-code-#{code.id}", title: "Remove #{code.code}?",
+        message: "Buyers won't be able to use it anymore. Orders that already used it keep their discount.",
+        confirm_text: "Remove code", url: manage_production_ticketing_code_path(production, code_id: code.id), method: :delete %>
+<% end %>

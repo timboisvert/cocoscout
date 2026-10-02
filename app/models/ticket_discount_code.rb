@@ -21,6 +21,21 @@ class TicketDiscountCode < ApplicationRecord
   validates :max_uses, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validate :one_scope
 
+  # A code typed into a manager's form: "$ off" or "% off", an amount like
+  # "5" or "$5.00" or "20%", and optionally the most uses.
+  def self.attributes_from_form(raw)
+    amount = raw[:amount].to_s.delete("$,%").strip
+    attrs = { code: raw[:code], kind: raw[:kind].presence_in(KINDS) || "fixed", max_uses: raw[:max_uses].presence }
+    if attrs[:kind] == "percent"
+      attrs[:percent] = amount.presence && BigDecimal(amount)
+    else
+      attrs[:amount_cents] = amount.presence && (BigDecimal(amount) * 100).round.to_i
+    end
+    attrs
+  rescue ArgumentError
+    { code: raw[:code], kind: "fixed" }
+  end
+
   def uses_count
     ticket_orders.paid_like.count
   end

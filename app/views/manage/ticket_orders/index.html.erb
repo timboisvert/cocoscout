@@ -1,6 +1,6 @@
 <% content_for :title, "Orders" %>
 <%
-  status_path = ->(status) { manage_ticket_orders_path(status: status, listing_id: @listing&.id, q: @query.presence) }
+  status_path = ->(status) { manage_ticket_orders_path(status: status, listing_id: @listing&.id, production_id: @production&.id, q: @query.presence) }
   show_options = [ { value: "", text: "All shows" } ] +
                  @listings.map { |l| { value: l.id, text: "#{l.show.date_and_time.strftime('%b %-d')} · #{l.display_title}" } }
 %>
@@ -15,6 +15,7 @@
 
   <%= form_with url: manage_ticket_orders_path, method: :get, class: "mb-3" do %>
     <%= hidden_field_tag :listing_id, @listing&.id %>
+    <%= hidden_field_tag :production_id, @production&.id if @production %>
     <%= hidden_field_tag :status, @status %>
     <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
       { label: "Find", partial: "shared/filters/search_input", locals: { placeholder: "Name, email or code", value: @query } },
@@ -59,11 +60,11 @@
         <div class="flex gap-2">
           <% if @pagy.previous %>
             <%= render "shared/button", text: "Previous", variant: "secondary", size: "small",
-                  path: manage_ticket_orders_path(page: @pagy.previous, status: @status, listing_id: @listing&.id, q: @query.presence) %>
+                  path: manage_ticket_orders_path(page: @pagy.previous, status: @status, listing_id: @listing&.id, production_id: @production&.id, q: @query.presence) %>
           <% end %>
           <% if @pagy.next %>
             <%= render "shared/button", text: "Next", variant: "secondary", size: "small",
-                  path: manage_ticket_orders_path(page: @pagy.next, status: @status, listing_id: @listing&.id, q: @query.presence) %>
+                  path: manage_ticket_orders_path(page: @pagy.next, status: @status, listing_id: @listing&.id, production_id: @production&.id, q: @query.presence) %>
           <% end %>
         </div>
       </div>

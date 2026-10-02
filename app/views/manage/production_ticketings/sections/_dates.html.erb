@@ -1,0 +1,113 @@
+<%# Which dates the production sells, and when their sales open and close —
+    the same three ways sign-ups pick a repeating form's events.
+    Locals: setup, production. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  shows = production.shows.where(canceled: false).where("date_and_time > ?", Time.current).includes(:location).order(:date_and_time).limit(200).to_a
+  selected_ids = setup.persisted? ? setup.production_ticketing_shows.pluck(:show_id).to_set : Set.new
+  matching = setup.event_matching
+  option_class = ->(value) { "block cursor-pointer p-4 rounded-lg border-2 transition-colors hover:border-pink-300 #{matching == value ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50'}" }
+%>
+<%= form_with model: setup, scope: :production_ticketing, url: manage_update_production_ticketing_path(production, section: "dates"), method: :patch, class: "space-y-6" do |f| %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5">
+    <label class="flex items-start gap-3 cursor-pointer">
+      <%= f.check_box :enabled, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+      <span>
+        <span class="block text-sm font-medium text-gray-900">Sell tickets for <%= production.name %></span>
+        <span class="block text-xs text-gray-600 mt-0.5">When this is on, every date you choose below is listed and goes on sale on its schedule.<%= " Set the ticket prices on the Tickets tab first." unless setup.persisted? && setup.ticket_tiers.any? %></span>
+      </span>
+    </label>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-5" data-controller="event-matching" data-event-matching-selected-value="<%= matching %>">
+    <h3 class="font-semibold text-gray-900 mb-4">Which dates?</h3>
+    <div class="space-y-3">
+      <div class="<%= option_class.call('all') %>" data-event-matching-target="option" data-value="all" data-action="click->event-matching#select">
+        <%= f.radio_button :event_matching, "all", class: "sr-only", data: { event_matching_target: "input" } %>
+        <p class="font-medium text-gray-900">All performances</p>
+        <p class="text-sm text-gray-500 mt-1">Every show, class and workshop of <%= production.name %>, never rehearsals or meetings. New ones join on their own.</p>
+      </div>
+
+      <div class="<%= option_class.call('event_types') %>" data-event-matching-target="option" data-value="event_types" data-action="click->event-matching#select">
+        <%= f.radio_button :event_matching, "event_types", class: "sr-only", data: { event_matching_target: "input" } %>
+        <p class="font-medium text-gray-900">By event type</p>
+        <p class="text-sm text-gray-500 mt-1">Only some kinds of events. New ones of those kinds join on their own.</p>
+      </div>
+      <div data-event-matching-target="eventTypes" class="<%= matching == 'event_types' ? '' : 'hidden' %> ml-4">
+        <div class="flex flex-wrap gap-2">
+          <% EventTypes.for_select.each do |label, key| %>
+            <% chosen = setup.event_type_filter.include?(key.to_s) %>
+            <div class="px-3 py-1.5 rounded-full border-2 cursor-pointer transition-colors text-sm <%= chosen ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-gray-300 bg-white text-gray-700' %> hover:border-pink-300"
+                 data-event-matching-target="eventTypeChip" data-value="<%= key %>" data-action="click->event-matching#selectEventType">
+              <input type="checkbox" name="production_ticketing[event_type_filter][]" value="<%= key %>" <%= "checked" if chosen %> class="sr-only" data-event-matching-target="eventTypeInput">
+              <%= label %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="<%= option_class.call('manual') %>" data-event-matching-target="option" data-value="manual" data-action="click->event-matching#select">
+        <%= f.radio_button :event_matching, "manual", class: "sr-only", data: { event_matching_target: "input" } %>
+        <p class="font-medium text-gray-900">Specific dates</p>
+        <p class="text-sm text-gray-500 mt-1">Only the dates you pick. New ones don't join until you pick them.</p>
+      </div>
+      <div data-event-matching-target="manual" class="<%= matching == 'manual' ? '' : 'hidden' %> ml-4 space-y-2 max-h-80 overflow-y-auto" data-controller="multi-event-select">
+        <input type="hidden" name="selected_show_ids[]" value="">
+        <% shows.each do |show| %>
+          <% chosen = selected_ids.include?(show.id) %>
+          <div class="flex items-center px-3 py-2 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= chosen ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>"
+               data-multi-event-select-target="row" data-show-id="<%= show.id %>" data-action="click->multi-event-select#toggle">
+            <input type="checkbox" name="selected_show_ids[]" value="<%= show.id %>" <%= "checked" if chosen %> class="sr-only" data-multi-event-select-target="input">
+            <div class="flex-shrink-0 w-12 mr-3 flex items-center gap-1.5">
+              <span class="text-xl leading-none font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></span>
+              <span class="text-[10px] leading-tight uppercase">
+                <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+                <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
+              </span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm truncate"><%= show.display_name %></div>
+              <div class="text-xs text-gray-600"><%= show.time_range_display %><%= " · #{show.location.name}" if show.location %></div>
+            </div>
+            <div class="ml-2" data-checkmark>
+              <% if chosen %>
+                <div class="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></div>
+              <% else %>
+                <div class="w-6 h-6 rounded-full border-2 border-gray-300"></div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% if shows.empty? %>
+          <p class="text-sm text-gray-500 py-4 text-center">No upcoming dates on the calendar.</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+    <h3 class="font-semibold text-gray-900">When sales open and close</h3>
+    <div class="space-y-2">
+      <label class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+        <%= f.radio_button :schedule_mode, "relative", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-900 flex flex-wrap items-center gap-2">
+          Online sales open
+          <%= f.number_field :opens_days_before, min: 1, max: 365, "aria-label": "Days before each date",
+                class: "w-20 px-3 py-1.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          days before each date
+        </span>
+      </label>
+      <label class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+        <%= f.radio_button :schedule_mode, "immediate", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-900">As soon as a date is listed</span>
+      </label>
+    </div>
+    <div>
+      <label for="production_ticketing_online_close_minutes" class="block text-sm font-medium text-gray-700 mb-1.5">Online sales close</label>
+      <%= f.select :online_close_minutes, Manage::ProductionTicketingsController::CLOSE_CHOICES, {}, class: "#{input_class} max-w-xs" %>
+      <p class="text-xs text-gray-500 mt-1">After that it's door sales. One date can still have its own times.</p>
+    </div>
+  </div>
+
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>

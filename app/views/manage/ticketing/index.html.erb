@@ -64,7 +64,7 @@
       <section>
         <div class="flex items-baseline justify-between mb-2">
           <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Coming up <span class="font-normal">(<%= d.upcoming_count %>)</span></h2>
-          <%= link_to "Put shows on sale", manage_new_ticket_listing_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+          <%= link_to "Sell tickets for a production", manage_new_production_ticketing_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
         </div>
         <% if coming_up.any? %>
           <div class="space-y-2">

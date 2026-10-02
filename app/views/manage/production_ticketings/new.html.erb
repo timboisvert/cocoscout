@@ -1,19 +1,19 @@
-<% content_for :title, "Put shows on sale" %>
+<% content_for :title, "Sell tickets for a production" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows on sale", manage_ticket_listings_path ] ],
-    text: "Put shows on sale",
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ] ],
+    text: "Sell tickets for a production",
     links: []
   } %>
 
   <div class="max-w-2xl">
     <h2 class="text-lg font-semibold text-gray-900 mb-1">Which production?</h2>
-    <p class="text-sm text-gray-600 mb-4">You'll pick its dates and set the ticket prices next.</p>
+    <p class="text-sm text-gray-600 mb-4">You'll choose which of its dates to sell and set the ticket prices once, for all of them.</p>
     <%= render "shared/production_selector",
           productions: @productions,
-          url: manage_ticket_listings_select_production_path,
+          url: manage_production_ticketings_path,
           cancel_path: manage_ticket_listings_path %>
   </div>
 </div>

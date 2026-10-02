@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 module Manage
-  # Shows on sale: putting a production's dates on sale, and running each one —
-  # prices and seats, sales window, fee switch, discount codes. Nothing goes
-  # on sale by itself; a manager puts it on sale or schedules when sales open.
+  # Ticketing's Shows: the productions selling tickets (each opens its
+  # production's ticketing page, ProductionTicketingsController), and running
+  # each date — its numbers and guests, prices and seats, sales window, fee
+  # switch, discount codes.
   class TicketListingsController < Manage::TicketingBaseController
-    FILTERS = %w[upcoming drafts past].freeze
     STATUS_ACTIONS = {
       "on_sale" => %w[draft paused closed],
       "paused" => %w[on_sale],
@@ -17,16 +17,18 @@ module Manage
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel_review cancel
                                            change_review tell_change mark_change_told]
 
+    # Productions first: every production selling tickets, by its next date.
     def index
-      @filter = params[:filter].presence_in(FILTERS) || "upcoming"
-      scope = Current.organization.ticket_listings.joins(:show)
-                     .includes(:ticket_tiers, show: %i[production location location_space])
-      @listings =
-        case @filter
-        when "drafts" then scope.where(status: "draft").order("shows.date_and_time")
-        when "past" then scope.where("shows.date_and_time < ?", Time.current).order("shows.date_and_time DESC").limit(100)
-        else scope.where("shows.date_and_time >= ?", Time.current).where.not(status: "draft").order("shows.date_and_time")
-        end
+      org = Current.organization
+      ids = org.ticket_listings.distinct.pluck(:production_id) | ProductionTicketing.where(organization: org).pluck(:production_id)
+      upcoming = org.ticket_listings.joins(:show).where.not(status: "canceled").where(shows: { canceled: false })
+                    .where("shows.date_and_time >= ?", Time.current)
+      @next_dates = upcoming.group(:production_id).minimum("shows.date_and_time")
+      @date_counts = upcoming.group(:production_id).count
+      @sold_this_week = Ticket.joins(:ticket_order, :ticket_listing).where(ticket_listing_id: upcoming.select(:id), status: Ticket::SOLD_STATUSES)
+                              .where(ticket_orders: { paid_at: 7.days.ago.. }).group("ticket_listings.production_id").count
+      @productions = org.productions.where(id: ids).includes(:production_ticketing, posters: { image_attachment: :blob }).to_a
+                        .sort_by { |production| [ @next_dates[production.id] ? 0 : 1, @next_dates[production.id] || Time.current, production.name ] }
     end
 
     # One show's tickets: the numbers (Ticketing::ListingStats), the guest
@@ -65,41 +67,6 @@ module Manage
       render layout: false
     end
 
-    # Which production? Single-production orgs skip the picker.
-    def new
-      productions = sellable_productions
-      if params[:production_id].present?
-        @production = productions.find(params[:production_id])
-        @shows = @production.shows.where(canceled: false, event_type: EventTypes.revenue_event_types)
-                            .where("date_and_time >= ?", Time.current)
-                            .includes(:ticket_listing, :location_space).order(:date_and_time)
-        @tier_rows = suggested_tiers(@production)
-      elsif productions.one?
-        redirect_to manage_new_ticket_listing_path(production_id: productions.first.id)
-      else
-        @productions = productions.order(:name).to_a
-        render :select_production
-      end
-    end
-
-    def select_production
-      production = sellable_productions.find(params[:production_id])
-      redirect_to manage_new_ticket_listing_path(production_id: production.id)
-    end
-
-    def create
-      production = sellable_productions.find(params[:production_id])
-      shows = production.shows.where(id: Array(params[:show_ids]), canceled: false).order(:date_and_time).to_a
-      tiers = TicketListingBuilder.parse_tiers(tier_rows)
-      status, on_sale_at = opening_choice
-
-      result = TicketListingBuilder.create_for!(shows: shows, tiers: tiers, status: status, on_sale_at: on_sale_at)
-      redirect_to manage_ticket_listings_path(filter: status == "draft" ? "drafts" : "upcoming"),
-                  notice: created_notice(result, status, on_sale_at)
-    rescue ArgumentError => e
-      redirect_to manage_new_ticket_listing_path(production_id: production&.id), alert: e.message
-    end
-
     def edit; end
 
     def update
@@ -128,7 +95,7 @@ module Manage
 
     def destroy
       if @listing.destroy
-        redirect_to manage_ticket_listings_path(filter: "drafts"), notice: "Removed #{@listing.display_title} from Ticketing."
+        redirect_to manage_production_ticketing_path(@listing.production), notice: "Removed #{@listing.display_title} from Ticketing."
       else
         redirect_to manage_edit_ticket_listing_path(@listing), alert: @listing.errors.full_messages.to_sentence
       end
@@ -238,61 +205,6 @@ module Manage
       @listing = Current.organization.ticket_listings.find(params[:id])
     end
 
-    def sellable_productions
-      Current.organization.productions.active.schedulable
-    end
-
-    # The prices to start from: this production's latest listing, then a
-    # contract's ticket tiers, then one blank General admission row.
-    def suggested_tiers(production)
-      last = Current.organization.ticket_listings.where(production: production).order(created_at: :desc).first
-      rows = if last
-        last.ticket_tiers.active.map { |t| { name: t.name, price: format("%.2f", t.price_cents / 100.0), quantity: t.quantity } }
-      else
-        contract_tiers(production)
-      end
-      rows = [ { name: "General admission", price: "", quantity: nil } ] if rows.blank?
-      rows + Array.new([ 4 - rows.size, 1 ].max) { { name: "", price: "", quantity: nil } }
-    end
-
-    def contract_tiers(production)
-      contract = production.contracts.order(created_at: :desc).find { |c| c.draft_ticketing["tiers"].present? }
-      return [] unless contract
-
-      contract.draft_ticketing["tiers"].map do |tier|
-        { name: tier["name"], price: tier["price"].present? ? format("%.2f", tier["price"].to_f) : "", quantity: tier["quantity"] }
-      end
-    end
-
-    def tier_rows
-      rows = params[:tiers]
-      return [] unless rows.respond_to?(:each_value)
-
-      rows.each_value.map { |row| row.permit(:name, :price, :quantity).to_h }
-    end
-
-    def opening_choice
-      case params[:opening]
-      when "now" then [ "on_sale", nil ]
-      when "scheduled"
-        at = Time.zone.parse(params[:on_sale_at].to_s)
-        raise ArgumentError, "Pick when sales open" unless at
-        [ "on_sale", at ]
-      else [ "draft", nil ]
-      end
-    end
-
-    def created_notice(result, status, on_sale_at)
-      count = ActionController::Base.helpers.pluralize(result.created.size, "show")
-      skipped = result.skipped.any? ? " #{result.skipped.size} already had tickets and were left alone." : ""
-      lead =
-        if status == "draft" then "#{count} ready as drafts. Put them on sale when you're ready."
-        elsif on_sale_at then "#{count} go on sale #{I18n.l(on_sale_at, format: :long)}."
-        else "#{count} on sale now."
-        end
-      lead + skipped
-    end
-
     def status_notice(to)
       { "on_sale" => "On sale.", "paused" => "Sales paused.", "closed" => "Online sales closed." }.fetch(to)
     end
@@ -331,17 +243,7 @@ module Manage
     end
 
     def code_params
-      raw = params.require(:ticket_discount_code).permit(:code, :kind, :amount, :max_uses)
-      amount = raw[:amount].to_s.delete("$,%").strip
-      attrs = { code: raw[:code], kind: raw[:kind].presence_in(TicketDiscountCode::KINDS) || "fixed", max_uses: raw[:max_uses].presence }
-      if attrs[:kind] == "percent"
-        attrs[:percent] = amount.presence && BigDecimal(amount)
-      else
-        attrs[:amount_cents] = amount.presence && (BigDecimal(amount) * 100).round.to_i
-      end
-      attrs
-    rescue ArgumentError
-      { code: raw[:code], kind: "fixed" }
+      TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(:code, :kind, :amount, :max_uses))
     end
   end
 end

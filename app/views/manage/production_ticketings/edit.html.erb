@@ -1,0 +1,24 @@
+<% content_for :title, "#{@production.name} · Ticketing settings" %>
+
+<%= render layout: "shared/settings_layout", locals: {
+  title: "Settings",
+  breadcrumbs: [
+    [ "Ticketing", manage_ticketing_path ],
+    [ "Shows", manage_ticket_listings_path ],
+    [ @production.name, manage_production_ticketing_path(@production) ]
+  ],
+  sections: sections,
+  current: @section,
+  width: "max-w-3xl"
+} do %>
+  <% case @section %>
+  <% when "tickets" %>
+    <%= render "manage/production_ticketings/sections/tickets", setup: @setup, production: @production %>
+  <% when "sales" %>
+    <%= render "manage/production_ticketings/sections/sales", setup: @setup, production: @production %>
+  <% when "codes" %>
+    <%= render "manage/production_ticketings/sections/codes", setup: @setup, production: @production %>
+  <% else %>
+    <%= render "manage/production_ticketings/sections/dates", setup: @setup, production: @production %>
+  <% end %>
+<% end %>

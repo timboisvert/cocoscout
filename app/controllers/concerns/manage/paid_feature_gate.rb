@@ -48,6 +48,7 @@ module Manage
       "manage/ticketing" => :ticketing,
       "manage/ticketing_settings" => :ticketing,
       "manage/ticket_listings" => :ticketing,
+      "manage/production_ticketings" => :ticketing,
       "manage/ticket_orders" => :ticketing,
       "manage/ticket_comps" => :ticketing,
       "manage/ticket_balance" => :ticketing,

@@ -1,7 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Connects to data-controller="reorderable"
-// Provides drag-and-drop reordering for list items using native HTML5 drag API
+// Provides drag-and-drop reordering for list items using native HTML5 drag API,
+// plus moveUp / moveDown actions for buttons (phones don't drag, and neither
+// do keyboards).
 export default class extends Controller {
     static targets = ["list"]
     static values = {
@@ -164,6 +166,30 @@ export default class extends Controller {
             }
         `
         document.head.appendChild(style)
+    }
+
+    moveUp(event) {
+        this.move(event, -1)
+    }
+
+    moveDown(event) {
+        this.move(event, 1)
+    }
+
+    move(event, by) {
+        const item = event.currentTarget.closest("[data-position]")
+        if (!item) return
+        const list = item.parentNode
+        if (by < 0 && item.previousElementSibling) {
+            list.insertBefore(item, item.previousElementSibling)
+        } else if (by > 0 && item.nextElementSibling) {
+            list.insertBefore(item.nextElementSibling, item)
+        } else {
+            return
+        }
+        this.updatePositions(list)
+        event.currentTarget.focus()
+        if (this.autoSaveValue) this.autoSave()
     }
 
     updatePositions(list) {

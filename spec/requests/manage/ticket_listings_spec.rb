@@ -2,9 +2,8 @@
 
 require "rails_helper"
 
-# Shows on sale: putting a production's dates on sale in one go, then running
-# each date — prices and seats, the sales window, the fee switch, codes.
-# Nothing goes on sale by itself.
+# Running each date: prices and seats, the sales window, the fee switch,
+# codes. (Setting a production's dates up at once: production_ticketings_spec.)
 RSpec.describe "Manage ticket listings", type: :request do
   let(:password) { "Password123!" }
   let(:superadmin) { create(:user, email_address: "boisvert@gmail.com", password: password) }
@@ -20,72 +19,20 @@ RSpec.describe "Manage ticket listings", type: :request do
     get manage_path
   end
 
-  def put_on_sale(shows, opening: "draft", tiers: { "0" => { name: "General", price: "20", quantity: "60" } }, **extra)
-    post manage_ticket_listings_path, params: { production_id: production.id, show_ids: shows.map(&:id), tiers: tiers, opening: opening, **extra }
-  end
-
-  describe "putting a production's dates on sale" do
-    it "goes straight to the dates when the org has one production, and offers only ticketed shows" do
-      get manage_new_ticket_listing_path
-      expect(response).to redirect_to(manage_new_ticket_listing_path(production_id: production.id))
-
-      follow_redirect!
-      expect(response.body).to include(%(value="#{friday.id}")).and include(%(value="#{saturday.id}"))
-      expect(response.body).not_to include(%(value="#{rehearsal.id}"))
-    end
-
-    it "asks which production when there are several" do
-      create(:production, organization: org, name: "The Late Show")
-      get manage_new_ticket_listing_path
-      expect(response.body).to include("Which production?")
-    end
-
-    it "makes drafts by default, each date with the same prices" do
-      put_on_sale([ friday, saturday ], tiers: { "0" => { name: "General", price: "$20.00", quantity: "60" },
-                                                "1" => { name: "VIP", price: "35", quantity: "" },
-                                                "2" => { name: "", price: "", quantity: "" } })
-
-      expect(response).to redirect_to(manage_ticket_listings_path(filter: "drafts"))
-      listings = org.ticket_listings.order(:id)
-      expect(listings.map(&:status)).to eq(%w[draft draft])
-      expect(listings.first.ticket_tiers.map { |t| [ t.name, t.price_cents, t.quantity ] })
-        .to eq([ [ "General", 2_000, 60 ], [ "VIP", 3_500, nil ] ])
-    end
-
-    it "puts them on sale now, or schedules the opening, when asked" do
-      put_on_sale([ friday ], opening: "now")
-      expect(friday.reload.ticket_listing.status).to eq("on_sale")
-
-      put_on_sale([ saturday ], opening: "scheduled", on_sale_at: 1.day.from_now.strftime("%Y-%m-%dT%H:%M"))
-      listing = saturday.reload.ticket_listing
-      expect([ listing.status, listing.on_sale_at.to_date ]).to eq([ "on_sale", 1.day.from_now.to_date ])
-    end
-
-    it "leaves dates that already have tickets alone" do
-      put_on_sale([ friday ])
-      put_on_sale([ friday, saturday ])
-      expect(org.ticket_listings.count).to eq(2)
-      expect(flash[:notice]).to include("1 already had tickets and were left alone")
-    end
-
-    it "explains a price that isn't a number" do
-      put_on_sale([ friday ], tiers: { "0" => { name: "General", price: "twenty", quantity: "" } })
-      expect(flash[:alert]).to include("Check the ticket prices")
-      expect(org.ticket_listings).to be_empty
-    end
-  end
-
   describe "running a date" do
     let!(:listing) { TicketListing.create!(show: friday) }
     let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60) }
 
-    it "lists it under drafts, then upcoming once it's on sale" do
-      get manage_ticket_listings_path(filter: "drafts")
-      expect(response.body).to include(manage_ticket_listing_path(listing)).and include("Draft")
+    it "lists its production on Shows, and the date on the production's page, draft then on sale" do
+      get manage_ticket_listings_path
+      expect(response.body).to include("Improvised Animorphs", manage_production_ticketing_path(production), "1 upcoming date")
+
+      get manage_production_ticketing_path(production)
+      expect(response.body).to include(manage_ticket_listing_path(listing), "Draft", "Not set up")
 
       post manage_ticket_listing_status_path(listing), params: { status: "on_sale" }
       expect(listing.reload.status).to eq("on_sale")
-      get manage_ticket_listings_path
+      get manage_production_ticketing_path(production)
       expect(response.body).to include("On sale").and include("of 60")
     end
 
