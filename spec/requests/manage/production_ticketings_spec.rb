@@ -73,6 +73,21 @@ RSpec.describe "Production ticketing", type: :request do
     expect(response.body).to include("Rising Stars", "Selling", "2 upcoming dates")
   end
 
+  it "pauses every date when switched off, and resumes them when switched on" do
+    save_tickets("0" => { name: "General", price: "20", position: "0" })
+    save_dates
+    expect(first_show.reload.ticket_listing.status).to eq("on_sale")
+
+    save_dates(enabled: "0")
+    expect(flash[:notice]).to start_with("Off.")
+    expect([ first_show.reload.ticket_listing.status, second_show.reload.ticket_listing.status ]).to eq(%w[paused paused])
+    get manage_production_ticketing_path(production)
+    expect(response.body).to include(">Off<", "Turn it on", "Paused")
+
+    save_dates(enabled: "1")
+    expect(first_show.reload.ticket_listing.status).to eq("on_sale")
+  end
+
   it "takes dates picked by hand, and drops a date nobody bought when it's unpicked" do
     save_tickets("0" => { name: "General", price: "20", position: "0" })
     save_dates(event_matching: "manual", selected_show_ids: [ first_show.id, second_show.id ])
@@ -129,21 +144,29 @@ RSpec.describe "Production ticketing", type: :request do
 
       get manage_edit_ticket_listing_path(listing)
       expect(response.body).to include("Settings for #{listing.show.date_and_time.strftime('%a, %b %-d')}", "only.",
-                                       "uses Rising Stars&#39; ticketing", "Set prices for this date only", "Discount codes")
+                                       "uses Rising Stars&#39; ticketing", "Set tickets and prices for this date only",
+                                       "<fieldset disabled", 'value="General"', "Discount codes")
 
-      post manage_ticket_listing_own_prices_path(listing)
+      # The switch on, with a price of this date's own.
+      copy = listing.ticket_tiers.sole
+      patch manage_ticket_listing_path(listing), params: { section: "tickets", ticket_listing: {
+        own_prices: "1", ticket_tiers_attributes: { "0" => { id: copy.id, name: "General", price: "18", quantity: "60", position: "0" } }
+      } }
       expect(listing.reload.inherits_tiers).to be(false)
+      expect(listing.ticket_tiers.active.sole.attributes.slice("price_cents", "source_tier_id")).to eq("price_cents" => 1_800, "source_tier_id" => nil)
       get manage_edit_ticket_listing_path(listing, section: "tickets")
-      expect(response.body).to include("Add a ticket type", "Use the production&#39;s prices")
+      expect(response.body).to include("Add a ticket type")
+      expect(response.body).not_to include("<fieldset disabled")
 
       setup = ProductionTicketing.find_by!(production: production)
       setup.ticket_tiers.sole.update!(price_cents: 2_500)
       ProductionTicketingSync.sync_all!(setup)
-      expect(listing.ticket_tiers.active.sole.price_cents).to eq(2_000)
+      expect(listing.ticket_tiers.active.sole.price_cents).to eq(1_800)
 
-      post manage_ticket_listing_inherit_prices_path(listing)
+      # The switch off again: back to the production's, the unsold own type gone.
+      patch manage_ticket_listing_path(listing), params: { section: "tickets", ticket_listing: { own_prices: "0" } }
       expect(listing.reload.inherits_tiers).to be(true)
-      expect(listing.ticket_tiers.active.sole.price_cents).to eq(2_500)
+      expect(listing.ticket_tiers.map(&:price_cents)).to eq([ 2_500 ])
     end
 
     it "keeps each tab's form to itself" do

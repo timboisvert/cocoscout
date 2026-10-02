@@ -49,9 +49,10 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          <% stats.by_tier.each do |row| %>
+          <%# A type no longer sold shows only while someone holds a ticket on it. %>
+          <% stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }.each do |row| %>
             <tr class="whitespace-nowrap <%= 'text-gray-400' if row.tier.archived_at %>">
-              <td class="px-5 py-2.5 text-gray-900"><%= row.tier.name %><%= " (removed)" if row.tier.archived_at %></td>
+              <td class="px-5 py-2.5 text-gray-900"><%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %></td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= ticket_price(row.tier.price_cents) %></td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= row.sold %><%= " of #{row.seats}" if row.seats %></td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= row.held %></td>

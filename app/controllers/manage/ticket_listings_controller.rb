@@ -17,7 +17,7 @@ module Manage
     SETTINGS = { "tickets" => "Tickets", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
-                                           change_review tell_change mark_change_told own_prices inherit_prices]
+                                           change_review tell_change mark_change_told]
     before_action :set_settings_section, only: %i[edit update]
 
     # Productions first: every production selling tickets, by its next date.
@@ -74,32 +74,27 @@ module Manage
 
     def update
       attrs = listing_params
+      notice = "Saved."
+      # The Tickets tab's switch: this date's own prices, or the production's.
+      if @section == "tickets" && (setup = @listing.production_ticketing)
+        own = params.dig(:ticket_listing, :own_prices) == "1"
+        if own && @listing.inherits_tiers
+          give_own_prices!
+          notice = "Saved. This date has its own prices now; changes to the production's won't reach it."
+        elsif !own && !@listing.inherits_tiers
+          use_production_prices!(setup)
+          return redirect_to(settings_path(@section), notice: "This date uses #{helpers.possessive(@listing.production.name)} prices again.")
+        elsif !own
+          return redirect_to(settings_path(@section), notice: notice)
+        end
+      end
+
       if @listing.update(attrs)
-        redirect_to settings_path(@section), notice: "Saved."
+        redirect_to settings_path(@section), notice: notice
       else
         flash.now[:alert] = @listing.errors.full_messages.to_sentence
         render :edit, status: :unprocessable_entity
       end
-    end
-
-    # This date gets its own ticket types, starting from the production's.
-    def own_prices
-      @listing.update!(inherits_tiers: false)
-      @listing.ticket_tiers.update_all(source_tier_id: nil, updated_at: Time.current)
-      redirect_to settings_path("tickets"), notice: "This date has its own prices now. Changes to the production's prices won't reach it."
-    end
-
-    # Back to the production's ticket types. This date's own types stop
-    # selling; tickets already sold keep theirs.
-    def inherit_prices
-      setup = @listing.production_ticketing
-      return redirect_to(settings_path("tickets")) unless setup
-
-      own = @listing.ticket_tiers.active.where(source_tier_id: nil).to_a
-      @listing.update!(inherits_tiers: true)
-      own.each { |tier| tier.update_columns(archived_at: Time.current, updated_at: Time.current) }
-      ProductionTicketingSync.sync!(@listing, setup)
-      redirect_to settings_path("tickets"), notice: "This date uses #{helpers.possessive(@listing.production.name)} prices again."
     end
 
     # Put on sale, pause, resume, close sales. Cancelling (with refunds) is
@@ -215,6 +210,22 @@ module Manage
     # Scoped to the current org: a bare find here would reach another org's show.
     def set_listing
       @listing = Current.organization.ticket_listings.find(params[:id])
+    end
+
+    # This date's ticket types stop following the production's: the copies
+    # it holds become its own, to edit here.
+    def give_own_prices!
+      @listing.update!(inherits_tiers: false)
+      @listing.ticket_tiers.update_all(source_tier_id: nil, updated_at: Time.current)
+    end
+
+    # Back to the production's: this date's own types go (kept only where a
+    # ticket was sold on one), and fresh copies of the production's take over.
+    def use_production_prices!(setup)
+      own = @listing.ticket_tiers.active.to_a
+      @listing.update!(inherits_tiers: true)
+      own.each(&:retire!)
+      ProductionTicketingSync.sync!(@listing, setup)
     end
 
     def set_settings_section

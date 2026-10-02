@@ -55,6 +55,18 @@ class ProductionTicketingDates
     Result.new(added: added, removed: removed, kept: kept)
   end
 
+  # Switching the production off stops its dates selling (the ones following
+  # its setup; a date with its own prices is the manager's to pause). On
+  # again, they resume (and a sync! adds any newly matching dates).
+  def self.switch!(production_ticketing, on:)
+    inheriting = production_ticketing.listings.where(inherits_tiers: true)
+    if on
+      inheriting.where(status: "paused").update_all(status: "on_sale", updated_at: Time.current)
+    else
+      inheriting.where(status: "on_sale").update_all(status: "paused", updated_at: Time.current)
+    end
+  end
+
   # Inheriting shows still on the old schedule move to the new one; a show
   # given its own sales window keeps it.
   def self.reschedule!(production_ticketing, was:)

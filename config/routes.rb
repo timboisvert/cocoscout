@@ -1250,8 +1250,6 @@ Rails.application.routes.draw do
     get    "ticketing/shows/:id/comps/new",       to: "ticket_comps#new",                as: "new_ticket_listing_comps"
     post   "ticketing/shows/:id/comps",           to: "ticket_comps#create",             as: "ticket_listing_comps"
     get    "ticketing/shows/:id/edit(/:section)", to: "ticket_listings#edit",            as: "edit_ticket_listing"
-    post   "ticketing/shows/:id/own-prices",      to: "ticket_listings#own_prices",      as: "ticket_listing_own_prices"
-    post   "ticketing/shows/:id/inherit-prices",  to: "ticket_listings#inherit_prices",  as: "ticket_listing_inherit_prices"
     patch  "ticketing/shows/:id",                 to: "ticket_listings#update",          as: "ticket_listing"
     delete "ticketing/shows/:id",                 to: "ticket_listings#destroy"
     post   "ticketing/shows/:id/status",          to: "ticket_listings#change_status",   as: "ticket_listing_status"

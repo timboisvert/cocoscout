@@ -911,6 +911,15 @@ module Manage
       scope = params[:scope] || "this"
       event_label = @show.event_type.titleize
 
+      # A show that sold tickets can't just vanish: its buyers' orders live on
+      # it. Cancel it instead, and the cancel screen refunds them.
+      shows_in_scope = scope.in?(%w[all this_and_future]) && @show.recurring? ? @show.recurrence_group.to_a : [ @show ]
+      if TicketOrder.where(ticket_listing_id: TicketListing.where(show_id: shows_in_scope.map(&:id)).select(:id)).exists?
+        return redirect_to(manage_cancel_show_form_path(@production, @show),
+                           alert: "Tickets were sold for #{shows_in_scope.one? ? 'this date' : 'one of these dates'}, so it can't be deleted. Cancel it instead, and its buyers are refunded.",
+                           status: :see_other)
+      end
+
       if scope == "all" && @show.recurring?
         # Delete all occurrences in the recurrence group
         shows_to_delete = @show.recurrence_group.to_a

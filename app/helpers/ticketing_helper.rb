@@ -60,10 +60,10 @@ module TicketingHelper
     listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p")
   end
 
-  # The trail above every page about one date: Ticketing / Shows / its
+  # The trail above every page about one date: Ticketing / Productions / its
   # production / the date (left off on the date's own page).
   def ticket_listing_breadcrumbs(listing, include_date: true)
-    crumbs = [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ],
+    crumbs = [ [ "Ticketing", manage_ticketing_path ], [ "Productions", manage_ticket_listings_path ],
                [ listing.production.name, manage_production_ticketing_path(listing.production) ] ]
     crumbs << [ ticket_listing_date_label(listing), manage_ticket_listing_path(listing) ] if include_date
     crumbs

@@ -35,6 +35,16 @@ class TicketTier < ApplicationRecord
     tickets.where(status: Ticket::SOLD_STATUSES).count
   end
 
+  # A type the show no longer sells: deleted outright when no ticket was ever
+  # bought on it, archived (so those tickets keep their type) when one was.
+  def retire!
+    if tickets.exists?
+      update_columns(archived_at: Time.current, updated_at: Time.current) if archived_at.nil?
+    else
+      destroy!
+    end
+  end
+
   def selling?(at = Time.current)
     archived_at.nil? &&
       (sales_start_at.nil? || sales_start_at <= at) &&

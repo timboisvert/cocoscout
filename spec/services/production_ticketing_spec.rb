@@ -95,6 +95,24 @@ RSpec.describe ProductionTicketing do
       expect(hand_made.reload.attributes.slice("status", "inherits_tiers")).to eq("status" => "draft", "inherits_tiers" => false)
     end
 
+    it "stops its dates selling when switched off, and resumes them when switched on" do
+      show_on(5)
+      ProductionTicketingDates.sync!(setup)
+      listing = TicketListing.sole
+      expect(listing.selling?).to be(true)
+
+      setup.update!(enabled: false)
+      ProductionTicketingDates.switch!(setup, on: false)
+      expect([ listing.reload.status, listing.selling? ]).to eq([ "paused", false ])
+
+      show_on(6)
+      setup.update!(enabled: true)
+      ProductionTicketingDates.switch!(setup, on: true)
+      ProductionTicketingDates.sync!(setup)
+      expect(listing.reload.status).to eq("on_sale")
+      expect(TicketListing.count).to eq(2)
+    end
+
     it "adds a new show as soon as it's on the calendar" do
       setup
       expect { show_on(10) }.to have_enqueued_job(ProductionTicketingDatesJob).with(setup.id)
@@ -151,8 +169,7 @@ RSpec.describe ProductionTicketing do
 
       student.destroy!
       ProductionTicketingSync.sync_all!(setup)
-      expect(inheriting.ticket_tiers.reload.active.map(&:name)).to eq([ "General", "VIP" ])
-      expect(inheriting.ticket_tiers.where(name: "Student").sole.archived_at).to be_present
+      expect(inheriting.ticket_tiers.reload.map(&:name)).to eq([ "General", "VIP" ]) # Student, never sold, is gone
     end
 
     it "keeps a show's seats when the production's would drop below what it sold" do

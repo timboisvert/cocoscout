@@ -91,6 +91,11 @@ module Manage
       if %w[schedule_mode opens_days_before online_close_minutes].any? { |a| was.public_send(a) != @setup.public_send(a) }
         ProductionTicketingDates.reschedule!(@setup, was: was)
       end
+      if was.enabled && !@setup.enabled
+        ProductionTicketingDates.switch!(@setup, on: false)
+        return redirect_to(section_path(@section), notice: "Off. Its dates stopped selling; turn it on to resume.")
+      end
+      ProductionTicketingDates.switch!(@setup, on: true) if !was.enabled && @setup.enabled
       finish(ProductionTicketingDates.sync!(@setup))
     end
 

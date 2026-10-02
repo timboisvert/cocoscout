@@ -18,7 +18,7 @@
     tag: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
   }
   actions = [
-    { text: "Which dates", description: which ? "#{which}; #{opens}" : "Choose the dates to sell", path: manage_edit_production_ticketing_path(@production, section: "dates"), icon: icons[:calendar] },
+    { text: "Select dates", description: which ? "#{which}; #{opens}" : "Choose the dates to sell", path: manage_edit_production_ticketing_path(@production, section: "dates"), icon: icons[:calendar] },
     { text: "Tickets and prices", description: setup&.ticket_tiers&.any? ? setup.ticket_tiers.map(&:name).to_sentence : "Set the ticket types", path: manage_edit_production_ticketing_path(@production, section: "tickets"), icon: icons[:tag] },
     { text: "Sales & page", description: "Seats, fees, words and notes", path: manage_edit_production_ticketing_path(@production, section: "sales"), icon: icons[:cog] },
     { text: "Orders", description: "Every order for these dates", path: manage_ticket_orders_path(production_id: @production.id), icon: icons[:orders] }
@@ -28,34 +28,39 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ] ],
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Productions", manage_ticket_listings_path ] ],
     text: @production.name,
     links: []
   } %>
 
-  <%# Where it stands: on or off, which dates, and the link to share. %>
-  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 mb-6">
-    <div class="flex flex-wrap items-center gap-2">
-      <% if on %>
-        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-100 text-green-700">Selling</span>
-      <% elsif setup %>
-        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600">Off</span>
-      <% else %>
-        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600">Not set up</span>
+  <%# Where it stands, said once: the bar when it's set up (on or off), the
+      panel when it isn't yet. %>
+  <% if setup %>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2 min-w-0">
+          <% if on %>
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-green-100 text-green-700">Selling</span>
+          <% else %>
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600">Off</span>
+          <% end %>
+          <span class="text-sm text-gray-900"><%= which %> · <%= opens %></span>
+        </div>
+        <% unless on %>
+          <%= render "shared/button", text: "Turn it on", variant: "primary", size: "small",
+                path: manage_edit_production_ticketing_path(@production, section: "dates") %>
+        <% end %>
+      </div>
+      <% if on || @listings.any? %>
+        <%= render "shared/copy_url", url: public_url, show_qr: true, qr_title: "Scan for tickets" %>
       <% end %>
-      <span class="text-sm text-gray-900"><%= which ? "#{which} · #{opens}" : "Ticketing isn't set up for this production yet." %></span>
     </div>
-    <% if on || @listings.any? %>
-      <%= render "shared/copy_url", url: public_url, show_qr: true, qr_title: "Scan for tickets" %>
-    <% end %>
-  </div>
-
-  <% unless on %>
+  <% else %>
     <%= render "shared/alert_panel",
-          eyebrow: setup ? "Off" : "Set up",
-          headline: setup ? "Ticketing is off for #{@production.name}" : "Sell tickets for every date of #{@production.name}",
+          eyebrow: "Not set up",
+          headline: "Sell tickets for every date of #{@production.name}",
           body: "Choose which dates are included and when their sales open, set the ticket prices once, then turn it on.",
-          actions: [ { text: setup ? "Turn it on" : "Set it up", path: manage_edit_production_ticketing_path(@production, section: "dates") } ] %>
+          actions: [ { text: "Set it up", path: manage_edit_production_ticketing_path(@production, section: "dates") } ] %>
   <% end %>
   <% if @unmatched.any? %>
     <%= render "shared/alert_panel",

@@ -219,6 +219,15 @@ RSpec.describe "Manage ticketing money", type: :request do
     expect(listing.ticket_orders.sole.status).to eq("refunded")
   end
 
+  it "won't delete a date that sold tickets; it points to canceling instead" do
+    sold(1)
+    show = listing.show
+    delete manage_delete_show_path(show.production, show), params: { scope: "this" }
+    expect(response).to redirect_to(manage_cancel_show_form_path(show.production, show))
+    expect(flash[:alert]).to include("can't be deleted. Cancel it instead")
+    expect(Show.exists?(show.id)).to be(true)
+  end
+
   it "cancels the show but leaves tickets alone when asked, and refunds them later from the same screen" do
     sold(1)
     show = listing.show

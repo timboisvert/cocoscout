@@ -1,79 +1,53 @@
-<%# One date's ticket types: the production's (read-only here, with a way to
-    give this date its own), or this date's own, editable and reorderable.
-    Locals: listing, setup (the production's ticketing, or nil). %>
+<%# One date's ticket types. Under a production's ticketing, a switch at the
+    top says whether this date has its own: off, the production's types and
+    prices show grayed out; on, they come alive to edit for this date only,
+    and switching off again goes back to the production's. Without a
+    production setup the date simply has its own. Locals: listing, setup
+    (the production's ticketing, or nil). %>
 <%
   inventory = listing.inventory
-  tiers = listing.ticket_tiers.active.to_a
+  own = setup.nil? || !listing.inherits_tiers
+  rows = listing.ticket_tiers.active.to_a
+  rows = [ TicketTier.new(position: 0) ] if rows.empty?
 %>
-<% if setup && listing.inherits_tiers %>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-200">
-      <h3 class="font-semibold text-gray-900">Tickets</h3>
-      <p class="text-sm text-gray-600 mt-1">This date uses <%= possessive(listing.production.name) %> ticket types and prices.</p>
-    </div>
-    <ul class="divide-y divide-gray-100">
-      <% tiers.each do |tier| %>
-        <li class="px-5 py-3 flex items-center justify-between gap-4 text-sm">
-          <div class="min-w-0">
-            <div class="font-medium text-gray-900"><%= tier.name %></div>
-            <% if tier.description.present? %><div class="text-xs text-gray-500"><%= tier.description %></div><% end %>
-          </div>
-          <div class="text-right text-gray-700 tabular-nums whitespace-nowrap">
-            <%= ticket_price(tier.price_cents) %>
-            <span class="text-gray-500">· <%= inventory.sold(tier: tier) %><%= " of #{tier.quantity}" if tier.quantity %> sold</span>
-          </div>
-        </li>
-      <% end %>
-    </ul>
-    <div class="px-5 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap items-center gap-2">
-      <%= render "shared/button", text: "Change them for every date", variant: "secondary", size: "small",
-            path: manage_edit_production_ticketing_path(listing.production, section: "tickets") %>
-      <%= render "shared/button", text: "Set prices for this date only", variant: "secondary", size: "small",
-            path: manage_ticket_listing_own_prices_path(listing), method: :post %>
-    </div>
-  </div>
-<% else %>
-  <%
-    rows = listing.ticket_tiers.active.to_a
-    rows = [ TicketTier.new(position: 0) ] if rows.empty?
-  %>
-  <%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, class: "space-y-6" do |f| %>
-    <%= hidden_field_tag :section, "tickets" %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-controller="reorderable nested-form"
-         data-reorderable-handle-value=".tier-drag-handle" data-reorderable-auto-save-value="false">
-      <div class="px-5 py-4 border-b border-gray-200">
-        <h3 class="font-semibold text-gray-900">Tickets</h3>
-        <p class="text-sm text-gray-600 mt-1">
-          <%= setup ? "This date has its own prices; changes to #{possessive(listing.production.name)} don't reach it." : "This date's ticket types and prices." %>
-          A type that has sold is kept for its buyers when you remove it. Leave seats blank for no limit.
-        </p>
-      </div>
-      <div class="px-5 py-4 space-y-3">
-        <div class="space-y-3" data-reorderable-target="list" data-nested-form-target="children">
-          <%= f.fields_for :ticket_tiers, rows do |tf| %>
-            <%= render "manage/ticketing/tier_row", tf: tf, sold: (tf.object.persisted? ? inventory.sold(tier: tf.object) : 0) %>
-          <% end %>
-        </div>
-        <template data-nested-form-target="template">
-          <%= f.fields_for :ticket_tiers, TicketTier.new(position: 999), child_index: "NEW_CHILD_RECORD" do |tf| %>
-            <%= render "manage/ticketing/tier_row", tf: tf %>
-          <% end %>
-        </template>
-        <%= render "shared/button", text: "Add a ticket type", variant: "secondary", size: "small", type: :button, icon: "plus",
-              data: { action: "nested-form#add" } %>
-      </div>
-    </div>
-    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
-  <% end %>
+<%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, class: "space-y-6",
+      data: { controller: "fieldset-toggle" } do |f| %>
+  <%= hidden_field_tag :section, "tickets" %>
 
   <% if setup %>
-    <div class="rounded-lg border border-gray-200 bg-gray-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-      <p class="text-sm text-gray-600">Go back to <%= possessive(listing.production.name) %> ticket types and prices for this date.</p>
-      <%= render "shared/button", text: "Use the production's prices", variant: "secondary", size: "small", type: :button,
-            data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-inherit-prices" } %>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-medium text-gray-900">Set tickets and prices for this date only</div>
+        <div class="text-xs text-gray-600 mt-0.5">
+          Off, this date sells <%= possessive(listing.production.name) %> ticket types at its prices.
+          On, you change them here for this date, and changes to the production's won't reach it.
+          Switching off again goes back to the production's; tickets already sold keep theirs.
+        </div>
+      </div>
+      <%= render "shared/toggle_switch", form: f, field: :own_prices, checked: own,
+            data: { fieldset_toggle_target: "switch", action: "change->fieldset-toggle#toggle" } %>
     </div>
-    <%= render "shared/confirm_modal", id: "confirm-inherit-prices", title: "Use #{possessive(listing.production.name)} prices?",
-          message: "This date's own ticket types stop selling and the production's take their place. Tickets already sold keep their type and price.",
-          confirm_text: "Use the production's prices", url: manage_ticket_listing_inherit_prices_path(listing), method: :post %>
   <% end %>
+
+  <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields"
+            class="min-w-0 space-y-3 disabled:opacity-50 disabled:pointer-events-none transition-opacity"
+            data-controller="reorderable nested-form" data-reorderable-handle-value=".tier-drag-handle" data-reorderable-auto-save-value="false">
+    <div class="space-y-3" data-reorderable-target="list" data-nested-form-target="children">
+      <%= f.fields_for :ticket_tiers, rows do |tf| %>
+        <%= render "manage/ticketing/tier_row", tf: tf, sold: (tf.object.persisted? ? inventory.sold(tier: tf.object) : 0) %>
+      <% end %>
+    </div>
+    <template data-nested-form-target="template">
+      <%= f.fields_for :ticket_tiers, TicketTier.new(position: 999), child_index: "NEW_CHILD_RECORD" do |tf| %>
+        <%= render "manage/ticketing/tier_row", tf: tf %>
+      <% end %>
+    </template>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <%= render "shared/button", text: "Add a ticket type", variant: "secondary", size: "small", type: :button, icon: "plus",
+            data: { action: "nested-form#add" } %>
+      <p class="text-xs text-gray-500">A type that has sold is kept for its buyers when you remove it. Leave seats blank for no limit.</p>
+    </div>
+  </fieldset>
+
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
 <% end %>

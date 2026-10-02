@@ -3,7 +3,8 @@
 # Keeps each show's ticket types in step with its production's
 # (ProductionTicketing) while the show inherits them: the same names, prices,
 # seats, descriptions, hidden codes and order. A type the production drops
-# stops selling on its shows (archived, so tickets already sold keep it). A
+# goes from its shows too (kept, archived, only where a ticket was sold on
+# it, so that ticket keeps its type). A
 # new price applies to sales from now on; tickets already sold keep the price
 # they were bought at.
 #
@@ -46,8 +47,9 @@ class ProductionTicketingSync
           listing.ticket_tiers.create!(attrs.merge("source_tier_id" => source.id))
         end
       end
-      # Types the production no longer has (or a show's own leftovers).
-      copies.each_value { |copy| copy.update_columns(archived_at: Time.current, updated_at: Time.current) if copy.archived_at.nil? }
+      # Types the production no longer has (or a show's own leftovers): gone,
+      # unless a ticket was sold on one.
+      copies.each_value(&:retire!)
     end
     skipped
   end

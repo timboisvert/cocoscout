@@ -1,10 +1,10 @@
-<% content_for :title, "Shows" %>
+<% content_for :title, "Productions" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
-    text: "Shows",
+    text: "Productions",
     links: [ { text: "Sell tickets for a production", path: manage_new_production_ticketing_path } ]
   } %>
 

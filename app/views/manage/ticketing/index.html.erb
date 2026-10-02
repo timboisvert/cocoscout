@@ -18,7 +18,7 @@
         title: "Ticketing",
         description: "<p>Sell tickets to your shows right here: your own box office page, checkout, and the door. Ticket money lands in your CocoScout balance, where it pays your people first and fills in each show's financials for you.</p>",
         actions: [
-          { icon: "calendar", text: "Shows", description: "Every date you sell, and how it's going", path: manage_ticket_listings_path, badge: d.drafts_soon.count },
+          { icon: "calendar", text: "Productions", description: "Each one you sell, and how its dates are going", path: manage_ticket_listings_path, badge: d.drafts_soon.count },
           { icon: "clipboard-list", text: "Orders", description: "Find a buyer, resend tickets, refund", path: manage_ticket_orders_path },
           { icon: "user-group", text: "Door", description: "Check people in and sell at the door", path: door_index_path, badge: d.tonight.size },
           { icon: "cog", text: "Settings", description: "Box office, fees, tax and door access", path: manage_ticketing_settings_path }
@@ -74,12 +74,12 @@
             <% end %>
           </div>
           <% if d.upcoming_count > coming_up.size %>
-            <%= link_to "See all #{d.upcoming_count} upcoming shows →", manage_ticket_listings_path, class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
+            <%= link_to "All productions →", manage_ticket_listings_path, class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
           <% end %>
         <% else %>
           <div class="bg-white border border-gray-200 rounded-xl px-5 py-6 flex items-center gap-3 text-sm text-gray-600">
             <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            No upcoming shows are selling yet. Put a production's dates on sale to start.
+            No upcoming shows are selling yet. Set a production up to sell its dates.
           </div>
         <% end %>
       </section>
