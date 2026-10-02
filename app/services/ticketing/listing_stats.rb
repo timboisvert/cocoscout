@@ -18,7 +18,8 @@ module Ticketing
   # Build many at once with .for(listings): a handful of queries in all.
   class ListingStats
     TierRow = Data.define(:tier, :sold, :seats, :held, :remaining, :gross_cents)
-    CHANNELS = { "online" => "Online", "embed" => "Your website", "door_cash" => "Cash at the door", "comp" => "Comps" }.freeze
+    CHANNELS = { "online" => "Online", "embed" => "Your website", "door_cash" => "Cash at the door",
+                 "door_card" => "Card at the door", "comp" => "Comps" }.freeze
 
     attr_reader :listing
 

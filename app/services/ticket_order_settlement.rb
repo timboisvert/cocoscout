@@ -25,7 +25,13 @@ class TicketOrderSettlement
       order.update!(status: "paid", paid_at: Time.current, expires_at: nil,
                     stripe_payment_intent_id: payment_intent_id || order.stripe_payment_intent_id,
                     stripe_charge_id: charge_id || order.stripe_charge_id)
-      order.tickets.where(status: "reserved").update_all(status: "valid", updated_at: Time.current)
+      if order.channel == "door_card"
+        # Paid standing at the door: they're in.
+        order.tickets.where(status: "reserved").update_all(status: "checked_in", checked_in_at: Time.current,
+                                                           checked_in_by_id: order.issued_by_id, updated_at: Time.current)
+      else
+        order.tickets.where(status: "reserved").update_all(status: "valid", updated_at: Time.current)
+      end
       TaxLine.where(taxable_type: "Ticket", taxable_id: order.tickets.select(:id)).update_all(sale_date: Date.current)
       post_money!(order)
       settled = true

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { orderTotalCents, money } from "controllers/lib/ticket_pricing"
 
 // Choosing tickets on a show's page: − / + steppers per ticket type, a live
 // total, and — tap the total — a small panel naming every cent: each ticket
@@ -175,23 +176,11 @@ export default class extends Controller {
     }
 
     totalCents(base, paid) {
-        if (base === 0) return 0
-        if (this.feeModeValue !== "buyer") return base
-        return this.grossUp(base + this.platformFeeValue * paid)
-    }
-
-    processing(total) {
-        return Math.floor((total * this.perMilleValue + 500) / 1000) + this.fixedValue
-    }
-
-    // The smallest charge that leaves exactly `needed` after processing.
-    grossUp(needed) {
-        let total = Math.floor(((needed + this.fixedValue) * 1000) / (1000 - this.perMilleValue)) - 2
-        while (total - this.processing(total) < needed) total += 1
-        return total
+        return orderTotalCents({ base, paid, feeMode: this.feeModeValue, platformFee: this.platformFeeValue,
+            perMille: this.perMilleValue, fixed: this.fixedValue })
     }
 
     money(cents) {
-        return "$" + (cents / 100).toFixed(2)
+        return money(cents)
     }
 }

@@ -42,7 +42,7 @@
           </p>
           <p class="text-xs text-gray-500 mt-1">
             <%= @order.paid_at ? "Bought #{@order.paid_at.strftime('%b %-d at %-l:%M %p')}" : "Not paid" %>
-            · <%= { "online" => "Online", "embed" => "On your website", "door_cash" => "Cash at the door", "comp" => "Comp at the door" }.fetch(@order.channel, @order.channel) %>
+            · <%= { "online" => "Online", "embed" => "On your website", "door_cash" => "Cash at the door", "door_card" => "Card at the door", "comp" => "Comp at the door" }.fetch(@order.channel, @order.channel) %>
           </p>
         </div>
         <%= render "manage/ticket_orders/status_badge", order: @order %>

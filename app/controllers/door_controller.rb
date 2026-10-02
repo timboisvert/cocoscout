@@ -10,7 +10,8 @@ class DoorController < ApplicationController
   layout "door"
 
   before_action :set_listing, except: :index
-  before_action -> { require_level(:box_office) }, only: :sell
+  before_action -> { require_level(:box_office) }, only: %i[sell card card_status card_cancel]
+  before_action :set_card_order, only: %i[card card_status card_cancel]
 
   def index
     organizations = TicketingDoorAccess.organizations_for(Current.user)
@@ -63,9 +64,19 @@ class DoorController < ApplicationController
     render json: door.counts
   end
 
+  # Selling to someone at the door: cash and comps are recorded and checked
+  # in on the spot; card or phone pay holds the seats and shows a QR code the
+  # buyer scans to pay on their own phone (card).
   def sell
     quantities = params[:quantities].respond_to?(:each_pair) ? params[:quantities].each_pair.to_h { |k, v| [ k.to_s, v.to_s ] } : {}
-    kind = params[:kind].presence_in(%w[cash comp]) || "cash"
+    kind = params[:kind].presence_in(%w[card cash comp]) || "cash"
+    if kind == "card"
+      order = TicketCheckout.start!(listing: @listing, quantities: quantities, channel: "door_card", at_door: true,
+                                    client_ip: request.remote_ip)
+      order.update!(buyer_name: params[:buyer_name].to_s.squish.presence, issued_by: Current.user)
+      return redirect_to(door_card_path(@listing, token: order.token))
+    end
+
     order = door.sell(quantities, kind: kind, buyer_name: params[:buyer_name])
     count = order.tickets.size
     redirect_to door_path(@listing), notice: kind == "cash" ? "Sold #{count} at the door — collect #{helpers.number_to_currency(order.total_cents / 100.0)} cash." : "Comped #{count} and checked them in."
@@ -73,7 +84,38 @@ class DoorController < ApplicationController
     redirect_to door_path(@listing), alert: e.message
   end
 
+  # The door phone while the buyer pays on theirs: a QR code that opens
+  # checkout for this order, and the total.
+  def card
+    return redirect_to(door_path(@listing), notice: "Paid. #{card_paid_message}") if @order.paid?
+
+    @checkout_url = tickets_checkout_url(token: @order.token)
+  end
+
+  def card_status
+    status = if @order.paid? then "paid"
+    elsif @order.status != "pending" || @order.hold_expired? then "expired"
+    else "pending"
+    end
+    render json: { status: status, message: (card_paid_message if status == "paid"), counts: door.counts }
+  end
+
+  # They changed their mind: the seats go back.
+  def card_cancel
+    @order.update!(status: "expired", expires_at: Time.current) if @order.pending?
+    redirect_to door_path(@listing), notice: "Canceled. Nothing was charged."
+  end
+
   private
+
+  def set_card_order
+    @order = @listing.ticket_orders.where(channel: "door_card").find_by!(token: params[:token].to_s)
+  end
+
+  def card_paid_message
+    count = @order.tickets.where(status: Ticket::SOLD_STATUSES).count
+    "#{helpers.pluralize(count, 'ticket')} paid by card, checked in."
+  end
 
   # Found by id, then judged against its own organization: someone without
   # door access there gets a plain not-found.

@@ -15,7 +15,9 @@ class TicketOrder < ApplicationRecord
   # ticket moved to another date (the money went with them; see
   # TicketOrderExchange).
   WAS_PAID = %w[paid partially_refunded refunded exchanged].freeze
-  CHANNELS = %w[online embed door_cash comp].freeze
+  # door_card: sold at the door, paid on the buyer's own phone (a QR on the
+  # door phone opens checkout for them).
+  CHANNELS = %w[online embed door_cash door_card comp].freeze
   MONEY_PATHS = %w[cocoscout external cash none].freeze
   # Seats stay reserved this long while a buyer pays.
   HOLD = 10.minutes

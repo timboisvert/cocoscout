@@ -52,7 +52,7 @@ RSpec.describe "Door", type: :request do
       grant(door_person, "box_office")
       sign_in(door_person)
       get door_path(listing)
-      expect(response.body).to include("At the door")
+      expect(response.body).to include("Sell tickets", "Card or phone pay")
     end
 
     it "is not found for someone without access, a revoked grant, or a theater that isn't switched on" do
@@ -164,5 +164,69 @@ RSpec.describe "Door", type: :request do
 
     post door_sell_path(listing), params: { quantities: { general.id.to_s => "50" }, kind: "cash" }
     expect(flash[:alert]).to include("more than the seats left")
+  end
+
+  # Tim (2026-10-02): take a card at the door on a phone. The buyer scans a
+  # code and pays on their own phone; the door screen flips to Paid.
+  describe "card or phone pay at the door" do
+    before do
+      grant(door_person, "box_office")
+      sign_in(door_person)
+    end
+
+    it "holds the seats, shows a code to scan, and checks them in when paid" do
+      listing.update!(status: "closed") # online sales are over; the door still sells
+      post door_sell_path(listing), params: { quantities: { general.id.to_s => "2" }, kind: "card", buyer_name: "Walk Up" }
+      order = listing.ticket_orders.sole
+      expect(order.attributes.slice("status", "channel", "money_path", "buyer_name", "issued_by_id", "total_cents"))
+        .to eq("status" => "pending", "channel" => "door_card", "money_path" => "cocoscout", "buyer_name" => "Walk Up",
+               "issued_by_id" => door_person.id, "total_cents" => 4_253)
+      expect(response).to redirect_to(door_card_path(listing, token: order.token))
+
+      follow_redirect!
+      expect(response.body).to include("$42.53", "Scan with your phone", "<svg", "Paying at the door")
+      get door_card_status_path(listing, token: order.token)
+      expect(response.parsed_body["status"]).to eq("pending")
+
+      TicketOrderSettlement.settle!(order, payment_intent_id: "pi_door")
+      expect(order.tickets.reload.pluck(:status, :checked_in_by_id)).to all(eq([ "checked_in", door_person.id ]))
+      get door_card_status_path(listing, token: order.token)
+      expect(response.parsed_body).to include("status" => "paid", "message" => "2 tickets paid by card, checked in.")
+    end
+
+    it "lets the buyer pay without giving their details, and cancels cleanly" do
+      post door_sell_path(listing), params: { quantities: { general.id.to_s => "1" }, kind: "card" }
+      order = listing.ticket_orders.sole
+
+      get tickets_checkout_path(token: order.token)
+      expect(response.body).to include("Pay at the door", "(optional)")
+      expect(response.body).not_to include("Change tickets")
+
+      order.update_columns(created_at: 1.minute.ago)
+      intent = Stripe::PaymentIntent.construct_from(id: "pi_door", client_secret: "pi_door_secret", amount: 2_142, status: "requires_payment_method")
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(intent)
+      post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "", buyer_email: "" }, as: :json
+      expect(response.parsed_body).to eq("client_secret" => "pi_door_secret")
+
+      post door_card_cancel_path(listing, token: order.token)
+      expect(flash[:notice]).to eq("Canceled. Nothing was charged.")
+      expect(order.reload.status).to eq("expired")
+      expect(listing.inventory.remaining(tier: general)).to eq(20)
+    end
+
+    it "keeps check-in-only people, and other theaters, away" do
+      post door_sell_path(listing), params: { quantities: { general.id.to_s => "1" }, kind: "card" }
+      order = listing.ticket_orders.sole
+
+      other = create(:user, password: password)
+      grant(other, "check_in")
+      sign_in(other)
+      get door_card_path(listing, token: order.token)
+      expect(response).to redirect_to(door_path(listing))
+
+      elsewhere = create(:ticket_listing, organization: create(:organization, :pro))
+      get door_card_path(elsewhere, token: order.token)
+      expect(response).to have_http_status(:not_found)
+    end
   end
 end

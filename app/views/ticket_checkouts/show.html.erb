@@ -3,63 +3,35 @@
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   tickets = @order.tickets.to_a
   by_tier = tickets.group_by(&:ticket_tier)
-  added_tax = TaxLine.where(taxable: tickets, included: false).group(:name).sum(:tax_cents).select { |_, cents| cents.positive? }
+  added_tax = TaxLine.where(taxable: tickets, included: false).group(:name, :rate_bps).sum(:tax_cents).select { |_, cents| cents.positive? }
   free = @order.total_cents.zero?
   pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(@order.total_cents / 100.0)}"
+  image, page_image = ticket_page_image(@listing)
+  place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
+  back_path = tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params)
+  # Paying on their own phone at the door: the door picked the tickets, and
+  # the buyer's details are optional.
+  at_door = @order.channel == "door_card"
 %>
 <% content_for :title, "Checkout · #{@listing.display_title}" %>
 <% content_for :head do %>
   <% unless free || @expired %><script src="https://js.stripe.com/v3/"></script><% end %>
 <% end %>
 
-<div class="mx-auto max-w-lg">
-  <%= link_to "← #{@listing.display_title}", tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params), class: "text-sm text-gray-500 hover:text-gray-800" %>
-  <h1 class="mt-3 text-2xl sm:text-3xl coustard-regular text-gray-900">Checkout</h1>
-  <p class="mt-1 text-gray-600"><%= @listing.display_title %> · <%= show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></p>
+<%# Layout A, like the show's page: one calm centered column. %>
+<div class="mx-auto max-w-xl space-y-5">
+  <h1 class="text-center text-3xl sm:text-4xl coustard-regular text-gray-900"><%= at_door ? "Pay at the door" : "Checkout" %></h1>
 
   <% if @expired %>
-    <div class="mt-6 rounded-xl border border-gray-200 p-5">
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center">
       <p class="text-gray-900 font-medium">Your hold on these seats ran out.</p>
       <p class="mt-1 text-sm text-gray-600">Seats are held for ten minutes while you check out. Pick your tickets again to start over.</p>
-      <div class="mt-4">
-        <%= render "shared/button", text: "Back to tickets", variant: "primary", size: "medium",
-              path: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params) %>
+      <div class="mt-4 flex justify-center">
+        <%= render "shared/button", text: "Back to tickets", variant: "primary", size: "medium", path: back_path %>
       </div>
     </div>
   <% else %>
-    <%# What they're paying for, every cent named (the all-in total up front). %>
-    <div class="mt-6 rounded-xl border border-gray-200 divide-y divide-gray-100">
-      <% by_tier.each do |tier, rows| %>
-        <div class="flex items-baseline justify-between gap-3 px-4 py-3 text-sm">
-          <span class="text-gray-900"><%= rows.size %> × <%= tier.name %></span>
-          <span class="tabular-nums text-gray-900"><%= number_to_currency(rows.sum(&:price_cents) / 100.0) %></span>
-        </div>
-      <% end %>
-      <% if @order.discount_cents.positive? %>
-        <div class="flex items-baseline justify-between gap-3 px-4 py-3 text-sm">
-          <span class="text-gray-600">Discount<%= " (#{@order.ticket_discount_code.code})" if @order.ticket_discount_code %></span>
-          <span class="tabular-nums text-gray-900">−<%= number_to_currency(@order.discount_cents / 100.0) %></span>
-        </div>
-      <% end %>
-      <% if @order.buyer_fee_cents.positive? %>
-        <div class="flex items-baseline justify-between gap-3 px-4 py-3 text-sm">
-          <span class="text-gray-600">Service and card fees</span>
-          <span class="tabular-nums text-gray-900"><%= number_to_currency(@order.buyer_fee_cents / 100.0) %></span>
-        </div>
-      <% end %>
-      <% added_tax.each do |name, cents| %>
-        <div class="flex items-baseline justify-between gap-3 px-4 py-3 text-sm">
-          <span class="text-gray-600"><%= name %></span>
-          <span class="tabular-nums text-gray-900"><%= number_to_currency(cents / 100.0) %></span>
-        </div>
-      <% end %>
-      <div class="flex items-baseline justify-between gap-3 px-4 py-3">
-        <span class="font-semibold text-gray-900">Total</span>
-        <span class="font-semibold tabular-nums text-gray-900"><%= number_to_currency(@order.total_cents / 100.0) %></span>
-      </div>
-    </div>
-
-    <%= form_with url: tickets_checkout_pay_path(token: @order.token, **embed_params), method: :post, class: "mt-6 space-y-4",
+    <%= form_with url: tickets_checkout_pay_path(token: @order.token, **embed_params), method: :post, class: "space-y-5",
           data: {
             controller: "ticket-checkout",
             action: "submit->ticket-checkout#submit",
@@ -69,38 +41,93 @@
             ticket_checkout_free_value: free,
             ticket_checkout_return_url_value: tickets_checkout_done_url(token: @order.token, **embed_params),
             ticket_checkout_expires_at_value: @order.expires_at&.iso8601,
-            ticket_checkout_listing_id_value: @listing.id,
+            ticket_checkout_listing_id_value: (@listing.id unless at_door),
             ticket_checkout_token_value: @order.token
           } do %>
       <%= render "tickets/bot_trap", id: "checkout_website" %>
-      <p class="text-sm text-gray-600" data-ticket-checkout-target="countdown" aria-live="polite"></p>
 
-      <div>
-        <label for="buyer_name" class="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
-        <%= text_field_tag :buyer_name, @order.buyer_name, autocomplete: "name", required: true, class: input_class %>
+      <%# The show, what they're buying, and every cent of it. %>
+      <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div class="flex items-center gap-4 px-5 py-4">
+          <% if image %>
+            <%= image_tag image, alt: "", class: "#{page_image.wide? ? 'w-24' : 'w-14'} h-auto rounded-lg flex-shrink-0" %>
+          <% end %>
+          <div class="min-w-0 flex-1 text-left">
+            <div class="font-semibold text-gray-900 truncate"><%= @listing.display_title %></div>
+            <div class="text-sm text-gray-600"><%= show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></div>
+            <% if place.present? %><div class="text-sm text-gray-500 truncate"><%= place %></div><% end %>
+          </div>
+        </div>
+        <div class="border-t border-gray-100 px-5 py-4 space-y-2 text-sm">
+          <% by_tier.each do |tier, rows| %>
+            <div class="flex items-baseline justify-between gap-3">
+              <span class="text-gray-900"><%= rows.size %> × <%= tier.name %></span>
+              <span class="tabular-nums text-gray-900"><%= number_to_currency(rows.sum(&:price_cents) / 100.0) %></span>
+            </div>
+          <% end %>
+          <% if @order.discount_cents.positive? %>
+            <div class="flex items-baseline justify-between gap-3">
+              <span class="text-gray-600">Discount<%= " (#{@order.ticket_discount_code.code})" if @order.ticket_discount_code %></span>
+              <span class="tabular-nums text-gray-900">−<%= number_to_currency(@order.discount_cents / 100.0) %></span>
+            </div>
+          <% end %>
+          <% if @order.buyer_fee_cents.positive? %>
+            <div class="flex items-baseline justify-between gap-3">
+              <span class="text-gray-600">Fees</span>
+              <span class="tabular-nums text-gray-900"><%= number_to_currency(@order.buyer_fee_cents / 100.0) %></span>
+            </div>
+          <% end %>
+          <% added_tax.each do |(name, rate_bps), cents| %>
+            <div class="flex items-baseline justify-between gap-3">
+              <span class="text-gray-600"><%= name %> <%= format("%g", rate_bps / 100.0) %>%</span>
+              <span class="tabular-nums text-gray-900"><%= number_to_currency(cents / 100.0) %></span>
+            </div>
+          <% end %>
+          <div class="flex items-baseline justify-between gap-3 pt-2 border-t border-gray-100">
+            <span class="font-semibold text-gray-900">Total</span>
+            <span class="text-lg font-bold tabular-nums text-gray-900"><%= number_to_currency(@order.total_cents / 100.0) %></span>
+          </div>
+        </div>
+        <div class="border-t border-gray-100 bg-gray-50 px-5 py-2.5 flex items-center justify-between gap-3 text-sm">
+          <span class="text-gray-600" data-ticket-checkout-target="countdown" aria-live="polite"></span>
+          <% unless at_door %>
+            <%= link_to "Change tickets", back_path, class: "font-medium text-pink-700 hover:text-pink-800" %>
+          <% end %>
+        </div>
       </div>
-      <div>
-        <label for="buyer_email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-        <%= email_field_tag :buyer_email, @order.buyer_email, autocomplete: "email", required: true, class: input_class %>
-        <p class="text-xs text-gray-500 mt-1">We'll email your tickets to this address.</p>
-      </div>
-      <div>
-        <label for="buyer_phone" class="block text-sm font-medium text-gray-700 mb-1.5">Phone <span class="font-normal text-gray-500">(optional)</span></label>
-        <%= telephone_field_tag :buyer_phone, @order.buyer_phone, autocomplete: "tel", class: input_class %>
+
+      <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5 space-y-4">
+        <h2 class="font-semibold text-gray-900">Your details<% if at_door %> <span class="font-normal text-gray-500">(optional)</span><% end %></h2>
+        <div>
+          <label for="buyer_name" class="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
+          <%= text_field_tag :buyer_name, @order.buyer_name, autocomplete: "name", required: !at_door, class: input_class %>
+        </div>
+        <div>
+          <label for="buyer_email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <%= email_field_tag :buyer_email, @order.buyer_email, autocomplete: "email", required: !at_door, class: input_class %>
+          <p class="text-xs text-gray-500 mt-1"><%= at_door ? "Add it to get your tickets and receipt by email." : "We'll email your tickets to this address." %></p>
+        </div>
+        <div>
+          <label for="buyer_phone" class="block text-sm font-medium text-gray-700 mb-1.5">Phone <span class="font-normal text-gray-500">(optional)</span></label>
+          <%= telephone_field_tag :buyer_phone, @order.buyer_phone, autocomplete: "tel", class: input_class %>
+        </div>
       </div>
 
       <% unless free %>
-        <div class="pt-2">
+        <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5">
+          <h2 class="font-semibold text-gray-900 mb-4">Payment</h2>
           <div data-ticket-checkout-target="payment" class="min-h-[3rem]"></div>
         </div>
       <% end %>
 
-      <p data-ticket-checkout-target="error" class="hidden text-sm text-red-600" role="alert"></p>
+      <p data-ticket-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
 
-      <%= render "shared/button", text: pay_text, variant: "primary", size: "large", type: :submit, classes: "w-full justify-center",
+      <%= render "shared/button", text: pay_text, variant: "primary", size: "jumbo", type: :submit, classes: "rounded-xl disabled:opacity-50",
             data: { ticket_checkout_target: "submit" } %>
 
-      <p class="text-xs text-gray-500">Tickets are sold by <%= @listing.organization.name %>. CocoScout processes the payment.<% if @ticketing_profile.support_email.present? %> Questions? <%= mail_to @ticketing_profile.support_email, nil, class: "text-pink-600" %><% end %></p>
+      <% if @ticketing_profile.support_email.present? %>
+        <p class="text-xs text-center text-gray-500">Questions? <%= mail_to @ticketing_profile.support_email, nil, class: "text-pink-700" %></p>
+      <% end %>
     <% end %>
   <% end %>
 </div>

@@ -15,11 +15,17 @@ class TicketCheckout
 
   # quantities: { tier_id => count }. code: a discount code, or the code that
   # unlocks a hidden tier. replacing: the token of this buyer's live hold.
-  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil)
-    raise Error, "Tickets aren't on sale for this show right now." unless listing.selling?
+  # at_door: the door selling to someone in front of them, which works after
+  # online sales close and with any ticket type still on the show.
+  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false)
+    if at_door
+      raise Error, "This show was canceled." if listing.status == "canceled" || listing.show.canceled
+    else
+      raise Error, "Tickets aren't on sale for this show right now." unless listing.selling?
+    end
 
     code = code.to_s.strip.upcase.presence
-    requests = requested_tiers(listing, quantities, code)
+    requests = requested_tiers(listing, quantities, code, at_door: at_door)
     max = listing.effective_max_per_order
     raise Error, "You can buy up to #{max} tickets at a time." if requests.values.sum > max
 
@@ -80,15 +86,15 @@ class TicketCheckout
                       .detect { |discount| discount.applies_to?(listing) && discount.usable? }
   end
 
-  def self.requested_tiers(listing, quantities, code)
-    tiers = listing.ticket_tiers.active.select(&:selling?).index_by(&:id)
+  def self.requested_tiers(listing, quantities, code, at_door: false)
+    tiers = listing.ticket_tiers.active.select { |tier| at_door || tier.selling? }.index_by(&:id)
     requests = {}
     quantities.to_h.each do |tier_id, count|
       count = count.to_i
       next unless count.positive?
 
       tier = tiers[tier_id.to_i]
-      raise Error, "That ticket isn't on sale." if tier.nil? || (tier.hidden? && tier.unlock_code != code)
+      raise Error, "That ticket isn't on sale." if tier.nil? || (!at_door && tier.hidden? && tier.unlock_code != code)
       raise Error, "#{tier.name} tickets come at least #{tier.min_per_order} at a time." if count < tier.min_per_order
       raise Error, "#{tier.name} tickets come at most #{tier.max_per_order} at a time." if tier.max_per_order && count > tier.max_per_order
 

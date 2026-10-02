@@ -24,6 +24,8 @@
   #   onclick: JavaScript onclick handler
   #   form_id: (type: :submit) the id of the form it submits, for a confirm
   #            button in a modal that sits outside that form
+  #   name, value: (type: :submit) sent with the form when this button
+  #            submits it, for a form with several ways to submit
   #
   # Variant Options:
   #   "primary" - Pink filled button (bg-pink-500 hover:bg-pink-600)
@@ -159,6 +161,7 @@
   # HTTP method for links (default GET, can be :post, :patch, :delete, etc.)
   http_method = local_assigns[:method]
   form_attr = local_assigns[:form_id].present? ? "form=\"#{ERB::Util.html_escape(local_assigns[:form_id])}\"".html_safe : nil
+  name_attr = local_assigns[:name].present? ? "name=\"#{ERB::Util.html_escape(local_assigns[:name])}\" value=\"#{ERB::Util.html_escape(local_assigns[:value])}\"".html_safe : nil
 %>
 
 <% if path.present? && http_method.present? %>
@@ -174,7 +177,7 @@
     <span><%= text %></span>
   <% end %>
 <% elsif type == :submit %>
-  <button type="submit" class="<%= all_classes %>" <%= form_attr %> <%= title_attr %> <%= "style=\"#{style}\"".html_safe if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"".html_safe if onclick %> <%= "disabled" if disabled %>>
+  <button type="submit" class="<%= all_classes %>" <%= form_attr %> <%= name_attr %> <%= title_attr %> <%= "style=\"#{style}\"".html_safe if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"".html_safe if onclick %> <%= "disabled" if disabled %>>
     <%= icon_html if icon_html %>
     <% if text.present? %><span><%= text %></span><% end %>
   </button>

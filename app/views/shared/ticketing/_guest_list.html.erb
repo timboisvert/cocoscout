@@ -3,7 +3,8 @@
     names and counts, never emails or links to orders). %>
 <%
   read_only = local_assigns.fetch(:read_only, false)
-  channel_badges = { "comp" => [ "Comp", "bg-blue-100 text-blue-700" ], "door_cash" => [ "Door", "bg-green-100 text-green-700" ] }
+  channel_badges = { "comp" => [ "Comp", "bg-blue-100 text-blue-700" ], "door_cash" => [ "Door", "bg-green-100 text-green-700" ],
+                     "door_card" => [ "Door", "bg-green-100 text-green-700" ] }
 %>
 <% if orders.empty? %>
   <p class="px-5 py-6 text-sm text-gray-500">Nobody yet.</p>

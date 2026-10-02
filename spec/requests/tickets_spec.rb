@@ -81,7 +81,7 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response).to redirect_to(tickets_checkout_path(token: order.token))
 
       follow_redirect!
-      expect(response.body).to include("2 × General").and include("Service and card fees").and include("$2.53").and include("Pay $42.53")
+      expect(response.body).to include("2 × General", ">Fees<", "$2.53", "Pay $42.53", "Change tickets")
     end
 
     it "keeps the hold when the buyer goes back: the page can ask about it, and the same tickets reuse it" do

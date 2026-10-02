@@ -105,6 +105,12 @@ module TicketingHelper
                    .html_safe
   end
 
+  # A QR code for any link, as inline SVG: the door's "scan to pay" code.
+  def link_qr_svg(url)
+    RQRCode::QRCode.new(url).as_svg(module_size: 6, standalone: true, use_path: true, viewbox: true,
+                                    svg_attributes: { class: "w-full h-auto" }).html_safe
+  end
+
   # Stripe's browser-side key, read like the secret key in the Stripe
   # initializer: the environment first, then credentials.
   def stripe_publishable_key

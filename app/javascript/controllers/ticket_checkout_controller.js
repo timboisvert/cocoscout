@@ -103,7 +103,7 @@ export default class extends Controller {
             }
             const minutes = Math.floor(left / 60)
             const seconds = String(left % 60).padStart(2, "0")
-            this.countdownTarget.textContent = `Your seats are held for ${minutes}:${seconds}.`
+            this.countdownTarget.textContent = `Held for you for ${minutes}:${seconds}`
         }
         tick()
         this.timer = setInterval(tick, 1000)

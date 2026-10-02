@@ -69,11 +69,15 @@ class TicketCheckoutsController < ApplicationController
     return render(json: { error: "Your hold on these seats ran out. Please start again." }, status: :unprocessable_entity) if @order.hold_expired? || @order.status != "pending"
     return render(json: { error: "Please check your details and try again." }, status: :unprocessable_entity) unless human_pace?
 
+    # At the door (the buyer paying on their own phone) the details are
+    # optional, and a name the door typed in stays unless they give one.
+    at_door = @order.channel == "door_card"
     buyer = params.permit(:buyer_name, :buyer_email, :buyer_phone)
-    @order.assign_attributes(buyer_name: buyer[:buyer_name].to_s.squish.presence, buyer_email: buyer[:buyer_email],
-                             buyer_phone: buyer[:buyer_phone].to_s.strip.presence)
-    if @order.buyer_name.blank? || @order.buyer_email.blank? || !@order.valid?
-      return render(json: { error: "Add your name and a valid email so we can send your tickets." }, status: :unprocessable_entity)
+    @order.assign_attributes(buyer_name: buyer[:buyer_name].to_s.squish.presence || (@order.buyer_name if at_door),
+                             buyer_email: buyer[:buyer_email].presence, buyer_phone: buyer[:buyer_phone].to_s.strip.presence)
+    if !@order.valid? || (!at_door && (@order.buyer_name.blank? || @order.buyer_email.blank?))
+      message = at_door ? "Check your email address, or leave it blank." : "Add your name and a valid email so we can send your tickets."
+      return render(json: { error: message }, status: :unprocessable_entity)
     end
     @order.save!
 
