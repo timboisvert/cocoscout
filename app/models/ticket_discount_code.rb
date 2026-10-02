@@ -46,7 +46,8 @@ class TicketDiscountCode < ApplicationRecord
     return false if production_id && production_id != listing.production_id
     return true if tier.nil? || ticket_tier_ids.blank?
 
-    ticket_tier_ids.map(&:to_i).include?(tier.id)
+    ids = ticket_tier_ids.map(&:to_i)
+    ids.include?(tier.id) || (tier.source_tier_id.present? && ids.include?(tier.source_tier_id))
   end
 
   def usable?(at = Time.current)

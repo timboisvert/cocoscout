@@ -38,38 +38,60 @@ RSpec.describe TicketListingSync do
                       })
   end
 
-  def listings_for(contract)
-    TicketListing.where(contract: contract).joins(:show).order("shows.date_and_time").to_a
+  def setup_for(contract)
+    ProductionTicketing.find_by!(production: contract.production)
   end
 
-  it "lists each show as a draft with the contract's prices, seats and codes, and skips the rehearsal" do
+  def turn_on!(contract)
+    setup = setup_for(contract)
+    setup.update!(enabled: true)
+    ProductionTicketingDates.sync!(setup)
+    setup
+  end
+
+  def listings_for(contract)
+    TicketListing.where(production: contract.production).joins(:show).order("shows.date_and_time").to_a
+  end
+
+  # Tim (2026-10-02): a contract sets up the production's ticketing, the way
+  # a manager would, instead of making draft pages date by date.
+  it "sets up the production's ticketing with the contract's prices, seats and codes, and picks the deal's nights" do
     contract = build_contract
     contract.activate!
 
-    listings = listings_for(contract)
-    expect(listings.map { |l| [ l.show.event_type, l.status ] }).to eq([ %w[show draft], %w[show draft] ])
-    expect(listings.first.ticket_tiers.map { |t| [ t.name, t.price_cents, t.quantity ] })
-      .to eq([ [ "General", 2_000, 60 ], [ "VIP", 3_500, nil ] ])
+    setup = setup_for(contract)
+    expect(setup.attributes.slice("enabled", "event_matching")).to eq("enabled" => false, "event_matching" => "manual")
+    expect(setup.ticket_tiers.map { |t| [ t.name, t.price_cents, t.quantity ] }).to eq([ [ "General", 2_000, 60 ], [ "VIP", 3_500, nil ] ])
+    expect(setup.selected_shows.map(&:event_type)).to eq(%w[show show]) # never the rehearsal
+    expect(TicketListing.count).to eq(0) # nothing on sale until it's turned on
 
-    code = listings.first.ticket_discount_codes.sole
-    expect([ code.code, code.kind, code.amount_cents ]).to eq([ "FRIENDS", "fixed", 500 ])
-    expect(code.ticket_tier_ids).to eq([ listings.first.ticket_tiers.find_by(name: "General").id ])
+    code = org.ticket_discount_codes.sole
+    expect([ code.code, code.kind, code.amount_cents, code.production_id ]).to eq([ "FRIENDS", "fixed", 500, contract.production_id ])
+    expect(code.ticket_tier_ids).to eq([ setup.ticket_tiers.find_by(name: "General").id ])
+
+    turn_on!(contract)
+    listings = listings_for(contract)
+    expect(listings.map { |l| [ l.status, l.inherits_tiers ] }).to eq([ [ "on_sale", true ], [ "on_sale", true ] ])
+    general_copy = listings.first.ticket_tiers.find_by(name: "General")
+    expect(code.applies_to?(listings.first, general_copy)).to be(true)
+    expect(code.applies_to?(listings.first, listings.first.ticket_tiers.find_by(name: "VIP"))).to be(false)
   end
 
   it "does nothing unless the contract asked to sell here and the org has ticketing" do
     contract = build_contract(list: false)
     contract.activate!
-    expect(TicketListing.count).to eq(0)
+    expect(ProductionTicketing.count).to eq(0)
 
     contract.update_draft_step(:ticketing, ticketing(list: true))
     org.update!(comped_indefinitely: false)
-    expect(described_class.for_contract(contract.reload)).to eq([])
-    expect(TicketListing.count).to eq(0)
+    expect(described_class.for_contract(contract.reload)).to be_nil
+    expect(ProductionTicketing.count).to eq(0)
   end
 
   it "follows an amendment without touching what buyers bought" do
     contract = build_contract
     contract.activate!
+    turn_on!(contract)
     listing = listings_for(contract).first
     general = listing.ticket_tiers.find_by(name: "General")
     vip = listing.ticket_tiers.find_by(name: "VIP")
@@ -83,16 +105,18 @@ RSpec.describe TicketListingSync do
     amended["discounts"].first["amount"] = 8
     contract.apply_amendment!({ "ticketing" => amended })
 
-    expect([ general.reload.price_cents, general.quantity ]).to eq([ 2_500, 40 ]) # never below the 40 sold
+    expect(setup_for(contract).ticket_tiers.map { |t| [ t.name, t.price_cents, t.quantity ] }).to eq([ [ "General", 2_500, 30 ] ])
+    expect([ general.reload.price_cents, general.quantity ]).to eq([ 2_500, 60 ]) # the new price; seats never below the 40 sold
     expect(vip.reload.archived_at).to be_present                                 # sold, so kept for its buyer
-    expect(listing.ticket_discount_codes.find_by(code: "FRIENDS").amount_cents).to eq(800)
+    expect(org.ticket_discount_codes.find_by(code: "FRIENDS").amount_cents).to eq(800)
     expect(listing.ticket_discount_codes.find_by(code: "CAST")).to be_present     # the manager's own code stays
     expect(listings_for(contract).last.ticket_tiers.map(&:name)).to eq([ "General" ]) # unsold VIP just goes
   end
 
-  it "drops a draft whose show left the contract, but keeps one people bought for" do
+  it "drops a night that left the contract, but keeps one people bought for" do
     contract = build_contract
     contract.activate!
+    turn_on!(contract)
     first, second = listings_for(contract)
     create(:ticket_order, ticket_listing: second, status: "paid")
 

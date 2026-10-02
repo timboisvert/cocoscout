@@ -1054,7 +1054,7 @@ class Contract < ApplicationRecord
       )
     end
 
-    # Ticket pages follow the amended prices, seats, codes and nights.
+    # The production's ticketing follows the amended prices, seats, codes and nights.
     TicketListingSync.for_contract(self)
     true
   end
@@ -2554,7 +2554,7 @@ class Contract < ApplicationRecord
     # Link per-event payments to their corresponding shows
     link_payments_to_shows(created_payments, created_shows)
 
-    # Draft ticket pages for its shows, when it asked to sell on CocoScout.
+    # The production's ticketing, when it asked to sell on CocoScout.
     TicketListingSync.for_contract(self)
   end
 

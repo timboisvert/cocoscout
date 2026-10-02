@@ -42,7 +42,12 @@ class ProductionTicketingSync
         attrs = source.attributes.slice(*SYNCED).merge("archived_at" => source.archived_at)
         copy = copies.delete(source.id)
         if copy
-          skipped << copy unless copy.update(attrs)
+          unless copy.update(attrs)
+            # Seats would drop below what this date sold: keep its seats,
+            # take everything else.
+            copy.reload.update!(attrs.except("quantity"))
+            skipped << copy
+          end
         else
           listing.ticket_tiers.create!(attrs.merge("source_tier_id" => source.id))
         end

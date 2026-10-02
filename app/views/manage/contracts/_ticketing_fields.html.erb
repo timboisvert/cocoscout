@@ -36,9 +36,10 @@
     </div>
   </div>
 
-  <%# Sell the contract's shows on CocoScout Ticketing: drafts with these
-      prices, seats and codes (TicketListingSync). Experimental, so only
-      superadmins on an org with Ticketing see it. %>
+  <%# Sell the contract's shows on CocoScout Ticketing: the production's
+      ticketing takes these prices, seats and codes, with the deal's nights
+      picked (TicketListingSync). Experimental, so only superadmins on an org
+      with Ticketing see it. %>
   <% if Current.user&.superadmin? && Current.organization&.feature_available?(:ticketing) %>
     <div class="mb-6 pt-6 border-t border-gray-200">
       <label class="flex items-start gap-3 cursor-pointer">
@@ -47,7 +48,7 @@
                class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
         <span>
           <span class="block text-sm font-medium text-gray-900">Sell these on CocoScout Ticketing</span>
-          <span class="block text-xs text-gray-600 mt-0.5">Each show gets a draft ticket page with these prices, seats and codes. Nothing goes on sale until you put it on sale in Ticketing.</span>
+          <span class="block text-xs text-gray-600 mt-0.5">The production's ticketing takes these prices, seats and codes, with the deal's nights picked. Nothing goes on sale until you turn it on in Ticketing.</span>
         </span>
       </label>
     </div>
