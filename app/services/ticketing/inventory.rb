@@ -18,9 +18,9 @@ module Ticketing
       @at = at
     end
 
+    # The seats on sale: the ticket types' seats added up, when every type
+    # has a count; otherwise there's no limit.
     def capacity
-      return @listing.effective_capacity if @listing.effective_capacity
-
       tiers = @listing.ticket_tiers.active.to_a
       tiers.sum(&:quantity) if tiers.any? && tiers.all?(&:quantity)
     end

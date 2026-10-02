@@ -180,7 +180,7 @@
             </summary>
             <dl class="<%= panel_class %> text-sm" data-ticket-picker-target="breakdown"></dl>
           </details>
-          <%= render "shared/button", text: "Continue to checkout", variant: "primary", size: "jumbo", type: :submit, classes: "rounded-xl disabled:opacity-50",
+          <%= render "shared/button", text: "Continue to checkout", variant: "primary", size: "jumbo", type: :submit, classes: "disabled:opacity-50",
                 data: { ticket_picker_target: "submit" } %>
           <% if @code %>
             <p class="text-xs text-center text-gray-600">Your code <span class="font-medium uppercase"><%= @code %></span> is applied at checkout.</p>

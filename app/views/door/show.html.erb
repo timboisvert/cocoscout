@@ -104,12 +104,12 @@
       </div>
       <div class="mt-3 space-y-2">
         <%= render "shared/button", text: "Card or phone pay", variant: "primary", size: "large", type: :submit, name: "kind", value: "card",
-              classes: "w-full justify-center rounded-xl disabled:opacity-50", data: { door_sell_target: "cardButton" } %>
+              classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "cardButton" } %>
         <div class="grid grid-cols-2 gap-2">
           <%= render "shared/button", text: "Cash", variant: "secondary", size: "large", type: :submit, name: "kind", value: "cash",
-                classes: "w-full justify-center rounded-xl disabled:opacity-50", data: { door_sell_target: "cashButton" } %>
+                classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "cashButton" } %>
           <%= render "shared/button", text: "Comp", variant: "secondary", size: "large", type: :submit, name: "kind", value: "comp",
-                classes: "w-full justify-center rounded-xl disabled:opacity-50", data: { door_sell_target: "compButton" } %>
+                classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "compButton" } %>
         </div>
       </div>
       <p class="mt-3 text-xs text-gray-500">Card or phone pay shows a code they scan to pay on their own phone, with Apple Pay, Google Pay or a card. Cash and comps are checked in as you record them.</p>

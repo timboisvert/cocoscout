@@ -41,7 +41,7 @@ RSpec.describe "Ticketing dashboard", type: :request do
     get manage_ticketing_path(period: "all_time")
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Tickets sold", "Ticket sales", "$140.00", "Coming up", "of 50", "· $60",
-                                      "+3 this week", "Latest orders", "Dana Scully", "Just played", "4 sold", "cocoscout.com/t/starsandgarters")
+                                      "+3 this week", "Latest orders", "Dana Scully", "Just played", "4 sold", "/t/starsandgarters", "Taxes collected", "Embed on your website")
     expect(response.body).to include(manage_ticket_listing_path(upcoming), manage_ticket_listing_path(played))
   end
 

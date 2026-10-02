@@ -248,12 +248,11 @@ module Manage
 
     def listing_params
       permitted = params.require(:ticket_listing).permit(
-        :title, :description, :on_sale_at, :off_sale_at, :capacity, :max_per_order, :fee_mode,
+        :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode,
         :door_note, :age_note, :accessibility_note,
         ticket_tiers_attributes: %i[id name price quantity description position _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
-      permitted[:capacity] = permitted[:capacity].presence if permitted.key?(:capacity)
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
       if permitted[:ticket_tiers_attributes]
         permitted[:ticket_tiers_attributes] = tier_attributes(permitted[:ticket_tiers_attributes])

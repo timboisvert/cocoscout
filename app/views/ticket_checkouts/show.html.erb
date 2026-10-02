@@ -122,7 +122,7 @@
 
       <p data-ticket-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
 
-      <%= render "shared/button", text: pay_text, variant: "primary", size: "jumbo", type: :submit, classes: "rounded-xl disabled:opacity-50",
+      <%= render "shared/button", text: pay_text, variant: "primary", size: "jumbo", type: :submit, classes: "disabled:opacity-50",
             data: { ticket_checkout_target: "submit" } %>
 
       <% if @ticketing_profile.support_email.present? %>

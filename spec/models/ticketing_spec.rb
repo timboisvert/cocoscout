@@ -124,10 +124,10 @@ RSpec.describe "Ticketing models" do
       order
     end
 
-    it "takes capacity from the tiers' seats when the listing has none of its own" do
+    it "takes capacity from the tiers' seats, and has no limit while any type has none" do
       expect(listing.inventory.capacity).to eq(5)
-      listing.update!(capacity: 4)
-      expect(listing.inventory.capacity).to eq(4)
+      vip.update!(quantity: nil)
+      expect(listing.inventory.capacity).to be_nil
     end
 
     it "counts sold seats and seats held by an unpaid order, until the hold runs out" do
@@ -141,14 +141,13 @@ RSpec.describe "Ticketing models" do
       expect(inventory.remaining).to eq(3)
     end
 
-    it "caps a tier by its own seats and by the room" do
-      listing.update!(capacity: 4)
+    it "caps each tier by its own seats" do
       sell(vip, 2)
       sell(general, 1)
       inventory = listing.inventory
-      expect([ inventory.remaining(tier: vip), inventory.remaining(tier: general), inventory.remaining ]).to eq([ 0, 1, 1 ])
-      expect(inventory.fits?(general => 1)).to be(true)
-      expect(inventory.fits?(general => 2)).to be(false)
+      expect([ inventory.remaining(tier: vip), inventory.remaining(tier: general), inventory.remaining ]).to eq([ 0, 2, 2 ])
+      expect(inventory.fits?(general => 2)).to be(true)
+      expect(inventory.fits?(general => 3)).to be(false)
     end
 
     it "is sold out when every tier on sale is" do

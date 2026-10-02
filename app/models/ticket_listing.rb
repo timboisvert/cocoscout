@@ -33,7 +33,6 @@ class TicketListing < ApplicationRecord
   validates :slug, presence: true, uniqueness: { scope: :organization_id },
                    format: { with: /\A[a-z0-9][a-z0-9-]*\z/ }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
-  validates :capacity, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   validate :show_belongs_to_organization
 
@@ -79,12 +78,6 @@ class TicketListing < ApplicationRecord
 
   def effective_accessibility_note
     accessibility_note.presence || production_ticketing&.accessibility_note.presence
-  end
-
-  # A cap on the whole show, when one was set (older listings); otherwise
-  # each ticket type's seats are the limit.
-  def effective_capacity
-    capacity
   end
 
   def starts_at
