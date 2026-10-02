@@ -1,8 +1,14 @@
 <% content_for :title, "Ticketing" %>
 <%
+  d = @dashboard
   profile = ticketing_profile
-  fee_words = profile.default_fee_mode == "buyer" ? "Buyers pay the fees" : "You absorb the fees"
-  tax_words = @tax.set? ? "#{@tax.percent}% #{@tax.name.downcase}, #{@tax.mode == 'included' ? 'included in prices' : 'added at checkout'}" : "No tax on tickets"
+  summary = d.summary
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  series = d.daily_tickets
+  box_office_url = tickets_box_office_url(org: profile.slug)
+  coming_up = d.coming_up
+  just_played = d.just_played
+  recent = d.recent_orders.to_a
 %>
 
 <div class="w-full mb-10">
@@ -12,43 +18,137 @@
         title: "Ticketing",
         description: "<p>Sell tickets to your shows right here: your own box office page, checkout, and the door. Ticket money lands in your CocoScout balance, where it pays your people first and fills in each show's financials for you.</p>",
         actions: [
-          { icon: "calendar", text: "Shows on sale", description: "Prices, seats and sales for each date", path: manage_ticket_listings_path },
+          { icon: "calendar", text: "Shows", description: "Every date you sell, and how it's going", path: manage_ticket_listings_path, badge: d.drafts_soon.count },
           { icon: "clipboard-list", text: "Orders", description: "Find a buyer, resend tickets, refund", path: manage_ticket_orders_path },
-          { icon: "user-group", text: "Door", description: "Check people in and sell at the door", path: door_index_path },
+          { icon: "user-group", text: "Door", description: "Check people in and sell at the door", path: door_index_path, badge: d.tonight.size },
           { icon: "cog", text: "Settings", description: "Box office, fees, tax and door access", path: manage_ticketing_settings_path }
         ] %>
 
-  <% unless profile.enabled? %>
-    <%= render "shared/alert_panel",
-          eyebrow: "Not open yet",
-          headline: "Ticketing is off for #{Current.organization.name}",
-          body: "Your box office page and checkout stay hidden until it's switched on in Settings.",
-          actions: [ { text: "Open settings", path: manage_ticketing_settings_path } ] %>
+  <% d.alerts.each do |a| %>
+    <%= render "shared/alert_panel", eyebrow: a.eyebrow, headline: a.headline, body: a.body, actions: a.actions, tone: a.tone %>
   <% end %>
 
-  <%= link_to manage_ticket_balance_path, class: "mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-5 py-4 transition-colors hover:border-pink-400 #{@balance.available_cents.positive? ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}" do %>
-    <div>
-      <div class="text-sm text-gray-600">Your CocoScout balance</div>
-      <div class="text-2xl font-bold tabular-nums text-gray-900"><%= number_to_currency(@balance.available_cents / 100.0) %> <span class="text-sm font-normal text-gray-600">available</span></div>
+  <%# Sales for a period, the Money hub way. %>
+  <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-lg font-semibold text-gray-900">Sales</h2>
+      <div class="flex items-center gap-2">
+        <label for="ticketing-period" class="text-xs font-medium text-gray-500 uppercase tracking-wide">Period</label>
+        <%= select_tag :period, options_for_select(FinancialSummaryService::PERIOD_LABELS.map { |key, label| [ label, key ] }, d.period),
+              id: "ticketing-period", onchange: "window.location.href = '#{manage_ticketing_path}?period=' + this.value",
+              class: "appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600" %>
+      </div>
     </div>
-    <div class="text-sm text-gray-600 text-right">
-      <%= number_to_currency(@balance.upcoming_cents / 100.0) %> waiting on upcoming shows<br>
-      <span class="font-medium text-pink-600">View balance</span>
+    <div class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <% [ [ "Tickets sold", summary.tickets.to_s, "Comps not counted" ],
+           [ "Ticket sales", money.call(summary.gross_cents), "Before fees and tax" ],
+           [ "You keep", money.call(summary.net_cents), "After fees and refunds, without tax" ],
+           [ "Refunded", money.call(summary.refunded_cents), "Back to buyers" ] ].each do |label, value, note| %>
+        <div class="rounded-lg bg-gray-50 px-4 py-3">
+          <div class="text-xs text-gray-500"><%= label %></div>
+          <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= value %></div>
+          <div class="text-xs text-gray-500 mt-0.5"><%= note %></div>
+        </div>
+      <% end %>
     </div>
-  <% end %>
+    <% if series.values.sum.positive? %>
+      <div class="mt-4 h-36" data-controller="line-chart" data-line-chart-data-value="<%= series.to_json %>" data-line-chart-label-value="tickets">
+        <canvas data-line-chart-target="canvas"></canvas>
+      </div>
+    <% end %>
+  </div>
 
-  <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
-    <div class="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
-      <span class="text-sm text-gray-500">Box office</span>
-      <span class="text-sm font-medium text-gray-900">cocoscout.com/t/<%= profile.slug %></span>
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">
+    <div class="space-y-6 min-w-0">
+      <%# Coming up: every upcoming date, how it's selling, a click away. %>
+      <section>
+        <div class="flex items-baseline justify-between mb-2">
+          <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Coming up <span class="font-normal">(<%= d.upcoming_count %>)</span></h2>
+          <%= link_to "Put shows on sale", manage_new_ticket_listing_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+        </div>
+        <% if coming_up.any? %>
+          <div class="space-y-2">
+            <% coming_up.each do |listing, stats| %>
+              <%= render "shared/show_row", show: listing.show, link_path: manage_ticket_listing_path(listing), show_production: true,
+                    show_canceled: true, right_panel: :ticket_sales, ticket_listing: listing, ticket_stats: stats %>
+            <% end %>
+          </div>
+          <% if d.upcoming_count > coming_up.size %>
+            <%= link_to "See all #{d.upcoming_count} upcoming shows →", manage_ticket_listings_path, class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
+          <% end %>
+        <% else %>
+          <div class="bg-white border border-gray-200 rounded-xl px-5 py-6 flex items-center gap-3 text-sm text-gray-600">
+            <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            No upcoming shows are selling yet. Put a production's dates on sale to start.
+          </div>
+        <% end %>
+      </section>
+
+      <section>
+        <div class="flex items-baseline justify-between mb-2">
+          <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Latest orders</h2>
+          <%= link_to "All orders →", manage_ticket_orders_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+          <% if recent.any? %>
+            <% recent.each do |order| %>
+              <% count = order.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
+              <%= link_to manage_ticket_order_path(order.id), class: "flex flex-wrap items-center gap-x-4 gap-y-0.5 px-5 py-2.5 hover:bg-gray-50" do %>
+                <span class="min-w-[10rem] flex-1 text-sm text-gray-900 truncate"><%= order.buyer_name.presence || "No name" %></span>
+                <span class="min-w-[10rem] flex-1 text-sm text-gray-600 truncate"><%= order.ticket_listing.show.date_and_time.strftime("%b %-d") %> · <%= order.ticket_listing.display_title %></span>
+                <span class="text-sm text-gray-700 tabular-nums"><%= pluralize(count, "ticket") %></span>
+                <span class="w-20 text-right text-sm font-medium text-gray-900 tabular-nums"><%= order.channel == "comp" ? "Comp" : ticket_price(order.total_cents) %></span>
+                <span class="w-24 text-right text-xs text-gray-500"><%= time_ago_in_words(order.paid_at) %> ago</span>
+              <% end %>
+            <% end %>
+          <% else %>
+            <p class="px-5 py-6 text-sm text-gray-600">No orders yet.</p>
+          <% end %>
+        </div>
+      </section>
+
+      <% if just_played.any? %>
+        <section>
+          <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Just played</h2>
+          <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+            <% just_played.each do |listing, stats| %>
+              <%= link_to manage_ticket_listing_path(listing), class: "flex flex-wrap items-center gap-x-4 gap-y-0.5 px-5 py-2.5 hover:bg-gray-50" do %>
+                <span class="min-w-[12rem] flex-1 text-sm text-gray-900 truncate"><%= listing.show.date_and_time.strftime("%a %b %-d") %> · <%= listing.display_title %></span>
+                <span class="text-sm text-gray-700 tabular-nums"><%= stats.sold %> sold</span>
+                <span class="text-sm text-gray-700 tabular-nums"><%= stats.sold.positive? ? "#{(stats.checked_in * 100.0 / stats.sold).round}% came" : "—" %></span>
+                <span class="w-28 text-right text-xs <%= listing.released_at ? 'text-green-700' : 'text-gray-500' %>"><%= listing.released_at ? "Money available" : "Money tomorrow" %></span>
+              <% end %>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
     </div>
-    <div class="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
-      <span class="text-sm text-gray-500">Fees</span>
-      <span class="text-sm font-medium text-gray-900"><%= fee_words %></span>
-    </div>
-    <div class="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
-      <span class="text-sm text-gray-500">Tax</span>
-      <span class="text-sm font-medium text-gray-900"><%= tax_words %><%= link_to "Taxes collected", manage_ticket_taxes_path, class: "ml-3 font-normal text-pink-600 hover:text-pink-700" if @tax.set? %></span>
-    </div>
+
+    <aside class="space-y-4">
+      <%= link_to manage_ticket_balance_path, class: "block rounded-xl border px-5 py-4 transition-colors hover:border-pink-400 #{@balance.available_cents.positive? ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}" do %>
+        <div class="text-sm text-gray-600">Your CocoScout balance</div>
+        <div class="text-2xl font-bold tabular-nums text-gray-900"><%= money.call(@balance.available_cents) %> <span class="text-sm font-normal text-gray-600">available</span></div>
+        <div class="text-xs text-gray-600 mt-1"><%= money.call(@balance.upcoming_cents) %> waiting on upcoming shows</div>
+      <% end %>
+
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <div class="text-sm font-semibold text-gray-900">Your box office</div>
+        <div class="text-xs text-gray-600 mt-1 break-all">cocoscout.com/t/<%= profile.slug %></div>
+        <div class="mt-3 flex flex-wrap gap-2" data-controller="copy-url">
+          <span data-copy-url-target="button" data-url="<%= box_office_url %>">
+            <%= render "shared/button", text: "Copy link", variant: "secondary", size: "small", type: :button, data: { action: "click->copy-url#copy" } %>
+          </span>
+          <%= render "shared/button", text: "Open", variant: "ghost", size: "small", path: box_office_url, target: "_blank", rel: "noopener" %>
+        </div>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-xl p-4 text-sm space-y-2">
+        <%= link_to "Taxes collected", manage_ticket_taxes_path, class: "block font-medium text-pink-600 hover:text-pink-700" %>
+        <%= link_to "Embed on your website", manage_ticketing_settings_section_path(section: "embed"), class: "block font-medium text-pink-600 hover:text-pink-700" %>
+        <% if Current.user.superadmin? %>
+          <%= link_to "Books", manage_money_books_path, class: "block font-medium text-pink-600 hover:text-pink-700" %>
+        <% end %>
+      </div>
+    </aside>
   </div>
 </div>

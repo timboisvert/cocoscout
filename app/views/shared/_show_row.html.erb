@@ -528,7 +528,7 @@
 
 
   <% elsif right_panel == :ticket_sales && local_assigns[:ticket_listing].present? %>
-    <%= render "shared/ticket_sales_panel", listing: local_assigns[:ticket_listing] %>
+    <%= render "shared/ticket_sales_panel", listing: local_assigns[:ticket_listing], stats: local_assigns[:ticket_stats] %>
 
   <% elsif right_panel == :countdown && local_assigns[:closes_at].present? && local_assigns[:closes_at] > Time.current %>
     <%# Right Section: Countdown timer for closing time %>
