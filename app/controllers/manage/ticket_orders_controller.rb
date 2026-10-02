@@ -51,6 +51,7 @@ module Manage
       listing = @order.ticket_listing
       @available_cents = TicketBalance.available_cents(Current.organization)
       @short = @order.money_path == "cocoscout" && listing.released_at.present? && @quote.org_debit_cents > @available_cents
+      @short_cents = TicketBalance.shortfall_cents(Current.organization, @quote.org_debit_cents) if @short
     end
 
     def refund
@@ -64,6 +65,32 @@ module Manage
       end
       redirect_to manage_ticket_order_path(@order.id), notice: notice
     rescue TicketOrderRefund::Error => e
+      redirect_to manage_ticket_order_path(@order.id), alert: e.message
+    end
+
+    # The balance can't cover a refund after the show: add the difference
+    # from the bank, and the refund goes out the moment it lands (at once
+    # by card; in a few days by bank debit).
+    def refund_top_up
+      ticket_ids = Array(params[:ticket_ids]).compact_blank
+      keep_fees = params[:keep_fees] == "1"
+      quote = TicketOrderRefund.quote(@order, ticket_ids: ticket_ids, keep_fees: keep_fees)
+      short = TicketBalance.shortfall_cents(Current.organization, quote.org_debit_cents)
+      unless short.positive?
+        redirect_to manage_ticket_order_refund_path(@order.id, ticket_ids: ticket_ids, keep_fees: params[:keep_fees]) and return
+      end
+
+      top_up = BalanceTopUpService.start!(Current.organization, amount_cents: short, by: Current.user, refund_request: {
+        "order_id" => @order.id, "ticket_ids" => quote.tickets.map(&:id), "keep_fees" => keep_fees,
+        "reason" => params[:reason].presence, "user_id" => Current.user.id
+      })
+      notice = if top_up.status == "succeeded"
+        "Added #{helpers.number_to_currency(short / 100.0)} and refunded #{@order.buyer_name.presence || 'the buyer'}."
+      else
+        "Adding #{helpers.number_to_currency(short / 100.0)} from your bank. The refund goes out when it lands, in 2 to 4 business days."
+      end
+      redirect_to manage_ticket_order_path(@order.id), notice: notice
+    rescue BalanceTopUpService::Error => e
       redirect_to manage_ticket_order_path(@order.id), alert: e.message
     end
 

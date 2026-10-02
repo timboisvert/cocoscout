@@ -9,7 +9,8 @@
 #   settling  — the show has happened; the card money is still reaching
 #               Stripe's available balance (about two days after each sale).
 #   available — spendable. Payout runs use it before debiting the bank, and
-#               the theater can withdraw it to its bank any time.
+#               the theater can withdraw it to its bank any time. Money the
+#               theater adds from its bank (BalanceTopUp) counts here too.
 #
 # Spending is recorded where it happens: a payout run's balance_applied_cents
 # and BalanceWithdrawal rows. Neither counts once it has failed.
@@ -31,11 +32,27 @@ class TicketBalance
     upcoming, settling, settled = buckets(organization)
     spent = spent_cents(organization)
     Summary.new(upcoming_cents: [ upcoming, 0 ].max, settling_cents: [ settling, 0 ].max,
-                available_cents: [ settled - spent, 0 ].max, spent_cents: spent)
+                available_cents: [ settled + top_ups_cents(organization) - spent, 0 ].max, spent_cents: spent)
+  end
+
+  # Spendable money that's been here more than a year (oldest first): what
+  # the 12-month rule sends back to the theater's bank.
+  def self.aged_cents(organization, now: Time.current)
+    recent = recent_settled_cents(organization, since: now - 1.year) +
+             BalanceTopUp.succeeded.where(organization_id: organization.id).where(updated_at: (now - 1.year)..).sum(:amount_cents)
+    [ available_cents(organization) - recent, 0 ].max
   end
 
   def self.available_cents(organization)
     summary(organization).available_cents
+  end
+
+  # How much more the balance needs to pay `cents` from it. Works from the
+  # true balance, not the one floored at zero for display — a dispute or a
+  # refund can leave it below zero, and a top-up has to cover that too.
+  def self.shortfall_cents(organization, cents)
+    _, _, settled = buckets(organization)
+    [ cents - (settled + top_ups_cents(organization) - spent_cents(organization)), 0 ].max
   end
 
   # Ticket money that isn't spendable yet. OrgCashEntry.available_cents keeps
@@ -68,10 +85,30 @@ class TicketBalance
 
   # A run claims its share while it's being funded (still a draft for those
   # few seconds), so every run counts except one whose funding failed.
+  def self.top_ups_cents(organization)
+    BalanceTopUp.succeeded.where(organization_id: organization.id).sum(:amount_cents)
+  end
+
+  # Settled, released ticket money from orders paid since a time.
+  def self.recent_settled_cents(organization, since:)
+    sql = <<~SQL.squish
+      SELECT COALESCE(SUM(e.amount_cents), 0)
+      FROM org_cash_entries e
+      LEFT JOIN ticket_refunds r ON e.source_type = 'TicketRefund' AND r.id = e.source_id
+      JOIN ticket_orders o ON o.id = CASE WHEN e.source_type = 'TicketOrder' THEN e.source_id ELSE r.ticket_order_id END
+      JOIN ticket_listings l ON l.id = o.ticket_listing_id
+      WHERE e.organization_id = :organization_id AND e.entry_type IN (:types)
+        AND l.released_at IS NOT NULL AND o.paid_at > :since
+    SQL
+    OrgCashEntry.connection.select_value(
+      OrgCashEntry.sanitize_sql([ sql, { organization_id: organization.id, types: ENTRY_TYPES, since: since } ])
+    ).to_i
+  end
+
   def self.spent_cents(organization)
     PayoutBatch.where(organization_id: organization.id).where.not(status: "failed").sum(:balance_applied_cents) +
       BalanceWithdrawal.where(organization_id: organization.id).where.not(status: "failed").sum(:amount_cents)
   end
 
-  private_class_method :buckets, :spent_cents
+  private_class_method :buckets, :spent_cents, :top_ups_cents, :recent_settled_cents
 end

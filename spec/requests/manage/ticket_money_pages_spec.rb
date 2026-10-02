@@ -93,6 +93,21 @@ RSpec.describe "Manage ticketing money", type: :request do
       expect(listing.reload.status).to eq("on_sale")
     end
 
+    it "offers to add the difference from the bank when the balance can't cover a refund, then refunds" do
+      org.update!(stripe_customer_id: "cus_sg", funding_payment_method_id: "pm_sg", funding_payment_method_type: "card")
+      order = travel_to(5.days.ago) { sold(1) }
+      listing.update!(released_at: 3.days.ago)
+      BalanceWithdrawal.create!(organization: org, amount_cents: 2_000, status: "sent")
+
+      get manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id) }
+      expect(response.body).to include("Add $20.92 and refund")
+
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_top", status: "succeeded"))
+      post manage_ticket_order_refund_top_up_path(order.id), params: { ticket_ids: order.tickets.pluck(:id), keep_fees: "0" }
+      expect(flash[:notice]).to eq("Added $20.92 and refunded Dana Scully.")
+      expect(order.reload.status).to eq("refunded")
+    end
+
     it "resends the tickets" do
       order = sold(1)
       expect { post manage_ticket_order_resend_path(order.id) }.to have_enqueued_job(TicketOrderConfirmationJob).with(order.id)
@@ -129,6 +144,22 @@ RSpec.describe "Manage ticketing money", type: :request do
 
       post manage_ticket_balance_withdraw_path, params: { amount: "lots" }
       expect(flash[:alert]).to eq("Enter an amount like 250.00.")
+    end
+
+    it "says what's safe to withdraw, and adds funds" do
+      payee = create(:person, stripe_account_id: "acct_payee", payouts_enabled: true)
+      PayoutLedgerEntry.post!(organization: org, payee: payee, entry_type: "earning", amount_cents: 1_500)
+      PayoutBatchService.build_for(organization: org)
+
+      get manage_ticket_balance_path
+      expect(response.body).to include("Keep $15.00 for the next two weeks of payouts; you can safely withdraw $45.00", "Your open payout run", 'value="45.00"')
+
+      org.update!(stripe_customer_id: "cus_sg", funding_payment_method_id: "pm_sg", funding_payment_method_type: "us_bank_account")
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_top", status: "processing"))
+      post manage_ticket_balance_top_up_path, params: { amount: "100" }
+      expect(flash[:notice]).to eq("Adding $100.00 from your bank. It lands in 2 to 4 business days.")
+      get manage_ticket_balance_path
+      expect(response.body).to include("On its way")
     end
 
     it "turns automatic withdrawal on and off" do

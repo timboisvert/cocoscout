@@ -1252,9 +1252,11 @@ Rails.application.routes.draw do
     get    "ticketing/orders/:id",                to: "ticket_orders#show",              as: "ticket_order"
     get    "ticketing/orders/:id/refund",         to: "ticket_orders#refund_review",     as: "ticket_order_refund"
     post   "ticketing/orders/:id/refund",         to: "ticket_orders#refund"
+    post   "ticketing/orders/:id/refund/top-up",  to: "ticket_orders#refund_top_up",     as: "ticket_order_refund_top_up"
     post   "ticketing/orders/:id/resend",         to: "ticket_orders#resend",            as: "ticket_order_resend"
     get    "ticketing/balance",                   to: "ticket_balance#show",             as: "ticket_balance"
     post   "ticketing/balance/withdraw",          to: "ticket_balance#withdraw",         as: "ticket_balance_withdraw"
+    post   "ticketing/balance/top-up",            to: "ticket_balance#top_up",           as: "ticket_balance_top_up"
     patch  "ticketing/balance/auto-withdraw",     to: "ticket_balance#update_auto_withdraw", as: "ticket_balance_auto_withdraw"
     get    "ticketing/taxes",                     to: "ticket_taxes#show",               as: "ticket_taxes"
 

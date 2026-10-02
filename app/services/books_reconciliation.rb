@@ -5,9 +5,9 @@
 # instead of in a tax filing. Each check compares one account with what it
 # should equal:
 #
-#   CocoScout balance — ticket money in the cash ledger (sales, refunds and
-#                       disputes in OrgCashEntry) less what was withdrawn to
-#                       the bank. (Payout runs join the books in stage B.)
+#   CocoScout balance — ticket money in the cash ledger (sales, refunds,
+#                       disputes and money added from the bank) less what was
+#                       withdrawn to the bank. (Payout runs join the books in stage B.)
 #   Tax to remit      — the tax_lines on paid ticket orders, less refunds.
 #
 # Returns the mismatches; none means the books agree.
@@ -24,7 +24,7 @@ class BooksReconciliation
 
   def self.balance_check(organization)
     books = ChartOfAccounts.account(organization, :cocoscout_balance).natural_balance_cents
-    cash = OrgCashEntry.where(organization: organization, entry_type: TicketBalance::ENTRY_TYPES).sum(:amount_cents)
+    cash = OrgCashEntry.where(organization: organization, entry_type: TicketBalance::ENTRY_TYPES + %w[top_up]).sum(:amount_cents)
     withdrawn = organization.balance_withdrawals.where(status: "sent").sum(:amount_cents)
     expected = cash - withdrawn
     Mismatch.new(account: "cocoscout_balance", books_cents: books, expected_cents: expected) unless books == expected

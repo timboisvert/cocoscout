@@ -104,6 +104,16 @@ class TicketingNotificationContent
     }
   end
 
+  # Money past the 12-month rule, with no bank connected to send it to.
+  def self.held_a_year(cents)
+    {
+      headline: "Connect your bank: #{money(cents)} has been in your balance for over a year",
+      explanation: "CocoScout sends money that's been in your balance for more than a year back to your bank. " \
+                   "Connect your organization's bank so we can send you #{money(cents)}.",
+      balance_url: routes.manage_ticket_balance_url(**url_options)
+    }
+  end
+
   def self.cancellation_done(listing, refunded_count:, refunded_cents:, failed_count:)
     show_vars(listing).merge(refunded_count: refunded_count, refunded_amount: money(refunded_cents),
                              failed_count: failed_count.positive? ? failed_count : "",

@@ -47,15 +47,26 @@
         <% elsif s.available_cents.zero? %>
           <p class="text-sm text-gray-600">Nothing is available to withdraw right now.</p>
         <% else %>
-          <% if @run_need_cents.positive? %>
-            <p class="text-sm text-gray-700 mb-3">Your open payout run needs <%= number_to_currency(@run_need_cents / 100.0) %>. Keep at least that here to pay it without a bank debit.</p>
+          <%# Smart withdrawal: what's coming due, and what's safe to take out. %>
+          <% if @obligations.any? %>
+            <div class="mb-4 rounded-lg border px-4 py-3 <%= @safe_cents.positive? ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50' %>">
+              <p class="text-sm font-semibold text-gray-900">
+                Keep <%= number_to_currency(@obligations.sum(&:cents) / 100.0) %> for the next two weeks of payouts; you can safely withdraw <%= number_to_currency(@safe_cents / 100.0) %>.
+              </p>
+              <ul class="mt-2 space-y-0.5 text-sm text-gray-700">
+                <% @obligations.each do |item| %>
+                  <li class="flex justify-between gap-4"><span><%= item.label %></span><span class="tabular-nums"><%= number_to_currency(item.cents / 100.0) %></span></li>
+                <% end %>
+              </ul>
+              <p class="mt-2 text-xs text-gray-600">Money kept here pays these the same day. Withdraw more and they'll need a bank debit first (2 to 4 business days).</p>
+            </div>
           <% end %>
           <%= form_with url: manage_ticket_balance_withdraw_path, method: :post, id: "withdraw-form", class: "flex flex-wrap items-end gap-3" do %>
             <div class="w-44">
               <label for="amount" class="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
-                <%= text_field_tag :amount, format("%.2f", s.available_cents / 100.0), inputmode: "decimal", class: input_class %>
+                <%= text_field_tag :amount, format("%.2f", (@obligations.any? ? @safe_cents : s.available_cents) / 100.0), inputmode: "decimal", class: input_class %>
               </div>
             </div>
             <%= render "shared/button", text: "Withdraw", variant: "primary", size: "medium", type: :button,
@@ -73,7 +84,7 @@
                 </button>
               </div>
               <div class="px-6 py-5 text-sm text-gray-600">
-                The amount you entered leaves your CocoScout balance and goes to your bank.<%= " Your open payout run would then need a bank debit for whatever the balance can't cover." if @run_need_cents.positive? %>
+                The amount you entered leaves your CocoScout balance and goes to your bank.<%= " Anything over #{number_to_currency(@safe_cents / 100.0)} means your coming payouts need a bank debit first." if @obligations.any? %>
               </div>
               <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
                 <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
@@ -81,6 +92,41 @@
               </div>
             </div>
           </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Add money from the bank or card the theater funds payout runs with. %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Add funds</h2>
+        <p class="text-sm text-gray-600 mt-1">Top up your balance from the bank or card you fund payout runs with, say to cover a refund after a show. A card lands at once; a bank debit takes 2 to 4 business days.</p>
+      </div>
+      <div class="px-6 py-5">
+        <% if org.funding_payment_method_id.present? %>
+          <%= form_with url: manage_ticket_balance_top_up_path, method: :post, class: "flex flex-wrap items-end gap-3" do %>
+            <div class="w-44">
+              <label for="top_up_amount" class="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+                <%= text_field_tag :amount, nil, id: "top_up_amount", inputmode: "decimal", placeholder: "100.00", class: input_class %>
+              </div>
+            </div>
+            <%= render "shared/button", text: "Add funds", variant: "secondary", size: "medium", type: :submit %>
+          <% end %>
+          <% if @top_ups.any? %>
+            <ul class="mt-4 divide-y divide-gray-100 text-sm">
+              <% @top_ups.each do |top_up| %>
+                <li class="flex justify-between gap-4 py-2">
+                  <span class="text-gray-900"><%= top_up.created_at.strftime("%b %-d, %Y") %>
+                    <span class="text-gray-500">· <%= { "pending" => "On its way", "succeeded" => "Added", "failed" => "Didn't go through" }.fetch(top_up.status) %><%= " for a refund" if top_up.refund_request.present? %></span></span>
+                  <span class="tabular-nums text-gray-700"><%= number_to_currency(top_up.amount_cents / 100.0) %></span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        <% else %>
+          <p class="text-sm text-gray-600">Connect a bank or card in Money settings first.</p>
         <% end %>
       </div>
     </div>

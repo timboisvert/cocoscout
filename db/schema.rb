@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_090100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_02_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -267,6 +267,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_090100) do
     t.index ["audition_request_id"], name: "index_auditions_on_audition_request_id"
     t.index ["audition_session_id"], name: "index_auditions_on_audition_session_id"
     t.index ["auditionable_type", "auditionable_id"], name: "index_auditions_on_auditionable"
+  end
+
+  create_table "balance_top_ups", force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "error"
+    t.bigint "organization_id", null: false
+    t.jsonb "refund_request"
+    t.bigint "requested_by_id"
+    t.string "status", default: "pending", null: false
+    t.string "stripe_payment_intent_id"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_balance_top_ups_on_organization_id"
+    t.index ["requested_by_id"], name: "index_balance_top_ups_on_requested_by_id"
+    t.index ["stripe_payment_intent_id"], name: "index_balance_top_ups_on_stripe_payment_intent_id", unique: true, where: "(stripe_payment_intent_id IS NOT NULL)"
   end
 
   create_table "balance_withdrawals", force: :cascade do |t|
@@ -3467,6 +3482,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_090100) do
   add_foreign_key "audition_wizard_states", "users"
   add_foreign_key "auditions", "audition_requests"
   add_foreign_key "auditions", "audition_sessions"
+  add_foreign_key "balance_top_ups", "organizations"
+  add_foreign_key "balance_top_ups", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "balance_withdrawals", "organizations"
   add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "cast_assignment_stages", "talent_pools"

@@ -7,7 +7,9 @@ module Manage
   class TicketBalanceController < Manage::TicketingBaseController
     def show
       @summary = TicketBalance.summary(Current.organization)
-      @run_need_cents = BalanceWithdrawalService.open_run_need_cents(Current.organization)
+      @obligations = BalanceObligations.items(Current.organization)
+      @safe_cents = [ @summary.available_cents - @obligations.sum(&:cents), 0 ].max
+      @top_ups = Current.organization.balance_top_ups.order(created_at: :desc).limit(10)
       @withdrawals = Current.organization.balance_withdrawals.order(created_at: :desc).limit(20).includes(:requested_by)
       @upcoming = upcoming_by_show
     end
@@ -20,6 +22,22 @@ module Manage
     rescue ArgumentError
       redirect_to manage_ticket_balance_path, alert: "Enter an amount like 250.00."
     rescue BalanceWithdrawalService::Error => e
+      redirect_to manage_ticket_balance_path, alert: e.message
+    end
+
+    # Money added from the bank or card the theater funds payout runs with.
+    def top_up
+      cents = (BigDecimal(params[:amount].to_s.delete(",$ ").presence || "0") * 100).round
+      top_up = BalanceTopUpService.start!(Current.organization, amount_cents: cents, by: Current.user)
+      notice = if top_up.status == "succeeded"
+        "#{helpers.number_to_currency(top_up.amount_cents / 100.0)} added to your balance."
+      else
+        "Adding #{helpers.number_to_currency(top_up.amount_cents / 100.0)} from your bank. It lands in 2 to 4 business days."
+      end
+      redirect_to manage_ticket_balance_path, notice: notice
+    rescue ArgumentError
+      redirect_to manage_ticket_balance_path, alert: "Enter an amount like 250.00."
+    rescue BalanceTopUpService::Error => e
       redirect_to manage_ticket_balance_path, alert: e.message
     end
 

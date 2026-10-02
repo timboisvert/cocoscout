@@ -22,13 +22,14 @@
 #   ticket_sale         → positive  (a ticket order's net, held for the theater)
 #   ticket_refund       → negative  (a ticket refund drawn from the theater's money)
 #   ticket_dispute      → negative  (a disputed ticket charge, plus Stripe's fee)
+#   top_up              → positive  (money the theater added from its bank)
 #
 # Balances are always derived by summing — never cached. Posts are idempotent
 # on (source, entry_type), mirroring PayoutLedgerEntry.
 class OrgCashEntry < ApplicationRecord
   ENTRY_TYPES = %w[course_registration contract_payment funding transfer
                    refund transfer_reversal opening_balance adjustment
-                   ticket_sale ticket_refund ticket_dispute].freeze
+                   ticket_sale ticket_refund ticket_dispute top_up].freeze
 
   # Namespace for pg_advisory_xact_lock so our (ns, org_id) pairs can't collide
   # with any other advisory-lock user in the app.

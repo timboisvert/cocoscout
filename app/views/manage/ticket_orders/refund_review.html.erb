@@ -58,10 +58,23 @@
     </div>
 
     <% if @short %>
+      <% short_cents = @short_cents %>
       <%= render "shared/alert_panel",
             eyebrow: "Not enough in your balance",
             headline: "Your CocoScout balance has #{number_to_currency(@available_cents / 100.0)}",
-            body: "This refund needs #{number_to_currency(q.org_debit_cents / 100.0)}. The money for this show was already spent on payout runs or withdrawn, so there's nothing to refund it from yet." %>
+            body: "This refund needs #{number_to_currency(q.org_debit_cents / 100.0)}. The money for this show was already spent on payout runs or withdrawn." %>
+      <% if Current.organization.funding_payment_method_id.present? %>
+        <%= form_with url: manage_ticket_order_refund_top_up_path(@order.id), method: :post, local: true, class: "bg-white border border-gray-200 rounded-xl px-6 py-5 space-y-3" do %>
+          <% q.tickets.each do |ticket| %>
+            <%= hidden_field_tag "ticket_ids[]", ticket.id, id: nil %>
+          <% end %>
+          <%= hidden_field_tag :keep_fees, @keep_fees ? "1" : "0" %>
+          <p class="text-sm text-gray-700">Add <%= number_to_currency(short_cents / 100.0) %> from the bank or card you fund payout runs with, and the refund goes out as soon as it lands: at once by card, in 2 to 4 business days by bank.</p>
+          <%= render "shared/button", text: "Add #{number_to_currency(short_cents / 100.0)} and refund", variant: "primary", size: "medium", type: :submit %>
+        <% end %>
+      <% else %>
+        <p class="text-sm text-gray-600">Connect a bank or card in Money settings to add money to your balance.</p>
+      <% end %>
     <% else %>
       <%= form_with url: manage_ticket_order_refund_path(@order.id), method: :post, local: true, class: "bg-white border border-gray-200 rounded-xl px-6 py-5 space-y-4" do %>
         <% q.tickets.each do |ticket| %>

@@ -38,6 +38,8 @@ class StripeWebhooksController < ApplicationController
       intent = event.data.object
       if intent.metadata&.[]("type") == "ticket_order"
         handle_ticket_order_payment(intent, event.type)
+      elsif intent.metadata&.[]("type") == "balance_top_up"
+        handle_balance_top_up(intent, event.type)
       else
         handle_payout_funding(intent, event.type)
       end
@@ -102,6 +104,19 @@ class StripeWebhooksController < ApplicationController
     return unless order && order.stripe_payment_intent_id.in?([ nil, intent.id ])
 
     TicketOrderSettlement.settle!(order, payment_intent_id: intent.id, charge_id: intent.latest_charge)
+  end
+
+  # Money a theater added to its CocoScout balance from its bank landed (or
+  # bounced). Landing also issues any refund that was waiting on it.
+  def handle_balance_top_up(intent, event_type)
+    top_up = BalanceTopUp.find_by(id: intent.metadata["balance_top_up_id"], stripe_payment_intent_id: intent.id)
+    return unless top_up
+
+    if event_type == "payment_intent.succeeded"
+      BalanceTopUpService.settle!(top_up)
+    else
+      BalanceTopUpService.fail!(top_up, intent.last_payment_error&.message || "The payment didn't go through.")
+    end
   end
 
   # A Connect transfer was reversed — the money never reached the payee. Route
