@@ -5,7 +5,10 @@
 # fee switch (who pays our 50¢ and card processing).
 #
 # Nothing goes on sale by itself: a listing starts as a draft, and a manager
-# puts it on sale (or schedules on_sale_at).
+# puts it on sale (or schedules on_sale_at) — unless its production has
+# ticketing set up (ProductionTicketing), which lists the shows it includes
+# with their sales windows. Then a blank field here means "the production's":
+# read them through the effective_* methods.
 class TicketListing < ApplicationRecord
   STATUSES = %w[draft on_sale paused closed canceled].freeze
   # Online sales close at showtime unless the theater says otherwise; after
@@ -47,11 +50,40 @@ class TicketListing < ApplicationRecord
       .where("ticket_listings.off_sale_at IS NULL OR ticket_listings.off_sale_at > ?", at)
   }
 
-  # What buyers see a show called: the listing's own title, else the show's
-  # own name, else the production's. (Never the calendar's suggested name —
-  # "The Late Show Show" — which is for managers' lists.)
+  # What buyers see a show called: the listing's own title, else the
+  # production ticketing's, else the show's own name, else the production's.
+  # (Never the calendar's suggested name — "The Late Show Show" — which is for
+  # managers' lists.)
   def display_title
-    title.presence || show.secondary_name.presence || production&.name || show.display_name
+    title.presence || production_ticketing&.title.presence || show.secondary_name.presence || production&.name || show.display_name
+  end
+
+  # The production's ticketing setup, when it has one.
+  def production_ticketing
+    return @production_ticketing if defined?(@production_ticketing)
+
+    @production_ticketing = production&.production_ticketing
+  end
+
+  def effective_description
+    description.presence || production_ticketing&.description.presence || production&.description.presence
+  end
+
+  def effective_door_note
+    door_note.presence || production_ticketing&.door_note.presence
+  end
+
+  def effective_age_note
+    age_note.presence || production_ticketing&.age_note.presence
+  end
+
+  def effective_accessibility_note
+    accessibility_note.presence || production_ticketing&.accessibility_note.presence
+  end
+
+  # Seats in the room: this show's, else the production's.
+  def effective_capacity
+    capacity || production_ticketing&.capacity
   end
 
   def starts_at
@@ -63,11 +95,11 @@ class TicketListing < ApplicationRecord
   end
 
   def effective_fee_mode
-    fee_mode.presence || profile&.default_fee_mode || "buyer"
+    fee_mode.presence || production_ticketing&.fee_mode.presence || profile&.default_fee_mode || "buyer"
   end
 
   def effective_max_per_order
-    max_per_order || profile&.default_max_per_order || 10
+    max_per_order || production_ticketing&.max_per_order || profile&.default_max_per_order || 10
   end
 
   def buyer_pays_fees?
@@ -118,7 +150,7 @@ class TicketListing < ApplicationRecord
   end
 
   def default_off_sale_at
-    self.off_sale_at ||= show&.date_and_time
+    self.off_sale_at ||= production_ticketing ? production_ticketing.off_sale_at_for(show&.date_and_time) : show&.date_and_time
   end
 
   def show_belongs_to_organization

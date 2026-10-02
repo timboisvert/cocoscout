@@ -24,8 +24,8 @@
   page_url = tickets_event_url(org: @ticketing_profile.slug, event: @listing.slug)
   image, page_image = ticket_page_image(@listing)
   image_url = image && url_for(image)
-  description = @listing.description.presence || @listing.production.description.presence
-  notes = [ @listing.door_note, @listing.age_note, @listing.accessibility_note ].compact_blank
+  description = @listing.effective_description
+  notes = [ @listing.effective_door_note, @listing.effective_age_note, @listing.effective_accessibility_note ].compact_blank
   # Search engines read this to list the show (schema.org Event with all-in offers).
   structured = {
     "@context" => "https://schema.org",

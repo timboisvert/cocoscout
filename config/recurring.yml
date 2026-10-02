@@ -60,6 +60,10 @@ development:
     class: TicketRemindersJob
     schedule: at 10am every day America/Chicago
 
+  production_ticketing_dates:
+    class: ProductionTicketingDatesJob
+    schedule: every hour
+
 production:
   mics_signup_alert_scheduler:
     class: MicSignupAlertSchedulerJob
@@ -161,3 +165,9 @@ production:
   ticket_reminders:
     class: TicketRemindersJob
     schedule: at 10am every day America/Chicago
+
+  # Productions with ticketing set up list the shows their setup includes,
+  # so dates added to the calendar join on their own.
+  production_ticketing_dates:
+    class: ProductionTicketingDatesJob
+    schedule: every hour

@@ -19,7 +19,7 @@ module Ticketing
     end
 
     def capacity
-      return @listing.capacity if @listing.capacity
+      return @listing.effective_capacity if @listing.effective_capacity
 
       tiers = @listing.ticket_tiers.active.to_a
       tiers.sum(&:quantity) if tiers.any? && tiers.all?(&:quantity)

@@ -64,6 +64,10 @@ class Production < ApplicationRecord
 
   include HasWideImage
 
+  # Ticketing set up for the whole production, and each show's listing.
+  has_one :production_ticketing, dependent: :destroy
+  has_many :ticket_listings
+
   # Rich text for production-wide notes (legacy — superseded by documents).
   has_rich_text :notes
 

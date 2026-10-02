@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_140100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_02_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1887,6 +1887,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_140100) do
     t.index ["user_id"], name: "index_production_permissions_on_user_id"
   end
 
+  create_table "production_ticketing_shows", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "production_ticketing_id", null: false
+    t.bigint "show_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_ticketing_id", "show_id"], name: "index_production_ticketing_shows_once", unique: true
+    t.index ["production_ticketing_id"], name: "index_production_ticketing_shows_on_production_ticketing_id"
+    t.index ["show_id"], name: "index_production_ticketing_shows_on_show_id"
+  end
+
+  create_table "production_ticketings", force: :cascade do |t|
+    t.string "accessibility_note"
+    t.string "age_note"
+    t.integer "capacity"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "door_note"
+    t.boolean "enabled", default: false, null: false
+    t.string "event_matching", default: "all", null: false
+    t.jsonb "event_type_filter", default: [], null: false
+    t.string "fee_mode"
+    t.integer "max_per_order"
+    t.integer "online_close_minutes", default: 0, null: false
+    t.integer "opens_days_before", default: 30, null: false
+    t.bigint "organization_id", null: false
+    t.bigint "production_id", null: false
+    t.string "schedule_mode", default: "relative", null: false
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
+    t.index ["production_id"], name: "index_production_ticketings_on_production_id", unique: true
+  end
+
   create_table "productions", force: :cascade do |t|
     t.boolean "agreement_auto_send", default: false, null: false
     t.boolean "agreement_required", default: false, null: false
@@ -3151,6 +3184,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_140100) do
     t.text "description"
     t.string "door_note"
     t.string "fee_mode"
+    t.boolean "inherits_tiers", default: false, null: false
     t.integer "max_per_order"
     t.datetime "off_sale_at"
     t.datetime "on_sale_at"
@@ -3290,12 +3324,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_140100) do
     t.string "name", null: false
     t.integer "position", default: 0, null: false
     t.integer "price_cents", default: 0, null: false
+    t.bigint "production_ticketing_id"
     t.integer "quantity"
     t.datetime "sales_end_at"
     t.datetime "sales_start_at"
-    t.bigint "ticket_listing_id", null: false
+    t.bigint "source_tier_id"
+    t.bigint "ticket_listing_id"
     t.string "unlock_code"
     t.datetime "updated_at", null: false
+    t.index ["production_ticketing_id"], name: "index_ticket_tiers_on_production_ticketing_id"
+    t.index ["source_tier_id"], name: "index_ticket_tiers_on_source_tier_id"
     t.index ["ticket_listing_id"], name: "index_ticket_tiers_on_ticket_listing_id"
   end
 
@@ -3670,6 +3708,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_140100) do
   add_foreign_key "production_notification_settings", "users"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
+  add_foreign_key "production_ticketing_shows", "production_ticketings"
+  add_foreign_key "production_ticketing_shows", "shows"
+  add_foreign_key "production_ticketings", "organizations"
+  add_foreign_key "production_ticketings", "productions"
   add_foreign_key "productions", "agreement_templates"
   add_foreign_key "productions", "organizations"
   add_foreign_key "question_options", "questions"
@@ -3812,7 +3854,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_140100) do
   add_foreign_key "ticket_sales_lines", "show_financials", column: "show_financials_id"
   add_foreign_key "ticket_sales_lines", "ticket_sources"
   add_foreign_key "ticket_sources", "organizations"
+  add_foreign_key "ticket_tiers", "production_ticketings"
   add_foreign_key "ticket_tiers", "ticket_listings"
+  add_foreign_key "ticket_tiers", "ticket_tiers", column: "source_tier_id"
   add_foreign_key "ticketing_access_grants", "organizations"
   add_foreign_key "ticketing_access_grants", "users", column: "granted_by_id", on_delete: :nullify
   add_foreign_key "ticketing_access_grants", "users", column: "revoked_by_id", on_delete: :nullify

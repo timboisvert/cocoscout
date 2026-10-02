@@ -24,7 +24,7 @@ class TicketOrderMailer < ApplicationMailer
       when: self.class.when_words(show.date_and_time),
       address: address,
       directions_url: address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].join(', '))}" : "",
-      door_note: order.ticket_listing.door_note.to_s,
+      door_note: order.ticket_listing.effective_door_note.to_s,
       stop_reminders_url: stop_url
     )))
   end

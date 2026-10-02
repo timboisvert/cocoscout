@@ -178,6 +178,11 @@ class Show < ApplicationRecord
   after_commit :sync_sign_up_form_instances_on_date_change, on: :update, if: :saved_change_to_date_and_time?
   before_destroy :cleanup_sign_up_form_instances
 
+  # Ticketing: a show that moves takes its online-sales cutoff with it, and a
+  # new show of a production with ticketing set up goes on sale if it's due.
+  after_commit :move_ticket_sales_with_show, on: :update, if: :saved_change_to_date_and_time?
+  after_commit :open_ticket_sales_if_due, on: :create
+
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
   before_destroy :nullify_primary_show_references
 
@@ -713,6 +718,26 @@ class Show < ApplicationRecord
   end
 
   private
+
+  # Online sales close relative to the show (at showtime, or before it), so
+  # when the show moves the cutoff moves by the same amount — and so does the
+  # opening of a date following its production's "N days before" rule.
+  def move_ticket_sales_with_show
+    before, after = saved_change_to_date_and_time
+    listing = ticket_listing
+    return unless before && after && listing
+
+    shift = after - before
+    changes = {}
+    changes[:off_sale_at] = listing.off_sale_at + shift if listing.off_sale_at
+    changes[:on_sale_at] = listing.on_sale_at + shift if listing.on_sale_at && listing.inherits_tiers
+    listing.update_columns(changes.merge(updated_at: Time.current)) if changes.any?
+  end
+
+  def open_ticket_sales_if_due
+    production_ticketing = production&.production_ticketing
+    ProductionTicketingDatesJob.perform_later(production_ticketing.id) if production_ticketing&.enabled?
+  end
 
   def set_attendance_enabled_default
     return if attendance_enabled.present? # Don't override if explicitly set

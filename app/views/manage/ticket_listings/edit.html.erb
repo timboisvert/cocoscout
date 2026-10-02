@@ -3,7 +3,6 @@
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   show = @listing.show
   inventory = @listing.inventory
-  status_label, status_classes = ticket_listing_status_badge(@listing, inventory)
   tiers_for_form = @listing.ticket_tiers.active.to_a + [ TicketTier.new, TicketTier.new ]
   tax = TicketTaxSetting.current(@listing.organization)
   default_fee_words = ticketing_profile.default_fee_mode == "buyer" ? "Buyers pay" : "You absorb"
@@ -16,32 +15,10 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Shows", manage_ticket_listings_path ], [ @listing.display_title, manage_ticket_listing_path(@listing) ] ],
     text: "Settings",
-    links: @listing.status.in?(%w[draft canceled]) ? [] : [ { text: "Door", path: door_path(@listing) } ]
+    links: []
   } %>
 
   <div class="max-w-2xl space-y-6">
-    <% if show.canceled && @listing.status != "canceled" && show.date_and_time > Time.current && @listing.ticket_orders.paid_like.exists? %>
-      <%= render "shared/alert_panel",
-            eyebrow: "Show canceled",
-            headline: "This show is canceled on your calendar",
-            body: "People still hold tickets for it. Cancel its ticket sales to refund them and let them know.",
-            actions: [ { text: "Refund buyers", path: manage_ticket_listing_cancel_path(@listing) } ] %>
-    <% end %>
-
-    <%# Where it stands, and the one thing to do next. %>
-    <div class="bg-white border border-gray-200 rounded-xl px-6 py-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
-            <span class="text-sm text-gray-900"><span class="font-semibold tabular-nums"><%= inventory.sold %></span><%= " of #{inventory.capacity}" if inventory.capacity %> sold</span>
-          </div>
-          <p class="text-xs text-gray-500 mt-1"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %> · <%= ticket_public_path_text(@listing) %></p>
-        </div>
-        <%= render "manage/ticket_listings/status_actions", listing: @listing %>
-      </div>
-    </div>
-
     <%= form_with model: @listing, url: manage_ticket_listing_path(@listing), method: :patch, class: "space-y-6" do |f| %>
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -206,10 +183,6 @@
       <div class="pt-2">
         <%= render "shared/button", text: "Remove from Ticketing", variant: "ghost", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-listing" } %>
-      </div>
-    <% elsif @listing.status != "canceled" && show.date_and_time > Time.current %>
-      <div class="pt-2">
-        <%= render "shared/button", text: "Cancel this show", variant: "ghost", size: "small", path: manage_ticket_listing_cancel_path(@listing) %>
       </div>
     <% end %>
   </div>

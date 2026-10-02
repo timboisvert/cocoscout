@@ -106,6 +106,7 @@ RSpec.describe TicketOrderRefund do
 
   it "after the show, refunds only when the theater allows them" do
     order = sold(1)
+    second = sold(1, intent: "pi_second")
     listing.show.update!(date_and_time: 2.hours.ago)
 
     expect(described_class.allowed?(order)).to be(false)
@@ -115,7 +116,6 @@ RSpec.describe TicketOrderRefund do
     # Canceling a show (started before showtime) isn't stopped by the setting.
     expect(described_class.issue!(order, allow_after_show: true).status).to eq("succeeded")
 
-    second = sold(1, intent: "pi_second")
     TicketingProfile.for(org).update!(refunds_after_show: true)
     expect(described_class.issue!(second).status).to eq("succeeded")
   end
