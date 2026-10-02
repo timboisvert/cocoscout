@@ -47,6 +47,20 @@
         </div>
         <%= render "manage/ticket_orders/status_badge", order: @order %>
       </div>
+      <% if @order.exchanged_from %>
+        <p class="mt-3 text-sm text-gray-600">
+          Moved here from
+          <%= link_to "order #{@order.exchanged_from.code}", manage_ticket_order_path(@order.exchanged_from_id), class: "font-medium text-pink-600 hover:text-pink-700" %>
+          (<%= @order.exchanged_from.ticket_listing.show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %>).
+        </p>
+      <% end %>
+      <% @exchanges_out.each do |exchange| %>
+        <p class="mt-3 text-sm text-gray-600">
+          <%= pluralize(exchange.ticket_ids.size, "ticket") %> moved to
+          <%= exchange.to_order.ticket_listing.show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %>:
+          <%= link_to "order #{exchange.to_order.code}", manage_ticket_order_path(exchange.to_order_id), class: "font-medium text-pink-600 hover:text-pink-700" %>
+        </p>
+      <% end %>
       <% if @order.buyer_email.present? && @order.paid? %>
         <div class="mt-4 flex flex-wrap gap-2">
           <%= render "shared/button", text: "Resend tickets", variant: "secondary", size: "small",
@@ -83,6 +97,8 @@
                     Not checked in
                   <% when "refunded" %>
                     Refunded <%= ticket.refunded_at&.strftime("%b %-d") %>
+                  <% when "exchanged" %>
+                    Moved to another date
                   <% else %>
                     <%= ticket.status.humanize %>
                   <% end %>
@@ -112,6 +128,16 @@
       </div>
     <% end %>
 
+    <% if @movable %>
+      <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="text-sm font-semibold text-gray-900">Move to another date</h2>
+          <p class="text-xs text-gray-600 mt-0.5">Another date of <%= listing.production.name %>, at the same price or less. They keep their payment and get new tickets.</p>
+        </div>
+        <%= render "shared/button", text: "Move tickets", variant: "secondary", size: "small", path: manage_ticket_order_exchange_path(@order.id) %>
+      </div>
+    <% end %>
+
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200">
         <h2 class="text-lg font-semibold text-gray-900">Money</h2>
@@ -131,6 +157,12 @@
           <div class="flex justify-between gap-4 font-semibold text-gray-900 pt-1.5 border-t border-gray-100">
             <dt>You keep</dt><dd class="tabular-nums"><%= number_to_currency(@order.org_net_cents / 100.0) %></dd>
           </div>
+          <% moved_cents = @exchanges_out.sum(&:moved_cents) %>
+          <% if moved_cents.positive? %>
+            <div class="flex justify-between gap-4 text-gray-600">
+              <dt>Moved with tickets to another date</dt><dd class="tabular-nums">−<%= number_to_currency(moved_cents / 100.0) %></dd>
+            </div>
+          <% end %>
         <% end %>
         <% if @order.refunded_cents.positive? %>
           <div class="flex justify-between gap-4 text-gray-600">
@@ -149,7 +181,13 @@
           <% @refunds.each do |refund| %>
             <li class="px-6 py-3 text-sm">
               <div class="flex justify-between gap-4">
-                <span class="text-gray-900"><%= number_to_currency(refund.amount_cents / 100.0) %> for <%= pluralize(refund.ticket_ids.size, "ticket") %><%= " (fees kept)" if refund.keep_fees %></span>
+                <span class="text-gray-900">
+                  <% if refund.ticket_ids.empty? %>
+                    <%= number_to_currency(refund.amount_cents / 100.0) %>, the price difference
+                  <% else %>
+                    <%= number_to_currency(refund.amount_cents / 100.0) %> for <%= pluralize(refund.ticket_ids.size, "ticket") %><%= " (fees kept)" if refund.keep_fees %>
+                  <% end %>
+                </span>
                 <span class="text-gray-500"><%= refund.created_at.strftime("%b %-d, %-l:%M %p") %></span>
               </div>
               <div class="text-xs text-gray-500 mt-0.5">

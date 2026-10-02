@@ -9,8 +9,10 @@ class TicketDispute
   STRIPE_FEE_CENTS = 1_500
 
   def self.handle(dispute, event_type)
-    order = TicketOrder.find_by(stripe_payment_intent_id: dispute.payment_intent) if dispute.payment_intent.present?
-    order ||= TicketOrder.find_by(stripe_charge_id: dispute.charge) if dispute.charge.present?
+    # Tickets moved to another date share their payment with the order they
+    # came from; the dispute belongs to the first, the one the buyer paid.
+    order = TicketOrder.where(stripe_payment_intent_id: dispute.payment_intent).order(:id).first if dispute.payment_intent.present?
+    order ||= TicketOrder.where(stripe_charge_id: dispute.charge).order(:id).first if dispute.charge.present?
     return unless order
 
     case event_type

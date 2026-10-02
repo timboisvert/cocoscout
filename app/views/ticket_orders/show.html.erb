@@ -3,6 +3,7 @@
   tickets = @order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }.sort_by(&:id)
   place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
   waiting = @order.pending? && @order.stripe_payment_intent_id.present?
+  moved = @order.exchanges_out.includes(to_order: { ticket_listing: :show }).order(:id).to_a
 %>
 <% content_for :title, "Your tickets · #{@listing.display_title}" %>
 <% content_for :head do %>
@@ -22,11 +23,25 @@
     <p class="mt-2 text-gray-600">The seats were gone by the time your payment arrived, so it was refunded in full.</p>
   <% elsif @order.status == "refunded" %>
     <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">This order was refunded</h1>
+  <% elsif @order.status == "exchanged" %>
+    <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">Your tickets moved</h1>
+    <p class="mt-2 text-gray-600"><%= @listing.organization.name %> moved these tickets to another date. The ones below are the old date; your new tickets are here:</p>
   <% else %>
     <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">This order wasn't completed</h1>
     <div class="mt-4">
       <%= render "shared/button", text: "Back to tickets", variant: "primary", size: "medium",
             path: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params) %>
+    </div>
+  <% end %>
+
+  <% moved.each do |exchange| %>
+    <% new_order = exchange.to_order %>
+    <div class="mt-4 rounded-xl border border-pink-200 bg-pink-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="text-sm text-gray-900">
+        <%= pluralize(exchange.ticket_ids.size, "ticket") %> moved to <strong><%= new_order.ticket_listing.show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></strong>
+      </div>
+      <%= render "shared/button", text: "See the new tickets", variant: "primary", size: "small",
+            path: tickets_order_path(token: new_order.token, **embed_params) %>
     </div>
   <% end %>
 

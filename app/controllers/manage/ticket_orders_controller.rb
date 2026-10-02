@@ -2,9 +2,9 @@
 
 module Manage
   # Every ticket order: find one by name, email or code, see what was paid
-  # and where it went, resend the tickets, and refund some or all of it.
-  # A refund is reviewed on its own page (what goes back, and from where)
-  # before it happens.
+  # and where it went, resend the tickets, refund some or all of it, or move
+  # them to another date. A refund or a move is reviewed on its own page
+  # (what happens to the tickets and the money) before it happens.
   class TicketOrdersController < Manage::TicketingBaseController
     STATUS_FILTERS = %w[paid refunded].freeze
 
@@ -13,7 +13,7 @@ module Manage
     def index
       @listings = Current.organization.ticket_listings.joins(:show).includes(:show, :production)
                          .order("shows.date_and_time DESC").limit(200)
-      scope = Current.organization.ticket_orders.where(status: %w[paid partially_refunded refunded])
+      scope = Current.organization.ticket_orders.where(status: TicketOrder::WAS_PAID)
                      .includes(:tickets, ticket_listing: %i[show production]).order(paid_at: :desc, id: :desc)
       @listing = Current.organization.ticket_listings.find_by(id: params[:listing_id]) if params[:listing_id].present?
       scope = scope.where(ticket_listing: @listing) if @listing
@@ -34,6 +34,50 @@ module Manage
       @refundable_ids = TicketOrderRefund.refundable(@order).pluck(:id)
       @refunds_allowed = TicketOrderRefund.allowed?(@order)
       @disputed = TicketDispute.open?(@order)
+      @exchanges_out = @order.exchanges_out.includes(to_order: { ticket_listing: :show }).order(:id).to_a
+      @movable = @order.paid? && @order.money_path.in?(%w[cocoscout none]) && @refunds_allowed &&
+                 TicketOrderExchange.movable(@order).exists?
+    end
+
+    # Moving tickets to another date of the same production: the date, the
+    # tickets, and what each ticket type becomes, with what happens to the
+    # money, before anything moves.
+    def exchange_review
+      @movable = TicketOrderExchange.movable(@order).to_a
+      if @movable.empty?
+        redirect_to manage_ticket_order_path(@order.id), alert: "None of these tickets can move." and return
+      end
+
+      @targets = TicketOrderExchange.targets(@order).to_a
+      @target = @targets.find { |listing| listing.id == params[:to_listing_id].to_i }
+      @ticket_ids = params[:picked] ? Array(params[:ticket_ids]).compact_blank.map(&:to_i) : @movable.map(&:id)
+      chosen = @movable.select { |ticket| @ticket_ids.include?(ticket.id) }
+      @tier_map = @target ? TicketOrderExchange.tier_map(chosen, @target, tier_params) : {}
+      return unless @target
+
+      if chosen.empty?
+        @problem = "Choose the tickets to move."
+      else
+        @plan = TicketOrderExchange.plan(@order, target: @target, ticket_ids: @ticket_ids, chosen_tiers: tier_params)
+      end
+    rescue TicketOrderExchange::Error => e
+      @problem = e.message
+    end
+
+    def exchange
+      target = TicketOrderExchange.targets(@order).find_by(id: params[:to_listing_id])
+      ticket_ids = Array(params[:ticket_ids]).compact_blank
+      raise TicketOrderExchange::Error, "Choose the tickets to move." if ticket_ids.empty?
+
+      exchange = TicketOrderExchange.exchange!(@order, target: target, ticket_ids: ticket_ids, chosen_tiers: tier_params,
+                                                       by: Current.user, email_them: params[:email_them] == "1")
+      moved = helpers.pluralize(exchange.ticket_ids.size, "ticket")
+      notice = "Moved #{moved} to #{target.show.date_and_time.strftime('%A, %B %-d')}."
+      notice += " Refunded the #{helpers.number_to_currency(exchange.difference_cents / 100.0)} difference." if exchange.ticket_refund
+      alert = "The #{helpers.number_to_currency(exchange.difference_cents / 100.0)} refund didn't go through: #{exchange.refund_error}" if exchange.refund_error
+      redirect_to manage_ticket_order_path(exchange.to_order_id), notice: notice, alert: alert
+    rescue TicketOrderExchange::Error => e
+      redirect_to manage_ticket_order_exchange_path(@order.id, to_listing_id: params[:to_listing_id]), alert: e.message
     end
 
     # What a refund of the chosen tickets gives back, before it happens.
@@ -104,6 +148,12 @@ module Manage
     end
 
     private
+
+    # { old ticket type id => chosen new one } from the move form.
+    def tier_params
+      tiers = params[:tiers]
+      tiers.respond_to?(:each_pair) ? tiers.each_pair.to_h { |from, to| [ from.to_i, to.to_s ] } : {}
+    end
 
     def set_order
       @order = Current.organization.ticket_orders.includes(ticket_listing: %i[show production]).find(params[:id])

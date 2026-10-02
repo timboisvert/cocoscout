@@ -218,7 +218,7 @@ module Manage
 
     # The show's orders for the guest list, narrowed by a filter and a search.
     def guest_orders(filter, query)
-      orders = @listing.ticket_orders.where(status: %w[paid partially_refunded refunded])
+      orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID)
                        .includes(tickets: :ticket_tier).order(:buyer_name, :id).to_a
       if query.present?
         q = query.downcase
@@ -228,7 +228,7 @@ module Manage
       when "waiting" then orders.select { |o| held_tickets(o).any? { |t| !t.checked_in? } }
       when "in" then orders.select { |o| held_tickets(o).any?(&:checked_in?) }
       when "comps" then orders.select { |o| o.channel == "comp" && held_tickets(o).any? }
-      when "refunded" then orders.select { |o| o.status.in?(%w[refunded partially_refunded]) }
+      when "refunded" then orders.select { |o| o.status.in?(%w[refunded partially_refunded exchanged]) }
       else orders.select { |o| held_tickets(o).any? }
       end
     end

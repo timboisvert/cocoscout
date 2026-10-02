@@ -55,7 +55,7 @@ class TicketOrderRefund
   def self.fee_share(order, paid_tickets)
     return 0 if order.buyer_fee_cents.zero? || paid_tickets.zero?
 
-    remaining = order.buyer_fee_cents - order.ticket_refunds.succeeded.sum(:fees_cents)
+    remaining = order.buyer_fee_cents - order.ticket_refunds.succeeded.sum(:fees_cents) - order.exchanges_out.sum(:fees_cents)
     still_paid = order.tickets.where(status: Ticket::SOLD_STATUSES).where("price_cents > discount_cents").count
     return remaining if paid_tickets >= still_paid
 
@@ -77,6 +77,21 @@ class TicketOrderRefund
     quote = quote(order, ticket_ids: ticket_ids, keep_fees: keep_fees)
     raise Error, "Those tickets were already refunded." if quote.tickets.empty?
 
+    process!(order, quote, keep_fees: keep_fees, by: by, reason: reason, notify: notify)
+  end
+
+  # Part of what the buyer paid, their tickets kept: the difference when
+  # tickets move to a cheaper date (TicketOrderExchange). The buyer hears
+  # about it in the move's email.
+  def self.issue_difference!(order, amount_cents:, face_cents:, tax_cents:, by: nil, reason: nil)
+    raise Error, "Only a paid order can be refunded." unless order.paid?
+
+    quote = Quote.new(tickets: [], face_cents: face_cents, tax_cents: tax_cents, fees_cents: 0,
+                      platform_fee_waived_cents: 0, amount_cents: amount_cents)
+    process!(order, quote, keep_fees: true, by: by, reason: reason, notify: false)
+  end
+
+  def self.process!(order, quote, keep_fees:, by:, reason:, notify:)
     listing = order.ticket_listing
     refund = nil
     OrgCashEntry.with_org_lock(order.organization) do
@@ -91,7 +106,7 @@ class TicketOrderRefund
 
     if order.money_path == "cocoscout" && refund.amount_cents.positive?
       stripe_refund = Stripe::Refund.create(
-        { payment_intent: order.stripe_payment_intent_id, amount: refund.amount_cents,
+        { payment_intent: order.payment_intent_id, amount: refund.amount_cents,
           metadata: { ticket_order_id: order.id, ticket_refund_id: refund.id } },
         { idempotency_key: "ticket-refund-#{refund.id}" }
       )
@@ -179,5 +194,5 @@ class TicketOrderRefund
                         ])
   end
 
-  private_class_method :fee_share, :paid_ticket_count, :reserve!, :complete!, :reverse_tax!, :post_books!
+  private_class_method :process!, :reserve!, :complete!, :post_books!
 end

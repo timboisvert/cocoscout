@@ -67,7 +67,7 @@ class TicketTaxReport
     TaxLine.where(organization_id: @organization.id, taxable_type: "Ticket", remitter: "organization")
            .where(date_column => from..to)
            .joins("JOIN tickets ON tickets.id = tax_lines.taxable_id JOIN ticket_orders ON ticket_orders.id = tickets.ticket_order_id")
-           .where(ticket_orders: { status: %w[paid partially_refunded refunded] })
+           .where(ticket_orders: { status: TicketOrder::WAS_PAID })
            .to_a
   end
 end

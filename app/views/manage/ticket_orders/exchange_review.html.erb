@@ -1,0 +1,116 @@
+<% content_for :title, "Move order #{@order.code}" %>
+<%
+  listing = @order.ticket_listing
+  p = @plan
+  select_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  when_text = ->(l) { l.show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") }
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Orders", manage_ticket_orders_path ], [ "Order #{@order.code}", manage_ticket_order_path(@order.id) ] ],
+    text: "Move to another date",
+    links: []
+  } %>
+
+  <div class="max-w-2xl space-y-6">
+    <div class="bg-white border border-gray-200 rounded-xl px-6 py-5">
+      <h2 class="text-lg font-semibold text-gray-900">Move <%= @order.buyer_name.presence || "the buyer" %>'s tickets</h2>
+      <p class="text-sm text-gray-600 mt-1">
+        From <%= listing.display_title %>, <%= when_text.call(listing) %>. They keep their payment and get new tickets by email; the old ones stop working.
+        The same price or a cheaper ticket type can be moved; if it's cheaper, the difference goes back to their card.
+      </p>
+    </div>
+
+    <% if @targets.empty? %>
+      <div class="bg-white border border-gray-200 rounded-xl px-6 py-5 text-sm text-gray-600">
+        No other dates of <%= listing.production.name %> are on sale right now.
+        <div class="mt-3"><%= render "shared/button", text: "Back to the order", variant: "secondary", size: "small", path: manage_ticket_order_path(@order.id) %></div>
+      </div>
+    <% else %>
+      <%= form_with url: manage_ticket_order_exchange_path(@order.id), method: :get, data: { controller: "auto-submit" }, class: "space-y-6" do %>
+        <%= hidden_field_tag :picked, "1" %>
+        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">Which date?</h2>
+          </div>
+          <ul class="divide-y divide-gray-100">
+            <% @targets.each do |target| %>
+              <% left = target.inventory.remaining %>
+              <li>
+                <label class="flex items-center gap-3 px-6 py-3 cursor-pointer has-[:checked]:bg-pink-50">
+                  <%= radio_button_tag :to_listing_id, target.id, @target&.id == target.id, data: { action: "change->auto-submit#submit" },
+                        class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+                  <span class="min-w-0 flex-1 text-sm text-gray-900"><%= when_text.call(target) %></span>
+                  <span class="text-xs text-gray-500 whitespace-nowrap"><%= left.nil? ? "Seats open" : left.zero? ? "Sold out" : "#{left} left" %></span>
+                </label>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">Which tickets?</h2>
+          </div>
+          <ul class="divide-y divide-gray-100">
+            <% @movable.each do |ticket| %>
+              <li>
+                <label class="flex items-center gap-3 px-6 py-3 cursor-pointer">
+                  <%= check_box_tag "ticket_ids[]", ticket.id, @ticket_ids.include?(ticket.id), id: "move_ticket_#{ticket.id}",
+                        data: { action: "change->auto-submit#submit" },
+                        class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+                  <span class="text-sm text-gray-900"><%= ticket.ticket_tier.name %> <span class="text-gray-500"><%= ticket_price(ticket.price_cents - ticket.discount_cents) %></span></span>
+                </label>
+              </li>
+            <% end %>
+          </ul>
+          <% if @target && @tier_map.any? %>
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 space-y-3">
+              <% @tier_map.each do |old_tier_id, new_tier_id| %>
+                <% old_tier = @movable.map(&:ticket_tier).find { |t| t.id == old_tier_id } %>
+                <div class="grid grid-cols-1 sm:grid-cols-2 items-center gap-2">
+                  <label for="tiers_<%= old_tier_id %>" class="text-sm text-gray-700"><%= old_tier.name %> becomes</label>
+                  <%= select_tag "tiers[#{old_tier_id}]",
+                        options_for_select([ [ "Choose a ticket type", "" ] ] + @target.ticket_tiers.reject(&:archived_at).map { |t| [ "#{t.name} (#{ticket_price(t.price_cents)})", t.id ] }, new_tier_id),
+                        id: "tiers_#{old_tier_id}", class: select_class, data: { action: "change->auto-submit#submit" } %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if @problem %>
+        <%= render "shared/alert_panel", eyebrow: "Can't move these", headline: "Not this way", body: @problem, tone: :amber %>
+      <% elsif p %>
+        <%= form_with url: manage_ticket_order_exchange_path(@order.id), method: :post, class: "bg-white border border-gray-200 rounded-xl px-6 py-5 space-y-4" do %>
+          <%= hidden_field_tag :to_listing_id, @target.id %>
+          <% p.tickets.each do |ticket| %><%= hidden_field_tag "ticket_ids[]", ticket.id, id: nil %><% end %>
+          <% @tier_map.each do |old_tier_id, new_tier_id| %><%= hidden_field_tag "tiers[#{old_tier_id}]", new_tier_id, id: nil %><% end %>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Move <%= pluralize(p.rows.size, "ticket") %> to <%= when_text.call(@target) %></h2>
+            <p class="text-sm text-gray-600 mt-1">
+              <% if p.difference_cents.positive? && @order.money_path == "cocoscout" %>
+                The new tickets cost <%= number_to_currency(p.difference_cents / 100.0) %> less, so that goes back to their card.
+              <% else %>
+                Same price, so no money changes hands. This show's money for them moves to the new date.
+              <% end %>
+            </p>
+          </div>
+          <% if @order.buyer_email.present? %>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <%= check_box_tag :email_them, "1", true, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+              Email <%= @order.buyer_email %> their new tickets
+            </label>
+          <% end %>
+          <div class="flex flex-wrap gap-2">
+            <%= render "shared/button", text: "Move #{pluralize(p.rows.size, 'ticket')}", variant: "primary", size: "medium", type: :submit %>
+            <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_ticket_order_path(@order.id) %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+</div>

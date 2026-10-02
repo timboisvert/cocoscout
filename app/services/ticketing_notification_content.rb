@@ -122,11 +122,13 @@ class TicketingNotificationContent
 
   # Yesterday's sales by show, and how each upcoming show is selling.
   def self.daily_summary(organization, day)
-    orders = organization.ticket_orders.where(status: %w[paid partially_refunded refunded]).where.not(channel: "comp")
+    # Moved tickets aren't new sales: count each purchase once, as bought.
+    orders = organization.ticket_orders.was_paid.where(exchanged_from_id: nil).where.not(channel: "comp")
                          .where(paid_at: day.all_day).includes(:tickets, ticket_listing: :show)
     refunds = TicketRefund.succeeded.where(organization_id: organization.id, created_at: day.all_day)
     by_show = orders.group_by(&:ticket_listing)
-    tickets = orders.sum { |o| o.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
+    bought = Ticket::SOLD_STATUSES + %w[exchanged]
+    tickets = orders.sum { |o| o.tickets.count { |t| bought.include?(t.status) } }
     sales = orders.sum { |o| o.subtotal_cents - o.discount_cents }
     upcoming = organization.ticket_listings.joins(:show).where.not(status: %w[draft canceled])
                            .where(shows: { canceled: false, date_and_time: Time.current..14.days.from_now })
@@ -134,7 +136,7 @@ class TicketingNotificationContent
     stats = Ticketing::ListingStats.for(upcoming)
     row = ->(left, right) { %(<tr><td style="padding:4px 12px 4px 0">#{left}</td><td style="padding:4px 0;text-align:right">#{right}</td></tr>) }
     sales_rows = by_show.map { |listing, os|
-      count = os.sum { |o| o.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
+      count = os.sum { |o| o.tickets.count { |t| bought.include?(t.status) } }
       row.call("#{listing.show.date_and_time.strftime('%a %b %-d')} · #{h(listing.display_title)}", "+#{count}")
     }
     upcoming_rows = upcoming.map { |listing|

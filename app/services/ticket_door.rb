@@ -48,7 +48,8 @@ class TicketDoor
       who = ticket.checked_in_by&.person&.name || ticket.checked_in_by&.email_address
       result(:already, ticket, "Already checked in at #{ticket.checked_in_at.strftime('%-l:%M %p')}#{" by #{who}" if who}")
     else
-      result(:not_valid, ticket, ticket.status == "reserved" ? "This ticket was never paid for" : "This ticket was refunded")
+      message = { "reserved" => "This ticket was never paid for", "exchanged" => "This ticket moved to another date" }
+      result(:not_valid, ticket, message.fetch(ticket.status, "This ticket was refunded"))
     end
   end
 

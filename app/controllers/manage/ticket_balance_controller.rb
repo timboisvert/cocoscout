@@ -60,8 +60,9 @@ module Manage
     end
 
     def held_for(listing)
-      orders = listing.ticket_orders.where(money_path: "cocoscout", status: %w[paid partially_refunded refunded])
-      orders.sum(:org_net_cents) - TicketRefund.succeeded.where(ticket_order_id: orders.select(:id)).sum(:org_debit_cents)
+      orders = listing.ticket_orders.where(money_path: "cocoscout", status: TicketOrder::WAS_PAID)
+      orders.sum(:org_net_cents) - TicketRefund.succeeded.where(ticket_order_id: orders.select(:id)).sum(:org_debit_cents) -
+        TicketExchange.where(from_order_id: orders.select(:id)).sum(:moved_cents)
     end
   end
 end

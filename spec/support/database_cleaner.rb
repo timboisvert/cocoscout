@@ -165,7 +165,8 @@ def seed_content_templates
   # Buyer emails seeded by their own migrations, the same way.
   {
     "20261002120100_add_ticket_event_reminder_template.rb" => "AddTicketEventReminderTemplate",
-    "20261002130100_add_ticket_event_changed_template.rb" => "AddTicketEventChangedTemplate"
+    "20261002130100_add_ticket_event_changed_template.rb" => "AddTicketEventChangedTemplate",
+    "20261002140100_add_ticket_order_moved_template.rb" => "AddTicketOrderMovedTemplate"
   }.each do |file, class_name|
     require Rails.root.join("db/migrate", file)
     spec = class_name.constantize::TEMPLATE

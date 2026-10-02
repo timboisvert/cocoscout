@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_130100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_02_140100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3121,6 +3121,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_130100) do
     t.index ["ticket_listing_id"], name: "index_ticket_discount_codes_on_ticket_listing_id"
   end
 
+  create_table "ticket_exchanges", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "difference_cents", default: 0, null: false
+    t.bigint "exchanged_by_id"
+    t.integer "face_cents", default: 0, null: false
+    t.integer "fees_cents", default: 0, null: false
+    t.bigint "from_order_id", null: false
+    t.integer "moved_cents", default: 0, null: false
+    t.bigint "organization_id", null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.jsonb "ticket_ids", default: [], null: false
+    t.bigint "ticket_refund_id"
+    t.bigint "to_order_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["exchanged_by_id"], name: "index_ticket_exchanges_on_exchanged_by_id"
+    t.index ["from_order_id"], name: "index_ticket_exchanges_on_from_order_id"
+    t.index ["organization_id"], name: "index_ticket_exchanges_on_organization_id"
+    t.index ["ticket_refund_id"], name: "index_ticket_exchanges_on_ticket_refund_id"
+    t.index ["to_order_id"], name: "index_ticket_exchanges_on_to_order_id", unique: true
+  end
+
   create_table "ticket_listings", force: :cascade do |t|
     t.string "accessibility_note"
     t.string "age_note"
@@ -3160,6 +3181,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_130100) do
     t.string "code", null: false
     t.datetime "created_at", null: false
     t.integer "discount_cents", default: 0, null: false
+    t.bigint "exchanged_from_id"
     t.datetime "expires_at"
     t.string "external_order_id"
     t.string "fee_mode", null: false
@@ -3196,6 +3218,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_130100) do
     t.jsonb "utm", default: {}, null: false
     t.index ["buyer_email"], name: "index_ticket_orders_on_buyer_email"
     t.index ["code"], name: "index_ticket_orders_on_code", unique: true
+    t.index ["exchanged_from_id"], name: "index_ticket_orders_on_exchanged_from_id"
     t.index ["expires_at"], name: "index_ticket_orders_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["issued_by_id"], name: "index_ticket_orders_on_issued_by_id"
     t.index ["organization_id", "created_at"], name: "index_ticket_orders_on_organization_id_and_created_at"
@@ -3768,6 +3791,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_130100) do
   add_foreign_key "ticket_discount_codes", "organizations"
   add_foreign_key "ticket_discount_codes", "productions"
   add_foreign_key "ticket_discount_codes", "ticket_listings"
+  add_foreign_key "ticket_exchanges", "organizations"
+  add_foreign_key "ticket_exchanges", "ticket_orders", column: "from_order_id"
+  add_foreign_key "ticket_exchanges", "ticket_orders", column: "to_order_id"
+  add_foreign_key "ticket_exchanges", "ticket_refunds"
+  add_foreign_key "ticket_exchanges", "users", column: "exchanged_by_id"
   add_foreign_key "ticket_listings", "contracts", on_delete: :nullify
   add_foreign_key "ticket_listings", "organizations"
   add_foreign_key "ticket_listings", "productions"
@@ -3775,6 +3803,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_130100) do
   add_foreign_key "ticket_orders", "organizations"
   add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
   add_foreign_key "ticket_orders", "ticket_listings"
+  add_foreign_key "ticket_orders", "ticket_orders", column: "exchanged_from_id"
   add_foreign_key "ticket_orders", "users", column: "issued_by_id", on_delete: :nullify
   add_foreign_key "ticket_orders", "users", on_delete: :nullify
   add_foreign_key "ticket_refunds", "organizations"

@@ -4,7 +4,8 @@
 # another site later carries that site's barcode too, so the same door finds
 # it. "reserved" while its order is waiting to be paid; "valid" once paid.
 class Ticket < ApplicationRecord
-  STATUSES = %w[reserved valid checked_in refunded void].freeze
+  # "exchanged": moved to another date, where a new ticket took its place.
+  STATUSES = %w[reserved valid checked_in refunded void exchanged].freeze
   # Seats these take for good (reserved ones count only while their order's
   # hold lasts — see Ticketing::Inventory).
   SOLD_STATUSES = %w[valid checked_in].freeze

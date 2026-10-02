@@ -16,7 +16,18 @@
 # and BalanceWithdrawal rows. Neither counts once it has failed.
 class TicketBalance
   SETTLE_AFTER = 2.days
-  ENTRY_TYPES = %w[ticket_sale ticket_refund ticket_dispute].freeze
+  # A moved order's money leaves its old show (ticket_exchange_out) and joins
+  # the new one (ticket_exchange_in), so it's held for the show it's for.
+  ENTRY_TYPES = %w[ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in].freeze
+  ORDER_OF_ENTRY = <<~SQL.squish
+    LEFT JOIN ticket_refunds r ON e.source_type = 'TicketRefund' AND r.id = e.source_id
+    LEFT JOIN ticket_exchanges x ON e.source_type = 'TicketExchange' AND x.id = e.source_id
+    JOIN ticket_orders o ON o.id = CASE e.source_type
+      WHEN 'TicketOrder' THEN e.source_id
+      WHEN 'TicketRefund' THEN r.ticket_order_id
+      ELSE CASE e.entry_type WHEN 'ticket_exchange_out' THEN x.from_order_id ELSE x.to_order_id END
+    END
+  SQL
 
   Summary = Data.define(:upcoming_cents, :settling_cents, :available_cents, :spent_cents) do
     def total_cents
@@ -64,7 +75,9 @@ class TicketBalance
 
   # [upcoming, settling, settled] net cents, from every ticket entry on the
   # org's cash ledger, placed by its order's show and payment date. A refund's
-  # or dispute's entry lands in the same bucket as the sale it takes back.
+  # or dispute's entry lands in the same bucket as the sale it takes back; a
+  # moved order's lands with the show it moved from, or to. (The new order
+  # keeps the original payment date, so its money settles on time.)
   def self.buckets(organization)
     sql = <<~SQL.squish
       SELECT
@@ -72,8 +85,7 @@ class TicketBalance
         COALESCE(SUM(e.amount_cents) FILTER (WHERE l.released_at IS NOT NULL AND o.paid_at > :cutoff), 0),
         COALESCE(SUM(e.amount_cents) FILTER (WHERE l.released_at IS NOT NULL AND o.paid_at <= :cutoff), 0)
       FROM org_cash_entries e
-      LEFT JOIN ticket_refunds r ON e.source_type = 'TicketRefund' AND r.id = e.source_id
-      JOIN ticket_orders o ON o.id = CASE WHEN e.source_type = 'TicketOrder' THEN e.source_id ELSE r.ticket_order_id END
+      #{ORDER_OF_ENTRY}
       JOIN ticket_listings l ON l.id = o.ticket_listing_id
       WHERE e.organization_id = :organization_id AND e.entry_type IN (:types)
     SQL
@@ -94,8 +106,7 @@ class TicketBalance
     sql = <<~SQL.squish
       SELECT COALESCE(SUM(e.amount_cents), 0)
       FROM org_cash_entries e
-      LEFT JOIN ticket_refunds r ON e.source_type = 'TicketRefund' AND r.id = e.source_id
-      JOIN ticket_orders o ON o.id = CASE WHEN e.source_type = 'TicketOrder' THEN e.source_id ELSE r.ticket_order_id END
+      #{ORDER_OF_ENTRY}
       JOIN ticket_listings l ON l.id = o.ticket_listing_id
       WHERE e.organization_id = :organization_id AND e.entry_type IN (:types)
         AND l.released_at IS NOT NULL AND o.paid_at > :since

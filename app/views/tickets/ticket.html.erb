@@ -19,5 +19,7 @@
     <p class="mt-3 text-sm font-medium text-gray-600">Checked in <%= @ticket.checked_in_at.strftime("%-l:%M %p") %></p>
   <% when "refunded", "void" %>
     <p class="mt-3 text-sm font-medium text-red-600">This ticket is no longer valid.</p>
+  <% when "exchanged" %>
+    <p class="mt-3 text-sm font-medium text-red-600">This ticket moved to another date and no longer works. The new tickets came by email.</p>
   <% end %>
 </div>

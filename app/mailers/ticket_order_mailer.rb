@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 # A buyer's emails about their order: their tickets (the confirmation, the
-# reminder before the show, a show that moved), refunds, and a canceled show. The words come
+# reminder before the show, a show that moved, tickets moved to another
+# date), refunds, and a canceled show. The words come
 # from content templates; under the words of an email with tickets sits one
 # QR code per ticket.
 class TicketOrderMailer < ApplicationMailer
@@ -35,6 +36,19 @@ class TicketOrderMailer < ApplicationMailer
     variables = TicketShowChange.variables(order)
     deliver_tickets(order, subject: ContentTemplate.interpolate(subject.to_s, variables),
                            body_html: self.class.paragraphs(ContentTemplate.interpolate(body.to_s, variables)))
+  end
+
+  # Tickets the theater moved to another date: the new tickets, the date they
+  # were for, and the refunded difference when the new ones cost less (from
+  # the ticket_order_moved template).
+  def moved(exchange)
+    order = exchange.to_order
+    refund = exchange.ticket_refund
+    refunded = refund&.status == "succeeded" ? ActiveSupport::NumberHelper.number_to_currency(refund.amount_cents / 100.0) : ""
+    deliver_tickets(order, **render_words("ticket_order_moved", self.class.ticket_variables(order).merge(
+      was: exchange.from_order.ticket_listing.show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"),
+      refund_amount: refunded
+    )))
   end
 
   # The words every email with tickets in it can use.

@@ -11,7 +11,7 @@ class TicketingDashboard
   JUST_PLAYED = 5
   # Drafts for shows this close are worth a nudge.
   DRAFT_HORIZON = 14.days
-  SOLD_STATUSES = %w[paid partially_refunded refunded].freeze
+  SOLD_STATUSES = TicketOrder::WAS_PAID
 
   Summary = Data.define(:tickets, :gross_cents, :net_cents, :refunded_cents)
   Alert = Data.define(:eyebrow, :headline, :body, :actions, :tone)
@@ -39,8 +39,10 @@ class TicketingDashboard
       held = Ticket.where(ticket_order_id: orders.select(:id), status: Ticket::SOLD_STATUSES)
       included_tax = TaxLine.where(taxable_type: "Ticket", taxable_id: held.select(:id), included: true).sum(:tax_cents)
       gross = held.sum("tickets.price_cents - tickets.discount_cents") - included_tax
+      moved = TicketExchange.where(from_order_id: orders.select(:id))
       kept = orders.sum("CASE WHEN money_path = 'cocoscout' THEN org_net_cents WHEN money_path = 'cash' THEN total_cents ELSE 0 END") -
-             orders.sum(:tax_cents) - refunds.sum(:org_debit_cents) + refunds.sum(:tax_cents)
+             orders.sum(:tax_cents) - refunds.sum(:org_debit_cents) + refunds.sum(:tax_cents) -
+             moved.sum(:moved_cents) + moved.sum(:tax_cents)
       Summary.new(tickets: tickets, gross_cents: gross, net_cents: kept, refunded_cents: refunds.sum(:amount_cents))
     end
   end

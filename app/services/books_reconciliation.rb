@@ -34,7 +34,7 @@ class BooksReconciliation
     books = ChartOfAccounts.account(organization, :tax_to_remit).natural_balance_cents
     expected = TaxLine.where(organization_id: organization.id, taxable_type: "Ticket", remitter: "organization")
                       .joins("JOIN tickets ON tickets.id = tax_lines.taxable_id JOIN ticket_orders ON ticket_orders.id = tickets.ticket_order_id")
-                      .where(ticket_orders: { status: %w[paid partially_refunded refunded], money_path: %w[cocoscout cash] })
+                      .where(ticket_orders: { status: TicketOrder::WAS_PAID, money_path: %w[cocoscout cash] })
                       .sum(:tax_cents)
     Mismatch.new(account: "tax_to_remit", books_cents: books, expected_cents: expected) unless books == expected
   end

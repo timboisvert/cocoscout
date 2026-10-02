@@ -1263,6 +1263,8 @@ Rails.application.routes.draw do
     post   "ticketing/orders/:id/refund",         to: "ticket_orders#refund"
     post   "ticketing/orders/:id/refund/top-up",  to: "ticket_orders#refund_top_up",     as: "ticket_order_refund_top_up"
     post   "ticketing/orders/:id/resend",         to: "ticket_orders#resend",            as: "ticket_order_resend"
+    get    "ticketing/orders/:id/move",           to: "ticket_orders#exchange_review",   as: "ticket_order_exchange"
+    post   "ticketing/orders/:id/move",           to: "ticket_orders#exchange"
     get    "ticketing/balance",                   to: "ticket_balance#show",             as: "ticket_balance"
     post   "ticketing/balance/withdraw",          to: "ticket_balance#withdraw",         as: "ticket_balance_withdraw"
     post   "ticketing/balance/top-up",            to: "ticket_balance#top_up",           as: "ticket_balance_top_up"

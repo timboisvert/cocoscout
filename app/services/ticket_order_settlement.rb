@@ -18,7 +18,7 @@ class TicketOrderSettlement
   def self.settle!(order, payment_intent_id: nil, charge_id: nil)
     settled = false
     order.with_lock do
-      next if order.paid? || %w[refunded canceled].include?(order.status)
+      next if order.paid? || %w[refunded canceled exchanged].include?(order.status)
 
       ensure_seats_still_free!(order) if order.hold_expired? || order.status == "expired"
       order.told_current_show!

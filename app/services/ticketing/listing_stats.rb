@@ -12,7 +12,8 @@ module Ticketing
   #                 tax or fees (the same face value Show Financials records)
   #   net_cents   — what the theater keeps: after our fee, card processing and
   #                 refunds, and without the tax it collected (that's the
-  #                 government's); cash at the door counts in full
+  #                 government's); cash at the door counts in full. Money
+  #                 for tickets moved to another date counts there.
   #
   # Build many at once with .for(listings): a handful of queries in all.
   class ListingStats
@@ -27,11 +28,13 @@ module Ticketing
 
       ids = listings.map(&:id)
       tickets = Ticket.joins(:ticket_order).where(ticket_listing_id: ids)
-                      .where(ticket_orders: { status: %w[paid partially_refunded refunded] })
+                      .where(ticket_orders: { status: TicketOrder::WAS_PAID })
                       .select("tickets.*, ticket_orders.channel AS order_channel, ticket_orders.paid_at AS order_paid_at, " \
                               "ticket_orders.ticket_discount_code_id AS order_code_id")
                       .to_a.group_by(&:ticket_listing_id)
-      orders = TicketOrder.where(ticket_listing_id: ids, status: %w[paid partially_refunded refunded]).to_a.group_by(&:ticket_listing_id)
+      orders = TicketOrder.where(ticket_listing_id: ids, status: TicketOrder::WAS_PAID).to_a.group_by(&:ticket_listing_id)
+      moved_out = TicketExchange.joins(:from_order).where(ticket_orders: { ticket_listing_id: ids })
+                                .group("ticket_orders.ticket_listing_id").sum(:moved_cents)
       refunds = TicketRefund.succeeded.joins(:ticket_order).where(ticket_orders: { ticket_listing_id: ids })
                             .select("ticket_refunds.*, ticket_orders.ticket_listing_id AS listing_id")
                             .to_a.group_by(&:listing_id)
@@ -42,7 +45,8 @@ module Ticketing
 
       listings.to_h do |listing|
         [ listing.id, new(listing, tickets: tickets.fetch(listing.id, []), orders: orders.fetch(listing.id, []),
-                                   refunds: refunds.fetch(listing.id, []), tax: included_tax, tiers: tiers.fetch(listing.id, [])) ]
+                                   refunds: refunds.fetch(listing.id, []), tax: included_tax, tiers: tiers.fetch(listing.id, []),
+                                   moved_out_cents: moved_out.fetch(listing.id, 0)) ]
       end
     end
 
@@ -51,8 +55,9 @@ module Ticketing
       self.for([ listing ]).fetch(listing.id)
     end
 
-    def initialize(listing, tickets:, orders:, refunds:, tax:, tiers:)
+    def initialize(listing, tickets:, orders:, refunds:, tax:, tiers:, moved_out_cents: 0)
       @listing = listing
+      @moved_out_cents = moved_out_cents
       @tickets = tickets
       @orders = orders
       @refunds = refunds
@@ -113,7 +118,7 @@ module Ticketing
         else 0
         end
       end
-      kept - @refunds.sum(&:org_debit_cents) - tax_cents
+      kept - @refunds.sum(&:org_debit_cents) - @moved_out_cents - tax_cents
     end
 
     def refunded_tickets
@@ -142,7 +147,7 @@ module Ticketing
 
     # Each discount code used: [code, orders, cents off].
     def discount_uses
-      used = @orders.select(&:ticket_discount_code_id).group_by(&:ticket_discount_code_id)
+      used = @orders.select { |o| o.ticket_discount_code_id && o.exchanged_from_id.nil? }.group_by(&:ticket_discount_code_id)
       return [] if used.empty?
 
       codes = TicketDiscountCode.where(id: used.keys).index_by(&:id)
