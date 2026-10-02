@@ -61,6 +61,18 @@ RSpec.describe "Manage ticketing settings", type: :request do
                "support_email" => "box@starsandgarters.com", "enabled" => true)
     end
 
+    it "sets how many days ahead buyers get their reminder, or turns it off" do
+      get manage_ticketing_settings_section_path(section: "box_office")
+      expect(response.body).to include("Reminder email", "1 day before the show", "30 days before the show")
+
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { reminder_days_before: "3" } }
+      expect(org.reload.ticketing_profile.reminder_days_before).to eq(3)
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { reminder_days_before: "" } }
+      expect(org.reload.ticketing_profile.reminder_days_before).to be_nil
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { reminder_days_before: "45" } }
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
     it "explains the fee switch with a real $20 ticket" do
       get manage_ticketing_settings_section_path(section: "box_office")
       expect(response.body).to include("$21.42").and include("$18.62")

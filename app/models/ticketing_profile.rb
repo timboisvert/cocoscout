@@ -24,6 +24,8 @@ class TicketingProfile < ApplicationRecord
   validates :auto_withdraw, inclusion: { in: AUTO_WITHDRAW }
   validates :default_max_per_order, numericality: { only_integer: true, in: 1..100 }
   validates :support_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_nil: true
+  # Days before a show that buyers get their reminder; nil sends none.
+  validates :reminder_days_before, numericality: { only_integer: true, in: 1..30 }, allow_nil: true
 
   before_validation :default_slug, on: :create
 

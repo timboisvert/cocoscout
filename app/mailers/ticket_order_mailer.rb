@@ -1,45 +1,66 @@
 # frozen_string_literal: true
 
-# A buyer's tickets by email. The words come from the
-# ticket_order_confirmation content template; under them sits one QR code per
-# ticket, attached inline, so the door can scan straight from the email.
+# A buyer's emails about their order: their tickets (the confirmation and the
+# reminder before the show), refunds, and a canceled show. The words come
+# from content templates; under the words of an email with tickets sits one
+# QR code per ticket.
 class TicketOrderMailer < ApplicationMailer
   def confirmation(order)
-    @order = order
-    @listing = order.ticket_listing
-    @tickets = order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:ticket_tier).order(:id).to_a
-    organization = @listing.organization
-    profile = TicketingProfile.for(organization)
-    show = @listing.show
+    deliver_tickets(order, "ticket_order_confirmation", self.class.ticket_variables(order))
+  end
 
-    rendered = ContentTemplateService.render("ticket_order_confirmation", {
+  # A few days before the show (as many as the theater chose): the time,
+  # the place and the tickets again, from the ticket_event_reminder template.
+  # Mail apps' own unsubscribe button turns reminders off for this order.
+  def reminder(order)
+    show = order.ticket_listing.show
+    location = show.location
+    address = [ location&.address1, location&.city ].compact_blank.join(", ")
+    stop_url = tickets_order_reminders_url(token: order.token)
+    headers["List-Unsubscribe"] = "<#{tickets_order_stop_reminders_url(token: order.token)}>"
+    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+    deliver_tickets(order, "ticket_event_reminder", self.class.ticket_variables(order).merge(
+      when: self.class.when_words(show.date_and_time),
+      address: address,
+      directions_url: address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].join(', '))}" : "",
+      door_note: order.ticket_listing.door_note.to_s,
+      stop_reminders_url: stop_url
+    ))
+  end
+
+  # The words every email with tickets in it can use.
+  def self.ticket_variables(order)
+    listing = order.ticket_listing
+    show = listing.show
+    count = order.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) }
+    {
       first_name: order.buyer_name.to_s.split.first.presence || "there",
-      organization_name: organization.name,
-      show_title: @listing.display_title,
+      organization_name: listing.organization.name,
+      show_title: listing.display_title,
       show_date: show.date_and_time.strftime("%A, %B %-d"),
       show_time: show.date_and_time.strftime("%-l:%M %p"),
       venue: [ show.location&.name, show.location_space&.name ].compact.uniq.join(", "),
-      ticket_count: ActionController::Base.helpers.pluralize(@tickets.size, "ticket"),
-      ticket_count_verb: @tickets.size == 1 ? "is" : "are",
+      ticket_count: ActionController::Base.helpers.pluralize(count, "ticket"),
+      ticket_count_verb: count == 1 ? "is" : "are",
       order_code: order.code,
-      order_url: tickets_order_url(token: order.token)
-    })
-    @intro_html = rendered[:body]
+      order_url: routes.tickets_order_url(token: order.token, **url_options)
+    }
+  end
 
-    @tickets.each do |ticket|
-      png = RQRCode::QRCode.new(tickets_ticket_url(code: ticket.code)).as_png(size: 360, border_modules: 2)
-      attachments.inline["ticket-#{ticket.id}.png"] = png.to_s
-    end
+  # "tomorrow", "on Friday", or "on Friday, October 10" for further off.
+  def self.when_words(time, today: Date.current)
+    days = (time.to_date - today).to_i
+    return "today" if days <= 0
+    return "tomorrow" if days == 1
+    return "on #{time.strftime('%A')}" if days < 7
 
-    mail(to: order.buyer_email, subject: rendered[:subject],
-         from: email_address_with_name("info@cocoscout.com", "#{organization.name} via CocoScout"),
-         reply_to: profile.support_email.presence)
+    "on #{time.strftime('%A, %B %-d')}"
   end
 
   # Money back, from the ticket_order_refunded template.
   def refunded(refund)
     @order = refund.ticket_order
-    rendered = ContentTemplateService.render("ticket_order_refunded", self.class.variables_for(@order, refund))
+    rendered = render_words("ticket_order_refunded", self.class.variables_for(@order, refund))
     @body_html = rendered[:body]
     deliver_from_theater(rendered[:subject])
   end
@@ -68,10 +89,16 @@ class TicketOrderMailer < ApplicationMailer
       refund_amount: ActiveSupport::NumberHelper.number_to_currency(amount_cents.to_i / 100.0),
       ticket_count: ActionController::Base.helpers.pluralize(count, "ticket"),
       order_code: order.code,
-      order_url: Rails.application.routes.url_helpers.tickets_order_url(
-        token: order.token, **(Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 })
-      )
+      order_url: routes.tickets_order_url(token: order.token, **url_options)
     }
+  end
+
+  def self.routes
+    Rails.application.routes.url_helpers
+  end
+
+  def self.url_options
+    Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
   end
 
   # Plain text a manager wrote, as safe HTML paragraphs.
@@ -84,10 +111,34 @@ class TicketOrderMailer < ApplicationMailer
 
   private
 
-  def deliver_from_theater(subject)
+  # An email with the order's tickets in it: the template's words, then one
+  # QR code per ticket, attached inline so the door can scan straight from
+  # the email.
+  def deliver_tickets(order, template_key, variables)
+    @order = order
+    @listing = order.ticket_listing
+    @tickets = order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:ticket_tier).order(:id).to_a
+    rendered = render_words(template_key, variables)
+    @intro_html = rendered[:body]
+
+    @tickets.each do |ticket|
+      png = RQRCode::QRCode.new(tickets_ticket_url(code: ticket.code)).as_png(size: 360, border_modules: 2)
+      attachments.inline["ticket-#{ticket.id}.png"] = png.to_s
+    end
+    deliver_from_theater(rendered[:subject], template_name: "confirmation")
+  end
+
+  # A template's words. The subject is plain text; in the body every value
+  # is escaped, since names and titles come from people.
+  def render_words(key, variables)
+    { subject: ContentTemplateService.render_subject(key, variables),
+      body: ContentTemplateService.render_body(key, variables.transform_values { |value| ERB::Util.html_escape(value.to_s) }) }
+  end
+
+  def deliver_from_theater(subject, **options)
     organization = @order.organization
     mail(to: @order.buyer_email, subject: subject,
          from: email_address_with_name("info@cocoscout.com", "#{organization.name} via CocoScout"),
-         reply_to: TicketingProfile.for(organization).support_email.presence)
+         reply_to: TicketingProfile.for(organization).support_email.presence, **options)
   end
 end

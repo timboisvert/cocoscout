@@ -341,6 +341,8 @@ Rails.application.routes.draw do
     get  "orders/:token",              to: "ticket_orders#show",      as: "order"
     get  "orders/:token/calendar",     to: "ticket_orders#calendar",  as: "order_calendar"
     post "orders/:token/resend",       to: "ticket_orders#resend",    as: "order_resend"
+    get  "orders/:token/reminders",    to: "ticket_orders#reminders", as: "order_reminders"
+    post "orders/:token/reminders/stop", to: "ticket_orders#stop_reminders", as: "order_stop_reminders"
     get  "checkout/:token",            to: "ticket_checkouts#show",   as: "checkout"
     post "checkout/:token/pay",        to: "ticket_checkouts#pay",    as: "checkout_pay"
     get  "checkout/:token/done",       to: "ticket_checkouts#done",   as: "checkout_done"

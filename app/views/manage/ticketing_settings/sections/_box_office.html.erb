@@ -65,6 +65,14 @@
         </label>
       </div>
 
+      <div>
+        <label for="ticketing_profile_reminder_days_before" class="block text-sm font-medium text-gray-700 mb-1.5">Reminder email</label>
+        <%= f.select :reminder_days_before,
+              [ [ "Off", "" ] ] + (1..30).map { |days| [ "#{pluralize(days, 'day')} before the show", days ] },
+              {}, class: "#{input_class} max-w-xs" %>
+        <p class="text-xs text-gray-500 mt-1">Buyers get the time, the place and their tickets again. Each order gets one reminder, sent at 10am.</p>
+      </div>
+
       <% if Current.user.superadmin? %>
         <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
           <label class="flex items-start gap-3 cursor-pointer">

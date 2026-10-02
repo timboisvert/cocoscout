@@ -1,0 +1,24 @@
+<% show = @listing.show %>
+<% content_for :title, "Reminder emails · #{@listing.display_title}" %>
+<% content_for :head do %><meta name="robots" content="noindex"><% end %>
+
+<div class="mx-auto max-w-lg">
+  <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">Reminder emails</h1>
+  <p class="mt-2 text-gray-700"><%= @listing.display_title %> · <%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
+
+  <div class="mt-6 rounded-xl border border-gray-200 p-5">
+    <% if @order.reminders_opt_out %>
+      <p class="text-gray-700">Reminders are off for this order. You'll still get an email if the show changes.</p>
+    <% else %>
+      <p class="text-gray-700"><%= @listing.organization.name %> sends a reminder with your tickets before the show. Stop them for this order?</p>
+      <div class="mt-4">
+        <%= render "shared/button", text: "Stop reminder emails", variant: "primary", size: "medium",
+              path: tickets_order_stop_reminders_path(token: @order.token, **embed_params), method: :post %>
+      </div>
+    <% end %>
+  </div>
+
+  <p class="mt-4 text-sm">
+    <%= link_to "Back to your tickets", tickets_order_path(token: @order.token, **embed_params), class: "text-pink-600 hover:text-pink-700" %>
+  </p>
+</div>

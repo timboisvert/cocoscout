@@ -162,6 +162,22 @@ def seed_content_templates
     t.active = true
   end
 
+  # Buyer emails seeded by their own migrations, the same way.
+  {
+    "20261002120100_add_ticket_event_reminder_template.rb" => "AddTicketEventReminderTemplate"
+  }.each do |file, class_name|
+    require Rails.root.join("db/migrate", file)
+    spec = class_name.constantize::TEMPLATE
+    ContentTemplate.find_or_create_by!(key: spec[:key]) do |t|
+      t.name = spec[:name]
+      t.subject = spec[:subject]
+      t.body = spec[:body]
+      t.category = "ticketing"
+      t.channel = "email"
+      t.active = true
+    end
+  end
+
   # Ticketing's notices to theaters, straight from the migration that seeds
   # them, so the two can't drift.
   require Rails.root.join("db/migrate/20261002090100_add_ticketing_notification_templates.rb")

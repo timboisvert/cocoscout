@@ -56,6 +56,10 @@ development:
     class: TicketingSalesOpenedJob
     schedule: every 15 minutes
 
+  ticket_reminders:
+    class: TicketRemindersJob
+    schedule: at 10am every day America/Chicago
+
 production:
   mics_signup_alert_scheduler:
     class: MicSignupAlertSchedulerJob
@@ -151,3 +155,9 @@ production:
   ticketing_sales_opened:
     class: TicketingSalesOpenedJob
     schedule: every 15 minutes
+
+  # Buyers' reminders before their show, as many days ahead as each theater
+  # chose in Ticketing settings.
+  ticket_reminders:
+    class: TicketRemindersJob
+    schedule: at 10am every day America/Chicago

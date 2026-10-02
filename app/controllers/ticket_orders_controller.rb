@@ -8,8 +8,9 @@ class TicketOrdersController < ApplicationController
 
   allow_unauthenticated_access
   # The token is the key, and the embed has no session cookie (see
-  # TicketCheckoutsController).
-  skip_forgery_protection only: :resend
+  # TicketCheckoutsController). Mail apps' one-click unsubscribe posts
+  # straight to stop_reminders.
+  skip_forgery_protection only: %i[resend stop_reminders]
 
   before_action :set_order
 
@@ -37,6 +38,16 @@ class TicketOrdersController < ApplicationController
   def resend
     TicketOrderConfirmationJob.perform_later(@order.id) if @order.paid? && @order.buyer_email.present?
     redirect_to tickets_order_path(token: @order.token, **embed_params), notice: "We've sent your tickets to #{@order.buyer_email} again."
+  end
+
+  # From the reminder email's "Stop reminder emails" link: a page with one
+  # button, so a mail scanner opening the link changes nothing.
+  def reminders; end
+
+  def stop_reminders
+    @order.update!(reminders_opt_out: true)
+    redirect_to tickets_order_path(token: @order.token, **embed_params),
+                notice: "You won't get reminder emails for this order.", status: :see_other
   end
 
   private
