@@ -153,6 +153,15 @@ def seed_content_templates
     end
   end
 
+  ContentTemplate.find_or_create_by!(key: "ticketing_door_invitation") do |t|
+    t.name = "Ticketing: door access invitation"
+    t.subject = "{{organization_name}} invited you to work the door"
+    t.body = "<p>Hi {{first_name}}, {{inviter_name}} invited you to {{access_description}}. <a href=\"{{accept_url}}\">Accept</a></p>"
+    t.category = "ticketing"
+    t.channel = "email"
+    t.active = true
+  end
+
   # Ticketing's notices to theaters, straight from the migration that seeds
   # them, so the two can't drift.
   require Rails.root.join("db/migrate/20261002090100_add_ticketing_notification_templates.rb")

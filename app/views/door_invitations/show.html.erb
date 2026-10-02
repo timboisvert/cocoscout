@@ -1,0 +1,24 @@
+<% content_for :title, "Work the door · #{@grant.organization.name}" %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  what = @grant.access_level == "box_office" ? "check people in and sell at the door" : "check people in"
+%>
+<div class="mx-auto max-w-md">
+  <h1 class="text-2xl font-semibold text-gray-900"><%= @grant.organization.name %> invited you to work the door</h1>
+  <p class="mt-2 text-sm text-gray-600">You'll be able to <%= what %> at their shows, on your phone.</p>
+
+  <%= form_with url: door_invitation_accept_path(token: @grant.invitation_token), method: :post, class: "mt-6 bg-white border border-gray-200 rounded-xl p-5 space-y-4" do %>
+    <div>
+      <div class="block text-sm font-medium text-gray-700 mb-1.5">Email</div>
+      <div class="text-sm text-gray-900"><%= @grant.invited_email %></div>
+    </div>
+    <div>
+      <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
+        <%= @existing_user ? "Your CocoScout password" : "Choose a password for your new CocoScout account" %>
+      </label>
+      <%= password_field_tag :password, nil, required: true, autocomplete: @existing_user ? "current-password" : "new-password", class: input_class %>
+      <% if @error %><p class="mt-1 text-sm text-red-600"><%= @error %></p><% end %>
+    </div>
+    <%= render "shared/button", text: @existing_user ? "Sign in and accept" : "Make my account and accept", variant: "primary", size: "medium", type: :submit, classes: "w-full justify-center" %>
+  <% end %>
+</div>

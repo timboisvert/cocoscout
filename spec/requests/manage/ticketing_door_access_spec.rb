@@ -50,7 +50,7 @@ RSpec.describe "Manage ticketing door access", type: :request do
     get manage_ticketing_door_search_path, params: { q: "jordan" }
     expect(response.body).to include("Jordan Friend", "Choose")
     get manage_ticketing_door_search_path, params: { q: "zzz" }
-    expect(response.body).to include("They need a CocoScout account first")
+    expect(response.body).to include("Invite them by email", "Send invitation")
 
     post manage_ticketing_door_access_path, params: { person_id: friend_person.id, access_level: "check_in" }
     expect(flash[:notice]).to eq("Jordan Friend can now check people in at the door.")
@@ -97,5 +97,39 @@ RSpec.describe "Manage ticketing door access", type: :request do
     post manage_ticketing_door_access_path, params: { staff_member_ids: [ member.id ], access_level: "check_in" }
     expect(flash[:alert]).to eq("Choose someone to give door access to.")
     expect(TicketingAccessGrant.count).to eq(0)
+  end
+  describe "inviting someone not on CocoScout" do
+    include ActiveJob::TestHelper
+
+    it "offers the invite only after a search finds nobody, prefilled from the search" do
+      get manage_ticketing_door_search_path, params: { q: "sam@volunteer.example" }
+      expect(response.body).to include('value="sam@volunteer.example"', "Send invitation")
+      get manage_ticketing_door_search_path, params: { q: "Sam Volunteer" }
+      expect(response.body).to include('value="Sam Volunteer"')
+    end
+
+    it "sends an invitation and lists it until it's accepted" do
+      expect {
+        post manage_ticketing_door_invite_path, params: { name: "Sam Volunteer", email: "Sam@Volunteer.example", access_level: "box_office" }
+      }.to have_enqueued_mail(AppMailer, :send_template)
+      expect(flash[:notice]).to eq("Invitation sent to sam@volunteer.example.")
+      grant = org.ticketing_access_grants.pending_invites.sole
+      expect(grant.attributes.slice("invited_email", "invited_name", "access_level", "user_id"))
+        .to eq("invited_email" => "sam@volunteer.example", "invited_name" => "Sam Volunteer", "access_level" => "box_office", "user_id" => nil)
+
+      get manage_ticketing_settings_section_path(section: "door")
+      expect(response.body).to include("Sam Volunteer", "hasn't accepted yet", "Resend", "Withdraw invitation")
+
+      expect { post manage_ticketing_door_invite_resend_path(grant) }.to have_enqueued_mail(AppMailer, :send_template)
+      delete manage_ticketing_door_access_grant_path(grant)
+      expect(flash[:notice]).to eq("Invitation to sam@volunteer.example withdrawn.")
+    end
+
+    it "just gives access when the email already has an account" do
+      user, = user_with_person("Lee Park")
+      post manage_ticketing_door_invite_path, params: { email: user.email_address, access_level: "check_in" }
+      expect(flash[:notice]).to eq("Lee Park can now check people in at the door.")
+      expect(org.ticketing_access_grants.active.sole.user).to eq(user)
+    end
   end
 end

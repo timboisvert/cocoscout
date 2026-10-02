@@ -66,7 +66,7 @@ module Manage
               .includes(:user).order(:name).limit(30).to_a.uniq(&:user_id).first(15)
       end
       render partial: "manage/ticketing_settings/door_search_results",
-             locals: { people: people, query: q, granted_user_ids: door_grants.pluck(:user_id), manager_user_ids: manager_user_ids }
+             locals: { people: people, query: q, granted_user_ids: door_grants.pluck(:user_id).compact, manager_user_ids: manager_user_ids }
     end
 
     # Gives door access to the staff members ticked, or to one person found by
@@ -94,6 +94,36 @@ module Manage
       redirect_to section_path("door"), notice: notice
     end
 
+    # Door access for someone not found on CocoScout: they get an emailed
+    # invitation, and the grant waits until they accept. Someone who turns out
+    # to have an account under that email just gets access.
+    def invite_door_access
+      level = params[:access_level].presence_in(TicketingAccessGrant::LEVELS) || "check_in"
+      email = params[:email].to_s.strip.downcase
+      unless email.match?(URI::MailTo::EMAIL_REGEXP)
+        redirect_to section_path("door"), alert: "Enter an email address to invite." and return
+      end
+
+      if (user = User.find_by(email_address: email))
+        grant = door_grants.find_or_initialize_by(user: user)
+        grant.granted_by ||= Current.user
+        grant.update!(access_level: level)
+        redirect_to section_path("door"), notice: "#{user.person&.name || email} can now #{grant.access_description} at the door." and return
+      end
+
+      grant = TicketingAccessGrant.invite!(organization: Current.organization, email: email, name: params[:name], level: level, by: Current.user)
+      send_door_invitation(grant)
+      redirect_to section_path("door"), notice: "Invitation sent to #{email}."
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to section_path("door"), alert: e.record.errors.full_messages.to_sentence
+    end
+
+    def resend_door_invite
+      grant = Current.organization.ticketing_access_grants.pending_invites.find(params[:id])
+      send_door_invitation(grant)
+      redirect_to section_path("door"), notice: "Invitation sent again to #{grant.invited_email}."
+    end
+
     def update_door_access
       grant = door_grants.find(params[:id])
       level = params[:access_level].presence_in(TicketingAccessGrant::LEVELS)
@@ -104,13 +134,23 @@ module Manage
     def revoke_door_access
       grant = door_grants.find(params[:id])
       grant.revoke!(by: Current.user)
-      redirect_to section_path("door"), notice: "#{grant.user.person&.name || 'They'} can no longer work the door."
+      redirect_to section_path("door"), notice: grant.pending? ? "Invitation to #{grant.invited_email} withdrawn." : "#{grant.display_name} can no longer work the door."
     end
 
     private
 
     def door_grants
       Current.organization.ticketing_access_grants.active
+    end
+
+    def send_door_invitation(grant)
+      AppMailer.with(template_key: "ticketing_door_invitation", to: grant.invited_email, variables: {
+        first_name: grant.invited_name.to_s.split.first.presence || "there",
+        inviter_name: Current.user.person&.name || Current.user.email_address,
+        organization_name: Current.organization.name,
+        access_description: grant.access_description,
+        accept_url: door_invitation_url(token: grant.invitation_token)
+      }).send_template.deliver_later
     end
 
     def manager_user_ids
@@ -134,8 +174,7 @@ module Manage
     end
 
     def load_door_access
-      @door_grants = door_grants.includes(user: :default_person).to_a
-                                .sort_by { |grant| grant.user.person&.name.to_s.downcase }
+      @door_grants = door_grants.includes(user: :default_person).to_a.sort_by { |grant| grant.display_name.to_s.downcase }
       granted = @door_grants.map(&:user_id)
       managers = manager_user_ids
       @door_staff = Current.organization.organization_staff_members.active.includes(person: :user).to_a

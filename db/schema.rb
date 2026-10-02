@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_02_110100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3272,15 +3272,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_100000) do
   end
 
   create_table "ticketing_access_grants", force: :cascade do |t|
+    t.datetime "accepted_at"
     t.string "access_level", default: "check_in", null: false
     t.datetime "created_at", null: false
     t.bigint "granted_by_id"
+    t.string "invitation_token"
+    t.datetime "invited_at"
+    t.string "invited_email"
+    t.string "invited_name"
     t.bigint "organization_id", null: false
     t.datetime "revoked_at"
     t.bigint "revoked_by_id"
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.index ["granted_by_id"], name: "index_ticketing_access_grants_on_granted_by_id"
+    t.index ["invitation_token"], name: "index_ticketing_access_grants_on_invitation_token", unique: true
+    t.index ["organization_id", "invited_email"], name: "idx_ticketing_access_grants_one_pending_invite", unique: true, where: "((revoked_at IS NULL) AND (user_id IS NULL))"
     t.index ["organization_id", "user_id"], name: "idx_ticketing_access_grants_one_active", unique: true, where: "(revoked_at IS NULL)"
     t.index ["organization_id"], name: "index_ticketing_access_grants_on_organization_id"
     t.index ["revoked_by_id"], name: "index_ticketing_access_grants_on_revoked_by_id"

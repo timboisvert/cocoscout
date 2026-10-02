@@ -18,8 +18,8 @@
     <% if @door_grants.any? %>
       <ul class="divide-y divide-gray-100">
         <% @door_grants.each do |grant| %>
-          <% person = grant.user.person %>
-          <% name = person&.name || grant.user.email_address %>
+          <% person = grant.user&.person %>
+          <% name = grant.display_name %>
           <% headshot_variant = person&.safe_headshot_variant(:thumb) %>
           <li class="flex flex-wrap items-center gap-3 px-6 py-3">
             <% if headshot_variant %>
@@ -29,8 +29,17 @@
             <% end %>
             <div class="min-w-[9rem] flex-1">
               <div class="text-sm font-medium text-gray-900 truncate"><%= name %></div>
-              <div class="text-xs text-gray-500 truncate"><%= grant.user.email_address %></div>
+              <div class="text-xs text-gray-500 truncate">
+                <% if grant.pending? %>
+                  Invited <%= grant.invited_at&.strftime("%b %-d") %> · <%= grant.invited_email %> · hasn't accepted yet
+                <% else %>
+                  <%= grant.user.email_address %>
+                <% end %>
+              </div>
             </div>
+            <% if grant.pending? %>
+              <%= render "shared/button", text: "Resend", variant: "ghost", size: "small", path: manage_ticketing_door_invite_resend_path(grant), method: :post %>
+            <% end %>
             <%= form_with url: manage_ticketing_door_access_grant_path(grant), method: :patch, data: { controller: "auto-submit" } do %>
               <%= select_tag :access_level, options_for_select(TicketingAccessGrant::LEVEL_LABELS.invert, grant.access_level),
                     "aria-label": "What #{name} can do", class: select_class, data: { action: "change->auto-submit#submit" } %>
@@ -40,8 +49,8 @@
                   data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
             <%= render "shared/confirm_modal", id: modal_id,
                   title: "Remove door access?",
-                  message: "#{name} won't be able to check people in or sell at the door. You can add them again any time.",
-                  confirm_text: "Remove access",
+                  message: grant.pending? ? "The invitation to #{grant.invited_email} stops working." : "#{name} won't be able to check people in or sell at the door. You can add them again any time.",
+                  confirm_text: grant.pending? ? "Withdraw invitation" : "Remove access",
                   url: manage_ticketing_door_access_grant_path(grant), method: :delete %>
           </li>
         <% end %>

@@ -353,6 +353,8 @@ Rails.application.routes.draw do
 
   # The door on show night: check-in and door sales, for managers and anyone a
   # theater granted door access (Ticketing settings → Door access).
+  get  "/door/invitations/:token",        to: "door_invitations#show",   as: "door_invitation"
+  post "/door/invitations/:token",        to: "door_invitations#accept", as: "door_invitation_accept"
   get  "/door",                           to: "door#index",          as: "door_index"
   get  "/door/:listing_id",               to: "door#show",           as: "door"
   post "/door/:listing_id/check-in",      to: "door#check_in",       as: "door_check_in"
@@ -1229,6 +1231,8 @@ Rails.application.routes.draw do
     get   "ticketing/settings/:section",          to: "ticketing_settings#show",         as: "ticketing_settings_section"
     get    "ticketing/settings/door/search",      to: "ticketing_settings#door_search",  as: "ticketing_door_search"
     post   "ticketing/settings/door",             to: "ticketing_settings#grant_door_access", as: "ticketing_door_access"
+    post   "ticketing/settings/door/invite",      to: "ticketing_settings#invite_door_access", as: "ticketing_door_invite"
+    post   "ticketing/settings/door/:id/resend",  to: "ticketing_settings#resend_door_invite", as: "ticketing_door_invite_resend"
     patch  "ticketing/settings/door/:id",         to: "ticketing_settings#update_door_access", as: "ticketing_door_access_grant"
     delete "ticketing/settings/door/:id",         to: "ticketing_settings#revoke_door_access"
     get    "ticketing/shows",                     to: "ticket_listings#index",           as: "ticket_listings"
