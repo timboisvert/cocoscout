@@ -672,15 +672,10 @@ Rails.application.routes.draw do
     get  "/shows/:production_id/visual_assets", to: "visual_assets#index", as: "production_visual_assets"
     get  "/shows/:production_id/visual_assets/new_poster", to: "visual_assets#new_poster", as: "new_poster_production_visual_asset"
     post "/shows/:production_id/visual_assets/create_poster", to: "visual_assets#create_poster", as: "create_poster_production_visual_asset"
-    get  "/shows/:production_id/visual_assets/new_logo", to: "visual_assets#new_logo", as: "new_logo_production_visual_asset"
-    post "/shows/:production_id/visual_assets/create_logo", to: "visual_assets#create_logo", as: "create_logo_production_visual_asset"
     get  "/shows/:production_id/visual_assets/:id/edit_poster", to: "visual_assets#edit_poster", as: "edit_poster_production_visual_asset"
     patch "/shows/:production_id/visual_assets/:id/update_poster", to: "visual_assets#update_poster", as: "update_poster_production_visual_asset"
     delete "/shows/:production_id/visual_assets/:id/destroy_poster", to: "visual_assets#destroy_poster", as: "destroy_poster_production_visual_asset"
     patch "/shows/:production_id/visual_assets/:id/set_primary_poster", to: "visual_assets#set_primary_poster", as: "set_primary_poster_production_visual_asset"
-    get "/shows/:production_id/visual_assets/:id/edit_logo", to: "visual_assets#edit_logo", as: "edit_logo_production_visual_asset"
-    patch "/shows/:production_id/visual_assets/:id/update_logo", to: "visual_assets#update_logo", as: "update_logo_production_visual_asset"
-    post "/shows/:production_id/visual_assets/promote_show_poster/:show_id", to: "visual_assets#promote_show_poster", as: "promote_show_poster_production_visual_asset"
     patch  "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#update_wide_image", as: "wide_image_production_visual_asset"
     delete "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#remove_wide_image"
 
@@ -1129,8 +1124,6 @@ Rails.application.routes.draw do
         patch :toggle_production_notification
         delete :remove_team_member
         delete :revoke_production_invite
-        # Legacy logo removal (one-way migration off of logos toward posters)
-        delete :remove_logo
         # Agreement management
         get :agreement_status
         post :send_agreement_reminders

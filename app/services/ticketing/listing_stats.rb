@@ -141,9 +141,6 @@ module Ticketing
       end
     end
 
-    def by_channel
-      CHANNELS.keys.index_with { |channel| held_tickets.count { |t| t.order_channel == channel } }.select { |_, n| n.positive? }
-    end
 
     # Each discount code used: [code, orders, cents off].
     def discount_uses
@@ -154,17 +151,6 @@ module Ticketing
       used.map { |id, orders| [ codes[id]&.code, orders.size, orders.sum(&:discount_cents) ] }
     end
 
-    # { "2026-10-01" => cumulative tickets held }, from the first sale to today
-    # (or the show, if it's past).
-    def daily_cumulative
-      dated = held_tickets.filter_map { |t| t.order_paid_at&.to_date }.sort
-      return {} if dated.empty?
-
-      last = [ [ Date.current, listing.show.date_and_time.to_date ].min, dated.last ].max
-      counts = dated.tally
-      running = 0
-      (dated.first..last).to_h { |day| running += counts.fetch(day, 0); [ day.iso8601, running ] }
-    end
 
     private
 

@@ -220,7 +220,7 @@ class User < ApplicationRecord
     # If user has manager or viewer as default role, they have access to all productions
     role = default_role
     if %w[manager viewer].include?(role)
-      base_scope.includes(logo_attachment: :blob)
+      base_scope.includes(posters: { image_attachment: :blob })
     else
       # Combine production permissions and reviewer access
       permission_production_ids = production_permissions.where(
@@ -230,7 +230,7 @@ class User < ApplicationRecord
       reviewer_production_ids = productions_with_reviewer_access.pluck(:id)
 
       all_production_ids = (permission_production_ids + reviewer_production_ids).uniq
-      base_scope.where(id: all_production_ids).includes(logo_attachment: :blob)
+      base_scope.where(id: all_production_ids).includes(posters: { image_attachment: :blob })
     end
   end
 

@@ -35,20 +35,20 @@
     links: []
   } %>
 
+  <%# Where it stands, and the one thing to do next. %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
+        <span class="text-sm text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></span>
+      </div>
+      <%= render "manage/ticket_listings/status_actions", listing: @listing %>
+    </div>
+    <%= render "shared/copy_url", url: public_url, show_qr: true, qr_title: "Scan for tickets" %>
+  </div>
+
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">
     <div class="space-y-6 min-w-0">
-      <%# Where it stands, and the one thing to do next. %>
-      <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-2 min-w-0">
-            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
-            <span class="text-sm text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></span>
-          </div>
-          <%= render "manage/ticket_listings/status_actions", listing: @listing %>
-        </div>
-        <%= render "shared/copy_url", url: public_url, show_qr: true, qr_title: "Scan for tickets" %>
-      </div>
-
       <% if TicketShowChange.pending?(@listing) %>
         <% told = TicketShowChange.orders(@listing).count %>
         <%= render "shared/alert_panel",

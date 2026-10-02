@@ -160,7 +160,7 @@
                     <div class="flex items-center gap-2">
                       <div data-reply-sender-target="icon" class="flex-shrink-0">
                         <% if root_message.production %>
-                          <% nested_prod_logo = root_message.production.safe_logo_variant(:small) %>
+                          <% nested_prod_logo = root_message.production.safe_poster_variant(:small) %>
                           <% if nested_prod_logo %>
                             <%= image_tag nested_prod_logo, alt: root_message.production.name, class: "w-5 h-5 rounded object-cover" %>
                           <% else %>
@@ -189,7 +189,7 @@
                             data-label="<%= root_message.production&.name || 'Production Team' %>"
                             class="w-full flex items-center gap-2 px-3 py-2 hover:bg-pink-50 transition-colors cursor-pointer text-left">
                       <% if root_message.production %>
-                        <% nested_prod_logo2 = root_message.production.safe_logo_variant(:small) %>
+                        <% nested_prod_logo2 = root_message.production.safe_poster_variant(:small) %>
                         <% if nested_prod_logo2 %>
                           <%= image_tag nested_prod_logo2, alt: root_message.production.name, class: "w-5 h-5 rounded object-cover flex-shrink-0" %>
                         <% else %>

@@ -15,7 +15,7 @@
 
     if is_from_production && production
       display_name = production.name
-      logo_variant = production.safe_logo_variant(:small)
+      logo_variant = production.safe_poster_variant(:small)
       display_initials = production.initials
     else
       original_sender = regardable.sender.is_a?(Person) ? regardable.sender : regardable.sender&.person

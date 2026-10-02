@@ -108,19 +108,6 @@ RSpec.describe Production, type: :model do
     end
   end
 
-  describe 'logo attachment' do
-    it 'can have a logo attached' do
-      production = create(:production)
-      production.logo.attach(
-        io: File.open(Rails.root.join('spec', 'fixtures', 'files', 'test_image.png')),
-        filename: 'logo.png',
-        content_type: 'image/png'
-      )
-
-      expect(production.logo).to be_attached
-    end
-  end
-
   describe 'dependent destroy behavior' do
     let(:production) { create(:production) }
 

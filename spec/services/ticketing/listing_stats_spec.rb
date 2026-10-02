@@ -40,13 +40,8 @@ RSpec.describe Ticketing::ListingStats do
     expect(stats.capacity).to eq(60)
     expect(stats.by_tier.map { |r| [ r.tier.name, r.sold, r.remaining, r.gross_cents ] })
       .to eq([ [ "General", 5, 45, 5_500 ], [ "VIP", 1, 9, 3_500 ] ])
-    expect(stats.by_channel).to eq("online" => 2, "embed" => 1, "door_cash" => 1, "comp" => 2)
     expect(stats.discount_uses).to eq([ [ "FRIENDS", 1, 500 ] ])
     expect(stats.sold_since(2.days.ago)).to eq(5)
-
-    series = stats.daily_cumulative
-    expect(series.keys.first).to eq(3.days.ago.to_date.iso8601)
-    expect(series.values.last).to eq(6)
 
     # What the theater keeps: each order's net, less the refund it gave up,
     # without the tax it collected for the government.
@@ -73,6 +68,6 @@ RSpec.describe Ticketing::ListingStats do
 
   it "is all zeros for a show with no tickets yet" do
     stats = described_class.of(listing)
-    expect([ stats.sold, stats.gross_cents, stats.net_cents, stats.daily_cumulative ]).to eq([ 0, 0, 0, {} ])
+    expect([ stats.sold, stats.gross_cents, stats.net_cents ]).to eq([ 0, 0, 0 ])
   end
 end

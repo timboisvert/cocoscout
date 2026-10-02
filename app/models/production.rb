@@ -64,12 +64,6 @@ class Production < ApplicationRecord
 
   include HasWideImage
 
-  has_one_attached :logo, dependent: :purge_later do |attachable|
-    # Production logos display as a square (1:1). Posters use 3:4 (Instagram
-    # portrait) — see Production#posters / Show#poster.
-    attachable.variant :small, resize_to_limit: [ 300, 300 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
-  end
-
   # Rich text for production-wide notes (legacy — superseded by documents).
   has_rich_text :notes
 
@@ -131,7 +125,6 @@ class Production < ApplicationRecord
             format: { with: /\A[a-z0-9][a-z0-9-]{2,29}\z/, message: "must be 3-30 characters, lowercase letters, numbers, and hyphens only" }, allow_blank: true
   validate :public_key_not_reserved
   validate :public_key_change_frequency
-  validate :logo_content_type
   validate :within_free_production_limit, on: :create
 
   # Callbacks
@@ -271,13 +264,11 @@ class Production < ApplicationRecord
     talent_pool&.members&.count || 0
   end
 
-  def safe_logo_variant(variant_name)
-    return nil unless logo.attached?
-
-    logo.variant(variant_name)
-  rescue ActiveStorage::InvariableError, ActiveStorage::FileNotFoundError => e
-    Rails.logger.error("Failed to generate variant for production #{id} logo: #{e.message}")
-    nil
+  # The production's main poster as an image variant, or nil when it has
+  # none. Productions are pictured by their poster (3:4) and wide image
+  # (16:9); there are no logos.
+  def safe_poster_variant(variant_name)
+    primary_poster&.safe_image_variant(variant_name)
   end
 
   def invalidate_caches
@@ -644,12 +635,6 @@ class Production < ApplicationRecord
     # Auditions reference both audition_requests and audition_sessions
     audition_session_ids = AuditionSession.joins(:audition_cycle).where(audition_cycles: { production_id: id }).pluck(:id)
     Audition.where(audition_session_id: audition_session_ids).delete_all
-  end
-
-  def logo_content_type
-    return unless logo.attached? && !logo.content_type.in?(%w[image/jpeg image/jpg image/png image/gif])
-
-    errors.add(:logo, "Logo must be a JPEG, JPG, PNG, or GIF file")
   end
 
   # Producer plan is limited to Organization::FREE_PRODUCTION_LIMIT active,

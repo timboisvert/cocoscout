@@ -6,7 +6,7 @@
   show = listing.show
   image, page_image = ticket_page_image(listing)
   has_wide = page_image&.wide?
-  media_path = manage_edit_show_path(listing.production, show)
+  media_path = manage_edit_show_path(listing.production, show, tab: 4)
   assets_path = edit_manage_production_path(listing.production, tab: 1)
 %>
 <div class="bg-white rounded-lg border border-gray-200 p-5">

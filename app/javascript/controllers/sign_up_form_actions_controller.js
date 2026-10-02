@@ -59,7 +59,7 @@ export default class extends Controller {
           <p class="font-medium text-gray-900 truncate">${this.escapeHtml(prod.name)}</p>
           <p class="text-xs text-gray-500">${prod.show_count} shows</p>
         </div>
-        ${prod.logo_url ? `<img src="${prod.logo_url}" alt="" class="w-8 h-8 rounded object-cover flex-shrink-0">` : ''}
+        ${prod.image_url ? `<img src="${prod.image_url}" alt="" class="w-8 h-8 rounded object-cover flex-shrink-0">` : ''}
       </label>
     `).join('')
 

@@ -297,7 +297,7 @@ module Manage
       if user_id && Current.organization && session[:current_production_id_for_organization].is_a?(Hash)
         prod_id = session[:current_production_id_for_organization]["#{user_id}_#{Current.organization.id}"]
         production = if prod_id
-                       Current.organization.productions.includes(logo_attachment: :blob).find_by(id: prod_id)
+                       Current.organization.productions.includes(posters: { image_attachment: :blob }).find_by(id: prod_id)
         end
         # Only honor the stored selection if the user can actually open it. This
         # prevents a stale/archived/foreign selection (e.g. left over from

@@ -24,7 +24,7 @@ RSpec.describe "Edit-show screen", type: :request do
     expect(response).to have_http_status(:ok)
     %w[Details Schedule Location].each { |t| expect(response.body).to include(t) }
     expect(response.body).to include("Casting &amp; Visibility")
-    expect(response.body).to include("Poster, Links &amp; Notes")
+    expect(response.body).to include("Images, Links &amp; Notes")
     expect(response.body).to include("Danger Zone")
     # Event type is now a radio-card grid, not a <select>.
     expect(response.body).to include('name="show[event_type]"')

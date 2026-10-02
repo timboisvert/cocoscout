@@ -2,15 +2,15 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo update_pay]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders remove_logo update_pay]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay]
     before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay]
 
     def index
       @filter = params[:filter] || "all"
       @productions = Current.user.accessible_productions
         .where(organization: Current.organization)
-        .includes(:logo_attachment)
+        .includes(posters: { image_attachment: :blob })
         .order(:name)
 
       case @filter
@@ -162,14 +162,6 @@ module Manage
       ContractPayment.where(show_id: show_ids).update_all(show_id: nil) if show_ids.any?
       Show.without_contract_payment_sync { @production.destroy! }
       redirect_to manage_productions_path, notice: "Production was successfully deleted", status: :see_other and return
-    end
-
-    # Detach the legacy logo. We no longer let users upload or replace logos —
-    # all new productions use posters. This action exists so existing customers
-    # can gracefully move off of legacy logos.
-    def remove_logo
-      @production.logo.purge if @production.logo.attached?
-      redirect_to edit_manage_production_path(@production, tab: 1), notice: "Logo removed."
     end
 
     # Production Team Management Actions

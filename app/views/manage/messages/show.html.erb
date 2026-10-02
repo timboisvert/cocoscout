@@ -46,7 +46,7 @@
         <% end %>
 
         <%# Production Logo %>
-        <% logo_variant = from_production.safe_logo_variant(:small) %>
+        <% logo_variant = from_production.safe_poster_variant(:small) %>
         <% if logo_variant %>
           <%= image_tag logo_variant, alt: from_production.name, class: "w-14 h-14 rounded-lg object-cover shadow-sm border border-gray-200" %>
         <% else %>
@@ -116,7 +116,7 @@
                 <div class="flex items-center gap-2">
                   <div data-reply-sender-target="icon" class="flex-shrink-0">
                     <% if @message.production %>
-                      <% prod_logo_btn = @message.production.safe_logo_variant(:small) %>
+                      <% prod_logo_btn = @message.production.safe_poster_variant(:small) %>
                       <% if prod_logo_btn %>
                         <%= image_tag prod_logo_btn, alt: @message.production.name, class: "w-6 h-6 rounded-lg object-cover" %>
                       <% else %>
@@ -145,7 +145,7 @@
                         data-label="<%= @message.production&.name || 'Production Team' %>"
                         class="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-pink-50 transition-colors cursor-pointer text-left">
                   <% if @message.production %>
-                    <% prod_logo = @message.production.safe_logo_variant(:small) %>
+                    <% prod_logo = @message.production.safe_poster_variant(:small) %>
                     <% if prod_logo %>
                       <%= image_tag prod_logo, alt: @message.production.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
                     <% else %>

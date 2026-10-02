@@ -1,5 +1,5 @@
 <%# One show's ticket numbers (Ticketing::ListingStats): tiles, sales by
-    ticket type, sales over time, channels and discount codes. The manager's
+    ticket type, and discount codes used. The manager's
     show page and the producer view both render it. Locals: stats, read_only
     (producers see sales, not what the theater keeps). %>
 <%
@@ -15,8 +15,6 @@
     [ "Comps", stats.comps.to_s, "Given away free", stats.comps.positive? ? "bg-blue-50 border-blue-200" : nil ],
     [ "Refunded", stats.refunded_tickets.to_s, stats.refunded_cents.positive? ? "#{money.call(stats.refunded_cents)} back" : "None", stats.refunded_tickets.positive? ? "bg-amber-50 border-amber-200" : nil ]
   ].compact
-  series = stats.daily_cumulative
-  channels = stats.by_channel
   codes = stats.discount_uses
 %>
 <div class="space-y-6">
@@ -66,40 +64,14 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg px-5 py-4">
-      <h2 class="text-sm font-semibold text-gray-900">Tickets over time</h2>
-      <% if series.size > 1 %>
-        <div class="mt-3 h-40" data-controller="line-chart" data-line-chart-data-value="<%= series.to_json %>" data-line-chart-label-value="tickets">
-          <canvas data-line-chart-target="canvas"></canvas>
-        </div>
-      <% else %>
-        <p class="mt-2 text-sm text-gray-500"><%= series.empty? ? "No tickets yet." : "The chart fills in as sales come in over more than a day." %></p>
-      <% end %>
-    </div>
-    <div class="space-y-6">
-      <div class="bg-white border border-gray-200 rounded-lg px-5 py-4">
-        <h2 class="text-sm font-semibold text-gray-900">Where they came from</h2>
-        <% if channels.any? %>
-          <ul class="mt-2 space-y-1 text-sm">
-            <% channels.each do |channel, count| %>
-              <li class="flex justify-between"><span class="text-gray-600"><%= Ticketing::ListingStats::CHANNELS[channel] %></span><span class="tabular-nums text-gray-900"><%= count %></span></li>
-            <% end %>
-          </ul>
-        <% else %>
-          <p class="mt-2 text-sm text-gray-500">No tickets yet.</p>
+  <% if codes.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg px-5 py-4">
+      <h2 class="text-sm font-semibold text-gray-900">Discount codes</h2>
+      <ul class="mt-2 space-y-1 text-sm">
+        <% codes.each do |code, orders, cents| %>
+          <li class="flex justify-between gap-3"><span class="text-gray-900"><%= code %> <span class="text-gray-500">· <%= pluralize(orders, "order") %></span></span><span class="tabular-nums text-gray-600">−<%= money.call(cents) %></span></li>
         <% end %>
-      </div>
-      <% if codes.any? %>
-        <div class="bg-white border border-gray-200 rounded-lg px-5 py-4">
-          <h2 class="text-sm font-semibold text-gray-900">Discount codes</h2>
-          <ul class="mt-2 space-y-1 text-sm">
-            <% codes.each do |code, orders, cents| %>
-              <li class="flex justify-between gap-3"><span class="text-gray-900"><%= code %> <span class="text-gray-500">· <%= pluralize(orders, "order") %></span></span><span class="tabular-nums text-gray-600">−<%= money.call(cents) %></span></li>
-            <% end %>
-          </ul>
-        </div>
-      <% end %>
+      </ul>
     </div>
-  </div>
+  <% end %>
 </div>

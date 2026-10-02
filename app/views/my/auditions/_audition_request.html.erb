@@ -17,9 +17,9 @@
   <div class="w-full md:w-1/3 flex items-center gap-4">
     <%# Production Logo or Icon %>
     <div class="flex-shrink-0 w-14 h-14 flex items-center justify-center">
-      <% logo_variant = production.safe_logo_variant(:small) %>
+      <% logo_variant = production.safe_poster_variant(:small) %>
       <% if logo_variant %>
-        <%= image_tag logo_variant, alt: "#{production.name} logo", class: "w-14 h-14 object-contain rounded-lg" %>
+        <%= image_tag logo_variant, alt: "#{production.name} poster", class: "w-14 h-14 object-contain rounded-lg" %>
       <% else %>
         <div class="w-14 h-14 rounded-lg <%= cycle.video_only? ? 'bg-purple-100' : 'bg-pink-100' %> flex items-center justify-center">
           <% if cycle.video_only? %>

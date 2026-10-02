@@ -3,9 +3,8 @@
   for use in lists, rows, and tiles. One source of truth for this decision.
 
   Priority:
-    1. Logo (if attached) → square (1:1)
-    2. Primary poster (if logo isn't attached) → 3:4 (Instagram portrait)
-    3. Initials fallback → square (1:1)
+    1. Primary poster → 3:4
+    2. Initials fallback → square (1:1)
 
   Locals:
     production     - the Production
@@ -17,14 +16,9 @@
   width = local_assigns.fetch(:width, "w-12")
   extra = local_assigns.fetch(:classes, "")
   initials_class = local_assigns.fetch(:initials_class, "text-base")
-  logo_variant = production.safe_logo_variant(:small)
-  primary_poster_variant = logo_variant ? nil : production.primary_poster&.safe_image_variant(:small)
+  primary_poster_variant = production.safe_poster_variant(:small)
 %>
-<% if logo_variant %>
-  <div class="<%= width %> aspect-square rounded overflow-hidden border border-gray-200 bg-white <%= extra %>">
-    <%= image_tag logo_variant, alt: production.name, class: "w-full h-full object-cover" %>
-  </div>
-<% elsif primary_poster_variant %>
+<% if primary_poster_variant %>
   <div class="<%= width %> aspect-[3/4] rounded overflow-hidden border border-gray-200 bg-white <%= extra %>">
     <%= image_tag primary_poster_variant, alt: production.name, class: "w-full h-full object-cover" %>
   </div>

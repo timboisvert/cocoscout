@@ -9,7 +9,7 @@
   accessible_productions = Current.user.accessible_productions
                                       .where.not(id: @production.id)
                                       .order(:name)
-                                      .map { |prod| { id: prod.id, name: prod.name, show_count: prod.shows.count, logo_url: prod.logo.attached? ? url_for(prod.logo.variant(:small)) : nil } }
+                                      .map { |prod| { id: prod.id, name: prod.name, show_count: prod.shows.count, image_url: (variant = prod.safe_poster_variant(:small)) ? url_for(variant) : nil } }
 
   # Build warning for move
   move_warning = nil

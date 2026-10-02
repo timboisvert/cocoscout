@@ -33,7 +33,7 @@
 
 <% if message.sent_as_production_team? && message.production %>
   <%# Production logo %>
-  <% logo_variant = message.production.safe_logo_variant(:small) %>
+  <% logo_variant = message.production.safe_poster_variant(:small) %>
   <% if logo_variant %>
     <%= image_tag rails_storage_proxy_url(logo_variant), alt: message.production.name, class: "#{size_classes} rounded-lg object-cover flex-shrink-0" %>
   <% else %>

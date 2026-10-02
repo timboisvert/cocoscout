@@ -55,10 +55,27 @@ RSpec.describe "Wide images", type: :request do
     expect(production.reload.wide_image).to be_attached
 
     get edit_manage_production_path(production, tab: 1)
-    expect(response.body).to include("Replace wide image", "Remove the wide image?")
+    expect(response.body).to include("Delete the wide image?", "Delete wide image")
 
     delete manage_wide_image_production_visual_asset_path(production)
     expect(flash[:notice]).to eq("Wide image removed.")
+  end
+
+  # Tim (2026-10-02): the poster and the wide image are equals, side by side,
+  # with what each is for; no logo; shows with their own images are counted
+  # and pointed to, not shown.
+  it "explains the two images, side by side, and points to shows with their own" do
+    get edit_manage_production_path(production, tab: 1)
+    page = response.body
+    expect(page).to include("How #{production.name} looks everywhere", "Poster · 3:4, tall", "Wide image · 16:9",
+                            "Poster (3:4)", "Wide image (16:9)", "No poster yet", "Add a poster")
+    expect(page).not_to include("Logo", "Posters used by individual shows")
+    expect(page).to include("None. Every show and event uses the two images above.")
+
+    show.update!(wide_image: picture)
+    get edit_manage_production_path(production, tab: 1)
+    expect(response.body).to include("1 show or event uses its own poster or wide image", "See which ones",
+                                     manage_edit_show_path(production, show, tab: 4), "Own wide image")
   end
 
   it "lets one show use its own wide image, and drop it again" do

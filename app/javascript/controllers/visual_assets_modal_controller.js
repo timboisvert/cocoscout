@@ -1,13 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["logoModal", "posterModal", "posterForm", "posterImage", "posterName", "posterIdField", "posterModalTitle", "posterSubmitButton", "currentPosterPreview"]
+    static targets = ["posterModal", "posterForm", "posterImage", "posterName", "posterIdField", "posterModalTitle", "posterSubmitButton", "currentPosterPreview"]
     static values = { createPosterPath: String }
 
     connect() {
         this.escapeListener = (e) => {
             if (e.key === "Escape") {
-                this.closeLogoModal()
                 this.closePosterModal()
             }
         }
@@ -16,18 +15,6 @@ export default class extends Controller {
 
     disconnect() {
         document.removeEventListener("keydown", this.escapeListener)
-    }
-
-    openLogoModal(event) {
-        event.preventDefault()
-        this.logoModalTarget.classList.remove("hidden")
-    }
-
-    closeLogoModal(event) {
-        if (event) {
-            event.preventDefault()
-        }
-        this.logoModalTarget.classList.add("hidden")
     }
 
     openNewPosterModal(event) {
