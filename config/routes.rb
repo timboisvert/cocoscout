@@ -1267,10 +1267,11 @@ Rails.application.routes.draw do
     post   "ticketing/orders/:id/resend",         to: "ticket_orders#resend",            as: "ticket_order_resend"
     get    "ticketing/orders/:id/move",           to: "ticket_orders#exchange_review",   as: "ticket_order_exchange"
     post   "ticketing/orders/:id/move",           to: "ticket_orders#exchange"
-    get    "ticketing/balance",                   to: "ticket_balance#show",             as: "ticket_balance"
-    post   "ticketing/balance/withdraw",          to: "ticket_balance#withdraw",         as: "ticket_balance_withdraw"
-    post   "ticketing/balance/top-up",            to: "ticket_balance#top_up",           as: "ticket_balance_top_up"
-    patch  "ticketing/balance/auto-withdraw",     to: "ticket_balance#update_auto_withdraw", as: "ticket_balance_auto_withdraw"
+    # The CocoScout balance is part of Books (Money → Books → Balance).
+    get    "money/books/balance",                 to: "ticket_balance#show",             as: "ticket_balance"
+    post   "money/books/balance/withdraw",        to: "ticket_balance#withdraw",         as: "ticket_balance_withdraw"
+    post   "money/books/balance/top-up",          to: "ticket_balance#top_up",           as: "ticket_balance_top_up"
+    patch  "money/books/balance/auto-withdraw",   to: "ticket_balance#update_auto_withdraw", as: "ticket_balance_auto_withdraw"
     get    "ticketing/taxes",                     to: "ticket_taxes#show",               as: "ticket_taxes"
 
     # Staffing → Availability: the whole staff's availability on a month calendar.

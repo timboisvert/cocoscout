@@ -170,11 +170,15 @@ RSpec.describe "Manage ticketing money", type: :request do
       expect(TicketingProfile.find_by!(organization: org).auto_withdraw).to eq("off")
     end
 
-    it "shows on Ticketing home and the Money hub" do
+    it "shows on Ticketing home and at the top of Books, with Books linked from Money" do
       get manage_ticketing_path
       expect(response.body).to include("$60.00", manage_ticket_balance_path)
       get manage_money_index_path
-      expect(response.body).to include("Your CocoScout balance")
+      expect(response.body).to include(manage_money_books_path)
+      expect(response.body).not_to include("Your CocoScout balance")
+      get manage_money_books_path
+      expect(response.body).to include("Your CocoScout balance", "$60.00", manage_ticket_balance_path)
+      expect(manage_ticket_balance_path).to start_with("/manage/money/books/")
     end
 
     it "is what a payout run spends first" do

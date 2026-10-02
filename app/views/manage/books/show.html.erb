@@ -22,7 +22,20 @@
     links: []
   } %>
 
-  <p class="max-w-3xl text-sm text-gray-600 mb-4">Every dollar CocoScout handles for you, kept as real double-entry books. Read-only for now, and only superadmins see it while we test. Ticketing writes here today; payouts, staff pay, courses and contracts join next.</p>
+  <p class="max-w-3xl text-sm text-gray-600 mb-5">What happened, in dollars: your CocoScout balance, and every dollar in and out on real double-entry books. (Financials and Payouts are what to do next; this is the record.) Ticketing writes here today; payouts, staff pay, courses and contracts join next. Superadmins only while it fills in.</p>
+
+  <% balance = TicketBalance.summary(Current.organization) %>
+  <%= link_to manage_ticket_balance_path, class: "mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-5 py-4 transition-colors hover:border-pink-400 #{balance.available_cents.positive? ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}" do %>
+    <div>
+      <div class="text-sm text-gray-600">Your CocoScout balance</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900"><%= number_to_currency(balance.available_cents / 100.0) %> <span class="text-sm font-normal text-gray-600">available</span></div>
+      <p class="text-xs text-gray-600 mt-0.5">Ticket money CocoScout holds for you. Payout runs use it before debiting your bank.</p>
+    </div>
+    <div class="text-sm text-gray-600 text-right">
+      <%= number_to_currency(balance.upcoming_cents / 100.0) %> waiting on upcoming shows<br>
+      <span class="font-medium text-pink-600">Withdraw, add funds, history</span>
+    </div>
+  <% end %>
 
   <div class="mb-4">
     <%= render "shared/filters/filter_bar", bare: true, filter_groups: [

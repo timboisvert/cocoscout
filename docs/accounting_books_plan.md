@@ -1,5 +1,11 @@
 # Accounting / "Real Books" Plan — Money as Books of Record
 
+> **Superseded, 2026-10-02.** The books engine (stage A) shipped with Ticketing v1, and
+> the rollout now lives in the ticketing plan, "Books: the deep plan"
+> (`~/.claude/plans/cocoscout-ticketing-and-books.md`). Books is a subsection of Money:
+> Money is what to do (Financials, Payouts, Incoming), Books is what happened. The
+> phases below are kept for their detail; the stage order there wins.
+
 Status: **planned, not started.** Deferred until **after the new subscriptions launch.**
 Written 2026-07-18 from a full code review of the money section. This is a large,
 multi-phase build (it adds an accounting engine underneath the existing app), so it's

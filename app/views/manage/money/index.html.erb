@@ -8,12 +8,15 @@
     </p>
   HTML
 
+  # Financials, Payouts and Incoming are things to do; Books is what happened,
+  # in dollars (superadmins only while it fills in).
   money_actions = [
     { icon: "chart-bar", text: "Financials", description: "Track revenue and costs", path: manage_money_financials_path },
     { icon: "dollar-sign", text: "Payouts", description: "Calculate and distribute payments", path: manage_money_payouts_path },
     { icon: "banknotes", text: "Incoming Payments", description: "Track and collect money owed to you", path: manage_money_incoming_path },
+    (Current.user&.superadmin? ? { icon: "book", text: "Books", description: "Your balance, and every dollar in and out", path: manage_money_books_path } : nil),
     { icon: "cog", text: "Settings", description: "How you pay people", path: manage_money_settings_path }
-  ]
+  ].compact
 
   payout_columns = @todo.payouts.columns.map { |c| Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS[c][:label] }
 
@@ -45,8 +48,6 @@
       period_path: manage_money_index_path,
       refresh_url: manage_refresh_money_path(period: @selected_period) %>
   </div>
-
-  <%= render "manage/money/cocoscout_balance" %>
 
   <%# What needs doing, in the order it costs you: numbers you owe yourself,
       money you owe other people, money other people owe you. Each section is a
