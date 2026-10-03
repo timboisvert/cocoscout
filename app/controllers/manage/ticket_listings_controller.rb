@@ -47,11 +47,12 @@ module Manage
     def guests
       require "csv"
       csv = CSV.generate do |rows|
-        rows << [ "Name", "Email", "Phone", "Order", "Tickets", "Ticket types", "Checked in", "How", "Note" ]
+        rows << [ "Name", "Email", "Phone", "Order", "Tickets", "Ticket types", "Products", "Checked in", "How", "Note" ]
         guest_orders("all", "").each do |order|
           held = held_tickets(order)
           rows << [ order.buyer_name, order.buyer_email, order.buyer_phone, order.code, held.size,
                     held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} #{tier.name}" }.join("; "),
+                    order.ticket_order_items.select(&:sold?).map(&:label).join("; "),
                     held.count(&:checked_in?), Ticketing::ListingStats::CHANNELS.fetch(order.channel, order.channel),
                     order.note ]
         end
@@ -65,6 +66,7 @@ module Manage
         held = held_tickets(order)
         { name: order.buyer_name.presence || "No name", count: held.size, inside: held.count(&:checked_in?),
           tiers: held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} × #{tier.name}" }.join(", "),
+          products: order.ticket_order_items.select(&:sold?).map(&:label).join(", "),
           code: order.code, comp: order.channel == "comp" }
       end.sort_by { |row| [ row[:name].split.last.to_s.downcase, row[:name].downcase ] }
       render layout: false
@@ -193,7 +195,7 @@ module Manage
     # The show's orders for the guest list, narrowed by a filter and a search.
     def guest_orders(filter, query)
       orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID)
-                       .includes(tickets: :ticket_tier).order(:buyer_name, :id).to_a
+                       .includes(:ticket_order_items, tickets: :ticket_tier).order(:buyer_name, :id).to_a
       if query.present?
         q = query.downcase
         orders = orders.select { |o| [ o.buyer_name, o.buyer_email, o.code ].compact.any? { |v| v.downcase.include?(q) } }

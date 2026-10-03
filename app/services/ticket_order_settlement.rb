@@ -32,7 +32,9 @@ class TicketOrderSettlement
       else
         order.tickets.where(status: "reserved").update_all(status: "valid", updated_at: Time.current)
       end
+      order.ticket_order_items.where(status: "reserved").update_all(status: "valid", updated_at: Time.current)
       TaxLine.where(taxable_type: "Ticket", taxable_id: order.tickets.select(:id)).update_all(sale_date: Date.current)
+      TaxLine.where(taxable_type: "TicketOrderItem", taxable_id: order.ticket_order_items.select(:id)).update_all(sale_date: Date.current)
       post_money!(order)
       settled = true
     end
@@ -49,18 +51,32 @@ class TicketOrderSettlement
   end
 
   # The books lines for a sale through CocoScout (see the class comment).
+  # Products bought with the tickets wait in their own advance account.
   def self.sale_lines(order)
     listing = order.ticket_listing
+    product_face = product_face_cents(order)
     included_tax = TaxLine.where(taxable_type: "Ticket", taxable_id: order.tickets.select(:id), included: true).sum(:tax_cents)
-    face = order.subtotal_cents - order.discount_cents - included_tax
+    # The order's subtotal holds tickets and products together.
+    face = order.subtotal_cents - order.discount_cents - included_tax - product_face_with_included_tax(order)
     dims = { show: listing.show, production: listing.production }
     [
       { account: :cocoscout_balance, amount_cents: order.org_net_cents },
       { account: :ticketing_fees, amount_cents: order.platform_fee_cents + order.processing_cents },
       { account: :fees_paid_by_buyers, amount_cents: -order.buyer_fee_cents },
       { account: :advance_ticket_sales, amount_cents: -face, **dims },
+      { account: :advance_product_sales, amount_cents: -product_face, **dims },
       { account: :tax_to_remit, amount_cents: -order.tax_cents, **dims }
     ]
+  end
+
+  # What the order's products sold for, without any tax inside their price.
+  def self.product_face_cents(order)
+    product_face_with_included_tax(order) -
+      TaxLine.where(taxable_type: "TicketOrderItem", taxable_id: order.ticket_order_items.select(:id), included: true).sum(:tax_cents)
+  end
+
+  def self.product_face_with_included_tax(order)
+    order.ticket_order_items.sum("unit_price_cents * quantity").to_i
   end
 
   def self.post_money!(order)

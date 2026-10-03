@@ -24,12 +24,14 @@ class TicketPricing
 
   # items: one hash per ticket — { price_cents:, discount_cents:, tax_cents: },
   # where tax_cents is tax ADDED on top (tax included in a price is already
-  # inside price_cents).
+  # inside price_cents). A product bought with the tickets is an item with
+  # platform_fee: false: our 50¢ is per paid ticket, and processing is per
+  # order, so a product only adds its price, its tax and the 2.9% on them.
   def self.quote(items:, fee_mode:, money_path: "cocoscout")
     subtotal = items.sum { |i| i[:price_cents].to_i }
     discount = items.sum { |i| i[:discount_cents].to_i }
     tax = items.sum { |i| i[:tax_cents].to_i }
-    paid = items.count { |i| i[:price_cents].to_i - i[:discount_cents].to_i > 0 }
+    paid = items.count { |i| i[:platform_fee] != false && i[:price_cents].to_i - i[:discount_cents].to_i > 0 }
     base = subtotal - discount + tax
 
     if money_path != "cocoscout" || base.zero?
@@ -69,6 +71,15 @@ class TicketPricing
   def self.all_in_price_cents(listing, tier)
     tax = TaxCalculator.for_ticket(listing, tier, tier.price_cents).added_cents
     quote(items: [ { price_cents: tier.price_cents, discount_cents: 0, tax_cents: tax } ],
+          fee_mode: listing.effective_fee_mode).total_cents
+  end
+
+  # What one product really adds for a buyer, fees and tax in, by the same
+  # rule: shown on its own it can only overstate what it adds to an order
+  # (processing's 30¢ is already in the tickets' price), never understate.
+  def self.all_in_product_price_cents(listing, offer)
+    tax = TaxCalculator.for_product(listing, offer, offer.price_cents).added_cents
+    quote(items: [ { price_cents: offer.price_cents, discount_cents: 0, tax_cents: tax, platform_fee: false } ],
           fee_mode: listing.effective_fee_mode).total_cents
   end
 end

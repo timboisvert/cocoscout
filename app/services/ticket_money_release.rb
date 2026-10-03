@@ -32,19 +32,23 @@ class TicketMoneyRelease
     released
   end
 
-  # What's waiting in advance sales for this show becomes income.
+  # What's waiting in advance sales for this show — tickets, and products
+  # bought with them — becomes income.
   def self.recognize_income!(listing, on)
     organization = listing.organization
-    advance = ChartOfAccounts.account(organization, :advance_ticket_sales)
-    waiting = -JournalLine.where(ledger_account_id: advance.id, show_id: listing.show_id).sum(:amount_cents)
-    return if waiting.zero?
+    waiting = ->(key) { -JournalLine.where(ledger_account_id: ChartOfAccounts.account(organization, key).id, show_id: listing.show_id).sum(:amount_cents) }
+    tickets = waiting.call(:advance_ticket_sales)
+    products = waiting.call(:advance_product_sales)
+    return if tickets.zero? && products.zero?
 
     dims = { show: listing.show, production: listing.production }
     LedgerPosting.post!(organization: organization, source: listing, kind: "recognition",
                         entry_date: listing.show.date_and_time.to_date, memo: "Ticket income: #{listing.display_title}",
                         lines: [
-                          { account: :advance_ticket_sales, amount_cents: waiting, **dims },
-                          { account: :ticket_income, amount_cents: -waiting, **dims }
+                          { account: :advance_ticket_sales, amount_cents: tickets, **dims },
+                          { account: :ticket_income, amount_cents: -tickets, **dims },
+                          { account: :advance_product_sales, amount_cents: products, **dims },
+                          { account: :product_income, amount_cents: -products, **dims }
                         ])
   end
 

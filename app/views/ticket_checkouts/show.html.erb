@@ -1,9 +1,7 @@
 <%
   show = @listing.show
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  tickets = @order.tickets.to_a
-  by_tier = tickets.group_by(&:ticket_tier)
-  added_tax = TaxLine.where(taxable: tickets, included: false).group(:name, :rate_bps).sum(:tax_cents).select { |_, cents| cents.positive? }
+  offers = @expired ? [] : @listing.product_offers
   free = @order.total_cents.zero?
   pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(@order.total_cents / 100.0)}"
   image, page_image = ticket_page_image(@listing)
@@ -42,7 +40,8 @@
             ticket_checkout_return_url_value: tickets_checkout_done_url(token: @order.token, **embed_params),
             ticket_checkout_expires_at_value: @order.expires_at&.iso8601,
             ticket_checkout_listing_id_value: (@listing.id unless at_door),
-            ticket_checkout_token_value: @order.token
+            ticket_checkout_token_value: @order.token,
+            ticket_checkout_items_url_value: tickets_checkout_items_path(token: @order.token)
           } do %>
       <%= render "tickets/bot_trap", id: "checkout_website" %>
 
@@ -58,36 +57,7 @@
             <% if place.present? %><div class="text-sm text-gray-500 truncate"><%= place %></div><% end %>
           </div>
         </div>
-        <div class="border-t border-gray-100 px-5 py-4 space-y-2 text-sm">
-          <% by_tier.each do |tier, rows| %>
-            <div class="flex items-baseline justify-between gap-3">
-              <span class="text-gray-900"><%= rows.size %> × <%= tier.name %></span>
-              <span class="tabular-nums text-gray-900"><%= number_to_currency(rows.sum(&:price_cents) / 100.0) %></span>
-            </div>
-          <% end %>
-          <% if @order.discount_cents.positive? %>
-            <div class="flex items-baseline justify-between gap-3">
-              <span class="text-gray-600">Discount<%= " (#{@order.ticket_discount_code.code})" if @order.ticket_discount_code %></span>
-              <span class="tabular-nums text-gray-900">−<%= number_to_currency(@order.discount_cents / 100.0) %></span>
-            </div>
-          <% end %>
-          <% if @order.buyer_fee_cents.positive? %>
-            <div class="flex items-baseline justify-between gap-3">
-              <span class="text-gray-600">Fees</span>
-              <span class="tabular-nums text-gray-900"><%= number_to_currency(@order.buyer_fee_cents / 100.0) %></span>
-            </div>
-          <% end %>
-          <% added_tax.each do |(name, rate_bps), cents| %>
-            <div class="flex items-baseline justify-between gap-3">
-              <span class="text-gray-600"><%= name %> <%= format("%g", rate_bps / 100.0) %>%</span>
-              <span class="tabular-nums text-gray-900"><%= number_to_currency(cents / 100.0) %></span>
-            </div>
-          <% end %>
-          <div class="flex items-baseline justify-between gap-3 pt-2 border-t border-gray-100">
-            <span class="font-semibold text-gray-900">Total</span>
-            <span class="text-lg font-bold tabular-nums text-gray-900"><%= number_to_currency(@order.total_cents / 100.0) %></span>
-          </div>
-        </div>
+        <div data-ticket-checkout-target="summary"><%= render "ticket_checkouts/summary", order: @order %></div>
         <div class="border-t border-gray-100 bg-gray-50 px-5 py-2.5 flex items-center justify-between gap-3 text-sm">
           <span class="text-gray-600" data-ticket-checkout-target="countdown" aria-live="polite"></span>
           <% unless at_door %>
@@ -95,6 +65,10 @@
           <% end %>
         </div>
       </div>
+
+      <% if offers.any? %>
+        <%= render "ticket_checkouts/products", order: @order, offers: offers %>
+      <% end %>
 
       <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5 space-y-4">
         <h2 class="font-semibold text-gray-900">Your details<% if at_door %> <span class="font-normal text-gray-500">(optional)</span><% end %></h2>
@@ -123,7 +97,7 @@
       <p data-ticket-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
 
       <%= render "shared/button", text: pay_text, variant: "primary", size: "jumbo", type: :submit, classes: "disabled:opacity-50",
-            data: { ticket_checkout_target: "submit" } %>
+            data: { ticket_checkout_target: "submit", pay_prefix: (free ? "" : "Pay ") } %>
 
       <% if @ticketing_profile.support_email.present? %>
         <p class="text-xs text-center text-gray-500">Questions? <%= mail_to @ticketing_profile.support_email, nil, class: "text-pink-700" %></p>

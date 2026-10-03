@@ -19,4 +19,8 @@ class TicketRefund < ApplicationRecord
   def tickets
     ticket_order.tickets.where(id: ticket_ids)
   end
+
+  def items
+    ticket_order.ticket_order_items.where(id: item_ids)
+  end
 end

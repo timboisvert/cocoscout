@@ -147,6 +147,7 @@ class TicketOrderMailer < ApplicationMailer
     @order = order
     @listing = order.ticket_listing
     @tickets = order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:ticket_tier).order(:id).to_a
+    @items = order.ticket_order_items.sold.order(:id).to_a
     @intro_html = body_html
 
     @tickets.each do |ticket|

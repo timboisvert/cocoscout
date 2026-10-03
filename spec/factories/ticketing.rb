@@ -34,3 +34,11 @@ FactoryBot.define do
     status { "valid" }
   end
 end
+
+FactoryBot.define do
+  factory :ticket_product do
+    association :organization
+    sequence(:name) { |n| "Champagne bottle #{n}" }
+    price_cents { 4_500 }
+  end
+end

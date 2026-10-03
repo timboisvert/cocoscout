@@ -25,6 +25,14 @@ class DoorController < ApplicationController
   def show
     @counts = door.counts
     @tiers = @listing.ticket_tiers.active.to_a
+    @offers = @listing.product_offers
+  end
+
+  # A bottle handed over at the table: the whole line, or one more of it.
+  def fulfill
+    item = @listing.ticket_order_items.sold.find(params[:item_id])
+    item.update!(fulfilled_quantity: item.quantity, fulfilled_at: Time.current, fulfilled_by: Current.user)
+    render json: { ok: true, message: "#{item.label} handed over", counts: door.counts }
   end
 
   def check_in
@@ -51,7 +59,7 @@ class DoorController < ApplicationController
     @orders = if q.length < 2
       []
     else
-      scope = @listing.ticket_orders.paid_like.includes(:tickets).order(:buyer_name)
+      scope = @listing.ticket_orders.paid_like.includes(:tickets, :ticket_order_items).order(:buyer_name)
       scope.where(code: q.upcase)
            .or(scope.where("ticket_orders.buyer_name ILIKE ?", "%#{TicketOrder.sanitize_sql_like(q)}%"))
            .or(scope.where("ticket_orders.buyer_email ILIKE ?", "%#{TicketOrder.sanitize_sql_like(q)}%"))
@@ -69,17 +77,21 @@ class DoorController < ApplicationController
   # buyer scans to pay on their own phone (card).
   def sell
     quantities = params[:quantities].respond_to?(:each_pair) ? params[:quantities].each_pair.to_h { |k, v| [ k.to_s, v.to_s ] } : {}
+    products = params[:products].respond_to?(:each_pair) ? params[:products].each_pair.to_h { |k, v| [ k.to_s, v.to_s ] } : {}
     kind = params[:kind].presence_in(%w[card cash comp]) || "cash"
     if kind == "card"
       order = TicketCheckout.start!(listing: @listing, quantities: quantities, channel: "door_card", at_door: true,
                                     client_ip: request.remote_ip)
       order.update!(buyer_name: params[:buyer_name].to_s.squish.presence, issued_by: Current.user)
+      TicketCheckout.set_items!(order, products) if products.values.any? { |v| v.to_i.positive? }
       return redirect_to(door_card_path(@listing, token: order.token))
     end
 
-    order = door.sell(quantities, kind: kind, buyer_name: params[:buyer_name])
+    order = door.sell(quantities, kind: kind, buyer_name: params[:buyer_name], products: products)
     count = order.tickets.size
-    redirect_to door_path(@listing), notice: kind == "cash" ? "Sold #{count} at the door — collect #{helpers.number_to_currency(order.total_cents / 100.0)} cash." : "Comped #{count} and checked them in."
+    extras = order.ticket_order_items.sum(:quantity)
+    sold = extras.positive? ? "#{count} and #{helpers.pluralize(extras, 'product')}" : count.to_s
+    redirect_to door_path(@listing), notice: kind == "cash" ? "Sold #{sold} at the door — collect #{helpers.number_to_currency(order.total_cents / 100.0)} cash." : "Comped #{count} and checked them in."
   rescue TicketCheckout::Error => e
     redirect_to door_path(@listing), alert: e.message
   end

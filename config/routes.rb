@@ -347,6 +347,7 @@ Rails.application.routes.draw do
     post "checkout/:token/pay",        to: "ticket_checkouts#pay",    as: "checkout_pay"
     get  "checkout/:token/done",       to: "ticket_checkouts#done",   as: "checkout_done"
     get  "checkout/:token/hold",       to: "ticket_checkouts#hold",   as: "checkout_hold", defaults: { format: :json }
+    patch "checkout/:token/items",     to: "ticket_checkouts#items",  as: "checkout_items", defaults: { format: :json }
     get  "v/:code",                    to: "tickets#ticket",          as: "ticket"
     get  ":org",                       to: "tickets#box_office",      as: "box_office"
     # A date's page by its slug, or a production's page by its public key
@@ -367,6 +368,7 @@ Rails.application.routes.draw do
   get  "/door/:listing_id/search",        to: "door#search",         as: "door_search"
   get  "/door/:listing_id/stats",         to: "door#stats",          as: "door_stats"
   post "/door/:listing_id/sell",          to: "door#sell",           as: "door_sell"
+  post "/door/:listing_id/items/:item_id/fulfill", to: "door#fulfill", as: "door_fulfill"
   get  "/door/:listing_id/card/:token",   to: "door#card",           as: "door_card"
   get  "/door/:listing_id/card/:token/status", to: "door#card_status", as: "door_card_status"
   post "/door/:listing_id/card/:token/cancel", to: "door#card_cancel", as: "door_card_cancel"
@@ -1235,6 +1237,13 @@ Rails.application.routes.draw do
     post   "ticketing/settings/door/:id/resend",  to: "ticketing_settings#resend_door_invite", as: "ticketing_door_invite_resend"
     patch  "ticketing/settings/door/:id",         to: "ticketing_settings#update_door_access", as: "ticketing_door_access_grant"
     delete "ticketing/settings/door/:id",         to: "ticketing_settings#revoke_door_access"
+    # Products sold with tickets (bottles for the table), defined once per org.
+    get    "ticketing/products",                  to: "ticket_products#index",           as: "ticket_products"
+    get    "ticketing/products/new",              to: "ticket_products#new",             as: "new_ticket_product"
+    post   "ticketing/products",                  to: "ticket_products#create"
+    get    "ticketing/products/:id/edit",         to: "ticket_products#edit",            as: "edit_ticket_product"
+    patch  "ticketing/products/:id",              to: "ticket_products#update",          as: "ticket_product"
+    delete "ticketing/products/:id",              to: "ticket_products#destroy"
     get    "ticketing/shows",                     to: "ticket_listings#index",           as: "ticket_listings"
     # A production's ticketing, set up once for all its dates.
     get    "ticketing/productions/new",           to: "production_ticketings#new",       as: "new_production_ticketing"

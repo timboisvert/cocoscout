@@ -1,0 +1,11 @@
+<% content_for :title, "Edit #{@product.name}" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Products", manage_ticket_products_path ] ],
+    text: @product.name,
+    links: []
+  } %>
+  <div class="max-w-2xl">
+    <%= render "manage/ticket_products/form", product: @product %>
+  </div>
+</div>

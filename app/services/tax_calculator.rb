@@ -44,6 +44,15 @@ class TaxCalculator
     quote(rule, base_cents)
   end
 
+  # A product sold with the tickets is taxed as the tickets are (the one
+  # ticket tax setting), unless the product is marked not taxable.
+  def self.for_product(listing, offer, base_cents)
+    return NONE unless offer.taxable
+
+    rule = rule_for(listing.organization, "tickets", scopes: [ listing, listing.production, listing.show.location ])
+    quote(rule, base_cents)
+  end
+
   def self.quote(rule, base_cents)
     return NONE if rule.nil?
 

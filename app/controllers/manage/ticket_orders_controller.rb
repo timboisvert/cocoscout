@@ -32,8 +32,10 @@ module Manage
 
     def show
       @tickets = @order.tickets.includes(:ticket_tier, :checked_in_by, :tax_lines).order(:id).to_a
+      @items = @order.ticket_order_items.includes(:fulfilled_by).order(:id).to_a
       @refunds = @order.ticket_refunds.order(:created_at).includes(:refunded_by).to_a
       @refundable_ids = TicketOrderRefund.refundable(@order).pluck(:id)
+      @refundable_item_ids = TicketOrderRefund.refundable_items(@order).pluck(:id)
       @refunds_allowed = TicketOrderRefund.allowed?(@order)
       @disputed = TicketDispute.open?(@order)
       @exchanges_out = @order.exchanges_out.includes(to_order: { ticket_listing: :show }).order(:id).to_a
@@ -89,8 +91,8 @@ module Manage
       end
 
       @keep_fees = params[:keep_fees] == "1"
-      @quote = TicketOrderRefund.quote(@order, ticket_ids: Array(params[:ticket_ids]).compact_blank, keep_fees: @keep_fees)
-      if @quote.tickets.empty?
+      @quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: @keep_fees)
+      if @quote.empty?
         redirect_to manage_ticket_order_path(@order.id), alert: "Choose the tickets to refund." and return
       end
 
@@ -101,8 +103,7 @@ module Manage
     end
 
     def refund
-      ticket_ids = Array(params[:ticket_ids]).compact_blank
-      refund = TicketOrderRefund.issue!(@order, ticket_ids: ticket_ids, keep_fees: params[:keep_fees] == "1",
+      refund = TicketOrderRefund.issue!(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: params[:keep_fees] == "1",
                                                 by: Current.user, reason: params[:reason].presence)
       notice = if @order.money_path == "cash"
         "Refunded #{helpers.number_to_currency(refund.amount_cents / 100.0)}: hand it back from the cash box."
@@ -118,16 +119,15 @@ module Manage
     # from the bank, and the refund goes out the moment it lands (at once
     # by card; in a few days by bank debit).
     def refund_top_up
-      ticket_ids = Array(params[:ticket_ids]).compact_blank
       keep_fees = params[:keep_fees] == "1"
-      quote = TicketOrderRefund.quote(@order, ticket_ids: ticket_ids, keep_fees: keep_fees)
+      quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: keep_fees)
       short = TicketBalance.shortfall_cents(Current.organization, quote.org_debit_cents)
       unless short.positive?
-        redirect_to manage_ticket_order_refund_path(@order.id, ticket_ids: ticket_ids, keep_fees: params[:keep_fees]) and return
+        redirect_to manage_ticket_order_refund_path(@order.id, ticket_ids: params[:ticket_ids], item_ids: params[:item_ids], keep_fees: params[:keep_fees]) and return
       end
 
       top_up = BalanceTopUpService.start!(Current.organization, amount_cents: short, by: Current.user, refund_request: {
-        "order_id" => @order.id, "ticket_ids" => quote.tickets.map(&:id), "keep_fees" => keep_fees,
+        "order_id" => @order.id, "ticket_ids" => quote.tickets.map(&:id), "item_ids" => quote.items.map(&:id), "keep_fees" => keep_fees,
         "reason" => params[:reason].presence, "user_id" => Current.user.id
       })
       notice = if top_up.status == "succeeded"
@@ -159,6 +159,17 @@ module Manage
 
     def set_order
       @order = Current.organization.ticket_orders.includes(ticket_listing: %i[show production]).find(params[:id])
+    end
+
+    # The tickets and product lines ticked on the order page: nil when the
+    # form carried no such boxes at all (they all go, a whole-order refund),
+    # [] when it did and none were ticked.
+    def chosen_ticket_ids
+      params.key?(:ticket_ids) ? Array(params[:ticket_ids]).compact_blank : nil
+    end
+
+    def chosen_item_ids
+      params.key?(:item_ids) ? Array(params[:item_ids]).compact_blank : nil
     end
   end
 end

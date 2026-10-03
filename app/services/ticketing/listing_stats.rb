@@ -18,6 +18,7 @@ module Ticketing
   # Build many at once with .for(listings): a handful of queries in all.
   class ListingStats
     TierRow = Data.define(:tier, :sold, :seats, :held, :remaining, :gross_cents)
+    ProductRow = Data.define(:name, :sold, :gross_cents, :handed_over)
     CHANNELS = { "online" => "Online", "embed" => "Your website", "door_cash" => "Cash at the door",
                  "door_card" => "Card at the door", "comp" => "Comps" }.freeze
 
@@ -43,11 +44,16 @@ module Ticketing
                             .where(taxable_type: "Ticket", tickets: { ticket_listing_id: ids })
                             .group("tax_lines.taxable_id", "tax_lines.included").sum(:tax_cents)
       tiers = TicketTier.where(ticket_listing_id: ids).order(:position, :id).to_a.group_by(&:ticket_listing_id)
+      items = TicketOrderItem.joins(:ticket_order).where(ticket_listing_id: ids, status: TicketOrderItem::SOLD_STATUSES)
+                             .where(ticket_orders: { status: TicketOrder::WAS_PAID }).to_a.group_by(&:ticket_listing_id)
+      item_tax = TaxLine.joins("JOIN ticket_order_items ON ticket_order_items.id = tax_lines.taxable_id")
+                        .where(taxable_type: "TicketOrderItem", included: true, ticket_order_items: { ticket_listing_id: ids })
+                        .group("tax_lines.taxable_id").sum(:tax_cents)
 
       listings.to_h do |listing|
         [ listing.id, new(listing, tickets: tickets.fetch(listing.id, []), orders: orders.fetch(listing.id, []),
                                    refunds: refunds.fetch(listing.id, []), tax: included_tax, tiers: tiers.fetch(listing.id, []),
-                                   moved_out_cents: moved_out.fetch(listing.id, 0)) ]
+                                   moved_out_cents: moved_out.fetch(listing.id, 0), items: items.fetch(listing.id, []), item_tax: item_tax) ]
       end
     end
 
@@ -56,9 +62,11 @@ module Ticketing
       self.for([ listing ]).fetch(listing.id)
     end
 
-    def initialize(listing, tickets:, orders:, refunds:, tax:, tiers:, moved_out_cents: 0)
+    def initialize(listing, tickets:, orders:, refunds:, tax:, tiers:, moved_out_cents: 0, items: [], item_tax: {})
       @listing = listing
       @moved_out_cents = moved_out_cents
+      @items = items
+      @item_tax = item_tax
       @tickets = tickets
       @orders = orders
       @refunds = refunds
@@ -142,6 +150,23 @@ module Ticketing
       end
     end
 
+
+    # Products (bottles) bought with the tickets, still held: how many, and
+    # what they sold for without tax.
+    def products_sold
+      @items.sum(&:quantity)
+    end
+
+    def product_cents
+      @items.sum { |i| i.price_cents - @item_tax.fetch(i.id, 0) }
+    end
+
+    def by_product
+      @items.group_by(&:name).map do |name, rows|
+        ProductRow.new(name: name, sold: rows.sum(&:quantity), gross_cents: rows.sum { |i| i.price_cents - @item_tax.fetch(i.id, 0) },
+                       handed_over: rows.sum(&:fulfilled_quantity))
+      end
+    end
 
     # Each discount code used: [code, orders, cents off].
     def discount_uses

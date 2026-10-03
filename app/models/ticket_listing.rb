@@ -24,6 +24,7 @@ class TicketListing < ApplicationRecord
   has_many :ticket_orders, dependent: :restrict_with_error
   has_many :tickets
   has_many :ticket_discount_codes, dependent: :destroy
+  has_many :ticket_order_items
 
   # Prices are edited in place on the listing page; an empty new row is skipped.
   accepts_nested_attributes_for :ticket_tiers, allow_destroy: true,
@@ -78,6 +79,12 @@ class TicketListing < ApplicationRecord
 
   def effective_accessibility_note
     accessibility_note.presence || production_ticketing&.accessibility_note.presence
+  end
+
+  # Products a buyer can add at this date's checkout: the production's.
+  # A date without a production setup offers none.
+  def product_offers
+    production_ticketing&.product_offers || []
   end
 
   def starts_at

@@ -46,6 +46,8 @@ class TicketCheckout
                                     expires_at: TicketOrder::HOLD.from_now, ticket_discount_code: discount,
                                     client_ip: client_ip, referrer: referrer.to_s.first(500).presence)
         requests.each { |tier, count| count.times { add_ticket(order, tier, discount) } }
+        # Products added on the old hold come along to the new one.
+        set_items!(order, held_item_quantities(held), reprice: false) if held
         price!(order)
       end
     end
@@ -64,19 +66,77 @@ class TicketCheckout
       order.ticket_discount_code_id == discount&.id
   end
 
-  # The order's numbers, from its tickets and their tax.
+  # Products on a hold: { product_id => count } from the checkout page's
+  # steppers, replacing what was there. Only products the date offers, only
+  # while the order is still being paid for. Each line snapshots the offer
+  # (name, price, revenue rule) and records its tax, like a ticket.
+  def self.set_items!(order, quantities, reprice: true)
+    raise Error, "This order can't be changed anymore." unless order.pending?
+
+    listing = order.ticket_listing
+    offers = listing.product_offers.index_by(&:id)
+    wanted = quantities.to_h.filter_map { |id, count|
+      count = count.to_i.clamp(0, MAX_PER_PRODUCT)
+      [ id.to_i, count ] if count.positive? && offers.key?(id.to_i)
+    }.to_h
+
+    order.transaction do
+      order.ticket_order_items.where.not(ticket_product_id: wanted.keys).destroy_all
+      wanted.each do |product_id, count|
+        offer = offers.fetch(product_id)
+        item = order.ticket_order_items.find_or_initialize_by(ticket_product_id: product_id)
+        next if item.persisted? && item.quantity == count && item.unit_price_cents == offer.price_cents
+
+        item.assign_attributes(organization_id: order.organization_id, ticket_listing: listing, status: "reserved",
+                               name: offer.name, description: offer.description, unit_price_cents: offer.price_cents,
+                               quantity: count, counts_toward_ticket_revenue: offer.counts_toward_ticket_revenue)
+        item.save!
+        item.tax_lines.delete_all
+        record_item_tax(order, item, offer)
+      end
+      price!(order) if reprice
+    end
+    order
+  end
+
+  # A buyer can add this many of one product to an order.
+  MAX_PER_PRODUCT = 10
+
+  def self.held_item_quantities(order)
+    order.ticket_order_items.pluck(:ticket_product_id, :quantity).to_h
+  end
+
+  # The order's numbers, from its tickets, its products and their tax.
   def self.price!(order)
     tickets = order.tickets.includes(:tax_lines).to_a
+    products = order.ticket_order_items.includes(:tax_lines).to_a
     items = tickets.map do |ticket|
       { price_cents: ticket.price_cents, discount_cents: ticket.discount_cents,
         tax_cents: ticket.tax_lines.reject(&:included).sum(&:tax_cents) }
     end
+    items += products.map do |item|
+      { price_cents: item.price_cents, discount_cents: 0, platform_fee: false,
+        tax_cents: item.tax_lines.reject(&:included).sum(&:tax_cents) }
+    end
     quote = TicketPricing.quote(items: items, fee_mode: order.fee_mode, money_path: order.money_path)
     order.update!(subtotal_cents: quote.subtotal_cents, discount_cents: quote.discount_cents,
-                  tax_cents: tickets.sum(&:tax_cents), platform_fee_cents: quote.platform_fee_cents,
+                  tax_cents: tickets.sum(&:tax_cents) + products.sum(&:tax_cents), platform_fee_cents: quote.platform_fee_cents,
                   processing_cents: quote.processing_cents, buyer_fee_cents: quote.buyer_fee_cents,
                   total_cents: quote.total_cents, org_net_cents: quote.org_net_cents)
     order
+  end
+
+  def self.record_item_tax(order, item, offer)
+    listing = order.ticket_listing
+    tax = TaxCalculator.for_product(listing, offer, item.price_cents)
+    tax.lines.each do |line|
+      TaxLine.create!(organization_id: order.organization_id, taxable: item, tax_rate: line.tax_rate,
+                      name: line.name, rate_bps: line.rate_bps, jurisdiction: line.jurisdiction, remitter: line.remitter,
+                      included: line.included, exempt: line.exempt, exemption_reason: line.exemption_reason,
+                      base_cents: line.base_cents, tax_cents: line.tax_cents,
+                      sale_date: Date.current, event_date: listing.starts_at&.to_date)
+    end
+    item.update_columns(tax_cents: tax.tax_cents)
   end
 
   # A code works when it's active, inside its dates and uses, and covers this
@@ -124,5 +184,5 @@ class TicketCheckout
     ticket.update_columns(tax_cents: tax.tax_cents)
   end
 
-  private_class_method :requested_tiers, :add_ticket, :same_request?
+  private_class_method :requested_tiers, :add_ticket, :same_request?, :held_item_quantities
 end

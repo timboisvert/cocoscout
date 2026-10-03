@@ -16,9 +16,15 @@
 class TicketOrderRefund
   class Error < StandardError; end
 
-  Quote = Data.define(:tickets, :face_cents, :tax_cents, :fees_cents, :platform_fee_waived_cents, :amount_cents) do
+  # items: the product lines (bottles) going back too; product_cents is their
+  # face value, kept apart from the tickets' for the books.
+  Quote = Data.define(:tickets, :items, :face_cents, :product_cents, :tax_cents, :fees_cents, :platform_fee_waived_cents, :amount_cents) do
     def org_debit_cents
       amount_cents - platform_fee_waived_cents
+    end
+
+    def empty?
+      tickets.empty? && items.empty?
     end
   end
 
@@ -32,21 +38,30 @@ class TicketOrderRefund
     order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:tax_lines).order(:id)
   end
 
-  # What refunding these tickets (all of them by default) would give back.
-  def self.quote(order, ticket_ids: nil, keep_fees: false)
-    tickets = refundable(order).to_a
-    tickets = tickets.select { |t| ticket_ids.map(&:to_i).include?(t.id) } if ticket_ids.present?
+  def self.refundable_items(order)
+    order.ticket_order_items.sold.includes(:tax_lines).order(:id)
+  end
 
-    tax = tickets.sum { |t| t.tax_lines.sum(&:tax_cents) }
-    added_tax = tickets.sum { |t| t.tax_lines.reject(&:included).sum(&:tax_cents) }
+  # What refunding these tickets and product lines would give back. For
+  # either, nil means all of them (a whole-order refund) and [] means none.
+  def self.quote(order, ticket_ids: nil, item_ids: nil, keep_fees: false)
+    tickets = refundable(order).to_a
+    tickets = tickets.select { |t| ticket_ids.map(&:to_i).include?(t.id) } unless ticket_ids.nil?
+    items = refundable_items(order).to_a
+    items = items.select { |i| item_ids.map(&:to_i).include?(i.id) } unless item_ids.nil?
+
+    tax = tickets.sum { |t| t.tax_lines.sum(&:tax_cents) } + items.sum { |i| i.tax_lines.sum(&:tax_cents) }
+    added_tax = tickets.sum { |t| t.tax_lines.reject(&:included).sum(&:tax_cents) } + items.sum { |i| i.tax_lines.reject(&:included).sum(&:tax_cents) }
     paid_for = tickets.sum { |t| t.price_cents - t.discount_cents }
-    face = paid_for - (tax - added_tax)
+    face = paid_for - tickets.sum { |t| t.tax_lines.select(&:included).sum(&:tax_cents) }
+    product_paid = items.sum(&:price_cents)
+    product_face = product_paid - items.sum { |i| i.tax_lines.select(&:included).sum(&:tax_cents) }
     paid_tickets = tickets.count { |t| t.price_cents > t.discount_cents }
 
     fees = keep_fees ? 0 : fee_share(order, paid_tickets)
-    amount = paid_for + added_tax + fees
+    amount = paid_for + product_paid + added_tax + fees
     waived = order.platform_fee_cents.positive? ? [ TicketPricing::PLATFORM_FEE_CENTS * paid_tickets, amount ].min : 0
-    Quote.new(tickets: tickets, face_cents: face, tax_cents: tax, fees_cents: fees,
+    Quote.new(tickets: tickets, items: items, face_cents: face, product_cents: product_face, tax_cents: tax, fees_cents: fees,
               platform_fee_waived_cents: waived, amount_cents: amount)
   end
 
@@ -68,14 +83,14 @@ class TicketOrderRefund
 
   # allow_after_show: the show-cancellation job, which only ever starts before
   # showtime, isn't stopped by the setting if it finishes after.
-  def self.issue!(order, ticket_ids: nil, keep_fees: false, by: nil, reason: nil, notify: true, allow_after_show: false)
+  def self.issue!(order, ticket_ids: nil, item_ids: nil, keep_fees: false, by: nil, reason: nil, notify: true, allow_after_show: false)
     raise Error, "Only a paid order can be refunded." unless order.paid?
     unless allow_after_show || allowed?(order)
       raise Error, "Refunds after the show are off. You can turn them on in Ticketing settings."
     end
 
-    quote = quote(order, ticket_ids: ticket_ids, keep_fees: keep_fees)
-    raise Error, "Those tickets were already refunded." if quote.tickets.empty?
+    quote = quote(order, ticket_ids: ticket_ids, item_ids: item_ids, keep_fees: keep_fees)
+    raise Error, "Those tickets were already refunded." if quote.empty?
 
     process!(order, quote, keep_fees: keep_fees, by: by, reason: reason, notify: notify)
   end
@@ -86,7 +101,7 @@ class TicketOrderRefund
   def self.issue_difference!(order, amount_cents:, face_cents:, tax_cents:, by: nil, reason: nil)
     raise Error, "Only a paid order can be refunded." unless order.paid?
 
-    quote = Quote.new(tickets: [], face_cents: face_cents, tax_cents: tax_cents, fees_cents: 0,
+    quote = Quote.new(tickets: [], items: [], face_cents: face_cents, product_cents: 0, tax_cents: tax_cents, fees_cents: 0,
                       platform_fee_waived_cents: 0, amount_cents: amount_cents)
     process!(order, quote, keep_fees: true, by: by, reason: reason, notify: false)
   end
@@ -97,8 +112,8 @@ class TicketOrderRefund
     OrgCashEntry.with_org_lock(order.organization) do
       refund = order.ticket_refunds.create!(
         organization: order.organization, refunded_by: by, reason: reason, keep_fees: keep_fees,
-        ticket_ids: quote.tickets.map(&:id), amount_cents: quote.amount_cents, face_cents: quote.face_cents,
-        tax_cents: quote.tax_cents, fees_cents: quote.fees_cents,
+        ticket_ids: quote.tickets.map(&:id), item_ids: quote.items.map(&:id), amount_cents: quote.amount_cents,
+        face_cents: quote.face_cents, product_cents: quote.product_cents, tax_cents: quote.tax_cents, fees_cents: quote.fees_cents,
         platform_fee_waived_cents: quote.platform_fee_waived_cents, org_debit_cents: quote.org_debit_cents
       )
       reserve!(order, listing, refund) if order.money_path == "cocoscout"
@@ -151,18 +166,21 @@ class TicketOrderRefund
       tickets = Ticket.where(id: refund.ticket_ids)
       tickets.update_all(status: order.money_path == "none" ? "void" : "refunded", refunded_at: now, updated_at: now)
       reverse_tax!(order, tickets)
+      items = TicketOrderItem.where(id: refund.item_ids)
+      items.update_all(status: order.money_path == "none" ? "void" : "refunded", refunded_at: now, updated_at: now)
+      reverse_tax!(order, items, taxable_type: "TicketOrderItem")
 
       refunded = order.refunded_cents + refund.amount_cents
-      left = order.tickets.where(status: Ticket::SOLD_STATUSES).exists?
+      left = order.tickets.where(status: Ticket::SOLD_STATUSES).exists? || order.ticket_order_items.sold.exists?
       order.update!(refunded_cents: refunded, refunded_at: now, status: left ? "partially_refunded" : "refunded")
       post_books!(order, listing, refund)
     end
     TicketSalesSync.sync!(listing.show)
   end
 
-  # Each refunded ticket's tax comes back off the theater's tax report.
-  def self.reverse_tax!(order, tickets)
-    TaxLine.where(taxable_type: "Ticket", taxable_id: tickets.select(:id), reversal_of_id: nil).where("tax_cents >= 0").find_each do |line|
+  # Each refunded ticket's (or product's) tax comes back off the theater's tax report.
+  def self.reverse_tax!(order, tickets, taxable_type: "Ticket")
+    TaxLine.where(taxable_type: taxable_type, taxable_id: tickets.select(:id), reversal_of_id: nil).where("tax_cents >= 0").find_each do |line|
       next if TaxLine.exists?(reversal_of_id: line.id)
 
       TaxLine.create!(line.attributes.except("id", "created_at", "updated_at")
@@ -177,7 +195,9 @@ class TicketOrderRefund
     return if refund.amount_cents.zero? || order.money_path == "none"
 
     dims = { show: listing.show, production: listing.production }
-    income_account = listing.released_at.present? || order.money_path == "cash" ? :ticket_income : :advance_ticket_sales
+    recognized = listing.released_at.present? || order.money_path == "cash"
+    income_account = recognized ? :ticket_income : :advance_ticket_sales
+    product_account = recognized ? :product_income : :advance_product_sales
     money_line = if order.money_path == "cash"
       { account: :door_cash, amount_cents: -refund.amount_cents }
     else
@@ -188,6 +208,7 @@ class TicketOrderRefund
                         lines: [
                           money_line,
                           { account: income_account, amount_cents: refund.face_cents, **dims },
+                          { account: product_account, amount_cents: refund.product_cents, **dims },
                           { account: :tax_to_remit, amount_cents: refund.tax_cents, **dims },
                           { account: :fees_paid_by_buyers, amount_cents: refund.fees_cents },
                           { account: :ticketing_fees, amount_cents: -refund.platform_fee_waived_cents }

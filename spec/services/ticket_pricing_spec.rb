@@ -106,3 +106,18 @@ RSpec.describe TicketPricing do
     end
   end
 end
+
+RSpec.describe TicketPricing, "with products" do
+  it "charges no 50¢ on a product, only its price, tax and the processing on them" do
+    tickets_only = described_class.quote(items: [ { price_cents: 2_000, discount_cents: 0, tax_cents: 205 } ], fee_mode: "buyer")
+    with_bottle = described_class.quote(items: [ { price_cents: 2_000, discount_cents: 0, tax_cents: 205 },
+                                                 { price_cents: 4_500, discount_cents: 0, tax_cents: 461, platform_fee: false } ], fee_mode: "buyer")
+    expect(with_bottle.platform_fee_cents).to eq(50)
+    expect(with_bottle.paid_ticket_count).to eq(1)
+    # The theater nets exactly ticket + bottle + their tax.
+    expect(with_bottle.org_net_cents).to eq(2_000 + 205 + 4_500 + 461)
+    # Adding the bottle costs the buyer its price, its tax and 2.9% on them — no second 30¢.
+    added = with_bottle.total_cents - tickets_only.total_cents
+    expect(added).to be_between(4_961, 4_961 + ((4_961 * 29 + 999) / 971) + 1)
+  end
+end

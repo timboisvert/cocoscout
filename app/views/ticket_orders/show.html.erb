@@ -4,6 +4,7 @@
   place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
   waiting = @order.pending? && @order.stripe_payment_intent_id.present?
   moved = @order.exchanges_out.includes(to_order: { ticket_listing: :show }).order(:id).to_a
+  items = @order.ticket_order_items.sold.order(:id).to_a
 %>
 <% content_for :title, "Your tickets · #{@listing.display_title}" %>
 <% content_for :head do %>
@@ -72,6 +73,22 @@
         </div>
       <% end %>
     </div>
+
+    <% if items.any? %>
+      <div class="mt-6 rounded-xl border border-gray-200 p-5">
+        <div class="text-sm font-semibold text-gray-900">Also with this order</div>
+        <ul class="mt-2 space-y-1.5">
+          <% items.each do |item| %>
+            <li class="text-sm text-gray-700">
+              <span class="font-medium text-gray-900"><%= item.quantity %> × <%= item.name %></span>
+              <% if item.description.present? %><span class="text-gray-500">· <%= item.description %></span><% end %>
+              <% if item.fulfilled? %><span class="ml-1 text-xs font-medium text-green-700">Handed over</span><% end %>
+            </li>
+          <% end %>
+        </ul>
+        <p class="mt-2 text-xs text-gray-500">Waiting for you at the show. The door has it on your order.</p>
+      </div>
+    <% end %>
 
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
       <span>Order <%= @order.code %> · <%= number_to_currency(@order.total_cents / 100.0) %></span>

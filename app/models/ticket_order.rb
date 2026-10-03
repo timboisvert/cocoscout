@@ -34,6 +34,7 @@ class TicketOrder < ApplicationRecord
   belongs_to :exchanged_from, class_name: "TicketOrder", optional: true
 
   has_many :tickets, dependent: :destroy
+  has_many :ticket_order_items, dependent: :destroy
   has_many :ticket_refunds, dependent: :delete_all
   has_many :exchanges_out, class_name: "TicketExchange", foreign_key: :from_order_id, inverse_of: :from_order, dependent: :restrict_with_exception
   has_one :exchange_in, class_name: "TicketExchange", foreign_key: :to_order_id, inverse_of: :to_order, dependent: :restrict_with_exception

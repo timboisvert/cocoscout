@@ -32,12 +32,17 @@ export default class extends Controller {
         let count = 0
         let base = 0
         let paid = 0
+        let products = 0
         this.rowTargets.forEach((row) => {
             const n = Number(row.querySelector("[data-door-sell-target='input']").value)
             const price = Number(row.dataset.price)
-            count += n
+            const product = row.dataset.product === "1"
+            // A product (a bottle) adds its price and tax, never our 50¢, and
+            // only goes with a ticket.
+            if (product) products += n
+            else count += n
             base += n * (price + Number(row.dataset.tax))
-            if (price > 0) paid += n
+            if (price > 0 && !product) paid += n
             row.querySelector("[data-door-sell-target='count']").textContent = n
             row.querySelector("[data-door-sell-target='minus']").disabled = n === 0
             row.querySelector("[data-door-sell-target='plus']").disabled = n >= Number(row.dataset.max)
@@ -48,8 +53,9 @@ export default class extends Controller {
         this.label(this.cardButtonTarget, count === 0 ? "Card or phone pay" : `Card or phone pay · ${money(card)}`)
         this.label(this.cashButtonTarget, count === 0 ? "Cash" : `Cash · ${money(base)}`)
         ;[this.cardButtonTarget, this.cashButtonTarget, this.compButtonTarget].forEach((button) => { button.disabled = count === 0 })
-        // A free ticket can't go on a card.
+        // A free ticket can't go on a card, and a comp carries no products.
         if (card === 0) this.cardButtonTarget.disabled = true
+        if (products > 0) this.compButtonTarget.disabled = true
     }
 
     label(button, text) {

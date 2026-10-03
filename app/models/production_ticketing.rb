@@ -27,6 +27,8 @@ class ProductionTicketing < ApplicationRecord
 
   has_many :ticket_tiers, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :production_ticketing
   has_many :production_ticketing_shows, dependent: :delete_all
+  has_many :production_ticketing_products, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :production_ticketing
+  has_many :ticket_products, through: :production_ticketing_products
   has_many :selected_shows, through: :production_ticketing_shows, source: :show
 
   accepts_nested_attributes_for :ticket_tiers, allow_destroy: true,
@@ -49,6 +51,12 @@ class ProductionTicketing < ApplicationRecord
     production.production_ticketing || production.create_production_ticketing!(organization: production.organization)
   rescue ActiveRecord::RecordNotUnique
     production.reload.production_ticketing
+  end
+
+  # The products upsold at this production's checkout, in order, priced as
+  # this production sells them (TicketProductOffer). Archived products drop out.
+  def product_offers
+    production_ticketing_products.includes(:ticket_product).select { |row| row.ticket_product.archived_at.nil? }.map(&:offer)
   end
 
   # Every show of the production that has a listing.

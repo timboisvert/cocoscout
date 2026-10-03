@@ -14,6 +14,7 @@
       <% held = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
       <% inside = held.count(&:checked_in?) %>
       <% by_tier = held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} × #{tier.name}" }.join(", ") %>
+      <% items = order.ticket_order_items.select(&:sold?) %>
       <% badge = channel_badges[order.channel] %>
       <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2.5">
         <div class="min-w-[12rem] flex-1">
@@ -29,7 +30,12 @@
             <div class="text-xs text-gray-500"><%= [ order.code, order.buyer_email ].compact_blank.join(" · ") %><%= " · #{order.note}" if order.note.present? %></div>
           <% end %>
         </div>
-        <div class="text-sm text-gray-700"><%= by_tier.presence || "Refunded" %></div>
+        <div class="text-sm text-gray-700">
+          <%= by_tier.presence || "Refunded" %>
+          <% items.each do |item| %>
+            <span class="ml-1 inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= item.fulfilled? ? 'bg-gray-100 text-gray-600' : 'bg-pink-100 text-pink-700' %>"><%= item.label %></span>
+          <% end %>
+        </div>
         <div class="sm:w-28 sm:text-right text-xs <%= inside == held.size && held.any? ? 'text-green-700 font-medium' : 'text-gray-500' %>">
           <%= held.empty? ? "" : (inside.zero? ? "Not in yet" : "#{inside} of #{held.size} in") %>
         </div>

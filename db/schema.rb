@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_03_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_03_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1886,6 +1886,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100000) do
     t.index ["user_id"], name: "index_production_permissions_on_user_id"
   end
 
+  create_table "production_ticketing_products", force: :cascade do |t|
+    t.boolean "counts_toward_ticket_revenue"
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "price_cents"
+    t.bigint "production_ticketing_id", null: false
+    t.bigint "ticket_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_ticketing_id", "ticket_product_id"], name: "idx_production_ticketing_products_unique", unique: true
+    t.index ["production_ticketing_id"], name: "index_production_ticketing_products_on_production_ticketing_id"
+    t.index ["ticket_product_id"], name: "index_production_ticketing_products_on_ticket_product_id"
+  end
+
   create_table "production_ticketing_shows", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "production_ticketing_id", null: false
@@ -1910,6 +1923,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100000) do
     t.integer "online_close_minutes", default: 0, null: false
     t.integer "opens_days_before", default: 30, null: false
     t.bigint "organization_id", null: false
+    t.boolean "own_product_prices", default: false, null: false
     t.bigint "production_id", null: false
     t.string "schedule_mode", default: "relative", null: false
     t.string "title"
@@ -3190,6 +3204,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100000) do
     t.index ["show_id"], name: "index_ticket_listings_on_show_id", unique: true
   end
 
+  create_table "ticket_order_items", force: :cascade do |t|
+    t.boolean "counts_toward_ticket_revenue", default: false, null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.datetime "fulfilled_at"
+    t.bigint "fulfilled_by_id"
+    t.integer "fulfilled_quantity", default: 0, null: false
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.datetime "refunded_at"
+    t.string "status", default: "reserved", null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_order_id", null: false
+    t.bigint "ticket_product_id", null: false
+    t.integer "unit_price_cents", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["fulfilled_by_id"], name: "index_ticket_order_items_on_fulfilled_by_id"
+    t.index ["organization_id"], name: "index_ticket_order_items_on_organization_id"
+    t.index ["ticket_listing_id", "status"], name: "index_ticket_order_items_on_ticket_listing_id_and_status"
+    t.index ["ticket_listing_id"], name: "index_ticket_order_items_on_ticket_listing_id"
+    t.index ["ticket_order_id"], name: "index_ticket_order_items_on_ticket_order_id"
+    t.index ["ticket_product_id"], name: "index_ticket_order_items_on_ticket_product_id"
+  end
+
   create_table "ticket_orders", force: :cascade do |t|
     t.string "buyer_email"
     t.integer "buyer_fee_cents", default: 0, null: false
@@ -3251,16 +3291,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100000) do
     t.index ["user_id"], name: "index_ticket_orders_on_user_id"
   end
 
+  create_table "ticket_products", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.boolean "counts_toward_ticket_revenue", default: false, null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "price_cents", default: 0, null: false
+    t.boolean "taxable", default: true, null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_products_on_organization_id"
+  end
+
   create_table "ticket_refunds", force: :cascade do |t|
     t.integer "amount_cents", default: 0, null: false
     t.datetime "created_at", null: false
     t.string "error"
     t.integer "face_cents", default: 0, null: false
     t.integer "fees_cents", default: 0, null: false
+    t.jsonb "item_ids", default: [], null: false
     t.boolean "keep_fees", default: false, null: false
     t.integer "org_debit_cents", default: 0, null: false
     t.bigint "organization_id", null: false
     t.integer "platform_fee_waived_cents", default: 0, null: false
+    t.integer "product_cents", default: 0, null: false
     t.string "reason"
     t.bigint "refunded_by_id"
     t.string "status", default: "pending", null: false
@@ -3694,6 +3750,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100000) do
   add_foreign_key "production_notification_settings", "users"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
+  add_foreign_key "production_ticketing_products", "production_ticketings"
+  add_foreign_key "production_ticketing_products", "ticket_products"
   add_foreign_key "production_ticketing_shows", "production_ticketings"
   add_foreign_key "production_ticketing_shows", "shows"
   add_foreign_key "production_ticketings", "organizations"
@@ -3827,12 +3885,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100000) do
   add_foreign_key "ticket_listings", "organizations"
   add_foreign_key "ticket_listings", "productions"
   add_foreign_key "ticket_listings", "shows"
+  add_foreign_key "ticket_order_items", "organizations"
+  add_foreign_key "ticket_order_items", "ticket_listings"
+  add_foreign_key "ticket_order_items", "ticket_orders"
+  add_foreign_key "ticket_order_items", "ticket_products"
+  add_foreign_key "ticket_order_items", "users", column: "fulfilled_by_id"
   add_foreign_key "ticket_orders", "organizations"
   add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
   add_foreign_key "ticket_orders", "ticket_listings"
   add_foreign_key "ticket_orders", "ticket_orders", column: "exchanged_from_id"
   add_foreign_key "ticket_orders", "users", column: "issued_by_id", on_delete: :nullify
   add_foreign_key "ticket_orders", "users", on_delete: :nullify
+  add_foreign_key "ticket_products", "organizations"
   add_foreign_key "ticket_refunds", "organizations"
   add_foreign_key "ticket_refunds", "ticket_orders"
   add_foreign_key "ticket_refunds", "users", column: "refunded_by_id", on_delete: :nullify

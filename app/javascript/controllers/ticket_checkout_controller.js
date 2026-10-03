@@ -9,7 +9,8 @@ import { Controller } from "@hotwired/stimulus"
 // browser so going back to the show's page puts the tickets back
 // (ticket_picker_controller).
 export default class extends Controller {
-    static targets = ["form", "payment", "error", "submit", "countdown"]
+    static targets = ["form", "payment", "error", "submit", "countdown", "summary",
+                      "products", "productRow", "productCount", "productMinus", "productPlus"]
     static values = {
         publishableKey: String,
         amount: Number,
@@ -17,12 +18,14 @@ export default class extends Controller {
         returnUrl: String,
         expiresAt: String,
         listingId: Number,
-        token: String
+        token: String,
+        itemsUrl: String
     }
 
     connect() {
         this.rememberHold()
         this.startCountdown()
+        this.renderProducts()
         if (this.freeValue) return
 
         if (!window.Stripe || !this.publishableKeyValue) {
@@ -86,6 +89,71 @@ export default class extends Controller {
         } catch (_e) {
             this.fail("Something went wrong. Please try again.")
         }
+    }
+
+    // Products (a bottle for the table): − / + per product. Each change is
+    // saved to the hold straight away, and the summary, the total and the
+    // amount Stripe will charge follow. A total that goes from free to paid
+    // (or back) needs the payment box, so the page reloads for that.
+    moreProducts(event) {
+        this.stepProduct(event, 1)
+    }
+
+    fewerProducts(event) {
+        this.stepProduct(event, -1)
+    }
+
+    stepProduct(event, by) {
+        const row = event.currentTarget.closest("[data-ticket-checkout-target='productRow']")
+        const count = row.querySelector("[data-ticket-checkout-target='productCount']")
+        const max = Number(row.dataset.max)
+        count.textContent = Math.min(max, Math.max(0, Number(count.textContent) + by))
+        this.renderProducts()
+        clearTimeout(this.itemsTimer)
+        this.itemsTimer = setTimeout(() => this.saveProducts(), 350)
+    }
+
+    renderProducts() {
+        this.productRowTargets.forEach((row) => {
+            const n = Number(row.querySelector("[data-ticket-checkout-target='productCount']").textContent)
+            row.querySelector("[data-ticket-checkout-target='productMinus']").disabled = n === 0
+            row.querySelector("[data-ticket-checkout-target='productPlus']").disabled = n >= Number(row.dataset.max)
+        })
+    }
+
+    async saveProducts() {
+        if (!this.itemsUrlValue) return
+        const products = {}
+        this.productRowTargets.forEach((row) => {
+            products[row.dataset.productId] = Number(row.querySelector("[data-ticket-checkout-target='productCount']").textContent)
+        })
+        this.hideError()
+        this.busy(true)
+        try {
+            const response = await fetch(this.itemsUrlValue, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-Token": this.csrfToken() },
+                body: JSON.stringify({ products })
+            })
+            const data = await response.json()
+            if (data.error) return this.fail(data.error)
+            if (this.hasSummaryTarget) this.summaryTarget.innerHTML = data.summary_html
+            const wasFree = this.amountValue === 0
+            this.amountValue = data.total_cents
+            if (wasFree !== (data.total_cents === 0)) return window.location.reload()
+            if (this.elements) this.elements.update({ amount: data.total_cents })
+            this.relabelSubmit(data.total_cents)
+            this.busy(false)
+        } catch (_e) {
+            this.fail("Couldn't save that. Please try again.")
+        }
+    }
+
+    relabelSubmit(cents) {
+        const span = this.submitTarget.querySelector("span") || this.submitTarget
+        const prefix = this.submitTarget.dataset.payPrefix
+        if (prefix === undefined || prefix === "") return
+        span.textContent = `${prefix}$${(cents / 100).toFixed(2)}`
     }
 
     startCountdown() {

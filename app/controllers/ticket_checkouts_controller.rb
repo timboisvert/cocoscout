@@ -16,7 +16,7 @@ class TicketCheckoutsController < ApplicationController
   # Buying never rides on a signed-in session: the order's secret token is the
   # key. And inside a theater's own website (the embed) browsers don't send
   # our session cookie, so a forgery token could never verify there.
-  skip_forgery_protection only: %i[create pay]
+  skip_forgery_protection only: %i[create pay items]
 
   # Nobody loads checkout, types their details and pays this fast; a script
   # posting straight through does.
@@ -60,6 +60,22 @@ class TicketCheckoutsController < ApplicationController
       code: holding ? @order.ticket_discount_code&.code : nil,
       expires_at: holding ? @order.expires_at.iso8601 : nil
     }
+  end
+
+  # The products the buyer added (or took off) on the checkout page. The
+  # order is repriced and the page gets its new summary and total.
+  def items
+    return render(json: { error: "This order can't be changed anymore." }, status: :unprocessable_entity) unless @order.pending? && !@order.hold_expired?
+
+    TicketCheckout.set_items!(@order, requested_products)
+    @order.reload
+    render json: {
+      total_cents: @order.total_cents,
+      summary_html: render_to_string(partial: "ticket_checkouts/summary", formats: [ :html ], locals: { order: @order }),
+      items: @order.ticket_order_items.to_h { |item| [ item.ticket_product_id.to_s, item.quantity ] }
+    }
+  rescue TicketCheckout::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   # The buyer's details are in: record them, then either finish a free order
@@ -117,6 +133,14 @@ class TicketCheckoutsController < ApplicationController
     return {} unless raw.respond_to?(:each_pair)
 
     raw.each_pair.to_h { |tier_id, count| [ tier_id.to_s, count.to_s ] }
+  end
+
+  # { product_id => count } from the checkout page's steppers.
+  def requested_products
+    raw = params[:products]
+    return {} unless raw.respond_to?(:each_pair)
+
+    raw.each_pair.to_h { |id, count| [ id.to_s, count.to_s ] }
   end
 
   def set_order

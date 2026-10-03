@@ -73,7 +73,9 @@ class TicketDoor
   # Walk-ups paying cash, or comps — recorded so the count, the show's
   # financials and the books see everyone. No fees: the money never touches
   # CocoScout. They're checked in on the spot.
-  def sell(quantities, kind:, buyer_name: nil)
+  # products: { product_id => count } bought along with cash tickets; a comp
+  # carries none (a bottle is never comped from here).
+  def sell(quantities, kind:, buyer_name: nil, products: {})
     raise ArgumentError, "kind must be cash or comp" unless %w[cash comp].include?(kind)
     raise TicketCheckout::Error, "This show was canceled." if @listing.status == "canceled" || @listing.show.canceled
 
@@ -97,6 +99,13 @@ class TicketDoor
                                          discount_cents: kind == "comp" ? tier.price_cents : 0)
           record_tax(order, ticket) if kind == "cash"
         end
+      end
+      if kind == "cash" && products.present?
+        # A hold's items start "reserved"; a cash sale is paid on the spot.
+        order.update_columns(status: "pending")
+        TicketCheckout.set_items!(order, products, reprice: false)
+        order.update_columns(status: "paid")
+        order.ticket_order_items.update_all(status: "valid", updated_at: Time.current)
       end
       TicketCheckout.price!(order)
       post_cash_sale!(order) if kind == "cash"
@@ -143,6 +152,7 @@ class TicketDoor
       case line[:account]
       when :cocoscout_balance then line.merge(account: :door_cash, amount_cents: order.total_cents)
       when :advance_ticket_sales then line.merge(account: :ticket_income)
+      when :advance_product_sales then line.merge(account: :product_income)
       else line
       end
     end

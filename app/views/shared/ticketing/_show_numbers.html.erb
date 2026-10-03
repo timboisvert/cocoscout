@@ -12,6 +12,7 @@
     [ "Ticket sales", money.call(stats.gross_cents), "Before fees and tax", nil ],
     (read_only ? nil : [ "You keep", money.call(stats.net_cents), stats.tax_cents.positive? ? "Plus #{money.call(stats.tax_cents)} tax to pay" : "After fees and refunds", nil ]),
     (started ? [ "Checked in", "#{stats.checked_in} of #{stats.sold}", stats.no_shows.to_i.positive? ? "#{stats.no_shows} didn't come" : "Everyone came", nil ] : nil),
+    (stats.products_sold.positive? ? [ "Products", stats.products_sold.to_s, "#{money.call(stats.product_cents)} before tax", "bg-pink-50 border-pink-200" ] : nil),
     [ "Comps", stats.comps.to_s, "Given away free", stats.comps.positive? ? "bg-blue-50 border-blue-200" : nil ],
     [ "Refunded", stats.refunded_tickets.to_s, stats.refunded_cents.positive? ? "#{money.call(stats.refunded_cents)} back" : "None", stats.refunded_tickets.positive? ? "bg-amber-50 border-amber-200" : nil ]
   ].compact
@@ -19,7 +20,7 @@
 %>
 <div class="space-y-6">
   <%# Literal class names, so Tailwind sees each one. %>
-  <div class="grid grid-cols-2 <%= { 4 => 'lg:grid-cols-4', 5 => 'lg:grid-cols-5' }.fetch(tiles.size, 'lg:grid-cols-6') %> gap-3">
+  <div class="grid grid-cols-2 <%= { 4 => 'lg:grid-cols-4', 5 => 'lg:grid-cols-5', 6 => 'lg:grid-cols-6' }.fetch(tiles.size, 'lg:grid-cols-4') %> gap-3">
     <% tiles.each do |label, value, note, tint| %>
       <div class="rounded-lg border px-4 py-3 <%= tint || 'bg-white border-gray-200' %>">
         <div class="text-xs text-gray-500"><%= label %></div>
@@ -64,6 +65,32 @@
       </table>
     </div>
   </div>
+
+  <% if stats.products_sold.positive? %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-200"><h2 class="text-sm font-semibold text-gray-900">Products</h2></div>
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-500">
+          <tr>
+            <th class="px-5 py-2 text-left font-medium">Product</th>
+            <th class="px-3 py-2 text-right font-medium">Sold</th>
+            <th class="px-3 py-2 text-right font-medium">Handed over</th>
+            <th class="px-5 py-2 text-right font-medium">Sales</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% stats.by_product.each do |row| %>
+            <tr class="whitespace-nowrap">
+              <td class="px-5 py-2.5 text-gray-900"><%= row.name %></td>
+              <td class="px-3 py-2.5 text-right tabular-nums"><%= row.sold %></td>
+              <td class="px-3 py-2.5 text-right tabular-nums"><%= row.handed_over %></td>
+              <td class="px-5 py-2.5 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
 
   <% if codes.any? %>
     <div class="bg-white border border-gray-200 rounded-lg px-5 py-4">

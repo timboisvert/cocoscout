@@ -7,7 +7,7 @@ module Manage
   # Which dates are included works the way sign-ups' repeating events do: all
   # performances, some event types, or dates picked by hand.
   class ProductionTicketingsController < Manage::TicketingBaseController
-    SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "sales" => "Sales & page", "codes" => "Discount codes" }.freeze
+    SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales & page", "codes" => "Discount codes" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -53,6 +53,7 @@ module Manage
       when "dates" then update_dates
       when "tickets" then update_tickets
       when "sales" then update_sales
+      when "products" then update_products
       else redirect_to section_path("codes")
       end
     rescue ActiveRecord::RecordInvalid => e
@@ -119,6 +120,48 @@ module Manage
                                                                :door_note, :age_note, :accessibility_note)
       @setup.update!(permitted.to_h.transform_values(&:presence))
       redirect_to section_path("sales"), notice: "Saved. Dates without their own settings use these."
+    end
+
+    # Which of the org's products this production upsells, and (with the
+    # switch on) its own prices and revenue rules for them.
+    def update_products
+      own = params.dig(:production_ticketing, :own_product_prices) == "1"
+      rows = params[:products].respond_to?(:each_pair) ? params[:products].each_pair.to_h : {}
+      products = Current.organization.ticket_products.active.ordered.to_a
+      ProductionTicketing.transaction do
+        @setup.update!(own_product_prices: own)
+        position = 0
+        products.each do |product|
+          row = rows[product.id.to_s]
+          offered = row && row.respond_to?(:[]) && row[:offered] == "1"
+          link = @setup.production_ticketing_products.find_by(ticket_product_id: product.id)
+          if offered
+            link ||= @setup.production_ticketing_products.new(ticket_product: product)
+            link.position = position
+            position += 1
+            if own
+              link.price_cents = dollars_to_cents(row[:price])
+              link.counts_toward_ticket_revenue = row[:counts_toward_ticket_revenue] == "1"
+            else
+              link.price_cents = nil
+              link.counts_toward_ticket_revenue = nil
+            end
+            link.save!
+          elsif link
+            link.destroy!
+          end
+        end
+      end
+      offered = @setup.production_ticketing_products.count
+      redirect_to section_path("products"), notice: offered.zero? ? "Saved. No products are offered at checkout." : "Saved. #{helpers.pluralize(offered, 'product')} offered at checkout for every date."
+    end
+
+    # "$45" or "45.00" → 4500; blank → nil (the product's standard price).
+    def dollars_to_cents(text)
+      price = text.to_s.delete("$,").strip
+      price.empty? ? nil : (BigDecimal(price) * 100).round.to_i
+    rescue ArgumentError
+      raise ActionController::BadRequest, "Prices must be numbers"
     end
 
     def finish(result)

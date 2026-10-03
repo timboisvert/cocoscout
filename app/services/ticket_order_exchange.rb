@@ -126,7 +126,8 @@ class TicketOrderExchange
                                             face_cents: plan.old_face_cents, tax_cents: plan.old_tax_cents,
                                             fees_cents: plan.fees_cents, difference_cents: plan.difference_cents)
           retire_old_tickets!(order, plan)
-          post_money!(exchange, order, new_order, plan)
+          moved_products = move_products!(order, new_order, plan)
+          post_money!(exchange, order, new_order, plan, moved_products)
         end
       end
     end
@@ -179,8 +180,30 @@ class TicketOrderExchange
     order.update!(status: "exchanged") unless order.tickets.where(status: Ticket::SOLD_STATUSES).exists?
   end
 
+  # Products bought with the tickets (a bottle for the table) go along when
+  # every ticket moves; when only some move, they stay with the first date.
+  # Returns their face value (no tax), for the books.
+  def self.move_products!(order, new_order, plan)
+    return 0 if order.tickets.where(status: Ticket::SOLD_STATUSES).exists?
+
+    items = order.ticket_order_items.sold.includes(:tax_lines).to_a
+    return 0 if items.empty?
+
+    items.sum do |item|
+      copy = new_order.ticket_order_items.create!(item.attributes.except("id", "ticket_order_id", "ticket_listing_id", "created_at", "updated_at")
+                                                    .merge("ticket_listing_id" => plan.target.id))
+      item.tax_lines.select { |line| line.reversal_of_id.nil? && line.tax_cents >= 0 }.each do |line|
+        TaxLine.create!(line.attributes.except("id", "taxable_id", "created_at", "updated_at")
+                            .merge("taxable_id" => copy.id, "sale_date" => Date.current, "event_date" => plan.target.starts_at&.to_date))
+      end
+      TicketOrderRefund.reverse_tax!(order, TicketOrderItem.where(id: item.id), taxable_type: "TicketOrderItem")
+      item.update!(status: "exchanged")
+      item.price_cents - item.tax_lines.select { |l| l.included && l.reversal_of_id.nil? }.sum(&:tax_cents)
+    end
+  end
+
   # The money and the books follow the tickets from one show to the other.
-  def self.post_money!(exchange, order, new_order, plan)
+  def self.post_money!(exchange, order, new_order, plan, moved_products = 0)
     return unless order.money_path == "cocoscout"
 
     old_listing = order.ticket_listing
@@ -199,7 +222,9 @@ class TicketOrderExchange
                           { account: old_listing.released_at ? :ticket_income : :advance_ticket_sales, amount_cents: plan.old_face_cents, **from },
                           { account: :tax_to_remit, amount_cents: plan.old_tax_cents, **from },
                           { account: :advance_ticket_sales, amount_cents: -plan.old_face_cents, **to },
-                          { account: :tax_to_remit, amount_cents: -plan.old_tax_cents, **to }
+                          { account: :tax_to_remit, amount_cents: -plan.old_tax_cents, **to },
+                          { account: old_listing.released_at ? :product_income : :advance_product_sales, amount_cents: moved_products, **from },
+                          { account: :advance_product_sales, amount_cents: -moved_products, **to }
                         ])
   end
 
@@ -245,6 +270,6 @@ class TicketOrderExchange
     ActiveSupport::NumberHelper.number_to_currency(cents / 100.0)
   end
 
-  private_class_method :moved_cents, :create_order!, :retire_old_tickets!, :post_money!, :refund_difference!,
+  private_class_method :moved_cents, :create_order!, :retire_old_tickets!, :move_products!, :post_money!, :refund_difference!,
                        :row_for, :original_tax, :share, :money
 end

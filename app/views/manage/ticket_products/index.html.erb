@@ -1,0 +1,64 @@
+<% content_for :title, "Products" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
+    text: "Products",
+    links: [ { text: "Add a product", path: manage_new_ticket_product_path } ]
+  } %>
+
+  <div class="max-w-3xl space-y-6">
+    <p class="text-sm text-gray-600">
+      Things you sell with the tickets: a bottle of champagne for the table, a program. Give each a name and a standard price
+      here, then pick which ones a production offers on its ticketing's <strong>Products</strong> tab, where it can set its
+      own prices too. Buyers add them at checkout; what they bought shows on their order, on the guest list and at the door.
+    </p>
+
+    <% if @products.empty? %>
+      <div class="bg-white border border-gray-200 rounded-lg px-6 py-10 text-center">
+        <p class="text-gray-900 font-medium">No products yet.</p>
+        <p class="mt-1 text-sm text-gray-600">Add your first one, then offer it on a production.</p>
+        <div class="mt-4 flex justify-center">
+          <%= render "shared/button", text: "Add a product", variant: "primary", size: "medium", path: manage_new_ticket_product_path %>
+        </div>
+      </div>
+    <% else %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <ul class="divide-y divide-gray-100">
+          <% @products.each do |product| %>
+            <% offered = @offered_by.fetch(product.id, 0) %>
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
+              <div class="min-w-[12rem] flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-sm font-medium text-gray-900"><%= product.name %></span>
+                  <% if product.counts_toward_ticket_revenue %>
+                    <span class="inline-flex rounded-md bg-pink-100 px-1.5 py-0.5 text-xs font-medium text-pink-700">Counts as ticket revenue</span>
+                  <% end %>
+                  <% unless product.taxable %>
+                    <span class="inline-flex rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">No tax</span>
+                  <% end %>
+                </div>
+                <div class="text-xs text-gray-500">
+                  <%= product.description.presence || "No description" %>
+                  · <%= offered.zero? ? "Not offered on any production yet" : "Offered on #{pluralize(offered, 'production')}" %>
+                </div>
+              </div>
+              <div class="text-sm font-semibold tabular-nums text-gray-900"><%= number_to_currency(product.price_cents / 100.0) %></div>
+              <div class="flex items-center gap-2">
+                <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", path: manage_edit_ticket_product_path(product) %>
+                <%= render "shared/button", text: "Remove", variant: "ghost", size: "small", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-product-#{product.id}" } %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+</div>
+<% @products.each do |product| %>
+  <%= render "shared/confirm_modal", id: "confirm-remove-product-#{product.id}", title: "Remove #{product.name}?",
+        message: "It leaves every production's checkout. Orders that already bought it keep it, and so do your reports.",
+        confirm_text: "Remove product", url: manage_ticket_product_path(product), method: :delete %>
+<% end %>

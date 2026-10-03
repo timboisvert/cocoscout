@@ -29,13 +29,15 @@
     <%= pluralize(@rows.sum { |r| r[:count] }, "ticket") %>, printed <%= Time.current.strftime("%b %-d at %-l:%M %p") %>
   </div>
   <table>
-    <thead><tr><th style="width: 70px">In</th><th>Name</th><th>Tickets</th><th>Order</th></tr></thead>
+    <% products = @rows.any? { |r| r[:products].present? } %>
+    <thead><tr><th style="width: 70px">In</th><th>Name</th><th>Tickets</th><% if products %><th>Products</th><% end %><th>Order</th></tr></thead>
     <tbody>
       <% @rows.each do |row| %>
         <tr>
           <td><% row[:count].times do |i| %><span class="box <%= 'in' if i < row[:inside] %>"></span><% end %></td>
           <td><%= row[:name] %><% if row[:comp] %> <span class="muted">(comp)</span><% end %></td>
           <td><%= row[:tiers] %></td>
+          <% if products %><td><strong><%= row[:products] %></strong></td><% end %>
           <td class="muted"><%= row[:code] %></td>
         </tr>
       <% end %>

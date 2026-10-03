@@ -86,6 +86,20 @@ export default class extends Controller {
         }
     }
 
+    // A pre-bought bottle handed over at the table.
+    async fulfill(event) {
+        const button = event.currentTarget
+        button.disabled = true
+        try {
+            const data = await this.post(button.dataset.url, {})
+            this.showBanner("admitted", data.message)
+            this.runSearch()
+        } catch {
+            button.disabled = false
+            this.showBanner("error", "Couldn't reach CocoScout. Try again.")
+        }
+    }
+
     async undo(event) {
         const ticketId = event.currentTarget.dataset.ticketId
         try {
