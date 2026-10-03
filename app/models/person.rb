@@ -9,12 +9,6 @@ class Person < ApplicationRecord
   has_many :socials, as: :sociable, dependent: :destroy
   has_many :staff_time_entries, dependent: :destroy
 
-  # DEPRECATED with staff_unavailabilities: how the old day marks were meant
-  # ("unavailable" days off, or "available" the only days on). Read once by the
-  # availability cutover migration; the column goes with the old table.
-  AVAILABILITY_MODES = %w[unavailable available].freeze
-  validates :availability_mode, inclusion: { in: AVAILABILITY_MODES }
-
   accepts_nested_attributes_for :socials, allow_destroy: true
 
   has_many :audition_requests, as: :requestable, dependent: :destroy
@@ -38,9 +32,8 @@ class Person < ApplicationRecord
   has_many :organization_staff_members, dependent: :destroy
   has_many :w9_submissions, dependent: :destroy
   has_many :tax_form_1099s, dependent: :destroy
-  has_many :staff_unavailabilities, dependent: :destroy
   # When they can work, as time bands (StaffAvailabilityEntry), set on the Work
-  # Availability page. staff_unavailabilities is the deprecated old model.
+  # Availability page.
   has_many :staff_availability_entries, dependent: :delete_all
 
   # The time-of-day shortcuts this person gets when setting their hours: every

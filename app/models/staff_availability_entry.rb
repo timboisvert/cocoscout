@@ -25,7 +25,8 @@ class StaffAvailabilityEntry < ApplicationRecord
   enum :kind, { weekly: 0, dated: 1 }
   enum :polarity, { unavailable: 0, available: 1 }
   # self_reported: the person said it. manager: someone set it on their behalf.
-  # migrated: carried over from staff_unavailabilities (rebuilt, never edited).
+  # migrated: carried over from the old day marks at the 2026-09 cutover
+  # (the old table is gone since 2026-10).
   enum :source, { self_reported: 0, manager: 1, migrated: 2 }
 
   validates :starts_minute, numericality: { only_integer: true, in: 0..DAY }

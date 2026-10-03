@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_03_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1685,7 +1685,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_170000) do
     t.datetime "archived_at"
     t.datetime "availability_confirmed_at"
     t.date "availability_confirmed_through"
-    t.string "availability_mode", default: "unavailable", null: false
     t.text "bio"
     t.boolean "bio_visible", default: true, null: false
     t.datetime "casting_notification_sent_at"
@@ -2939,17 +2938,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_170000) do
     t.index ["shift_assignment_id"], name: "index_staff_time_entries_on_shift_assignment_id"
   end
 
-  create_table "staff_unavailabilities", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.date "date", null: false
-    t.string "day_part_key"
-    t.bigint "person_id", null: false
-    t.integer "scope", default: 0, null: false
-    t.datetime "updated_at", null: false
-    t.index ["person_id", "date"], name: "idx_staff_unavailabilities_unique", unique: true
-    t.index ["person_id"], name: "index_staff_unavailabilities_on_person_id"
-  end
-
   create_table "staffing_finalizations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "finalized_at"
@@ -3806,7 +3794,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_170000) do
   add_foreign_key "staff_time_entries", "shift_assignments"
   add_foreign_key "staff_time_entries", "users", column: "approved_by_id"
   add_foreign_key "staff_time_entries", "users", column: "offline_paid_by_id"
-  add_foreign_key "staff_unavailabilities", "people"
   add_foreign_key "staffing_finalizations", "organizations"
   add_foreign_key "staffing_finalizations", "users", column: "finalized_by_id"
   add_foreign_key "talent_pool_memberships", "talent_pools"

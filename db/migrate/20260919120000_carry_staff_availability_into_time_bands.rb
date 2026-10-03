@@ -7,12 +7,14 @@
 # the moment this deploys. Rows come in as `migrated`; the old table stays,
 # unread and unwritten, until a later release drops it.
 #
-# Runs the backfill exactly once. Running it again after people have edited
-# their availability would bring back what they replaced, which is why no
-# rake task or controller calls it any more.
+# Ran the backfill exactly once (production, 2026-09-29). Running it again
+# after people had edited their availability would have brought back what
+# they replaced, so the backfill code is gone (2026-10-03, with the old
+# table: DropStaffUnavailabilities) and this migration is now a no-op for any
+# database built from scratch, which loads the schema anyway.
 class CarryStaffAvailabilityIntoTimeBands < ActiveRecord::Migration[8.1]
   def up
-    StaffAvailabilityBackfill.rebuild_all!
+    # The one-time carry-over already happened everywhere it was going to.
   end
 
   def down

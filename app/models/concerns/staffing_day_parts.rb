@@ -9,11 +9,10 @@
 # isn't a region.
 #
 # A shift belongs to every region whose hours contain its start time (regions
-# overlap on purpose — Morning holds Late morning), and a staff member's
-# unavailability mark names one region or the whole day
-# (StaffUnavailability#day_part_key). Marks are person-level, so someone who
-# staffs two rooms has one "evening" mark that both rooms read; a region a
-# room hasn't turned on blocks nothing there.
+# overlap on purpose — Morning holds Late morning). The regions are the
+# time-of-day shortcuts a staff member picks from when setting their hours
+# (StaffAvailabilityWriter); a region a room hasn't turned on blocks nothing
+# there.
 module StaffingDayParts
   extend ActiveSupport::Concern
 
