@@ -329,6 +329,15 @@ class ContractPayment < ApplicationRecord
     update!(status: :paid, paid_date: Date.current, payment_method: "payout_deduction", reference_number: reference)
   end
 
+  # The run that netted this charge never paid (its draft was discarded), so
+  # nothing was netted after all: the charge is owed again, and nets against
+  # the share the next time it joins a run.
+  def undo_deduction!
+    return unless direction_incoming? && status_paid? && payment_method == "payout_deduction"
+
+    update!(status: :pending, paid_date: nil, payment_method: nil, reference_number: nil)
+  end
+
   # --- Running balances ---------------------------------------------------------
   #
   # When a share is smaller than what they owe, the share covers part of a

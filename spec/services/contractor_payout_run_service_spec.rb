@@ -306,6 +306,21 @@ RSpec.describe ContractorPayoutRunService do
       expect(org.payout_balance_cents_for(payee)).to eq(20_000 + 20_000)
     end
 
+    it "hands the service back when the draft run is discarded, so re-adding the share deducts it again" do
+      service = deductible_service!(amount: 100)
+      PayoutBatchService.discard!(described_class.add_contract_payment!(payment).batch)
+
+      expect(service.reload).to be_status_pending
+      expect(service.payment_method).to be_nil
+      expect(service.reference_number).to be_nil
+      expect(org.payout_balance_cents_for(payee)).to eq(0)
+
+      item = described_class.add_contract_payment!(payment).batch.items.find_by(payee: payee)
+      expect(item.amount_cents).to eq(20_000)
+      expect(item.payout_contributions.find_by(source: service).amount_cents).to eq(-10_000)
+      expect(service.reload).to be_status_paid
+    end
+
     it "ignores direct-settlement and TBD services entirely" do
       create(:contract_payment, contract: contract, direction: "incoming", amount: 100,
                                 settlement_method: "direct")
