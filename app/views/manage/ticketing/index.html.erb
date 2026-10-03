@@ -94,11 +94,17 @@
           <% if recent.any? %>
             <% recent.each do |order| %>
               <% count = order.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
-              <%= link_to manage_ticket_order_path(order.id), class: "flex flex-wrap items-center gap-x-4 gap-y-0.5 px-5 py-2.5 hover:bg-gray-50" do %>
-                <span class="min-w-[10rem] flex-1 text-sm text-gray-900 truncate"><%= order.buyer_name.presence || "No name" %></span>
-                <span class="min-w-[10rem] flex-1 text-sm text-gray-600 truncate"><%= order.ticket_listing.show.date_and_time.strftime("%b %-d") %> · <%= order.ticket_listing.display_title %></span>
-                <span class="text-sm text-gray-700 tabular-nums"><%= pluralize(count, "ticket") %></span>
-                <span class="w-20 text-right text-sm font-medium text-gray-900 tabular-nums"><%= order.channel == "comp" ? "Comp" : ticket_price(order.total_cents) %></span>
+              <%# An order since refunded or canceled: struck through, with its chip. %>
+              <% undone = order.status == "refunded" %>
+              <% struck = "line-through decoration-gray-300" if undone %>
+              <%= link_to manage_ticket_order_path(order.id), class: "flex flex-wrap items-center gap-x-4 gap-y-0.5 px-5 py-2.5 hover:bg-gray-50 #{'text-gray-500' if undone}" do %>
+                <span class="min-w-[10rem] flex-1 text-sm <%= undone ? 'text-gray-500' : 'text-gray-900' %> truncate">
+                  <span class="<%= struck %>"><%= order.buyer_name.presence || "No name" %></span>
+                  <% if undone %><span class="ml-1 inline-block"><%= render "manage/ticket_orders/status_badge", order: order %></span><% end %>
+                </span>
+                <span class="min-w-[10rem] flex-1 text-sm text-gray-600 truncate <%= struck %>"><%= order.ticket_listing.show.date_and_time.strftime("%b %-d") %> · <%= order.ticket_listing.display_title %></span>
+                <span class="text-sm text-gray-700 tabular-nums <%= struck %>"><%= pluralize(undone ? order.tickets.size : count, "ticket") %></span>
+                <span class="w-20 text-right text-sm font-medium <%= undone ? 'text-gray-500' : 'text-gray-900' %> tabular-nums <%= struck %>"><%= order.channel == "comp" ? "Comp" : ticket_price(order.total_cents) %></span>
                 <span class="w-24 text-right text-xs text-gray-500"><%= time_ago_in_words(order.paid_at) %> ago</span>
               <% end %>
             <% end %>

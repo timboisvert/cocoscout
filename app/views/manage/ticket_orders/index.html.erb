@@ -37,17 +37,18 @@
       <% @orders.each do |order| %>
         <% listing = order.ticket_listing %>
         <% count = order.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
+        <% undone = order.status == "refunded" %>
         <%= link_to manage_ticket_order_path(order.id), class: "flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 hover:bg-gray-50" do %>
           <div class="min-w-[12rem] flex-1">
-            <div class="text-sm font-medium text-gray-900 truncate"><%= order.buyer_name.presence || "No name" %></div>
+            <div class="text-sm font-medium truncate <%= undone ? 'text-gray-500 line-through decoration-gray-300' : 'text-gray-900' %>"><%= order.buyer_name.presence || "No name" %></div>
             <div class="text-xs text-gray-500 truncate"><%= order.code %><%= " · #{order.buyer_email}" if order.buyer_email.present? %></div>
           </div>
           <div class="min-w-[12rem] flex-1 text-sm text-gray-700 truncate">
             <%= listing.show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %> · <%= listing.display_title %>
           </div>
           <div class="flex w-full sm:w-auto items-center gap-4">
-            <div class="text-sm text-gray-700 tabular-nums sm:w-20"><%= pluralize(count, "ticket") %></div>
-            <div class="text-sm font-medium text-gray-900 tabular-nums sm:w-20 sm:text-right"><%= ticket_price(order.total_cents) %></div>
+            <div class="text-sm text-gray-700 tabular-nums sm:w-20 <%= 'line-through decoration-gray-300 text-gray-500' if undone %>"><%= pluralize(undone ? order.tickets.size : count, "ticket") %></div>
+            <div class="text-sm font-medium tabular-nums sm:w-20 sm:text-right <%= undone ? 'text-gray-500 line-through decoration-gray-300' : 'text-gray-900' %>"><%= order.channel == "comp" ? "Comp" : ticket_price(order.total_cents) %></div>
             <div class="ml-auto sm:ml-0 sm:w-32 sm:text-right"><%= render "manage/ticket_orders/status_badge", order: order %></div>
           </div>
         <% end %>
