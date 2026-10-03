@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-# Products on the pages people see: the checkout's "Add to your night",
+# Products on the pages people see: the checkout's "Add to your order",
 # the buyer's order page, the manager's order page, the guest list and the
 # door — and a date that offers none shows none.
 RSpec.describe "Ticket products on pages", type: :request do
@@ -29,7 +29,7 @@ RSpec.describe "Ticket products on pages", type: :request do
   it "offers the production's products at checkout and saves what the buyer adds" do
     order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "2" })
     get tickets_checkout_path(token: order.token)
-    expect(response.body).to include("Add to your night", "Champagne bottle", "Bubbly at your table", "Waiting for you at the show")
+    expect(response.body).to include("Add to your order", "Champagne bottle", "Bubbly at your table", "Waiting for you at the show")
 
     patch tickets_checkout_items_path(token: order.token), params: { products: { bottle.id.to_s => "2" } }, as: :json
     data = response.parsed_body
@@ -42,7 +42,7 @@ RSpec.describe "Ticket products on pages", type: :request do
     lone_tier = lone.ticket_tiers.create!(name: "General", price_cents: 2_000)
     lone_order = TicketCheckout.start!(listing: lone, quantities: { lone_tier.id.to_s => "1" })
     get tickets_checkout_path(token: lone_order.token)
-    expect(response.body).not_to include("Add to your night")
+    expect(response.body).not_to include("Add to your order")
   end
 
   it "shows what was bought everywhere the order appears" do
