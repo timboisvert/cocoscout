@@ -21,7 +21,7 @@
     ({ text: "Door", description: "Scan tickets and sell at the door", path: door_path(@listing), icon: icons[:door] } if live && @listing.status != "draft"),
     ({ text: "Give tickets", description: "Comps for guests and press", path: manage_new_ticket_listing_comps_path(@listing), icon: icons[:gift] } if live),
     { text: "Orders", description: "Every order for this show", path: manage_ticket_orders_path(listing_id: @listing.id), icon: icons[:orders] },
-    { text: "Settings", description: "Prices, seats, sales window", path: manage_edit_ticket_listing_path(@listing), icon: icons[:cog] },
+    { text: "Settings", description: "Prices, seats, sales window, page and image", path: manage_edit_ticket_listing_path(@listing), icon: icons[:cog] },
     ({ text: "Cancel this show", description: "In Shows & Events, with refunds for buyers", path: manage_cancel_show_form_path(@listing.production, show), icon: icons[:cancel], tone: :muted } if @listing.status != "canceled" && !show.canceled && upcoming)
   ]
 %>
@@ -119,8 +119,6 @@
           <%= link_to "Your balance", manage_ticket_balance_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
         </div>
       </div>
-
-      <%= render "manage/ticket_listings/page_image", listing: @listing %>
     </aside>
   </div>
 </div>

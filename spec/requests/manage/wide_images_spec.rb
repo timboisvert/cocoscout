@@ -96,7 +96,7 @@ RSpec.describe "Wide images", type: :request do
     end
 
     it "says plainly whether there's a wide image, and which picture the page uses" do
-      get manage_ticket_listing_path(listing)
+      get manage_edit_ticket_listing_path(listing, section: "page")
       expect(response.body).to include("Ticket page image", "No wide image or poster yet")
 
       production.posters.create!(image: picture, name: "Poster", is_primary: true)
@@ -104,8 +104,13 @@ RSpec.describe "Wide images", type: :request do
       expect(response.body).to include("No wide image, so the page uses the production&#39;s poster")
 
       show.wide_image.attach(picture)
-      get manage_ticket_listing_path(listing)
+      get manage_edit_ticket_listing_path(listing, section: "page")
       expect(response.body).to include("This show&#39;s wide image.")
+
+      # The show's page itself only points at Settings for it.
+      get manage_ticket_listing_path(listing)
+      expect(response.body).to include("page and image")
+      expect(response.body).not_to include("Ticket page image")
     end
 
     it "leads the public page with the picture, whole" do
