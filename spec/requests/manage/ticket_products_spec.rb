@@ -54,7 +54,7 @@ RSpec.describe "Ticket products", type: :request do
     setup = ProductionTicketing.for(production)
 
     get manage_edit_production_ticketing_path(production, section: "products")
-    expect(response.body).to include("can add these at checkout", "Set prices for this production only", "Champagne bottle", "Program")
+    expect(response.body).to include("can add these at checkout", "Set prices for this production only", "Sell them at the door too", "Champagne bottle", "Program")
 
     # Standard prices: the switch is off, so typed prices are ignored.
     patch manage_update_production_ticketing_path(production, section: "products"),
@@ -66,10 +66,11 @@ RSpec.describe "Ticket products", type: :request do
 
     # The production's own prices and revenue rule.
     patch manage_update_production_ticketing_path(production, section: "products"),
-          params: { production_ticketing: { own_product_prices: "1" },
+          params: { production_ticketing: { own_product_prices: "1", products_at_door: "1" },
                     products: { bottle.id.to_s => { offered: "1", price: "$60.00", counts_toward_ticket_revenue: "1" },
                                 program.id.to_s => { offered: "1", price: "", counts_toward_ticket_revenue: "0" } } }
-    offers = setup.reload.product_offers
+    expect(setup.reload.products_at_door).to be(true)
+    offers = setup.product_offers
     expect(offers.map { |o| [ o.name, o.price_cents, o.counts_toward_ticket_revenue ] })
       .to eq([ [ "Champagne bottle", 6_000, true ], [ "Program", 500, false ] ])
 

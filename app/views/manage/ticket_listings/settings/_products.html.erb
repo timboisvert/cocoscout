@@ -1,0 +1,29 @@
+<%# Whether this date sells the production's products. They're inherited —
+    on by default — and one switch turns them off for this date alone.
+    Locals: listing, setup (the production's ticketing, or nil). %>
+<% offers = setup&.product_offers || [] %>
+<% if setup.nil? %>
+  <p class="text-sm text-gray-600">Products are set up on a production's ticketing, and this date doesn't belong to one. It sells tickets only.</p>
+<% elsif offers.empty? %>
+  <p class="text-sm text-gray-600">
+    <%= listing.production.name %> doesn't offer any products yet.
+    <%= link_to "Choose some on its Products tab", manage_edit_production_ticketing_path(listing.production, section: "products"), class: "font-medium text-pink-600 hover:text-pink-700" %>
+    and every date, this one included, will offer them at checkout.
+  </p>
+<% else %>
+  <%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, class: "space-y-6" do |f| %>
+    <%= hidden_field_tag :section, "products" %>
+    <p class="text-sm text-gray-600">
+      <%= possessive(listing.production.name) %> products — <%= offers.map(&:name).to_sentence %> — are offered at checkout on every date.
+      <%= link_to "Change them for every date", manage_edit_production_ticketing_path(listing.production, section: "products"), class: "font-medium text-pink-600 hover:text-pink-700" %>
+    </p>
+    <div class="py-4 border-y border-gray-200 flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-medium text-gray-900">Sell products for this date</div>
+        <div class="text-xs text-gray-600 mt-0.5">Off, buyers of <%= ticket_listing_date_label(listing) %> see tickets only, online and at the door. Orders that already bought a product keep it.</div>
+      </div>
+      <%= render "shared/toggle_switch", form: f, field: :sell_products %>
+    </div>
+    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+  <% end %>
+<% end %>

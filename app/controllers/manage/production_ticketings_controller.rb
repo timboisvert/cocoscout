@@ -129,7 +129,7 @@ module Manage
       rows = params[:products].respond_to?(:each_pair) ? params[:products].each_pair.to_h : {}
       products = Current.organization.ticket_products.active.ordered.to_a
       ProductionTicketing.transaction do
-        @setup.update!(own_product_prices: own)
+        @setup.update!(own_product_prices: own, products_at_door: params.dig(:production_ticketing, :products_at_door) == "1")
         position = 0
         products.each do |product|
           row = rows[product.id.to_s]

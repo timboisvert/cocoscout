@@ -81,10 +81,16 @@ class TicketListing < ApplicationRecord
     accessibility_note.presence || production_ticketing&.accessibility_note.presence
   end
 
-  # Products a buyer can add at this date's checkout: the production's.
-  # A date without a production setup offers none.
-  def product_offers
-    production_ticketing&.product_offers || []
+  # Products a buyer can add at this date's checkout: the production's,
+  # unless this date switched them off (sell_products). A date without a
+  # production setup offers none. At the door (at_door) only when the
+  # production sells its products there too: a pre-sold bottle isn't a door
+  # item unless the theater says so.
+  def product_offers(at_door: false)
+    return [] unless sell_products && production_ticketing
+    return [] if at_door && !production_ticketing.products_at_door
+
+    production_ticketing.product_offers
   end
 
   def starts_at

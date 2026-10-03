@@ -1,7 +1,6 @@
 <%
   show = @listing.show
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  offers = @expired ? [] : @listing.product_offers
   free = @order.total_cents.zero?
   pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(@order.total_cents / 100.0)}"
   image, page_image = ticket_page_image(@listing)
@@ -10,6 +9,7 @@
   # Paying on their own phone at the door: the door picked the tickets, and
   # the buyer's details are optional.
   at_door = @order.channel == "door_card"
+  offers = @expired ? [] : @listing.product_offers(at_door: at_door)
 %>
 <% content_for :title, "Checkout · #{@listing.display_title}" %>
 <% content_for :head do %>

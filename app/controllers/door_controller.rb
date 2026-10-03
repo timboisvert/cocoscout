@@ -25,7 +25,7 @@ class DoorController < ApplicationController
   def show
     @counts = door.counts
     @tiers = @listing.ticket_tiers.active.to_a
-    @offers = @listing.product_offers
+    @offers = @listing.product_offers(at_door: true)
   end
 
   # A bottle handed over at the table: the whole line, or one more of it.

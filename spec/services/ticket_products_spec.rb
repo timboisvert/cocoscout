@@ -114,12 +114,19 @@ RSpec.describe "Ticket products", type: :service do
     expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
   end
 
-  it "sells products for cash at the door, never on a comp, and hands them over" do
+  it "sells products for cash at the door only when the production says so, never on a comp, and hands them over" do
     door = TicketDoor.new(listing, create(:user))
+    # Off by default: a pre-sold bottle isn't a door item.
+    expect(listing.product_offers(at_door: true)).to be_empty
+    online_only = door.sell({ general.id.to_s => "1" }, kind: "cash", products: { bottle.id.to_s => "1" })
+    expect(online_only.ticket_order_items).to be_empty
+
+    setup.update!(products_at_door: true)
     order = door.sell({ general.id.to_s => "1" }, kind: "cash", products: { bottle.id.to_s => "1" })
     item = order.ticket_order_items.sole
     expect([ item.name, item.status, order.total_cents, order.money_path ]).to eq([ "Champagne bottle", "valid", 6_500, "cash" ])
-    expect(balance(:door_cash)).to eq(6_500)
+    # The cash box holds the $20 online-only sale and this $65 one.
+    expect(balance(:door_cash)).to eq(2_000 + 6_500)
     expect(balance(:product_income)).to eq(4_500)
 
     comp = door.sell({ general.id.to_s => "1" }, kind: "comp", products: { bottle.id.to_s => "1" })
@@ -127,6 +134,14 @@ RSpec.describe "Ticket products", type: :service do
 
     item.update!(fulfilled_quantity: item.quantity, fulfilled_at: Time.current)
     expect(item.fulfilled?).to be(true)
+  end
+
+  it "lets a date switch the production's products off for itself" do
+    listing.update!(sell_products: false)
+    expect(listing.product_offers).to be_empty
+    order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "1" })
+    TicketCheckout.set_items!(order, { bottle.id.to_s => "1" })
+    expect(order.reload.ticket_order_items).to be_empty
   end
 
   it "moves the products along when every ticket moves to another date" do

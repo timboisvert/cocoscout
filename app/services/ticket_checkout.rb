@@ -74,7 +74,7 @@ class TicketCheckout
     raise Error, "This order can't be changed anymore." unless order.pending?
 
     listing = order.ticket_listing
-    offers = listing.product_offers.index_by(&:id)
+    offers = listing.product_offers(at_door: order.channel.start_with?("door_")).index_by(&:id)
     wanted = quantities.to_h.filter_map { |id, count|
       count = count.to_i.clamp(0, MAX_PER_PRODUCT)
       [ id.to_i, count ] if count.positive? && offers.key?(id.to_i)

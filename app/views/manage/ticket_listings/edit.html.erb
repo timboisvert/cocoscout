@@ -22,6 +22,8 @@
   width: "max-w-3xl"
 } do %>
   <% case @section %>
+  <% when "products" %>
+    <%= render "manage/ticket_listings/settings/products", listing: @listing, setup: setup %>
   <% when "sales" %>
     <%= render "manage/ticket_listings/settings/sales", listing: @listing, setup: setup %>
   <% when "page" %>

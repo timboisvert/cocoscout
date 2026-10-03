@@ -14,7 +14,7 @@ module Manage
 
     GUEST_FILTERS = %w[all waiting in comps refunded].freeze
     # A date's Settings, a tab each with its own Save.
-    SETTINGS = { "tickets" => "Tickets", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes" }.freeze
+    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
                                            change_review tell_change mark_change_told]
@@ -251,7 +251,7 @@ module Manage
     def listing_params
       permitted = params.require(:ticket_listing).permit(
         :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode,
-        :door_note, :age_note, :accessibility_note,
+        :door_note, :age_note, :accessibility_note, :sell_products,
         ticket_tiers_attributes: %i[id name price quantity description position _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)

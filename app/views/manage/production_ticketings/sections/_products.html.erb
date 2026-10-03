@@ -72,7 +72,16 @@
           </li>
         <% end %>
       </ul>
-      <p class="pt-3 text-xs text-gray-500 border-t border-gray-100">Leave a price blank to use the product's standard price. Ticket revenue is what a contract's revenue share is worked out on.</p>
+      <div class="py-4 border-t border-gray-200 flex items-center justify-between gap-4">
+        <div>
+          <div class="text-sm font-medium text-gray-900">Sell them at the door too</div>
+          <div class="text-xs text-gray-600 mt-0.5">
+            Off, products are sold online only, ahead of the show. On, the door can add them to a cash or card sale as well.
+          </div>
+        </div>
+        <%= render "shared/toggle_switch", form: f, field: :products_at_door, checked: setup.products_at_door %>
+      </div>
+      <p class="text-xs text-gray-500">Leave a price blank to use the product's standard price. Ticket revenue is what a contract's revenue share is worked out on.</p>
     <% end %>
   </div>
 

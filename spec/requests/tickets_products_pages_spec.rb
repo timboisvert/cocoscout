@@ -79,8 +79,21 @@ RSpec.describe "Ticket products on pages", type: :request do
     expect(response.parsed_body["message"]).to eq("1 × Champagne bottle handed over")
     expect(item.reload.fulfilled?).to be(true)
 
+    # The door sells products only once the production turns that on.
+    get door_path(listing)
+    expect(response.body).not_to include("With it")
+    setup.update!(products_at_door: true)
     get door_path(listing)
     expect(response.body).to include("With it", "Champagne bottle")
+
+    # A date can switch the production's products off for itself.
+    get manage_edit_ticket_listing_path(listing, section: "products")
+    expect(response.body).to include("Sell products for this date", "Champagne bottle")
+    patch manage_ticket_listing_path(listing), params: { section: "products", ticket_listing: { sell_products: "0" } }
+    expect(listing.reload.sell_products).to be(false)
+    get door_path(listing)
+    expect(response.body).not_to include("With it")
+    listing.update!(sell_products: true)
 
     # Refunding only the bottle from the order page.
     allow(Stripe::Refund).to receive(:create).and_return(double(id: "re_1"))
