@@ -5,6 +5,8 @@ class CourseOfferingPayoutLineItem < ApplicationRecord
   belongs_to :payee, polymorphic: true, optional: true
   belongs_to :manually_paid_by, class_name: "User", optional: true
   has_one :course_offering, through: :course_offering_payout
+  # The payout run line carrying this payment, once it's been staged.
+  has_one :payout_contribution, as: :source
 
   validates :amount_cents, presence: true
 
