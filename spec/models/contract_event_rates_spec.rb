@@ -94,6 +94,87 @@ RSpec.describe "Contract rates for non-ticketed events", type: :model do
     expect(contract.reload.money_shows.size).to eq(4) # back in the deal
   end
 
+  context "after a thin share only partly covered a rehearsal fee" do
+    # Their October share came to $20 against $100 of rehearsal fees: it covers
+    # $20 of the Oct 7 fee, and the $30 left of it carries as a running balance.
+    let(:contractor) do
+      create(:contractor, organization: org, name: "Improvised Animorphs").tap do |c|
+        person = create(:person, stripe_account_id: "acct_ia", payouts_enabled: true)
+        org.people << person
+        c.update!(person: person)
+      end
+    end
+
+    def offset_thin_share!(contract)
+      share = contract.contract_payments.find_by(description: "October revenue share")
+      share.update!(amount: 20, amount_tbd: false)
+      ContractorPayoutRunService.add_contract_payment!(share)
+    end
+
+    def rehearsal_rows(contract)
+      contract.contract_payments.where("description LIKE 'Rehearsal%'").where.not(status: "cancelled")
+              .order(:due_date, :id).map { |p| [ p.description, p.amount.to_f, p.status, p.settlement_method ] }
+    end
+
+    let(:contract) do
+      build_contract.tap do |c|
+        c.update!(contractor: contractor)
+        c.activate!
+        offset_thin_share!(c)
+      end
+    end
+
+    it "carries the uncovered part as a balance still taken out of their next share" do
+      expect(rehearsal_rows(contract)).to eq([
+        [ "Rehearsal — Oct 7, 2026", 20.0, "paid", "payout_deduction" ],
+        [ "Rehearsal balance — Oct 7, 2026", 30.0, "pending", "payout_deduction" ],
+        [ "Rehearsal — Oct 14, 2026", 50.0, "pending", "payout_deduction" ]
+      ])
+      balance = contract.contract_payments.find_by(description: "Rehearsal balance — Oct 7, 2026")
+      expect(balance).to be_deduct_from_payout
+      expect(balance).not_to be_collectable_online
+      expect(balance.show.event_type).to eq("rehearsal")
+    end
+
+    it "never re-bills the part-paid rehearsal or drops its balance when the rate is amended" do
+      contract # offset first
+      config = contract.draft_payment_config.merge("event_rates" => [ rehearsal_rate.merge("amount" => 60.0) ])
+      contract.apply_amendment!({ "payment_config" => config })
+
+      expect(rehearsal_rows(contract)).to eq([
+        [ "Rehearsal — Oct 7, 2026", 20.0, "paid", "payout_deduction" ],
+        [ "Rehearsal balance — Oct 7, 2026", 30.0, "pending", "payout_deduction" ],
+        [ "Rehearsal — Oct 14, 2026", 60.0, "pending", "payout_deduction" ] # untouched by any share: re-priced
+      ])
+    end
+
+    it "keeps the balance through an amendment that also restages the payments" do
+      contract # offset first
+      contract.apply_amendment!({ "payment_config" => contract.draft_payment_config, "payments" => contract.draft_payments })
+
+      expect(rehearsal_rows(contract)).to include([ "Rehearsal balance — Oct 7, 2026", 30.0, "pending", "payout_deduction" ])
+      expect(rehearsal_rows(contract).count { |row| row.first == "Rehearsal — Oct 7, 2026" }).to eq(1)
+    end
+
+    it "never re-bills a rehearsal left in the old offset shape either" do
+      # Before running balances, the remainder was rewritten in place and
+      # flipped to direct — and an amendment then destroyed it and billed the
+      # rehearsal again at the full rate.
+      contract = build_contract.tap(&:activate!)
+      legacy = contract.contract_payments.find_by(description: "Rehearsal — Oct 7, 2026")
+      legacy.update!(amount: 30, settlement_method: "direct",
+                     description: "Rehearsal — Oct 7, 2026 ($20.00 offset against payout)")
+
+      config = contract.draft_payment_config.merge("event_rates" => [ rehearsal_rate.merge("amount" => 60.0) ])
+      contract.apply_amendment!({ "payment_config" => config })
+
+      expect(rehearsal_rows(contract)).to eq([
+        [ "Rehearsal — Oct 7, 2026 ($20.00 offset against payout)", 30.0, "pending", "direct" ],
+        [ "Rehearsal — Oct 14, 2026", 60.0, "pending", "payout_deduction" ]
+      ])
+    end
+  end
+
   describe ".normalize_event_rates" do
     it "keeps only non-ticketed types with a rate of their own" do
       rates = Contract.normalize_event_rates(

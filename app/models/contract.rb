@@ -601,7 +601,9 @@ class Contract < ApplicationRecord
   # Re-bill the event rates after an amendment: pending, uncommitted charges
   # for them come off (folded ones unfold, standalone rows go), then the
   # current rates bill against the current shows. Anything paid or already
-  # on a payout run is never touched (bill_services! skips what's billed).
+  # on a payout run is never touched (bill_services! skips what's billed), and
+  # neither is a running balance — that's money still owed for an event a
+  # share already part-paid.
   def reconcile_event_rate_payments!(previous_types)
     contract_payments.reset # judge "already paid" from the database, not a stale load
     names = (Array(previous_types) + separately_rated_event_types).uniq
@@ -612,7 +614,7 @@ class Contract < ApplicationRecord
                        .each { |p| p.unfold_services!(names) }
       conditions = names.map { "description LIKE ?" }.join(" OR ")
       contract_payments.status_pending.where(conditions, *names.map { |n| "#{n} — %" })
-                       .reject(&:in_payout_run?).each(&:destroy!)
+                       .reject { |p| p.in_payout_run? || p.carried_balance? }.each(&:destroy!)
     end
     bill_services!(event_rate_service_lines)
   end
@@ -677,13 +679,16 @@ class Contract < ApplicationRecord
     shows_by_date = service_shows_by_date
     # Charges already settled — paid, or netted out of a payout run, or folded
     # into a payment that has been. Re-billing on an amendment must not raise
-    # them a second time.
-    already_billed = contract_payments.select { |p| p.status_paid? || p.in_payout_run? }.flat_map do |p|
+    # them a second time. A charge a share only partly covered counts too, by
+    # its event: the covered part is paid, and its running balance ("Rehearsal
+    # balance — Oct 8, 2026") is still owed — billing the event again would
+    # charge the full rate on top of both.
+    already_billed = contract_payments.select { |p| p.status_paid? || p.in_payout_run? || p.carried_balance? }.flat_map do |p|
       folded = p.service_components.map do |c|
         date = (Date.parse(c["billed_for"].to_s) rescue nil)
         date ? [ "#{c['name']} — #{date.strftime('%b %-d, %Y')}", date ] : [ c["name"], p.due_date ]
       end
-      [ [ p.description, p.due_date ] ] + folded
+      [ [ p.billed_description, p.due_date ] ] + folded
     end.to_set
 
     Array(services).each do |service|
@@ -791,7 +796,7 @@ class Contract < ApplicationRecord
       # Pending only, and never one already committed to a payout run — that
       # money is spoken for, and destroying it would strand the run's contribution.
       contract_payments.status_pending.where(conditions, *binds)
-                       .reject(&:in_payout_run?).each(&:destroy!)
+                       .reject { |p| p.in_payout_run? || p.carried_balance? }.each(&:destroy!)
     end
     update_draft_step(:services, Array(new_services))
     bill_services!(draft_services)
@@ -815,6 +820,9 @@ class Contract < ApplicationRecord
   # already carry settled money are closed — nothing is ever created for them.
   def reconcile_amended_payments!(staged_payments)
     staged = Array(staged_payments).filter_map { |row| staged_payment_attributes(row) }
+    # Judge "settled" from the database: a stale load would see a charge a
+    # payout run just paid as still pending, and destroy it below.
+    contract_payments.reset
     # Service charges are billed by reconcile_service_payments!, never staged
     # by the Financials editor — so to this reconcile they all look like rows
     # the deal no longer produces. Leave them out entirely, or an amendment
@@ -1129,8 +1137,12 @@ class Contract < ApplicationRecord
 
   # A payment billed from the services list: named for the service, bare or
   # with its event date ("Booth Tech" / "Booth Tech — Aug 9, 2026") — the same
-  # shapes bill_services! writes and reconcile_service_payments! matches.
+  # shapes bill_services! writes and reconcile_service_payments! matches. A
+  # running balance carried from a partly covered charge (an event rate's or a
+  # service's) is one too: never a settlement, never the deal's to re-stage.
   def service_charge?(payment)
+    return true if payment.carried_balance?
+
     draft_services.any? do |s|
       name = s["name"].to_s
       name.present? && (payment.description == name || payment.description.to_s.start_with?("#{name} — "))

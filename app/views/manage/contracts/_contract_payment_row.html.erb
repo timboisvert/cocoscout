@@ -274,8 +274,15 @@
             <%# confirm_modal renders `message` as HTML, so the name is escaped here. %>
             <%= render "shared/confirm_modal", id: add_to_run_cid,
                   title: "Add to payout run?",
-                  message: has_bank ? "Add this payment to your payout run?" :
-                    "Add this payment to your payout run? #{h(contractor&.name)} hasn't connected a bank yet, so their share waits on the run until they do.",
+                  message: if net_to_hand_over <= 0
+                    # A wash: their charges cover the share, so nothing moves
+                    # and no bank is needed.
+                    "What #{h(contractor&.name)} owes covers this whole share, so no money moves: it settles as an offset, and any balance left comes out of their next share."
+                  elsif has_bank
+                    "Add this payment to your payout run?"
+                  else
+                    "Add this payment to your payout run? #{h(contractor&.name)} hasn't connected a bank yet, so their share waits on the run until they do."
+                  end,
                   confirm_text: "Add to payout run",
                   url: add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
                   method: :post %>

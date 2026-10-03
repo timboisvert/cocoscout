@@ -329,6 +329,48 @@ class ContractPayment < ApplicationRecord
     update!(status: :paid, paid_date: Date.current, payment_method: "payout_deduction", reference_number: reference)
   end
 
+  # --- Running balances ---------------------------------------------------------
+  #
+  # When a share is smaller than what they owe, the share covers part of a
+  # charge and the rest carries forward as a running balance: the covered part
+  # stays on the original row (paid by deduction) and the remainder becomes a
+  # new pending row, "Rehearsal balance — Oct 8, 2026", that the next share
+  # keeps chipping down (see ContractorPayoutRunService.settle_as_wash!).
+  BALANCE_SEPARATOR = " — "
+  BALANCE_SUFFIX = " balance"
+  # Before running balances, a partly covered charge was rewritten in place:
+  # "Rehearsal — Sep 6, 2026 ($34.00 offset against payout)", flipped to direct.
+  LEGACY_OFFSET_SUFFIX = /\s*\(\$[\d,]+(?:\.\d+)? offset against payout\)\z/
+
+  # "Rehearsal — Oct 8, 2026" → "Rehearsal balance — Oct 8, 2026". A charge
+  # with no event date ("Tech service") takes its due date.
+  def self.balance_description(description, due_date)
+    base = description.to_s.sub(LEGACY_OFFSET_SUFFIX, "")
+    name, date = base.split(BALANCE_SEPARATOR, 2)
+    name = name.to_s.delete_suffix(BALANCE_SUFFIX).presence || "Service"
+    date = date.presence || due_date&.strftime("%b %-d, %Y")
+    [ "#{name}#{BALANCE_SUFFIX}", date ].compact.join(BALANCE_SEPARATOR)
+  end
+
+  # A remainder carried forward from a charge a share only partly covered —
+  # in either shape. The event it belongs to is already billed: an amendment
+  # must never destroy it or bill the event again.
+  def carried_balance?
+    desc = description.to_s
+    desc.match?(LEGACY_OFFSET_SUFFIX) ||
+      desc.split(BALANCE_SEPARATOR, 2).first.to_s.end_with?(BALANCE_SUFFIX)
+  end
+
+  # The description of the charge this row bills for, as bill_services! wrote
+  # it: a balance row or a legacy offset row maps back to its event's charge.
+  def billed_description
+    desc = description.to_s.sub(LEGACY_OFFSET_SUFFIX, "")
+    name, date = desc.split(BALANCE_SEPARATOR, 2)
+    return desc unless date && name.end_with?(BALANCE_SUFFIX)
+
+    "#{name.delete_suffix(BALANCE_SUFFIX)}#{BALANCE_SEPARATOR}#{date}"
+  end
+
   # --- Paying us online -------------------------------------------------------
 
   # Whether this payment can be collected through a pay link: money owed TO us,
