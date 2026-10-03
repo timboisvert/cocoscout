@@ -173,7 +173,7 @@ RSpec.describe "Production ticketing", type: :request do
       get manage_edit_ticket_listing_path(listing, section: "sales")
       expect(response.body).to include("When sales open and close", "Who pays the fees")
       get manage_edit_ticket_listing_path(listing, section: "codes")
-      expect(response.body).to include("Discount codes for this date")
+      expect(response.body).to include("good for this date")
     end
   end
 end

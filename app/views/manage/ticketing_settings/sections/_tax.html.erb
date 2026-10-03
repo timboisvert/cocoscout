@@ -12,13 +12,11 @@
   ]
 %>
 <%= form_with url: manage_ticketing_settings_tax_path, method: :patch, scope: :tax do |f| %>
-  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Tax on tickets</h2>
-      <p class="text-sm text-gray-600 mt-1">If you charge tax on tickets, enter it here. CocoScout collects it at checkout, pays it out to you with your ticket money, and lists it in your taxes-collected report. You send it to the government. Leave the percentage blank if your tickets carry no tax.</p>
-    </div>
+  <div class="space-y-6">
+    <p class="text-sm text-gray-600">If you charge tax on tickets, enter it here. CocoScout collects it at checkout, pays it out to you with your ticket money, and lists it in your taxes-collected report. You send it to the government. Leave the percentage blank if your tickets carry no tax.</p>
 
-    <div class="px-6 py-5 space-y-6">
+
+    <div class="space-y-6">
       <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_10rem] gap-4">
         <div>
           <label for="tax_name" class="block text-sm font-medium text-gray-700 mb-1.5">Name on receipts</label>
@@ -49,8 +47,6 @@
       </fieldset>
     </div>
 
-    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
-      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
-    </div>
+    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
   </div>
 <% end %>

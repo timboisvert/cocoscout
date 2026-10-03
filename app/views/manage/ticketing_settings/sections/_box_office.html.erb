@@ -11,13 +11,10 @@
   ]
 %>
 <%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
-  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Your box office</h2>
-      <p class="text-sm text-gray-600 mt-1">Where buyers find your shows and how checkout works. Every organization gets the same page design.</p>
-    </div>
+  <div class="space-y-6">
+    <p class="text-sm text-gray-600">Where buyers find your shows and how checkout works. Every organization gets the same page design.</p>
 
-    <div class="px-6 py-5 space-y-6">
+    <div class="space-y-6">
       <div>
         <label for="ticketing_profile_slug" class="block text-sm font-medium text-gray-700 mb-1.5">Web address</label>
         <div class="flex items-stretch">
@@ -86,8 +83,6 @@
       <% end %>
     </div>
 
-    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
-      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
-    </div>
+    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
   </div>
 <% end %>

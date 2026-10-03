@@ -12,24 +12,21 @@
 %>
 <%= form_with model: setup, scope: :production_ticketing, url: manage_update_production_ticketing_path(production, section: "products"), method: :patch,
       class: "space-y-6", data: { controller: "fieldset-toggle" } do |f| %>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-200">
-      <h3 class="font-semibold text-gray-900">Products at checkout</h3>
-      <p class="text-sm text-gray-600 mt-1">
-        After picking their tickets, buyers of any date of <%= production.name %> can add these. What they buy shows on their
-        order, on the guest list and at the door.
-        <%= link_to "Manage your products", manage_ticket_products_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
-      </p>
-    </div>
+  <p class="text-sm text-gray-600">
+    After picking their tickets, buyers of any date of <%= production.name %> can add these at checkout. What they buy shows on their
+    order, on the guest list and at the door.
+    <%= link_to "Manage your products", manage_ticket_products_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
+  </p>
+  <div>
     <% if products.empty? %>
-      <div class="px-5 py-8 text-center">
+      <div class="py-6 text-center">
         <p class="text-sm text-gray-600">You haven't added any products yet.</p>
         <div class="mt-3 flex justify-center">
           <%= render "shared/button", text: "Add a product", variant: "secondary", size: "small", path: manage_new_ticket_product_path %>
         </div>
       </div>
     <% else %>
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+      <div class="py-4 border-b border-gray-200 flex items-center justify-between gap-4">
         <div>
           <div class="text-sm font-medium text-gray-900">Set prices for this production only</div>
           <div class="text-xs text-gray-600 mt-0.5">
@@ -43,7 +40,7 @@
       <ul class="divide-y divide-gray-100">
         <% products.each do |product| %>
           <% link = links[product.id] %>
-          <li class="px-5 py-3 space-y-2">
+          <li class="py-3 space-y-2">
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
               <label class="flex items-center gap-3 min-w-[12rem] flex-1 cursor-pointer">
                 <%= check_box_tag "products[#{product.id}][offered]", "1", link.present?, id: "product_offered_#{product.id}", class: checkbox_class %>
@@ -75,7 +72,7 @@
           </li>
         <% end %>
       </ul>
-      <p class="px-5 py-3 text-xs text-gray-500 border-t border-gray-100">Leave a price blank to use the product's standard price. Ticket revenue is what a contract's revenue share is worked out on.</p>
+      <p class="pt-3 text-xs text-gray-500 border-t border-gray-100">Leave a price blank to use the product's standard price. Ticket revenue is what a contract's revenue share is worked out on.</p>
     <% end %>
   </div>
 

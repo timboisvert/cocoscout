@@ -6,15 +6,12 @@
   production_codes = listing.organization.ticket_discount_codes.where(production: listing.production, active: true).order(:code).to_a
   describe = ->(code) { code.kind == "percent" ? "#{format('%g', code.percent)}% off" : "#{number_to_currency(code.amount_cents / 100.0)} off" }
 %>
-<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-  <div class="px-5 py-4 border-b border-gray-200">
-    <h3 class="font-semibold text-gray-900">Discount codes for this date</h3>
-    <p class="text-sm text-gray-600 mt-1">Codes buyers can enter at checkout, for <%= ticket_listing_date_label(listing) %> only.</p>
-  </div>
+<p class="text-sm text-gray-600">Codes buyers can enter at checkout, good for this date (<%= ticket_listing_date_label(listing) %>) only.</p>
+<div>
   <% if codes.any? %>
-    <div class="divide-y divide-gray-100">
+    <div class="divide-y divide-gray-100 border-y border-gray-200">
       <% codes.each do |code| %>
-        <div class="flex items-center justify-between gap-3 px-5 py-3">
+        <div class="flex items-center justify-between gap-3 py-3">
           <div class="min-w-0">
             <span class="font-mono text-sm font-semibold text-gray-900"><%= code.code %></span>
             <span class="text-sm text-gray-600"> · <%= describe.call(code) %></span>
@@ -26,7 +23,7 @@
       <% end %>
     </div>
   <% end %>
-  <%= form_with scope: :ticket_discount_code, url: manage_ticket_listing_codes_path(listing), method: :post, class: "px-5 py-5 border-t border-gray-100" do |cf| %>
+  <%= form_with scope: :ticket_discount_code, url: manage_ticket_listing_codes_path(listing), method: :post, class: "pt-5" do |cf| %>
     <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem] gap-2">
       <%= cf.text_field :code, placeholder: "FRIENDS", "aria-label": "Code", class: "#{input_class} uppercase" %>
       <%= cf.select :kind, options_for_select([ [ "$ off", "fixed" ], [ "% off", "percent" ] ]), {}, "aria-label": "Kind", class: input_class %>
@@ -40,8 +37,8 @@
 </div>
 
 <% if production_codes.any? %>
-  <div class="bg-white border border-gray-200 rounded-lg p-5">
-    <h3 class="font-semibold text-gray-900">Also good here</h3>
+  <div class="pt-5 border-t border-gray-200">
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Also good here</h3>
     <p class="text-sm text-gray-600 mt-1">Codes for every date of <%= listing.production.name %>.
       <%= link_to "Manage them", manage_edit_production_ticketing_path(listing.production, section: "codes"), class: "font-medium text-pink-600 hover:text-pink-700" %></p>
     <ul class="mt-3 space-y-1 text-sm">
