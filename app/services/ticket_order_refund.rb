@@ -132,7 +132,7 @@ class TicketOrderRefund
     TicketRefundEmailJob.perform_later(refund.id) if notify && order.buyer_email.present? && refund.amount_cents.positive?
     # The theater's team hears about refunds one by one; a canceled show's
     # refunds are summed up when the cancellation finishes.
-    TicketingNotifier.notify(order.organization, :refund_issued, variables: TicketingNotificationContent.refund(refund)) if notify
+    TicketingNotifier.notify(order.organization, :refund_issued, variables: TicketingNotificationContent.refund(refund)) if notify && order.money_path != "none"
     refund
   rescue Stripe::StripeError => e
     OrgCashEntry.unpost!(source: refund, entry_type: "ticket_refund") if refund

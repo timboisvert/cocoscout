@@ -1,8 +1,8 @@
 <%# An order's state as a small badge. Locals: order. %>
 <%
   label, classes = case order.status
-                   when "refunded" then [ "Refunded", "bg-gray-100 text-gray-600" ]
-                   when "partially_refunded" then [ "Part refunded", "bg-amber-100 text-amber-700" ]
+                   when "refunded" then [ order.money_path == "none" ? "Canceled" : "Refunded", "bg-gray-100 text-gray-600" ]
+                   when "partially_refunded" then [ order.money_path == "none" ? "Part canceled" : "Part refunded", "bg-amber-100 text-amber-700" ]
                    when "exchanged" then [ "Moved", "bg-gray-100 text-gray-600" ]
                    else
                      case order.channel

@@ -38,9 +38,12 @@
         <div class="min-w-0">
           <h2 class="text-lg font-semibold text-gray-900"><%= @order.buyer_name.presence || "No name" %></h2>
           <p class="text-sm text-gray-600"><%= [ @order.buyer_email, @order.buyer_phone ].compact_blank.join(" · ").presence || "No contact details" %></p>
-          <p class="text-sm text-gray-600 mt-2">
-            <%= link_to listing.display_title, manage_edit_ticket_listing_path(listing), class: "font-medium text-gray-900 hover:text-pink-600" %>
-            · <%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %>
+          <%# The show and its date, one link to the show's ticketing page. %>
+          <p class="text-sm mt-2">
+            <%= link_to manage_ticket_listing_path(listing), class: "text-gray-600 hover:text-pink-600" do %>
+              <span class="font-medium text-gray-900"><%= listing.display_title %></span>
+              · <%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %>
+            <% end %>
           </p>
           <p class="text-xs text-gray-500 mt-1">
             <%= @order.paid_at ? "Bought #{@order.paid_at.strftime('%b %-d at %-l:%M %p')}" : "Not paid" %>
@@ -73,22 +76,30 @@
       <% end %>
     </div>
 
-    <%# Tickets: tick the ones to refund (all of them, by default). %>
+    <%# Tickets, and what to give back: with more than one thing on the order,
+        tick the ones to refund (or cancel, for a comp); with one, there's
+        nothing to choose. %>
+    <%
+      can_act = @refunds_allowed && (@refundable_ids.any? || @refundable_item_ids.any?)
+      choosing = can_act && (@refundable_ids.size + @refundable_item_ids.size) > 1
+      act_word = @order.money_path == "none" ? "cancel" : "refund"
+    %>
     <%= form_with url: manage_ticket_order_refund_path(@order.id), method: :get, local: true do %>
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-baseline justify-between gap-2">
           <h2 class="text-lg font-semibold text-gray-900"><%= pluralize(@tickets.size, "ticket") %></h2>
+          <% if choosing %><span class="text-xs text-gray-500">Tick what to <%= act_word %></span><% end %>
         </div>
         <%= hidden_field_tag "ticket_ids[]", "", id: nil %>
         <ul class="divide-y divide-gray-100">
           <% @tickets.each do |ticket| %>
             <% refundable = @refunds_allowed && @refundable_ids.include?(ticket.id) %>
             <li class="flex items-center gap-3 px-6 py-3">
-              <% if refundable && @refundable_ids.any? %>
-                <%= check_box_tag "ticket_ids[]", ticket.id, true, id: "refund_ticket_#{ticket.id}", "aria-label": "Refund #{ticket.ticket_tier.name}",
+              <% if refundable && choosing %>
+                <%= check_box_tag "ticket_ids[]", ticket.id, true, id: "refund_ticket_#{ticket.id}", "aria-label": "#{act_word.capitalize} #{ticket.ticket_tier.name}",
                       class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-              <% else %>
-                <span class="w-4"></span>
+              <% elsif refundable %>
+                <%= hidden_field_tag "ticket_ids[]", ticket.id, id: nil %>
               <% end %>
               <div class="min-w-0 flex-1">
                 <div class="text-sm font-medium text-gray-900"><%= ticket.ticket_tier.name %> <span class="font-normal text-gray-500"><%= ticket_price(ticket.price_cents - ticket.discount_cents) %></span></div>
@@ -102,6 +113,8 @@
                     Refunded <%= ticket.refunded_at&.strftime("%b %-d") %>
                   <% when "exchanged" %>
                     Moved to another date
+                  <% when "void" %>
+                    Canceled <%= ticket.refunded_at&.strftime("%b %-d") %>
                   <% else %>
                     <%= ticket.status.humanize %>
                   <% end %>
@@ -117,11 +130,11 @@
             <% @items.each do |item| %>
               <% refundable = @refunds_allowed && @refundable_item_ids.include?(item.id) %>
               <li class="flex items-center gap-3 px-6 py-3">
-                <% if refundable && (@refundable_ids.any? || @refundable_item_ids.any?) %>
-                  <%= check_box_tag "item_ids[]", item.id, true, id: "refund_item_#{item.id}", "aria-label": "Refund #{item.label}",
+                <% if refundable && choosing %>
+                  <%= check_box_tag "item_ids[]", item.id, true, id: "refund_item_#{item.id}", "aria-label": "#{act_word.capitalize} #{item.label}",
                         class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-                <% else %>
-                  <span class="w-4"></span>
+                <% elsif refundable %>
+                  <%= hidden_field_tag "item_ids[]", item.id, id: nil %>
                 <% end %>
                 <div class="min-w-0 flex-1">
                   <div class="text-sm font-medium text-gray-900"><%= item.label %> <span class="font-normal text-gray-500"><%= ticket_price(item.price_cents) %></span></div>
@@ -148,6 +161,12 @@
           <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 text-sm text-gray-600">
             This show has happened, and refunds after the show are off.
             <%= link_to "Change that in Ticketing settings", manage_ticketing_settings_section_path(section: "box_office"), class: "font-medium text-pink-600 hover:text-pink-700" %>
+          </div>
+        <% elsif (@refundable_ids.any? || @refundable_item_ids.any?) && @order.money_path == "none" %>
+          <%# Comps: no money to give back, the tickets just stop working and the seats come free. %>
+          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
+            <span class="text-sm text-gray-600">Not coming after all? Cancel <%= choosing ? "the ticked tickets" : "the ticket" %> and the seat<%= "s" if @refundable_ids.size > 1 %> come<%= "s" unless @refundable_ids.size > 1 %> free.</span>
+            <%= render "shared/button", text: "Cancel tickets", variant: "secondary", size: "small", type: :submit %>
           </div>
         <% elsif (@refundable_ids.any? || @refundable_item_ids.any?) && @order.total_cents.positive? %>
           <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
@@ -212,7 +231,7 @@
     <% if @refunds.any? %>
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold text-gray-900">Refunds</h2>
+          <h2 class="text-lg font-semibold text-gray-900"><%= @order.money_path == "none" ? "Canceled tickets" : "Refunds" %></h2>
         </div>
         <ul class="divide-y divide-gray-100">
           <% @refunds.each do |refund| %>
@@ -223,13 +242,17 @@
                     <%= number_to_currency(refund.amount_cents / 100.0) %>, the price difference
                   <% else %>
                     <% what = [ (pluralize(refund.ticket_ids.size, "ticket") if refund.ticket_ids.any?), (pluralize(refund.item_ids.size, "product") if refund.item_ids.any?) ].compact.join(" and ") %>
-                    <%= number_to_currency(refund.amount_cents / 100.0) %> for <%= what %><%= " (fees kept)" if refund.keep_fees %>
+                    <% if @order.money_path == "none" %>
+                      Canceled <%= what %>
+                    <% else %>
+                      <%= number_to_currency(refund.amount_cents / 100.0) %> for <%= what %><%= " (fees kept)" if refund.keep_fees %>
+                    <% end %>
                   <% end %>
                 </span>
                 <span class="text-gray-500"><%= refund.created_at.strftime("%b %-d, %-l:%M %p") %></span>
               </div>
               <div class="text-xs text-gray-500 mt-0.5">
-                <%= refund.status == "failed" ? "Didn't go through: #{refund.error}" : [ refund.reason, refund.refunded_by&.person&.name ].compact_blank.join(" · ").presence || "Refunded" %>
+                <%= refund.status == "failed" ? "Didn't go through: #{refund.error}" : [ refund.reason, refund.refunded_by&.person&.name ].compact_blank.join(" · ").presence || (@order.money_path == "none" ? "Canceled" : "Refunded") %>
               </div>
             </li>
           <% end %>

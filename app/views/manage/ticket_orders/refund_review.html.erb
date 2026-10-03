@@ -5,23 +5,25 @@
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   product_paid = q.items.sum(&:price_cents) + q.items.sum { |i| i.tax_lines.reject(&:included).sum(&:tax_cents) }
   tickets_cents = q.amount_cents - q.fees_cents - product_paid
+  comp = @order.money_path == "none"
+  who = @order.buyer_name.presence || "the buyer"
 %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Orders", manage_ticket_orders_path ], [ "Order #{@order.code}", manage_ticket_order_path(@order.id) ] ],
-    text: "Refund",
+    text: comp ? "Cancel tickets" : "Refund",
     links: []
   } %>
 
   <div class="max-w-xl space-y-6">
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900">Refund <%= number_to_currency(q.amount_cents / 100.0) %> to <%= @order.buyer_name.presence || "the buyer" %></h2>
+        <h2 class="text-lg font-semibold text-gray-900"><%= comp ? "Cancel #{pluralize(q.tickets.size, 'ticket')} for #{who}" : "Refund #{number_to_currency(q.amount_cents / 100.0)} to #{who}" %></h2>
         <p class="text-sm text-gray-600 mt-1"><%= listing.display_title %> · <%= listing.show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
       </div>
-      <dl class="px-6 py-4 space-y-1.5 text-sm">
+      <dl class="px-6 py-4 space-y-1.5 text-sm <%= 'hidden' if comp %>">
         <% if q.tickets.any? %>
           <div class="flex justify-between gap-4">
             <dt class="text-gray-600"><%= pluralize(q.tickets.size, "ticket") %><%= " (incl. tax)" if q.tax_cents.positive? %></dt>
@@ -52,7 +54,7 @@
         <% when "cash" %>
           <p>This was a cash sale at the door: hand the money back from the cash box.</p>
         <% when "none" %>
-          <p>These were comps, so no money moves. The tickets just stop working.</p>
+          <p>These were comps, so no money moves. The tickets stop working and their seats come free; the guest isn't emailed.</p>
         <% else %>
           <p>It goes back to the card they paid with.
             <% if q.platform_fee_waived_cents.positive? %>
@@ -103,7 +105,7 @@
           <%= text_field_tag :reason, nil, placeholder: "Can't make it; asked by email", class: input_class %>
         </div>
         <div class="flex flex-wrap gap-2">
-          <%= render "shared/button", text: "Refund #{number_to_currency(q.amount_cents / 100.0)}", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: (comp ? "Cancel #{pluralize(q.tickets.size, 'ticket')}" : "Refund #{number_to_currency(q.amount_cents / 100.0)}"), variant: "primary", size: "medium", type: :submit %>
           <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_ticket_order_path(@order.id) %>
         </div>
       <% end %>

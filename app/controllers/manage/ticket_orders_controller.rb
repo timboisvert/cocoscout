@@ -105,7 +105,9 @@ module Manage
     def refund
       refund = TicketOrderRefund.issue!(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: params[:keep_fees] == "1",
                                                 by: Current.user, reason: params[:reason].presence)
-      notice = if @order.money_path == "cash"
+      notice = if @order.money_path == "none"
+        "Canceled #{helpers.pluralize(refund.ticket_ids.size, 'ticket')} for #{@order.buyer_name.presence || 'the guest'}. The seats are free again."
+      elsif @order.money_path == "cash"
         "Refunded #{helpers.number_to_currency(refund.amount_cents / 100.0)}: hand it back from the cash box."
       else
         "Refunded #{helpers.number_to_currency(refund.amount_cents / 100.0)} to #{@order.buyer_name.presence || 'the buyer'}."
