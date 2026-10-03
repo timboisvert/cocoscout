@@ -29,7 +29,8 @@ RSpec.describe "Ticket products on pages", type: :request do
   it "offers the production's products at checkout and saves what the buyer adds" do
     order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "2" })
     get tickets_checkout_path(token: order.token)
-    expect(response.body).to include("Add to your order", "Champagne bottle", "Bubbly at your table", "Waiting for you at the show")
+    expect(response.body).to include("Add to your order", "Champagne bottle", "Bubbly at your table", "Waiting for you at the show", "$45.00")
+    expect(response.body).not_to include("incl. fees")
 
     patch tickets_checkout_items_path(token: order.token), params: { products: { bottle.id.to_s => "2" } }, as: :json
     data = response.parsed_body

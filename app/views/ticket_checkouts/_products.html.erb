@@ -13,13 +13,12 @@
   <ul class="divide-y divide-gray-100 border-t border-gray-100">
     <% offers.each do |offer| %>
       <% count = counts[offer.id]&.quantity.to_i %>
-      <% all_in = TicketPricing.all_in_product_price_cents(listing, offer) %>
       <li class="flex items-center gap-3 px-5 py-4" data-ticket-checkout-target="productRow" data-product-id="<%= offer.id %>" data-max="<%= TicketCheckout::MAX_PER_PRODUCT %>">
         <div class="min-w-0 flex-1">
           <div class="font-medium text-gray-900"><%= offer.name %></div>
           <% if offer.description.present? %><div class="text-sm text-gray-600"><%= offer.description %></div><% end %>
-          <% note = product_price_note(listing, offer) %>
-          <div class="text-sm text-gray-500 mt-0.5"><%= ticket_price(all_in) %><%= " #{note}" if note && all_in != offer.price_cents %></div>
+          <%# The price itself; the fees and tax show in the summary above once it's added. %>
+          <div class="text-sm text-gray-500 mt-0.5"><%= ticket_price(offer.price_cents) %></div>
         </div>
         <div class="flex items-center gap-2">
           <%= render "shared/button", text: "−", variant: "secondary", size: "xs", type: :button, title: "One fewer #{offer.name}",

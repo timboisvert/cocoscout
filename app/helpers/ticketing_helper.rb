@@ -98,17 +98,6 @@ module TicketingHelper
 
   # "Sales tax 10.25%" ("Sales tax" where space is tight), or just "Tax"
   # when several apply.
-  # "incl. fees & tax", "incl. fees" or "incl. tax" after a product's all-in
-  # price (the ticket page's wording), or nil when the price is just the price.
-  def product_price_note(listing, offer)
-    taxed = TaxCalculator.for_product(listing, offer, offer.price_cents).lines.any? { |line| !line.exempt }
-    if listing.buyer_pays_fees?
-      taxed ? "incl. fees & tax" : "incl. fees"
-    elsif taxed
-      "incl. tax"
-    end
-  end
-
   def ticket_tax_label(lines, rate: true)
     return "Tax" unless lines.map { |line| [ line.name, line.rate_bps ] }.uniq.one?
 

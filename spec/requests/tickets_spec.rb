@@ -71,6 +71,11 @@ RSpec.describe "Public ticketing", type: :request do
 
       get tickets_event_path(org: "starsandgarters", event: production.id.to_s)
       expect(response).to have_http_status(:not_found)
+
+      # One date needs no picking: the chips stay hidden.
+      later_listing.update!(status: "draft")
+      get tickets_event_path(org: "starsandgarters", event: production.public_key)
+      expect(response.body).to include(%(class="flex flex-wrap justify-center gap-2 hidden" aria-label="Pick a date"), "Continue to checkout")
     end
   end
 

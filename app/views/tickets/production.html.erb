@@ -46,8 +46,9 @@
   <% if @listings.empty? %>
     <div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center text-gray-700">No dates on sale right now.</div>
   <% else %>
-    <%# Pick a date: every upcoming date as a chip, the chosen one in pink. %>
-    <nav class="flex flex-wrap justify-center gap-2" aria-label="Pick a date">
+    <%# Pick a date: every upcoming date as a chip, the chosen one in pink.
+        One date needs no picking. %>
+    <nav class="flex flex-wrap justify-center gap-2 <%= 'hidden' if @listings.one? %>" aria-label="Pick a date">
       <% @listings.each do |listing| %>
         <% current = listing == selected %>
         <% note = chip_note.call(listing) %>
