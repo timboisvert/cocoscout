@@ -33,6 +33,21 @@ class TicketSalesAccess
             .includes(contractor: :person).select { |contract| contract.contract_shows.exists?(id: listing.show_id) }
   end
 
+  # The contracts of a production whose contractor sees its shows' sales.
+  def self.contracts_for_production(production)
+    Contract.where(organization_id: production.organization_id, production_id: production.id).where.not(status: %w[draft cancelled])
+            .includes(contractor: :person).to_a
+  end
+
+  # Everyone a production was shared with: every date, or any one of its dates.
+  def self.viewers_for_production(production)
+    listing_ids = TicketListing.where(production_id: production.id).select(:id)
+    TicketSalesViewer.active.where(organization_id: production.organization_id)
+                     .where("(scope_type = 'TicketListing' AND scope_id IN (:l)) OR (scope_type = 'Production' AND scope_id = :p)",
+                            l: listing_ids, p: production.id)
+                     .preload(:user).order(:created_at)
+  end
+
   # Everyone the show was shared with, directly or through its production.
   def self.viewers_for(listing)
     TicketSalesViewer.active.where(organization_id: listing.organization_id)

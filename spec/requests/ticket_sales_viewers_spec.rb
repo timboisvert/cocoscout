@@ -35,15 +35,15 @@ RSpec.describe "Ticket sales viewers", type: :request do
     sign_in(superadmin)
     get manage_path
     get manage_ticket_listing_path(listing)
-    expect(response.body).to include("Who can see sales", manage_ticket_listing_viewers_path(listing))
+    expect(response.body).to include("Visibility", manage_ticket_listing_visibility_path(listing))
 
-    get manage_ticket_listing_viewers_path(listing)
+    get manage_ticket_listing_visibility_path(listing)
     expect(response.body).to include("Shared with", "Nobody yet", "Add someone else")
 
-    get manage_ticket_listing_viewers_search_path(listing, q: "Pat")
+    get manage_ticket_listing_visibility_search_path(listing, q: "Pat")
     expect(response.body).to include("Pat Producer", "Choose")
 
-    post manage_ticket_listing_viewers_path(listing), params: { person_id: producer_person.id, share_scope: "listing" }
+    post manage_ticket_listing_visibility_path(listing), params: { person_id: producer_person.id, share_scope: "listing" }
     expect(flash[:notice]).to include("Pat Producer can now see the sales")
     viewer = org.ticket_sales_viewers.active.sole
     expect([ viewer.user_id, viewer.scope ]).to eq([ producer.id, listing ])
@@ -64,7 +64,7 @@ RSpec.describe "Ticket sales viewers", type: :request do
     # Cut off.
     sign_in(superadmin)
     get manage_path
-    delete manage_ticket_listing_viewer_path(listing, viewer_id: viewer.id)
+    delete manage_ticket_listing_visibility_viewer_path(listing, viewer_id: viewer.id)
     expect(viewer.reload.revoked_at).to be_present
     sign_in(producer)
     get my_ticket_sale_path(listing)
@@ -79,10 +79,10 @@ RSpec.describe "Ticket sales viewers", type: :request do
 
     sign_in(superadmin)
     get manage_path
-    get manage_ticket_listing_viewers_path(listing)
+    get manage_ticket_listing_visibility_path(listing)
     expect(response.body).to include("Add from Rising Stars", "Pat Producer")
 
-    post manage_ticket_listing_viewers_path(listing), params: { person_ids: [ producer_person.id ], share_scope: "production" }
+    post manage_ticket_listing_visibility_path(listing), params: { person_ids: [ producer_person.id ], share_scope: "production" }
     expect(org.ticket_sales_viewers.active.sole.scope).to eq(production)
 
     sign_in(producer)
@@ -101,9 +101,9 @@ RSpec.describe "Ticket sales viewers", type: :request do
 
     sign_in(superadmin)
     get manage_path
-    get manage_ticket_listing_viewers_path(listing)
+    get manage_ticket_listing_visibility_path(listing)
     expect(response.body).to include("Automatically", "Pat Producer")
-    patch manage_ticket_listing_viewer_contract_path(listing, contract_id: contract.id), params: { shares_ticket_sales: "0" }
+    patch manage_ticket_listing_visibility_contract_path(listing, contract_id: contract.id), params: { shares_ticket_sales: "0" }
     expect(contract.reload.shares_ticket_sales).to be(false)
     expect(TicketSalesAccess.can_see?(producer, listing)).to be(false)
   end
@@ -111,11 +111,11 @@ RSpec.describe "Ticket sales viewers", type: :request do
   it "invites someone by email when the search finds nobody, and they accept by making an account" do
     sign_in(superadmin)
     get manage_path
-    get manage_ticket_listing_viewers_search_path(listing, q: "sam@example.com")
+    get manage_ticket_listing_visibility_search_path(listing, q: "sam@example.com")
     expect(response.body).to include("Nobody on CocoScout matches", 'value="sam@example.com"')
 
     expect {
-      post manage_ticket_listing_viewers_invite_path(listing), params: { email: "sam@example.com", name: "Sam Producer", share_scope: "listing" }
+      post manage_ticket_listing_visibility_invite_path(listing), params: { email: "sam@example.com", name: "Sam Producer", share_scope: "listing" }
     }.to have_enqueued_job(ActionMailer::MailDeliveryJob)
     viewer = org.ticket_sales_viewers.pending_invites.sole
     expect(viewer.invited_name).to eq("Sam Producer")
@@ -129,6 +129,27 @@ RSpec.describe "Ticket sales viewers", type: :request do
     expect(viewer.user.person.name).to eq("Sam Producer")
     follow_redirect!
     expect(response.body).to include("Rising Stars")
+  end
+
+  it "shares every date from the production's own Visibility page" do
+    sign_in(superadmin)
+    get manage_path
+    get manage_production_ticketing_path(production)
+    expect(response.body).to include("Visibility", manage_production_ticketing_visibility_path(production))
+
+    get manage_production_ticketing_visibility_path(production)
+    expect(response.body).to include("every date of Rising Stars", "Add from Rising Stars")
+    expect(response.body).not_to include("What they see")
+
+    post manage_production_ticketing_visibility_path(production), params: { person_id: producer_person.id }
+    expect(org.ticket_sales_viewers.active.sole.scope).to eq(production)
+    get manage_production_ticketing_visibility_path(production)
+    expect(response.body).to include("Pat Producer", "Rising Stars, every date")
+
+    # Another theater's production reaches nothing.
+    other = create(:production, organization: create(:organization, :pro))
+    get manage_production_ticketing_visibility_path(other)
+    expect(response).to have_http_status(:not_found)
   end
 
   it "sends a producer who asked for it a morning note on their shows" do

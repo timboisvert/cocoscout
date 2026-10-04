@@ -23,7 +23,7 @@
     ({ text: "Give tickets", description: "Comps for guests and press", path: manage_new_ticket_listing_comps_path(@listing), icon: icons[:gift] } if live),
     { text: "Orders", description: "Every order for this show", path: manage_ticket_orders_path(listing_id: @listing.id), icon: icons[:orders] },
     { text: "Settings", description: "Prices, seats, sales window, page and image", path: manage_edit_ticket_listing_path(@listing), icon: icons[:cog] },
-    { text: "Who can see sales", description: "Producers and performers, read-only", path: manage_ticket_listing_viewers_path(@listing), icon: icons[:share] },
+    { text: "Visibility", description: "Who can see this show's sales", path: manage_ticket_listing_visibility_path(@listing), icon: icons[:share] },
     ({ text: "Cancel this show", description: "In Shows & Events, with refunds for buyers", path: manage_cancel_show_form_path(@listing.production, show), icon: icons[:cancel], tone: :muted } if @listing.status != "canceled" && !show.canceled && upcoming)
   ]
 %>

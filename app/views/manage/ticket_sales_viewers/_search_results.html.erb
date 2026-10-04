@@ -1,10 +1,11 @@
-<%# People found to share the sales with. Locals: listing, people, query, viewing_user_ids, manager_user_ids. %>
+<%# People found to share the sales with. Locals: listing (nil on a production's page), production, people, query,
+    viewing_user_ids, manager_user_ids, invite_path. %>
 <% if query.length < 2 %>
   <%# Nothing typed yet. %>
 <% elsif people.empty? %>
   <%# Only after a search finds nobody: invite them by email, prefilled from what was typed. %>
   <% looks_like_email = query.include?("@") %>
-  <%= form_with url: manage_ticket_listing_viewers_invite_path(listing), method: :post, class: "rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3" do %>
+  <%= form_with url: invite_path, method: :post, class: "rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3" do %>
     <p class="text-sm text-gray-700">Nobody on CocoScout matches “<%= query %>”. Invite them by email: they'll make a free account and see the sales.</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div>
@@ -16,13 +17,15 @@
         <%= email_field_tag :email, looks_like_email ? query : nil, id: "invite_email", required: true, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
       </div>
     </div>
-    <div class="flex flex-wrap gap-4">
-      <% [ [ "listing", "This show" ], [ "production", "Every date of #{listing.production.name}" ] ].each_with_index do |(value, label), index| %>
-        <label class="flex items-center gap-2 text-sm text-gray-900">
-          <%= radio_button_tag :share_scope, value, index.zero?, id: "invite_share_scope_#{value}", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %> <%= label %>
-        </label>
-      <% end %>
-    </div>
+    <% if listing %>
+      <div class="flex flex-wrap gap-4">
+        <% [ [ "listing", "This show" ], [ "production", "Every date of #{production.name}" ] ].each_with_index do |(value, label), index| %>
+          <label class="flex items-center gap-2 text-sm text-gray-900">
+            <%= radio_button_tag :share_scope, value, index.zero?, id: "invite_share_scope_#{value}", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %> <%= label %>
+          </label>
+        <% end %>
+      </div>
+    <% end %>
     <%= render "shared/button", text: "Send invitation", variant: "primary", size: "small", type: :submit %>
   <% end %>
 <% else %>

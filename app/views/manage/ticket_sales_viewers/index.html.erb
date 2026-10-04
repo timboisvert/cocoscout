@@ -1,20 +1,27 @@
-<% content_for :title, "Who can see sales · #{ticket_listing_date_label(@listing)}" %>
 <%
+  # A date's visibility, or a production's: @listing is nil on the production's page.
+  on_date = @listing.present?
+  index_path = on_date ? manage_ticket_listing_visibility_path(@listing) : manage_production_ticketing_visibility_path(@production)
+  search_path = on_date ? manage_ticket_listing_visibility_search_path(@listing) : manage_production_ticketing_visibility_search_path(@production)
+  contract_path = ->(c) { on_date ? manage_ticket_listing_visibility_contract_path(@listing, contract_id: c.id) : manage_production_ticketing_visibility_contract_path(@production, contract_id: c.id) }
+  viewer_path = ->(v) { on_date ? manage_ticket_listing_visibility_viewer_path(@listing, viewer_id: v.id) : manage_production_ticketing_visibility_viewer_path(@production, viewer_id: v.id) }
+  what = on_date ? "this show" : "every date of #{@production.name}"
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   checkbox_class = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
 %>
+<% content_for :title, "Visibility · #{on_date ? ticket_listing_date_label(@listing) : @production.name}" %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: ticket_listing_breadcrumbs(@listing),
-    text: "Who can see sales",
+    breadcrumbs: on_date ? ticket_listing_breadcrumbs(@listing) : [ [ "Ticketing", manage_ticketing_path ], [ "Productions", manage_ticket_listings_path ], [ @production.name, manage_production_ticketing_path(@production) ] ],
+    text: "Visibility",
     links: []
   } %>
 
   <div class="max-w-2xl space-y-6">
     <p class="text-sm text-gray-600">
-      Producers and performers can watch how this show is selling — sold of seats, sales, and who's coming by name — without being able to change anything or see anyone's email. Managers always see everything.
+      Producers and performers can watch how <%= what %> is selling — sold of seats, sales, and who's coming by name — without being able to change anything or see anyone's email. Managers always see everything.
     </p>
 
     <%# The contractor: automatic, with a switch per contract. %>
@@ -22,7 +29,7 @@
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200">
           <h2 class="text-lg font-semibold text-gray-900">Automatically</h2>
-          <p class="text-sm text-gray-600 mt-1">The other side of a contract that includes this show sees its sales, unless you say not.</p>
+          <p class="text-sm text-gray-600 mt-1">The other side of a contract that includes <%= on_date ? "this show" : "a date" %> sees its sales, unless you say not.</p>
         </div>
         <ul class="divide-y divide-gray-100">
           <% @contracts.each do |contract| %>
@@ -31,7 +38,7 @@
                 <div class="text-sm font-medium text-gray-900"><%= contract.contractor&.person&.name || contract.contractor&.name || "Contractor" %></div>
                 <div class="text-xs text-gray-500"><%= link_to "Contract", manage_contract_path(contract), class: "hover:text-pink-600" %> · <%= contract.contractor&.person&.user_id ? "has a CocoScout account" : "no CocoScout account yet" %></div>
               </div>
-              <%= form_with url: manage_ticket_listing_viewer_contract_path(@listing, contract_id: contract.id), method: :patch, data: { controller: "auto-submit" } do |f| %>
+              <%= form_with url: contract_path.call(contract), method: :patch, data: { controller: "auto-submit" } do |f| %>
                 <%= hidden_field_tag :shares_ticket_sales, "0", id: nil %>
                 <%= render "shared/toggle_switch", form: f, field: :shares_ticket_sales, checked: contract.shares_ticket_sales,
                       data: { action: "change->auto-submit#submit" } %>
@@ -42,7 +49,7 @@
       </div>
     <% end %>
 
-    <%# Shared people, this show's and the production's. %>
+    <%# Shared people. %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200">
         <h2 class="text-lg font-semibold text-gray-900">Shared with</h2>
@@ -68,11 +75,11 @@
     <%# The production's team and cast: tick several at once. %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900">Add from <%= @listing.production.name %></h2>
+        <h2 class="text-lg font-semibold text-gray-900">Add from <%= @production.name %></h2>
         <p class="text-sm text-gray-600 mt-1">Its team and cast with CocoScout accounts.</p>
       </div>
       <% if @candidates.any? %>
-        <%= form_with url: manage_ticket_listing_viewers_path(@listing), method: :post do %>
+        <%= form_with url: index_path, method: :post do %>
           <div class="px-6 py-4 max-h-80 overflow-y-auto space-y-1">
             <% @candidates.each do |person| %>
               <label class="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-gray-50 cursor-pointer">
@@ -81,7 +88,9 @@
               </label>
             <% end %>
           </div>
-          <%= render "manage/ticket_sales_viewers/scope_choice", listing: @listing, prefix: "team" %>
+          <% if on_date %>
+            <%= render "manage/ticket_sales_viewers/scope_choice", listing: @listing, prefix: "team" %>
+          <% end %>
           <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
             <%= render "shared/button", text: "Share the sales", variant: "primary", size: "small", type: :submit %>
           </div>
@@ -93,7 +102,7 @@
 
     <%# Anyone else on CocoScout: search, choose, pick a scope. %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden"
-         data-controller="door-access-search" data-door-access-search-url-value="<%= manage_ticket_listing_viewers_search_path(@listing) %>">
+         data-controller="door-access-search" data-door-access-search-url-value="<%= search_path %>">
       <div class="px-6 py-4 border-b border-gray-200">
         <h2 class="text-lg font-semibold text-gray-900">Add someone else</h2>
         <p class="text-sm text-gray-600 mt-1">A producer who isn't on the production here: anyone with a CocoScout account.</p>
@@ -104,7 +113,7 @@
                data-door-access-search-target="input" data-action="input->door-access-search#search">
         <div class="mt-3" data-door-access-search-target="results"></div>
       </div>
-      <%= form_with url: manage_ticket_listing_viewers_path(@listing), method: :post, class: "hidden", data: { door_access_search_target: "form" } do %>
+      <%= form_with url: index_path, method: :post, class: "hidden", data: { door_access_search_target: "form" } do %>
         <%= hidden_field_tag :person_id, nil, data: { door_access_search_target: "personId" } %>
         <div class="px-6 pt-4 flex items-center justify-between gap-3">
           <div class="min-w-0">
@@ -114,7 +123,9 @@
           <%= render "shared/button", text: "Choose someone else", variant: "ghost", size: "small", type: :button,
                 data: { action: "click->door-access-search#back" } %>
         </div>
-        <%= render "manage/ticket_sales_viewers/scope_choice", listing: @listing, prefix: "person" %>
+        <% if on_date %>
+          <%= render "manage/ticket_sales_viewers/scope_choice", listing: @listing, prefix: "person" %>
+        <% end %>
         <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
           <%= render "shared/button", text: "Share the sales", variant: "primary", size: "small", type: :submit %>
         </div>
@@ -125,5 +136,5 @@
 <% @viewers.each do |viewer| %>
   <%= render "shared/confirm_modal", id: "confirm-remove-viewer-#{viewer.id}", title: "Stop sharing with #{viewer.display_name}?",
         message: "They won't see the sales for #{viewer.scope_label} anymore.", confirm_text: "Stop sharing",
-        url: manage_ticket_listing_viewer_path(@listing, viewer_id: viewer.id), method: :delete %>
+        url: viewer_path.call(viewer), method: :delete %>
 <% end %>
