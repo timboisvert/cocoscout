@@ -372,6 +372,7 @@ Rails.application.routes.draw do
   get  "/door/:listing_id/stats",         to: "door#stats",          as: "door_stats"
   post "/door/:listing_id/sell",          to: "door#sell",           as: "door_sell"
   post "/door/:listing_id/items/:item_id/fulfill", to: "door#fulfill", as: "door_fulfill"
+  get  "/door/:listing_id/deliveries",    to: "door#deliveries",     as: "door_deliveries"
   get  "/door/:listing_id/card/:token",   to: "door#card",           as: "door_card"
   get  "/door/:listing_id/card/:token/status", to: "door#card_status", as: "door_card_status"
   post "/door/:listing_id/card/:token/cancel", to: "door#card_cancel", as: "door_card_cancel"

@@ -82,7 +82,7 @@
             <li class="text-sm text-gray-700">
               <span class="font-medium text-gray-900"><%= item.quantity %> × <%= item.name %></span>
               <% if item.description.present? %><span class="text-gray-500">· <%= item.description %></span><% end %>
-              <% if item.fulfilled? %><span class="ml-1 text-xs font-medium text-green-700">Handed over</span><% end %>
+              <% if item.fulfilled? %><span class="ml-1 text-xs font-medium text-green-700">Delivered</span><% end %>
             </li>
           <% end %>
         </ul>

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # One product line on a ticket order: "2 × Champagne bottle at $45", the tax
-# on it, and whether it's been handed over at the door. Name, description,
+# on it, and whether it's been delivered at the show. Name, description,
 # price and the revenue rule are copied from the offer when the order is
 # made, so later changes to the product never rewrite a sale.
 #

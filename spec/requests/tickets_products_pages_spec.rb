@@ -60,10 +60,10 @@ RSpec.describe "Ticket products on pages", type: :request do
 
     sign_in_manager
     get manage_ticket_order_path(order.id)
-    expect(response.body).to include("Products", "1 × Champagne bottle", "Not handed over yet", "Tickets", "$40.00", "$45.00")
+    expect(response.body).to include("Products", "1 × Champagne bottle", "Not delivered yet", "Tickets", "$40.00", "$45.00")
 
     get manage_ticket_listing_path(listing)
-    expect(response.body).to include("1 × Champagne bottle", "Products", "Handed over")
+    expect(response.body).to include("1 × Champagne bottle", "Products", "Delivered")
 
     get manage_ticket_listing_guests_path(listing, format: :csv)
     expect(response.body).to include("Products", "1 × Champagne bottle")
@@ -73,7 +73,7 @@ RSpec.describe "Ticket products on pages", type: :request do
 
     # The door: the bottle on the order, and one tap to hand it over.
     get door_search_path(listing, q: "Avery")
-    expect(response.body).to include("1 × Champagne bottle", "Handed over")
+    expect(response.body).to include("1 × Champagne bottle", "Delivered")
     item = order.ticket_order_items.sole
     # A scan at the door names what they pre-bought, with a hand-over tap.
     post door_check_in_path(listing), params: { code: order.tickets.first.code }, as: :json
@@ -81,12 +81,16 @@ RSpec.describe "Ticket products on pages", type: :request do
     expect(scan["party"]).to eq("1 of 2 in")
     expect(scan["items"]).to eq([ { "id" => item.id, "label" => "1 × Champagne bottle", "fulfilled" => false, "fulfill_url" => door_fulfill_path(listing, item_id: item.id) } ])
     post door_fulfill_path(listing, item_id: item.id), as: :json
-    expect(response.parsed_body["message"]).to eq("1 × Champagne bottle handed over")
+    expect(response.parsed_body["message"]).to eq("1 × Champagne bottle delivered")
     expect(item.reload.fulfilled?).to be(true)
 
     # The door sells products only once the production turns that on.
     get door_path(listing)
     expect(response.body).not_to include("With it")
+    # The bottle was delivered above; the To-deliver list says so.
+    expect(response.body).to include("To deliver", "0 of 1 left", "Everything's delivered")
+    get door_deliveries_path(listing)
+    expect(response.body).to include("Everything's delivered")
     setup.update!(products_at_door: true)
     get door_path(listing)
     expect(response.body).to include("With it", "Champagne bottle")

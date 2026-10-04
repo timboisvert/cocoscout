@@ -128,7 +128,7 @@
           <% end %>
         </ul>
         <% if @items.any? %>
-          <%# What they bought with the tickets: tick to refund with them; the door marks it handed over. %>
+          <%# What they bought with the tickets: tick to refund with them; the door marks it delivered. %>
           <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">Products</div>
           <ul class="divide-y divide-gray-100 border-t border-gray-100">
             <% @items.each do |item| %>
@@ -145,7 +145,7 @@
                   <div class="text-xs text-gray-500">
                     <% case item.status %>
                     <% when "valid" %>
-                      <%= item.fulfilled? ? "Handed over #{item.fulfilled_at&.strftime('%b %-d at %-l:%M %p')}#{" by #{item.fulfilled_by.person&.name || item.fulfilled_by.email_address}" if item.fulfilled_by}" : "Not handed over yet" %>
+                      <%= item.fulfilled? ? "Delivered #{item.fulfilled_at&.strftime('%b %-d at %-l:%M %p')}#{" by #{item.fulfilled_by.person&.name || item.fulfilled_by.email_address}" if item.fulfilled_by}" : "Not delivered yet" %>
                     <% when "refunded" %>
                       Refunded <%= item.refunded_at&.strftime("%b %-d") %>
                     <% when "exchanged" %>

@@ -70,7 +70,7 @@ class TicketingNotificationContent
     rows << [ "Comps", stats.comps.to_s, *(checked_in ? [ stats.held_tickets.count { |t| t.order_channel == "comp" && t.checked_in? }.to_s ] : []), "—" ] if stats.comps.positive?
     stats.by_product.each do |row|
       cells = [ "#{h(row.name)} (product)", row.sold.to_s, money(row.gross_cents) ]
-      cells.insert(2, "#{row.handed_over} handed over") if checked_in
+      cells.insert(2, "#{row.handed_over} delivered") if checked_in
       rows << cells
     end
     total = [ "Total", (stats.sold + stats.products_sold).to_s, money(stats.gross_cents + stats.product_cents) ]

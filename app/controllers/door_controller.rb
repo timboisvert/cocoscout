@@ -28,11 +28,16 @@ class DoorController < ApplicationController
     @offers = @listing.product_offers(at_door: true)
   end
 
-  # A bottle handed over at the table: the whole line, or one more of it.
+  # The products still to deliver, for the door page to refresh.
+  def deliveries
+    render partial: "door/deliveries", locals: { listing: @listing }
+  end
+
+  # A bottle delivered to the table: the whole line.
   def fulfill
     item = @listing.ticket_order_items.sold.find(params[:item_id])
     item.update!(fulfilled_quantity: item.quantity, fulfilled_at: Time.current, fulfilled_by: Current.user)
-    render json: { ok: true, message: "#{item.label} handed over", counts: door.counts }
+    render json: { ok: true, message: "#{item.label} delivered", counts: door.counts }
   end
 
   def check_in
@@ -153,7 +158,7 @@ class DoorController < ApplicationController
   end
 
   # What the banner shows after a scan: who, the result, how much of their
-  # party is in, and anything they pre-bought (a bottle) with a hand-over tap.
+  # party is in, and anything they pre-bought (a bottle) with a Delivered tap.
   def result_json(result)
     ticket = result.ticket
     order = ticket&.ticket_order

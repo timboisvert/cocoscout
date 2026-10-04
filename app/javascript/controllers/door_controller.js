@@ -6,8 +6,8 @@ import { Controller } from "@hotwired/stimulus"
 // banner with a sound and a buzz, so the person at the door never has to read
 // small print. The QR library loads only when scanning starts.
 export default class extends Controller {
-    static targets = ["video", "viewport", "startButton", "stopButton", "banner", "searchInput", "results", "checkedIn", "sold"]
-    static values = { checkInUrl: String, statsUrl: String, searchUrl: String, undoUrl: String }
+    static targets = ["video", "viewport", "startButton", "stopButton", "banner", "searchInput", "results", "checkedIn", "sold", "deliveries"]
+    static values = { checkInUrl: String, statsUrl: String, searchUrl: String, undoUrl: String, deliveriesUrl: String }
 
     static BANNER_CLASSES = {
         admitted: "bg-green-600 text-white",
@@ -86,7 +86,7 @@ export default class extends Controller {
         }
     }
 
-    // A pre-bought bottle handed over at the table.
+    // A pre-bought bottle delivered to the table.
     async fulfill(event) {
         const button = event.currentTarget
         button.disabled = true
@@ -94,10 +94,23 @@ export default class extends Controller {
             const data = await this.post(button.dataset.url, {})
             this.showBanner("admitted", data.message)
             this.runSearch()
+            this.refreshDeliveries()
         } catch {
             button.disabled = false
             this.showBanner("error", "Couldn't reach CocoScout. Try again.")
         }
+    }
+
+    // The "To deliver" list, fresh from the server.
+    async refreshDeliveries() {
+        if (!this.hasDeliveriesTarget || !this.deliveriesUrlValue) return
+        try {
+            const response = await fetch(this.deliveriesUrlValue, { headers: { Accept: "text/html" }, credentials: "same-origin" })
+            if (!response.ok) return
+            const html = await response.text()
+            this.deliveriesTarget.innerHTML = html
+            this.deliveriesTarget.classList.toggle("hidden", html.trim() === "")
+        } catch { /* the next refresh tries again */ }
     }
 
     async undo(event) {
@@ -120,8 +133,8 @@ export default class extends Controller {
         if (data.counts) this.updateCounts(data.counts)
     }
 
-    // items: what they pre-bought (a bottle), each with a hand-over tap. A
-    // banner with something still to hand over stays until the next scan.
+    // items: what they pre-bought (a bottle), each with a Delivered tap. A
+    // banner with something still to deliver stays until the next scan.
     showBanner(tone, lines, undoTicketId = null, items = []) {
         const banner = this.bannerTarget
         banner.className = `mt-4 rounded-xl px-4 py-4 text-center ${this.constructor.BANNER_CLASSES[tone]}`
@@ -146,13 +159,13 @@ export default class extends Controller {
             row.className = "mt-3 flex items-center justify-between gap-3 rounded-lg bg-white/90 px-3 py-2 text-left text-gray-900"
             const label = document.createElement("div")
             label.className = "text-base font-semibold"
-            label.textContent = item.fulfilled ? `${item.label} · handed over` : item.label
+            label.textContent = item.fulfilled ? `${item.label} · delivered` : item.label
             row.appendChild(label)
             if (!item.fulfilled) {
                 const button = document.createElement("button")
                 button.type = "button"
                 button.className = "rounded-lg bg-pink-500 px-3 py-1.5 text-sm font-semibold text-white"
-                button.textContent = "Handed over"
+                button.textContent = "Delivered"
                 button.dataset.url = item.fulfill_url
                 button.dataset.action = "click->door#fulfillFromBanner"
                 row.appendChild(button)
@@ -165,19 +178,20 @@ export default class extends Controller {
         if (!waiting) this.bannerTimer = setTimeout(() => banner.classList.add("hidden"), 8000)
     }
 
-    // Hand over a pre-bought product straight from the banner.
+    // Deliver a pre-bought product straight from the banner.
     async fulfillFromBanner(event) {
         const button = event.currentTarget
         button.disabled = true
         try {
             const data = await this.post(button.dataset.url, {})
             const row = button.parentElement
-            row.firstChild.textContent = `${row.firstChild.textContent} · handed over`
+            row.firstChild.textContent = `${row.firstChild.textContent} · delivered`
             button.remove()
             if (!this.bannerTarget.querySelector("[data-action='click->door#fulfillFromBanner']")) {
                 this.bannerTimer = setTimeout(() => this.bannerTarget.classList.add("hidden"), 8000)
             }
             if (data.counts) this.updateCounts(data.counts)
+            this.refreshDeliveries()
         } catch {
             button.disabled = false
         }
@@ -223,6 +237,7 @@ export default class extends Controller {
             const response = await fetch(this.statsUrlValue, { headers: { Accept: "application/json" }, credentials: "same-origin" })
             if (response.ok) this.updateCounts(await response.json())
         } catch { /* keep the last numbers */ }
+        this.refreshDeliveries()
     }
 
     updateCounts(counts) {

@@ -21,6 +21,7 @@
      data-door-check-in-url-value="<%= door_check_in_path(@listing) %>"
      data-door-stats-url-value="<%= door_stats_path(@listing) %>"
      data-door-search-url-value="<%= door_search_path(@listing) %>"
+     data-door-deliveries-url-value="<%= door_deliveries_path(@listing) %>"
      data-door-undo-url-value="<%= door_undo_path(@listing) %>">
 
   <%# The numbers that matter tonight; refreshed every few seconds. %>
@@ -57,6 +58,10 @@
       </span>
     </div>
   </div>
+
+  <%# What's still to deliver: hidden until the show has a product on an order. %>
+  <% deliveries = render("door/deliveries", listing: @listing) %>
+  <div class="mt-4 rounded-xl border border-gray-200 bg-white p-4 <%= 'hidden' if deliveries.blank? %>" data-door-target="deliveries"><%= deliveries %></div>
 
   <div class="mt-4 rounded-xl border border-gray-200 bg-white p-4">
     <label for="door-search" class="block text-sm font-medium text-gray-700 mb-1.5">Find someone</label>
