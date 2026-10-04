@@ -45,7 +45,8 @@ class TicketingNotificationContent
   def self.table(head, rows, right_from: 1)
     cell = lambda do |text, index, header: false, strong: false|
       align = index >= right_from ? "right" : "left"
-      style = "padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:#{align};font-size:14px;"               "#{'color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.03em;' if header}#{'font-weight:600;' if strong}"
+      style = "padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:#{align};font-size:14px;#{'white-space:nowrap;' if index >= right_from}" \
+              "#{'color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.03em;' if header}#{'font-weight:600;' if strong}"
       %(<#{header ? 'th' : 'td'} style="#{style}">#{text}</#{header ? 'th' : 'td'}>)
     end
     body = rows.map do |row|
@@ -209,7 +210,7 @@ class TicketingNotificationContent
     upcoming_rows = upcoming.map do |listing|
       s = stats[listing.id]
       state = if listing.selling? then "On sale" elsif listing.status == "paused" then "Paused" elsif listing.status == "closed" then "Online sales closed" else listing.status.humanize end
-      [ label.call(listing), sold_line(s), s.products_sold.positive? ? s.products_sold.to_s : "—", money(s.gross_cents + s.product_cents), state ]
+      [ label.call(listing), s.capacity ? "#{s.sold} of #{s.capacity}" : s.sold.to_s, s.products_sold.positive? ? s.products_sold.to_s : "—", money(s.gross_cents + s.product_cents), state ]
     end
     {
       date_label: day.strftime("%A, %B %-d"),
