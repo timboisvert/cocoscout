@@ -6,6 +6,7 @@
 # - /a/<key> - Audition cycle response URLs (AuditionCycle.token)
 # - /s/<key> - Sign-up form short URLs (SignUpForm.short_code)
 # - /c/<key> - Course offering registration URLs (CourseOffering.short_code)
+# - /t/<key> - Ticketing short links (ShortLink.code): a production's code, or a named link
 #
 # Keys are "sacred" - once assigned, they should last forever.
 # This service ensures uniqueness across both key namespaces and provides
@@ -33,6 +34,11 @@ class ShortKeyService
       model: "CourseOffering",
       column: :short_code,
       path_prefix: "/c/"
+    },
+    link: {
+      model: "ShortLink",
+      column: :code,
+      path_prefix: "/t/"
     }
   }.freeze
 
@@ -123,7 +129,7 @@ class ShortKeyService
 
       # Fix combined stats calculation
       stats[:combined] = {
-        total_used: stats[:audition][:used] + stats[:signup][:used],
+        total_used: KEY_TYPES.keys.sum { |type| stats[type][:used] },
         audition_used: stats[:audition][:used],
         signup_used: stats[:signup][:used]
       }
@@ -182,7 +188,7 @@ class ShortKeyService
     end
 
     def generate_random_key(length)
-      Array.new(length) { CHARSET.sample }.join
+      Array.new(length) { CHARSET.sample(random: SecureRandom) }.join
     end
 
     def key_exists?(type, key)
@@ -199,8 +205,11 @@ class ShortKeyService
       column = config[:column]
       model = model_class(type)
 
-      records = model.where.not(column => nil)
-                     .includes(type == :audition ? { production: :organization } : { production: :organization })
+      records = if type == :link
+        model.where.not(column => nil).includes(:organization, :target)
+      else
+        model.where.not(column => nil).includes(production: :organization)
+      end
 
       records.map do |record|
         key_info_for_record(record, type, config, column)
@@ -209,7 +218,8 @@ class ShortKeyService
 
     def key_info_for_record(record, type, config, column)
       key = record.send(column)
-      production = record.production
+      production = record.respond_to?(:production) ? record.production : nil
+      production = record.target if type == :link && record.target.is_a?(Production)
 
       base_info = {
         key: key,
@@ -219,8 +229,8 @@ class ShortKeyService
         record_id: record.id,
         production_id: production&.id,
         production_name: production&.name,
-        organization_id: production&.organization&.id,
-        organization_name: production&.organization&.name
+        organization_id: production&.organization&.id || (type == :link ? record.organization_id : nil),
+        organization_name: production&.organization&.name || (type == :link ? record.organization&.name : nil)
       }
 
       # Add type-specific info
@@ -239,6 +249,12 @@ class ShortKeyService
           name: record.name,
           active: record.active,
           status: record.active ? "active" : "inactive"
+        )
+      when :link
+        base_info.merge(
+          name: record.label || "#{record.points_to} (main link)",
+          active: !record.archived?,
+          status: record.archived? ? "inactive" : "active"
         )
       else
         base_info

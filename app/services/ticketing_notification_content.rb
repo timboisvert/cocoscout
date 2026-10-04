@@ -116,7 +116,7 @@ class TicketingNotificationContent
     tiers = listing.ticket_tiers.active.map { |t| [ h(t.name), t.price_cents.zero? ? "Free" : money(t.price_cents), t.quantity ? t.quantity.to_s : "No limit" ] }
     show_vars(listing).merge(what: h(what || "Every ticket"), remaining: stats.remaining.to_i, sold_line: sold_line(stats),
                              tiers_table: table([ "Ticket", "Price", "Seats" ], tiers),
-                             public_url: routes.tickets_event_url(org: TicketingProfile.for(listing.organization).slug, event: listing.slug, **url_options))
+                             public_url: routes.short_link_url(code: ShortLink.canonical_for!(listing.production).code, date: ShortLink.date_suffix(listing.show), **url_options))
   end
 
   def self.refund(refund, problem: nil)

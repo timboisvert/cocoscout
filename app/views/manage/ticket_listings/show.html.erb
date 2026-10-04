@@ -8,6 +8,7 @@
   live = !@listing.status.in?(%w[canceled]) && !show.canceled
   upcoming = show.date_and_time > Time.current
   public_url = tickets_event_url(org: ticketing_profile.slug, event: @listing.slug)
+  short_url = short_link_url(code: ShortLink.canonical_for!(@listing.production).code, date: ShortLink.date_suffix(@listing.show))
   # Heroicons (outline), one per action.
   icons = {
     door: "M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z",
@@ -45,7 +46,7 @@
       </div>
       <%= render "manage/ticket_listings/status_actions", listing: @listing %>
     </div>
-    <%= render "shared/copy_url", url: public_url, show_qr: true, qr_title: "Scan for tickets" %>
+    <%= render "shared/copy_url", url: public_url, short_url: short_url, show_qr: true, qr_title: "Scan for tickets" %>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">

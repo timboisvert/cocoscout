@@ -45,6 +45,8 @@ class ProductionTicketing < ApplicationRecord
 
   before_validation { self.organization ||= production&.organization }
   before_validation { self.event_type_filter = Array(event_type_filter).compact_blank.map(&:to_s).uniq }
+  # The production's short code is issued the first time it's set up to sell.
+  after_create_commit { ShortLink.canonical_for!(production) }
 
   # The production's setup, made (switched off) the first time anyone asks.
   def self.for(production)

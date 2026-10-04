@@ -6,6 +6,7 @@
   money = ->(cents) { number_to_currency(cents / 100.0) }
   series = d.daily_tickets
   box_office_url = tickets_box_office_url(org: profile.slug)
+  box_office_short_url = short_link_url(code: ShortLink.canonical_for!(profile).code)
   coming_up = d.coming_up
   just_played = d.just_played
   recent = d.recent_orders.to_a
@@ -140,7 +141,7 @@
 
       <div class="bg-white rounded-lg border border-gray-200 p-5">
         <h3 class="font-semibold text-gray-900 mb-3">Your box office</h3>
-        <%= render "shared/copy_url", url: box_office_url, show_qr: true, qr_title: "Scan for tickets" %>
+        <%= render "shared/copy_url", url: box_office_url, short_url: box_office_short_url, show_qr: true, qr_title: "Scan for tickets" %>
       </div>
 
       <%= render "shared/action_list", items: [

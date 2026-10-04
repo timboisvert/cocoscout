@@ -104,8 +104,9 @@ module TicketingHelper
     rate ? "#{lines.first.name} #{format('%g', lines.first.rate_bps / 100.0)}%" : lines.first.name
   end
 
+  # The short address a date is shared at: cocoscout.com/t/K7M2P/oct-10.
   def ticket_public_path_text(listing)
-    "cocoscout.com/tickets/#{listing.organization.ticketing_profile&.slug || TicketingProfile.for(listing.organization).slug}/#{listing.slug}"
+    "cocoscout.com#{ShortLink.canonical_for!(listing.production).short_path(ShortLink.date_suffix(listing.show))}"
   end
 
   # How a show's sales read to a buyer: nil when it's simply on sale.

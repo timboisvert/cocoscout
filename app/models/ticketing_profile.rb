@@ -12,6 +12,8 @@ class TicketingProfile < ApplicationRecord
   RESERVED_SLUGS = %w[orders checkout embed embed-js v p go door api assets help admin].freeze
 
   belongs_to :organization
+  has_many :short_links, as: :target, dependent: :destroy
+  has_one :short_link, -> { canonical }, as: :target
 
   normalizes :slug, with: ->(s) { s.to_s.strip.downcase }
   normalizes :support_email, with: ->(e) { e.to_s.strip.downcase.presence }
@@ -28,6 +30,7 @@ class TicketingProfile < ApplicationRecord
   validates :reminder_days_before, numericality: { only_integer: true, in: 1..30 }, allow_nil: true
 
   before_validation :default_slug, on: :create
+  after_create_commit { ShortLink.canonical_for!(self) }
 
   # The org's profile, created (switched off) the first time anyone asks.
   def self.for(organization)

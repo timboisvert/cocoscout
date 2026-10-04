@@ -8,6 +8,9 @@
   # - copy_button_text: Text for the copy button (default: "Copy")
   # - show_qr: Show QR code button (default: false)
   # - qr_title: Heading on the QR code modal (default: "Scan to Sign Up")
+  # - short_url: A short address for the same place (cocoscout.com/t/K7M2P). It
+  #   becomes the main line, what Copy copies and what the QR encodes; the full
+  #   address sits under it in small type with its own Copy.
 %>
 
 <%
@@ -16,11 +19,13 @@
   copy_button_text ||= "Copy"
   show_qr ||= false
   qr_title ||= "Scan to Sign Up"
+  short_url ||= nil
+  main_url = short_url || url
 %>
 
 <div data-controller="copy-url<%= ' qr-code' if show_qr %>"
      <% if show_qr %>
-     data-qr-code-url-value="<%= url %>"
+     data-qr-code-url-value="<%= main_url %>"
      <% end %>>
   <% if label %>
     <label class="block text-sm font-medium text-gray-700 mb-2"><%= label %></label>
@@ -29,7 +34,7 @@
   <div class="flex flex-wrap items-center gap-2 p-3 sm:pl-3 sm:pr-1 sm:py-1.5 bg-gray-50 rounded border border-gray-200">
     <div class="flex-1 min-w-[180px] overflow-hidden">
       <div class="text-sm font-mono text-gray-700 truncate">
-        <%= url %>
+        <%= main_url %>
       </div>
     </div>
     <div class="flex items-center gap-1 flex-shrink-0">
@@ -41,7 +46,7 @@
         icon: "eye",
         path: url,
         target: "_blank" %>
-      <div data-copy-url-target="button" data-url="<%= url %>">
+      <div data-copy-url-target="button" data-url="<%= main_url %>">
         <%= render "shared/button",
           text: copy_button_text,
           variant: "outline-pink",
@@ -61,6 +66,16 @@
       <% end %>
     </div>
   </div>
+
+  <% if short_url %>
+    <div class="mt-1.5 flex items-center gap-2 text-xs text-gray-500 min-w-0">
+      <span class="truncate">Full address: <span class="font-mono"><%= url %></span></span>
+      <span data-url="<%= url %>" class="flex-shrink-0">
+        <%= render "shared/button", text: "Copy", variant: "ghost", size: "xs", type: :button,
+              data: { action: "click->copy-url#copy" } %>
+      </span>
+    </div>
+  <% end %>
 
   <% if help_text %>
     <p class="mt-2 text-xs text-gray-600"><%= help_text %></p>
@@ -89,7 +104,7 @@
         </div>
 
         <!-- URL display -->
-        <p class="text-xs text-gray-500 text-center break-all mb-4"><%= url %></p>
+        <p class="text-xs text-gray-500 text-center break-all mb-4"><%= main_url %></p>
 
         <!-- Download button -->
         <div class="flex justify-center">

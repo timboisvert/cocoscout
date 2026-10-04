@@ -47,15 +47,15 @@ class TicketsController < ApplicationController
   private
 
   # The production's page: its dates as chips, and the chosen date's tickets
-  # (?date= a date's slug, or a day like 2026-10-17; else the first date on
-  # sale).
+  # (?date= a date's slug, a day like 2026-10-17, or oct-17 as a short link
+  # names it; else the first date on sale).
   def production(production)
     raise ActiveRecord::RecordNotFound unless production
 
     @production = production
     @listings = selling_listings.select { |l| l.production_id == @production.id }
-    wanted = params[:date].to_s
-    @listing = @listings.find { |l| l.slug == wanted || l.show.date_and_time.to_date.iso8601 == wanted } ||
+    wanted = params[:date].to_s.downcase
+    @listing = @listings.find { |l| l.slug == wanted || l.show.date_and_time.to_date.iso8601 == wanted || ShortLink.date_suffix(l.show) == wanted } ||
                @listings.find { |l| l.selling? && !l.inventory.sold_out? } || @listings.first
     @code = params[:code].to_s.strip.upcase.presence
     if @listing

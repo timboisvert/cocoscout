@@ -330,6 +330,10 @@ Rails.application.routes.draw do
   # Short URL for sign-up forms
   get "/s/:code", to: "sign_up_shortlink#show", as: "sign_up_shortlink"
 
+  # Short URL for ticketing: a production's code (ShortLink), with a date as an
+  # optional suffix (/t/K7M2P/oct-10).
+  get "/t/:code(/:date)", to: "short_links#show", as: "short_link", constraints: { code: /[A-Za-z0-9]{4,12}/ }
+
   # CocoScout Ticketing: the public box office (no sign-in). Orders, checkout
   # and ticket links come first so an org's address can never shadow them
   # (they're also reserved slugs). /t/CODE is the short link (ShortLinksController).

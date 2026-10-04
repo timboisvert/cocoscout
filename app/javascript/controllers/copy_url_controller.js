@@ -6,12 +6,14 @@ export default class extends Controller {
     copy(event) {
         event.preventDefault()
 
-        // Get the URL from the button wrapper div
-        const url = this.buttonTarget.dataset.url
+        // The URL sits on the wrapper around whichever Copy was pressed
+        // (the main address, or the full one under a short link).
+        const wrapper = event.currentTarget.closest("[data-url]") || this.buttonTarget
+        const url = wrapper.dataset.url
 
         navigator.clipboard.writeText(url).then(() => {
             // Find the button's text span
-            const textSpan = this.buttonTarget.querySelector('span')
+            const textSpan = wrapper.querySelector('span')
 
             if (textSpan) {
                 const originalText = textSpan.textContent

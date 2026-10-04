@@ -67,6 +67,10 @@ class Production < ApplicationRecord
   # Ticketing set up for the whole production, and each show's listing.
   has_one :production_ticketing, dependent: :destroy
   has_many :ticket_listings
+  # cocoscout.com/t/CODE: the production's one short code (kept while dates come
+  # and go) and any named links a manager made for it.
+  has_many :short_links, as: :target, dependent: :destroy
+  has_one :short_link, -> { canonical }, as: :target
 
   # Rich text for production-wide notes (legacy — superseded by documents).
   has_rich_text :notes

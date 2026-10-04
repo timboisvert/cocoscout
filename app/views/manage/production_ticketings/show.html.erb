@@ -3,6 +3,7 @@
   setup = @setup
   on = setup&.enabled?
   public_url = ticket_production_url(ticketing_profile, @production)
+  short_url = short_link_url(code: ShortLink.canonical_for!(@production).code)
   settings_path = manage_edit_production_ticketing_path(@production)
   which = if setup.nil? then nil
   elsif setup.event_matching == "manual" then "Dates picked by hand"
@@ -57,7 +58,7 @@
         <% end %>
       </div>
       <% if on || @listings.any? %>
-        <%= render "shared/copy_url", url: public_url, show_qr: true, qr_title: "Scan for tickets" %>
+        <%= render "shared/copy_url", url: public_url, short_url: short_url, show_qr: true, qr_title: "Scan for tickets" %>
       <% end %>
     </div>
   <% else %>

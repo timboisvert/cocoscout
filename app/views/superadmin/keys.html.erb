@@ -29,7 +29,7 @@
   <% end %>
 
   <!-- Overview Stats -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
     <!-- Audition Keys -->
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="flex items-center justify-between mb-2">
@@ -60,12 +60,42 @@
       </div>
     </div>
 
+    <!-- Course Keys -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-500">/c/ Keys (Courses)</span>
+        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
+          <%= number_to_percentage(@statistics[:course][:usage_percentage], precision: 2) %>
+        </span>
+      </div>
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@statistics[:course][:used]) %></div>
+      <div class="text-xs text-gray-500">of <%= number_with_delimiter(@statistics[:course][:total_capacity]) %> available</div>
+      <div class="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div class="h-full bg-green-500 rounded-full" style="width: <%= [@statistics[:course][:usage_percentage], 100].min %>%"></div>
+      </div>
+    </div>
+
+    <!-- Ticketing Keys -->
+    <div class="border border-gray-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-500">/t/ Keys (Ticketing)</span>
+        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-pink-100 text-pink-800">
+          <%= number_to_percentage(@statistics[:link][:usage_percentage], precision: 2) %>
+        </span>
+      </div>
+      <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@statistics[:link][:used]) %></div>
+      <div class="text-xs text-gray-500">of <%= number_with_delimiter(@statistics[:link][:total_capacity]) %> available</div>
+      <div class="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div class="h-full bg-pink-500 rounded-full" style="width: <%= [@statistics[:link][:usage_percentage], 100].min %>%"></div>
+      </div>
+    </div>
+
     <!-- Total Used -->
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="text-sm font-medium text-gray-500 mb-2">Total Keys Used</div>
       <div class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@statistics[:combined][:total_used]) %></div>
       <div class="text-xs text-gray-500 mt-1">
-        <%= @statistics[:audition][:used] %> audition + <%= @statistics[:signup][:used] %> sign-up
+        <%= @statistics[:audition][:used] %> audition + <%= @statistics[:signup][:used] %> sign-up + <%= @statistics[:course][:used] %> course + <%= @statistics[:link][:used] %> ticketing
       </div>
     </div>
 
@@ -94,6 +124,12 @@
       <%= link_to "Sign-up (/s/)",
                   keys_monitor_path(filter: "signup"),
                   class: "px-3 py-2 text-sm font-medium border-b-2 #{@filter == 'signup' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+      <%= link_to "Course (/c/)",
+                  keys_monitor_path(filter: "course"),
+                  class: "px-3 py-2 text-sm font-medium border-b-2 #{@filter == 'course' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
+      <%= link_to "Ticketing (/t/)",
+                  keys_monitor_path(filter: "link"),
+                  class: "px-3 py-2 text-sm font-medium border-b-2 #{@filter == 'link' ? 'border-pink-600 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" %>
     </nav>
   </div>
 
@@ -196,7 +232,7 @@
     <div class="p-4">
       <p class="text-sm text-gray-600 mb-4">
         Short URL keys are <strong>sacred</strong> and permanent. Once assigned, a key should last forever.
-        The <code>/a/</code> prefix is for audition response URLs, and <code>/s/</code> is for sign-up form short links.
+        The <code>/a/</code> prefix is for audition response URLs, <code>/s/</code> for sign-up form short links, <code>/c/</code> for course registration links, and <code>/t/</code> for ticketing links (a production's code, kept forever, plus named tracking links).
       </p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         <div>

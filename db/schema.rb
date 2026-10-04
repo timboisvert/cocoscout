@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -749,7 +749,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_120000) do
     t.integer "tax_cents", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -2336,6 +2336,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_120000) do
     t.index ["source_type", "source_id"], name: "index_shifts_on_source_type_and_source_id"
   end
 
+  create_table "short_links", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.integer "clicks_count", default: 0, null: false
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.string "kind", default: "canonical", null: false
+    t.string "label"
+    t.datetime "last_clicked_at"
+    t.bigint "organization_id"
+    t.jsonb "query", default: {}, null: false
+    t.bigint "target_id"
+    t.string "target_type"
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_short_links_on_code", unique: true
+    t.index ["created_by_id"], name: "index_short_links_on_created_by_id"
+    t.index ["organization_id"], name: "index_short_links_on_organization_id"
+    t.index ["target_type", "target_id"], name: "index_short_links_canonical_per_target", unique: true, where: "((kind)::text = 'canonical'::text)"
+    t.index ["target_type", "target_id"], name: "index_short_links_on_target_type_and_target_id"
+  end
+
   create_table "show_advance_waivers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "notes"
@@ -3263,6 +3284,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_120000) do
     t.integer "refunded_cents", default: 0, null: false
     t.datetime "reminded_at"
     t.boolean "reminders_opt_out", default: false, null: false
+    t.bigint "short_link_id"
     t.string "status", default: "pending", null: false
     t.string "stripe_charge_id"
     t.string "stripe_dispute_id"
@@ -3288,6 +3310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_120000) do
     t.index ["issued_by_id"], name: "index_ticket_orders_on_issued_by_id"
     t.index ["organization_id", "created_at"], name: "index_ticket_orders_on_organization_id_and_created_at"
     t.index ["organization_id"], name: "index_ticket_orders_on_organization_id"
+    t.index ["short_link_id"], name: "index_ticket_orders_on_short_link_id"
     t.index ["stripe_payment_intent_id"], name: "index_ticket_orders_on_stripe_payment_intent_id", unique: true, where: "(stripe_payment_intent_id IS NOT NULL)"
     t.index ["ticket_discount_code_id"], name: "index_ticket_orders_on_ticket_discount_code_id"
     t.index ["ticket_listing_id", "status"], name: "index_ticket_orders_on_ticket_listing_id_and_status"
@@ -3819,6 +3842,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_120000) do
   add_foreign_key "shift_shows", "shows"
   add_foreign_key "shifts", "house_roles"
   add_foreign_key "shifts", "organizations"
+  add_foreign_key "short_links", "organizations"
+  add_foreign_key "short_links", "users", column: "created_by_id"
   add_foreign_key "show_advance_waivers", "people"
   add_foreign_key "show_advance_waivers", "shows"
   add_foreign_key "show_advance_waivers", "users", column: "waived_by_id"
@@ -3922,6 +3947,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_120000) do
   add_foreign_key "ticket_order_items", "ticket_products"
   add_foreign_key "ticket_order_items", "users", column: "fulfilled_by_id"
   add_foreign_key "ticket_orders", "organizations"
+  add_foreign_key "ticket_orders", "short_links"
   add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
   add_foreign_key "ticket_orders", "ticket_listings"
   add_foreign_key "ticket_orders", "ticket_orders", column: "exchanged_from_id"

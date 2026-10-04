@@ -1549,6 +1549,8 @@ class SuperadminController < ApplicationController
     type_filter = case @filter
     when "audition" then :audition
     when "signup" then :signup
+    when "course" then :course
+    when "link" then :link
     else nil
     end
 
