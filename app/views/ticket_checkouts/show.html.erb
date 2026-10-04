@@ -90,6 +90,13 @@
       <% unless free %>
         <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5">
           <h2 class="font-semibold text-gray-900 mb-4">Payment</h2>
+          <% if stripe_publishable_key.blank? && (Rails.env.development? || superadmin_viewer?) %>
+            <%# The real reason, for whoever can fix it; buyers see the JS's plain line. %>
+            <div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p class="font-medium">Stripe's publishable key isn't set.</p>
+              <p class="mt-1">Card payments need it on this page (courses don't, because Stripe hosts their checkout). Add <code class="font-mono">STRIPE_PUBLISHABLE_KEY=pk_…</code> to <code class="font-mono">.env</code> from the same Stripe account as the secret key, then restart the server. See <code class="font-mono">docs/dev_setup_stripe.md</code>.</p>
+            </div>
+          <% end %>
           <div data-ticket-checkout-target="payment" class="min-h-[3rem]"></div>
         </div>
       <% end %>

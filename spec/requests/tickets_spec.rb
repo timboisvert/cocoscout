@@ -112,6 +112,26 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).to include("2 × General", ">Fees<", "$2.53", "Pay $42.53", "Change tickets")
     end
 
+    # Courses pay on Stripe's page and need only the secret key; this page
+    # needs the publishable key too. When it's missing, a buyer sees the JS's
+    # plain line, and whoever can fix it sees the reason.
+    it "tells a superadmin, not a buyer, when the publishable key isn't set" do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("STRIPE_PUBLISHABLE_KEY").and_return(nil)
+      allow(Rails.application.credentials).to receive(:dig).and_call_original
+      allow(Rails.application.credentials).to receive(:dig).with(:stripe, :publishable_key).and_return(nil)
+      allow(Rails.env).to receive(:development?).and_return(false)
+
+      order = buy(1)
+      get tickets_checkout_path(token: order.token)
+      expect(response.body).not_to include("publishable key isn't set")
+
+      admin = create(:user, email_address: "boisvert@gmail.com", password: "Password123!")
+      post handle_signin_path, params: { email_address: admin.email_address, password: "Password123!" }
+      get tickets_checkout_path(token: order.token)
+      expect(response.body).to include("publishable key isn't set", "STRIPE_PUBLISHABLE_KEY", "docs/dev_setup_stripe.md")
+    end
+
     it "keeps the hold when the buyer goes back: the page can ask about it, and the same tickets reuse it" do
       order = buy(2)
       get tickets_checkout_hold_path(token: order.token)

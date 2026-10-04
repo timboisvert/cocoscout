@@ -191,4 +191,5 @@ class TicketCheckoutsController < ApplicationController
   def superadmin_viewer?
     authenticated? && Current.user&.superadmin?
   end
+  helper_method :superadmin_viewer?
 end
