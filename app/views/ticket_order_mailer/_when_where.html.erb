@@ -1,0 +1,34 @@
+<%# When and where, as one block a buyer can find at a glance: the date and
+    time big, the venue and address, directions and a calendar link, the
+    door note. Locals: w (TicketOrderMailer.when_where), order. %>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; margin: 20px 0; border: 1px solid #fbcfe8; border-radius: 12px; background: #fdf2f8;">
+  <tr>
+    <td style="padding: 16px 20px;">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #be185d;">When</div>
+      <div style="font-size: 20px; font-weight: 700; color: #111827; line-height: 1.3;"><%= w[:date] %></div>
+      <div style="font-size: 16px; color: #111827;"><%= w[:time] %></div>
+
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #be185d; margin-top: 14px;">Where</div>
+      <% if w[:online] %>
+        <div style="font-size: 16px; font-weight: 600; color: #111827;">Online</div>
+      <% elsif w[:venue] %>
+        <div style="font-size: 16px; font-weight: 600; color: #111827;"><%= w[:venue] %><% if w[:room] %> <span style="font-weight: 400; color: #4b5563;">· <%= w[:room] %></span><% end %></div>
+        <% if w[:address] %><div style="font-size: 14px; color: #4b5563;"><%= w[:address] %></div><% end %>
+      <% else %>
+        <div style="font-size: 14px; color: #4b5563;">Venue to be announced</div>
+      <% end %>
+
+      <div style="font-size: 14px; margin-top: 10px;">
+        <% if w[:directions_url] %><a href="<%= w[:directions_url] %>" style="color: #be185d; font-weight: 600;">Directions</a> &nbsp;·&nbsp; <% end %>
+        <a href="<%= tickets_order_calendar_url(token: order.token) %>" style="color: #be185d; font-weight: 600;">Add to calendar</a>
+      </div>
+
+      <% if w[:door_note] || w[:notes] %>
+        <div style="font-size: 13px; color: #4b5563; margin-top: 12px; padding-top: 10px; border-top: 1px solid #fbcfe8;">
+          <% if w[:door_note] %><div><%= w[:door_note] %></div><% end %>
+          <% if w[:notes] %><div><%= w[:notes] %></div><% end %>
+        </div>
+      <% end %>
+    </td>
+  </tr>
+</table>

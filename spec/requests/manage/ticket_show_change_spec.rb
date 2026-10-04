@@ -57,7 +57,7 @@ RSpec.describe "Telling buyers a show changed", type: :request do
 
     get manage_ticket_listing_change_path(listing)
     expect(response.body).to include("Who gets it", "dana-scully@example.com", "Email 1 buyer",
-                                     "has a new date and time", "It was Friday, October 16 at 7:30 PM")
+                                     "has a new date and time", "were for Friday, October 16 at 7:30 PM")
     expect(ActionMailer::Base.deliveries).to be_empty
 
     perform_enqueued_jobs do
@@ -70,7 +70,7 @@ RSpec.describe "Telling buyers a show changed", type: :request do
     html = (mail.html_part || mail).body.decoded
     expect(mail.to).to eq([ "dana-scully@example.com" ])
     expect(mail.subject).to eq("#{listing.display_title}: new date and time")
-    expect(html).to include("Hi Dana,", "now Saturday, October 17 at 8:00 PM", "It was Friday, October 16 at 7:30 PM")
+    expect(html).to include("Hi Dana,", "now Saturday, October 17 at 8:00 PM", "It was Friday, October 16 at 7:30 PM", "Add to calendar")
     expect(mail.attachments.map(&:filename)).to include("ticket-#{dana.tickets.sole.id}.png")
     expect(dana.reload.told_starts_at).to eq(show.reload.date_and_time)
     expect(TicketShowChange.pending?(listing)).to be(false)

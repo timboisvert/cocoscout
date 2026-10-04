@@ -1,7 +1,9 @@
 <%= raw @intro_html %>
 
+<%= render "ticket_order_mailer/when_where", w: @when_where, order: @order %>
+
 <% @tickets.each_with_index do |ticket, index| %>
-  <div style="margin: 24px 0; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; text-align: center;">
+  <div style="margin: 20px 0; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; text-align: center;">
     <div style="font-size: 14px; color: #6b7280;">Ticket <%= index + 1 %> of <%= @tickets.size %> · <%= ticket.ticket_tier.name %></div>
     <%= image_tag attachments["ticket-#{ticket.id}.png"].url, alt: "Ticket QR code", width: 180, height: 180, style: "display: block; margin: 12px auto;" %>
     <div style="font-size: 12px; color: #9ca3af;">Order <%= @order.code %></div>
@@ -9,7 +11,7 @@
 <% end %>
 
 <% if @items.any? %>
-  <div style="margin: 24px 0; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px;">
+  <div style="margin: 20px 0; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px;">
     <div style="font-size: 14px; font-weight: 600; color: #111827;">Also with this order</div>
     <% @items.each do |item| %>
       <div style="font-size: 14px; color: #374151; margin-top: 6px;"><%= item.quantity %> × <%= item.name %><% if item.description.present? %> <span style="color: #6b7280;">· <%= item.description %></span><% end %></div>
@@ -18,4 +20,7 @@
   </div>
 <% end %>
 
-<p style="font-size: 14px;"><%= link_to "View your tickets online", tickets_order_url(token: @order.token) %></p>
+<p style="font-size: 12px; color: #6b7280;">
+  Order <%= @order.code %> · <%= link_to "View your tickets online", tickets_order_url(token: @order.token) %>
+  <% if @stop_url %> · <%= link_to "Stop reminder emails", @stop_url %><% end %>
+</p>

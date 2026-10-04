@@ -15,6 +15,7 @@ class TicketDispute
     order ||= TicketOrder.where(stripe_charge_id: dispute.charge).order(:id).first if dispute.charge.present?
     return unless order
 
+    order.update_columns(stripe_dispute_id: dispute.id) if dispute.respond_to?(:id) && dispute.id.present?
     case event_type
     when "charge.dispute.created" then opened!(order, dispute.amount.to_i)
     when "charge.dispute.closed" then closed!(order) if dispute.status == "won"

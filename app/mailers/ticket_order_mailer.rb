@@ -15,17 +15,11 @@ class TicketOrderMailer < ApplicationMailer
   # Mail apps' own unsubscribe button turns reminders off for this order.
   def reminder(order)
     show = order.ticket_listing.show
-    location = show.location
-    address = [ location&.address1, location&.city ].compact_blank.join(", ")
-    stop_url = tickets_order_reminders_url(token: order.token)
+    @stop_url = tickets_order_reminders_url(token: order.token)
     headers["List-Unsubscribe"] = "<#{tickets_order_stop_reminders_url(token: order.token)}>"
     headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     deliver_tickets(order, **render_words("ticket_event_reminder", self.class.ticket_variables(order).merge(
-      when: self.class.when_words(show.date_and_time),
-      address: address,
-      directions_url: address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].join(', '))}" : "",
-      door_note: order.ticket_listing.effective_door_note.to_s,
-      stop_reminders_url: stop_url
+      when: self.class.when_words(show.date_and_time)
     )))
   end
 
@@ -67,6 +61,25 @@ class TicketOrderMailer < ApplicationMailer
       ticket_count_verb: count == 1 ? "is" : "are",
       order_code: order.code,
       order_url: routes.tickets_order_url(token: order.token, **url_options)
+    }
+  end
+
+  # Everything a buyer needs to turn up: the time, the place, directions,
+  # the door note. Rendered as its own block under an email's words.
+  def self.when_where(listing)
+    show = listing.show
+    location = show.location
+    address = [ location&.address1, [ location&.city, location&.state ].compact_blank.join(", "), location&.postal_code ].compact_blank.join(", ")
+    {
+      date: show.date_and_time.strftime("%A, %B %-d"),
+      time: show.date_and_time.strftime("%-l:%M %p"),
+      venue: location&.name,
+      room: (show.location_space&.name if show.location_space&.name != location&.name),
+      address: address.presence,
+      online: show.is_online,
+      directions_url: address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].join(', '))}" : nil,
+      door_note: listing.effective_door_note.presence,
+      notes: [ listing.effective_age_note, listing.effective_accessibility_note ].compact_blank.join(" · ").presence
     }
   end
 
@@ -141,14 +154,16 @@ class TicketOrderMailer < ApplicationMailer
 
   private
 
-  # An email with the order's tickets in it: the words, then one QR code per
-  # ticket, attached inline so the door can scan straight from the email.
+  # An email with the order's tickets in it: the words, the show's when and
+  # where, then one QR code per ticket, attached inline so the door can scan
+  # straight from the email, then any products and the order link.
   def deliver_tickets(order, subject:, body_html:)
     @order = order
     @listing = order.ticket_listing
     @tickets = order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:ticket_tier).order(:id).to_a
     @items = order.ticket_order_items.sold.order(:id).to_a
     @intro_html = body_html
+    @when_where = self.class.when_where(@listing)
 
     @tickets.each do |ticket|
       png = RQRCode::QRCode.new(tickets_ticket_url(code: ticket.code)).as_png(size: 360, border_modules: 2)

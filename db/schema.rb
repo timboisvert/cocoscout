@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_100200) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_110100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3264,6 +3264,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_100200) do
     t.boolean "reminders_opt_out", default: false, null: false
     t.string "status", default: "pending", null: false
     t.string "stripe_charge_id"
+    t.string "stripe_dispute_id"
     t.integer "stripe_fee_cents"
     t.string "stripe_payment_intent_id"
     t.integer "subtotal_cents", default: 0, null: false

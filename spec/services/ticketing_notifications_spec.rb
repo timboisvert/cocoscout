@@ -62,7 +62,7 @@ RSpec.describe "Ticketing notifications" do
 
     mail = mails_to("box@sg.example").sole
     expect(mail.subject).to eq("2 tickets sold: #{listing.display_title}, #{listing.show.date_and_time.strftime('%A, %B %-d')}")
-    expect(html(mail)).to include("Dana Scully bought 2 General", "2 of 10 sold", "Change what you get")
+    expect(html(mail)).to include("Dana Scully</strong> bought 2 General", "2 of 10 sold", "Change what you get")
 
     perform_enqueued_jobs { TicketComps.give!(listing, TicketComps.parse("Guest", listing: listing, default_tier: general), by: owner) }
     expect(mails_to("box@sg.example").size).to eq(1)
@@ -87,7 +87,7 @@ RSpec.describe "Ticketing notifications" do
     expect(subjects.grep(/\ATicket sales for/).size).to eq(1)
     expect(subjects.grep(/\AToday:/).size).to eq(1)
     summary = mails_to("manager@sg.example").find { |m| m.subject.start_with?("Ticket sales for") }
-    expect(html(summary)).to include("3 sold", "Coming up")
+    expect(html(summary)).to include("3 tickets sold", "Coming up")
   end
 
   it "tells the team about refunds, and about refunds that fail" do
@@ -116,7 +116,7 @@ RSpec.describe "Ticketing notifications" do
   it "tells the team the money from last night is available" do
     listing.show.update!(date_and_time: 2.days.ago)
     perform_enqueued_jobs { TicketMoneyRelease.release!(listing) }
-    expect(mails_to("owner@sg.example").map(&:subject)).to include(a_string_matching(/came\z/))
+    expect(mails_to("owner@sg.example").map(&:subject)).to include(a_string_matching(/\AShow summary/))
   end
 
   it "reports withdrawals" do

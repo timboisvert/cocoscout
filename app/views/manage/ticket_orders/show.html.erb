@@ -27,10 +27,14 @@
 
   <div class="max-w-2xl space-y-6">
     <% if @disputed %>
+      <% stripe_root = "https://dashboard.stripe.com#{'/test' unless Rails.env.production?}" %>
       <%= render "shared/alert_panel",
             eyebrow: "Disputed",
             headline: "The buyer disputed this charge with their bank",
-            body: "The amount and Stripe's $15 fee came out of your balance. If the dispute is won, both come back. Respond to it in Stripe; the check-in times below are good evidence." %>
+            body: "The amount and Stripe's $15 fee came out of your balance. If the dispute is won, both come back. Respond to it in Stripe; the check-in times below are good evidence.",
+            actions: [ { text: "Open the dispute in Stripe",
+                         path: (@order.stripe_dispute_id.present? ? "#{stripe_root}/disputes/#{@order.stripe_dispute_id}" : "#{stripe_root}/payments/#{@order.payment_intent_id}"),
+                         target: "_blank" } ] %>
     <% end %>
 
     <div class="bg-white border border-gray-200 rounded-xl px-6 py-5">
