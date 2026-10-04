@@ -19,8 +19,9 @@
   codes = stats.discount_uses
 %>
 <div class="space-y-6">
-  <%# Literal class names, so Tailwind sees each one. %>
-  <div class="grid grid-cols-2 <%= { 4 => 'lg:grid-cols-4', 5 => 'lg:grid-cols-5', 6 => 'lg:grid-cols-6' }.fetch(tiles.size, 'lg:grid-cols-4') %> gap-3">
+  <%# Four tiles sit in one row; five or six go three to a row (3+2, 3+3), so
+      none of them is squeezed. Literal class names, so Tailwind sees each. %>
+  <div class="grid grid-cols-2 <%= tiles.size == 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3' %> gap-3">
     <% tiles.each do |label, value, note, tint| %>
       <div class="rounded-lg border px-4 py-3 <%= tint || 'bg-white border-gray-200' %>">
         <div class="text-xs text-gray-500"><%= label %></div>
