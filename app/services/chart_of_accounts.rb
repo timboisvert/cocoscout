@@ -26,6 +26,8 @@ class ChartOfAccounts
     course_income: { code: "4200", name: "Course income", type: "income" },
     other_income: { code: "4900", name: "Other income", type: "income" },
     performer_pay: { code: "5000", name: "Performer pay", type: "expense" },
+    instructor_pay: { code: "5050", name: "Instructor pay", type: "expense" },
+    contractor_pay: { code: "5060", name: "Paid to contractors", type: "expense" },
     staff_pay: { code: "5100", name: "Staff pay", type: "expense" },
     venue: { code: "5200", name: "Venue", type: "expense" },
     production_costs: { code: "5300", name: "Production", type: "expense" },
@@ -34,6 +36,7 @@ class ChartOfAccounts
     ticketing_fees: { code: "5600", name: "Ticketing and card fees", type: "expense" },
     # Buyer-paid fees offset the fees line, so passing fees on nets to zero.
     fees_paid_by_buyers: { code: "5610", name: "Fees paid by buyers", type: "expense", subtype: "contra" },
+    course_fees: { code: "5630", name: "Course platform and card fees", type: "expense" },
     other_expenses: { code: "5900", name: "Other expenses", type: "expense" }
   }.freeze
 

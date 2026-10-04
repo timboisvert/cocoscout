@@ -35,6 +35,10 @@ class PayoutLedgerEntry < ApplicationRecord
   validates :currency, presence: true
   validates :occurred_at, presence: true
 
+  # Every row is the detail behind the books' "Owed to performers and staff" (BooksPoster).
+  after_commit :post_to_books, on: %i[create update]
+  after_commit :remove_from_books, on: :destroy
+
   scope :earnings, -> { where(entry_type: "earning") }
   scope :advances, -> { where(entry_type: "advance") }
   scope :payouts, -> { where(entry_type: "payout") }
@@ -77,10 +81,23 @@ class PayoutLedgerEntry < ApplicationRecord
   def self.unpost!(source:, entry_type:)
     return 0 unless source
 
-    where(
+    rows = where(
       source_type: source.class.polymorphic_name,
       source_id: source.id,
       entry_type: entry_type
-    ).delete_all
+    )
+    # delete_all skips callbacks, so the books are told here.
+    rows.each { |row| BooksPoster.remove!(row) }
+    rows.delete_all
+  end
+
+  private
+
+  def post_to_books
+    BooksPoster.post!(self)
+  end
+
+  def remove_from_books
+    BooksPoster.remove!(self)
   end
 end

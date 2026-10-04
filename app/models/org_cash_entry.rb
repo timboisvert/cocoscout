@@ -56,6 +56,10 @@ class OrgCashEntry < ApplicationRecord
   validates :currency, presence: true
   validates :occurred_at, presence: true
 
+  # Every row is the detail behind the books' "CocoScout balance" (BooksPoster).
+  after_commit :post_to_books, on: %i[create update]
+  after_commit :remove_from_books, on: :destroy
+
   # Whether an insufficient balance actually BLOCKS a transfer/refund, or the
   # ledger just records silently. Off by default so the ledger can accrue and
   # be reconciled against the real Stripe balance in production before any
@@ -124,11 +128,14 @@ class OrgCashEntry < ApplicationRecord
   def self.unpost!(source:, entry_type:)
     return 0 unless source
 
-    where(
+    rows = where(
       source_type: source.class.polymorphic_name,
       source_id: source.id,
       entry_type: entry_type
-    ).delete_all
+    )
+    # delete_all skips callbacks, so the books are told here.
+    rows.each { |row| BooksPoster.remove!(row) }
+    rows.delete_all
   end
 
   # Serialize all balance mutations for one org (cross-org never contends).
@@ -181,5 +188,15 @@ class OrgCashEntry < ApplicationRecord
         occurred_at: occurred_at
       )
     end
+  end
+
+  private
+
+  def post_to_books
+    BooksPoster.post!(self)
+  end
+
+  def remove_from_books
+    BooksPoster.remove!(self)
   end
 end
