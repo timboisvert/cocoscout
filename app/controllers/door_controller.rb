@@ -45,6 +45,7 @@ class DoorController < ApplicationController
     admitted = results.count { |r| r.kind == :admitted }
     render json: { kind: admitted.positive? ? "admitted" : "already",
                    message: admitted.positive? ? "Admitted #{admitted} — #{order.buyer_name.presence || order.code}" : "Everyone on this order is already in",
+                   holder: order.buyer_name.presence, party: party_line(order), items: items_json(order),
                    counts: door.counts }
   end
 
@@ -151,15 +152,34 @@ class DoorController < ApplicationController
     @door ||= TicketDoor.new(@listing, Current.user)
   end
 
+  # What the banner shows after a scan: who, the result, how much of their
+  # party is in, and anything they pre-bought (a bottle) with a hand-over tap.
   def result_json(result)
     ticket = result.ticket
+    order = ticket&.ticket_order
     {
       kind: result.kind,
       message: result.message,
-      holder: ticket && (ticket.holder_name.presence || ticket.ticket_order.buyer_name),
-      order_code: ticket&.ticket_order&.code,
+      holder: ticket && (ticket.holder_name.presence || order.buyer_name),
+      order_code: order&.code,
       ticket_id: ticket&.id,
+      party: order && order.ticket_listing_id == @listing.id ? party_line(order) : nil,
+      items: order && order.ticket_listing_id == @listing.id ? items_json(order) : [],
       counts: door.counts
     }
+  end
+
+  # "2 of 3 in" for a party of several; nothing for a single ticket.
+  def party_line(order)
+    held = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
+    return nil if held.size < 2
+
+    "#{held.count(&:checked_in?)} of #{held.size} in"
+  end
+
+  def items_json(order)
+    order.ticket_order_items.select(&:sold?).map do |item|
+      { id: item.id, label: item.label, fulfilled: item.fulfilled?, fulfill_url: door_fulfill_path(@listing, item_id: item.id) }
+    end
   end
 end

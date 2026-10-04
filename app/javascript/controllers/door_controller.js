@@ -115,11 +115,14 @@ export default class extends Controller {
         const tone = data.kind === "admitted" ? "admitted" : data.kind === "already" ? "already" : "error"
         const lines = [data.message]
         if (data.holder) lines.unshift(data.holder)
-        this.showBanner(tone, lines, data.kind === "admitted" ? data.ticket_id : null)
+        if (data.party) lines.push(data.party)
+        this.showBanner(tone, lines, data.kind === "admitted" ? data.ticket_id : null, data.items || [])
         if (data.counts) this.updateCounts(data.counts)
     }
 
-    showBanner(tone, lines, undoTicketId = null) {
+    // items: what they pre-bought (a bottle), each with a hand-over tap. A
+    // banner with something still to hand over stays until the next scan.
+    showBanner(tone, lines, undoTicketId = null, items = []) {
         const banner = this.bannerTarget
         banner.className = `mt-4 rounded-xl px-4 py-4 text-center ${this.constructor.BANNER_CLASSES[tone]}`
         banner.replaceChildren()
@@ -138,9 +141,46 @@ export default class extends Controller {
             undo.dataset.action = "click->door#undo"
             banner.appendChild(undo)
         }
+        items.forEach((item) => {
+            const row = document.createElement("div")
+            row.className = "mt-3 flex items-center justify-between gap-3 rounded-lg bg-white/90 px-3 py-2 text-left text-gray-900"
+            const label = document.createElement("div")
+            label.className = "text-base font-semibold"
+            label.textContent = item.fulfilled ? `${item.label} · handed over` : item.label
+            row.appendChild(label)
+            if (!item.fulfilled) {
+                const button = document.createElement("button")
+                button.type = "button"
+                button.className = "rounded-lg bg-pink-500 px-3 py-1.5 text-sm font-semibold text-white"
+                button.textContent = "Handed over"
+                button.dataset.url = item.fulfill_url
+                button.dataset.action = "click->door#fulfillFromBanner"
+                row.appendChild(button)
+            }
+            banner.appendChild(row)
+        })
         this.feedback(tone)
         clearTimeout(this.bannerTimer)
-        this.bannerTimer = setTimeout(() => banner.classList.add("hidden"), 8000)
+        const waiting = items.some((item) => !item.fulfilled)
+        if (!waiting) this.bannerTimer = setTimeout(() => banner.classList.add("hidden"), 8000)
+    }
+
+    // Hand over a pre-bought product straight from the banner.
+    async fulfillFromBanner(event) {
+        const button = event.currentTarget
+        button.disabled = true
+        try {
+            const data = await this.post(button.dataset.url, {})
+            const row = button.parentElement
+            row.firstChild.textContent = `${row.firstChild.textContent} · handed over`
+            button.remove()
+            if (!this.bannerTarget.querySelector("[data-action='click->door#fulfillFromBanner']")) {
+                this.bannerTimer = setTimeout(() => this.bannerTarget.classList.add("hidden"), 8000)
+            }
+            if (data.counts) this.updateCounts(data.counts)
+        } catch {
+            button.disabled = false
+        }
     }
 
     // A rising chirp for admitted, a low buzz for anything else, and a

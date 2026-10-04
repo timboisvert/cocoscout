@@ -75,6 +75,11 @@ RSpec.describe "Ticket products on pages", type: :request do
     get door_search_path(listing, q: "Avery")
     expect(response.body).to include("1 × Champagne bottle", "Handed over")
     item = order.ticket_order_items.sole
+    # A scan at the door names what they pre-bought, with a hand-over tap.
+    post door_check_in_path(listing), params: { code: order.tickets.first.code }, as: :json
+    scan = response.parsed_body
+    expect(scan["party"]).to eq("1 of 2 in")
+    expect(scan["items"]).to eq([ { "id" => item.id, "label" => "1 × Champagne bottle", "fulfilled" => false, "fulfill_url" => door_fulfill_path(listing, item_id: item.id) } ])
     post door_fulfill_path(listing, item_id: item.id), as: :json
     expect(response.parsed_body["message"]).to eq("1 × Champagne bottle handed over")
     expect(item.reload.fulfilled?).to be(true)
@@ -101,6 +106,6 @@ RSpec.describe "Ticket products on pages", type: :request do
     expect(response.body).to include("Refund $", "1 × Champagne bottle")
     post manage_ticket_order_refund_path(order.id), params: { ticket_ids: [ "" ], item_ids: [ item.id ], keep_fees: "0" }
     expect(order.reload.status).to eq("partially_refunded")
-    expect(order.tickets.pluck(:status).uniq).to eq([ "valid" ])
+    expect(order.tickets.pluck(:status)).to contain_exactly("checked_in", "valid")
   end
 end
