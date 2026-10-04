@@ -11,7 +11,17 @@ module Manage
   # shared "show" template, so all reports look consistent and can be downloaded
   # as CSV (Excel) or printed to PDF (window.print) with no per-report work.
   class ReportsController < Manage::ManageController
+    include TicketingPeriods
+
+    TICKET_REPORTS = %i[ticket_sales_by_show ticket_sales_by_type ticket_sales_by_channel ticket_buyers].freeze
+
     before_action :ensure_reports_access
+    # Ticketing is experimental: its reports show for superadmins only, like
+    # the rest of the module. Drop this with ensure_user_is_superadmin there.
+    before_action :ensure_ticketing_reports_access, only: TICKET_REPORTS
+    # Buyers' emails and phones are the theater's to see, never a
+    # production-team member's.
+    before_action -> { redirect_to(manage_reports_path, notice: "Only the theater's managers can see buyers.") unless reports_org_wide? }, only: :ticket_buyers
 
     # Landing-page catalog. Each report links to a built page.
     REPORT_CATALOG = [
@@ -32,6 +42,18 @@ module Manage
         ]
       },
       {
+        title: "Ticketing",
+        icon: "ticketing",
+        superadmin_only: true,
+        reports: [
+          { key: :ticket_sales_by_show, title: "Ticket Sales by Show", description: "Tickets, sales, products, refunds and what you keep, per show." },
+          { key: :ticket_sales_by_type, title: "Ticket Sales by Type", description: "How each ticket type sold across a period." },
+          { key: :ticket_sales_by_channel, title: "Ticket Sales by Channel", description: "Online, your website, the door and comps." },
+          { key: :ticket_buyers, title: "Ticket Buyers", description: "Everyone who bought in a period, with their contact details." },
+          { key: :ticket_taxes, title: "Taxes Collected on Tickets", description: "What you collected, to pay the government." }
+        ]
+      },
+      {
         title: "Programming",
         icon: "calendar",
         reports: [
@@ -48,11 +70,82 @@ module Manage
       course_revenue: :manage_report_course_revenue_path,
       payouts_summary: :manage_report_payouts_summary_path,
       events_summary: :manage_report_events_summary_path,
-      cast_participation: :manage_report_cast_participation_path
+      cast_participation: :manage_report_cast_participation_path,
+      ticket_sales_by_show: :manage_report_ticket_sales_by_show_path,
+      ticket_sales_by_type: :manage_report_ticket_sales_by_type_path,
+      ticket_sales_by_channel: :manage_report_ticket_sales_by_channel_path,
+      ticket_buyers: :manage_report_ticket_buyers_path,
+      ticket_taxes: :manage_ticket_taxes_path
     }.freeze
 
     def index
-      @report_catalog = REPORT_CATALOG
+      @report_catalog = REPORT_CATALOG.reject { |group| group[:superadmin_only] && !Current.user&.superadmin? }
+    end
+
+    # --- Ticketing: a month or quarter of ticket sales (TicketSalesReport),
+    # counted by the day each order was paid or the day of its show.
+
+    def ticket_sales_by_show
+      report = ticket_report
+      s = report.summary
+      rows = report.by_show.map do |row|
+        [ "#{row.listing.display_title} · #{row.listing.show.date_and_time.strftime('%a %b %-d')}", row.tickets, row.comps,
+          row.gross_cents / 100.0, row.product_cents / 100.0, row.refunded_cents / 100.0, row.net_cents / 100.0, row.money_state ]
+      end
+      render_report(
+        key: :ticket_sales_by_show, title: "Ticket Sales by Show",
+        subtitle: "Tickets, sales, products, refunds and what you keep, per show. Sales are face value, before fees and tax.",
+        stats: ticket_stats(s),
+        columns: [ col("Show"), col("Tickets", :number), col("Comps", :number), col("Ticket sales", :currency), col("Products", :currency),
+                   col("Refunded", :currency), col("You keep", :currency), col("Money") ],
+        rows: rows,
+        total_row: [ "Total", s.tickets, s.comps, s.gross_cents / 100.0, s.product_cents / 100.0, s.refunded_cents / 100.0, s.net_cents / 100.0, nil ],
+        filters: ticket_filters(report)
+      )
+    end
+
+    def ticket_sales_by_type
+      report = ticket_report
+      rows = report.by_type.map { |row| [ row.name, row.tickets, row.gross_cents / 100.0 ] }
+      render_report(
+        key: :ticket_sales_by_type, title: "Ticket Sales by Type",
+        subtitle: "How each ticket type sold, by name across every show. Comps not counted.",
+        stats: ticket_stats(report.summary),
+        columns: [ col("Ticket type"), col("Tickets", :number), col("Ticket sales", :currency) ],
+        rows: rows,
+        total_row: [ "Total", rows.sum { |r| r[1] }, rows.sum { |r| r[2] } ],
+        filters: ticket_filters(report)
+      )
+    end
+
+    def ticket_sales_by_channel
+      report = ticket_report
+      rows = report.by_channel.map { |row| [ row.label, row.orders, row.tickets, row.gross_cents / 100.0 ] }
+      render_report(
+        key: :ticket_sales_by_channel, title: "Ticket Sales by Channel",
+        subtitle: "Where the orders came from: online, your own website, the door, and comps.",
+        stats: ticket_stats(report.summary),
+        columns: [ col("Channel"), col("Orders", :number), col("Tickets", :number), col("Ticket sales", :currency) ],
+        rows: rows,
+        total_row: [ "Total", rows.sum { |r| r[1] }, rows.sum { |r| r[2] }, rows.sum { |r| r[3] } ],
+        filters: ticket_filters(report)
+      )
+    end
+
+    def ticket_buyers
+      report = ticket_report
+      rows = report.buyer_rows.map do |row|
+        [ row.name, row.email, row.phone, "#{row.show} · #{row.show_at.strftime('%b %-d')}", row.code, row.bought_at&.strftime("%b %-d"),
+          row.tickets, row.products, row.total_cents / 100.0, row.channel, row.status ]
+      end
+      render_report(
+        key: :ticket_buyers, title: "Ticket Buyers",
+        subtitle: "Everyone who bought in the period, one row per order.",
+        columns: [ col("Name"), col("Email"), col("Phone"), col("Show"), col("Order"), col("Bought"), col("Tickets", :number),
+                   col("Products"), col("Total", :currency), col("How"), col("Status") ],
+        rows: rows,
+        filters: ticket_filters(report)
+      )
     end
 
     def revenue_by_production
@@ -208,6 +301,32 @@ module Manage
       Current.organization
     end
 
+    def ensure_ticketing_reports_access
+      redirect_to manage_reports_path, notice: "You do not have permission to access that page." unless Current.user&.superadmin?
+    end
+
+    # The period and basis chosen (TicketingPeriods), scoped to the
+    # productions this person may report on.
+    def ticket_report
+      chosen_period
+      TicketSalesReport.new(organization, from: @period[:from], to: @period[:to], basis: params[:basis],
+                                          production_ids: (reportable_productions.select(:id) unless reports_org_wide?))
+    end
+
+    def ticket_stats(s)
+      [
+        { label: "Tickets sold", value: s.tickets },
+        { label: "Ticket sales", value: format_currency(s.gross_cents / 100.0) },
+        { label: "Refunded", value: format_currency(s.refunded_cents / 100.0) },
+        { label: "You keep", value: format_currency(s.net_cents / 100.0) }
+      ]
+    end
+
+    # The period and basis selectors above a ticket report; the CSV keeps them.
+    def ticket_filters(report)
+      { period: @period, periods: @periods, basis: report.basis, params: { period: @period[:key], basis: report.basis } }
+    end
+
     # Reports are open to org owners/managers (org-wide) AND to production-team
     # members who hold a per-production permission (scoped to just those
     # productions). Everyone else is bounced. The paid-tier check still applies
@@ -247,7 +366,7 @@ module Manage
     end
 
     # Build the uniform report and respond as HTML (shared template) or CSV.
-    def render_report(key:, title:, subtitle:, columns:, rows:, total_row: nil, stats: [])
+    def render_report(key:, title:, subtitle:, columns:, rows:, total_row: nil, stats: [], filters: nil)
       @report = {
         key: key,
         title: title,
@@ -256,8 +375,9 @@ module Manage
         columns: columns,
         rows: rows,
         total_row: total_row,
+        filters: filters,
         filename: key.to_s.dasherize,
-        csv_path: send(REPORT_PATH_HELPERS.fetch(key), format: :csv)
+        csv_path: send(REPORT_PATH_HELPERS.fetch(key), format: :csv, **(filters&.fetch(:params, {}) || {}))
       }
 
       respond_to do |format|

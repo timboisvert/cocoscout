@@ -1039,6 +1039,10 @@ Rails.application.routes.draw do
       get "/cast-participation",    to: "reports#cast_participation",    as: "report_cast_participation"
       get "/payouts-summary",       to: "reports#payouts_summary",       as: "report_payouts_summary"
       get "/course-revenue",        to: "reports#course_revenue",        as: "report_course_revenue"
+      get "/ticket-sales-by-show",  to: "reports#ticket_sales_by_show",  as: "report_ticket_sales_by_show"
+      get "/ticket-sales-by-type",  to: "reports#ticket_sales_by_type",  as: "report_ticket_sales_by_type"
+      get "/ticket-sales-by-channel", to: "reports#ticket_sales_by_channel", as: "report_ticket_sales_by_channel"
+      get "/ticket-buyers",         to: "reports#ticket_buyers",         as: "report_ticket_buyers"
     end
 
     # Subscription billing (Producer / Pro)
@@ -1282,8 +1286,6 @@ Rails.application.routes.draw do
     post   "money/books/balance/top-up",          to: "ticket_balance#top_up",           as: "ticket_balance_top_up"
     patch  "money/books/balance/auto-withdraw",   to: "ticket_balance#update_auto_withdraw", as: "ticket_balance_auto_withdraw"
     get    "ticketing/taxes",                     to: "ticket_taxes#show",               as: "ticket_taxes"
-    get    "ticketing/reports",                   to: "ticket_reports#show",             as: "ticket_reports"
-    get    "ticketing/reports/buyers",            to: "ticket_reports#buyers",           as: "ticket_report_buyers", defaults: { format: :csv }
 
     # Staffing → Availability: the whole staff's availability on a month calendar.
     get   "staffing/availability",                to: "staffing/availability#index",     as: "staffing_availability"

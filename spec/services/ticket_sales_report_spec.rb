@@ -60,5 +60,10 @@ RSpec.describe TicketSalesReport do
     buyers = report.buyers_csv
     expect(buyers).to include("Dana Scully", "dana-scully@example.com", "Fox Mulder", "Walter")
     expect(buyers).not_to include("Last Month")
+
+    # Scoped to a production (a production-team member's reports).
+    other = create(:production, organization: org)
+    expect(described_class.new(org, from: this_month.to_date, to: this_month.end_of_month.to_date, production_ids: [ other.id ]).summary.tickets).to eq(0)
+    expect(described_class.new(org, from: this_month.to_date, to: this_month.end_of_month.to_date, production_ids: [ production.id ]).summary.tickets).to eq(3)
   end
 end

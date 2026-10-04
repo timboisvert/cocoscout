@@ -20,14 +20,18 @@ class TicketSalesReport
   ShowRow = Data.define(:listing, :tickets, :comps, :gross_cents, :product_cents, :refunded_cents, :net_cents, :money_state)
   TypeRow = Data.define(:name, :tickets, :gross_cents)
   ChannelRow = Data.define(:channel, :label, :orders, :tickets, :gross_cents)
+  BuyerRow = Data.define(:name, :email, :phone, :show, :show_at, :code, :bought_at, :tickets, :products, :total_cents, :channel, :status)
 
   attr_reader :from, :to, :basis
 
-  def initialize(organization, from:, to:, basis: "sale")
+  # production_ids: only these productions' shows (a production-team
+  # member's reports); nil means the whole organization.
+  def initialize(organization, from:, to:, basis: "sale", production_ids: nil)
     @organization = organization
     @from = from
     @to = to
     @basis = BASES.include?(basis) ? basis : "sale"
+    @production_ids = production_ids
   end
 
   def summary
@@ -96,16 +100,23 @@ class TicketSalesReport
   end
 
   # Everyone who bought in the period, one row per order.
+  def buyer_rows
+    orders.sort_by { |o| o.paid_at || Time.at(0) }.map do |order|
+      held = held_tickets.select { |t| t.ticket_order_id == order.id }
+      BuyerRow.new(name: order.buyer_name, email: order.buyer_email, phone: order.buyer_phone, show: order.ticket_listing.display_title,
+                   show_at: order.ticket_listing.show.date_and_time, code: order.code, bought_at: order.paid_at, tickets: held.size,
+                   products: items.select { |i| i.ticket_order_id == order.id }.map(&:label).join("; "), total_cents: order.total_cents,
+                   channel: Ticketing::ListingStats::CHANNELS.fetch(order.channel, order.channel), status: order.status.humanize)
+    end
+  end
+
   def buyers_csv
     require "csv"
     CSV.generate do |csv|
       csv << [ "Name", "Email", "Phone", "Show", "Show date", "Order", "Bought", "Tickets", "Products", "Total", "How", "Status" ]
-      orders.sort_by { |o| o.paid_at || Time.at(0) }.each do |order|
-        held = held_tickets.select { |t| t.ticket_order_id == order.id }
-        csv << [ order.buyer_name, order.buyer_email, order.buyer_phone, order.ticket_listing.display_title,
-                 order.ticket_listing.show.date_and_time.strftime("%Y-%m-%d %H:%M"), order.code, order.paid_at&.strftime("%Y-%m-%d %H:%M"),
-                 held.size, items.select { |i| i.ticket_order_id == order.id }.map(&:label).join("; "), dollars(order.total_cents),
-                 Ticketing::ListingStats::CHANNELS.fetch(order.channel, order.channel), order.status.humanize ]
+      buyer_rows.each do |row|
+        csv << [ row.name, row.email, row.phone, row.show, row.show_at.strftime("%Y-%m-%d %H:%M"), row.code,
+                 row.bought_at&.strftime("%Y-%m-%d %H:%M"), row.tickets, row.products, dollars(row.total_cents), row.channel, row.status ]
       end
     end
   end
@@ -116,6 +127,7 @@ class TicketSalesReport
   def orders
     @orders ||= begin
       scope = @organization.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(ticket_listing: { show: :location })
+      scope = scope.joins(:ticket_listing).where(ticket_listings: { production_id: @production_ids }) if @production_ids
       if basis == "event"
         scope.joins(ticket_listing: :show).where(shows: { date_and_time: from.beginning_of_day..to.end_of_day })
       else
