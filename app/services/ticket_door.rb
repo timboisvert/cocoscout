@@ -19,11 +19,11 @@ class TicketDoor
     @user = user
   end
 
-  # A scanned QR (its /t/v/<code> link, or the bare code) or a barcode from
+  # A scanned QR (its /tickets/v/<code> link, or the bare code) or a barcode from
   # another site.
   def check_in(scanned)
     code = scanned.to_s.strip
-    code = code.split("/t/v/").last.to_s.split(/[?#]/).first.to_s if code.include?("/t/v/")
+    code = code.split("/v/").last.to_s.split(/[?#]/).first.to_s if code.include?("/v/")
     return result(:not_found, nil, "No ticket with that code") if code.empty?
 
     ticket = Ticket.find_by(code: code) || Ticket.find_by(ticket_listing_id: @listing.id, external_barcode: code)

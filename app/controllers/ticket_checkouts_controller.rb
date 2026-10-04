@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Buying tickets, no sign-in. Picking tickets on a show's page holds the seats
-# for ten minutes (TicketCheckout) and opens checkout at /t/checkout/<token>.
+# for ten minutes (TicketCheckout) and opens checkout at /tickets/checkout/<token>.
 #
 # Payment is Stripe's Payment Element on our own page — cards, Apple Pay,
 # Google Pay, Link — so it works inside an embed too. The PaymentIntent is

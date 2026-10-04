@@ -58,7 +58,7 @@ RSpec.describe "Public ticketing", type: :request do
       page = response.body
       expect(page).to include("Every scene turns into an animal.", 'aria-label="Pick a date"', "Sold out", "Continue to checkout",
                               %(name="quantities[#{general.id}]"), show.date_and_time.strftime("%A, %B %-d · %-l:%M %p"))
-      expect(page).to include(%(href="/t/starsandgarters/#{production.public_key}?date=#{later_listing.slug}"))
+      expect(page).to include(%(href="/tickets/starsandgarters/#{production.public_key}?date=#{later_listing.slug}"))
       expect(production.public_key).to be_present
 
       get tickets_event_path(org: "starsandgarters", event: production.public_key, date: later.date_and_time.to_date.iso8601)
@@ -66,7 +66,7 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).not_to include("Continue to checkout")
 
       get event_path
-      expect(response.body).to include(%(href="/t/starsandgarters/#{production.public_key}"))
+      expect(response.body).to include(%(href="/tickets/starsandgarters/#{production.public_key}"))
       expect(response.body).not_to include("/p/#{production.id}")
 
       get tickets_event_path(org: "starsandgarters", event: production.id.to_s)

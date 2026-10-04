@@ -6,11 +6,11 @@
   example_event = upcoming.first&.slug || "your-show-oct-10"
   snippets = [
     [ "Your box office", "Every show on sale, on your own site. Buyers pick a date and check out without leaving the page.",
-      %(<div data-cocoscout-tickets="#{profile.slug}"></div>\n<script src="#{base}/t/embed.js" async></script>) ],
+      %(<div data-cocoscout-tickets="#{profile.slug}"></div>\n<script src="#{base}/tickets/embed.js" async></script>) ],
     [ "One show", "Just one date's tickets. Use the show's address from Shows on sale.",
-      %(<div data-cocoscout-tickets="#{profile.slug}" data-event="#{example_event}"></div>\n<script src="#{base}/t/embed.js" async></script>) ],
+      %(<div data-cocoscout-tickets="#{profile.slug}" data-event="#{example_event}"></div>\n<script src="#{base}/tickets/embed.js" async></script>) ],
     [ "A Buy tickets button", "A pink button that opens the show's tickets over your page.",
-      %(<div data-cocoscout-tickets="#{profile.slug}" data-event="#{example_event}" data-view="button">Buy tickets</div>\n<script src="#{base}/t/embed.js" async></script>) ]
+      %(<div data-cocoscout-tickets="#{profile.slug}" data-event="#{example_event}" data-view="button">Buy tickets</div>\n<script src="#{base}/tickets/embed.js" async></script>) ]
   ]
 %>
 <div class="space-y-5">

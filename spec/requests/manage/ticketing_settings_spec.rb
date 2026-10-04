@@ -22,7 +22,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
       get manage_ticketing_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Ticketing is off for Stars &amp; Garters")
-      expect(response.body).to include("/t/stars-garters")
+      expect(response.body).to include("/tickets/stars-garters")
     end
 
     it "keeps managers who aren't superadmins out while it's experimental" do

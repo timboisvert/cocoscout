@@ -64,10 +64,10 @@ class Rack::Attack
   # Ticket checkouts: starting one holds seats, and paying creates a Stripe
   # PaymentIntent — both are what card-testing bots and seat hoarders hammer.
   throttle("tickets/checkout/ip", limit: 10, period: 1.minute) do |req|
-    req.ip if req.post? && req.path.start_with?("/t/") && req.path.match?(%r{/(checkout|pay)\z})
+    req.ip if req.post? && req.path.start_with?("/tickets/") && req.path.match?(%r{/(checkout|pay)\z})
   end
   throttle("tickets/pay/ip", limit: 20, period: 1.hour) do |req|
-    req.ip if req.post? && req.path.start_with?("/t/checkout/") && req.path.end_with?("/pay")
+    req.ip if req.post? && req.path.start_with?("/tickets/checkout/") && req.path.end_with?("/pay")
   end
 
   # Active Storage variants are expensive (image processing / S3 fetch) — the

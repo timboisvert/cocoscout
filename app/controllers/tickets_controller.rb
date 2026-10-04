@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# The public box office at cocoscout.com/t — no sign-in. A theater's page of
+# The public box office at cocoscout.com/tickets — no sign-in. A theater's page of
 # upcoming shows, a production's dates, and each show's ticket page.
 #
 # Only theaters with ticketing switched on are public. A signed-in superadmin
@@ -18,7 +18,7 @@ class TicketsController < ApplicationController
     @listings = selling_listings.select { |l| @production_filter.nil? || l.production_id == @production_filter.id }
   end
 
-  # /t/<org>/<slug>: a date's ticket page, or — when the slug is a
+  # /tickets/<org>/<slug>: a date's ticket page, or — when the slug is a
   # production's public key — the production's page with all its dates.
   def event
     @listing = @organization.ticket_listings.find_by(slug: params[:event])

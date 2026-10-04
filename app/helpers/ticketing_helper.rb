@@ -46,7 +46,7 @@ module TicketingHelper
     name.to_s.end_with?("s") ? "#{name}'" : "#{name}'s"
   end
 
-  # A production's public ticket page, by its key: /t/<org>/<production-key>.
+  # A production's public ticket page, by its key: /tickets/<org>/<production-key>.
   def ticket_production_path(profile, production, **options)
     tickets_event_path(org: profile.slug, event: production.public_key, **options)
   end
@@ -105,7 +105,7 @@ module TicketingHelper
   end
 
   def ticket_public_path_text(listing)
-    "cocoscout.com/t/#{listing.organization.ticketing_profile&.slug || TicketingProfile.for(listing.organization).slug}/#{listing.slug}"
+    "cocoscout.com/tickets/#{listing.organization.ticketing_profile&.slug || TicketingProfile.for(listing.organization).slug}/#{listing.slug}"
   end
 
   # How a show's sales read to a buyer: nil when it's simply on sale.
@@ -125,7 +125,7 @@ module TicketingHelper
            .map { |tier| TicketPricing.all_in_price_cents(listing, tier) }.min
   end
 
-  # The QR a ticket carries: its own /t/v page, which the door scanner reads
+  # The QR a ticket carries: its own /tickets/v page, which the door scanner reads
   # and a phone camera opens.
   def ticket_qr_svg(ticket)
     RQRCode::QRCode.new(tickets_ticket_url(code: ticket.code))

@@ -58,9 +58,9 @@ RSpec.describe TicketRemindersJob do
     expect(mail.subject).to eq("Reminder: #{listing.display_title} is on Saturday")
     html = (mail.html_part || mail).body.decoded
     expect(html).to include("See you on Saturday", "7:30 PM", "1 Clark St, Chicago", "Doors open at 7. Enter on Clark St.",
-                            "/t/orders/#{o.token}/reminders")
+                            "/tickets/orders/#{o.token}/reminders")
     expect(mail.attachments.map(&:filename)).to include("ticket-#{o.tickets.sole.id}.png")
-    expect(mail["List-Unsubscribe"].value).to include("/t/orders/#{o.token}/reminders/stop")
+    expect(mail["List-Unsubscribe"].value).to include("/tickets/orders/#{o.token}/reminders/stop")
     expect(mail.from).to eq([ "info@cocoscout.com" ])
   end
 

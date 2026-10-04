@@ -15,7 +15,7 @@ RSpec.describe "Ticketing embed", type: :request do
   it "serves the one script, pointing back at this site" do
     get tickets_embed_script_path
     expect(response.media_type).to eq("text/javascript")
-    expect(response.body).to include("data-cocoscout-tickets").and include("/t/embed/").and include("http://www.example.com")
+    expect(response.body).to include("data-cocoscout-tickets").and include("/tickets/embed/").and include("http://www.example.com")
     expect(response.headers["Cache-Control"]).to include("public")
   end
 
@@ -55,6 +55,6 @@ RSpec.describe "Ticketing embed", type: :request do
 
     get manage_ticketing_settings_section_path(section: "embed")
     expect(response.body).to include(%(data-cocoscout-tickets=&quot;starsandgarters&quot;))
-    expect(response.body).to include("/t/embed.js").and include(listing.slug)
+    expect(response.body).to include("/tickets/embed.js").and include(listing.slug)
   end
 end

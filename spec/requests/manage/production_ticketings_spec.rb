@@ -68,7 +68,7 @@ RSpec.describe "Production ticketing", type: :request do
 
     get manage_production_ticketing_path(production)
     expect(response.body).to include("Selling", "All performances", "New dates join on their own",
-                                     manage_ticket_listing_path(first_show.ticket_listing), "/t/#{TicketingProfile.for(org).slug}/#{production.public_key}")
+                                     manage_ticket_listing_path(first_show.ticket_listing), "/tickets/#{TicketingProfile.for(org).slug}/#{production.public_key}")
     get manage_ticket_listings_path
     expect(response.body).to include("Rising Stars", "Selling", "2 upcoming dates")
   end

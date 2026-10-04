@@ -332,8 +332,8 @@ Rails.application.routes.draw do
 
   # CocoScout Ticketing: the public box office (no sign-in). Orders, checkout
   # and ticket links come first so an org's address can never shadow them
-  # (they're also reserved slugs).
-  scope "/t", as: "tickets" do
+  # (they're also reserved slugs). /t/CODE is the short link (ShortLinksController).
+  scope "/tickets", as: "tickets" do
     # The widget a theater puts on its own website, and the pages it frames.
     get  "embed.js",                   to: "ticket_embeds#script",    as: "embed_script", format: false
     get  "embed/:org",                 to: "tickets#box_office",      as: "embed_box_office", defaults: { embed: "1" }

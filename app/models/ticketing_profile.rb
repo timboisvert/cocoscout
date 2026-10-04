@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 # An organization's box office settings: whether it's switched on (a pilot
-# flag a superadmin sets), its public address (/t/<slug>), and its defaults.
+# flag a superadmin sets), its public address (/tickets/<slug>), and its defaults.
 # No branding in v1 — every org gets the same standard pages.
 class TicketingProfile < ApplicationRecord
   FEE_MODES = %w[buyer org].freeze
   # Automatic withdrawal of the CocoScout balance to the theater's bank. Off
   # by default: money left here pays payout runs without a bank debit.
   AUTO_WITHDRAW = %w[off weekly after_shows].freeze
-  # Path words under /t that an org's slug must never shadow.
+  # Path words under /tickets that an org's slug must never shadow.
   RESERVED_SLUGS = %w[orders checkout embed embed-js v p go door api assets help admin].freeze
 
   belongs_to :organization

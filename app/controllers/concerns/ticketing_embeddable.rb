@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Lets the public ticketing pages run inside a theater's own website (the
-# /t/embed.js widget). In embed mode (?embed=1, kept on every link, form and
+# /tickets/embed.js widget). In embed mode (?embed=1, kept on every link, form and
 # redirect through to the buyer's tickets) a page uses the bare embed layout
 # and may be framed by any site. Outside embed mode nothing changes: Rails'
 # usual same-origin framing rule stands.

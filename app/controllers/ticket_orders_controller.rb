@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# A buyer's order and tickets, at a private link (/t/orders/<token>) — the one
+# A buyer's order and tickets, at a private link (/tickets/orders/<token>) — the one
 # in their confirmation email. No account needed: the token is the key, and it
 # names exactly one order.
 class TicketOrdersController < ApplicationController

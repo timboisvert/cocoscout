@@ -7,7 +7,7 @@
   function pageUrl(el) {
     var org = encodeURIComponent(el.getAttribute("data-cocoscout-tickets"));
     var event = el.getAttribute("data-event");
-    var path = "/t/embed/" + org + (event ? "/" + encodeURIComponent(event) : "");
+    var path = "/tickets/embed/" + org + (event ? "/" + encodeURIComponent(event) : "");
     return origin + path;
   }
 
