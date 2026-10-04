@@ -81,6 +81,15 @@ class ShortLink < ApplicationRecord
     end
   end
 
+  # What came through this link: paid orders, the tickets still on them, and
+  # their face value (price less discount, as Ticketing::ListingStats counts
+  # gross when tax is added on top).
+  def stats
+    orders = ticket_orders.paid_like.includes(:tickets).to_a
+    tickets = orders.flat_map(&:tickets).select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
+    { orders: orders.size, tickets: tickets.size, cents: tickets.sum { |t| t.price_cents - t.discount_cents } }
+  end
+
   def record_click!
     self.class.where(id: id).update_all([ "clicks_count = clicks_count + 1, last_clicked_at = ?", Time.current ])
   end

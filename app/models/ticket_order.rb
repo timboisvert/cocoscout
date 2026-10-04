@@ -27,6 +27,8 @@ class TicketOrder < ApplicationRecord
   belongs_to :organization
   belongs_to :ticket_listing
   belongs_to :ticket_discount_code, optional: true
+  # The short link (cocoscout.com/t/CODE) that brought the buyer, if one did.
+  belongs_to :short_link, optional: true
   belongs_to :user, optional: true
   # Who gave a comp from the show page.
   belongs_to :issued_by, class_name: "User", optional: true

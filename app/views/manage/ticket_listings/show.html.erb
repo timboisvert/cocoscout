@@ -46,7 +46,9 @@
       </div>
       <%= render "manage/ticket_listings/status_actions", listing: @listing %>
     </div>
-    <%= render "shared/copy_url", url: public_url, short_url: short_url, show_qr: true, qr_title: "Scan for tickets" %>
+    <%= render "shared/copy_url", url: public_url, short_url: short_url, show_qr: true, qr_title: "Scan for tickets",
+          help_text: safe_join([ "This is #{possessive(@listing.production.name)} link with this date picked. ",
+                                 link_to("All of its links", manage_production_ticketing_links_path(@listing.production), class: "font-medium text-pink-700 hover:underline") ]) %>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">

@@ -39,6 +39,11 @@ RSpec.describe "Cross-org isolation (ticketing)", type: :request do
     expect(response).to have_http_status(:not_found)
     get manage_ticket_listing_visibility_path(victim_listing)
     expect(response).to have_http_status(:not_found)
+    get manage_production_ticketing_links_path(victim_listing.production)
+    expect(response).to have_http_status(:not_found)
+    post manage_production_ticketing_links_path(victim_listing.production), params: { label: "Poster" }
+    expect(response).to have_http_status(:not_found)
+    expect(ShortLink.named.count).to eq(0)
     post manage_ticket_listing_visibility_path(victim_listing), params: { person_id: create(:person, user: create(:user)).id, share_scope: "listing" }
     expect(response).to have_http_status(:not_found)
     expect(TicketSalesViewer.count).to eq(0)

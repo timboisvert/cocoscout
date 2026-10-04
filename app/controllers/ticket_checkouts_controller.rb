@@ -36,7 +36,8 @@ class TicketCheckoutsController < ApplicationController
     raise ActiveRecord::RecordNotFound unless listing && (profile.enabled? || superadmin_viewer?)
 
     order = TicketCheckout.start!(listing: listing, quantities: requested_quantities, code: params[:code],
-                                  client_ip: request.remote_ip, referrer: request.referer, replacing: params[:hold])
+                                  client_ip: request.remote_ip, referrer: request.referer, replacing: params[:hold],
+                                  via: cookies[ShortLinksController::COOKIE])
     redirect_to tickets_checkout_path(token: order.token, **embed_params)
   rescue TicketCheckout::Error => e
     redirect_to tickets_event_path(org: params[:org], event: params[:event], code: params[:code].presence, **embed_params), alert: e.message

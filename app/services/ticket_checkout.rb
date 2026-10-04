@@ -16,8 +16,10 @@ class TicketCheckout
   # quantities: { tier_id => count }. code: a discount code, or the code that
   # unlocks a hidden tier. replacing: the token of this buyer's live hold.
   # at_door: the door selling to someone in front of them, which works after
-  # online sales close and with any ticket type still on the show.
-  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false)
+  # online sales close and with any ticket type still on the show. via: the
+  # short link code the buyer arrived through (the cs_via cookie), remembered
+  # on the order so the Links page can say what each link sold.
+  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false, via: nil)
     if at_door
       raise Error, "This show was canceled." if listing.status == "canceled" || listing.show.canceled
     else
@@ -35,6 +37,7 @@ class TicketCheckout
     held = replacing.present? ? listing.ticket_orders.holding.find_by(token: replacing.to_s) : nil
     return held if held && same_request?(held, requests, discount)
 
+    short_link = via.present? ? ShortLink.live.where(organization: listing.organization).find_by(code: via.to_s.strip.upcase) : nil
     order = nil
     ActiveRecord::Base.transaction do
       # Expiring it now frees its seats for the new hold (Inventory ignores a
@@ -44,7 +47,8 @@ class TicketCheckout
         order = TicketOrder.create!(organization: listing.organization, ticket_listing: listing, status: "pending",
                                     channel: channel, money_path: "cocoscout", fee_mode: listing.effective_fee_mode,
                                     expires_at: TicketOrder::HOLD.from_now, ticket_discount_code: discount,
-                                    client_ip: client_ip, referrer: referrer.to_s.first(500).presence)
+                                    client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
+                                    short_link: short_link, utm: short_link ? { "via" => short_link.code } : {})
         requests.each { |tier, count| count.times { add_ticket(order, tier, discount) } }
         # Products added on the old hold come along to the new one.
         set_items!(order, held_item_quantities(held), reprice: false) if held

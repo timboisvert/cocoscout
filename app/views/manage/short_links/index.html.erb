@@ -1,0 +1,104 @@
+<% content_for :title, "#{@production.name} · Links" %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  rows = [ @canonical ] + @links
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Productions", manage_ticket_listings_path ],
+                   [ @production.name, manage_production_ticketing_path(@production) ] ],
+    text: "Links",
+    links: []
+  } %>
+
+  <p class="text-sm text-gray-600 max-w-3xl mb-6">
+    <%= @production.name %> has one short address for good: it keeps working as dates come and go, so a poster's QR never needs
+    reprinting. A date is a suffix, like <span class="font-mono"><%= "cocoscout.com#{@canonical.short_path('oct-10')}" %></span>.
+    Make a named link for each place you share it (a poster, your Instagram bio, a newsletter) to see which one sells.
+  </p>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
+            <th class="px-4 py-3 font-medium">Link</th>
+            <th class="px-4 py-3 font-medium">Opens</th>
+            <th class="px-4 py-3 font-medium text-right">Clicks</th>
+            <th class="px-4 py-3 font-medium text-right">Orders</th>
+            <th class="px-4 py-3 font-medium text-right">Tickets</th>
+            <th class="px-4 py-3 font-medium text-right">Sales</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.each do |link| %>
+            <% url = short_link_url(code: link.code) %>
+            <% stats = link.stats %>
+            <tr class="border-b border-gray-100" data-controller="copy-url qr-code" data-qr-code-url-value="<%= url %>">
+              <td class="px-4 py-3">
+                <div class="font-mono text-gray-900"><%= "cocoscout.com#{link.short_path}" %></div>
+                <div class="text-xs text-gray-500"><%= link.canonical? ? "The production's link" : link.label %></div>
+              </td>
+              <td class="px-4 py-3 text-gray-700">
+                <%= link.points_to %>
+                <% if link.query["code"].present? %><div class="text-xs text-gray-500">with code <%= link.query["code"] %></div><% end %>
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums text-gray-900"><%= number_with_delimiter(link.clicks_count) %></td>
+              <td class="px-4 py-3 text-right tabular-nums text-gray-900"><%= stats[:orders] %></td>
+              <td class="px-4 py-3 text-right tabular-nums text-gray-900"><%= stats[:tickets] %></td>
+              <td class="px-4 py-3 text-right tabular-nums text-gray-900"><%= money.call(stats[:cents]) %></td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1">
+                  <span data-copy-url-target="button" data-url="<%= url %>">
+                    <%= render "shared/button", text: "Copy", variant: "outline-pink", size: "xs", type: :button, icon: "clipboard",
+                          data: { action: "click->copy-url#copy" } %>
+                  </span>
+                  <%= render "shared/button", text: "QR", variant: "outline-pink", size: "xs", type: :button, icon: "qr-code",
+                        data: { action: "click->qr-code#open" } %>
+                  <% unless link.canonical? %>
+                    <%= render "shared/button", text: "Archive", variant: "ghost", size: "xs", type: :button,
+                          data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-link-#{link.id}" } %>
+                  <% end %>
+                </div>
+                <%= render "shared/qr_modal", url: url, title: "Scan for tickets" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <%= form_with url: manage_production_ticketing_links_path(@production), method: :post, class: "px-4 py-5 border-t border-gray-200 bg-gray-50" do %>
+      <h2 class="text-sm font-semibold text-gray-900 mb-3">New link</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label for="label" class="block text-sm font-medium text-gray-700 mb-1.5">Where you'll share it</label>
+          <%= text_field_tag :label, nil, placeholder: "Poster, Instagram bio, newsletter", required: true, class: input_class %>
+        </div>
+        <div>
+          <label for="date" class="block text-sm font-medium text-gray-700 mb-1.5">Opens on</label>
+          <%= select_tag :date, options_for_select([ [ "The production (every date)", "" ] ] +
+                @dates.map { |l| [ l.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p"), ShortLink.date_suffix(l.show) ] }), class: input_class %>
+        </div>
+        <div>
+          <label for="code" class="block text-sm font-medium text-gray-700 mb-1.5">Applies a code</label>
+          <%= select_tag :code, options_for_select([ [ "No code", "" ] ] + @codes.map { |c| [ c.code, c.code ] }), class: input_class %>
+          <p class="text-xs text-gray-500 mt-1">The discount, or a hidden ticket type's code, is on before they pick.</p>
+        </div>
+      </div>
+      <div class="mt-4">
+        <%= render "shared/button", text: "Make the link", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% @links.each do |link| %>
+  <%= render "shared/confirm_modal", id: "confirm-archive-link-#{link.id}", title: "Archive #{link.label}?",
+        message: "cocoscout.com#{link.short_path} stops working. Anything printed with it goes nowhere. Its clicks and sales stay on this page.",
+        confirm_text: "Archive", url: manage_production_ticketing_link_path(@production, link), method: :delete %>
+<% end %>

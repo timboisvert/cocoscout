@@ -1268,6 +1268,10 @@ Rails.application.routes.draw do
     get    "ticketing/productions/:production_id/settings(/:section)", to: "production_ticketings#edit", as: "edit_production_ticketing"
     patch  "ticketing/productions/:production_id/settings/:section", to: "production_ticketings#update", as: "update_production_ticketing"
     post   "ticketing/productions/:production_id/codes", to: "production_ticketings#create_code", as: "production_ticketing_codes"
+    # The production's short links (cocoscout.com/t/CODE): its one code and the named ones.
+    get    "ticketing/productions/:production_id/links", to: "short_links#index",  as: "production_ticketing_links"
+    post   "ticketing/productions/:production_id/links", to: "short_links#create"
+    delete "ticketing/productions/:production_id/links/:id", to: "short_links#destroy", as: "production_ticketing_link"
     delete "ticketing/productions/:production_id/codes/:code_id", to: "production_ticketings#destroy_code", as: "production_ticketing_code"
     get    "ticketing/shows/:id",                 to: "ticket_listings#show"
     get    "ticketing/shows/:id/guests",          to: "ticket_listings#guests",          as: "ticket_listing_guests"
