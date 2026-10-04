@@ -81,7 +81,7 @@ RSpec.describe "Manage::Reports", type: :request do
       get manage_report_ticket_sales_by_show_path
       expect(response.body).to include("Ticket Sales by Show", "Count each sale by", "Held for the show", "$40.00", "Download spreadsheet")
       get manage_report_ticket_sales_by_type_path(basis: "event")
-      expect(response.body).to include("General", 'value="event" selected="selected"')
+      expect(response.body).to include("General", 'selected="selected" value="event"')
       get manage_report_ticket_sales_by_channel_path
       expect(response.body).to include("Online")
       get manage_report_ticket_buyers_path
