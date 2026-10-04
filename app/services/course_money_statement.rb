@@ -57,6 +57,8 @@ class CourseMoneyStatement
     fees = confirmed_registrations.sum { |r| r.cocoscout_fee_cents.to_i }
     revenue = gross - refunded
     paid_out = payout_contributions.sum { |c| c.payout_batch_item&.amount_cents.to_i }
+    # Tax collected on the registrations still held: the org's to remit, never revenue.
+    tax = confirmed_registrations.sum { |r| r.tax_cents.to_i }
 
     {
       gross_cents: gross,
@@ -64,6 +66,7 @@ class CourseMoneyStatement
       revenue_cents: revenue,
       fees_cents: fees,
       net_cents: revenue - fees,
+      tax_cents: tax,
       paid_out_cents: paid_out
     }
   end

@@ -29,6 +29,9 @@ class CourseRegistration < ApplicationRecord
     refunded: "refunded"
   }, default: :pending
 
+  # Tax collected on it (CourseTax), reversed on a refund.
+  has_many :tax_lines, as: :taxable, dependent: :delete_all
+
   validates :amount_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :registered_at, presence: true
 
@@ -65,13 +68,15 @@ class CourseRegistration < ApplicationRecord
 
   # The org's net share of this registration — what CocoScout holds for them in
   # the shared Stripe balance. Mirrors OrgPayout.owed_cents_for_course, per row.
+  # Tax collected is the org's to remit, so it rides along in full.
   def org_net_cents
     coverage = course_offering.feature_credit_redemption&.feature_credit&.coverage_type
-    case coverage
+    net = case coverage
     when "full" then amount_cents
     when "platform_only" then amount_cents - stripe_fee_cents.to_i
     else amount_cents - cocoscout_fee_cents.to_i
     end
+    net + tax_cents.to_i
   end
 
   def cancel!
@@ -85,6 +90,7 @@ class CourseRegistration < ApplicationRecord
       refunded_at: Time.current,
       stripe_refund_id: stripe_refund_id.presence || self.stripe_refund_id
     )
+    CourseTax.reverse!(self)
     cleanup_questionnaire_invitation
   end
 

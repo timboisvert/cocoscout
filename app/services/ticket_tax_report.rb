@@ -20,14 +20,17 @@ class TicketTaxReport
   end
 
   BASES = %w[sale event].freeze
+  KINDS = %w[all tickets courses].freeze
 
-  attr_reader :from, :to, :basis
+  attr_reader :from, :to, :basis, :kind
 
-  def initialize(organization, from:, to:, basis: "sale")
+  # kind: "tickets", "courses", or "all" (both).
+  def initialize(organization, from:, to:, basis: "sale", kind: "all")
     @organization = organization
     @from = from
     @to = to
     @basis = BASES.include?(basis) ? basis : "sale"
+    @kind = KINDS.include?(kind) ? kind : "all"
   end
 
   def rows
@@ -64,10 +67,21 @@ class TicketTaxReport
 
   def lines
     date_column = basis == "event" ? :event_date : :sale_date
-    TaxLine.where(organization_id: @organization.id, taxable_type: "Ticket", remitter: "organization")
-           .where(date_column => from..to)
-           .joins("JOIN tickets ON tickets.id = tax_lines.taxable_id JOIN ticket_orders ON ticket_orders.id = tickets.ticket_order_id")
-           .where(ticket_orders: { status: TicketOrder::WAS_PAID })
-           .to_a
+    base = TaxLine.where(organization_id: @organization.id, remitter: "organization").where(date_column => from..to)
+    found = []
+    if kind != "courses"
+      found += base.where(taxable_type: "Ticket")
+                   .joins("JOIN tickets ON tickets.id = tax_lines.taxable_id JOIN ticket_orders ON ticket_orders.id = tickets.ticket_order_id")
+                   .where(ticket_orders: { status: TicketOrder::WAS_PAID }).to_a
+      found += base.where(taxable_type: "TicketOrderItem")
+                   .joins("JOIN ticket_order_items ON ticket_order_items.id = tax_lines.taxable_id JOIN ticket_orders ON ticket_orders.id = ticket_order_items.ticket_order_id")
+                   .where(ticket_orders: { status: TicketOrder::WAS_PAID }).to_a
+    end
+    if kind != "tickets"
+      found += base.where(taxable_type: "CourseRegistration")
+                   .joins("JOIN course_registrations ON course_registrations.id = tax_lines.taxable_id")
+                   .where(course_registrations: { status: %w[confirmed refunded] }).to_a
+    end
+    found
   end
 end

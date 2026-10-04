@@ -46,20 +46,23 @@ class OrgPayout < ApplicationRecord
   #   - coverage_type "full": org gets 100% (all fees waived)
   #   - coverage_type "platform_only": org gets gross minus actual Stripe fees
   def self.owed_cents_for_course(course_offering)
-    gross = course_offering.course_registrations.confirmed.sum(:amount_cents)
+    confirmed = course_offering.course_registrations.confirmed
+    gross = confirmed.sum(:amount_cents)
+    # Tax collected on the registrations is the org's to remit: it's owed in full.
+    tax = confirmed.sum(:tax_cents)
     coverage = course_offering.feature_credit_redemption&.feature_credit&.coverage_type
 
     case coverage
     when "full"
-      gross
+      gross + tax
     when "platform_only"
-      stripe_fees = course_offering.course_registrations.confirmed.sum(:stripe_fee_cents)
-      gross - stripe_fees
+      stripe_fees = confirmed.sum(:stripe_fee_cents)
+      gross - stripe_fees + tax
     else
       # Subtract the CocoScout fee ACTUALLY charged on each registration (stored
       # per row), not a re-computed rate — mirrors CoursePayoutCalculator, and
       # stays right for registrations charged under an older rate.
-      gross - course_offering.course_registrations.confirmed.sum(:cocoscout_fee_cents)
+      gross - confirmed.sum(:cocoscout_fee_cents) + tax
     end
   end
 

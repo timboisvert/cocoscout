@@ -110,15 +110,18 @@ RSpec.describe "StripeWebhooksController", type: :request do
       session = Stripe::Checkout::Session.construct_from(
         id: "cs_1", payment_intent: "pi_course",
         metadata: { "course_offering_id" => offering.id.to_s, "person_id" => student.id.to_s,
-                    "amount_cents" => "4000", "currency" => "usd" }
+                    "amount_cents" => "4000", "tax_cents" => "410", "currency" => "usd" }
       )
+      TicketTaxSetting.save!(org, kind: "courses", name: "Sales tax", percent: "10.25", mode: "added")
       deliver("checkout.session.completed", session)
 
       registration = CourseRegistration.find_by(stripe_checkout_session_id: "cs_1")
       entry = OrgCashEntry.find_by(source: registration, entry_type: "course_registration")
-      # Net of the 10% platform fee.
+      # Net of the 10% platform fee on the price, plus the tax collected for the org.
       expect(entry.organization).to eq(org)
-      expect(entry.amount_cents).to eq(3_600)
+      expect(registration.tax_cents).to eq(410)
+      expect(entry.amount_cents).to eq(3_600 + 410)
+      expect(registration.tax_lines.sole.tax_cents).to eq(410)
 
       # The hourly fee backfill later restates the same row, not a second one.
       registration.update!(stripe_fee_cents: 146)

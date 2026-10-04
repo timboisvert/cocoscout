@@ -44,6 +44,13 @@ class TaxCalculator
     quote(rule, base_cents)
   end
 
+  # A course registration: the course's own rule, its production's, or the
+  # org's default for courses.
+  def self.for_course(offering, base_cents)
+    rule = rule_for(offering.production.organization, "courses", scopes: [ offering, offering.production ])
+    quote(rule, base_cents)
+  end
+
   # A product sold with the tickets is taxed as the tickets are (the one
   # ticket tax setting), unless the product is marked not taxable.
   def self.for_product(listing, offer, base_cents)

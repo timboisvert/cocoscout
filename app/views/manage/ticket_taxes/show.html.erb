@@ -10,7 +10,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
     text: "Taxes collected",
-    links: [ { text: "Download CSV", path: manage_ticket_taxes_path(format: :csv, period: @period[:key], basis: r.basis), data: { turbo: false } } ]
+    links: [ { text: "Download CSV", path: manage_ticket_taxes_path(format: :csv, period: @period[:key], basis: r.basis, kind: r.kind), data: { turbo: false } } ]
   } %>
 
   <div class="max-w-4xl space-y-6">
@@ -21,8 +21,13 @@
               class: select_class, data: { action: "change->auto-submit#submit" } %>
       </div>
       <div>
+        <label for="kind" class="block text-sm font-medium text-gray-700 mb-1.5">Money</label>
+        <%= select_tag :kind, options_for_select([ [ "Tickets and courses", "all" ], [ "Tickets", "tickets" ], [ "Courses", "courses" ] ], r.kind),
+              class: select_class, data: { action: "change->auto-submit#submit" } %>
+      </div>
+      <div>
         <label for="basis" class="block text-sm font-medium text-gray-700 mb-1.5">Count each sale by</label>
-        <%= select_tag :basis, options_for_select([ [ "The day it sold", "sale" ], [ "The day of the show", "event" ] ], r.basis),
+        <%= select_tag :basis, options_for_select([ [ "The day it sold", "sale" ], [ "The day of the show or course", "event" ] ], r.basis),
               class: select_class, data: { action: "change->auto-submit#submit" } %>
       </div>
     <% end %>
@@ -30,7 +35,7 @@
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200">
         <h2 class="text-lg font-semibold text-gray-900"><%= @period[:label] %>: <%= money.call(r.total_net_cents) %> to pay</h2>
-        <p class="text-sm text-gray-600 mt-1">Tax CocoScout collected on your tickets and paid out to you with your ticket money. You send it to the government. Ask your accountant which way your city counts sales.</p>
+        <p class="text-sm text-gray-600 mt-1">Tax CocoScout collected on your <%= { "tickets" => "tickets", "courses" => "course registrations" }.fetch(r.kind, "tickets and course registrations") %> and paid out to you with that money. You send it to the government. Ask your accountant which way your city counts sales.</p>
       </div>
       <% if r.rows.any? %>
         <div class="overflow-x-auto">

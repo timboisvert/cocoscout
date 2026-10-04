@@ -8,13 +8,13 @@ module Manage
 
     def show
       chosen_period
-      @report = TicketTaxReport.new(Current.organization, from: @period[:from], to: @period[:to], basis: params[:basis])
+      @report = TicketTaxReport.new(Current.organization, from: @period[:from], to: @period[:to], basis: params[:basis], kind: params[:kind])
 
       respond_to do |format|
         format.html
         format.csv do
           send_data @report.to_csv, type: "text/csv",
-                                    filename: "taxes-collected-#{@period[:key]}-by-#{@report.basis}-date.csv"
+                                    filename: "taxes-collected-#{@report.kind}-#{@period[:key]}-by-#{@report.basis}-date.csv"
         end
       end
     end

@@ -36,7 +36,7 @@ RSpec.describe "Manage::CourseSettings", type: :request do
     expect(response.body).to include("is set up to get paid")
   end
 
-  it "hides the section strip while there's only one section" do
+  it "shows the section strip now that Payments has Taxes beside it" do
     org = create(:organization)
     manager = create(:user, password: password)
     create(:organization_role, :manager, user: manager, organization: org)
@@ -44,8 +44,7 @@ RSpec.describe "Manage::CourseSettings", type: :request do
 
     get manage_course_settings_path
 
-    expect(response.body).to include("Course Settings")
-    expect(response.body).not_to include(%(aria-label="Settings sections"))
+    expect(response.body).to include("Course Settings", %(aria-label="Settings sections"), "Payments", "Taxes")
   end
 
   it "still answers the old payouts-settings URL Stripe was given" do
@@ -57,5 +56,21 @@ RSpec.describe "Manage::CourseSettings", type: :request do
     get "/manage/courses/payouts/settings"
 
     expect(response).to redirect_to("/manage/courses/settings")
+  end
+
+  it "has a Taxes tab with the one course-tax setting, for a non-Pro org too" do
+    org = create(:organization)
+    manager = create(:user, password: password)
+    create(:organization_role, :manager, user: manager, organization: org)
+    sign_in(manager)
+
+    get manage_course_settings_section_path(section: "taxes")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Taxes", "If you charge tax on courses", "$150 course")
+
+    patch manage_course_settings_tax_path, params: { tax: { name: "Sales tax", percent: "10.25", mode: "added" } }
+    expect(response).to redirect_to(manage_course_settings_section_path(section: "taxes"))
+    expect(TicketTaxSetting.current(org, kind: "courses").percent).to eq("10.25")
+    expect(TicketTaxSetting.current(org).set?).to be(false)
   end
 end

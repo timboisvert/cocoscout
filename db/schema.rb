@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_110100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -746,6 +746,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_110100) do
     t.integer "stripe_fee_cents"
     t.string "stripe_payment_intent_id"
     t.string "stripe_refund_id"
+    t.integer "tax_cents", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"

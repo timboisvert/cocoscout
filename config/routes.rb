@@ -1730,6 +1730,7 @@ Rails.application.routes.draw do
     get    "courses/settings/return",          to: "course_settings#connect_return", as: "course_settings_return"
     get    "courses/settings/refresh",         to: "course_settings#connect_refresh", as: "course_settings_refresh"
     # Named sections, declared last so the specific routes above win.
+    patch  "courses/settings/tax",             to: "course_settings#update_tax",     as: "course_settings_tax"
     get    "courses/settings/:section",        to: "course_settings#show",           as: "course_settings_section"
     # Stripe has live onboarding links pointing at the old return/refresh URLs.
     get    "courses/payouts/settings",         to: redirect("/manage/courses/settings")

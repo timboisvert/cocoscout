@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-# Ticketing's v1 tax setup: one name and percentage for every ticket, added on
-# top or included in the price. Underneath it's an ordinary org-wide ticket
-# rule and rate (see TaxCalculator), so venue rules and exemptions can come
+# The v1 tax setup: one name and percentage for every ticket (or, with
+# kind: "courses", every course registration), added on top or included in
+# the price. Underneath it's an ordinary org-wide rule and rate for that
+# money kind (see TaxCalculator), so venue rules and exemptions can come
 # later without changing anything already recorded.
 class TicketTaxSetting
   Form = Data.define(:name, :percent, :mode) do
@@ -11,8 +12,8 @@ class TicketTaxSetting
     end
   end
 
-  def self.current(organization)
-    rule = default_rule(organization)
+  def self.current(organization, kind: "tickets")
+    rule = default_rule(organization, kind)
     rate = rule && rule.tax_rates.current.order(:id).first
     Form.new(name: rate&.name || "Sales tax", percent: rate&.percent_label&.delete("%"), mode: rule&.mode || "added")
   end
@@ -20,9 +21,9 @@ class TicketTaxSetting
   # A blank or zero percent means tickets carry no tax. A rate that sales have
   # already used is never edited: it's retired and a new one starts, so past
   # sales keep the rate they were charged.
-  def self.save!(organization, name:, percent:, mode:)
+  def self.save!(organization, name:, percent:, mode:, kind: "tickets")
     bps = to_bps(percent)
-    rule = default_rule(organization)
+    rule = default_rule(organization, kind)
 
     if bps.nil? || bps.zero?
       rule&.destroy!
@@ -44,14 +45,14 @@ class TicketTaxSetting
       end
       rate ||= organization.tax_rates.create!(name: name, rate_bps: bps, kind: "sales")
 
-      rule ||= organization.tax_rules.build(money_kind: "tickets")
+      rule ||= organization.tax_rules.build(money_kind: kind)
       rule.update!(mode: mode, exempt: false, exemption_reason: nil, tax_rate_ids: [ rate.id ])
       rule
     end
   end
 
-  def self.default_rule(organization)
-    organization.tax_rules.find_by(money_kind: "tickets", scope_type: nil)
+  def self.default_rule(organization, kind = "tickets")
+    organization.tax_rules.find_by(money_kind: kind, scope_type: nil)
   end
 
   # "10.25", "10.25%", " 9 " → basis points. Rejects anything that isn't a

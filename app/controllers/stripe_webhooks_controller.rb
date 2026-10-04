@@ -254,6 +254,7 @@ class StripeWebhooksController < ApplicationController
       user: User.find_by(id: metadata["user_id"]),
       status: :confirmed,
       amount_cents: metadata["amount_cents"].to_i,
+      tax_cents: metadata["tax_cents"].to_i,
       currency: metadata["currency"] || "usd",
       registered_at: Time.current,
       paid_at: Time.current,
@@ -261,6 +262,7 @@ class StripeWebhooksController < ApplicationController
       stripe_payment_intent_id: session.payment_intent,
       cocoscout_fee_cents: calculate_cocoscout_fee(offering, metadata["amount_cents"].to_i)
     )
+    CourseTax.record!(registration)
 
     # Fetch actual Stripe fee from the charge's balance transaction
     record_stripe_fee(registration, session.payment_intent)

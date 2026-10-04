@@ -67,22 +67,22 @@ module My
         return
       end
 
-      # Determine current price
-      price_cents = @course_offering.current_price_cents
-      stripe_price_id = if @course_offering.early_bird_active? && @course_offering.stripe_early_bird_price_id.present?
-        @course_offering.stripe_early_bird_price_id
-      else
-        @course_offering.stripe_price_id
+      # The price, and the tax on it (CourseTax): one line for the course and,
+      # when the theater adds tax on top, one for the tax, so the receipt shows
+      # both. amount_cents in the metadata is the price before tax.
+      tax = CourseTax.quote(@course_offering)
+      currency = @course_offering.currency.presence || "usd"
+      line_items = [ { quantity: 1, price_data: { currency: currency, unit_amount: tax.added? ? tax.base_cents : @course_offering.current_price_cents,
+                                                   product_data: { name: @course_offering.title.to_s.first(250).presence || "Course registration" } } } ]
+      if tax.added?
+        line_items << { quantity: 1, price_data: { currency: currency, unit_amount: tax.tax_cents, product_data: { name: tax.label } } }
       end
 
       # Create Stripe Checkout Session — no database registration yet.
       # The registration will be created by the webhook after successful payment.
       checkout_session = Stripe::Checkout::Session.create(
         mode: "payment",
-        line_items: [ {
-          price: stripe_price_id,
-          quantity: 1
-        } ],
+        line_items: line_items,
         customer_email: Current.user.email_address,
         success_url: my_course_success_url(code: @course_offering.short_code) + "?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: my_course_show_url(code: @course_offering.short_code),
@@ -90,8 +90,9 @@ module My
           course_offering_id: @course_offering.id,
           person_id: @person.id,
           user_id: Current.user.id,
-          amount_cents: price_cents,
-          currency: @course_offering.currency,
+          amount_cents: tax.base_cents,
+          tax_cents: tax.tax_cents,
+          currency: currency,
           organization_id: @course_offering.production.organization_id
         },
         # Also stamp the charge itself so the payment is traceable to the course
@@ -193,6 +194,7 @@ module My
         user: Current.user,
         status: :confirmed,
         amount_cents: metadata["amount_cents"].to_i,
+        tax_cents: metadata["tax_cents"].to_i,
         currency: metadata["currency"] || "usd",
         registered_at: Time.current,
         paid_at: Time.current,
@@ -202,6 +204,7 @@ module My
         # it, leaving the row (and the org's books) reading gross.
         cocoscout_fee_cents: CourseRegistration.platform_fee_cents_for(@course_offering, metadata["amount_cents"].to_i)
       )
+      CourseTax.record!(registration)
 
       # Release Redis spot hold
       CourseSpotHoldService.release(@course_offering.id, @person.id)

@@ -8,13 +8,14 @@ module Manage
   # Money section. Uses the shared settings layout, so a second topic (refund
   # policy, instructor defaults) is just a new entry in SECTIONS.
   class CourseSettingsController < Manage::ManageController
-    SECTIONS = %w[payments].freeze
+    SECTIONS = %w[payments taxes].freeze
     DEFAULT_SECTION = "payments"
 
     before_action :set_section, only: %i[show]
 
     def show
       @organization = Current.organization
+      @tax = TicketTaxSetting.current(@organization, kind: "courses") if @section == "taxes"
       # Re-sync from Stripe so a just-finished (or still-verifying) account is
       # reflected here even when the account.updated webhook didn't reach us.
       if @organization.connect_account_started? && Stripe.api_key.present?
@@ -24,6 +25,15 @@ module Manage
           Rails.logger.warn("Course settings: status refresh failed — #{e.message}")
         end
       end
+    end
+
+    # The one course-tax setting: name, percentage, added or included.
+    def update_tax
+      tax = params.fetch(:tax, {}).permit(:name, :percent, :mode)
+      rule = TicketTaxSetting.save!(Current.organization, kind: "courses", name: tax[:name], percent: tax[:percent], mode: tax[:mode])
+      redirect_to manage_course_settings_section_path(section: "taxes"), notice: rule ? "Tax on courses saved." : "Courses now carry no tax."
+    rescue ArgumentError, ActiveRecord::RecordInvalid => e
+      redirect_to manage_course_settings_section_path(section: "taxes"), alert: e.message
     end
 
     # Kick off (or resume) Stripe Express onboarding for the organization.

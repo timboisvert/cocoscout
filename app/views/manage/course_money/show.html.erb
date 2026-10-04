@@ -32,6 +32,9 @@
         <div class="flex justify-between border-t border-gray-100 pt-2.5"><span class="text-gray-600">Revenue</span><span class="font-medium text-gray-900 tabular-nums"><%= number_to_currency(t[:revenue_cents] / 100.0) %></span></div>
         <div class="flex justify-between"><span class="text-gray-600">Platform fee</span><span class="text-gray-900 tabular-nums">−<%= number_to_currency(t[:fees_cents] / 100.0) %></span></div>
         <div class="flex justify-between border-t border-gray-100 pt-2.5"><span class="text-gray-600">Net revenue</span><span class="font-medium text-gray-900 tabular-nums"><%= number_to_currency(t[:net_cents] / 100.0) %></span></div>
+        <% if t[:tax_cents].positive? %>
+          <div class="flex justify-between"><span class="text-gray-600">Tax collected, yours to pay</span><span class="text-gray-900 tabular-nums"><%= number_to_currency(t[:tax_cents] / 100.0) %></span></div>
+        <% end %>
         <% if t[:paid_out_cents] > 0 %>
           <div class="flex justify-between"><span class="text-gray-600">Paid out</span><span class="text-gray-900 tabular-nums">−<%= number_to_currency(t[:paid_out_cents] / 100.0) %></span></div>
           <div class="flex justify-between border-t border-gray-100 pt-2.5"><span class="font-semibold text-gray-900">Still to distribute</span><span class="font-bold text-gray-900 tabular-nums"><%= number_to_currency(org_kept / 100.0) %></span></div>

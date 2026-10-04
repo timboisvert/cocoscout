@@ -209,12 +209,12 @@
                 <div class="flex items-baseline justify-end gap-2">
                   <span class="text-sm text-slate-400 line-through"><%= @course_offering.formatted_price %></span>
                   <span class="text-xl font-bold text-pink-600"><%= @course_offering.formatted_early_bird_price %></span>
-                  <span class="text-xs text-slate-400">+ tax</span>
+                  <% if (tax_note = CourseTax.price_note(@course_offering)) %><span class="text-xs text-slate-400"><%= tax_note %></span><% end %>
                 </div>
                 <p class="text-xs text-slate-500">Early bird price · ends <%= @course_offering.early_bird_deadline.strftime("%B %-d") %></p>
               <% else %>
                 <span class="text-xl font-bold text-pink-600"><%= @course_offering.formatted_price %></span>
-                <span class="text-xs text-slate-400">+ tax</span>
+                <% if (tax_note = CourseTax.price_note(@course_offering)) %><span class="text-xs text-slate-400"><%= tax_note %></span><% end %>
               <% end %>
             </div>
           </div>
