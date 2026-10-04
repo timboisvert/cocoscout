@@ -2331,6 +2331,9 @@ class SuperadminController < ApplicationController
     @net_income_cents = @cocoscout_fees_cents - @stripe_fees_cents
     @total_registrations = @registrations.size
 
+    # Our take from ticketing: 50¢ a ticket, and the processing margin.
+    @ticketing = TicketingFinances.new(date_range)
+
     # Organization obligations
     @org_obligations = build_org_obligations
 

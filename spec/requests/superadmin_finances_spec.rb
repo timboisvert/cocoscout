@@ -29,6 +29,17 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(response.body).to include(organization.name)
     end
 
+    it "shows what ticketing earns, by organization" do
+      listing = create(:ticket_listing, organization: organization)
+      tier = listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60)
+      order = TicketCheckout.start!(listing: listing, quantities: { tier.id.to_s => "2" })
+      order.update!(buyer_name: "Avery", buyer_email: "avery@example.com")
+      TicketOrderSettlement.settle!(order, payment_intent_id: "pi_1", charge_id: "ch_1")
+
+      get finances_path
+      expect(response.body).to include("Ticketing", "Fees earned", "$1.00", "still waiting on Stripe", organization.name)
+    end
+
     it "redirects non-superadmins" do
       sign_in_as_regular
       get finances_path

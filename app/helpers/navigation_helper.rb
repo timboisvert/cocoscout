@@ -72,7 +72,7 @@ module NavigationHelper
     # Ticketing is experimental: superadmins only, ahead of the rest of Pro.
     if Current.user&.superadmin?
       pro_items << { label: "Ticketing", path: manage_ticketing_path, icon: "ticketing", locked: !on_paid_plan, feature: :ticketing,
-                     active: %w[ticketing ticketing_settings ticket_listings ticket_orders ticket_balance ticket_taxes ticket_comps ticket_products production_ticketings].include?(controller_name) }
+                     active: %w[ticketing ticketing_settings ticket_listings ticket_orders ticket_balance ticket_taxes ticket_comps ticket_products production_ticketings ticket_reports].include?(controller_name) }
     end
     # Staffing is limited to org owners/managers; it leads the Pro group.
     if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)

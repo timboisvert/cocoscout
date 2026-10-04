@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-# Backfills missing Stripe fee data for course registrations.
+# Backfills missing Stripe fee data for course registrations and ticket
+# orders paid through CocoScout.
 #
 # When a payment completes, we try to fetch the Stripe fee immediately via the webhook handler.
 # However, Stripe's balance transaction isn't always available instantly, so the initial fetch
@@ -18,6 +19,8 @@ class BackfillStripeFeeJob < ApplicationJob
   BATCH_DELAY = 0.1
 
   def perform
+    perform_for_ticket_orders
+
     registrations = CourseRegistration.where(stripe_fee_cents: nil)
       .where.not(stripe_payment_intent_id: nil)
       .order(:id)
@@ -46,8 +49,21 @@ class BackfillStripeFeeJob < ApplicationJob
     Rails.logger.info "[BackfillStripeFeeJob] Completed: #{successful} updated, #{failed} failed"
   end
 
+  # Ticket orders paid through CocoScout whose Stripe fee hasn't landed yet
+  # (superadmin Finances reads it for the processing margin).
+  def perform_for_ticket_orders
+    orders = TicketOrder.where(stripe_fee_cents: nil, money_path: "cocoscout", status: TicketOrder::WAS_PAID)
+                        .where.not(stripe_payment_intent_id: nil).where("total_cents > 0").order(:id)
+    orders.find_in_batches(batch_size: BATCH_SIZE) do |batch|
+      batch.each { |order| fetch_and_update_stripe_fee(order) }
+      sleep(BATCH_DELAY)
+    end
+  end
+
   private
 
+  # registration: a CourseRegistration or a TicketOrder; both carry
+  # stripe_payment_intent_id and stripe_fee_cents.
   def fetch_and_update_stripe_fee(registration)
     payment_intent_id = registration.stripe_payment_intent_id
     return false unless payment_intent_id.present?
