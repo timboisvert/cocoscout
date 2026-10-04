@@ -1,0 +1,9 @@
+<%# The hold ran out. Locals: held ("these seats" / "your spot"), back_path,
+    back_text. %>
+<div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center">
+  <p class="text-gray-900 font-medium">Your hold on <%= held %> ran out.</p>
+  <p class="mt-1 text-sm text-gray-600">It's held for ten minutes while you check out. Start again to pick up where you were.</p>
+  <div class="mt-4 flex justify-center">
+    <%= render "shared/button", text: back_text, variant: "primary", size: "medium", path: back_path %>
+  </div>
+</div>

@@ -1,0 +1,8 @@
+<%# The hold's clock under the summary, and the way back to change the
+    order. Locals: back_path, back_text (nil hides the link). %>
+<div class="border-t border-gray-100 bg-gray-50 px-5 py-2.5 flex items-center justify-between gap-3 text-sm">
+  <span class="text-gray-600" data-checkout-target="countdown" aria-live="polite"></span>
+  <% if back_text && back_path %>
+    <%= link_to back_text, back_path, class: "font-medium text-pink-700 hover:text-pink-800" %>
+  <% end %>
+</div>

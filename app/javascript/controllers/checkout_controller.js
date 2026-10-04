@@ -1,12 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Checkout for a ticket order (TicketCheckoutsController). Stripe's Payment
-// Element is mounted before any PaymentIntent exists ("deferred" mode); on
-// submit we send the buyer's details, the server creates the intent (or
-// finishes a free order) and hands back its client secret, and Stripe
-// confirms the payment and returns the buyer to the done page. Also counts
-// down the ten-minute hold on their seats, and remembers the hold in the
-// browser so going back to the show's page puts the tickets back
+// Checkout, for a ticket order (TicketCheckoutsController) or a course
+// registration (My::CourseCheckoutsController). Stripe's Payment Element is
+// mounted before any PaymentIntent exists ("deferred" mode); on submit we
+// send the buyer's details, the server creates the intent (or finishes a
+// free order) and hands back its client secret, and Stripe confirms the
+// payment and returns the buyer to the done page. Also counts down the
+// ten-minute hold, and (given a holdKey) remembers the hold in the browser
+// so going back to the show's page puts the tickets back
 // (ticket_picker_controller).
 export default class extends Controller {
     static targets = ["form", "payment", "error", "submit", "countdown", "summary",
@@ -17,7 +18,7 @@ export default class extends Controller {
         free: Boolean,
         returnUrl: String,
         expiresAt: String,
-        listingId: Number,
+        holdKey: String,
         token: String,
         itemsUrl: String
     }
@@ -51,9 +52,9 @@ export default class extends Controller {
     }
 
     rememberHold() {
-        if (!this.listingIdValue || !this.tokenValue) return
+        if (!this.holdKeyValue || !this.tokenValue) return
         try {
-            window.localStorage.setItem(`cocoscout:ticket-hold:${this.listingIdValue}`, this.tokenValue)
+            window.localStorage.setItem(this.holdKeyValue, this.tokenValue)
         } catch (_e) {
             // Private windows can refuse storage; checkout works without it.
         }
@@ -104,8 +105,8 @@ export default class extends Controller {
     }
 
     stepProduct(event, by) {
-        const row = event.currentTarget.closest("[data-ticket-checkout-target='productRow']")
-        const count = row.querySelector("[data-ticket-checkout-target='productCount']")
+        const row = event.currentTarget.closest("[data-checkout-target='productRow']")
+        const count = row.querySelector("[data-checkout-target='productCount']")
         const max = Number(row.dataset.max)
         count.textContent = Math.min(max, Math.max(0, Number(count.textContent) + by))
         this.renderProducts()
@@ -115,9 +116,9 @@ export default class extends Controller {
 
     renderProducts() {
         this.productRowTargets.forEach((row) => {
-            const n = Number(row.querySelector("[data-ticket-checkout-target='productCount']").textContent)
-            row.querySelector("[data-ticket-checkout-target='productMinus']").disabled = n === 0
-            row.querySelector("[data-ticket-checkout-target='productPlus']").disabled = n >= Number(row.dataset.max)
+            const n = Number(row.querySelector("[data-checkout-target='productCount']").textContent)
+            row.querySelector("[data-checkout-target='productMinus']").disabled = n === 0
+            row.querySelector("[data-checkout-target='productPlus']").disabled = n >= Number(row.dataset.max)
         })
     }
 
@@ -125,7 +126,7 @@ export default class extends Controller {
         if (!this.itemsUrlValue) return
         const products = {}
         this.productRowTargets.forEach((row) => {
-            products[row.dataset.productId] = Number(row.querySelector("[data-ticket-checkout-target='productCount']").textContent)
+            products[row.dataset.productId] = Number(row.querySelector("[data-checkout-target='productCount']").textContent)
         })
         this.hideError()
         this.busy(true)
@@ -164,7 +165,7 @@ export default class extends Controller {
             const left = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
             if (left === 0) {
                 clearInterval(this.timer)
-                this.countdownTarget.textContent = "Your hold on these seats ran out."
+                this.countdownTarget.textContent = "Your hold ran out."
                 this.submitTarget.disabled = true
                 window.location.reload()
                 return

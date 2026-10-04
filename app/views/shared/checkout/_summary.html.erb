@@ -1,0 +1,15 @@
+<%# What a buyer is paying for, line by line, adding up to the total. Tickets
+    and courses both render it. Locals: lines ([[label, cents, muted]], a
+    muted line is a discount, fee or tax), total_cents. %>
+<div class="border-t border-gray-100 px-5 py-4 space-y-2 text-sm">
+  <% lines.each do |label, cents, muted| %>
+    <div class="flex items-baseline justify-between gap-3">
+      <span class="<%= muted ? 'text-gray-600' : 'text-gray-900' %>"><%= label %></span>
+      <span class="tabular-nums text-gray-900"><%= cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) %></span>
+    </div>
+  <% end %>
+  <div class="flex items-baseline justify-between gap-3 pt-2 border-t border-gray-100">
+    <span class="font-semibold text-gray-900">Total</span>
+    <span class="text-lg font-bold tabular-nums text-gray-900"><%= number_to_currency(total_cents / 100.0) %></span>
+  </div>
+</div>

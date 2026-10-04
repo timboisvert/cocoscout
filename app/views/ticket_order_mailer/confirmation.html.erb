@@ -1,6 +1,6 @@
 <%= raw @intro_html %>
 
-<%= render "ticket_order_mailer/when_where", w: @when_where, order: @order %>
+<%= render "shared/mailer/when_where", w: @when_where, calendar_url: tickets_order_calendar_url(token: @order.token) %>
 
 <% @tickets.each_with_index do |ticket, index| %>
   <div style="margin: 20px 0; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; text-align: center;">

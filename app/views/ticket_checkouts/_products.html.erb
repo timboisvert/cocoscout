@@ -5,7 +5,7 @@
   listing = order.ticket_listing
   counts = order.ticket_order_items.index_by(&:ticket_product_id)
 %>
-<div class="rounded-2xl border border-gray-200 bg-white overflow-hidden" data-ticket-checkout-target="products">
+<div class="rounded-2xl border border-gray-200 bg-white overflow-hidden" data-checkout-target="products">
   <div class="px-5 py-4">
     <h2 class="font-semibold text-gray-900">Add to your order</h2>
     <p class="text-xs text-gray-500 mt-0.5">Waiting for you at the show. Paid with your tickets.</p>
@@ -13,7 +13,7 @@
   <ul class="divide-y divide-gray-100 border-t border-gray-100">
     <% offers.each do |offer| %>
       <% count = counts[offer.id]&.quantity.to_i %>
-      <li class="flex items-center gap-3 px-5 py-4" data-ticket-checkout-target="productRow" data-product-id="<%= offer.id %>" data-max="<%= TicketCheckout::MAX_PER_PRODUCT %>">
+      <li class="flex items-center gap-3 px-5 py-4" data-checkout-target="productRow" data-product-id="<%= offer.id %>" data-max="<%= TicketCheckout::MAX_PER_PRODUCT %>">
         <div class="min-w-0 flex-1">
           <div class="font-medium text-gray-900"><%= offer.name %></div>
           <% if offer.description.present? %><div class="text-sm text-gray-600"><%= offer.description %></div><% end %>
@@ -23,11 +23,11 @@
         <div class="flex items-center gap-2">
           <%= render "shared/button", text: "−", variant: "secondary", size: "xs", type: :button, title: "One fewer #{offer.name}",
                 classes: "w-11 h-11 !p-0 !rounded-full !text-xl disabled:opacity-40 disabled:cursor-default",
-                data: { ticket_checkout_target: "productMinus", action: "ticket-checkout#fewerProducts" } %>
-          <span class="w-6 text-center text-lg font-semibold tabular-nums" data-ticket-checkout-target="productCount" aria-live="polite"><%= count %></span>
+                data: { checkout_target: "productMinus", action: "checkout#fewerProducts" } %>
+          <span class="w-6 text-center text-lg font-semibold tabular-nums" data-checkout-target="productCount" aria-live="polite"><%= count %></span>
           <%= render "shared/button", text: "+", variant: "outline-pink", size: "xs", type: :button, title: "One more #{offer.name}",
                 classes: "w-11 h-11 !p-0 !rounded-full !text-xl disabled:opacity-40 disabled:cursor-default",
-                data: { ticket_checkout_target: "productPlus", action: "ticket-checkout#moreProducts" } %>
+                data: { checkout_target: "productPlus", action: "checkout#moreProducts" } %>
         </div>
       </li>
     <% end %>

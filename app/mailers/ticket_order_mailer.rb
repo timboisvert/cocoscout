@@ -65,22 +65,11 @@ class TicketOrderMailer < ApplicationMailer
   end
 
   # Everything a buyer needs to turn up: the time, the place, directions,
-  # the door note. Rendered as its own block under an email's words.
+  # the door note. Rendered as its own block under an email's words
+  # (shared/mailer/_when_where).
   def self.when_where(listing)
-    show = listing.show
-    location = show.location
-    address = [ location&.address1, [ location&.city, location&.state ].compact_blank.join(", "), location&.postal_code ].compact_blank.join(", ")
-    {
-      date: show.date_and_time.strftime("%A, %B %-d"),
-      time: show.date_and_time.strftime("%-l:%M %p"),
-      venue: location&.name,
-      room: (show.location_space&.name if show.location_space&.name != location&.name),
-      address: address.presence,
-      online: show.is_online,
-      directions_url: address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].join(', '))}" : nil,
-      door_note: listing.effective_door_note.presence,
-      notes: [ listing.effective_age_note, listing.effective_accessibility_note ].compact_blank.join(" · ").presence
-    }
+    Ticketing::WhenWhere.for(listing.show, door_note: listing.effective_door_note,
+                             notes: [ listing.effective_age_note, listing.effective_accessibility_note ].compact_blank.join(" · "))
   end
 
   # "tomorrow", "on Friday", or "on Friday, October 10" for further off.

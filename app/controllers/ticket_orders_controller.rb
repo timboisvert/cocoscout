@@ -19,19 +19,11 @@ class TicketOrdersController < ApplicationController
   # "Add to calendar": the show as a one-event .ics file.
   def calendar
     show = @listing.show
-    starts = show.date_and_time.utc
-    ends = (@listing.ends_at || (show.date_and_time + 2.hours)).utc
-    stamp = ->(time) { time.strftime("%Y%m%dT%H%M%SZ") }
-    escape = ->(text) { text.to_s.gsub(/[\\;,]/) { |c| "\\#{c}" }.gsub("\n", "\\n") }
-    place = [ show.location&.name, show.location&.address1, show.location&.city ].compact_blank.join(", ")
-    ics = [
-      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//CocoScout//Tickets//EN", "BEGIN:VEVENT",
-      "UID:ticket-order-#{@order.code}@cocoscout.com", "DTSTAMP:#{stamp.call(Time.current.utc)}",
-      "DTSTART:#{stamp.call(starts)}", "DTEND:#{stamp.call(ends)}",
-      "SUMMARY:#{escape.call(@listing.display_title)}", "LOCATION:#{escape.call(place)}",
-      "DESCRIPTION:#{escape.call("Your tickets: #{tickets_order_url(token: @order.token)}")}",
-      "END:VEVENT", "END:VCALENDAR"
-    ].join("\r\n")
+    ics = Ticketing::Calendar.ics([ {
+      uid: "ticket-order-#{@order.code}@cocoscout.com", starts: show.date_and_time, ends: @listing.ends_at || (show.date_and_time + 2.hours),
+      summary: @listing.display_title, location: Ticketing::Calendar.place(show),
+      description: "Your tickets: #{tickets_order_url(token: @order.token)}"
+    } ])
     send_data ics, filename: "#{@listing.slug}.ics", type: "text/calendar"
   end
 

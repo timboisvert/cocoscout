@@ -1,6 +1,5 @@
 <%
   show = @listing.show
-  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   free = @order.total_cents.zero?
   pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(@order.total_cents / 100.0)}"
   image, page_image = ticket_page_image(@listing)
@@ -16,32 +15,28 @@
   <% unless free || @expired %><script src="https://js.stripe.com/v3/"></script><% end %>
 <% end %>
 
-<%# Layout A, like the show's page: one calm centered column. %>
+<%# Layout A, like the show's page: one calm centered column. The pieces
+    (summary, countdown, details, payment) are shared/checkout partials, the
+    same ones a course registration uses. %>
 <div class="mx-auto max-w-xl space-y-5">
   <h1 class="text-center text-3xl sm:text-4xl coustard-regular text-gray-900"><%= at_door ? "Pay at the door" : "Checkout" %></h1>
 
   <% if @expired %>
-    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center">
-      <p class="text-gray-900 font-medium">Your hold on these seats ran out.</p>
-      <p class="mt-1 text-sm text-gray-600">Seats are held for ten minutes while you check out. Pick your tickets again to start over.</p>
-      <div class="mt-4 flex justify-center">
-        <%= render "shared/button", text: "Back to tickets", variant: "primary", size: "medium", path: back_path %>
-      </div>
-    </div>
+    <%= render "shared/checkout/expired", held: "these seats", back_path: back_path, back_text: "Back to tickets" %>
   <% else %>
     <%= form_with url: tickets_checkout_pay_path(token: @order.token, **embed_params), method: :post, class: "space-y-5",
           data: {
-            controller: "ticket-checkout",
-            action: "submit->ticket-checkout#submit",
-            ticket_checkout_target: "form",
-            ticket_checkout_publishable_key_value: stripe_publishable_key.to_s,
-            ticket_checkout_amount_value: @order.total_cents,
-            ticket_checkout_free_value: free,
-            ticket_checkout_return_url_value: tickets_checkout_done_url(token: @order.token, **embed_params),
-            ticket_checkout_expires_at_value: @order.expires_at&.iso8601,
-            ticket_checkout_listing_id_value: (@listing.id unless at_door),
-            ticket_checkout_token_value: @order.token,
-            ticket_checkout_items_url_value: tickets_checkout_items_path(token: @order.token)
+            controller: "checkout",
+            action: "submit->checkout#submit",
+            checkout_target: "form",
+            checkout_publishable_key_value: stripe_publishable_key.to_s,
+            checkout_amount_value: @order.total_cents,
+            checkout_free_value: free,
+            checkout_return_url_value: tickets_checkout_done_url(token: @order.token, **embed_params),
+            checkout_expires_at_value: @order.expires_at&.iso8601,
+            checkout_hold_key_value: ("cocoscout:ticket-hold:#{@listing.id}" unless at_door),
+            checkout_token_value: @order.token,
+            checkout_items_url_value: tickets_checkout_items_path(token: @order.token)
           } do %>
       <%= render "tickets/bot_trap", id: "checkout_website" %>
 
@@ -57,54 +52,23 @@
             <% if place.present? %><div class="text-sm text-gray-500 truncate"><%= place %></div><% end %>
           </div>
         </div>
-        <div data-ticket-checkout-target="summary"><%= render "ticket_checkouts/summary", order: @order %></div>
-        <div class="border-t border-gray-100 bg-gray-50 px-5 py-2.5 flex items-center justify-between gap-3 text-sm">
-          <span class="text-gray-600" data-ticket-checkout-target="countdown" aria-live="polite"></span>
-          <% unless at_door %>
-            <%= link_to "Change tickets", back_path, class: "font-medium text-pink-700 hover:text-pink-800" %>
-          <% end %>
-        </div>
+        <div data-checkout-target="summary"><%= render "ticket_checkouts/summary", order: @order %></div>
+        <%= render "shared/checkout/countdown", back_path: back_path, back_text: (at_door ? nil : "Change tickets") %>
       </div>
 
       <% if offers.any? %>
         <%= render "ticket_checkouts/products", order: @order, offers: offers %>
       <% end %>
 
-      <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-        <h2 class="font-semibold text-gray-900">Your details<% if at_door %> <span class="font-normal text-gray-500">(optional)</span><% end %></h2>
-        <div>
-          <label for="buyer_name" class="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
-          <%= text_field_tag :buyer_name, @order.buyer_name, autocomplete: "name", required: !at_door, class: input_class %>
-        </div>
-        <div>
-          <label for="buyer_email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-          <%= email_field_tag :buyer_email, @order.buyer_email, autocomplete: "email", required: !at_door, class: input_class %>
-          <p class="text-xs text-gray-500 mt-1"><%= at_door ? "Add it to get your tickets and receipt by email." : "We'll email your tickets to this address." %></p>
-        </div>
-        <div>
-          <label for="buyer_phone" class="block text-sm font-medium text-gray-700 mb-1.5">Phone <span class="font-normal text-gray-500">(optional)</span></label>
-          <%= telephone_field_tag :buyer_phone, @order.buyer_phone, autocomplete: "tel", class: input_class %>
-        </div>
-      </div>
+      <%= render "shared/checkout/buyer_details", name: @order.buyer_name, email: @order.buyer_email, phone: @order.buyer_phone, required: !at_door,
+            email_note: (at_door ? "Add it to get your tickets and receipt by email." : "We'll email your tickets to this address.") %>
 
-      <% unless free %>
-        <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5">
-          <h2 class="font-semibold text-gray-900 mb-4">Payment</h2>
-          <% if stripe_publishable_key.blank? && (Rails.env.development? || superadmin_viewer?) %>
-            <%# The real reason, for whoever can fix it; buyers see the JS's plain line. %>
-            <div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <p class="font-medium">Stripe's publishable key isn't set.</p>
-              <p class="mt-1">Card payments need it on this page (courses don't, because Stripe hosts their checkout). Add <code class="font-mono">STRIPE_PUBLISHABLE_KEY=pk_…</code> to <code class="font-mono">.env</code> from the same Stripe account as the secret key, then restart the server. See <code class="font-mono">docs/dev_setup_stripe.md</code>.</p>
-            </div>
-          <% end %>
-          <div data-ticket-checkout-target="payment" class="min-h-[3rem]"></div>
-        </div>
-      <% end %>
+      <%= render "shared/checkout/payment" unless free %>
 
-      <p data-ticket-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
+      <p data-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
 
       <%= render "shared/button", text: pay_text, variant: "primary", size: "jumbo", type: :submit, classes: "disabled:opacity-50",
-            data: { ticket_checkout_target: "submit", pay_prefix: (free ? "" : "Pay ") } %>
+            data: { checkout_target: "submit", pay_prefix: (free ? "" : "Pay ") } %>
 
       <% if @ticketing_profile.support_email.present? %>
         <p class="text-xs text-center text-gray-500">Questions? <%= mail_to @ticketing_profile.support_email, nil, class: "text-pink-700" %></p>

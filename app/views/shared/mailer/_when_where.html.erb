@@ -1,6 +1,6 @@
 <%# When and where, as one block a buyer can find at a glance: the date and
     time big, the venue and address, directions and a calendar link, the
-    door note. Locals: w (TicketOrderMailer.when_where), order. %>
+    door note. Locals: w (Ticketing::WhenWhere.for), calendar_url. %>
 <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; margin: 20px 0; border: 1px solid #fbcfe8; border-radius: 12px; background: #fdf2f8;">
   <tr>
     <td style="padding: 16px 20px;">
@@ -20,7 +20,7 @@
 
       <div style="font-size: 14px; margin-top: 10px;">
         <% if w[:directions_url] %><a href="<%= w[:directions_url] %>" style="color: #be185d; font-weight: 600;">Directions</a> &nbsp;·&nbsp; <% end %>
-        <a href="<%= tickets_order_calendar_url(token: order.token) %>" style="color: #be185d; font-weight: 600;">Add to calendar</a>
+        <a href="<%= calendar_url %>" style="color: #be185d; font-weight: 600;">Add to calendar</a>
       </div>
 
       <% if w[:door_note] || w[:notes] %>

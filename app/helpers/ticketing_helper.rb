@@ -76,6 +76,24 @@ module TicketingHelper
 
   PriceBreakdown = Data.define(:rows, :total_cents)
 
+  # The checkout summary's lines for a ticket order: tickets by type,
+  # products, then the discount, fees and added tax (muted). Rendered by
+  # shared/checkout/_summary.
+  def ticket_summary_lines(order)
+    tickets = order.tickets.to_a
+    items = order.ticket_order_items.to_a
+    lines = tickets.group_by(&:ticket_tier).map { |tier, rows| [ "#{rows.size} × #{tier.name}", rows.sum(&:price_cents), false ] }
+    items.each { |item| lines << [ "#{item.quantity} × #{item.name}", item.price_cents, false ] }
+    if order.discount_cents.positive?
+      lines << [ "Discount#{" (#{order.ticket_discount_code.code})" if order.ticket_discount_code}", -order.discount_cents, true ]
+    end
+    lines << [ "Fees", order.buyer_fee_cents, true ] if order.buyer_fee_cents.positive?
+    TaxLine.where(taxable: tickets + items, included: false).group(:name, :rate_bps).sum(:tax_cents).each do |(name, rate_bps), cents|
+      lines << [ "#{name} #{format('%g', rate_bps / 100.0)}%", cents, true ] if cents.positive?
+    end
+    lines
+  end
+
   # What one ticket of a tier is made of, for the panel under its price on
   # the show's page: the ticket, the fees, the tax, adding up to the all-in
   # price shown (TicketPricing's own math). One row means there's nothing to
