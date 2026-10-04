@@ -1,0 +1,24 @@
+<% content_for :title, "#{@listing.display_title} · Ticket Sales" %>
+<% show = @listing.show %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticket Sales", my_ticket_sales_path ] ],
+    text: "#{@listing.display_title} · #{show.date_and_time.strftime('%a %b %-d')}",
+    links: []
+  } %>
+
+  <p class="text-sm text-gray-600 mb-6"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %> · <%= @listing.organization.name %><%= " · #{show.location.name}" if show.location %></p>
+
+  <div class="max-w-4xl space-y-6">
+    <%= render "shared/ticketing/show_numbers", stats: @stats, read_only: true %>
+
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-200">
+        <h2 class="text-sm font-semibold text-gray-900">Who's coming <span class="font-normal text-gray-500">· <%= pluralize(@stats.sold, "ticket") %></span></h2>
+      </div>
+      <%= render "shared/ticketing/guest_list", orders: @guest_orders, read_only: true %>
+    </div>
+  </div>
+</div>

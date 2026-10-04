@@ -1,0 +1,21 @@
+<% content_for :title, "Ticket sales · #{@viewer.organization.name}" %>
+<% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+<div class="mx-auto max-w-md">
+  <h1 class="text-2xl font-semibold text-gray-900"><%= @viewer.organization.name %> is sharing ticket sales with you</h1>
+  <p class="mt-2 text-sm text-gray-600">You'll see how <%= @viewer.scope_label %> is selling: sold of seats, sales, and who's coming by name.</p>
+
+  <%= form_with url: ticket_sales_invitation_accept_path(token: @viewer.invitation_token), method: :post, class: "mt-6 bg-white border border-gray-200 rounded-xl p-5 space-y-4" do %>
+    <div>
+      <div class="block text-sm font-medium text-gray-700 mb-1.5">Email</div>
+      <div class="text-sm text-gray-900"><%= @viewer.invited_email %></div>
+    </div>
+    <div>
+      <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
+        <%= @existing_user ? "Your CocoScout password" : "Choose a password for your new CocoScout account" %>
+      </label>
+      <%= password_field_tag :password, nil, required: true, autocomplete: @existing_user ? "current-password" : "new-password", class: input_class %>
+      <% if @error %><p class="mt-1 text-sm text-red-600"><%= @error %></p><% end %>
+    </div>
+    <%= render "shared/button", text: @existing_user ? "Sign in and see the sales" : "Make my account and see the sales", variant: "primary", size: "medium", type: :submit, classes: "w-full justify-center" %>
+  <% end %>
+</div>

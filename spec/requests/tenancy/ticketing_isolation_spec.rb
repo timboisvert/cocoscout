@@ -37,6 +37,11 @@ RSpec.describe "Cross-org isolation (ticketing)", type: :request do
     expect(response).to have_http_status(:not_found)
     get manage_ticket_listing_door_list_path(victim_listing)
     expect(response).to have_http_status(:not_found)
+    get manage_ticket_listing_viewers_path(victim_listing)
+    expect(response).to have_http_status(:not_found)
+    post manage_ticket_listing_viewers_path(victim_listing), params: { person_id: create(:person, user: create(:user)).id, share_scope: "listing" }
+    expect(response).to have_http_status(:not_found)
+    expect(TicketSalesViewer.count).to eq(0)
     post manage_ticket_listing_comps_path(victim_listing), params: { name: "Me", quantity: "2", tier_id: victim_tier.id }
     expect(response).to have_http_status(:not_found)
     expect(victim_listing.ticket_orders.where(channel: "comp")).to be_empty

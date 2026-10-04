@@ -166,7 +166,9 @@ def seed_content_templates
   {
     "20261002120100_add_ticket_event_reminder_template.rb" => "AddTicketEventReminderTemplate",
     "20261002130100_add_ticket_event_changed_template.rb" => "AddTicketEventChangedTemplate",
-    "20261002140100_add_ticket_order_moved_template.rb" => "AddTicketOrderMovedTemplate"
+    "20261002140100_add_ticket_order_moved_template.rb" => "AddTicketOrderMovedTemplate",
+    "20261004100100_add_ticket_sales_invitation_template.rb" => "AddTicketSalesInvitationTemplate",
+    "20261004100200_add_ticket_sales_producer_daily_template.rb" => "AddTicketSalesProducerDailyTemplate"
   }.each do |file, class_name|
     require Rails.root.join("db/migrate", file)
     spec = class_name.constantize::TEMPLATE

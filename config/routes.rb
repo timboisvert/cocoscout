@@ -358,6 +358,9 @@ Rails.application.routes.draw do
 
   # The door on show night: check-in and door sales, for managers and anyone a
   # theater granted door access (Ticketing settings → Door access).
+  # A producer accepting a share of a show's ticket sales.
+  get  "/ticket-sales/invitations/:token", to: "ticket_sales_invitations#show",   as: "ticket_sales_invitation"
+  post "/ticket-sales/invitations/:token", to: "ticket_sales_invitations#accept", as: "ticket_sales_invitation_accept"
   get  "/door/invitations/:token",        to: "door_invitations#show",   as: "door_invitation"
   post "/door/invitations/:token",        to: "door_invitations#accept", as: "door_invitation_accept"
   get  "/door",                           to: "door#index",          as: "door_index"
@@ -385,6 +388,10 @@ Rails.application.routes.draw do
   # Talent-facing interface
   namespace :my do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
+    # Ticket sales a theater shares with a producer or performer: read-only.
+    get   "/ticket-sales",                  to: "ticket_sales#index",       as: "ticket_sales"
+    patch "/ticket-sales/daily-email",      to: "ticket_sales#daily_email", as: "ticket_sales_daily_email"
+    get   "/ticket-sales/:id",              to: "ticket_sales#show",        as: "ticket_sale"
 
     # Slim account screen for the mobile app. Routes /my/account → AccountsController#show.
     get   "/account",                       to: "accounts#show",            as: "account"
@@ -1261,6 +1268,13 @@ Rails.application.routes.draw do
     get    "ticketing/shows/:id/guests",          to: "ticket_listings#guests",          as: "ticket_listing_guests"
     get    "ticketing/shows/:id/door-list",       to: "ticket_listings#door_list",       as: "ticket_listing_door_list"
     get    "ticketing/shows/:id/comps/new",       to: "ticket_comps#new",                as: "new_ticket_listing_comps"
+    # Who can see a show's sales (producers, performers): share, invite, revoke.
+    get    "ticketing/shows/:id/viewers",         to: "ticket_sales_viewers#index",      as: "ticket_listing_viewers"
+    get    "ticketing/shows/:id/viewers/search",  to: "ticket_sales_viewers#search",     as: "ticket_listing_viewers_search"
+    post   "ticketing/shows/:id/viewers",         to: "ticket_sales_viewers#create"
+    post   "ticketing/shows/:id/viewers/invite",  to: "ticket_sales_viewers#invite",     as: "ticket_listing_viewers_invite"
+    patch  "ticketing/shows/:id/viewers/contracts/:contract_id", to: "ticket_sales_viewers#update_contract", as: "ticket_listing_viewer_contract"
+    delete "ticketing/shows/:id/viewers/:viewer_id", to: "ticket_sales_viewers#destroy", as: "ticket_listing_viewer"
     post   "ticketing/shows/:id/comps",           to: "ticket_comps#create",             as: "ticket_listing_comps"
     get    "ticketing/shows/:id/edit(/:section)", to: "ticket_listings#edit",            as: "edit_ticket_listing"
     patch  "ticketing/shows/:id",                 to: "ticket_listings#update",          as: "ticket_listing"

@@ -62,6 +62,7 @@ class Organization < ApplicationRecord
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :ticket_products, dependent: :destroy
   has_many :ticketing_access_grants, dependent: :delete_all
+  has_many :ticket_sales_viewers, dependent: :delete_all
   has_many :ticketing_notification_logs, dependent: :delete_all
   has_one :ticketing_profile, dependent: :destroy
   has_many :tax_lines, dependent: :delete_all

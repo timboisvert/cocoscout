@@ -1,0 +1,53 @@
+<%# People found to share the sales with. Locals: listing, people, query, viewing_user_ids, manager_user_ids. %>
+<% if query.length < 2 %>
+  <%# Nothing typed yet. %>
+<% elsif people.empty? %>
+  <%# Only after a search finds nobody: invite them by email, prefilled from what was typed. %>
+  <% looks_like_email = query.include?("@") %>
+  <%= form_with url: manage_ticket_listing_viewers_invite_path(listing), method: :post, class: "rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3" do %>
+    <p class="text-sm text-gray-700">Nobody on CocoScout matches “<%= query %>”. Invite them by email: they'll make a free account and see the sales.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label for="invite_name" class="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
+        <%= text_field_tag :name, looks_like_email ? nil : query, id: "invite_name", class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      </div>
+      <div>
+        <label for="invite_email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+        <%= email_field_tag :email, looks_like_email ? query : nil, id: "invite_email", required: true, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-4">
+      <% [ [ "listing", "This show" ], [ "production", "Every date of #{listing.production.name}" ] ].each_with_index do |(value, label), index| %>
+        <label class="flex items-center gap-2 text-sm text-gray-900">
+          <%= radio_button_tag :share_scope, value, index.zero?, id: "invite_share_scope_#{value}", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %> <%= label %>
+        </label>
+      <% end %>
+    </div>
+    <%= render "shared/button", text: "Send invitation", variant: "primary", size: "small", type: :submit %>
+  <% end %>
+<% else %>
+  <ul class="divide-y divide-gray-100">
+    <% people.each do |person| %>
+      <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+      <li class="flex items-center gap-3 py-2.5">
+        <% if headshot_variant %>
+          <%= image_tag headshot_variant, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0"><%= person.initials %></div>
+        <% end %>
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-medium text-gray-900 truncate"><%= person.name %></div>
+          <div class="text-xs text-gray-500 truncate"><%= person.email %></div>
+        </div>
+        <% if manager_user_ids.include?(person.user_id) %>
+          <span class="text-xs text-gray-500 flex-shrink-0">Manager</span>
+        <% elsif viewing_user_ids.include?(person.user_id) %>
+          <span class="text-xs text-gray-500 flex-shrink-0">Sees it</span>
+        <% else %>
+          <%= render "shared/button", text: "Choose", variant: "secondary", size: "small", type: :button,
+                data: { action: "click->door-access-search#choose", person_id: person.id, person_name: person.name, person_email: person.email } %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

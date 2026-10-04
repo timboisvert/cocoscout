@@ -14,6 +14,9 @@ module My
       @contracts.each(&:ensure_signed_pdf!)
       # Whether they still need to connect a bank to be paid.
       @needs_bank = Current.user.people.select(&:can_receive_payouts?).empty?
+      # Live ticket sales for the contracts' upcoming shows, when the theater
+      # sells them on CocoScout and shares the numbers (TicketSalesAccess).
+      @ticket_sales = ticket_sales_by_contract
     end
 
     # Case 2: the contractor enters ticket sales for each show themselves. We
@@ -62,6 +65,21 @@ module My
     end
 
     private
+
+    # { contract_id => [[listing, stats], ...] } for upcoming dates, soonest first.
+    def ticket_sales_by_contract
+      visible = TicketSalesAccess.listings_for(Current.user).joins(:show).where("shows.date_and_time >= ?", Time.current.beginning_of_day)
+                                 .includes(:show).order("shows.date_and_time").to_a
+      return {} if visible.empty?
+
+      stats = Ticketing::ListingStats.for(visible)
+      @contracts.to_h do |contract|
+        next [ contract.id, [] ] unless contract.shares_ticket_sales
+
+        show_ids = contract.contract_shows.pluck(:id).to_set
+        [ contract.id, visible.select { |l| show_ids.include?(l.show_id) }.first(4).map { |l| [ l, stats[l.id] ] } ]
+      end
+    end
 
     def my_contracts
       Contract.joins(:contractor)

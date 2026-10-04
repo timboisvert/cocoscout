@@ -1,0 +1,53 @@
+<% content_for :title, "Ticket Sales" %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  row = lambda do |listing|
+    stats = @stats[listing.id]
+    show = listing.show
+    link_to my_ticket_sale_path(listing), class: "flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-pink-400 transition-colors" do
+      concat(content_tag(:div, class: "flex-shrink-0 w-12 text-center") {
+        concat content_tag(:div, show.date_and_time.strftime("%b"), class: "text-[11px] font-semibold uppercase text-pink-600")
+        concat content_tag(:div, show.date_and_time.day, class: "text-2xl font-bold leading-tight text-gray-900")
+        concat content_tag(:div, show.date_and_time.strftime("%a"), class: "text-[11px] uppercase text-gray-500")
+      })
+      concat(content_tag(:div, class: "min-w-0 flex-1") {
+        concat content_tag(:div, listing.display_title, class: "font-semibold text-gray-900 truncate")
+        concat content_tag(:div, "#{show.date_and_time.strftime('%-l:%M %p')} · #{listing.organization.name}", class: "text-sm text-gray-600 truncate")
+      })
+      concat(content_tag(:div, class: "text-right flex-shrink-0") {
+        concat content_tag(:div, stats.capacity ? "#{stats.sold} of #{stats.capacity}" : stats.sold.to_s, class: "text-sm font-semibold tabular-nums text-gray-900")
+        concat content_tag(:div, "#{money.call(stats.gross_cents)} in sales", class: "text-xs text-gray-500")
+      })
+    end
+  end
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [], text: "Ticket Sales", links: [] } %>
+
+  <p class="text-sm text-gray-600 mb-4">How tickets are selling for the shows a theater shares with you. You can look, not change: sold of seats, sales, and who's coming by name.</p>
+
+  <% if @upcoming.any? %>
+    <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Coming up</h2>
+    <div class="space-y-2 mb-8"><% @upcoming.each { |listing| concat row.call(listing) } %></div>
+  <% end %>
+  <% if @past.any? %>
+    <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Played</h2>
+    <div class="space-y-2 mb-8"><% @past.first(60).each { |listing| concat row.call(listing) } %></div>
+  <% end %>
+  <% if @upcoming.empty? && @past.empty? %>
+    <p class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-600">No shows shared with you yet.</p>
+  <% end %>
+
+  <% if @daily_viewers.any? && TicketingProfile.where(organization_id: @daily_viewers.map(&:organization_id), producer_daily_emails: true).exists? %>
+    <%= form_with url: my_ticket_sales_daily_email_path, method: :patch, class: "mt-2 rounded-xl border border-gray-200 bg-white px-5 py-4 flex items-center justify-between gap-4", data: { controller: "auto-submit" } do |f| %>
+      <div>
+        <div class="text-sm font-medium text-gray-900">A morning email on how your shows are selling</div>
+        <div class="text-xs text-gray-600 mt-0.5">Sent at 7am on days you have shows coming up.</div>
+      </div>
+      <%= hidden_field_tag :daily_email, "0", id: nil %>
+      <%= render "shared/toggle_switch", form: f, field: :daily_email, checked: @daily_email, data: { action: "change->auto-submit#submit" } %>
+    <% end %>
+  <% end %>
+</div>

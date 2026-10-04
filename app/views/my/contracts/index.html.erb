@@ -98,6 +98,18 @@
               </div>
             </div>
 
+            <%# Ticket sales on CocoScout for the contract's coming dates, a tap away. %>
+            <% sales = @ticket_sales.fetch(contract.id, []) %>
+            <% if sales.any? %>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <% sales.each do |listing, stats| %>
+                  <%= link_to my_ticket_sale_path(listing), class: "inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-0.5 text-xs font-medium text-pink-700 hover:bg-pink-100" do %>
+                    <%= listing.show.date_and_time.strftime("%b %-d") %> · <%= stats.capacity ? "#{stats.sold} of #{stats.capacity} sold" : "#{stats.sold} sold" %>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+
             <%# Money at a glance — only what's real (no misleading "none scheduled"). %>
             <% if received_total > 0 || pending_total > 0 || to_pay.any? %>
               <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">

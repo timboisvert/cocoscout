@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_03_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_04_100200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -610,6 +610,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_140000) do
     t.string "production_name"
     t.datetime "sent_for_signature_at"
     t.jsonb "services", default: []
+    t.boolean "shares_ticket_sales", default: true, null: false
     t.string "signing_mode", default: "offline", null: false
     t.string "signing_state", default: "unsent", null: false
     t.string "signing_token"
@@ -3345,6 +3346,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_140000) do
     t.index ["ticket_source_id"], name: "index_ticket_sales_lines_on_ticket_source_id"
   end
 
+  create_table "ticket_sales_viewers", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.boolean "daily_email", default: false, null: false
+    t.bigint "granted_by_id"
+    t.string "invitation_token"
+    t.datetime "invited_at"
+    t.string "invited_email"
+    t.string "invited_name"
+    t.bigint "organization_id", null: false
+    t.datetime "revoked_at"
+    t.bigint "revoked_by_id"
+    t.bigint "scope_id", null: false
+    t.string "scope_type", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["granted_by_id"], name: "index_ticket_sales_viewers_on_granted_by_id"
+    t.index ["invitation_token"], name: "index_ticket_sales_viewers_on_invitation_token", unique: true
+    t.index ["organization_id", "user_id", "scope_type", "scope_id"], name: "idx_ticket_sales_viewers_one_active", unique: true, where: "((revoked_at IS NULL) AND (user_id IS NOT NULL))"
+    t.index ["organization_id"], name: "index_ticket_sales_viewers_on_organization_id"
+    t.index ["revoked_by_id"], name: "index_ticket_sales_viewers_on_revoked_by_id"
+    t.index ["scope_type", "scope_id"], name: "index_ticket_sales_viewers_on_scope"
+    t.index ["user_id"], name: "index_ticket_sales_viewers_on_user_id"
+  end
+
   create_table "ticket_sources", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
@@ -3424,6 +3450,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_140000) do
     t.jsonb "notification_emails", default: [], null: false
     t.jsonb "notification_rules", default: {}, null: false
     t.bigint "organization_id", null: false
+    t.boolean "producer_daily_emails", default: true, null: false
     t.boolean "refunds_after_show", default: false, null: false
     t.integer "reminder_days_before", default: 1
     t.string "slug", null: false
@@ -3904,6 +3931,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_140000) do
   add_foreign_key "ticket_refunds", "users", column: "refunded_by_id", on_delete: :nullify
   add_foreign_key "ticket_sales_lines", "show_financials", column: "show_financials_id"
   add_foreign_key "ticket_sales_lines", "ticket_sources"
+  add_foreign_key "ticket_sales_viewers", "organizations"
+  add_foreign_key "ticket_sales_viewers", "users"
+  add_foreign_key "ticket_sales_viewers", "users", column: "granted_by_id"
+  add_foreign_key "ticket_sales_viewers", "users", column: "revoked_by_id"
   add_foreign_key "ticket_sources", "organizations"
   add_foreign_key "ticket_tiers", "production_ticketings"
   add_foreign_key "ticket_tiers", "ticket_listings"

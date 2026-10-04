@@ -356,6 +356,14 @@ class User < ApplicationRecord
 
   # Whether any of this user's people are the backing Person of a contractor with
   # a contract — drives the "My Contracts" nav entry.
+  # A producer or performer a theater shares ticket sales with (the My
+  # sidebar's Ticket Sales).
+  def sees_ticket_sales?
+    return @sees_ticket_sales if defined?(@sees_ticket_sales)
+
+    @sees_ticket_sales = TicketSalesAccess.listings_for(self).exists?
+  end
+
   def has_contracts?
     Contract.joins(:contractor).where(contractors: { person_id: people.select(:id) }).exists?
   end
