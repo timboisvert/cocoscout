@@ -105,6 +105,6 @@ RSpec.describe "Manage::CourseOfferings cancel course", type: :request do
     post manage_cancel_course_offering_path(offering)
 
     get my_course_inactive_path(code: offering.short_code)
-    expect(response.body).to include("This Course Has Been Cancelled")
+    expect(response.body).to include("This course has been canceled")
   end
 end

@@ -6,7 +6,7 @@
 # on a production's page.
 class ShortLinksController < ApplicationController
   allow_unauthenticated_access
-  layout "ticketing"
+  layout "storefront"
 
   COOKIE = "cs_via"
   BOT_AGENTS = /bot|crawl|spider|slurp|facebookexternalhit|preview|fetch|curl|wget|headless/i

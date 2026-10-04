@@ -1,0 +1,307 @@
+<%# A course's page, in layout A like a show's ticket page: one calm centered
+    column. The image, the title, when and where, then the one card that
+    matters: the price (all in, tap it for what it's made of) and the step to
+    register. Students keep an account (they join the production's talent
+    pool), so a visitor creates one here and a signed-in person registers.
+    Rendered by both entry (signed out) and show (signed in). %>
+<%
+  offering = @course_offering
+  production = @production
+  organization = production.organization
+  sessions = @all_sessions.to_a
+  first = sessions.find { |s| s.date_and_time >= Time.current } || sessions.first
+  venue = first && [ first.location&.name, first.location_space&.name ].compact.uniq.join(" · ")
+  location = sessions.map(&:location).compact.first
+  address = location && [ location.address1, location.city, location.state ].compact_blank.join(", ")
+  map_url = address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].compact.join(', '))}" : nil
+  wide = production.wide_image.attached? ? production.safe_wide_image_variant : nil
+  poster = wide ? nil : (production.safe_poster_variant(:large) || production.safe_poster_variant(:small))
+  group_photo = (wide || poster) ? nil : (offering.show_group_photo? && offering.group_photo.attached? ? offering.group_photo.variant(resize_to_limit: [ 1600, 1600 ]) : nil)
+  image = wide || poster || group_photo
+  image_url = image && url_for(image)
+  breakdown = course_price_breakdown(offering)
+  price_note = course_price_note(offering)
+  regular_total = offering.early_bird_active? ? course_price_breakdown(offering, offering.price_cents).total_cents : nil
+  spots = offering.spots_remaining
+  signed_in = authenticated? && @person
+  summary_class = "list-none [&::-webkit-details-marker]:hidden cursor-pointer"
+  panel_class = "mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 space-y-1"
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  og_description = strip_tags(offering.description.to_s).squish.truncate(200)
+  cois = offering.course_offering_instructors.includes(:person)
+  instructors = cois.map(&:person)
+  coi_by_person = cois.index_by(&:person_id)
+  show_individual = offering.show_individual_photos? || offering.show_individual_bios?
+  show_group_photo = offering.show_group_photo? && offering.group_photo.attached? && instructors.size > 1 && group_photo.nil?
+  show_preface = offering.show_group_bio? && offering.instructor_preface.present? && instructors.size > 1
+%>
+<% content_for :title, "#{offering.title} · #{organization.name}" %>
+<% content_for :head do %>
+  <meta name="description" content="<%= og_description %>">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="<%= offering.title %> · <%= organization.name %>">
+  <meta property="og:description" content="<%= og_description %>">
+  <meta property="og:url" content="<%= my_course_entry_url(code: offering.short_code) %>">
+  <% if image_url %>
+    <meta property="og:image" content="<%= image_url %>">
+    <meta name="twitter:card" content="summary_large_image">
+  <% end %>
+<% end %>
+<% if signed_in %>
+  <% content_for :storefront_header_right do %>
+    <span class="flex-shrink-0 text-sm text-gray-600 truncate"><%= @person.name %> · <%= link_to "Sign out", signout_path, class: "text-pink-700 hover:text-pink-800" %></span>
+  <% end %>
+<% end %>
+
+<div class="mx-auto max-w-xl space-y-5">
+  <% if image_url %>
+    <%= image_tag image_url, alt: (wide || group_photo ? "" : "#{production.name} poster"),
+          class: (wide || group_photo) ? "w-full h-auto rounded-2xl" : "mx-auto max-h-[28rem] w-auto h-auto rounded-2xl" %>
+  <% end %>
+
+  <div class="text-center space-y-1.5">
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= offering.title %></h1>
+    <% if offering.subtitle.present? %><p class="text-base text-gray-700"><%= offering.subtitle %></p><% end %>
+    <p class="text-sm text-gray-600"><%= organization.name %></p>
+  </div>
+
+  <% if first %>
+    <div class="text-center space-y-1">
+      <p class="text-base text-gray-800">
+        <%= sessions.size > 1 ? "Starts" : "" %> <%= first.date_and_time.strftime("%A, %B %-d") %> · <%= course_session_time(first) %>
+        <% if sessions.size > 1 %><span class="text-gray-600">· <%= pluralize(sessions.size, "session") %></span><% end %>
+      </p>
+      <% if first.is_online %>
+        <p class="text-sm text-gray-600">Online</p>
+      <% elsif venue.present? %>
+        <p class="text-sm text-gray-600">
+          <%= venue %><% if address.present? %> · <%= address %><% end %>
+          <% if map_url %> · <%= link_to "Directions", map_url, target: "_blank", rel: "noopener", class: "text-pink-700 hover:text-pink-800" %><% end %>
+        </p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# The card: the price, all in, and the step to register. %>
+  <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+    <div class="flex items-start justify-between gap-4 px-5 py-4">
+      <div class="min-w-0">
+        <div class="font-semibold text-gray-900">Course fee</div>
+        <% if offering.early_bird_active? %>
+          <div class="text-sm text-gray-600">Early bird until <%= offering.early_bird_deadline.strftime("%B %-d") %></div>
+        <% end %>
+        <% if spots && spots.positive? && spots <= 10 %>
+          <div class="text-xs font-semibold text-amber-700 mt-0.5">Only <%= pluralize(spots, "spot") %> left</div>
+        <% end %>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <% if breakdown.rows.size > 1 %>
+          <details>
+            <summary class="<%= summary_class %> text-lg font-semibold text-gray-900">
+              <% if regular_total %><span class="text-sm font-normal text-gray-400 line-through mr-1"><%= number_to_currency(regular_total / 100.0) %></span><% end %>
+              <span class="underline decoration-dotted decoration-gray-400 underline-offset-4"><%= ticket_price(breakdown.total_cents) %></span>
+              <% if price_note %><div class="text-xs font-normal text-gray-600"><%= price_note %></div><% end %>
+            </summary>
+            <dl class="<%= panel_class %> text-left min-w-[13rem]">
+              <% breakdown.rows.each do |label, cents| %>
+                <div class="flex justify-between gap-4"><dt><%= label %></dt><dd class="tabular-nums"><%= number_to_currency(cents / 100.0) %></dd></div>
+              <% end %>
+              <div class="flex justify-between gap-4 pt-1 border-t border-gray-200 font-semibold text-gray-900">
+                <dt>Total</dt><dd class="tabular-nums"><%= number_to_currency(breakdown.total_cents / 100.0) %></dd>
+              </div>
+            </dl>
+          </details>
+        <% else %>
+          <div class="text-lg font-semibold text-gray-900">
+            <% if regular_total %><span class="text-sm font-normal text-gray-400 line-through mr-1"><%= number_to_currency(regular_total / 100.0) %></span><% end %>
+            <%= ticket_price(breakdown.total_cents) %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-100 px-5 py-5">
+      <% if !offering.accepting_registrations? %>
+        <p class="text-center text-gray-700"><%= offering.registration_closed_reason %></p>
+      <% elsif signed_in && @existing_registration %>
+        <div class="text-center space-y-2">
+          <p class="font-medium text-gray-900">You're registered.</p>
+          <p class="text-sm text-gray-600">
+            <%= number_to_currency((@existing_registration.amount_cents + @existing_registration.tax_cents.to_i) / 100.0) %> paid on <%= @existing_registration.paid_at&.strftime("%B %-d, %Y") %>.
+          </p>
+          <%= render "shared/button", text: "Your courses", variant: "secondary", size: "medium", path: my_courses_path %>
+        </div>
+      <% elsif signed_in %>
+        <div class="flex items-center gap-3 mb-4">
+          <% headshot = @person.safe_headshot_variant(:thumb) %>
+          <% if headshot %>
+            <%= image_tag headshot, alt: @person.name, class: "w-10 h-10 rounded-lg object-cover" %>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm"><%= @person.initials %></div>
+          <% end %>
+          <div class="min-w-0 flex-1 text-sm">
+            <div class="text-gray-600">Registering as</div>
+            <div class="font-medium text-gray-900 truncate"><%= @person.name %></div>
+          </div>
+          <%= link_to "Not you?", signout_path, class: "text-xs text-pink-700 hover:text-pink-800 flex-shrink-0" %>
+        </div>
+        <%= form_with url: my_course_checkout_path(code: offering.short_code), method: :post, data: { turbo: false } do %>
+          <%= render "shared/button", text: "Register · #{ticket_price(breakdown.total_cents)}", variant: "primary", size: "jumbo", type: :submit, classes: "w-full" %>
+        <% end %>
+        <p class="mt-2 text-xs text-center text-gray-500">Card payment through Stripe.</p>
+      <% else %>
+        <h2 class="font-semibold text-gray-900">Create your account to register</h2>
+        <p class="mt-1 text-sm text-gray-600"><%= organization.name %> runs its classes on CocoScout. Your free account holds your schedule and anything the instructors send.</p>
+
+        <% if @authentication_error %>
+          <div class="mt-3 p-3 bg-pink-50 border border-pink-200 rounded-lg text-sm text-pink-700">Sign in failed. Please enter the correct password.</div>
+        <% end %>
+        <% if @user_exists_error %>
+          <div class="mt-3 p-3 bg-pink-50 border border-pink-200 rounded-lg text-sm text-pink-700">
+            You already have a CocoScout account. <%= link_to "Sign in", signin_path, class: "underline font-medium" %> to continue.
+          </div>
+        <% end %>
+
+        <%= form_with(model: @user, url: signup_path, class: "mt-4 space-y-4") do |form| %>
+          <div>
+            <label for="user_email_address" class="block text-sm font-medium text-gray-700 mb-1.5">Email address</label>
+            <%= form.email_field :email_address, required: true, autocomplete: "username", autocapitalize: "none",
+                  placeholder: "you@example.com", value: params[:email_address], class: input_class %>
+          </div>
+          <div data-controller="password-visibility password-strength">
+            <label for="user_password" class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+            <div class="relative">
+              <%= form.password_field :password, required: true, minlength: 8, maxlength: 72, autocomplete: "new-password",
+                    placeholder: "Create a password", class: "#{input_class} pr-10",
+                    data: { password_visibility_target: "input", password_strength_target: "input",
+                            action: "input->password-strength#checkStrength paste->password-strength#checkStrength change->password-strength#checkStrength" } %>
+              <button type="button" data-action="password-visibility#toggle" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none" aria-label="Show password">
+                <span data-password-visibility-target="icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 space-y-1">
+              <% { lengthCheck: "At least 8 characters", uppercaseCheck: "One uppercase letter", lowercaseCheck: "One lowercase letter",
+                   numberCheck: "One number", specialCheck: "One special character" }.each do |target, words| %>
+                <div class="flex items-start gap-2" data-password-strength-target="<%= target %>">
+                  <svg class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" /></svg>
+                  <span class="transition-colors"><%= words %></span>
+                </div>
+              <% end %>
+            </div>
+            <div class="pt-3">
+              <%= render "shared/button", text: "Create account and continue", variant: "primary", size: "jumbo", type: :submit,
+                    disabled: true, classes: "w-full !opacity-50 !cursor-not-allowed", data: { password_strength_target: "submit" } %>
+            </div>
+          </div>
+          <p class="text-center text-sm text-gray-600">
+            Already have one? <%= link_to "Sign in", signin_path, class: "font-medium text-pink-700 hover:text-pink-800" %>
+          </p>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <% if offering.instruction_text.present? %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+      <div class="text-sm text-gray-700 space-y-2"><%= simple_format(offering.instruction_text) %></div>
+    </div>
+  <% end %>
+
+  <% if sessions.size > 1 %>
+    <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-5 pt-4 font-semibold text-gray-900">Schedule</h2>
+      <ul class="mt-2 divide-y divide-gray-100">
+        <% sessions.each do |session| %>
+          <li class="flex items-baseline justify-between gap-3 px-5 py-2.5 text-sm">
+            <span class="text-gray-900">
+              <%= session.date_and_time.strftime("%a, %b %-d") %>
+              <% if session.name_subtitle.present? %><span class="text-gray-500">· <%= session.name_subtitle %></span><% end %>
+            </span>
+            <span class="text-gray-600 tabular-nums flex-shrink-0"><%= course_session_time(session) %></span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <% if (instructors.any? || offering.instructor_name.present?) && (show_individual || show_group_photo || show_preface || instructors.empty?) %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 space-y-4">
+      <h2 class="font-semibold text-gray-900"><%= instructors.size > 1 ? "Instructors" : "Instructor" %></h2>
+      <% if instructors.any? %>
+        <% if show_group_photo %>
+          <%= image_tag offering.group_photo.variant(resize_to_limit: [ 1200, 1200 ]), alt: "Instructors", class: "w-full h-auto rounded-xl" %>
+        <% end %>
+        <% if show_preface %>
+          <div class="prose prose-sm max-w-none text-gray-700"><%= offering.instructor_preface %></div>
+        <% end %>
+        <% if show_individual %>
+          <% instructors.each do |instructor| %>
+            <% coi = coi_by_person[instructor.id] %>
+            <% headshot = coi&.headshot&.attached? ? coi.headshot.variant(resize_to_limit: [ 200, 400 ]) : instructor.safe_headshot_variant(:tile) %>
+            <% show_photo = offering.show_individual_photos? && headshot && !coi&.hide_photo? %>
+            <% show_bio = offering.show_individual_bios? && coi&.bio.present? %>
+            <div class="flex items-start gap-4">
+              <% if show_photo %>
+                <%= image_tag headshot, alt: instructor.name, class: "w-20 rounded-lg flex-shrink-0" %>
+              <% end %>
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-gray-900"><%= instructor.name %></p>
+                <% if show_bio %>
+                  <div data-controller="text-expand" data-text-expand-max-height-value="120">
+                    <div class="relative">
+                      <div data-text-expand-target="content" class="prose prose-sm max-w-none text-gray-600 mt-1 overflow-hidden" style="max-height: 120px;"><%= coi.bio %></div>
+                      <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                    </div>
+                    <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-xs text-pink-700 hover:text-pink-800 font-medium mt-1">Show more</button>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      <% else %>
+        <div class="flex items-start gap-4">
+          <div class="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xl flex-shrink-0">
+            <%= offering.instructor_name.to_s.split(" ").map { |n| n[0] }.join("").first(2).upcase %>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="font-medium text-gray-900"><%= offering.instructor_name %></p>
+            <% if offering.instructor_bio.present? %>
+              <div class="prose prose-sm max-w-none text-gray-600 mt-1"><%= offering.instructor_bio %></div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if offering.description.present? %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+      <h2 class="font-semibold text-gray-900">About this course</h2>
+      <div data-controller="text-expand" data-text-expand-max-height-value="288">
+        <div class="relative">
+          <div data-text-expand-target="content" class="prose prose-sm max-w-none text-gray-700 mt-2 overflow-hidden" style="max-height: 288px;"><%= offering.description %></div>
+          <div data-text-expand-target="fade" class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+        </div>
+        <button type="button" data-action="text-expand#toggle" data-text-expand-target="toggleBtn" class="text-sm text-pink-700 hover:text-pink-800 font-medium mt-2">Read more</button>
+      </div>
+    </div>
+  <% end %>
+
+  <% if location && address.present? %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+      <h2 class="font-semibold text-gray-900">Where</h2>
+      <p class="mt-1 text-sm text-gray-700"><%= location.name %></p>
+      <p class="text-sm text-gray-600">
+        <%= [ location.address1, location.address2 ].compact_blank.join(", ") %><br>
+        <%= [ location.city, location.state ].compact_blank.join(", ") %> <%= location.postal_code %>
+      </p>
+      <% if map_url %><p class="mt-2 text-sm"><%= link_to "Directions", map_url, target: "_blank", rel: "noopener", class: "font-medium text-pink-700 hover:text-pink-800" %></p><% end %>
+    </div>
+  <% end %>
+</div>

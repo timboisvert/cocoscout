@@ -9,7 +9,7 @@ module TicketingEmbeddable
   extend ActiveSupport::Concern
 
   included do
-    layout -> { embed? ? "ticketing_embed" : "ticketing" }
+    layout -> { embed? ? "ticketing_embed" : "storefront" }
     after_action :allow_framing, if: :embed?
     helper_method :embed?, :embed_params
   end

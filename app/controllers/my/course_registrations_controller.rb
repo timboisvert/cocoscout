@@ -5,8 +5,12 @@ module My
     allow_unauthenticated_access only: %i[entry inactive show]
 
     skip_before_action :show_my_sidebar
+    # The storefront's layout, as a show's ticket page has: the theater's name
+    # up top, one centered column, CocoScout as a footer line.
+    layout "storefront"
 
     before_action :load_course_offering
+    before_action :set_storefront
     before_action :ensure_user_is_signed_in, only: %i[show checkout success]
     before_action :ensure_course_is_open, except: %i[entry inactive success]
 
@@ -19,23 +23,25 @@ module My
 
       @user = User.new
       @production = @course_offering.production
-      @all_sessions = @course_offering.sessions.includes(:location)
+      @all_sessions = @course_offering.sessions.includes(:location, :location_space)
 
       # Set the return_to path so post-signup redirects to course details
       session[:return_to] = my_course_show_path(code: @course_offering.short_code)
+      render :course
     end
 
     def show
       @production = @course_offering.production
       @organization = @production.organization
       @sessions = @course_offering.upcoming_sessions
-      @all_sessions = @course_offering.sessions.includes(:location)
+      @all_sessions = @course_offering.sessions.includes(:location, :location_space)
       @person = Current.user.person
 
       # Check if already registered (confirmed only)
       @existing_registration = @course_offering.course_registrations
         .where(person: @person, status: :confirmed)
         .first
+      render :course
     end
 
     def checkout
@@ -156,6 +162,13 @@ module My
     end
 
     private
+
+    def set_storefront
+      @production ||= @course_offering.production
+      @storefront_organization = @production.organization
+      @storefront_sold_line = "Classes by #{@storefront_organization.name}"
+      @storefront_brand = "Class registration by CocoScout"
+    end
 
     def load_course_offering
       @course_offering = CourseOffering.find_by!(short_code: params[:code].upcase)

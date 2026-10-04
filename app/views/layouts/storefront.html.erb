@@ -20,17 +20,29 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <%# The public box office: one standard design for every theater. Their name
-      and the show's image carry the page; CocoScout is a quiet footer line. %>
+  <%# The public storefront: tickets and classes, one standard design for
+      every theater. Their name and the show's image carry the page; CocoScout
+      is a quiet footer line. Ticketing pages set @ticketing_profile; a course
+      page sets @storefront_organization and its own footer words. %>
+  <%
+    storefront_organization = @storefront_organization || @ticketing_profile&.organization
+    storefront_home = @storefront_home || (@ticketing_profile && tickets_box_office_path(org: @ticketing_profile.slug))
+    storefront_sold_line = @storefront_sold_line || (storefront_organization && "Tickets sold by #{storefront_organization.name}")
+    storefront_brand = @storefront_brand || "Tickets by CocoScout"
+  %>
   <body class="inter-regular text-slate-700 bg-white">
-    <% if @ticketing_profile %>
+    <% if storefront_organization %>
       <header class="border-b border-gray-200">
         <div class="mx-auto max-w-4xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <%= link_to @ticketing_profile.organization.name, tickets_box_office_path(org: @ticketing_profile.slug),
-                class: "text-lg font-semibold text-gray-900 hover:text-pink-600 truncate" %>
+          <% if storefront_home %>
+            <%= link_to storefront_organization.name, storefront_home, class: "text-lg font-semibold text-gray-900 hover:text-pink-600 truncate" %>
+          <% else %>
+            <span class="text-lg font-semibold text-gray-900 truncate"><%= storefront_organization.name %></span>
+          <% end %>
           <% if @preview %>
             <span class="flex-shrink-0 inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">Preview — not public yet</span>
           <% end %>
+          <%= yield :storefront_header_right %>
         </div>
       </header>
     <% end %>
@@ -42,8 +54,8 @@
 
     <footer class="border-t border-gray-100">
       <div class="mx-auto max-w-4xl px-4 sm:px-6 py-6 text-xs text-gray-400 flex flex-wrap items-center justify-between gap-2">
-        <span><% if @ticketing_profile %>Tickets sold by <%= @ticketing_profile.organization.name %><% end %></span>
-        <%= link_to "Tickets by CocoScout", root_url, class: "hover:text-gray-600" %>
+        <span><%= storefront_sold_line %></span>
+        <%= link_to storefront_brand, root_url, class: "hover:text-gray-600" %>
       </div>
     </footer>
   </body>
