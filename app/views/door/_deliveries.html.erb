@@ -1,35 +1,10 @@
-<%# Products still to deliver tonight — a bottle someone pre-bought — one row
-    per order with whether they're in yet and a Delivered tap. Refreshed with
-    the counts, so a delivery marked from a scan or a search shows here too.
-    Locals: listing. %>
+<%# Products still to deliver tonight, as one line; each party's row in the
+    list carries its own Delivered tap. Refreshed with the counts. Locals: listing. %>
 <%
-  items = listing.ticket_order_items.sold.includes(ticket_order: :tickets).order(:id).to_a
+  items = listing.ticket_order_items.sold.to_a
   waiting = items.reject(&:fulfilled?)
 %>
 <% if items.any? %>
-  <div class="flex items-baseline justify-between gap-3">
-    <h2 class="text-base font-semibold text-gray-900">To deliver <span class="font-normal text-gray-500">· <%= waiting.size %> of <%= items.sum(&:quantity) %> left</span></h2>
-  </div>
-  <% if waiting.empty? %>
-    <p class="mt-2 text-sm text-gray-600">Everything's delivered.</p>
-  <% else %>
-    <ul class="mt-2 divide-y divide-gray-100">
-      <% waiting.each do |item| %>
-        <% order = item.ticket_order %>
-        <% held = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
-        <% inside = held.count(&:checked_in?) %>
-        <li class="flex items-center justify-between gap-3 py-2.5">
-          <div class="min-w-0">
-            <div class="font-medium text-gray-900"><%= item.label %></div>
-            <div class="text-xs text-gray-500">
-              <%= order.buyer_name.presence || order.code %> ·
-              <% if inside.zero? %><span class="text-amber-700">Not in yet</span><% elsif inside < held.size %><%= inside %> of <%= held.size %> in<% else %><span class="text-green-700">In</span><% end %>
-            </div>
-          </div>
-          <%= render "shared/button", text: "Delivered", variant: "primary", size: "small", type: :button,
-                data: { action: "click->door#fulfill", url: door_fulfill_path(listing, item_id: item.id) } %>
-        </li>
-      <% end %>
-    </ul>
-  <% end %>
+  <span class="font-semibold text-gray-900">To deliver</span>
+  <span class="text-gray-500">· <%= waiting.sum(&:quantity) %> of <%= items.sum(&:quantity) %> left<% if waiting.empty? %>. Everything's delivered.<% end %></span>
 <% end %>

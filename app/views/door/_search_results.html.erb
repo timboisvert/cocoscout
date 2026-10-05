@@ -1,4 +1,4 @@
-<%# Orders matching a door search. Locals: orders, query. %>
+<%# Orders matching a door search (the same rows as the list). Locals: orders, query, listing. %>
 <% if query.length < 2 %>
   <%# Nothing typed yet. %>
 <% elsif orders.empty? %>
@@ -6,34 +6,7 @@
 <% else %>
   <ul class="divide-y divide-gray-100">
     <% orders.each do |order| %>
-      <% tickets = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
-      <% inside = tickets.count(&:checked_in?) %>
-      <% items = order.ticket_order_items.select(&:sold?) %>
-      <li class="py-2.5">
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <div class="font-medium text-gray-900 truncate"><%= order.buyer_name.presence || "No name" %></div>
-            <div class="text-xs text-gray-500"><%= order.code %> · <%= inside %> of <%= pluralize(tickets.size, "ticket") %> in</div>
-          </div>
-          <% waiting = tickets.size - inside %>
-          <% if waiting.positive? %>
-            <%= render "shared/button", text: inside.zero? && waiting > 1 ? "Check in all #{waiting}" : "Check in #{waiting}", variant: "primary", size: "small", type: :button,
-                  data: { action: "click->door#checkInOrder", url: door_check_in_order_path(order.ticket_listing_id, order_id: order.id) } %>
-          <% else %>
-            <span class="text-xs font-medium text-gray-500">All in</span>
-          <% end %>
-        </div>
-        <%# What they pre-bought (a bottle): big and impossible to miss, with one tap when it's delivered. %>
-        <% items.each do |item| %>
-          <div class="mt-2 flex items-center justify-between gap-3 rounded-lg px-3 py-2 <%= item.fulfilled? ? 'bg-gray-50 text-gray-500' : 'bg-pink-50 text-pink-900' %>">
-            <div class="text-sm font-medium"><%= item.label %><% if item.fulfilled? %> <span class="text-xs font-normal">· delivered</span><% end %></div>
-            <% unless item.fulfilled? %>
-              <%= render "shared/button", text: "Delivered", variant: "secondary", size: "xs", type: :button,
-                    data: { action: "click->door#fulfill", url: door_fulfill_path(order.ticket_listing_id, item_id: item.id) } %>
-            <% end %>
-          </div>
-        <% end %>
-      </li>
+      <%= render "door/party", order: order, listing: listing %>
     <% end %>
   </ul>
 <% end %>

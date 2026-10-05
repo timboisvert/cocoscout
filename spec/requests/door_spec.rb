@@ -44,7 +44,7 @@ RSpec.describe "Door", type: :request do
 
       get door_path(listing)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Find someone")
+      expect(response.body).to include("Filter by name", ">List<", ">Scan<")
       expect(response.body).not_to include("At the door")
     end
 
@@ -132,6 +132,21 @@ RSpec.describe "Door", type: :request do
       expect(response.parsed_body["message"]).to eq("Admitted 3 — Dana Scully")
       get door_stats_path(listing)
       expect(response.parsed_body).to eq("checked_in" => 3, "sold" => 3, "capacity" => 20)
+    end
+
+    # Most nights people are looked up by name: the list has everyone, a
+    # box per party, and says who's a comp or a door sale.
+    it "lists every party with a box that checks the whole party in" do
+      order = sold_order(3)
+      TicketDoor.new(listing, owner).sell({ general.id.to_s => "1" }, kind: "comp", buyer_name: "Abe Comp")
+      get door_path(listing)
+      expect(response.body).to include("Abe Comp", "1 General · Comp · In", "All in", "Dana Scully", "3 General", 'title="Check in all 3"',
+                                       door_check_in_order_path(listing, order_id: order.id))
+      expect(response.body.index("Abe Comp")).to be < response.body.index("Dana Scully")
+
+      post door_check_in_path(listing), params: { code: order.tickets.first.code }, as: :json
+      get door_list_path(listing)
+      expect(response.body).to include(">1/3<", "1 of 3 in", 'title="Check in all 2"')
     end
 
     it "undoes a mistaken check-in" do

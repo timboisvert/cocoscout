@@ -1,0 +1,13 @@
+<%# Everyone with a ticket tonight, one row per party, alphabetical: bought
+    online, comped, sold at the door. The filter box narrows it as you type
+    (door#filter) and the chips show one state. Locals: orders, listing. %>
+<% if orders.empty? %>
+  <p class="py-6 text-center text-sm text-gray-500">Nobody holds a ticket yet.</p>
+<% else %>
+  <ul class="divide-y divide-gray-100" data-door-target="list">
+    <% orders.each do |order| %>
+      <%= render "door/party", order: order, listing: listing %>
+    <% end %>
+  </ul>
+  <p class="hidden py-6 text-center text-sm text-gray-500" data-door-target="nobody">Nobody matching.</p>
+<% end %>

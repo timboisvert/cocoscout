@@ -26,6 +26,12 @@ class DoorController < ApplicationController
     @counts = door.counts
     @tiers = @listing.ticket_tiers.active.to_a
     @offers = @listing.product_offers(at_door: true)
+    @orders = parties
+  end
+
+  # Everyone with a ticket, one row per party, for the list to refresh.
+  def list
+    render partial: "door/list", locals: { orders: parties, listing: @listing }
   end
 
   # The products still to deliver, for the door page to refresh.
@@ -71,7 +77,7 @@ class DoorController < ApplicationController
            .or(scope.where("ticket_orders.buyer_email ILIKE ?", "%#{TicketOrder.sanitize_sql_like(q)}%"))
            .limit(20).to_a
     end
-    render partial: "door/search_results", locals: { orders: @orders, query: q }
+    render partial: "door/search_results", locals: { orders: @orders, query: q, listing: @listing }
   end
 
   def stats
@@ -125,6 +131,12 @@ class DoorController < ApplicationController
   end
 
   private
+
+  # Alphabetical by name; nameless (a door sale) at the end by order code.
+  def parties
+    @listing.ticket_orders.paid_like.includes(:ticket_order_items, tickets: :ticket_tier)
+            .order(Arel.sql("LOWER(COALESCE(NULLIF(ticket_orders.buyer_name, ''), 'zzzz')), ticket_orders.id")).to_a
+  end
 
   def set_card_order
     @order = @listing.ticket_orders.where(channel: "door_card").find_by!(token: params[:token].to_s)

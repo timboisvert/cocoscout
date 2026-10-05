@@ -373,6 +373,7 @@ Rails.application.routes.draw do
   post "/door/:listing_id/check-in-order", to: "door#check_in_order", as: "door_check_in_order"
   post "/door/:listing_id/undo",          to: "door#undo",           as: "door_undo"
   get  "/door/:listing_id/search",        to: "door#search",         as: "door_search"
+  get  "/door/:listing_id/list",          to: "door#list",           as: "door_list"
   get  "/door/:listing_id/stats",         to: "door#stats",          as: "door_stats"
   post "/door/:listing_id/sell",          to: "door#sell",           as: "door_sell"
   post "/door/:listing_id/items/:item_id/fulfill", to: "door#fulfill", as: "door_fulfill"
