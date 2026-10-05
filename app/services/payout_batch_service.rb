@@ -153,6 +153,7 @@ class PayoutBatchService
   end
 
   FUNDING_METHODS = %w[ach card].freeze
+  IN_PROGRESS_STATUSES = %w[funding funded processing partially_paid completed].freeze
 
   # Fund the batch from the org: an ACH debit (default, cheap, settles in a few
   # days) or a card charge (instant "pay now" rush). Creates a PaymentIntent
@@ -160,6 +161,16 @@ class PayoutBatchService
   # advanced straight into processing, while ACH waits for the webhook.
   def self.fund!(batch, method: nil, payment_method_id: nil)
     return batch if batch.total_cents.zero?
+
+    # One funding at a time per run: a double-click, or two tabs, must never
+    # debit the bank twice. The attempt number keys Stripe's idempotency, so
+    # a network retry of this same attempt returns the same PaymentIntent.
+    attempt = batch.with_lock do
+      raise Error, "This run is already being paid." if IN_PROGRESS_STATUSES.include?(batch.status)
+
+      batch.increment!(:funding_attempts)
+      batch.funding_attempts
+    end
 
     # The payday is "the day we send the money" — it drives the expected-deposit
     # window payees see. A run planned for an earlier day that slipped (created
@@ -180,6 +191,7 @@ class PayoutBatchService
     # Money released back from earlier funded runs (payees paid another way)
     # never left the Stripe balance — spend it before debiting the bank.
     credit_used = PayoutFundingCredit.consume!(org, fundable_cents)
+    batch.update!(credit_applied_cents: credit_used)
     debit_cents = fundable_cents - credit_used
 
     # The theater's CocoScout balance — ticket money from shows that have
@@ -202,7 +214,7 @@ class PayoutBatchService
     if payment_method.blank?
       # Nothing was debited — hand back the credit and balance this attempt
       # claimed so the org's available balance stays truthful.
-      batch.update!(balance_applied_cents: 0) if balance_used.positive?
+      batch.update!(balance_applied_cents: 0, credit_applied_cents: 0)
       if credit_used.positive?
         PayoutFundingCredit.create!(organization: org, amount_cents: credit_used,
                                     note: "Restored after failed funding of run ##{batch.id}")
@@ -214,7 +226,7 @@ class PayoutBatchService
     # the caller's ach/card choice.
     pm_type = org.funding_payment_method_type.presence || (method == "card" ? "card" : "us_bank_account")
 
-    intent = Stripe::PaymentIntent.create(
+    intent = Stripe::PaymentIntent.create({
       amount: debit_cents,
       currency: "usd",
       customer: org.stripe_customer_id,
@@ -224,7 +236,7 @@ class PayoutBatchService
       off_session: true,
       transfer_group: "org_#{org.id}",
       metadata: { payout_batch_id: batch.id, organization_id: org.id }
-    )
+    }, { idempotency_key: "payout-run-funding-#{batch.id}-#{attempt}" })
     batch.update!(status: "funding", funding_payment_intent_id: intent.id, funding_status: intent.status)
     advance_funding!(batch, intent.status, funded_cents: intent.amount)
     # The run is submitted — tell the org's chosen managers (who's being paid,
@@ -239,8 +251,24 @@ class PayoutBatchService
       PayoutFundingCredit.create!(organization: batch.organization, amount_cents: credit_used,
                                   note: "Restored after failed funding of run ##{batch.id}")
     end
-    batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0)
+    batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0)
     raise Error, e.message
+  end
+
+  # The bank debit bounced days later (the ACH webhook). Give back the funding
+  # credit the run spent and let go of the balance it claimed, exactly as a
+  # failure at submission does, so the org's available money stays truthful.
+  def self.funding_failed!(batch)
+    batch.with_lock do
+      return batch if batch.status == "failed"
+
+      if batch.credit_applied_cents.positive?
+        PayoutFundingCredit.create!(organization: batch.organization, amount_cents: batch.credit_applied_cents,
+                                    note: "Restored after failed funding of run ##{batch.id}")
+      end
+      batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0)
+    end
+    batch
   end
 
   # How much of the theater's CocoScout balance (CocoScoutBalance) this run

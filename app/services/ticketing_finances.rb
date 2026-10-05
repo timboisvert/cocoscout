@@ -53,16 +53,22 @@ class TicketingFinances
     @ticket_counts ||= Ticket.where(ticket_order_id: orders.map(&:id), status: Ticket::SOLD_STATUSES).group(:ticket_order_id).count
   end
 
+  # An exchange makes a second order that restates the moved tickets' share
+  # of the original payment; the money was charged once, on the original. So
+  # money comes from orders that started life as a purchase, while tickets
+  # (the moved ones are only valid on the new order) and refunds (a refund
+  # on a moved ticket is against the new order) come from every order.
   def totals_for(rows, row_refunds)
+    paid = rows.reject(&:exchanged_from_id)
     Totals.new(
-      orders: rows.size,
+      orders: paid.size,
       tickets: rows.sum { |o| ticket_counts.fetch(o.id, 0) },
-      gross_cents: rows.sum(&:total_cents),
-      platform_fee_cents: rows.sum(&:platform_fee_cents),
+      gross_cents: paid.sum(&:total_cents),
+      platform_fee_cents: paid.sum(&:platform_fee_cents),
       waived_cents: row_refunds.sum(&:platform_fee_waived_cents),
-      processing_charged_cents: rows.sum(&:processing_cents),
-      stripe_fee_cents: rows.sum { |o| o.stripe_fee_cents.to_i },
-      missing_fee_count: rows.count { |o| o.stripe_fee_cents.nil? && o.total_cents.positive? }
+      processing_charged_cents: paid.sum(&:processing_cents),
+      stripe_fee_cents: paid.sum { |o| o.stripe_fee_cents.to_i },
+      missing_fee_count: paid.count { |o| o.stripe_fee_cents.nil? && o.total_cents.positive? }
     )
   end
 end

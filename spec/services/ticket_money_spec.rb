@@ -111,7 +111,7 @@ RSpec.describe "Ticket money" do
         batch = run_for(15_000)
         PayoutBatchService.fund!(batch)
 
-        expect(Stripe::PaymentIntent).to have_received(:create).with(hash_including(amount: 5_000))
+        expect(Stripe::PaymentIntent).to have_received(:create).with(hash_including(amount: 5_000), anything)
         expect(batch.reload.balance_applied_cents).to eq(10_000)
         expect(summary.available_cents).to eq(0)
       end
@@ -135,7 +135,7 @@ RSpec.describe "Ticket money" do
       batch = PayoutBatchService.build_for(organization: other)
       PayoutBatchService.fund!(batch)
 
-      expect(Stripe::PaymentIntent).to have_received(:create).with(hash_including(amount: 3_000))
+      expect(Stripe::PaymentIntent).to have_received(:create).with(hash_including(amount: 3_000), anything)
       expect(batch.reload.balance_applied_cents).to eq(0)
     end
   end

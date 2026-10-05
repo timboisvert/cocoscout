@@ -9,6 +9,9 @@
 # `identifier`, Stripe counts each active person exactly once — even if the
 # event is retried or re-sent by the nightly reconciliation.
 #
+# Only orgs that pay for usage are metered (Organization#bills_usage?: on Pro,
+# usage not comped).
+#
 # Metering stays OFF until the meter's event name is configured (via
 # STRIPE_METER_STAFF_ACTIVE / credentials), so nothing bills before the Stripe
 # meter + $5 metered price are set up and attached to orgs' subscriptions.
@@ -27,6 +30,7 @@ module StaffMeterService
   def report_activation!(activation)
     org = activation.organization
     return :not_configured unless configured? && org&.stripe_customer_id.present?
+    return :not_billed unless org.bills_usage?
 
     ensure_staffing_subscription!(org)
 
@@ -49,6 +53,7 @@ module StaffMeterService
   # subscription id or nil (usage still records on the customer either way).
   def ensure_staffing_subscription!(org)
     return org.staffing_subscription_id if org.staffing_subscription_id.present?
+    return nil unless org.bills_usage?
 
     items = SubscriptionPlan.staffing_subscription_items
     return nil if items.nil? || org.stripe_customer_id.blank?
@@ -65,11 +70,30 @@ module StaffMeterService
     nil
   end
 
+  # An org that no longer pays for usage (left Pro, or a superadmin comped its
+  # usage) keeps no usage subscription: cancel it without a final invoice, so
+  # the comp covers whatever was metered this month. Returns true if it
+  # canceled one.
+  def sync_usage_subscription!(org)
+    return false if org.bills_usage? || org.staffing_subscription_id.blank?
+
+    Stripe::Subscription.cancel(org.staffing_subscription_id)
+    org.update_column(:staffing_subscription_id, nil)
+    true
+  rescue Stripe::InvalidRequestError => e
+    # Already gone in Stripe: forget it here too.
+    raise unless e.http_status == 404 || e.message.to_s.include?("No such subscription")
+
+    org.update_column(:staffing_subscription_id, nil)
+    true
+  end
+
   # Re-send any of an org's activations for `month` that haven't been metered yet
   # (catches events that failed to send). Idempotent thanks to the event
   # identifiers.
   def reconcile_month!(organization, month: Date.current)
     return :not_configured unless organization.stripe_customer_id.present? && configured?
+    return :not_billed unless organization.bills_usage?
 
     organization.staff_activations.for_month(month).where(reported_at: nil).find_each do |activation|
       report_activation!(activation)

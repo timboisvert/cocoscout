@@ -722,7 +722,7 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
       next_batch = PayoutBatch.create!(organization: org, kind: "staff_pay", status: "draft", trigger: "manual")
       next_batch.items.create!(payee: create(:person, name: "Next Ned", stripe_account_id: "acct_n", payouts_enabled: true), amount_cents: 5000, status: "pending")
       next_batch.recalculate_total!
-      expect(Stripe::PaymentIntent).to receive(:create).with(hash_including(amount: 2000)).and_return(double("pi", id: "pi_2", status: "succeeded", amount: 2000))
+      expect(Stripe::PaymentIntent).to receive(:create).with(hash_including(amount: 2000), anything).and_return(double("pi", id: "pi_2", status: "succeeded", amount: 2000))
       PayoutBatchService.fund!(next_batch, method: "ach")
       expect(PayoutFundingCredit.available_cents(org)).to eq(0)
     end

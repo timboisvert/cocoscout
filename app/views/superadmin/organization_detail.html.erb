@@ -77,6 +77,24 @@
           Events this month: <span class="font-semibold text-gray-900"><%= @organization.events_in_month.count %></span>
           <% unless @organization.on_paid_plan? %> / <%= Organization::FREE_MONTHLY_EVENT_LIMIT %><% end %>
         </p>
+        <div class="mt-4 pt-4 border-t border-gray-100">
+          <h3 class="text-sm font-semibold text-gray-900">Usage</h3>
+          <p class="text-sm text-gray-600 mt-1">
+            <% if @organization.comped_usage? %>
+              Comped: no charge for performers paid or staff scheduled.
+            <% elsif @organization.bills_usage? %>
+              Billed monthly: $3 per performer paid, $5 per staff member scheduled.
+            <% else %>
+              Not billed: usage is only billed on Pro.
+            <% end %>
+          </p>
+          <div class="mt-2">
+            <%= form_with url: organization_subscription_path(@organization), method: :patch do %>
+              <%= hidden_field_tag :subscription_action, @organization.comped_usage? ? "bill_usage" : "comp_usage" %>
+              <%= render "shared/button", text: @organization.comped_usage? ? "Bill usage" : "Comp usage", variant: "secondary", size: "small" %>
+            <% end %>
+          </div>
+        </div>
       </div>
 
       <div class="flex flex-col gap-2 min-w-[16rem]">

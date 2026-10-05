@@ -21,6 +21,10 @@ RSpec.describe "StripeWebhooksController", type: :request do
     end
   end
 
+  # Which transfers a connected account's payout carried is read from Stripe;
+  # by default Stripe can't be asked, so the old match by amount applies.
+  before { allow(ConnectPayoutTracker).to receive(:transfer_ids).and_return(nil) }
+
   # Drive the controller the way Stripe does, skipping only signature checks.
   def deliver(type, object, account: nil, id: "evt_#{SecureRandom.hex(6)}")
     event = Stripe::Event.construct_from(
@@ -69,6 +73,51 @@ RSpec.describe "StripeWebhooksController", type: :request do
     it "ignores an account we don't know" do
       deliver("payout.failed", payout, account: "acct_nope")
       expect(item.reload.status).to eq("paid")
+    end
+  end
+
+  describe "payout.failed — read exactly from the payout's transfers" do
+    it "returns only the items the payout carried, even when another shares the amount" do
+      twin = batch.items.create!(payee: payee, amount_cents: 5_000, status: "pending").tap { |i| i.mark_paid!(transfer_id: "tr_twin") }
+      allow(ConnectPayoutTracker).to receive(:transfer_ids).with("po_1", "acct_123").and_return([ "tr_twin" ])
+
+      deliver("payout.failed", Stripe::Payout.construct_from(id: "po_1", amount: 5_000, failure_message: "Account closed"), account: "acct_123")
+
+      expect(twin.reload.status).to eq("returned")
+      expect(item.reload.status).to eq("paid")
+    end
+  end
+
+  describe "a theater's withdrawal, followed to its bank" do
+    let(:theater) { create(:organization, stripe_account_id: "acct_theater", payouts_enabled: true) }
+    let!(:withdrawal) do
+      theater.balance_withdrawals.create!(amount_cents: 200_000, status: "sent", stripe_transfer_id: "tr_w").tap do |w|
+        OrgCashEntry.post!(organization: theater, entry_type: "transfer", amount_cents: -200_000, source: w, description: "Withdrawal to your bank")
+      end
+    end
+
+    it "says when it reached their bank" do
+      allow(ConnectPayoutTracker).to receive(:transfer_ids).with("po_w", "acct_theater").and_return([ "tr_w" ])
+      deliver("payout.paid", Stripe::Payout.construct_from(id: "po_w", amount: 200_000), account: "acct_theater")
+      expect(withdrawal.reload.attributes.slice("status", "stripe_payout_id")).to eq("status" => "paid", "stripe_payout_id" => "po_w")
+      expect(withdrawal.paid_at).to be_present
+    end
+
+    it "says when their bank turned it down, and never guesses a run item by amount on a theater's account" do
+      theater_item = batch.items.create!(payee: theater, amount_cents: 200_000, status: "pending").tap { |i| i.mark_paid!(transfer_id: "tr_remit") }
+      allow(ConnectPayoutTracker).to receive(:transfer_ids).with("po_w", "acct_theater").and_return([ "tr_w" ])
+      deliver("payout.failed", Stripe::Payout.construct_from(id: "po_w", amount: 200_000, failure_message: "Account closed"), account: "acct_theater")
+
+      expect(withdrawal.reload.status).to eq("bank_rejected")
+      expect(withdrawal.error).to include("Account closed")
+      expect(theater_item.reload.status).to eq("paid")
+      expect(OrgCashEntry.balance_cents(theater)).to eq(-200_000)
+    end
+
+    it "gives the money back to the theater's balance when the transfer is reversed" do
+      deliver("transfer.reversed", Stripe::Transfer.construct_from(id: "tr_w", amount: 200_000))
+      expect(withdrawal.reload.status).to eq("reversed")
+      expect(OrgCashEntry.balance_cents(theater)).to eq(0)
     end
   end
 
@@ -157,6 +206,52 @@ RSpec.describe "StripeWebhooksController", type: :request do
       deliver("payout.failed", payout, account: "acct_123", id: "evt_same")
 
       expect(PayoutLedgerEntry.where(source: item, entry_type: "reversal").count).to eq(1)
+    end
+  end
+
+  describe "a handler that fails" do
+    it "answers 500 and lets Stripe's next delivery do the work" do
+      payout = Stripe::Payout.construct_from(id: "po_1", amount: 5_000, failure_message: "Account closed")
+      calls = 0
+      allow(PayoutBatchService).to receive(:return_item!).and_wrap_original do |original, *args, **kwargs|
+        calls += 1
+        raise ActiveRecord::Deadlocked, "deadlock" if calls == 1
+
+        original.call(*args, **kwargs)
+      end
+
+      deliver("payout.failed", payout, account: "acct_123", id: "evt_retry")
+      expect(response).to have_http_status(:internal_server_error)
+      expect(WebhookEvent.find_by(event_id: "evt_retry").attributes.slice("status", "attempts")).to eq("status" => "failed", "attempts" => 1)
+      expect(item.reload.status).to eq("paid")
+
+      deliver("payout.failed", payout, account: "acct_123", id: "evt_retry")
+      expect(response).to have_http_status(:ok)
+      expect(item.reload.status).to eq("returned")
+      expect(WebhookEvent.find_by(event_id: "evt_retry").attributes.slice("status", "attempts")).to eq("status" => "processed", "attempts" => 2)
+
+      deliver("payout.failed", payout, account: "acct_123", id: "evt_retry")
+      expect(calls).to eq(2)
+    end
+  end
+
+  describe "subscriptions and invoices" do
+    it "ignores the usage subscription's events for Pro" do
+      org.update!(stripe_subscription_id: "sub_pro", subscription_status: "canceled", staffing_subscription_id: "sub_usage")
+      usage = Stripe::Subscription.construct_from(id: "sub_usage", customer: "cus_1", status: "active",
+                                                  metadata: { kind: "staffing", organization_id: org.id.to_s }, items: { data: [] })
+      deliver("customer.subscription.updated", usage)
+      expect(org.reload.attributes.slice("stripe_subscription_id", "subscription_status"))
+        .to eq("stripe_subscription_id" => "sub_pro", "subscription_status" => "canceled")
+    end
+
+    it "finds an invoice's subscription in the newer API's place, and skips usage invoices" do
+      org.update!(stripe_subscription_id: "sub_pro", staffing_subscription_id: "sub_usage", stripe_customer_id: "cus_1")
+      expect(SubscriptionSyncService).to receive(:from_id).with(org, "sub_pro").once
+      deliver("invoice.paid", Stripe::Invoice.construct_from(id: "in_1", customer: "cus_1",
+                                                              parent: { subscription_details: { subscription: "sub_pro" } }))
+      deliver("invoice.paid", Stripe::Invoice.construct_from(id: "in_2", customer: "cus_1",
+                                                              parent: { subscription_details: { subscription: "sub_usage" } }))
     end
   end
 

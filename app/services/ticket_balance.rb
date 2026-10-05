@@ -13,7 +13,8 @@
 #               theater adds from its bank (BalanceTopUp) counts here too.
 #
 # Spending is recorded where it happens: a payout run's balance_applied_cents
-# and BalanceWithdrawal rows. Neither counts once it has failed.
+# and BalanceWithdrawal rows. Neither counts once it has failed (or, for a
+# withdrawal, been reversed back to us).
 class TicketBalance
   SETTLE_AFTER = 2.days
   # A moved order's money leaves its old show (ticket_exchange_out) and joins
@@ -118,7 +119,7 @@ class TicketBalance
 
   def self.spent_cents(organization)
     PayoutBatch.where(organization_id: organization.id).where.not(status: "failed").sum(:balance_applied_cents) +
-      BalanceWithdrawal.where(organization_id: organization.id).where.not(status: "failed").sum(:amount_cents)
+      BalanceWithdrawal.where(organization_id: organization.id).not_failed.sum(:amount_cents)
   end
 
   private_class_method :buckets, :spent_cents, :top_ups_cents

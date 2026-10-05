@@ -14,7 +14,7 @@ class BooksBackfill
     rows = []
     ActiveRecord::Base.transaction do
       scope = organization_ids ? Organization.where(id: organization_ids) : Organization.all
-      scope.order(:id).find_each { |organization| rows << post_organization!(organization) }
+      scope.find_each { |organization| rows << post_organization!(organization) }
       raise ActiveRecord::Rollback if dry_run
     end
     Result.new(rows: rows, dry_run: dry_run)

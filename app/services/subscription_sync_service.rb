@@ -18,7 +18,26 @@ class SubscriptionSyncService
     new(organization, Stripe::Subscription.retrieve(subscription_id)).call
   end
 
+  # The org's second subscription, the monthly one that carries the metered
+  # usage prices (StaffMeterService#ensure_staffing_subscription!). Its events
+  # say nothing about Pro: an active usage subscription must never make an org
+  # Pro, and its id must never replace the Pro subscription's.
+  def self.usage_subscription?(organization, subscription)
+    metadata = subscription.respond_to?(:metadata) ? subscription.metadata : nil
+    kind = metadata.respond_to?(:[]) ? metadata["kind"] : nil
+    kind == "staffing" || (subscription.id.present? && subscription.id == organization.staffing_subscription_id)
+  end
+
   def call
+    if self.class.usage_subscription?(@organization, @subscription)
+      # Stripe ended it (or someone did, in the dashboard): forget it, so the
+      # next metered month makes a fresh one.
+      if @subscription.status == "canceled" && @organization.staffing_subscription_id == @subscription.id
+        @organization.update_column(:staffing_subscription_id, nil)
+      end
+      return @organization
+    end
+
     status = @subscription.status
     item = @subscription.items&.data&.first
 
@@ -31,6 +50,8 @@ class SubscriptionSyncService
       subscription_canceled_at: unix_to_time(@subscription["canceled_at"]),
       subscription_tier: status.in?(ACCESS_STATUSES) ? "paid" : "free"
     )
+    # Pro ended: usage stops billing with it.
+    UsageSubscriptionSyncJob.perform_later(@organization.id) if @organization.staffing_subscription_id.present? && !@organization.bills_usage?
     @organization
   end
 

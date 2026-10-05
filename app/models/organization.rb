@@ -261,6 +261,14 @@ class Organization < ApplicationRecord
     comped_indefinitely? || (comped_until.present? && comped_until.future?)
   end
 
+  # Whether the monthly usage charges ($3 per performer paid, $5 per staff
+  # member scheduled) are billed. Usage rides Pro, so a free or lapsed org is
+  # never metered, and a superadmin can comp usage on its own: an org can be
+  # comped on the plan and still pay for usage, or the other way round.
+  def bills_usage?
+    on_paid_plan? && !comped_usage?
+  end
+
   # Whether a given feature (symbol from PAID_FEATURES, or any free feature) is
   # available to this org. Free features and courses are always available.
   def feature_available?(feature)

@@ -61,9 +61,9 @@ class OrgCashEntry < ApplicationRecord
   after_commit :remove_from_books, on: :destroy
 
   # Whether an insufficient balance actually BLOCKS a transfer/refund, or the
-  # ledger just records silently. Off by default so the ledger can accrue and
-  # be reconciled against the real Stripe balance in production before any
-  # payout behavior changes; flipping the env var off again is the kill switch.
+  # ledger just records silently. Production runs with it on
+  # (ORG_CASH_ENFORCEMENT=1 in config/deploy.yml); unsetting the env var is
+  # the kill switch.
   def self.enforcement_enabled?
     ENV["ORG_CASH_ENFORCEMENT"] == "1"
   end
@@ -81,6 +81,11 @@ class OrgCashEntry < ApplicationRecord
   # `except:` — the item currently drawing, when it's one of these committed
   # items (a funded-run item falling back to an unpinned balance transfer);
   # its own slice is what it's spending, not something else spoken for.
+  #
+  # Also spoken for: balance a run claimed (balance_applied_cents) while its
+  # bank debit for the rest is still on its way. Nothing has left the ledger
+  # yet, but that money is promised to the run; without this it could be
+  # withdrawn, or claimed by another run, in the days the ACH takes.
   def self.committed_cents(organization, except: nil)
     scope = PayoutBatchItem.joins(:payout_batch)
                            .where(payout_batches: { organization_id: organization.id,
@@ -89,7 +94,8 @@ class OrgCashEntry < ApplicationRecord
                            .where.not(payout_batches: { kind: "course" })
                            .where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES)
     scope = scope.where.not(id: except.id) if except.is_a?(PayoutBatchItem)
-    scope.sum(:amount_cents)
+    claimed = PayoutBatch.where(organization_id: organization.id, status: "funding").sum(:balance_applied_cents)
+    scope.sum(:amount_cents) + claimed
   end
 
   # What the org can actually spend on an unfunded draw (course runs, refunds).

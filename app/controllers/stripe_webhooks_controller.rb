@@ -14,9 +14,27 @@ class StripeWebhooksController < ApplicationController
     return head :bad_request unless event
 
     # Stripe redelivers on any non-2xx, and money-moving handlers must not run
-    # twice for the same event. First writer wins; everyone else no-ops.
+    # twice for the same event. First writer wins; everyone else no-ops. A
+    # handler that fails answers 500 and frees the claim, so the money isn't
+    # lost: Stripe's next delivery runs it again.
     return head :ok unless WebhookEvent.claim!(provider: "stripe", event_id: event.id, event_type: event.type)
 
+    begin
+      handle_event(event)
+    rescue StandardError => e
+      WebhookEvent.fail!(provider: "stripe", event_id: event.id, error: e)
+      Rails.error.report(e, handled: true, context: { stripe_event: event.id, type: event.type })
+      Rails.logger.error("[StripeWebhooks] #{event.type} #{event.id} failed: #{e.class}: #{e.message}")
+      return head :internal_server_error
+    end
+
+    WebhookEvent.finish!(provider: "stripe", event_id: event.id)
+    head :ok
+  end
+
+  private
+
+  def handle_event(event)
     case event.type
     when "checkout.session.completed"
       handle_checkout_completed(event.data.object)
@@ -32,6 +50,8 @@ class StripeWebhooksController < ApplicationController
       handle_transfer_reversed(event.data.object)
     when "payout.failed"
       handle_connect_payout_failed(event.data.object, event.account)
+    when "payout.paid"
+      ConnectPayoutTracker.paid!(event.data.object, event.account) if event.account
     when "charge.dispute.created", "charge.dispute.closed"
       TicketDispute.handle(event.data.object, event.type)
     when "payment_intent.succeeded", "payment_intent.payment_failed"
@@ -46,11 +66,7 @@ class StripeWebhooksController < ApplicationController
         handle_payout_funding(intent, event.type)
       end
     end
-
-    head :ok
   end
-
-  private
 
   # Connect platforms need TWO Stripe endpoints on this URL: one for events on
   # our own account (funding PaymentIntents, subscriptions, transfer reversals)
@@ -89,7 +105,7 @@ class StripeWebhooksController < ApplicationController
     if event_type == "payment_intent.succeeded"
       PayoutBatchService.advance_funding!(batch, "succeeded", funded_cents: intent.amount)
     else
-      batch.update!(status: "failed", funding_status: "failed")
+      PayoutBatchService.funding_failed!(batch)
       # A bounced debit used to be silent — the run just sat there "failed"
       # while everyone assumed the money was moving.
       PayoutFundingFailedNotificationJob.perform_later(batch.id)
@@ -125,6 +141,11 @@ class StripeWebhooksController < ApplicationController
   # it through the same path as a bank return so the ledger, the sources and
   # the run's status all follow.
   def handle_transfer_reversed(transfer)
+    if (withdrawal = BalanceWithdrawal.find_by(stripe_transfer_id: transfer.id))
+      BalanceWithdrawalService.reversed!(withdrawal)
+      return
+    end
+
     item = PayoutBatchItem.find_by(stripe_transfer_id: transfer.id)
     return unless item&.paid?
 
@@ -147,6 +168,16 @@ class StripeWebhooksController < ApplicationController
 
     payee = StripeConnectService.payee_for_account(account_id)
     return unless payee
+
+    # Which of our transfers the payout carried, read from Stripe; only when
+    # that can't be read, the old guess by amount (and never for a theater's
+    # own account, where a withdrawal could share the amount).
+    exact = ConnectPayoutTracker.failed!(payout, account_id, reason: failure_reason(payout))
+    unless exact.nil?
+      exact.each { |item| PayoutBatchService.return_item!(item, reason: failure_reason(payout)) }
+      return
+    end
+    return if payee.is_a?(Organization)
 
     candidates = PayoutBatchItem.where(payee: payee, status: "paid").order(paid_at: :desc).to_a
     matches = candidates.select { |i| i.amount_cents == payout.amount }
@@ -205,16 +236,26 @@ class StripeWebhooksController < ApplicationController
   end
 
   def handle_invoice_event(invoice)
-    subscription_id = invoice["subscription"]
+    subscription_id = invoice_subscription_id(invoice)
     return if subscription_id.blank?
 
     organization = Organization.find_by(stripe_subscription_id: subscription_id) ||
+                   Organization.find_by(staffing_subscription_id: subscription_id) ||
                    Organization.find_by(stripe_customer_id: invoice["customer"])
     return unless organization
+    return if subscription_id == organization.staffing_subscription_id
 
     SubscriptionSyncService.from_id(organization, subscription_id)
   rescue Stripe::StripeError => e
     Rails.logger.error "Failed to sync subscription from invoice: #{e.message}"
+  end
+
+  # Newer Stripe API versions moved an invoice's subscription under
+  # parent.subscription_details; older ones kept it at the top level.
+  def invoice_subscription_id(invoice)
+    details = invoice["parent"] && invoice["parent"]["subscription_details"]
+    subscription = (details && details["subscription"]) || invoice["subscription"]
+    subscription.is_a?(String) ? subscription : subscription&.[]("id")
   end
 
   def organization_for_subscription(subscription)

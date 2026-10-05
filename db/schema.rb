@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_05_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -290,12 +290,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_150000) do
     t.datetime "created_at", null: false
     t.string "error"
     t.bigint "organization_id", null: false
+    t.datetime "paid_at"
     t.bigint "requested_by_id"
     t.string "status", default: "pending", null: false
+    t.string "stripe_payout_id"
     t.string "stripe_transfer_id"
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_balance_withdrawals_on_organization_id"
     t.index ["requested_by_id"], name: "index_balance_withdrawals_on_requested_by_id"
+    t.index ["stripe_transfer_id"], name: "index_balance_withdrawals_on_stripe_transfer_id"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
@@ -1515,6 +1518,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_150000) do
     t.boolean "alert_uncovered_show_roles", default: false, null: false
     t.boolean "comped_indefinitely", default: false, null: false
     t.datetime "comped_until"
+    t.boolean "comped_usage", default: false, null: false
     t.jsonb "contract_notification_user_ids", default: [], null: false
     t.integer "course_reminder_days_before", default: 2
     t.datetime "created_at", null: false
@@ -1594,6 +1598,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_150000) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.bigint "created_by_id"
+    t.bigint "credit_applied_cents", default: 0, null: false
+    t.integer "funding_attempts", default: 0, null: false
     t.string "funding_payment_intent_id"
     t.string "funding_status"
     t.string "kind", default: "balance", null: false
@@ -3629,12 +3635,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_150000) do
   end
 
   create_table "webhook_events", force: :cascade do |t|
+    t.integer "attempts", default: 1, null: false
     t.datetime "created_at", null: false
+    t.text "error"
     t.string "event_id", null: false
     t.string "event_type"
+    t.datetime "processed_at"
     t.string "provider", default: "stripe", null: false
+    t.string "status", default: "processing", null: false
+    t.datetime "updated_at"
     t.index ["created_at"], name: "index_webhook_events_on_created_at"
     t.index ["provider", "event_id"], name: "index_webhook_events_on_provider_and_event_id", unique: true
+    t.index ["status"], name: "index_webhook_events_on_status", where: "((status)::text <> 'processed'::text)"
   end
 
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"

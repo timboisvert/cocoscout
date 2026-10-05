@@ -99,8 +99,8 @@ class CocoScoutBalance
       courses: sums.fetch("course_registration", 0) + sums.fetch("refund", 0),
       contracts: sums.fetch("contract_payment", 0),
       added: sums.fetch("top_up", 0) + sums.fetch("funding", 0),
-      paid_out: -(sums.fetch("transfer", 0) + sums.fetch("transfer_reversal", 0)) - BalanceWithdrawal.where(organization_id: organization.id).where.not(status: "failed").sum(:amount_cents),
-      withdrawn: BalanceWithdrawal.where(organization_id: organization.id).where.not(status: "failed").sum(:amount_cents)
+      paid_out: -(sums.fetch("transfer", 0) + sums.fetch("transfer_reversal", 0)) - BalanceWithdrawal.where(organization_id: organization.id).not_failed.sum(:amount_cents),
+      withdrawn: BalanceWithdrawal.where(organization_id: organization.id).not_failed.sum(:amount_cents)
     }
   end
 end

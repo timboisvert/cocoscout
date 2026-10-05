@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Backfills missing Stripe fee data for course registrations and ticket
-# orders paid through CocoScout.
+# Backfills missing Stripe fee data for course registrations, ticket orders
+# and contract payments paid through CocoScout.
 #
 # When a payment completes, we try to fetch the Stripe fee immediately via the webhook handler.
 # However, Stripe's balance transaction isn't always available instantly, so the initial fetch
@@ -20,6 +20,7 @@ class BackfillStripeFeeJob < ApplicationJob
 
   def perform
     perform_for_ticket_orders
+    perform_for_contract_payments
 
     registrations = CourseRegistration.where(stripe_fee_cents: nil)
       .where.not(stripe_payment_intent_id: nil)
@@ -52,10 +53,31 @@ class BackfillStripeFeeJob < ApplicationJob
   # Ticket orders paid through CocoScout whose Stripe fee hasn't landed yet
   # (superadmin Finances reads it for the processing margin).
   def perform_for_ticket_orders
-    orders = TicketOrder.where(stripe_fee_cents: nil, money_path: "cocoscout", status: TicketOrder::WAS_PAID)
+    # An exchange's new order carries no payment of its own: the fee is on the original.
+    orders = TicketOrder.where(stripe_fee_cents: nil, money_path: "cocoscout", status: TicketOrder::WAS_PAID, exchanged_from_id: nil)
                         .where.not(stripe_payment_intent_id: nil).where("total_cents > 0").order(:id)
     orders.find_in_batches(batch_size: BATCH_SIZE) do |batch|
       batch.each { |order| fetch_and_update_stripe_fee(order) }
+      sleep(BATCH_DELAY)
+    end
+  end
+
+  # Contract payments collected online whose fee couldn't be read when they
+  # settled: they were credited to the org gross. Once the fee is known the
+  # org's credit is restated to what it really is (amount less the fee).
+  def perform_for_contract_payments
+    payments = ContractPayment.status_paid.direction_incoming.where(stripe_fee_cents: nil)
+                              .where.not(stripe_payment_intent_id: nil).order(:id)
+    payments.find_in_batches(batch_size: BATCH_SIZE) do |batch|
+      batch.each do |payment|
+        next unless fetch_and_update_stripe_fee(payment)
+        # Already on its way to the org at the gross amount: CocoScout ate the
+        # fee, and the org's credit has to match what it was sent.
+        next if PayoutContribution.exists?(source: payment)
+
+        entry = OrgCashEntry.find_by(source: payment, entry_type: "contract_payment")
+        entry&.update!(amount_cents: payment.remittable_cents)
+      end
       sleep(BATCH_DELAY)
     end
   end

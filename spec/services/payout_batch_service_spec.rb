@@ -267,6 +267,19 @@ RSpec.describe PayoutBatchService do
       expect(org.payout_balance_cents_for(ready)).to eq(0)
     end
 
+    it "never debits the bank twice for one run, and keys each attempt for Stripe" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_ach", status: "processing", amount: 5000))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      PayoutBatchService.fund!(batch, method: "ach")
+      expect(Stripe::PaymentIntent).to have_received(:create)
+        .with(hash_including(amount: 5000), hash_including(idempotency_key: "payout-run-funding-#{batch.id}-1"))
+
+      expect { PayoutBatchService.fund!(batch.reload, method: "ach") }
+        .to raise_error(PayoutBatchService::Error, "This run is already being paid.")
+      expect(Stripe::PaymentIntent).to have_received(:create).once
+    end
+
     it "ACH funding waits for settlement before transferring" do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_ach", status: "processing", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_2"))
@@ -347,7 +360,7 @@ RSpec.describe PayoutBatchService do
 
       PayoutBatchService.fund!(batch, method: "card")
 
-      expect(Stripe::PaymentIntent).to have_received(:create).with(hash_including(amount: 5000))
+      expect(Stripe::PaymentIntent).to have_received(:create).with(hash_including(amount: 5000), anything)
       expect(batch.reload.status).to eq("completed")
       expect(batch.items.all? { |i| i.reload.paid? }).to be(true)
     end

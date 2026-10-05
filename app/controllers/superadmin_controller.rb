@@ -228,8 +228,9 @@ class SuperadminController < ApplicationController
     @organization = Organization.find(params[:id])
   end
 
-  # Grant/remove complimentary Pro access for an organization. This is a comp
-  # overlay only — it never touches a real Stripe subscription the org may have.
+  # Grant/remove complimentary Pro access for an organization, and comp (or
+  # bill) its usage separately. The plan comp is an overlay only — it never
+  # touches a real Stripe subscription the org may have.
   def update_subscription
     organization = Organization.find(params[:id])
 
@@ -245,10 +246,18 @@ class SuperadminController < ApplicationController
       when "remove_comp"
         organization.update!(comped_indefinitely: false, comped_until: nil)
         "Complimentary Pro access removed for #{organization.name}."
+      when "comp_usage"
+        organization.update!(comped_usage: true)
+        "#{organization.name} won't be billed for usage."
+      when "bill_usage"
+        organization.update!(comped_usage: false)
+        "#{organization.name} is billed for usage again (while it's on Pro)."
       else
         "No change made."
       end
 
+    # Stopped paying for usage: its usage subscription goes now, not tonight.
+    UsageSubscriptionSyncJob.perform_later(organization.id) unless organization.bills_usage?
     redirect_to organization_detail_path(organization), notice: notice
   end
 

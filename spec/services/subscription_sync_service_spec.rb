@@ -49,4 +49,22 @@ RSpec.describe SubscriptionSyncService, type: :service do
     described_class.new(organization, stripe_subscription(status: "past_due")).call
     expect(organization.reload.on_paid_plan?).to be true
   end
+
+  it "never lets the usage subscription stand in for Pro" do
+    organization.update!(stripe_subscription_id: "sub_pro", subscription_status: "canceled", staffing_subscription_id: "sub_usage")
+    usage = stripe_subscription(status: "active", id: "sub_usage")
+    usage.metadata = { "kind" => "staffing", "organization_id" => organization.id.to_s }
+
+    described_class.new(organization, usage).call
+    organization.reload
+    expect(organization.stripe_subscription_id).to eq("sub_pro")
+    expect(organization.subscription_status).to eq("canceled")
+    expect(organization.on_paid_plan?).to be(false)
+  end
+
+  it "forgets a usage subscription Stripe canceled" do
+    organization.update!(staffing_subscription_id: "sub_usage")
+    described_class.new(organization, stripe_subscription(status: "canceled", id: "sub_usage")).call
+    expect(organization.reload.staffing_subscription_id).to be_nil
+  end
 end

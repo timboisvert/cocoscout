@@ -42,13 +42,21 @@ class BalanceWithdrawalService
       { idempotency_key: "balance-withdrawal-#{withdrawal.id}" }
     )
     withdrawal.update!(status: "sent", stripe_transfer_id: transfer.id)
-    LedgerPosting.post!(organization: organization, source: withdrawal, kind: "withdrawal",
-                        entry_date: Date.current, cash_date: Date.current, memo: "Withdrawal to your bank",
-                        lines: [
-                          { account: :bank, amount_cents: amount_cents },
-                          { account: :cocoscout_balance, amount_cents: -amount_cents }
-                        ])
-    TicketingNotifier.notify(organization, :withdrawal, variables: TicketingNotificationContent.withdrawal(withdrawal))
+    # The money has moved. Nothing after this may make the manager think it
+    # didn't: the books entry and the notice are logged if they fail.
+    begin
+      LedgerPosting.post!(organization: organization, source: withdrawal, kind: "withdrawal",
+                          entry_date: Date.current, cash_date: Date.current, memo: "Withdrawal to your bank",
+                          lines: [
+                            { account: :bank, amount_cents: amount_cents },
+                            { account: :cocoscout_balance, amount_cents: -amount_cents }
+                          ])
+      TicketingNotifier.notify(organization, :withdrawal, variables: TicketingNotificationContent.withdrawal(withdrawal))
+    rescue StandardError => e
+      raise if Rails.env.test?
+
+      Rails.logger.error("[BalanceWithdrawalService] withdrawal #{withdrawal.id} sent, follow-up failed: #{e.class}: #{e.message}")
+    end
     withdrawal
   rescue Stripe::StripeError => e
     # Nothing left: the money stays in the balance.
@@ -58,5 +66,35 @@ class BalanceWithdrawalService
       TicketingNotifier.notify(organization, :withdrawal, variables: TicketingNotificationContent.withdrawal(withdrawal))
     end
     raise Error, "Stripe couldn't send it: #{e.message}"
+  end
+
+  # Stripe's payout from the theater's account reached their bank.
+  def self.landed!(withdrawal, payout_id:)
+    return withdrawal unless withdrawal.status.in?(%w[sent bank_rejected])
+
+    withdrawal.update!(status: "paid", stripe_payout_id: payout_id, paid_at: Time.current, error: nil)
+    withdrawal
+  end
+
+  # Their bank turned the payout down. The money is in the theater's own
+  # Stripe account, not ours: Stripe pays it again once they fix the bank.
+  def self.bank_rejected!(withdrawal, payout_id:, reason:)
+    return withdrawal unless withdrawal.status.in?(%w[sent paid])
+
+    withdrawal.update!(status: "bank_rejected", stripe_payout_id: payout_id, error: reason)
+    withdrawal
+  end
+
+  # The transfer was taken back: the money is in our balance again, so the
+  # theater's balance and books get it back.
+  def self.reversed!(withdrawal)
+    return withdrawal if withdrawal.status.in?(BalanceWithdrawal::RETURNED)
+
+    withdrawal.transaction do
+      OrgCashEntry.unpost!(source: withdrawal, entry_type: "transfer")
+      LedgerPosting.unpost!(source: withdrawal, kind: "withdrawal")
+      withdrawal.update!(status: "reversed")
+    end
+    withdrawal
   end
 end

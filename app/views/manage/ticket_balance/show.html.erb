@@ -38,7 +38,7 @@
     <%# Everything CocoScout has held for you, and where it went. %>
     <% src = s.sources %>
     <% rows = [ [ "Tickets", src[:tickets] ], [ "Classes", src[:courses] ], [ "Contract payments", src[:contracts] ], [ "Added from your bank", src[:added] ],
-                [ "Paid out to people", src[:paid_out] - src[:withdrawn] ], [ "Withdrawn to your bank", src[:withdrawn] ] ].reject { |_, cents| cents.zero? } %>
+                [ "Paid out to people", src[:paid_out] ], [ "Withdrawn to your bank", src[:withdrawn] ] ].reject { |_, cents| cents.zero? } %>
     <% if rows.any? %>
       <div class="rounded-xl border border-gray-200 bg-white px-5 py-4">
         <h2 class="text-sm font-semibold text-gray-900">Where it came from, where it went</h2>
@@ -195,7 +195,8 @@
             <li class="flex items-center justify-between gap-4 px-6 py-2.5 text-sm">
               <span class="text-gray-900"><%= withdrawal.created_at.strftime("%b %-d, %Y") %>
                 <span class="text-gray-500">· <%= withdrawal.automatic ? "Automatic" : (withdrawal.requested_by&.person&.name || "By hand") %></span>
-                <% if withdrawal.status == "failed" %><span class="text-xs text-red-600">· Didn't go through</span><% end %>
+                <% tone = { "failed" => "text-red-600", "bank_rejected" => "text-red-600", "paid" => "text-green-700" }.fetch(withdrawal.status, "text-gray-500") %>
+                <span class="text-xs <%= tone %>">· <%= withdrawal.status_label %></span>
               </span>
               <span class="tabular-nums text-gray-700"><%= number_to_currency(withdrawal.amount_cents / 100.0) %></span>
             </li>

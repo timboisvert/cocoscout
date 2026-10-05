@@ -82,6 +82,30 @@ RSpec.describe CocoScoutBalance do
       expect(described_class.available_cents(org)).to eq(0)
       expect { BalanceWithdrawalService.withdraw!(org, amount_cents: 100, by: owner) }.to raise_error(BalanceWithdrawalService::Error, /Only \$0.00/)
     end
+
+    it "keeps balance a run claimed spoken for while its bank debit is on its way, and lets it go if the debit bounces" do
+      course_sale(10_000, at: 3.days.ago)
+      org.update!(stripe_customer_id: "cus_sg", funding_payment_method_id: "pm_bank", funding_payment_method_type: "us_bank_account")
+      PayoutFundingCredit.create!(organization: org, amount_cents: 1_000, note: "Paid another way")
+      performer = create(:person, stripe_account_id: "acct_p", payouts_enabled: true)
+      batch = PayoutBatch.open_for(org, created_by: owner)
+      item = batch.items.create!(payee: performer, amount_cents: 20_000, status: "pending")
+      PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: performer, amount_cents: 20_000, label: "Pay")
+      batch.recalculate_total!
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_ach", status: "processing", amount: 10_000))
+
+      PayoutBatchService.fund!(batch)
+      expect(batch.reload.attributes.slice("status", "balance_applied_cents", "credit_applied_cents"))
+        .to eq("status" => "funding", "balance_applied_cents" => 9_000, "credit_applied_cents" => 1_000)
+      expect(described_class.available_cents(org)).to eq(0)
+      expect { BalanceWithdrawalService.withdraw!(org, amount_cents: 100, by: owner) }.to raise_error(BalanceWithdrawalService::Error, /Only \$0.00/)
+
+      PayoutBatchService.funding_failed!(batch)
+      expect(batch.reload.attributes.slice("status", "balance_applied_cents", "credit_applied_cents"))
+        .to eq("status" => "failed", "balance_applied_cents" => 0, "credit_applied_cents" => 0)
+      expect(PayoutFundingCredit.available_cents(org)).to eq(1_000)
+      expect(described_class.available_cents(org)).to eq(8_000)
+    end
   end
 
   context "without ticketing" do

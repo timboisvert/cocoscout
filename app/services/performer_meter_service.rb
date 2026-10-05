@@ -4,7 +4,7 @@
 # $3/month per active performer — the performer analog of StaffMeterService.
 #
 # Each PerformerActivation (a durable, once-per-person-per-month record created
-# when a performer is cast + notified) reports a single meter event of value 1.
+# when a performer is paid performer money on a payout run) reports a single meter event of value 1.
 # Because activations are unique per person/month and the event carries a stable
 # `identifier`, Stripe counts each active performer exactly once — even on retry
 # or nightly reconciliation.
@@ -28,6 +28,7 @@ module PerformerMeterService
   def report_activation!(activation)
     org = activation.organization
     return :not_configured unless configured? && org&.stripe_customer_id.present?
+    return :not_billed unless org.bills_usage?
 
     StaffMeterService.ensure_staffing_subscription!(org)
 
@@ -47,6 +48,7 @@ module PerformerMeterService
   # (catches events that failed to send). Idempotent thanks to the identifiers.
   def reconcile_month!(organization, month: Date.current)
     return :not_configured unless organization.stripe_customer_id.present? && configured?
+    return :not_billed unless organization.bills_usage?
 
     organization.performer_activations.for_month(month).where(reported_at: nil).find_each do |activation|
       report_activation!(activation)
