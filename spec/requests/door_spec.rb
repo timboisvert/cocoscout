@@ -109,7 +109,7 @@ RSpec.describe "Door", type: :request do
 
     it "checks a scanned ticket in and says so" do
       ticket = sold_order(1).tickets.sole
-      post door_check_in_path(listing), params: { code: "https://cocoscout.com/t/v/#{ticket.code}" }, as: :json
+      post door_check_in_path(listing), params: { code: "https://cocoscout.com/tickets/v/#{ticket.code}" }, as: :json
       expect(response.parsed_body.slice("kind", "holder", "counts"))
         .to eq("kind" => "admitted", "holder" => "Dana Scully", "counts" => { "checked_in" => 1, "sold" => 1, "capacity" => 20 })
 

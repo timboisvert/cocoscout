@@ -16,12 +16,15 @@
 
     <div class="space-y-6">
       <div>
-        <label for="ticketing_profile_slug" class="block text-sm font-medium text-gray-700 mb-1.5">Web address</label>
+        <label for="ticketing_profile_slug" class="block text-sm font-medium text-gray-700 mb-1.5">Your box office's address</label>
         <div class="flex items-stretch">
-          <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-sm text-gray-500">cocoscout.com/t/</span>
+          <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-sm text-gray-500">cocoscout.com/tickets/</span>
           <%= f.text_field :slug, class: "#{input_class} rounded-l-none" %>
         </div>
-        <p class="text-xs text-gray-500 mt-1">Lowercase letters, numbers and dashes.</p>
+        <p class="text-xs text-gray-500 mt-1">
+          The page with every show you have on sale. Lowercase letters, numbers and dashes.
+          Its short link, for a poster or a bio, is <span class="font-mono">cocoscout.com<%= ShortLink.canonical_for!(ticketing_profile).short_path %></span>; each production has its own.
+        </p>
       </div>
 
       <div>

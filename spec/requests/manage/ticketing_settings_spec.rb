@@ -17,6 +17,14 @@ RSpec.describe "Manage ticketing settings", type: :request do
   end
 
   describe "who gets in" do
+    # The box office lives at /tickets/<name>; /t/ is only the short codes.
+    it "shows the box office's address under /tickets, and its short link" do
+      sign_in(superadmin)
+      get manage_ticketing_settings_path
+      expect(response.body).to include("cocoscout.com/tickets/</span>", "Its short link", "cocoscout.com/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}")
+      expect(response.body).not_to include("cocoscout.com/t/</span>")
+    end
+
     it "opens for a superadmin on a Pro org, and says ticketing is off until switched on" do
       sign_in(superadmin)
       get manage_ticketing_path

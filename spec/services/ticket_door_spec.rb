@@ -23,7 +23,7 @@ RSpec.describe TicketDoor do
       first, second, third = order.tickets.order(:id).to_a
       third.update!(external_barcode: "EB-123")
 
-      expect(door.check_in("https://cocoscout.com/t/v/#{first.code}").kind).to eq(:admitted)
+      expect(door.check_in("https://cocoscout.com/tickets/v/#{first.code}").kind).to eq(:admitted)
       expect(door.check_in(" #{second.code} ").kind).to eq(:admitted)
       expect(door.check_in("EB-123").kind).to eq(:admitted)
       expect(order.tickets.reload.pluck(:status).uniq).to eq([ "checked_in" ])
