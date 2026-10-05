@@ -6,7 +6,7 @@ module My
 
     allow_unauthenticated_access only: %i[entry inactive show]
 
-    before_action :ensure_user_is_signed_in, only: %i[show success]
+    before_action :ensure_user_is_signed_in, only: %i[show success calendar resend]
     before_action :ensure_course_is_open, except: %i[entry inactive success]
 
     def entry
@@ -71,6 +71,27 @@ module My
       end
     end
 
+    # "Add to calendar": every session as one .ics file.
+    def calendar
+      registration = own_registration
+      sessions = @course_offering.sessions.includes(:location).to_a
+      ics = Ticketing::Calendar.ics(sessions.map { |session|
+        { uid: "course-registration-#{registration.id}-#{session.id}@cocoscout.com",
+          starts: session.date_and_time, ends: session.date_and_time + (session.duration_minutes.to_i.positive? ? session.duration_minutes.minutes : 2.hours),
+          summary: [ @course_offering.title, session.name_subtitle.presence ].compact.join(" · "),
+          location: Ticketing::Calendar.place(session),
+          description: "Your registration: #{my_course_success_url(code: @course_offering.short_code, token: registration.token)}" }
+      })
+      send_data ics, filename: "#{@course_offering.short_code.downcase}.ics", type: "text/calendar"
+    end
+
+    def resend
+      registration = own_registration
+      CourseRegistrationMailer.confirmation(registration).deliver_later
+      redirect_to my_course_success_path(code: @course_offering.short_code, token: registration.token),
+                  notice: "We've emailed your registration to #{registration.person&.email.presence || Current.user.email_address} again."
+    end
+
     def inactive
       # If the course is actually open, redirect to register
       if @course_offering.open?
@@ -82,6 +103,11 @@ module My
     end
 
     private
+
+    # The signed-in person's own confirmed registration, by its token.
+    def own_registration
+      @course_offering.course_registrations.confirmed.find_by!(token: params[:token], person: Current.user.person)
+    end
 
     # Fallback: if the Stripe webhook hasn't fired by the time the user
     # lands on the success page, retrieve the session and create the

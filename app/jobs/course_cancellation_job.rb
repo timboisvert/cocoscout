@@ -22,7 +22,7 @@ class CourseCancellationJob < ApplicationJob
     affected = []
 
     offering.course_registrations.confirmed.includes(:person).find_each do |registration|
-      result = CourseRegistrationRefundService.call(registration)
+      result = CourseRegistrationRefundService.call(registration, notify: false)
       if result.ok?
         affected << registration
       else

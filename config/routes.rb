@@ -524,6 +524,8 @@ Rails.application.routes.draw do
       post "/checkout/:token/pay",  to: "course_checkouts#pay",    as: "course_checkout_pay"
       get  "/checkout/:token/done", to: "course_checkouts#done",   as: "course_checkout_done"
       get "/success",  to: "course_registrations#success",  as: "course_success"
+      get "/calendar", to: "course_registrations#calendar", as: "course_calendar"
+      post "/resend",  to: "course_registrations#resend",   as: "course_resend"
       get "/inactive", to: "course_registrations#inactive", as: "course_inactive"
     end
 

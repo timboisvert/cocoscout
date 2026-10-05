@@ -14,12 +14,13 @@ class CourseRegistrationRefundService
     def ok? = ok
   end
 
-  def self.call(registration)
-    new(registration).call
+  def self.call(registration, notify: true)
+    new(registration, notify: notify).call
   end
 
-  def initialize(registration)
+  def initialize(registration, notify: true)
     @registration = registration
+    @notify = notify
   end
 
   def call
@@ -28,6 +29,7 @@ class CourseRegistrationRefundService
     # Nothing was ever charged — just mark it.
     if @registration.stripe_payment_intent_id.blank?
       @registration.refund!
+      tell_student
       return Result.new(ok: true)
     end
 
@@ -55,10 +57,17 @@ class CourseRegistrationRefundService
     # The webhook will also call refund! when charge.refunded fires; marking it
     # here gives immediate feedback and captures the exact Stripe refund id.
     @registration.refund!(stripe_refund_id: refund.id)
+    tell_student
     Result.new(ok: true)
   rescue Stripe::StripeError => e
     # The money never left — release the reservation.
     OrgCashEntry.unpost!(source: @registration, entry_type: "refund")
     Result.new(ok: false, error: "Refund failed: #{e.message}")
+  end
+
+  private
+
+  def tell_student
+    CourseRegistrationMailer.refunded(@registration).deliver_later if @notify
   end
 end

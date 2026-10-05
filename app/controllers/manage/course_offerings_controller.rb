@@ -403,7 +403,9 @@ module Manage
       registration = @course_offering.course_registrations.find(params[:registration_id])
 
       if registration.confirmed? || registration.pending?
+        was_confirmed = registration.confirmed?
         registration.cancel!
+        CourseRegistrationMailer.removed(registration).deliver_later if was_confirmed
         redirect_to manage_course_offering_path(@course_offering), notice: "#{registration.person.name} has been removed from the course."
       else
         redirect_to manage_course_offering_path(@course_offering), alert: "This registration cannot be cancelled."

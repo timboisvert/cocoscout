@@ -1,0 +1,40 @@
+<%= raw @body_html %>
+
+<% if @when_where %>
+  <%= render "shared/mailer/when_where", w: @when_where, calendar_url: my_course_calendar_url(code: @offering.short_code, token: @registration.token) %>
+<% end %>
+
+<% if @sessions.size > 1 %>
+  <div style="margin: 20px 0; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 12px;">
+    <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">Every session</div>
+    <% @sessions.each do |session| %>
+      <div style="font-size: 14px; color: #374151; padding: 2px 0;"><%= session.date_and_time.strftime("%a, %b %-d") %> · <%= course_session_time(session) %><% if session.name_subtitle.present? %> <span style="color: #6b7280;">· <%= session.name_subtitle %></span><% end %></div>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @receipt %>
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; margin: 20px 0; border: 1px solid #e5e7eb; border-radius: 12px;">
+    <tr><td style="padding: 14px 16px;">
+      <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">What you paid</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px; color: #374151;">
+        <% course_registration_lines(@registration).each do |label, cents, muted| %>
+          <tr>
+            <td style="padding: 2px 0; color: <%= muted ? '#6b7280' : '#374151' %>;"><%= label %></td>
+            <td style="padding: 2px 0; text-align: right; white-space: nowrap;"><%= number_to_currency(cents / 100.0) %></td>
+          </tr>
+        <% end %>
+        <tr>
+          <td style="padding: 6px 0 0; border-top: 1px solid #e5e7eb; font-weight: 600; color: #111827;">Total</td>
+          <td style="padding: 6px 0 0; border-top: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #111827; white-space: nowrap;"><%= number_to_currency(@registration.total_cents / 100.0) %></td>
+        </tr>
+      </table>
+      <div style="font-size: 12px; color: #9ca3af; margin-top: 8px;">Paid <%= @registration.paid_at&.strftime("%B %-d, %Y") %> · sold by <%= @organization.name %>, payment processed by CocoScout</div>
+    </td></tr>
+  </table>
+<% end %>
+
+<p style="font-size: 12px; color: #6b7280;">
+  <%= link_to "Your registration", my_course_success_url(code: @offering.short_code, token: @registration.token) %> · your sessions are on your <%= link_to "CocoScout dashboard", my_dashboard_url %>
+</p>
+<%= render "course_registration_mailer/questions", organization: @organization %>

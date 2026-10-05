@@ -1,143 +1,75 @@
-<% content_for :title, "Registration Confirmed" %>
+<%# The receipt: you're registered, every session, what you paid, the
+    calendar file, directions, and the email again. Rendered by success. %>
+<%
+  offering = @course_offering
+  registration = @registration
+  sessions = offering.sessions.includes(:location, :location_space).to_a
+  first = sessions.find { |s| s.date_and_time >= Time.current } || sessions.first
+  venue = first && [ first.location&.name, first.location_space&.name ].compact.uniq.join(" · ")
+  location = sessions.map(&:location).compact.first
+  address = location && [ location.address1, location.city, location.state ].compact_blank.join(", ")
+  map_url = address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].compact.join(', '))}" : nil
+%>
+<% content_for :title, "You're registered · #{offering.title}" %>
 
-<div class="min-h-screen bg-gray-50 py-12">
-  <div class="max-w-2xl mx-auto px-4">
-    <!-- Success Header -->
-    <div class="mb-8">
-      <div class="flex items-center gap-4 mb-3">
-        <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-pink-100">
-          <svg class="h-6 w-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-          </svg>
-        </div>
-        <h1 class="text-2xl font-bold text-gray-900 coustard-regular">You're Registered!</h1>
-      </div>
-      <% if @course_offering.success_text.present? %>
-        <div class="text-gray-600"><%= @course_offering.success_text %></div>
-      <% else %>
-        <p class="text-gray-600">Your course registration has been confirmed. We can't wait to see you there!</p>
-      <% end %>
-    </div>
+<div class="mx-auto max-w-xl space-y-5">
+  <div class="text-center space-y-1.5">
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900">You're registered</h1>
+    <p class="text-base text-gray-700"><%= offering.title %> · <%= @production.organization.name %></p>
+    <% if offering.success_text.present? %>
+      <div class="text-sm text-gray-600 space-y-2"><%= simple_format(offering.success_text) %></div>
+    <% else %>
+      <p class="text-sm text-gray-600">A confirmation with everything below is on its way to <%= registration.person&.email.presence || Current.user.email_address %>.</p>
+    <% end %>
+  </div>
 
-    <!-- Course Details Card -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-      <div class="mb-5">
-        <p class="text-xs font-medium text-pink-500 uppercase tracking-wide mb-1">Course</p>
-        <p class="text-lg font-semibold text-gray-900"><%= @course_offering.title %></p>
-        <p class="text-gray-600 mt-1"><%= @production.organization.name %></p>
-      </div>
-
-      <% if @registration %>
-        <div class="flex items-center gap-3 mb-5 bg-green-50 border border-green-200 rounded-lg p-3">
-          <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <p class="text-sm font-medium text-green-800">
-              Payment of <%= @registration.formatted_amount %> confirmed
-            </p>
-          </div>
-        </div>
-      <% end %>
-
-      <!-- Schedule Preview -->
-      <% upcoming = @course_offering.upcoming_sessions.limit(3) %>
-      <% if upcoming.any? %>
-        <div class="mb-5">
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Upcoming Sessions</p>
-          <div class="space-y-2">
-            <% upcoming.each do |show| %>
-              <div class="flex items-center gap-3 text-sm">
-                <div class="flex-shrink-0 w-10 h-10 bg-pink-50 border border-pink-200 rounded-lg flex flex-col items-center justify-center">
-                  <span class="text-[10px] font-medium text-pink-600 uppercase leading-tight"><%= show.date_and_time.strftime("%b") %></span>
-                  <span class="text-sm font-bold text-pink-700 leading-tight"><%= show.date_and_time.strftime("%-d") %></span>
-                </div>
-                <div>
-                  <p class="text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d") %></p>
-                  <p class="text-gray-500 text-xs"><%= show.date_and_time.strftime("%-I:%M %p") %></p>
-                </div>
-              </div>
-            <% end %>
-          </div>
-          <% total = @course_offering.upcoming_sessions.count %>
-          <% if total > 3 %>
-            <p class="text-xs text-gray-500 mt-2">+ <%= total - 3 %> more session<%= total - 3 == 1 ? "" : "s" %></p>
+  <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+    <% if first %>
+      <div class="px-5 py-4 text-center">
+        <p class="text-base text-gray-800">
+          <%= sessions.size > 1 ? "Starts " : "" %><%= first.date_and_time.strftime("%A, %B %-d") %> · <%= course_session_time(first) %>
+          <% if sessions.size > 1 %><span class="text-gray-600">· <%= pluralize(sessions.size, "session") %></span><% end %>
+        </p>
+        <% if first.is_online %>
+          <p class="text-sm text-gray-600">Online</p>
+        <% elsif venue.present? %>
+          <p class="text-sm text-gray-600"><%= venue %><% if address.present? %> · <%= address %><% end %></p>
+        <% end %>
+        <div class="mt-3 flex flex-wrap justify-center gap-2">
+          <%= render "shared/button", text: "Add to calendar", variant: "outline-pink", size: "small",
+                path: my_course_calendar_path(code: offering.short_code, token: registration.token) %>
+          <% if map_url %>
+            <%= render "shared/button", text: "Directions", variant: "outline-pink", size: "small", path: map_url, target: "_blank" %>
           <% end %>
         </div>
-      <% end %>
-
-      <!-- What's Next -->
-      <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">What happens next?</p>
-        <ul class="space-y-2">
-          <li class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span class="text-sm text-gray-600">Your course sessions will appear on your personal dashboard</span>
-          </li>
-          <li class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span class="text-sm text-gray-600">You'll receive email notifications about schedule updates</span>
-          </li>
-          <li class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span class="text-sm text-gray-600">A confirmation email has been sent to your inbox</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Dashboard CTA -->
-    <%= link_to my_dashboard_path, class: "block mt-6 group" do %>
-      <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-pink-300 hover:shadow-sm transition-all">
-        <div class="flex items-center gap-4">
-          <div class="flex-shrink-0 h-10 w-10 rounded-full bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
-            <svg class="h-5 w-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <p class="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">Go to your Dashboard</p>
-            <p class="text-gray-500 text-sm mt-0.5">View your course schedule and manage your events</p>
-          </div>
-          <svg class="h-5 w-5 text-gray-300 group-hover:text-pink-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
-        </div>
       </div>
     <% end %>
-
-    <!-- Profile CTA -->
-    <%= link_to edit_profile_path(Current.user.person), class: "block mt-4 group" do %>
-      <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-pink-300 hover:shadow-sm transition-all">
-        <div class="flex items-center gap-4">
-          <div class="flex-shrink-0 h-10 w-10 rounded-full bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
-            <svg class="h-5 w-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <p class="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">Set up your profile</p>
-            <p class="text-gray-500 text-sm mt-0.5">Add a headshot and bio so instructors can get to know you</p>
-          </div>
-          <svg class="h-5 w-5 text-gray-300 group-hover:text-pink-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
-        </div>
-      </div>
+    <% if sessions.size > 1 %>
+      <ul class="border-t border-gray-100 divide-y divide-gray-100">
+        <% sessions.each do |session| %>
+          <li class="flex items-baseline justify-between gap-3 px-5 py-2.5 text-sm">
+            <span class="text-gray-900"><%= session.date_and_time.strftime("%a, %b %-d") %><% if session.name_subtitle.present? %> <span class="text-gray-500">· <%= session.name_subtitle %></span><% end %></span>
+            <span class="text-gray-600 tabular-nums flex-shrink-0"><%= course_session_time(session) %></span>
+          </li>
+        <% end %>
+      </ul>
     <% end %>
+  </div>
 
-    <!-- Footer -->
-    <div class="mt-8 text-center">
-      <div class="flex items-center justify-center gap-2">
-        <%= render "shared/cocoscout_logo", size: :tiny %>
-        <span class="text-base font-semibold coustard-regular text-pink-500">CocoScout</span>
+  <% if registration.total_cents.positive? %>
+    <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <div class="px-5 pt-4 font-semibold text-gray-900">What you paid</div>
+      <%= render "shared/checkout/summary", lines: course_registration_lines(registration), total_cents: registration.total_cents %>
+      <div class="border-t border-gray-100 bg-gray-50 px-5 py-2.5 text-xs text-gray-500">
+        Paid <%= registration.paid_at&.strftime("%B %-d, %Y") %> · sold by <%= @production.organization.name %>, payment processed by CocoScout
       </div>
     </div>
+  <% end %>
+
+  <div class="flex flex-wrap justify-center gap-2">
+    <%= render "shared/button", text: "Your courses", variant: "primary", size: "medium", path: my_courses_path %>
+    <%= form_with url: my_course_resend_path(code: offering.short_code, token: registration.token), method: :post do %>
+      <%= render "shared/button", text: "Email this again", variant: "secondary", size: "medium", type: :submit %>
+    <% end %>
   </div>
 </div>

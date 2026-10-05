@@ -306,6 +306,7 @@ class StripeWebhooksController < ApplicationController
     return if registration.refunded? # Idempotent
 
     registration.refund!
+    CourseRegistrationMailer.refunded(registration, amount_cents: charge.amount_refunded.to_i).deliver_later
   end
 
   def calculate_cocoscout_fee(offering, amount_cents)

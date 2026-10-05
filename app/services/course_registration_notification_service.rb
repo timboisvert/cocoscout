@@ -13,27 +13,24 @@ class CourseRegistrationNotificationService
   PRODUCER_TEMPLATE_KEY = "course_registration_producer_notification"
 
   class << self
-    # Notify the registrant that their registration is confirmed
+    # The student's confirmation: the email (CourseRegistrationMailer, with
+    # the when-and-where block, every session and the receipt) and the same
+    # words as an in-app message.
     def notify_registrant(registration)
       person = registration.person
-      return unless person&.user.present?
+      return unless person
+
+      CourseRegistrationMailer.confirmation(registration).deliver_later
 
       offering = registration.course_offering
       production = offering.production
       sender = find_sender(production)
-      return unless sender
+      return unless sender && person.user.present?
 
-      variables = build_registrant_variables(registration, offering, production, person)
-
-      NotificationDeliveryService.deliver(
-        template_key: REGISTRANT_TEMPLATE_KEY,
-        variables: variables,
-        sender: sender,
-        recipient: person,
-        production: production,
-        organization: production.organization,
-        system_generated: true
-      )
+      variables = CourseRegistrationMailer.variables(registration)
+      rendered = ContentTemplateService.render(REGISTRANT_TEMPLATE_KEY, variables)
+      MessageService.send_direct(sender: sender, recipient_person: person, subject: rendered[:subject], body: rendered[:body],
+                                 production: production, organization: production.organization, system_generated: true)
     end
 
     # Notify the production team about a new registration (in-app only)

@@ -7,9 +7,7 @@
   free = registration.total_cents.zero?
   pay_text = free ? "Register" : "Pay #{number_to_currency(registration.total_cents / 100.0)}"
   back_path = my_course_show_path(code: offering.short_code)
-  quote = CourseTax.quote(offering)
-  lines = [ [ "Course fee", registration.amount_cents, false ] ]
-  lines << [ quote.label, registration.tax_cents, true ] if registration.tax_cents.positive?
+  lines = course_registration_lines(registration)
   wide = @production.wide_image.attached? ? @production.safe_wide_image_variant : nil
   poster = wide ? nil : @production.safe_poster_variant(:small)
 %>

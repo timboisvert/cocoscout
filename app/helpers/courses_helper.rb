@@ -17,6 +17,13 @@ module CoursesHelper
     quote.tax_cents.positive? ? "incl. #{quote.label.downcase}" : nil
   end
 
+  # The lines a registration was paid in: the course, then its tax (muted).
+  def course_registration_lines(registration)
+    lines = [ [ "Course fee", registration.amount_cents, false ] ]
+    lines << [ CourseTax.quote(registration.course_offering).label, registration.tax_cents, true ] if registration.tax_cents.to_i.positive?
+    lines
+  end
+
   # "7:00 – 9:00 PM" / "11:30 AM – 1:00 PM" / "7:00 PM".
   def course_session_time(show)
     starts = show.date_and_time
