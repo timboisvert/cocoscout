@@ -13,6 +13,8 @@ class ExpenseItem < ApplicationRecord
 
   scope :ordered, -> { order(:position) }
 
+  after_commit { show_financials&.reload&.post_to_books }
+
   private
 
   def acceptable_receipt

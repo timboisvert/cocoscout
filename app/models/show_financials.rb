@@ -29,6 +29,18 @@ class ShowFinancials < ApplicationRecord
 
   # Contract payment sync - update revenue-share contract payments if financial data is removed
   after_destroy :sync_contract_payments_on_destroy
+  # The books (Books stage B): what this show took in elsewhere and what it
+  # cost, restated whenever the worksheet changes.
+  after_commit :post_to_books, on: %i[create update]
+  after_commit :remove_from_books, on: :destroy
+
+  def post_to_books
+    BooksOutsidePoster.post_financials!(self)
+  end
+
+  def remove_from_books
+    BooksOutsidePoster.remove_financials!(self)
+  end
 
   # True when a contractor self-reported these figures (Case 2), rather than a
   # manager entering them.

@@ -172,7 +172,7 @@
       </div>
       <div class="rounded-xl border px-5 py-4 <%= @mismatches.empty? ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200' %>">
         <div class="text-sm font-semibold text-gray-900"><%= @mismatches.empty? ? "The books agree with the records behind them" : "#{pluralize(@mismatches.size, 'account')} disagree with the records behind them" %></div>
-        <p class="text-xs text-gray-600 mt-1">The CocoScout balance is checked against the cash ledger and withdrawals; tax to pay against the tax on every paid ticket. This also runs every night.</p>
+        <p class="text-xs text-gray-600 mt-1">The CocoScout balance is checked against every row of the cash ledger; what's owed to performers and staff against every row of the payout ledger; tax to pay against the tax on every paid ticket, product and course registration. This also runs every night.</p>
         <% if @mismatches.any? %>
           <ul class="mt-3 space-y-1 text-sm text-gray-900">
             <% @mismatches.each do |m| %>

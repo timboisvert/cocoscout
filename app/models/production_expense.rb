@@ -21,6 +21,13 @@ class ProductionExpense < ApplicationRecord
 
   CATEGORIES = %w[venue production marketing equipment costumes props licensing insurance other].freeze
 
+  after_commit :post_to_books, on: %i[create update]
+  after_commit -> { BooksOutsidePoster.remove_production_expense!(self) }, on: :destroy
+
+  def post_to_books
+    BooksOutsidePoster.post_production_expense!(self)
+  end
+
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(created_at: :desc) }
 

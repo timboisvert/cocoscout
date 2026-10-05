@@ -19,6 +19,9 @@ class TicketSalesLine < ApplicationRecord
   # the lines that feed them.
   after_save :refresh_totals
   after_destroy :refresh_totals
+  # The rollup above writes with update_columns, which fires nothing, so the
+  # books are told from here.
+  after_commit { show_financials&.post_to_books }
 
   # What this line is called on screen. A line entered before the org named any
   # sources — or one whose source was archived away — still has an amount worth
