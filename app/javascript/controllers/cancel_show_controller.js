@@ -10,7 +10,8 @@ export default class extends Controller {
     "cancelForm",
     "confirmMessage",
     "categoryCheckbox",
-    "categoryField"
+    "categoryField",
+    "refundScope"
   ]
 
   static values = {
@@ -29,6 +30,9 @@ export default class extends Controller {
     if (this.hasScopeFieldTarget) {
       this.scopeFieldTarget.value = scope
     }
+
+    // The ticket buyers box shows the count and refund total for this scope only.
+    this.refundScopeTargets.forEach((line) => line.classList.toggle("hidden", line.dataset.scope !== scope))
 
     // Keep the in-page confirm modal's message in sync with the selected scope.
     if (this.hasConfirmMessageTarget) {
