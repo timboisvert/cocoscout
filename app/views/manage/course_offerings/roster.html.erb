@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <title>Roster · <%= @course_offering.title %></title>
+  <style>
+    @page { size: Letter landscape; margin: 0.5in; }
+    body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 11pt; color: #111827; }
+    h1 { font-size: 16pt; margin: 0; }
+    .meta { color: #4b5563; font-size: 10pt; margin: 4px 0 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 9pt; color: #6b7280; border-bottom: 1px solid #9ca3af; padding: 4px 6px; }
+    th.day { text-align: center; }
+    td { border-bottom: 1px solid #e5e7eb; padding: 6px; vertical-align: top; }
+    td.day { text-align: center; }
+    tr { break-inside: avoid; }
+    .box { width: 14px; height: 14px; border: 1.5px solid #374151; display: inline-block; }
+    .in { background: #374151; }
+    .muted { color: #6b7280; font-size: 9pt; }
+    .print { margin-bottom: 12px; }
+    @media print { .print { display: none; } }
+  </style>
+</head>
+<body>
+  <%# Not a styled button on purpose: this page is plain HTML for paper, and the control never prints. %>
+  <div class="print"><a href="javascript:window.print()">Print this roster</a></div>
+  <h1><%= @course_offering.title %></h1>
+  <div class="meta">
+    <%= @course_offering.production.organization.name %> · <%= pluralize(@students.size, "student") %> ·
+    <%= pluralize(@sessions.size, "session") %><% if @sessions.any? %>, <%= @sessions.first.date_and_time.strftime("%b %-d") %> to <%= @sessions.last.date_and_time.strftime("%b %-d, %Y") %><% end %> ·
+    printed <%= Time.current.strftime("%b %-d at %-l:%M %p") %>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Email</th><th>Paid</th>
+        <% @sessions.each do |session| %><th class="day"><%= session.date_and_time.strftime("%b %-d") %></th><% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <% @students.each do |registration| %>
+        <tr>
+          <td><%= registration.person.name %></td>
+          <td class="muted"><%= registration.person.email %></td>
+          <td class="muted"><%= registration.paid_words || number_to_currency(registration.total_cents / 100.0) %></td>
+          <% @sessions.each do |session| %>
+            <td class="day"><span class="box <%= 'in' if registration.attended_show_ids.include?(session.id) %>"></span></td>
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</body>
+</html>

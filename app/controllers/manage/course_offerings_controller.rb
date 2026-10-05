@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "csv"
+
 module Manage
   class CourseOfferingsController < Manage::ManageController
     before_action :load_course_offering, only: %i[
@@ -11,6 +13,7 @@ module Manage
       questionnaire update_questionnaire_settings
       change_review tell_change mark_change_told
       new_student create_student resend_confirmation
+      roster attendance save_attendance
     ]
 
     def index
@@ -445,6 +448,45 @@ module Manage
       render :new_student, status: :unprocessable_content
     end
 
+    # The roster: a printable page, or a CSV, with a box per session.
+    def roster
+      @students = students
+      @sessions = @course_offering.sessions.to_a
+      respond_to do |format|
+        format.html { render layout: false }
+        format.csv do
+          csv = CSV.generate do |out|
+            out << [ "Name", "Email", "Registered", "Paid" ] + @sessions.map { |s| s.date_and_time.strftime("%b %-d") } + [ "Attended" ]
+            @students.each do |registration|
+              came = @sessions.count { |s| registration.attended_show_ids.include?(s.id) }
+              out << [ registration.person.name, registration.person.email, registration.registered_at.to_date.iso8601,
+                       registration.paid_words || helpers.number_to_currency(registration.total_cents / 100.0) ] +
+                     @sessions.map { |s| registration.attended_show_ids.include?(s.id) ? "Y" : "" } + [ "#{came} of #{@sessions.size}" ]
+            end
+          end
+          send_data csv, filename: "#{@course_offering.short_code.downcase}-roster.csv", type: "text/csv"
+        end
+      end
+    end
+
+    # Who came to which session: a grid of boxes, one Save.
+    def attendance
+      @students = students
+      @sessions = @course_offering.sessions.to_a
+    end
+
+    def save_attendance
+      session_ids = @course_offering.sessions.pluck(:id)
+      raw = params.fetch(:attended, {}).permit!.to_h
+      students.each do |registration|
+        next unless raw.key?(registration.id.to_s)
+
+        came = Array(raw[registration.id.to_s]).map(&:to_i).select { |id| session_ids.include?(id) }.uniq
+        registration.update_columns(attended_show_ids: came)
+      end
+      redirect_to manage_course_offering_attendance_path(@course_offering), notice: "Attendance saved."
+    end
+
     def resend_confirmation
       registration = @course_offering.course_registrations.confirmed.find(params[:registration_id])
       CourseRegistrationMailer.confirmation(registration).deliver_later
@@ -588,6 +630,12 @@ module Manage
     end
 
     private
+
+    # Confirmed students, alphabetical.
+    def students
+      @course_offering.course_registrations.confirmed.includes(:person).sort_by { |r| r.person.name.to_s.downcase }
+    end
+
 
     # A course is "awaiting payout" when it has taken money but the organization's
     # share hasn't been sent to a payout run yet.

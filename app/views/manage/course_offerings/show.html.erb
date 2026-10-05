@@ -242,6 +242,11 @@
             <% unless @course_offering.cancelled? || @course_offering.archived? %>
               <%= render "shared/button", text: "Add a student", variant: "outline-pink", size: "small", path: manage_new_course_offering_student_path(@course_offering) %>
             <% end %>
+            <% if @registrations.any? %>
+              <%= render "shared/button", text: "Attendance", variant: "secondary", size: "small", path: manage_course_offering_attendance_path(@course_offering) %>
+              <%= render "shared/button", text: "Roster", variant: "secondary", size: "small", path: manage_course_offering_roster_path(@course_offering), target: "_blank" %>
+              <%= render "shared/button", text: "CSV", variant: "secondary", size: "small", path: manage_course_offering_roster_path(@course_offering, format: :csv) %>
+            <% end %>
             <% if registrant_people.any? %>
               <%= render "shared/button",
                 text: "Contact Registrants",

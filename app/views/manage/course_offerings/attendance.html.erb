@@ -1,0 +1,57 @@
+<% content_for :title, "Attendance · #{@course_offering.title}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Courses", manage_course_offerings_path ], [ @course_offering.title, manage_course_offering_path(@course_offering) ] ],
+    text: "Attendance",
+    links: [ { text: "Print the roster", path: manage_course_offering_roster_path(@course_offering), target: "_blank" } ]
+  } %>
+
+  <% if @students.empty? || @sessions.empty? %>
+    <p class="text-sm text-gray-600"><%= @students.empty? ? "Nobody is registered yet." : "This course has no sessions yet." %></p>
+  <% else %>
+    <%= form_with url: manage_course_offering_attendance_path(@course_offering), method: :patch do %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
+              <th class="px-4 py-3 font-medium">Student</th>
+              <% @sessions.each do |session| %>
+                <th class="px-2 py-3 font-medium text-center whitespace-nowrap">
+                  <%= session.date_and_time.strftime("%a %b %-d") %>
+                  <% if session.canceled %><div class="text-xs font-normal text-red-600">Canceled</div><% end %>
+                </th>
+              <% end %>
+              <th class="px-4 py-3 font-medium text-right">Came</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @students.each do |registration| %>
+              <% came = (registration.attended_show_ids & @sessions.map(&:id)).size %>
+              <tr class="border-b border-gray-100">
+                <td class="px-4 py-2.5">
+                  <div class="font-medium text-gray-900"><%= registration.person.name %></div>
+                  <div class="text-xs text-gray-500"><%= registration.person.email %></div>
+                </td>
+                <%# Every student sends a row, so unticking the last box still saves. %>
+                <%= hidden_field_tag "attended[#{registration.id}][]", "", id: nil %>
+                <% @sessions.each do |session| %>
+                  <td class="px-2 py-2.5 text-center">
+                    <%= check_box_tag "attended[#{registration.id}][]", session.id, registration.attended_show_ids.include?(session.id), id: "attended_#{registration.id}_#{session.id}",
+                          class: "h-5 w-5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500", "aria-label": "#{registration.person.name} on #{session.date_and_time.strftime('%b %-d')}" %>
+                  </td>
+                <% end %>
+                <td class="px-4 py-2.5 text-right tabular-nums text-gray-700"><%= came %> of <%= @sessions.size %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <%= render "shared/button", text: "Save attendance", variant: "primary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_course_offering_path(@course_offering) %>
+      </div>
+    <% end %>
+  <% end %>
+</div>
