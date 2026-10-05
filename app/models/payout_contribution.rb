@@ -90,7 +90,20 @@ class PayoutContribution < ApplicationRecord
   # has nothing left — then re-total the run.
   after_destroy :resettle_item_and_batch
 
+  # A charge netted out of a contract share is marked paid the moment its
+  # negative line joins the run. If that line comes off an unpaid run (the
+  # draft discarded), the charge goes back to owed — otherwise it reads as
+  # settled, and the share re-added to a new run pays out gross.
+  after_destroy :undo_contract_deduction
+
   private
+
+  def undo_contract_deduction
+    return unless source_type == "ContractPayment" && amount_cents.negative?
+    return if payout_batch_item&.paid?
+
+    ContractPayment.find_by(id: source_id)&.undo_deduction!
+  end
 
   def resettle_item_and_batch
     item = payout_batch_item

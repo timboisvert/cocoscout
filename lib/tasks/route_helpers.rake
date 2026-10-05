@@ -52,6 +52,11 @@ namespace :routes do
           #   icon_path / nav_icon_path -> return an SVG path `d` string
           #   payout_contribution_source_path -> returns a source object's path
           next if %w[icon_path nav_icon_path payout_contribution_source_path].include?(helper_name)
+          # Ticketing: TicketingHelper#ticket_production_path/_url build a
+          # production's ticket page address from its public key (they call the
+          # real tickets_event_* helpers); ShortLink#short_path is a model
+          # method ("/t/CODE"); code_url is a partial's local.
+          next if %w[ticket_production_path ticket_production_url short_path code_url].include?(helper_name)
 
           unless valid_helpers.include?(helper_name)
             relative_path = Pathname.new(file).relative_path_from(Rails.root)

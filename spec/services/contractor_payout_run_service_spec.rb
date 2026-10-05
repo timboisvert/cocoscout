@@ -175,20 +175,90 @@ RSpec.describe ContractorPayoutRunService do
       expect(service.payment_method).to eq("payout_deduction")
     end
 
-    it "leaves the uncovered remainder payable directly when services exceed the share" do
-      service = deductible_service!(amount: 450)
+    context "a share smaller than what they owe — a running balance" do
+      # Rehearsal fees settled out of their ticket share (production contract
+      # #92): a thin night covers part of the bill and the rest rolls forward,
+      # still coming out of their payout, until a share big enough clears it.
+      let!(:rehearsal) do
+        create(:contract_payment, contract: contract, direction: "incoming", amount: 100,
+                                  description: "Rehearsal — Oct 8, 2026", settlement_method: "payout_deduction",
+                                  due_date: Date.new(2026, 10, 8))
+      end
+      let(:share) { ->(amount, due) { create(:contract_payment, :outgoing, contract: contract, amount: amount, due_date: due) } }
 
-      described_class.add_contract_payment!(payment)
+      def balance_rows
+        contract.contract_payments.where("description LIKE ?", "Rehearsal balance — %").order(:id)
+      end
 
-      # $300 share offsets $300 of the service; $150 flips back to payable.
-      expect(payment.reload).to be_status_paid # settled by offset
-      service.reload
-      expect(service).to be_status_pending
-      expect(service.amount.to_f).to eq(150.0)
-      expect(service.settlement_method).to eq("direct")
-      expect(service).to be_collectable_online
-      expect(service.description).to include("offset against payout")
-      expect(org.payout_balance_cents_for(payee)).to eq(0)
+      it "keeps the covered part on the charge and carries the rest as a deduct-from-payout balance" do
+        first = share.call(34, Date.new(2026, 10, 8))
+
+        result = described_class.add_contract_payment!(first)
+        expect(result.washed).to be(true)
+
+        # The share settled as an offset; nothing rides the run.
+        expect(first.reload).to have_attributes(status: "paid", payment_method: "offset")
+        expect(result.batch.items.where(payee: payee)).to be_empty
+        expect(org.payout_balance_cents_for(payee)).to eq(0)
+
+        # The charge keeps what the share covered, paid by deduction, under its own name.
+        rehearsal.reload
+        expect(rehearsal).to have_attributes(status: "paid", payment_method: "payout_deduction",
+                                             description: "Rehearsal — Oct 8, 2026", settlement_method: "payout_deduction")
+        expect(rehearsal.amount.to_f).to eq(34.0)
+
+        # The remainder is a new pending row that still comes out of their payout.
+        balance = balance_rows.sole
+        expect(balance).to have_attributes(description: "Rehearsal balance — Oct 8, 2026", status: "pending",
+                                           settlement_method: "payout_deduction", direction: "incoming",
+                                           due_date: rehearsal.due_date, show_id: rehearsal.show_id)
+        expect(balance.amount.to_f).to eq(66.0)
+        expect(balance.notes).to include("$34.00").and include("payout run ##{result.batch.id}")
+      end
+
+      it "keeps chipping the balance down across shares, then nets the last of it inside a bigger one" do
+        described_class.add_contract_payment!(share.call(34, Date.new(2026, 10, 8)))
+
+        # Second thin night: $50 against the $66 balance — another wash.
+        second = share.call(50, Date.new(2026, 10, 15))
+        expect(described_class.add_contract_payment!(second).washed).to be(true)
+
+        first_balance, second_balance = balance_rows.to_a
+        expect(first_balance).to have_attributes(status: "paid", payment_method: "payout_deduction")
+        expect(first_balance.amount.to_f).to eq(50.0)
+        expect(second_balance).to have_attributes(description: "Rehearsal balance — Oct 8, 2026", status: "pending",
+                                                  settlement_method: "payout_deduction")
+        expect(second_balance.amount.to_f).to eq(16.0)
+
+        # A share bigger than what's left: the $16 rides the run as a deduction
+        # and they're paid the difference.
+        third = share.call(100, Date.new(2026, 10, 22))
+        result = described_class.add_contract_payment!(third)
+        expect(result.washed).to be(false)
+
+        item = result.batch.items.find_by(payee: payee)
+        expect(item.amount_cents).to eq(8_400)
+        expect(item.payout_contributions.find_by(source: second_balance).amount_cents).to eq(-1_600)
+        expect(second_balance.reload).to have_attributes(status: "paid", payment_method: "payout_deduction")
+        expect(org.payout_balance_cents_for(payee)).to eq(8_400)
+
+        # Every dollar of the $100 rehearsal is accounted for, and nothing is billed twice.
+        settled = contract.contract_payments.direction_incoming.status_paid.sum(:amount)
+        expect(settled.to_f).to eq(100.0)
+        expect(contract.contract_payments.direction_incoming.status_pending).to be_empty
+      end
+
+      it "settles a wash for a contractor with no bank — nothing moves" do
+        payee.update!(stripe_account_id: nil, payouts_enabled: false)
+        first = share.call(34, Date.new(2026, 10, 8))
+
+        result = described_class.add_contract_payment!(first)
+
+        expect(result).to have_attributes(added: true, washed: true, error: nil)
+        expect(first.reload).to have_attributes(status: "paid", payment_method: "offset")
+        expect(result.batch.items.where(payee: payee)).to be_empty
+        expect(balance_rows.sole.amount.to_f).to eq(66.0)
+      end
     end
 
     it "only deducts services due by the settling share's due date, never future events' fees" do
@@ -234,6 +304,21 @@ RSpec.describe ContractorPayoutRunService do
       # Second share rides untouched — the service settled on the first add.
       expect(item.payout_contributions.where("amount_cents < 0").count).to eq(1)
       expect(org.payout_balance_cents_for(payee)).to eq(20_000 + 20_000)
+    end
+
+    it "hands the service back when the draft run is discarded, so re-adding the share deducts it again" do
+      service = deductible_service!(amount: 100)
+      PayoutBatchService.discard!(described_class.add_contract_payment!(payment).batch)
+
+      expect(service.reload).to be_status_pending
+      expect(service.payment_method).to be_nil
+      expect(service.reference_number).to be_nil
+      expect(org.payout_balance_cents_for(payee)).to eq(0)
+
+      item = described_class.add_contract_payment!(payment).batch.items.find_by(payee: payee)
+      expect(item.amount_cents).to eq(20_000)
+      expect(item.payout_contributions.find_by(source: service).amount_cents).to eq(-10_000)
+      expect(service.reload).to be_status_paid
     end
 
     it "ignores direct-settlement and TBD services entirely" do

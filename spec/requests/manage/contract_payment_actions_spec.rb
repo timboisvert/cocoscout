@@ -209,6 +209,35 @@ RSpec.describe "Manage contract payment actions", type: :request do
     end
   end
 
+  describe "POST add_to_payout_run when their charges cover the whole share" do
+    # No bank: a wash moves no money, so it settles through the run anyway.
+    let(:person) { create(:person) }
+    let(:contract) { contract_for(person) }
+    let!(:rehearsal) do
+      create(:contract_payment, contract: contract, direction: "incoming", amount: 100,
+                                description: "Rehearsal — Oct 8, 2026", settlement_method: "payout_deduction",
+                                due_date: Date.new(2026, 10, 8))
+    end
+    let!(:share) do
+      create(:contract_payment, :outgoing, contract: contract, amount: 34, description: "Revenue Share Settlement",
+                                           due_date: Date.new(2026, 10, 8))
+    end
+
+    it "explains the confirm as an offset, settles it, and says so on the contract instead of the run" do
+      get manage_contract_path(contract)
+      expect(response.body).to include("no money moves")
+
+      post add_to_payout_run_manage_contract_contract_payment_path(contract, share),
+           headers: { "HTTP_REFERER" => manage_contract_url(contract) }
+
+      expect(response).to redirect_to(manage_contract_url(contract))
+      expect(flash[:notice]).to include("Settled by offset")
+      expect(share.reload).to have_attributes(status: "paid", payment_method: "offset")
+      expect(contract.contract_payments.find_by(description: "Rehearsal balance — Oct 8, 2026"))
+        .to have_attributes(status: "pending", settlement_method: "payout_deduction")
+    end
+  end
+
   describe "POST mark_paid" do
     it "refuses to mark an outgoing payment paid by hand" do
       contract = contract_for(payable_person)

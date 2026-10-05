@@ -14,7 +14,9 @@
 # required to stage them, exactly as with performers: the run parks an unbanked
 # payee on "Waiting on bank info" and pays them the moment the bank lands.
 class ContractorPayoutRunService
-  Result = Struct.new(:batch, :added, :error, keyword_init: true)
+  # washed: the contractor's charges ate the whole share, so nothing rides the
+  # run — the share settled as an offset (no bank needed: no money moves).
+  Result = Struct.new(:batch, :added, :error, :washed, keyword_init: true)
 
   class << self
     def add_contract_payment!(contract_payment, added_by: nil)
@@ -65,7 +67,7 @@ class ContractorPayoutRunService
         batch.recalculate_total!
       end
 
-      Result.new(batch: batch, added: true)
+      Result.new(batch: batch, added: true, washed: contract_payment.status_paid?)
     end
 
     # Net the contract's deduct-from-payout services against the share that just
@@ -135,7 +137,8 @@ class ContractorPayoutRunService
     # The wash: services eat the whole share. No money moves — the share's
     # contribution (and its earning entry) reverses, the outgoing payment
     # settles as offset, and services settle by deduction up to the share.
-    # Whatever the share couldn't cover stays payable directly.
+    # Whatever the share couldn't cover is a running balance: it stays
+    # deducted-from-payout, so the next share keeps chipping it down.
     def settle_as_wash!(batch, outgoing_payment, share_contribution, deductibles, share_cents)
       # Destroying the contribution reverses its earning ledger entry and
       # re-settles (or drops) the item via its after_destroy.
@@ -149,19 +152,37 @@ class ContractorPayoutRunService
 
         owed = (payment.amount.to_d * 100).round
         take = [ owed, remaining ].min
-        if take >= owed
-          payment.mark_paid_via_deduction!(reference: "offset_run_#{batch.id}")
-        else
-          # The rest is theirs to pay directly, at the reduced amount.
-          remainder = (owed - take) / 100.0
-          payment.update!(
-            amount: remainder,
-            settlement_method: "direct",
-            description: "#{payment.description} (#{ActiveSupport::NumberHelper.number_to_currency(take / 100.0)} offset against payout)"
-          )
-        end
+        carry_balance!(batch, outgoing_payment, payment, owed: owed, take: take) if take < owed
+        payment.mark_paid_via_deduction!(reference: "offset_run_#{batch.id}")
         remaining -= take
       end
+    end
+
+    # Split a partly covered charge: the original row keeps what the share
+    # covered (and settles by deduction), and the remainder becomes a new
+    # pending deduct-from-payout row — "Rehearsal balance — Oct 8, 2026" — on
+    # the same date and show, so it nets against the next share.
+    def carry_balance!(batch, outgoing_payment, payment, owed:, take:)
+      money = ->(cents) { ActiveSupport::NumberHelper.number_to_currency(cents / 100.0) }
+      balance_description = ContractPayment.balance_description(payment.description, payment.due_date)
+      against = outgoing_payment.description.presence || "their payout"
+
+      payment.contract.contract_payments.create!(
+        description: balance_description,
+        amount: (owed - take) / 100.0,
+        direction: "incoming",
+        settlement_method: "payout_deduction",
+        due_date: payment.due_date,
+        show_id: payment.show_id,
+        notes: "Balance of #{payment.description} (#{money.call(owed)}): #{money.call(take)} was offset " \
+               "against #{against} in payout run ##{batch.id}. Comes out of their next share."
+      )
+      payment.update!(
+        amount: take / 100.0,
+        notes: [ payment.notes.presence,
+                 "#{money.call(take)} of #{money.call(owed)} offset against #{against}; " \
+                 "the #{money.call(owed - take)} balance carries forward as #{balance_description}." ].compact.join("\n")
+      )
     end
 
     private

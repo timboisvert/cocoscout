@@ -339,13 +339,13 @@ namespace :communications do
     course_registration_confirmed: {
       name: "Course Registration Confirmed",
       category: :courses,
-      channel: :both,
-      mailer: "AppMailer#send_template",
+      channel: :email,
+      mailer: "CourseRegistrationMailer#confirmation",
       service: "CourseRegistrationNotificationService",
       template_key: "course_registration_confirmed",
-      description: "Confirmation email + in-app message sent to registrant after course purchase",
+      description: "The student's confirmation: the email (when-and-where block, every session, the receipt) and the same words as an in-app message. Words live in CourseTemplates.",
       callers: [ "CourseRegistrationConfirmationJob" ],
-      variables: %w[recipient_name course_title amount_paid instructor_name class_schedule dashboard_url]
+      variables: %w[first_name organization_name course_title first_session session_count venue amount_paid registration_url]
     },
     course_registration_producer_notification: {
       name: "Course Registration Producer Notification",

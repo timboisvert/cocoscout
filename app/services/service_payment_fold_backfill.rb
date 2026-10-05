@@ -40,6 +40,8 @@ class ServicePaymentFoldBackfill
         # a direct charge in all but name (ContractPayment#deduct_from_payout?
         # already says so) — it folds too. A real deduction stays put.
         next if row.in_payout_run? || row.deduct_from_payout? || row.includes_services?
+        # A running balance belongs to a charge a share already part-paid.
+        next if row.carried_balance?
 
         service = services.detect { |s| row.description == s["name"] || row.description.to_s.start_with?("#{s['name']} — ") }
         per_event = row.description != service["name"]

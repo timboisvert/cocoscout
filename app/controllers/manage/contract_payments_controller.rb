@@ -111,7 +111,12 @@ module Manage
     # paid to the contractor's bank via Stripe (same rail as performers/staff).
     def add_to_payout_run
       result = ContractorPayoutRunService.add_contract_payment!(@payment, added_by: Current.user)
-      if result.added
+      if result.added && result.washed
+        # Their charges covered the whole share: nothing rides the run, so the
+        # run page has nothing to show for it — say what happened here.
+        redirect_back fallback_location: manage_contract_path(@contract),
+                      notice: "Settled by offset: what #{@contract.contractor_name} owes covered this whole share, so no money moves. Any balance left comes out of their next share."
+      elsif result.added
         redirect_to manage_payout_batch_path(result.batch),
                     notice: "Added #{@payment.contract.contractor_name} to your open payout run."
       elsif result.batch # already added

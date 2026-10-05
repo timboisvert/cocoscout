@@ -307,7 +307,7 @@ class MoneyTodoService
 
   def course_payout_items
     courses = user.accessible_productions.courses
-                  .includes(course_offerings: { course_offering_payout: :line_items }).to_a
+                  .includes(course_offerings: { course_offering_payout: { line_items: { payout_contribution: :payout_batch } } }).to_a
     offerings = courses.flat_map(&:course_offerings)
     return [] if offerings.empty?
 
@@ -317,24 +317,32 @@ class MoneyTodoService
                          .group(:course_offering_id).minimum(:date_and_time)
 
     offerings.filter_map do |offering|
-      # One course can hold many runs — surface each run's own payout. Course
-      # instructor payouts are settled directly (never staged in a run).
+      # One course can hold many runs — surface each run's own payout.
+      # Instructor lines ride the one payout run, and a line only reads paid
+      # once that run pays out — so split by run state like show payouts, or
+      # money already in flight reads as still to pay.
       payout = offering.course_offering_payout
       next unless payout
 
-      unpaid = payout.line_items.reject(&:paid?)
-      paid = payout.line_items.select(&:paid?)
-      amount = unpaid.sum(&:amount_cents) / 100.0
+      by_col = payout.line_items.group_by do |li|
+        self.class.payout_bucket(li.payout_contribution&.payout_batch, paid: li.paid?)
+      end
+      amounts = by_col.transform_values { |lis| lis.sum(&:amount_cents) / 100.0 }
+      amount = amounts.except(:paid).values.sum
       next unless amount.positive?
 
-      subtitle = +"#{unpaid.count} instructor #{'payout'.pluralize(unpaid.count)} to pay"
-      subtitle << " · #{paid.count} already paid" if paid.any?
+      parts = []
+      to_pay = by_col[:to_pay]&.size.to_i
+      parts << "#{to_pay} instructor #{'payout'.pluralize(to_pay)} to pay" if to_pay.positive?
+      parts << "#{by_col[:in_draft].size} in a draft run" if by_col[:in_draft].present?
+      parts << "#{by_col[:in_flight].size} in flight" if by_col[:in_flight].present?
+      parts << "#{by_col[:paid].size} already paid" if by_col[:paid].present?
 
       { name: offering.title, kind: :course, amount: amount,
-        amounts: { to_pay: amount, paid: paid.sum(&:amount_cents) / 100.0 },
-        # Instructor pay exists once the run's been settled — due now.
-        due_soon: amount,
-        subtitle: subtitle,
+        amounts: amounts,
+        # Instructor pay exists once the run's been settled — untouched is due now.
+        due_soon: amounts[:to_pay].to_f,
+        subtitle: parts.join(" · "),
         due_on: first_sessions[offering.id]&.to_date,
         href: manage_course_offering_payout_path(offering) }
     end

@@ -186,6 +186,59 @@ RSpec.describe MoneyTodoService do
         expect(described_class.pending_financials_counts_by_production([ production, course_production ]))
           .to eq(production.id => 1, course_production.id => 1)
       end
+
+      # Instructor lines ride the one payout run and only read paid once it pays
+      # out. A line in a funding run used to show as "1 instructor payout to
+      # pay" beside the very run paying it.
+      describe "instructor payouts" do
+        let(:instructor) { create(:person) }
+        let!(:course_payout) do
+          CourseOfferingPayout.create!(course_offering: offering, status: "calculated", payout_mode: "lump_sum")
+        end
+        let!(:line) do
+          course_payout.line_items.create!(payee: instructor, amount_cents: 7_560, label: "Instructor")
+        end
+
+        def stage(status)
+          batch = PayoutBatch.create!(organization: org, status: status, kind: "payout")
+          batch_item = batch.items.create!(payee: instructor, amount_cents: 7_560)
+          batch.payout_contributions.create!(source: line, payout_batch_item: batch_item,
+                                             payee: instructor, amount_cents: 7_560, label: "Course")
+        end
+
+        def course_item = service.payouts.items.find { |i| i[:kind] == :course }
+
+        it "counts an untouched line as to pay" do
+          expect(course_item[:amounts][:to_pay]).to eq(75.6)
+          expect(course_item[:due_soon]).to eq(75.6)
+          expect(course_item[:subtitle]).to eq("1 instructor payout to pay")
+        end
+
+        it "counts a line in a funding run as in flight, not to pay" do
+          stage("funding")
+
+          expect(course_item[:amount]).to eq(75.6)
+          expect(course_item[:amounts][:in_flight]).to eq(75.6)
+          expect(course_item[:amounts][:to_pay]).to be_nil
+          expect(course_item[:due_soon]).to eq(0)
+          expect(course_item[:subtitle]).to eq("1 in flight")
+          expect(service.payouts.columns).to include(:in_flight)
+        end
+
+        it "counts a line in a draft run as in a draft run" do
+          stage("draft")
+
+          expect(course_item[:amounts][:in_draft]).to eq(75.6)
+          expect(course_item[:subtitle]).to eq("1 in a draft run")
+        end
+
+        it "drops the course once the run has paid the line" do
+          stage("completed")
+          line.mark_paid_via_payout_run!
+
+          expect(course_item).to be_nil
+        end
+      end
     end
   end
 

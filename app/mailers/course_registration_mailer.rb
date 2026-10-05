@@ -11,7 +11,8 @@ class CourseRegistrationMailer < ApplicationMailer
 
   def confirmation(registration)
     @receipt = registration.total_cents.positive?
-    deliver_words(registration, "course_registration_confirmed", template_name: "confirmation")
+    subject = ContentTemplateService.render_subject("course_registration_confirmed", self.class.variables(registration))
+    deliver_words(registration, "course_registration_confirmed", template_name: "confirmation", subject: subject)
   end
 
   def refunded(registration, amount_cents: registration.total_cents)
@@ -77,11 +78,11 @@ class CourseRegistrationMailer < ApplicationMailer
 
   private
 
-  def deliver_words(registration, key, template_name:, extra: {}, session: nil)
+  def deliver_words(registration, key, template_name:, extra: {}, session: nil, subject: nil)
     load(registration, session)
     variables = self.class.variables(registration).merge(extra)
     @body_html = ContentTemplateService.render_body(key, variables.transform_values { |value| ERB::Util.html_escape(value.to_s) })
-    deliver_from_theater(ContentTemplateService.render_subject(key, variables), template_name)
+    deliver_from_theater(subject || ContentTemplateService.render_subject(key, variables), template_name)
   end
 
   # Plain text a manager edited on a review page, {{variables}} filled in.
