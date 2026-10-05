@@ -9,6 +9,8 @@ class TicketRefund < ApplicationRecord
   STATUSES = %w[pending succeeded failed].freeze
 
   belongs_to :organization
+
+  after_commit -> { CocoScoutLedgerPoster.post_for!(self) }, if: -> { saved_change_to_amount_cents? }
   belongs_to :ticket_order
   belongs_to :refunded_by, class_name: "User", optional: true
 

@@ -43,7 +43,10 @@ class StripeWebhooksController < ApplicationController
     when "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"
       handle_subscription_event(event.data.object)
     when "invoice.paid", "invoice.payment_failed"
+      record_invoice(event.data.object, event.type)
       handle_invoice_event(event.data.object)
+    when "invoice.created", "invoice.finalized", "invoice.updated", "invoice.voided", "invoice.marked_uncollectible"
+      record_invoice(event.data.object, event.type)
     when "account.updated"
       handle_connect_account_updated(event.data.object)
     when "transfer.reversed"
@@ -235,13 +238,26 @@ class StripeWebhooksController < ApplicationController
     SubscriptionSyncService.new(organization, subscription).call
   end
 
+  # Every bill Stripe sends an org is mirrored to BillingInvoice. The event
+  # carries no payments, so a paid one is fetched with them (that's how its
+  # charge is matched later).
+  def record_invoice(invoice, event_type)
+    if event_type == "invoice.paid"
+      invoice = Stripe::Invoice.retrieve({ id: invoice.id, expand: [ "payments" ] })
+    end
+    event_type == "invoice.payment_failed" ? BillingInvoiceSync.payment_failed!(invoice) : BillingInvoiceSync.sync!(invoice)
+  rescue Stripe::StripeError => e
+    Rails.logger.warn("[StripeWebhooks] couldn't fetch invoice #{invoice.id}: #{e.message}")
+    BillingInvoiceSync.sync!(invoice)
+  end
+
   def handle_invoice_event(invoice)
     subscription_id = invoice_subscription_id(invoice)
     return if subscription_id.blank?
 
     organization = Organization.find_by(stripe_subscription_id: subscription_id) ||
                    Organization.find_by(staffing_subscription_id: subscription_id) ||
-                   Organization.find_by(stripe_customer_id: invoice["customer"])
+                   Organization.find_by(stripe_customer_id: invoice.to_hash[:customer])
     return unless organization
     return if subscription_id == organization.staffing_subscription_id
 
@@ -253,9 +269,9 @@ class StripeWebhooksController < ApplicationController
   # Newer Stripe API versions moved an invoice's subscription under
   # parent.subscription_details; older ones kept it at the top level.
   def invoice_subscription_id(invoice)
-    details = invoice["parent"] && invoice["parent"]["subscription_details"]
-    subscription = (details && details["subscription"]) || invoice["subscription"]
-    subscription.is_a?(String) ? subscription : subscription&.[]("id")
+    hash = invoice.to_hash.deep_stringify_keys
+    subscription = hash.dig("parent", "subscription_details", "subscription") || hash["subscription"]
+    subscription.is_a?(Hash) ? subscription["id"] : subscription.presence
   end
 
   def organization_for_subscription(subscription)

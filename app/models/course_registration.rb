@@ -23,6 +23,8 @@ class CourseRegistration < ApplicationRecord
   # bring the payout back in line here, whichever path they arrived by (the
   # manage page, the Stripe webhook, the console).
   after_save :resync_course_payout, if: :money_changed?
+  after_commit -> { CocoScoutLedgerPoster.post_for!(self) },
+               if: -> { (saved_changes.keys & %w[stripe_fee_cents amount_cents tax_cents]).any? }
 
   enum :status, {
     pending: "pending",

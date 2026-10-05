@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_110100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -301,6 +301,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
     t.index ["stripe_transfer_id"], name: "index_balance_withdrawals_on_stripe_transfer_id"
   end
 
+  create_table "billing_invoices", force: :cascade do |t|
+    t.bigint "amount_due_cents", default: 0, null: false
+    t.bigint "amount_paid_cents", default: 0, null: false
+    t.bigint "amount_remaining_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "failed_at"
+    t.string "failure_message"
+    t.datetime "finalized_at"
+    t.string "hosted_invoice_url"
+    t.string "invoice_pdf_url"
+    t.string "kind", default: "other", null: false
+    t.jsonb "lines", default: [], null: false
+    t.string "number"
+    t.bigint "organization_id", null: false
+    t.datetime "paid_at"
+    t.datetime "period_end"
+    t.datetime "period_start"
+    t.string "status", null: false
+    t.string "stripe_invoice_id", null: false
+    t.string "stripe_payment_intent_id"
+    t.string "stripe_subscription_id"
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "period_start"], name: "index_billing_invoices_on_organization_id_and_period_start"
+    t.index ["organization_id"], name: "index_billing_invoices_on_organization_id"
+    t.index ["stripe_invoice_id"], name: "index_billing_invoices_on_stripe_invoice_id", unique: true
+    t.index ["stripe_payment_intent_id"], name: "index_billing_invoices_on_stripe_payment_intent_id"
+  end
+
   create_table "cast_assignment_stages", force: :cascade do |t|
     t.datetime "archived_at"
     t.integer "assignable_id"
@@ -416,6 +444,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
     t.index ["city", "state"], name: "index_city_votes_on_city_and_state"
     t.index ["user_id", "city", "state"], name: "index_city_votes_on_user_id_and_city_and_state", unique: true, where: "(user_id IS NOT NULL)"
     t.index ["user_id"], name: "index_city_votes_on_user_id"
+  end
+
+  create_table "cocoscout_ledger_entries", force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", default: "usd", null: false
+    t.string "description"
+    t.string "entry_type", null: false
+    t.datetime "occurred_at", null: false
+    t.bigint "organization_id"
+    t.bigint "source_id"
+    t.string "source_type"
+    t.datetime "updated_at", null: false
+    t.index ["entry_type"], name: "index_cocoscout_ledger_entries_on_entry_type"
+    t.index ["occurred_at"], name: "index_cocoscout_ledger_entries_on_occurred_at"
+    t.index ["organization_id"], name: "index_cocoscout_ledger_entries_on_organization_id"
+    t.index ["source_type", "source_id", "entry_type"], name: "index_cocoscout_ledger_entries_on_source_and_type", unique: true
+    t.index ["source_type", "source_id"], name: "index_cocoscout_ledger_entries_on_source"
   end
 
   create_table "content_templates", force: :cascade do |t|
@@ -1829,6 +1875,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
     t.index ["token"], name: "index_person_invitations_on_token", unique: true
   end
 
+  create_table "platform_reconciliations", force: :cascade do |t|
+    t.datetime "checked_at", null: false
+    t.date "checked_on", null: false
+    t.bigint "cocoscout_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.jsonb "details", default: {}, null: false
+    t.bigint "difference_cents"
+    t.integer "failed_webhook_count", default: 0, null: false
+    t.bigint "held_for_orgs_cents", default: 0, null: false
+    t.bigint "imported_net_cents", default: 0, null: false
+    t.integer "mismatch_count", default: 0, null: false
+    t.bigint "stripe_balance_cents"
+    t.integer "unmatched_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["checked_on"], name: "index_platform_reconciliations_on_checked_on", unique: true
+  end
+
   create_table "posters", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "is_primary", default: false, null: false
@@ -3008,6 +3071,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
     t.index ["organization_id"], name: "index_staffing_finalizations_on_organization_id"
   end
 
+  create_table "stripe_balance_transactions", force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.date "available_on"
+    t.string "category", default: "unknown", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", default: "usd", null: false
+    t.string "description"
+    t.bigint "expected_cents"
+    t.datetime "explained_at"
+    t.bigint "explained_by_id"
+    t.bigint "fee_cents", default: 0, null: false
+    t.string "match_status", default: "unmatched", null: false
+    t.bigint "matched_id"
+    t.string "matched_type"
+    t.bigint "net_cents", null: false
+    t.text "note"
+    t.datetime "occurred_at", null: false
+    t.bigint "organization_id"
+    t.jsonb "refs", default: {}, null: false
+    t.string "reporting_category"
+    t.string "source_id"
+    t.string "status"
+    t.string "stripe_id", null: false
+    t.string "txn_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["explained_by_id"], name: "index_stripe_balance_transactions_on_explained_by_id"
+    t.index ["match_status"], name: "index_stripe_balance_transactions_on_match_status"
+    t.index ["matched_type", "matched_id"], name: "index_stripe_balance_transactions_on_matched"
+    t.index ["occurred_at"], name: "index_stripe_balance_transactions_on_occurred_at"
+    t.index ["organization_id"], name: "index_stripe_balance_transactions_on_organization_id"
+    t.index ["source_id"], name: "index_stripe_balance_transactions_on_source_id"
+    t.index ["stripe_id"], name: "index_stripe_balance_transactions_on_stripe_id", unique: true
+  end
+
   create_table "system_settings", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "key"
@@ -3682,6 +3779,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
   add_foreign_key "balance_top_ups", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "balance_withdrawals", "organizations"
   add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
+  add_foreign_key "billing_invoices", "organizations"
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "casting_table_draft_assignments", "casting_tables"
   add_foreign_key "casting_table_draft_assignments", "roles"
@@ -3695,6 +3793,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
   add_foreign_key "casting_tables", "users", column: "created_by_id"
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
   add_foreign_key "city_hub_memberships", "city_hubs"
+  add_foreign_key "cocoscout_ledger_entries", "organizations"
   add_foreign_key "contract_appendixes", "contracts"
   add_foreign_key "contract_documents", "contract_versions"
   add_foreign_key "contract_documents", "contracts"
@@ -3937,6 +4036,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_100000) do
   add_foreign_key "staff_time_entries", "users", column: "offline_paid_by_id"
   add_foreign_key "staffing_finalizations", "organizations"
   add_foreign_key "staffing_finalizations", "users", column: "finalized_by_id"
+  add_foreign_key "stripe_balance_transactions", "organizations"
+  add_foreign_key "stripe_balance_transactions", "users", column: "explained_by_id"
   add_foreign_key "talent_pool_memberships", "talent_pools"
   add_foreign_key "talent_pool_shares", "productions"
   add_foreign_key "talent_pool_shares", "talent_pools"

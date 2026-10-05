@@ -2299,74 +2299,6 @@ class SuperadminController < ApplicationController
 
   # ==================== Finances ====================
 
-  def finances
-    @period = params[:period].presence || "all_time"
-    date_range = finances_date_range(@period)
-
-    registrations = CourseRegistration.confirmed
-      .includes(course_offering: [ :production, :organization, :feature_credit_redemption ])
-      .includes(:person)
-    registrations = registrations.where(paid_at: date_range) if date_range
-
-    @registrations = registrations.order(paid_at: :desc)
-
-    @gross_revenue_cents = 0
-    @cocoscout_fees_cents = 0
-    @stripe_fees_cents = 0
-    @waived_count = 0
-    @missing_stripe_fee_count = 0
-
-    @rows = @registrations.map do |reg|
-      amount_cents = reg.amount_cents
-      waived = reg.cocoscout_fee_cents == 0 || reg.cocoscout_fee_cents.nil? && reg.course_offering.feature_credit_redemption.present?
-      stripe_fee_cents = reg.stripe_fee_cents
-      cocoscout_fee_cents = reg.cocoscout_fee_cents || 0
-      @missing_stripe_fee_count += 1 if stripe_fee_cents.nil?
-      net_cents = cocoscout_fee_cents - (stripe_fee_cents || 0)
-
-      @gross_revenue_cents += amount_cents
-      @cocoscout_fees_cents += cocoscout_fee_cents
-      @stripe_fees_cents += (stripe_fee_cents || 0)
-      @waived_count += 1 if waived
-
-      {
-        registration: reg,
-        amount_cents: amount_cents,
-        waived: waived,
-        stripe_fee_cents: stripe_fee_cents,
-        cocoscout_fee_cents: cocoscout_fee_cents,
-        net_cents: net_cents
-      }
-    end
-
-    @net_income_cents = @cocoscout_fees_cents - @stripe_fees_cents
-    @total_registrations = @registrations.size
-
-    # Our take from ticketing: 50¢ a ticket, and the processing margin.
-    @ticketing = TicketingFinances.new(date_range)
-
-    # Organization obligations
-    @org_obligations = build_org_obligations
-
-    # Per-org virtual cash balances (the OrgCashEntry ledger) + a sanity line
-    # against the real Stripe balance: the residual is CocoScout's own share.
-    @held_balances = Organization
-      .where(id: OrgCashEntry.distinct.select(:organization_id))
-      .order(:name)
-      .map do |org|
-        {
-          organization: org,
-          balance_cents: OrgCashEntry.balance_cents(org),
-          committed_cents: OrgCashEntry.committed_cents(org),
-          available_cents: OrgCashEntry.available_cents(org)
-        }
-      end
-    @held_total_cents = @held_balances.sum { |h| h[:balance_cents] }
-    @stripe_balance_cents = Rails.cache.fetch("superadmin/stripe_balance", expires_in: 1.minute) do
-      OrgCashBackfill.stripe_balance_cents
-    end
-  end
-
   # A signed superadmin correction to an org's cash ledger (positive or
   # negative dollars) — the escape hatch when the virtual balance drifts from
   # reality (e.g. a refund webhook landing while the balance was already spent).
@@ -2374,7 +2306,7 @@ class SuperadminController < ApplicationController
     org = Organization.find(params[:org_id])
     cents = (params[:amount].to_f * 100).round
     if cents.zero?
-      redirect_to finances_path, alert: "Enter a non-zero amount."
+      redirect_to finances_org_detail_path(org_id: org.id), alert: "Enter a non-zero amount."
       return
     end
 
@@ -2384,11 +2316,11 @@ class SuperadminController < ApplicationController
       amount_cents: cents,
       description: "Superadmin adjustment by #{Current.user.email_address}: #{params[:note].presence || 'no note'}"
     )
-    redirect_to finances_path,
+    redirect_to finances_org_detail_path(org_id: org.id),
       notice: "Adjusted #{org.name}'s held balance by #{ActiveSupport::NumberHelper.number_to_currency(cents / 100.0)}."
   end
 
-  def finances_org_detail
+  def finances_org_courses
     @org = Organization.find(params[:org_id])
     @course_offerings = CourseOffering
       .joins(:production)
@@ -2421,7 +2353,7 @@ class SuperadminController < ApplicationController
 
     amount_cents = (params[:amount].to_f * 100).round
     if amount_cents <= 0
-      redirect_to finances_org_detail_path(org_id: @org.id), alert: "Amount must be greater than zero."
+      redirect_to finances_org_courses_path(org_id: @org.id), alert: "Amount must be greater than zero."
       return
     end
 
@@ -2437,7 +2369,7 @@ class SuperadminController < ApplicationController
       notes: params[:notes]
     )
 
-    redirect_to finances_org_detail_path(org_id: @org.id),
+    redirect_to finances_org_courses_path(org_id: @org.id),
       notice: "Payment of #{payout.formatted_amount} recorded."
   end
 
@@ -2489,7 +2421,7 @@ class SuperadminController < ApplicationController
       redirect_to finances_course_detail_path(course_offering_id: course_offering_id),
         notice: "Payment deleted."
     else
-      redirect_to finances_org_detail_path(org_id: org_id),
+      redirect_to finances_org_courses_path(org_id: org_id),
         notice: "Payment deleted."
     end
   end
@@ -2502,56 +2434,6 @@ class SuperadminController < ApplicationController
   end
 
   private
-
-  def finances_date_range(period)
-    case period
-    when "this_month"
-      Time.current.beginning_of_month..Time.current
-    when "last_month"
-      1.month.ago.beginning_of_month..1.month.ago.end_of_month
-    when "last_30_days"
-      30.days.ago..Time.current
-    when "this_year"
-      Time.current.beginning_of_year..Time.current
-    else
-      nil
-    end
-  end
-
-  def build_org_obligations
-    # Find all orgs that have course offerings with confirmed registrations
-    orgs_with_courses = Organization
-      .joins(productions: :course_offerings)
-      .joins("INNER JOIN course_registrations ON course_registrations.course_offering_id = course_offerings.id")
-      .where(course_registrations: { status: "confirmed" })
-      .distinct
-      .includes(:org_payouts)
-
-    orgs_with_courses.map do |org|
-      offerings = CourseOffering
-        .joins(:production)
-        .where(productions: { organization_id: org.id })
-        .includes(:course_registrations, feature_credit_redemption: :feature_credit)
-
-      gross = 0
-      owed = 0
-      offerings.each do |co|
-        gross += co.course_registrations.confirmed.sum(:amount_cents)
-        owed += OrgPayout.owed_cents_for_course(co)
-      end
-
-      paid = org.org_payouts.paid.sum(:amount_cents)
-
-      {
-        org: org,
-        course_count: offerings.count,
-        gross_cents: gross,
-        owed_cents: owed,
-        paid_cents: paid,
-        balance_cents: owed - paid
-      }
-    end.sort_by { |o| -o[:balance_cents] }
-  end
 
   def build_course_summary(course_offering)
     gross = course_offering.course_registrations.confirmed.sum(:amount_cents)

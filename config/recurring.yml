@@ -35,6 +35,17 @@ development:
     class: BackfillStripeFeeJob
     schedule: every hour
 
+  # CocoScout's money: Stripe's balance lines, every bill, the morning check.
+  stripe_balance_import:
+    class: StripeBalanceImportJob
+    schedule: every hour at minute 20
+  billing_invoice_sync:
+    class: BillingInvoiceSyncJob
+    schedule: at 3am every day
+  platform_reconciliation:
+    class: PlatformReconciliationJob
+    schedule: at 6am every day
+
   # Ticketing (the same schedule production runs).
   expire_ticket_holds:
     class: ExpireTicketHoldsJob
@@ -108,6 +119,17 @@ production:
   backfill_stripe_fees:
     class: BackfillStripeFeeJob
     schedule: every hour
+
+  # CocoScout's money: Stripe's balance lines, every bill, the morning check.
+  stripe_balance_import:
+    class: StripeBalanceImportJob
+    schedule: every hour at minute 20
+  billing_invoice_sync:
+    class: BillingInvoiceSyncJob
+    schedule: at 3am every day
+  platform_reconciliation:
+    class: PlatformReconciliationJob
+    schedule: at 6am every day
 
   meter_staff_billing:
     class: MeterStaffBillingJob

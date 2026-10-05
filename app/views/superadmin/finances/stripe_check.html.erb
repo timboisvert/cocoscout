@@ -1,0 +1,158 @@
+<% content_for :title, "Finances · Stripe check" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Superadmin", superadmin_path ], [ "Finances", finances_path ] ], text: "Stripe check", links: [] } %>
+
+  <%= render "superadmin/finances/tabs", current: :stripe %>
+
+  <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
+    <p class="text-sm text-gray-600 max-w-3xl">
+      Every morning CocoScout copies its Stripe balance, line by line, and checks it against its own records: what it holds for theaters plus
+      CocoScout's own money must equal what Stripe holds, and every Stripe line must be explained by something in CocoScout.
+      You get an email when it doesn't add up.
+      <% if @last_import_at %><span class="text-gray-500">Last copied from Stripe <%= @last_import_at.strftime("%b %-d, %-l:%M %p") %>.</span><% end %>
+    </p>
+    <%= form_with url: finances_run_check_path, method: :post do %>
+      <%= render "shared/button", text: "Check now", variant: "primary", size: "small" %>
+    <% end %>
+  </div>
+
+  <div class="mt-4"><%= render "superadmin/finances/check_line", check: @check, link: false %></div>
+
+  <% if @check %>
+    <div class="mt-4 rounded-lg border border-gray-200 bg-white">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">The check, <%= @check.checked_at.strftime("%b %-d at %-l:%M %p") %></h2>
+      <dl class="divide-y divide-gray-100 text-sm">
+        <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700">Stripe holds (available <%= usd(@check.details["stripe_available_cents"]) %>, on its way <%= usd(@check.details["stripe_pending_cents"]) %>)</dt><dd class="tabular-nums font-medium text-gray-900"><%= usd(@check.stripe_balance_cents) %></dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700">Held for theaters (their CocoScout balances)</dt><dd class="tabular-nums text-gray-900"><%= usd(@check.held_for_orgs_cents) %></dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700">CocoScout's own</dt><dd class="tabular-nums text-gray-900"><%= usd(@check.cocoscout_cents) %></dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2 <%= @check.difference_cents.to_i.zero? ? 'bg-green-50' : 'bg-amber-50' %>"><dt class="font-medium text-gray-900">Difference</dt><dd class="tabular-nums font-semibold text-gray-900"><%= usd(@check.difference_cents) %></dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700">Stripe's lines, added up (must equal what Stripe holds)</dt><dd class="tabular-nums text-gray-900"><%= usd(@check.imported_net_cents) %><%= " · not complete" unless @check.details.fetch("import_complete", true) %></dd></div>
+      </dl>
+    </div>
+
+    <% if @opening.nil? && @check.difference_cents.to_i.nonzero? %>
+      <div class="mt-4 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700">
+        <p>
+          History won't add up perfectly: some money moved before CocoScout kept these records. Once you've looked through the lines below and explained
+          what you can, record what's left as the <strong>opening difference</strong>. From then on the check has to be exact.
+        </p>
+        <% cid = "confirm-opening-difference" %>
+        <div class="mt-3">
+          <%= render "shared/button", text: "Record #{usd(@check.difference_cents)} as the opening difference", variant: "primary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+        </div>
+        <%= render "shared/confirm_modal", id: cid, title: "Record the opening difference?",
+              message: "#{usd(@check.difference_cents)} becomes CocoScout's opening difference as of today, and the check counts it from now on. This is done once.",
+              confirm_text: "Record it", url: finances_opening_difference_path, method: :post %>
+      </div>
+    <% elsif @opening %>
+      <p class="mt-3 text-xs text-gray-500"><%= @opening.description %>: <%= usd(@opening.amount_cents) %>.</p>
+    <% end %>
+  <% end %>
+
+  <div class="mt-6 rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Stripe lines that need a look (<%= @lines.size %>)</h2>
+    <% if @lines.empty? %>
+      <p class="px-4 py-3 text-sm text-gray-500">Every Stripe line is tied to its record.</p>
+    <% else %>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% @lines.each do |line| %>
+          <li class="px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span class="text-gray-500 w-24"><%= line.occurred_at.strftime("%b %-d, %Y") %></span>
+            <span class="flex-1 min-w-[12rem] text-gray-900">
+              <%= line.match_status == "mismatch" ? "#{line.category_label}: amount disagrees (ours #{usd(line.expected_cents)})" : "Not recognized" %>
+              <span class="text-gray-500">· <%= line.txn_type.humanize %><%= " · #{line.description}" if line.description %><%= " · #{line.organization.name}" if line.organization %></span>
+              <span class="block text-xs text-gray-400"><%= line.stripe_id %><%= " · #{line.source_id}" if line.source_id %></span>
+            </span>
+            <span class="tabular-nums text-gray-900 w-24 text-right"><%= usd(line.amount_cents) %></span>
+            <% cid = "explain-line-#{line.id}" %>
+            <%= render "shared/button", text: "Explain", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+
+  <%# Explain modals, outside the list. Hand-rolled (a note to type), pink standard. %>
+  <% @lines.each do |line| %>
+    <% cid = "explain-line-#{line.id}" %>
+    <div id="<%= cid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         data-controller="modal" data-action="click->modal#closeOnBackdrop">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white">What was this <%= usd(line.amount_cents) %>?</h3>
+          <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <%= form_with url: finances_explain_line_path(line), method: :post do %>
+          <div class="px-6 py-5 space-y-3 text-sm text-gray-700">
+            <p>Once explained it counts as CocoScout's own money. If it was a theater's, adjust that theater's balance on its Finances page instead.</p>
+            <input type="text" name="note" required placeholder="e.g. Test charge from setting up Stripe"
+                   class="block w-full rounded-lg border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm">
+          </div>
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: "Explain it", variant: "primary", size: "medium" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% missing = @check&.details&.fetch("missing_from_stripe", {}) || {} %>
+  <% if missing.any? %>
+    <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      <h2 class="font-semibold">Ours, with no Stripe line yet</h2>
+      <p class="mt-1">Payments CocoScout recorded more than three days ago that Stripe's statement doesn't show.</p>
+      <ul class="mt-2 space-y-1">
+        <% missing.each do |kind, ids| %>
+          <li><%= kind.humanize %>: <%= ids.map { |id| "##{id}" }.join(", ") %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <% if @failed_webhooks.any? %>
+    <div class="mt-4 rounded-lg border border-red-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-red-200 bg-red-50 text-sm font-semibold text-red-800">Stripe webhooks that failed (Stripe retries them on its own for three days)</h2>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% @failed_webhooks.each do |event| %>
+          <li class="px-4 py-2"><span class="font-medium text-gray-900"><%= event.event_type %></span>
+            <span class="text-gray-500">· <%= pluralize(event.attempts, "try", plural: "tries") %> · last <%= event.updated_at.strftime("%b %-d, %-l:%M %p") %></span>
+            <span class="block text-xs text-red-700"><%= event.error %></span></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Day by day</h2>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% @history.each do |day| %>
+          <li class="flex justify-between gap-4 px-4 py-2">
+            <span class="text-gray-700"><%= day.checked_on.strftime("%a %b %-d") %></span>
+            <span class="<%= day.clean? ? 'text-green-700' : 'text-amber-700' %>"><%= day.clean? ? "Matches" : "Difference #{usd(day.difference_cents)} · #{day.unmatched_count} unexplained" %></span>
+          </li>
+        <% end %>
+        <% if @history.empty? %><li class="px-4 py-3 text-gray-500">No checks yet.</li><% end %>
+      </ul>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Stripe's latest lines</h2>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% @recent.each do |line| %>
+          <li class="flex justify-between gap-4 px-4 py-2">
+            <span class="text-gray-700"><%= line.occurred_at.strftime("%b %-d") %> · <%= line.category_label %><%= " · #{line.organization.name}" if line.organization %></span>
+            <span class="tabular-nums <%= line.needs_a_look? ? 'text-amber-700' : 'text-gray-900' %>"><%= usd(line.amount_cents) %></span>
+          </li>
+        <% end %>
+        <% if @recent.empty? %><li class="px-4 py-3 text-gray-500">Nothing copied from Stripe yet.</li><% end %>
+      </ul>
+    </div>
+  </div>
+</div>

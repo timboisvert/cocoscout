@@ -156,4 +156,5 @@ def seed_content_templates
   # Ticketing's emails: the real words (TicketingTemplates), over the stubs above.
   TicketingTemplates.ensure!(overwrite: true)
   CourseTemplates.ensure!(overwrite: true)
+  PlatformTemplates.ensure!(overwrite: true)
 end

@@ -1,0 +1,194 @@
+<% content_for :title, "Finances · #{@org.name}" %>
+<% s = @summary %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Superadmin", superadmin_path ], [ "Finances", finances_path ], [ "Organizations", finances_organizations_path ] ],
+    text: @org.name,
+    links: [ { text: "Plan and comps", path: organization_detail_path(@org) } ]
+  } %>
+
+  <div class="mt-4 flex flex-wrap items-center gap-2">
+    <span class="inline-flex rounded-full border px-2 py-0.5 text-xs <%= plan_tone(@org) %>"><%= plan_words(@org) %></span>
+    <span class="text-xs text-gray-500"><%= CocoScoutBalance.pooled?(@org) ? "Ticketing on: one balance for all its money" : "Ticketing off: course and contract money goes out on its payout runs" %></span>
+  </div>
+
+  <% b = s.balance %>
+  <div class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">We hold for them</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(s.held_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">Their share of CocoScout's Stripe balance</p>
+    </div>
+    <div class="rounded-lg border <%= b.available_cents.positive? ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="text-sm text-gray-600">They can spend or withdraw</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(b.available_cents) %></div>
+    </div>
+    <div class="rounded-lg border <%= b.upcoming_cents.positive? ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="text-sm text-gray-600">Waiting on shows</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(b.upcoming_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">Ticket money for shows that haven't happened</p>
+    </div>
+    <div class="rounded-lg border <%= b.settling_cents.positive? ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="text-sm text-gray-600">Settling</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(b.settling_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">Card money still reaching Stripe</p>
+    </div>
+  </div>
+
+  <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Moving now</h2>
+      <% flight = s.in_flight %>
+      <% if flight.empty? %>
+        <p class="px-4 py-3 text-sm text-gray-500">Nothing on its way in or out.</p>
+      <% else %>
+        <ul class="divide-y divide-gray-100 text-sm">
+          <% flight.each do |row| %>
+            <li class="px-4 py-2">
+              <div class="flex justify-between gap-4"><span class="text-gray-900"><%= row.label %></span><span class="tabular-nums font-medium text-gray-900"><%= usd(row.cents) %></span></div>
+              <div class="text-xs text-gray-500"><%= [ row.detail.presence, "since #{row.since.strftime('%b %-d')}" ].compact.join(" · ") %></div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Owed to their payees</h2>
+      <% owed = s.owed_to_payees %>
+      <% if owed.empty? %>
+        <p class="px-4 py-3 text-sm text-gray-500">Nobody is waiting to be paid.</p>
+      <% else %>
+        <ul class="divide-y divide-gray-100 text-sm">
+          <% owed.first(15).each do |payee, cents| %>
+            <li class="flex justify-between gap-4 px-4 py-2"><span class="text-gray-900"><%= payee.try(:name) %></span><span class="tabular-nums text-gray-900"><%= usd(cents) %></span></li>
+          <% end %>
+          <li class="flex justify-between gap-4 px-4 py-2 bg-gray-50 font-medium"><span><%= pluralize(owed.size, "payee") %></span><span class="tabular-nums"><%= usd(owed.sum { |_, c| c }) %></span></li>
+        </ul>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Their bills from CocoScout</h2>
+      <% usage = s.usage_this_month %>
+      <p class="px-4 pt-3 text-sm text-gray-700">
+        This month so far: <%= pluralize(usage[:performers], "performer") %> paid, <%= pluralize(usage[:staff], "staff member") %> scheduled<% if @org.bills_usage? %>,
+        <%= usd(usage[:performers] * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS + usage[:staff] * StaffBillingService::PER_ACTIVE_STAFF_CENTS) %> on next month's usage bill<% else %> (not billed: <%= @org.on_paid_plan? ? "usage comped" : "not on Pro" %>)<% end %>.
+      </p>
+      <% invoices = s.invoices.limit(24) %>
+      <% if invoices.empty? %>
+        <p class="px-4 py-3 text-sm text-gray-500">Stripe hasn't billed them yet.</p>
+      <% else %>
+        <ul class="mt-2 divide-y divide-gray-100 text-sm border-t border-gray-100">
+          <% invoices.each do |invoice| %>
+            <li class="flex flex-wrap justify-between gap-x-4 px-4 py-2">
+              <span class="text-gray-900"><%= invoice.label %><%= " · #{invoice.period_start.strftime('%b %Y')}" if invoice.period_start %>
+                <span class="text-gray-500"><%= " · #{invoice.number}" if invoice.number %></span>
+                <% if invoice.hosted_invoice_url %><%= link_to "View in Stripe", invoice.hosted_invoice_url, target: "_blank", rel: "noopener", class: "text-xs text-pink-600 hover:underline" %><% end %>
+              </span>
+              <span class="tabular-nums <%= invoice.failed? ? 'text-red-600 font-medium' : 'text-gray-900' %>"><%= usd(invoice.amount_due_cents) %> · <%= invoice.status_label %></span>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">What they paid CocoScout</h2>
+      <% months = s.paid_cocoscout_by_month %>
+      <% if months.empty? %>
+        <p class="px-4 py-3 text-sm text-gray-500">Nothing in the last year.</p>
+      <% else %>
+        <ul class="divide-y divide-gray-100 text-sm">
+          <% months.each do |month, kinds| %>
+            <li class="px-4 py-2">
+              <div class="flex justify-between gap-4 font-medium text-gray-900"><span><%= month.strftime("%B %Y") %></span><span class="tabular-nums"><%= usd(kinds.values.sum) %></span></div>
+              <div class="text-xs text-gray-500"><%= kinds.map { |type, cents| "#{CocoScoutLedgerEntry.label(type)} #{usd(cents)}" }.join(" · ") %></div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-4">
+      <h2 class="text-sm font-semibold text-gray-900">Every movement of their balance</h2>
+      <% adjust_cid = "adjust-cash-#{@org.id}" %>
+      <%= render "shared/button", text: "Adjust", variant: "secondary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: adjust_cid } %>
+    </div>
+    <% ledger = s.ledger %>
+    <% if ledger.empty? %>
+      <p class="px-4 py-3 text-sm text-gray-500">CocoScout has never held money for them.</p>
+    <% else %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr><th class="px-4 py-2">Date</th><th class="px-4 py-2">What</th><th class="px-4 py-2 text-right">Amount</th><th class="px-4 py-2 text-right">Balance after</th></tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% ledger.each do |entry, after| %>
+              <tr>
+                <td class="px-4 py-2 text-gray-500 whitespace-nowrap"><%= entry.occurred_at.strftime("%b %-d, %Y") %></td>
+                <td class="px-4 py-2 text-gray-900"><%= entry.description.presence || entry.entry_type.humanize %></td>
+                <td class="px-4 py-2 text-right tabular-nums <%= entry.amount_cents.negative? ? 'text-gray-700' : 'text-gray-900' %>"><%= usd(entry.amount_cents) %></td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-500"><%= usd(after) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+
+  <% mismatches = s.books_mismatches %>
+  <div class="mt-4 rounded-lg border <%= mismatches.empty? ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-900' %> px-4 py-3 text-sm">
+    <% if mismatches.empty? %>
+      Their books agree with the records behind them.
+    <% else %>
+      Their books disagree with the records: <%= mismatches.map { |m| "#{ChartOfAccounts::SYSTEM.dig(m.account.to_sym, :name) || m.account.to_s.humanize} off by #{usd(m.books_cents - m.expected_cents)}" }.to_sentence %>.
+    <% end %>
+  </div>
+
+  <% if OrgPayout.exists?(organization: @org) || CourseOffering.joins(:production).exists?(productions: { organization_id: @org.id }) %>
+    <p class="mt-4 text-sm text-gray-600">
+      Before payout runs, course money was paid to theaters by hand: <%= link_to "Course payments recorded by hand", finances_org_courses_path(org_id: @org.id), class: "text-pink-600 hover:underline" %>.
+    </p>
+  <% end %>
+
+  <%# Adjust: a signed correction to what we hold for them. Hand-rolled (it needs inputs), pink standard. %>
+  <div id="<%= adjust_cid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">Adjust what we hold for <%= @org.name %></h3>
+        <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <%= form_with url: finances_cash_adjustment_path(org_id: @org.id), method: :post do %>
+        <div class="px-6 py-5 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount (dollars; negative to reduce)</label>
+            <input type="number" name="amount" step="0.01" required
+                   class="block w-full rounded-lg border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Note</label>
+            <input type="text" name="note" placeholder="Why this correction is needed"
+                   class="block w-full rounded-lg border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm">
+          </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Adjust balance", variant: "primary", size: "medium" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

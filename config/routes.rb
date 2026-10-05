@@ -289,9 +289,17 @@ Rails.application.routes.draw do
     post   "/promo_codes",       to: "superadmin#promo_code_create",   as: "promo_code_create"
     patch  "/promo_codes/:id/deactivate", to: "superadmin#promo_code_deactivate", as: "promo_code_deactivate"
 
-    # Finances
-    get    "/finances",          to: "superadmin#finances",            as: "finances"
-    get    "/finances/orgs/:org_id", to: "superadmin#finances_org_detail", as: "finances_org_detail"
+    # Finances: CocoScout's money, every org's money, bills, and the Stripe check.
+    get    "/finances",               to: "superadmin/finances#cocoscout",      as: "finances"
+    get    "/finances/organizations", to: "superadmin/finances#organizations",  as: "finances_organizations"
+    get    "/finances/subscriptions", to: "superadmin/finances#subscriptions",  as: "finances_subscriptions"
+    get    "/finances/stripe",        to: "superadmin/finances#stripe_check",   as: "finances_stripe_check"
+    post   "/finances/stripe/check",  to: "superadmin/finances#run_check",      as: "finances_run_check"
+    post   "/finances/stripe/lines/:id/explain", to: "superadmin/finances#explain_line", as: "finances_explain_line"
+    post   "/finances/stripe/opening_difference", to: "superadmin/finances#opening_difference", as: "finances_opening_difference"
+    get    "/finances/orgs/:org_id",  to: "superadmin/finances#organization",   as: "finances_org_detail"
+    # Course payments recorded by hand before payout runs (legacy).
+    get    "/finances/orgs/:org_id/courses", to: "superadmin#finances_org_courses", as: "finances_org_courses"
     post   "/finances/orgs/:org_id/pay", to: "superadmin#finances_org_record_payment", as: "finances_org_record_payment"
     post   "/finances/orgs/:org_id/cash_adjustment", to: "superadmin#finances_cash_adjustment", as: "finances_cash_adjustment"
     get    "/finances/courses/:course_offering_id", to: "superadmin#finances_course_detail", as: "finances_course_detail"

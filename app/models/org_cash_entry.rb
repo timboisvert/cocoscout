@@ -59,6 +59,9 @@ class OrgCashEntry < ApplicationRecord
   # Every row is the detail behind the books' "CocoScout balance" (BooksPoster).
   after_commit :post_to_books, on: %i[create update]
   after_commit :remove_from_books, on: :destroy
+  # CocoScout's own share of a payment is what the theater wasn't credited,
+  # so it's restated whenever the theater's credit is.
+  after_commit -> { CocoScoutLedgerPoster.cash_entry_changed!(self) }
 
   # Whether an insufficient balance actually BLOCKS a transfer/refund, or the
   # ledger just records silently. Production runs with it on

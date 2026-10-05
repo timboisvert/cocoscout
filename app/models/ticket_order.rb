@@ -43,6 +43,11 @@ class TicketOrder < ApplicationRecord
 
   normalizes :buyer_email, with: ->(e) { e.to_s.strip.downcase.presence }
 
+  # Stripe's fee lands an hour or so after the sale; CocoScout's own ledger
+  # takes it then.
+  after_commit -> { CocoScoutLedgerPoster.post_for!(self) },
+               if: -> { (saved_changes.keys & %w[stripe_fee_cents total_cents platform_fee_cents]).any? }
+
   validates :status, inclusion: { in: STATUSES }
   validates :channel, inclusion: { in: CHANNELS }
   validates :money_path, inclusion: { in: MONEY_PATHS }

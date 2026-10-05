@@ -18,18 +18,10 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
     post handle_signin_path, params: { email_address: regular_user.email_address, password: "Password123!" }
   end
 
-  describe "GET /superadmin/finances (enhanced with org obligations)" do
+  describe "the Finances pages" do
     before { sign_in_as_superadmin }
 
-    it "shows org obligations section" do
-      create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "confirmed")
-      get finances_path
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Organization Obligations")
-      expect(response.body).to include(organization.name)
-    end
-
-    it "shows what ticketing earns, by organization" do
+    it "shows CocoScout's own money, apart from the theaters'" do
       listing = create(:ticket_listing, organization: organization)
       tier = listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60)
       order = TicketCheckout.start!(listing: listing, quantities: { tier.id.to_s => "2" })
@@ -37,32 +29,54 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       TicketOrderSettlement.settle!(order, payment_intent_id: "pi_1", charge_id: "ch_1")
 
       get finances_path
-      expect(response.body).to include("Ticketing", "Fees earned", "$1.00", "still waiting on Stripe", organization.name)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("What we earned", "Ticket fees (50¢ a ticket)", "$1.00", "Who paid us", organization.name)
+
+      get finances_path(period: "this_month", format: :csv)
+      expect(response.media_type).to eq("text/csv")
+      expect(response.body).to include("Ticket fees (50¢ a ticket)", organization.name, "1.00")
+    end
+
+    it "lists each organization's money, and one organization's in full" do
+      create(:course_registration, course_offering: course_offering, amount_cents: 10_000, status: "confirmed", stripe_payment_intent_id: "pi_c", cocoscout_fee_cents: 1_000)
+      batch = organization.payout_batches.create!(kind: "payout", status: "funding", trigger: "manual", total_cents: 200_000, funding_status: "processing")
+      get finances_organizations_path
+      expect(response.body).to include(organization.name, "Moving now")
+
+      get finances_org_detail_path(org_id: organization.id)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("We hold for them", "Payout run ##{batch.id}: bank debit on its way in", "$2,000.00", "Every movement of their balance",
+                                       "Course payments recorded by hand")
+      get finances_org_courses_path(org_id: organization.id)
+      expect(response.body).to include("Course Breakdown")
+    end
+
+    it "shows plans, comps and bills" do
+      organization.update!(comped_indefinitely: true, comped_usage: false, stripe_customer_id: "cus_1")
+      BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_1", kind: "usage", status: "open", amount_due_cents: 3_500,
+                             amount_remaining_cents: 3_500, failed_at: Time.current, period_start: 1.month.ago)
+      get finances_subscriptions_path
+      expect(response.body).to include("Plan comped · usage billed", "Usage $35.00: payment failed", "Bills that failed")
+    end
+
+    it "shows the Stripe check, and lets a line be explained" do
+      line = StripeBalanceTransaction.create!(stripe_id: "txn_1", txn_type: "adjustment", reporting_category: "other_adjustment", amount_cents: 500,
+                                              net_cents: 500, occurred_at: Time.current)
+      allow(Stripe::Balance).to receive(:retrieve).and_return(Stripe::Balance.construct_from(available: [ { amount: 500, currency: "usd" } ], pending: []))
+      PlatformReconciliationCheck.run!
+
+      get finances_stripe_check_path
+      expect(response.body).to include("Stripe lines that need a look (1)", "Not recognized", "Record $5.00 as the opening difference")
+
+      post finances_explain_line_path(line), params: { note: "Stripe test credit" }
+      expect(line.reload.match_status).to eq("explained")
+      expect(PlatformReconciliation.latest).to be_clean
     end
 
     it "redirects non-superadmins" do
       sign_in_as_regular
       get finances_path
       expect(response).to redirect_to(my_dashboard_path)
-    end
-  end
-
-  describe "GET /superadmin/finances/orgs/:org_id" do
-    before { sign_in_as_superadmin }
-
-    it "shows org detail page with course breakdown" do
-      create(:course_registration, course_offering: course_offering, amount_cents: 10000, status: "confirmed")
-      get finances_org_detail_path(org_id: organization.id)
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to include(organization.name)
-      expect(response.body).to include("Course Breakdown")
-    end
-
-    it "shows payment history" do
-      create(:org_payout, organization: organization, course_offering: course_offering, amount_cents: 5000)
-      get finances_org_detail_path(org_id: organization.id)
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Payment History")
     end
   end
 
@@ -162,7 +176,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       payout = create(:org_payout, organization: organization, course_offering: nil)
 
       delete finances_delete_payment_path(id: payout.id)
-      expect(response).to redirect_to(finances_org_detail_path(org_id: organization.id))
+      expect(response).to redirect_to(finances_org_courses_path(org_id: organization.id))
     end
   end
 

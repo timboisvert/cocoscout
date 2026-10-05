@@ -24,7 +24,8 @@
     breadcrumbs: [
       ["Superadmin", superadmin_path],
       ["Finances", finances_path],
-      [@org.name, finances_org_detail_path(org_id: @org.id)]
+      [@org.name, finances_org_detail_path(org_id: @org.id)],
+      ["Course payments", finances_org_courses_path(org_id: @org.id)]
     ],
     text: @course_offering.title,
     links: []

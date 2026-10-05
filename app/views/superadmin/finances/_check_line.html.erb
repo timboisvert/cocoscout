@@ -1,0 +1,24 @@
+<%# One line saying whether the books match Stripe. locals: check (PlatformReconciliation or nil), link (default true) %>
+<% link = local_assigns.fetch(:link, true) %>
+<% if check.nil? %>
+  <div class="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+    Stripe hasn't been checked yet.<% if link %> <%= link_to "Open the Stripe check", finances_stripe_check_path, class: "text-pink-600 hover:underline" %><% end %>
+  </div>
+<% elsif check.clean? %>
+  <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 flex items-center gap-2">
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+    Matches Stripe to the cent (checked <%= check.checked_at.strftime("%b %-d, %-l:%M %p") %>).
+  </div>
+<% else %>
+  <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    The last check needs a look:
+    <% bits = [] %>
+    <% bits << "a #{usd(check.difference_cents)} difference" if check.difference_cents.to_i.nonzero? %>
+    <% bits << pluralize(check.unmatched_count, "Stripe line") + " unexplained" if check.unmatched_count.positive? %>
+    <% bits << pluralize(check.mismatch_count, "amount") + " that disagree" if check.mismatch_count.positive? %>
+    <% bits << pluralize(check.failed_webhook_count, "failed webhook") if check.failed_webhook_count.positive? %>
+    <% bits << "the import isn't complete" unless check.details.fetch("import_complete", true) %>
+    <%= bits.to_sentence %>.
+    <% if link %><%= link_to "Open the Stripe check", finances_stripe_check_path, class: "font-medium underline" %><% end %>
+  </div>
+<% end %>

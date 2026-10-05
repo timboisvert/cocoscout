@@ -51,6 +51,7 @@ class ContractPayment < ApplicationRecord
   # here (BooksOutsidePoster decides whether a ledger row already covers it).
   after_commit -> { BooksOutsidePoster.post_contract_payment!(self) }, on: %i[create update]
   after_commit -> { BooksOutsidePoster.remove_contract_payment!(self) }, on: :destroy
+  after_commit -> { CocoScoutLedgerPoster.post_for!(self) }, if: -> { (saved_changes.keys & %w[stripe_fee_cents amount]).any? }
 
   scope :upcoming, -> { status_pending.where("due_date >= ?", Date.current).order(:due_date) }
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }

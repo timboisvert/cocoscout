@@ -1,0 +1,53 @@
+<% content_for :title, "Finances · Organizations" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Superadmin", superadmin_path ], [ "Finances", finances_path ] ], text: "Organizations", links: [] } %>
+
+  <%= render "superadmin/finances/tabs", current: :organizations %>
+
+  <p class="mt-4 text-sm text-gray-600 max-w-3xl">
+    Each organization's money: what CocoScout holds for it, what's moving right now (a payout run's bank debit, payees not paid yet,
+    a withdrawal on its way to their bank), what it paid CocoScout this month and any bill it hasn't paid.
+  </p>
+
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <tr>
+          <th class="px-4 py-2">Organization</th>
+          <th class="px-4 py-2">Plan</th>
+          <th class="px-4 py-2 text-right">We hold</th>
+          <th class="px-4 py-2 text-right">They can spend</th>
+          <th class="px-4 py-2 text-right">Moving now</th>
+          <th class="px-4 py-2 text-right">Paid us this month</th>
+          <th class="px-4 py-2 text-right">Unpaid bills</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @rows.each do |row| %>
+          <% org = row[:organization] %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2"><%= link_to org.name, finances_org_detail_path(org_id: org.id), class: "font-medium text-gray-900 hover:text-pink-600" %></td>
+            <td class="px-4 py-2"><span class="inline-flex rounded-full border px-2 py-0.5 text-xs <%= plan_tone(org) %>"><%= plan_words(org) %></span></td>
+            <td class="px-4 py-2 text-right tabular-nums"><%= usd(row[:held_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums"><%= usd(row[:available_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums <%= row[:in_flight_cents].positive? ? 'text-blue-700 font-medium' : 'text-gray-400' %>"><%= usd(row[:in_flight_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums"><%= usd(row[:paid_us_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums <%= row[:unpaid_cents].positive? ? 'text-red-600 font-medium' : 'text-gray-400' %>"><%= usd(row[:unpaid_cents]) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot class="bg-gray-50 font-semibold">
+        <tr>
+          <td class="px-4 py-2" colspan="2">All organizations</td>
+          <td class="px-4 py-2 text-right tabular-nums"><%= usd(@rows.sum { |r| r[:held_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums"><%= usd(@rows.sum { |r| r[:available_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums"><%= usd(@rows.sum { |r| r[:in_flight_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums"><%= usd(@rows.sum { |r| r[:paid_us_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums"><%= usd(@rows.sum { |r| r[:unpaid_cents] }) %></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

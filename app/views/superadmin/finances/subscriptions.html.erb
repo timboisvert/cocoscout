@@ -1,0 +1,73 @@
+<% content_for :title, "Finances · Subscriptions" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Superadmin", superadmin_path ], [ "Finances", finances_path ] ], text: "Subscriptions & bills", links: [] } %>
+
+  <%= render "superadmin/finances/tabs", current: :subscriptions %>
+
+  <p class="mt-4 text-sm text-gray-600 max-w-3xl">
+    Stripe bills each organization on Pro automatically: the plan ($<%= SubscriptionPlan::PRO_MONTHLY_CENTS / 100 %> a month or $<%= SubscriptionPlan::PRO_ANNUAL_CENTS / 100 %> a year)
+    and, once a month, usage ($3 per performer paid, $5 per staff member scheduled). Every bill is copied here with whether it was paid.
+    Comps are set on each organization's superadmin page: the plan and usage separately.
+  </p>
+
+  <div class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">Plans, per month</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@mrr_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">From <%= pluralize(@paying_count, "paying organization") %>; yearly plans counted as a twelfth</p>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">Comped</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= @comped.size %></div>
+      <p class="text-xs text-gray-500 mt-1">Would pay <%= usd(@comped.size * SubscriptionPlan::PRO_MONTHLY_CENTS) %> a month</p>
+    </div>
+    <div class="rounded-lg border <%= @past_due.any? ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="text-sm text-gray-600">Past due</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= @past_due.size %></div>
+      <p class="text-xs text-gray-500 mt-1">A renewal didn't go through</p>
+    </div>
+    <div class="rounded-lg border <%= @failed_invoices.any? ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="text-sm text-gray-600">Bills that failed</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= @failed_invoices.size %></div>
+      <p class="text-xs text-gray-500 mt-1"><%= usd(@failed_invoices.sum(&:amount_remaining_cents)) %> still owed</p>
+    </div>
+  </div>
+
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <tr>
+          <th class="px-4 py-2">Organization</th>
+          <th class="px-4 py-2">Plan</th>
+          <th class="px-4 py-2">Next bill</th>
+          <th class="px-4 py-2">Usage this month</th>
+          <th class="px-4 py-2">Last bill</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @orgs.each do |org| %>
+          <% usage = @usage[org] %>
+          <% last = @last_invoices[org.id]&.first %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2"><%= link_to org.name, finances_org_detail_path(org_id: org.id), class: "font-medium text-gray-900 hover:text-pink-600" %></td>
+            <td class="px-4 py-2"><span class="inline-flex rounded-full border px-2 py-0.5 text-xs <%= plan_tone(org) %>"><%= plan_words(org) %></span></td>
+            <td class="px-4 py-2 text-gray-700"><%= org.subscription_current_period_end && !org.comped? ? org.subscription_current_period_end.strftime("%b %-d, %Y") : "—" %></td>
+            <td class="px-4 py-2 text-gray-700">
+              <%= pluralize(usage[:performers], "performer") %>, <%= pluralize(usage[:staff], "staff member") %>
+              <% if org.bills_usage? %><span class="text-gray-500">· <%= usd(usage[:performers] * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS + usage[:staff] * StaffBillingService::PER_ACTIVE_STAFF_CENTS) %> so far</span><% end %>
+            </td>
+            <td class="px-4 py-2">
+              <% if last %>
+                <span class="<%= last.failed? ? 'text-red-600 font-medium' : 'text-gray-700' %>"><%= last.label %> <%= usd(last.amount_due_cents) %>: <%= last.status_label.downcase %></span>
+              <% else %>
+                <span class="text-gray-400">None yet</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

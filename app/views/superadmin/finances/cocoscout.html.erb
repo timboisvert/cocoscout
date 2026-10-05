@@ -1,0 +1,116 @@
+<% content_for :title, "Finances" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Superadmin", superadmin_path ] ], text: "Finances", links: [] } %>
+
+  <%= render "superadmin/finances/tabs", current: :cocoscout %>
+
+  <p class="mt-4 text-sm text-gray-600 max-w-3xl">
+    CocoScout's own money: what it earned, what it spent, what went to its bank. The theaters' money in the same Stripe balance is on
+    <%= link_to "Organizations", finances_organizations_path, class: "text-pink-600 hover:underline" %>.
+  </p>
+
+  <div class="mt-4"><%= render "superadmin/finances/check_line", check: @check %></div>
+
+  <% if @check&.stripe_balance_cents %>
+    <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="rounded-lg border border-gray-200 bg-white p-4">
+        <div class="text-sm text-gray-600">In Stripe now</div>
+        <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@check.stripe_balance_cents) %></div>
+        <p class="text-xs text-gray-500 mt-1">Everything in CocoScout's Stripe balance</p>
+      </div>
+      <div class="rounded-lg border border-gray-200 bg-white p-4">
+        <div class="text-sm text-gray-600">Held for theaters</div>
+        <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@check.held_for_orgs_cents) %></div>
+        <p class="text-xs text-gray-500 mt-1">Their money, not ours</p>
+      </div>
+      <div class="rounded-lg border <%= @check.cocoscout_cents.positive? ? 'border-pink-200 bg-pink-50' : 'border-gray-200 bg-white' %> p-4">
+        <div class="text-sm text-gray-600">CocoScout's own, in Stripe</div>
+        <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@check.cocoscout_cents) %></div>
+        <p class="text-xs text-gray-500 mt-1">Earned and not yet sent to our bank</p>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="mt-6 flex flex-wrap items-center gap-2">
+    <% CocoScoutFinances::PERIODS.each do |value, label| %>
+      <%= link_to label, finances_path(period: value),
+            class: "px-3 py-1.5 text-sm font-medium rounded-full #{@finances.period == value ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" %>
+    <% end %>
+    <span class="flex-1"></span>
+    <%= render "shared/button", text: "Download for the CPA", variant: "secondary", size: "small", path: finances_path(period: @finances.period, format: :csv) %>
+  </div>
+
+  <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">Earned</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@finances.income_cents) %></div>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">Spent</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(-@finances.costs_cents) %></div>
+    </div>
+    <div class="rounded-lg border <%= @finances.net_cents.negative? ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50' %> p-4">
+      <div class="text-sm text-gray-600">Net</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@finances.net_cents) %></div>
+    </div>
+  </div>
+
+  <% daily = @finances.daily_net %>
+  <% if daily.size > 1 && daily.size <= 400 %>
+    <div class="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+      <h2 class="text-sm font-semibold text-gray-900">Net, day by day</h2>
+      <div class="h-48 mt-2" data-controller="line-chart" data-line-chart-data-value="<%= daily.to_json %>"
+           data-line-chart-color-value="#ec4899" data-line-chart-label-value="Net ($)">
+        <canvas data-line-chart-target="canvas"></canvas>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="rounded-lg border border-gray-200 bg-white">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">What we earned</h2>
+      <dl class="divide-y divide-gray-100 text-sm">
+        <% @finances.by_type(:income).each do |type, cents| %>
+          <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700"><%= CocoScoutLedgerEntry.label(type) %></dt><dd class="tabular-nums text-gray-900"><%= usd(cents) %></dd></div>
+        <% end %>
+        <% if @finances.by_type(:income).empty? %><div class="px-4 py-3 text-gray-500">Nothing yet in this period.</div><% end %>
+      </dl>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">What we spent</h2>
+      <dl class="divide-y divide-gray-100 text-sm">
+        <% @finances.by_type(:cost).each do |type, cents| %>
+          <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700"><%= CocoScoutLedgerEntry.label(type) %></dt><dd class="tabular-nums text-gray-900"><%= usd(-cents) %></dd></div>
+        <% end %>
+        <% if @finances.by_type(:cost).empty? %><div class="px-4 py-3 text-gray-500">Nothing yet in this period.</div><% end %>
+      </dl>
+      <% bank = @finances.by_type(:bank) + @finances.by_type(:adjustment) %>
+      <% if bank.any? %>
+        <h3 class="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 border-t border-gray-200">Moved, not earned or spent</h3>
+        <dl class="divide-y divide-gray-100 text-sm">
+          <% bank.each do |type, cents| %>
+            <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700"><%= CocoScoutLedgerEntry.label(type) %></dt><dd class="tabular-nums text-gray-900"><%= usd(cents) %></dd></div>
+          <% end %>
+        </dl>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Who paid us</h2>
+    <% rows = @finances.by_organization %>
+    <% if rows.empty? %>
+      <p class="px-4 py-3 text-sm text-gray-500">Nobody in this period.</p>
+    <% else %>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% rows.each do |org, cents| %>
+          <li><%= link_to finances_org_detail_path(org_id: org.id), class: "flex justify-between gap-4 px-4 py-2 hover:bg-gray-50" do %>
+            <span class="text-gray-900"><%= org.name %></span><span class="tabular-nums text-gray-900"><%= usd(cents) %></span>
+          <% end %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+</div>

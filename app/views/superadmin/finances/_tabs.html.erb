@@ -1,0 +1,8 @@
+<%# The four Finances pages. locals: current (:cocoscout, :organizations, :subscriptions, :stripe) %>
+<% tabs = [ [ :cocoscout, "CocoScout", finances_path ], [ :organizations, "Organizations", finances_organizations_path ],
+            [ :subscriptions, "Subscriptions & bills", finances_subscriptions_path ], [ :stripe, "Stripe check", finances_stripe_check_path ] ] %>
+<nav class="mt-4 border-b border-gray-200 flex gap-6 overflow-x-auto">
+  <% tabs.each do |key, label, path| %>
+    <%= link_to label, path, class: "whitespace-nowrap pb-2 text-sm font-medium border-b-2 #{key == current ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-800'}" %>
+  <% end %>
+</nav>
