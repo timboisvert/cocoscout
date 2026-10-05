@@ -47,6 +47,11 @@ class ContractPayment < ApplicationRecord
   validates :direction, presence: true
   validates :settlement_method, inclusion: { in: SETTLEMENT_METHODS }
 
+  # Contract money that moved outside CocoScout's rail reaches the books from
+  # here (BooksOutsidePoster decides whether a ledger row already covers it).
+  after_commit -> { BooksOutsidePoster.post_contract_payment!(self) }, on: %i[create update]
+  after_commit -> { BooksOutsidePoster.remove_contract_payment!(self) }, on: :destroy
+
   scope :upcoming, -> { status_pending.where("due_date >= ?", Date.current).order(:due_date) }
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }
   scope :by_due_date, -> { order(:due_date) }

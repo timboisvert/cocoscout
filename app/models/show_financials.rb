@@ -154,9 +154,12 @@ class ShowFinancials < ApplicationRecord
   # A fresh query rather than ticket_sales_lines.reload: this runs from each
   # line's after_save while nested attributes may still be saving the rest,
   # and reloading an association mid-save can drop lines not saved yet.
-  def recalculate_ticket_totals!
+  #
+  # emptied: the last line was just removed, so the rollup of nothing is zero
+  # (otherwise the deleted line's figures would live on as a typed total).
+  def recalculate_ticket_totals!(emptied: false)
     lines = TicketSalesLine.where(show_financials_id: id).to_a
-    return if lines.empty?
+    return if lines.empty? && !emptied
 
     update_columns(
       ticket_count: lines.sum { |l| l.tickets_sold.to_i },

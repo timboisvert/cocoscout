@@ -12,7 +12,7 @@ namespace :books do
     result = BooksBackfill.run!(dry_run: dry_run, organization_ids: ids)
     fmt = ->(cents) { format("$%.2f", cents / 100.0) }
     result.rows.each do |row|
-      puts "#{row.organization.name} (##{row.organization.id}): #{row.cash_rows} cash rows, #{row.owed_rows} payout rows, #{row.financials} shows' financials, #{row.expenses} production expenses"
+      puts "#{row.organization.name} (##{row.organization.id}): #{row.cash_rows} cash rows, #{row.owed_rows} payout rows, #{row.financials} shows' financials, #{row.expenses} production expenses, #{row.contract_payments} paid contract payments"
       puts "  trial balance: #{fmt.call(row.trial_balance_cents)}#{' (OUT OF BALANCE)' unless row.trial_balance_cents.zero?}"
       if row.mismatches.empty?
         puts "  checks: the books agree with the records behind them"

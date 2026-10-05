@@ -59,6 +59,85 @@ RSpec.describe BooksOutsidePoster do
     expect(contract).to be_present
   end
 
+  it "posts ticket revenue typed before sources existed, and stops counting a line once it's deleted" do
+    financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales", ticket_revenue: 640, ticket_count: 32)
+    expect(balance(:ticket_income)).to eq(64_000)
+    expect(balance(:owed_to_you)).to eq(64_000)
+
+    line = financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 10, amount: 200)
+    expect(balance(:ticket_income)).to eq(20_000)
+    line.destroy!
+    expect(financials.reload.ticket_revenue).to eq(0)
+    expect(balance(:ticket_income)).to eq(0)
+  end
+
+  it "posts a flat fee only when no contract carries it" do
+    financials = ShowFinancials.create!(show: show, revenue_type: "flat_fee", flat_fee: 120, ticket_revenue: 999)
+    expect(balance(:contract_income)).to eq(12_000)
+    expect(balance(:owed_to_you)).to eq(12_000)
+    expect(balance(:ticket_income)).to eq(0)
+
+    create(:contract, organization: org, production: production)
+    financials.update!(flat_fee: 150)
+    expect(balance(:contract_income)).to eq(0)
+  end
+
+  describe "contract money that moved outside CocoScout" do
+    let(:contract) { create(:contract, organization: org, production: production) }
+
+    def payment(direction, amount, **attrs)
+      contract.contract_payments.create!(direction: direction, amount: amount, due_date: Date.new(2026, 10, 1), description: "Rent", **attrs)
+    end
+
+    it "posts a check received on the day it was paid, and takes it back when it's unpaid again" do
+      rent = payment("incoming", 350)
+      expect(balance(:contract_income)).to eq(0)
+
+      rent.mark_paid!(paid_on: Date.new(2026, 10, 3), method: "check")
+      expect(balance(:contract_income)).to eq(35_000)
+      expect(balance(:bank)).to eq(35_000)
+      expect(JournalEntry.live.find_by(source: rent).entry_date).to eq(Date.new(2026, 10, 3))
+
+      rent.update!(status: :pending, paid_date: nil)
+      expect(balance(:contract_income)).to eq(0)
+      expect(balance(:bank)).to eq(0)
+    end
+
+    it "posts a contractor paid by hand, with the services netted out of it" do
+      share = payment("outgoing", 500)
+      tech = payment("incoming", 50, settlement_method: "payout_deduction")
+      share.pay_offline!(method: "check", deductions: [ tech ])
+
+      expect(balance(:contractor_pay)).to eq(50_000)
+      expect(balance(:contract_income)).to eq(5_000)
+      expect(balance(:bank)).to eq(-45_000)
+      expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+    end
+
+    it "leaves money already on a ledger alone: collected online, or riding a payout run" do
+      online = payment("incoming", 200)
+      online.mark_paid_online!(checkout_session_id: "cs_test_1", payment_intent_id: "pi_test_1")
+      run_share = payment("outgoing", 300)
+      batch = PayoutBatch.open_for(org)
+      payee = create(:person)
+      item = batch.items.create!(payee: payee, amount_cents: 30_000, status: "pending")
+      PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: payee, source: run_share, amount_cents: 30_000, label: "Share")
+      run_share.mark_paid_via_payout_run!(reference_id: "tr_1")
+
+      expect(JournalEntry.live.where(source_type: "ContractPayment")).to be_empty
+    end
+
+    it "is picked up by the backfill" do
+      rent = payment("incoming", 350)
+      rent.update_columns(status: "paid", paid_date: Date.new(2026, 10, 3), payment_method: "cash")
+      row = BooksBackfill.run!(dry_run: false, organization_ids: [ org.id ]).rows.sole
+      expect(row.contract_payments).to eq(1)
+      expect(balance(:contract_income)).to eq(35_000)
+      BooksBackfill.run!(dry_run: false, organization_ids: [ org.id ])
+      expect(balance(:contract_income)).to eq(35_000)
+    end
+  end
+
   it "posts a production's spread expense once, on its date, and takes it off when it's inactive" do
     expense = production.production_expenses.create!(name: "Costumes", category: "production", total_amount: 420.00, purchase_date: Date.new(2026, 9, 1), spread_method: "fixed_months", spread_months: 3)
     expect(balance(:production_costs)).to eq(42_000)

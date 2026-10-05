@@ -18,7 +18,7 @@ class TicketSalesLine < ApplicationRecord
   # One write path for the rollup, so the cached columns can never drift from
   # the lines that feed them.
   after_save :refresh_totals
-  after_destroy :refresh_totals
+  after_destroy -> { show_financials&.recalculate_ticket_totals!(emptied: true) }
   # The rollup above writes with update_columns, which fires nothing, so the
   # books are told from here.
   after_commit { show_financials&.post_to_books }
