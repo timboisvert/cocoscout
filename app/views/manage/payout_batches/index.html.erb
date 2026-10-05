@@ -112,8 +112,9 @@
     <aside class="space-y-6">
       <%= render "manage/funding_source", org: org %>
 
-      <%# Ticket money has its own card (the CocoScout balance) on Ticketing. %>
-      <% held_cents = OrgCashEntry.available_cents(org) - TicketBalance.available_cents(org) %>
+      <%# The CocoScout balance has its own page (Money → Books → Balance). Money
+          held outside it (an org that doesn't pool yet) shows here. %>
+      <% held_cents = OrgCashEntry.available_cents(org) - CocoScoutBalance.available_cents(org) %>
       <% if held_cents.positive? %>
         <%# The org's share of the money CocoScout holds in its Stripe balance
             (course sales, contract payments, funding credit). This — and only

@@ -5,7 +5,7 @@
   input_class = "block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   tiles = [
     [ "Upcoming shows", s.upcoming_cents, "Sold for shows that haven't happened. It becomes yours to spend the day after each show.", "bg-blue-50 border-blue-200" ],
-    [ "Settling", s.settling_cents, "From shows that have happened, still reaching the bank network. About two days.", "bg-amber-50 border-amber-200" ],
+    [ "Settling", s.settling_cents, "Still reaching the bank network: shows that just happened, classes and contract money from the last two days.", "bg-amber-50 border-amber-200" ],
     [ "Available", s.available_cents, "Yours to spend. Payout runs use it first, so they go out without a bank debit.", "bg-green-50 border-green-200" ]
   ]
   auto_choices = [
@@ -34,6 +34,21 @@
         </div>
       <% end %>
     </div>
+
+    <%# Everything CocoScout has held for you, and where it went. %>
+    <% src = s.sources %>
+    <% rows = [ [ "Tickets", src[:tickets] ], [ "Classes", src[:courses] ], [ "Contract payments", src[:contracts] ], [ "Added from your bank", src[:added] ],
+                [ "Paid out to people", src[:paid_out] - src[:withdrawn] ], [ "Withdrawn to your bank", src[:withdrawn] ] ].reject { |_, cents| cents.zero? } %>
+    <% if rows.any? %>
+      <div class="rounded-xl border border-gray-200 bg-white px-5 py-4">
+        <h2 class="text-sm font-semibold text-gray-900">Where it came from, where it went</h2>
+        <dl class="mt-2 text-sm divide-y divide-gray-100">
+          <% rows.each do |label, cents| %>
+            <div class="flex justify-between gap-4 py-1.5"><dt class="text-gray-700"><%= label %></dt><dd class="tabular-nums text-gray-900"><%= number_to_currency(cents / 100.0) %></dd></div>
+          <% end %>
+        </dl>
+      </div>
+    <% end %>
 
     <%# Withdraw to the bank. %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">

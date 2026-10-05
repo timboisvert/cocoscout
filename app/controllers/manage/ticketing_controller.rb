@@ -6,7 +6,7 @@ module Manage
   class TicketingController < Manage::TicketingBaseController
     def index
       @dashboard = TicketingDashboard.new(Current.organization, period: params[:period].presence || :last_30_days)
-      @balance = TicketBalance.summary(Current.organization)
+      @balance = CocoScoutBalance.summary(Current.organization)
     end
   end
 end

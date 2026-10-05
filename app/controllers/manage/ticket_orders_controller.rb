@@ -97,9 +97,9 @@ module Manage
       end
 
       listing = @order.ticket_listing
-      @available_cents = TicketBalance.available_cents(Current.organization)
+      @available_cents = CocoScoutBalance.available_cents(Current.organization)
       @short = @order.money_path == "cocoscout" && listing.released_at.present? && @quote.org_debit_cents > @available_cents
-      @short_cents = TicketBalance.shortfall_cents(Current.organization, @quote.org_debit_cents) if @short
+      @short_cents = CocoScoutBalance.shortfall_cents(Current.organization, @quote.org_debit_cents) if @short
     end
 
     def refund
@@ -123,7 +123,7 @@ module Manage
     def refund_top_up
       keep_fees = params[:keep_fees] == "1"
       quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: keep_fees)
-      short = TicketBalance.shortfall_cents(Current.organization, quote.org_debit_cents)
+      short = CocoScoutBalance.shortfall_cents(Current.organization, quote.org_debit_cents)
       unless short.positive?
         redirect_to manage_ticket_order_refund_path(@order.id, ticket_ids: params[:ticket_ids], item_ids: params[:item_ids], keep_fees: params[:keep_fees]) and return
       end

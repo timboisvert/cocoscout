@@ -96,7 +96,7 @@ class OrgCashEntry < ApplicationRecord
   # Ticket money for shows that haven't happened (or whose card money is still
   # settling) is in the balance but not spendable — see TicketBalance.
   def self.available_cents(organization, except: nil)
-    balance_cents(organization) - committed_cents(organization, except: except) - TicketBalance.held_cents(organization)
+    balance_cents(organization) - committed_cents(organization, except: except) - CocoScoutBalance.held_cents(organization)
   end
 
   # Idempotently record (or restate) the entry for a given source — same

@@ -31,7 +31,7 @@ class BalanceObligations
 
   # Spendable money beyond what's coming due.
   def self.safe_to_withdraw_cents(organization)
-    [ TicketBalance.available_cents(organization) - total_cents(organization), 0 ].max
+    [ CocoScoutBalance.available_cents(organization) - total_cents(organization), 0 ].max
   end
 
   def self.staff_hours_cents(organization)

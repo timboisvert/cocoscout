@@ -8,8 +8,14 @@
   <h2 class="text-lg font-semibold text-gray-900 mb-2">Getting paid for your courses</h2>
   <p class="text-sm text-gray-600 leading-relaxed">
     When students register for your courses, CocoScout collects the money and holds it for you.
-    Connect your organization's bank account here so we can send your share straight to you after
-    each course — and pay your instructors directly, too.
+    <% if CocoScoutBalance.pooled?(@organization) %>
+      Your share stays in your CocoScout balance, where payout runs spend it first and you can
+      <%= link_to "withdraw it to your bank", manage_ticket_balance_path, class: "font-medium text-pink-700 hover:underline" %> whenever you like.
+      Connect your organization's bank here so withdrawals have somewhere to go, and so we can pay your instructors directly.
+    <% else %>
+      Connect your organization's bank account here so we can send your share straight to you after
+      each course — and pay your instructors directly, too.
+    <% end %>
   </p>
 </div>
 
@@ -41,7 +47,7 @@
         <%= icon("check-circle", class: "w-6 h-6 text-green-500 flex-shrink-0") %>
         <div>
           <p class="text-sm text-gray-900 font-medium"><%= @organization.name %> is set up to get paid.</p>
-          <p class="text-sm text-gray-500 mt-1">Course payouts will be sent to your connected bank automatically once a course is settled.</p>
+          <p class="text-sm text-gray-500 mt-1"><%= CocoScoutBalance.pooled?(@organization) ? "Your course money stays in your CocoScout balance; withdraw it to this bank whenever you like." : "Course payouts will be sent to your connected bank automatically once a course is settled." %></p>
         </div>
       </div>
       <div class="mt-4">

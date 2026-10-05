@@ -36,7 +36,12 @@ class CoursePayoutRunService
         # CoursePayoutSettlement decides the final amounts (incl. the contract
         # rule that instructor pay comes out of the contractor's share), so the
         # run always matches what the payout page shows.
+        pooled = CocoScoutBalance.pooled?(organization)
         CoursePayoutSettlement.new(payout).rows.each do |row|
+          # With ticketing on, the organization's share stays in its CocoScout
+          # balance (stage G) instead of riding the run to its own account.
+          next if row[:is_org] && pooled
+
           label = row[:is_org] ? "Course: #{offering.title} — organization's share" : "Course: #{offering.title}"
           if upsert_contribution(batch, row[:payee], row[:source], row[:amount_cents], label) == :added
             added += 1

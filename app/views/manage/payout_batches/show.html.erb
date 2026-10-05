@@ -168,9 +168,9 @@
           fund_credit_cents = PayoutFundingCredit.available_cents(Current.organization)
           fund_credit_applied = [ fund_credit_cents, fundable_cents ].min
           fund_debit_cents = fundable_cents - fund_credit_applied
-          # Then the CocoScout balance (ticket money from shows that have
-          # happened) — PayoutBatchService.fund! spends it the same way.
-          fund_balance_applied = [ TicketBalance.available_cents(Current.organization), fund_debit_cents ].min
+          # Then the CocoScout balance (tickets, classes, contract money) —
+          # PayoutBatchService.fund! spends it the same way.
+          fund_balance_applied = [ CocoScoutBalance.available_cents(Current.organization), fund_debit_cents ].min
           fund_debit_cents -= fund_balance_applied
         %>
         <% if fund_debit_cents.zero? %>

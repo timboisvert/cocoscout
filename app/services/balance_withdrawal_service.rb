@@ -2,7 +2,7 @@
 
 # Sends money from the theater's CocoScout balance to its own bank: one
 # Stripe transfer to the theater's connected account, which Stripe pays out
-# to the bank on its usual schedule. Only spendable money (TicketBalance)
+# to the bank on its usual schedule. Only spendable money (CocoScoutBalance)
 # can go, so nothing held for an upcoming show — or for a payout run — ever
 # leaves early.
 class BalanceWithdrawalService
@@ -24,7 +24,7 @@ class BalanceWithdrawalService
     amount_cents = amount_cents.to_i
     withdrawal = nil
     OrgCashEntry.with_org_lock(organization) do
-      available = TicketBalance.available_cents(organization)
+      available = CocoScoutBalance.available_cents(organization)
       raise Error, "Enter an amount to withdraw." unless amount_cents.positive?
       if amount_cents > available
         raise Error, "Only #{ActiveSupport::NumberHelper.number_to_currency(available / 100.0)} is available to withdraw."

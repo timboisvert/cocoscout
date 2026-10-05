@@ -40,6 +40,7 @@ class ContractPaymentCollection
     # as an idempotent sweep from the payout screens.
     def remit_pending!(organization)
       return 0 unless organization.can_receive_payouts?
+      return 0 if CocoScoutBalance.pooled?(organization)
 
       payments = ContractPayment.direction_incoming.status_paid
                                 .where.not(stripe_checkout_session_id: nil)
@@ -60,6 +61,9 @@ class ContractPaymentCollection
       organization = payment.contract.organization
       cents = payment.remittable_cents
       return if cents.zero? || !organization.can_receive_payouts?
+      # With ticketing on, the money stays in the theater's CocoScout balance
+      # (CocoScoutBalance): it funds payout runs and is withdrawn when they like.
+      return if CocoScoutBalance.pooled?(organization)
 
       ActiveRecord::Base.transaction do
         batch = PayoutBatch.open_for(organization)

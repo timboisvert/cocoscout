@@ -24,7 +24,7 @@ class BalanceAutoWithdrawJob < ApplicationJob
       next if profile.auto_withdraw == "weekly" && !today.monday?
       next unless organization.can_receive_payouts?
 
-      cents = TicketBalance.available_cents(organization)
+      cents = CocoScoutBalance.available_cents(organization)
       next if cents < MINIMUM_CENTS
 
       BalanceWithdrawalService.withdraw!(organization, amount_cents: cents, automatic: true)
@@ -36,7 +36,7 @@ class BalanceAutoWithdrawJob < ApplicationJob
   private
 
   def send_back_aged_money(organization, today)
-    aged = TicketBalance.aged_cents(organization)
+    aged = CocoScoutBalance.aged_cents(organization)
     return if aged < MINIMUM_CENTS
 
     if organization.can_receive_payouts?

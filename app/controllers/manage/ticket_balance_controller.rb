@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
 module Manage
-  # The theater's CocoScout balance (see TicketBalance): what's waiting on
-  # upcoming shows, what's settling, what's spendable — and withdrawing it to
+  # The theater's CocoScout balance (CocoScoutBalance): everything CocoScout
+  # holds for it — tickets, courses, contract money — what's waiting on
+  # upcoming shows, what's settling, what's spendable, and withdrawing it to
   # the theater's bank, by hand or automatically.
   class TicketBalanceController < Manage::TicketingBaseController
     def show
-      @summary = TicketBalance.summary(Current.organization)
+      @summary = CocoScoutBalance.summary(Current.organization)
       @obligations = BalanceObligations.items(Current.organization)
       @safe_cents = [ @summary.available_cents - @obligations.sum(&:cents), 0 ].max
       @top_ups = Current.organization.balance_top_ups.order(created_at: :desc).limit(10)

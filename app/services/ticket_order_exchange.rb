@@ -114,7 +114,7 @@ class TicketOrderExchange
     OrgCashEntry.with_org_lock(organization) do
       order.with_lock do
         plan = plan(order, target: target, ticket_ids: ticket_ids, chosen_tiers: chosen_tiers)
-        if listing.released_at.present? && plan.moved_cents > TicketBalance.available_cents(organization)
+        if listing.released_at.present? && plan.moved_cents > CocoScoutBalance.available_cents(organization)
           raise Error, "This show's money was already spent or withdrawn, so its tickets can't move to a show still to come."
         end
 

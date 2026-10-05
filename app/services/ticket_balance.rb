@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-# The theater's CocoScout balance: the ticket money CocoScout holds for it
-# (course and contract money join in v1.1). Always worked out from the cash
-# ledger (OrgCashEntry), never stored:
+# The ticket slice of the theater's CocoScout balance (CocoScoutBalance is
+# the whole: tickets, courses and contract money, stage G). Always worked
+# out from the cash ledger (OrgCashEntry), never stored:
 #
 #   upcoming  — sold for shows that haven't happened yet. Not spendable: if a
 #               show is canceled, this is what refunds its buyers.
@@ -121,5 +121,5 @@ class TicketBalance
       BalanceWithdrawal.where(organization_id: organization.id).where.not(status: "failed").sum(:amount_cents)
   end
 
-  private_class_method :buckets, :spent_cents, :top_ups_cents, :recent_settled_cents
+  private_class_method :buckets, :spent_cents, :top_ups_cents
 end

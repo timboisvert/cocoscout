@@ -243,14 +243,14 @@ class PayoutBatchService
     raise Error, e.message
   end
 
-  # How much of the theater's CocoScout balance (TicketBalance) this run
+  # How much of the theater's CocoScout balance (CocoScoutBalance) this run
   # spends instead of debiting the bank — at most what's left to debit.
   # Recorded on the run, which is what takes it out of the balance.
   def self.claim_balance!(batch, debit_cents)
     return 0 unless debit_cents.positive?
 
     OrgCashEntry.with_org_lock(batch.organization) do
-      cents = [ TicketBalance.available_cents(batch.organization), debit_cents ].min
+      cents = [ CocoScoutBalance.available_cents(batch.organization), debit_cents ].min
       batch.update!(balance_applied_cents: cents) if cents.positive?
       [ cents, 0 ].max
     end
