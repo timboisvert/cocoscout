@@ -31,7 +31,7 @@ class TicketsController < ApplicationController
       @preview = true
     end
 
-    @code = params[:code].to_s.strip.upcase.presence
+    check_code(@listing)
     @tiers = @listing.ticket_tiers.active.select(&:selling?).reject { |t| t.hidden? && t.unlock_code != @code }
     @inventory = @listing.inventory
     @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
@@ -57,13 +57,25 @@ class TicketsController < ApplicationController
     wanted = params[:date].to_s.downcase
     @listing = @listings.find { |l| l.slug == wanted || l.show.date_and_time.to_date.iso8601 == wanted || ShortLink.date_suffix(l.show) == wanted } ||
                @listings.find { |l| l.selling? && !l.inventory.sold_out? } || @listings.first
-    @code = params[:code].to_s.strip.upcase.presence
+    check_code(@listing)
     if @listing
       @tiers = @listing.ticket_tiers.active.select(&:selling?).reject { |t| t.hidden? && t.unlock_code != @code }
       @inventory = @listing.inventory
       @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
     end
     render :production
+  end
+
+  # A code typed on the page is checked right there: a discount for this
+  # show, or a hidden ticket type's code. One that doesn't work isn't
+  # applied, and the page says so (checkout checks again on its own).
+  def check_code(listing)
+    @code = params[:code].to_s.strip.upcase.presence
+    return if @code.nil? || listing.nil?
+    return if TicketCheckout.find_discount(listing, @code) || listing.ticket_tiers.active.any? { |t| t.hidden? && t.unlock_code == @code }
+
+    @code_error = "That code doesn't work for this show."
+    @code = nil
   end
 
   def set_box_office

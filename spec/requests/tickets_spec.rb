@@ -92,9 +92,28 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).not_to include("Industry")
 
       get event_path, params: { code: "industry" }
-      expect(response.body).to include("Industry")
+      expect(response.body).to include("Industry", "Your code <span class=\"font-medium uppercase\">INDUSTRY</span> is applied")
     end
 
+    # A code is checked the moment it's entered, not at checkout: one for
+    # another production, or a made-up one, says so and isn't applied.
+    it "refuses a code that doesn't work for this show as soon as it's entered" do
+      other = create(:production, organization: org, name: "Something Else")
+      org.ticket_discount_codes.create!(production: other, code: "ELSEWHERE", kind: "percent", percent: 10)
+      org.ticket_discount_codes.create!(production: production, code: "FRIENDS", kind: "percent", percent: 10)
+
+      get event_path, params: { code: "elsewhere" }
+      expect(response.body).to include("That code doesn&#39;t work for this show.")
+      expect(response.body).not_to include("is applied")
+      expect(response.body).not_to include('name="code" id="code" value="ELSEWHERE"')
+
+      get event_path, params: { code: "friends" }
+      expect(response.body).to include("Your code <span class=\"font-medium uppercase\">FRIENDS</span> is applied")
+      expect(response.body).not_to include("doesn&#39;t work")
+    end
+
+    # "Only N left" from 5 unless the production says otherwise, and a date
+    # can say otherwise again.
     it "says Only N left from the threshold the theater set" do
       general.update!(quantity: 8)
       get event_path

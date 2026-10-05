@@ -115,7 +115,7 @@
         <% end %>
       </div>
     <% end %>
-    <details class="border-t border-gray-100 px-5 py-3 text-sm" <%= "open" if code %>>
+    <details class="border-t border-gray-100 px-5 py-3 text-sm" <%= "open" if code || @code_error %>>
       <summary class="cursor-pointer text-pink-700 hover:text-pink-800 text-center list-none">Have a code?</summary>
       <%= form_with url: code_url, method: :get, data: { turbo: false }, class: "mt-3 flex gap-2" do %>
         <%= hidden_field_tag :embed, "1" if embed? %>
@@ -123,6 +123,7 @@
               class: "flex-1 min-w-0 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 uppercase placeholder:normal-case placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
         <%= render "shared/button", text: "Apply", variant: "secondary", size: "small", type: :submit %>
       <% end %>
+      <% if @code_error %><p class="mt-2 text-center text-xs font-medium text-red-600" role="alert"><%= @code_error %></p><% end %>
     </details>
   <% end %>
 </div>
