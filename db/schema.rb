@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_04_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -749,7 +749,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_130000) do
     t.integer "tax_cents", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
     t.index ["status"], name: "index_course_registrations_on_status"
@@ -3477,7 +3477,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_04_130000) do
     t.bigint "organization_id", null: false
     t.boolean "producer_daily_emails", default: true, null: false
     t.boolean "refunds_after_show", default: false, null: false
-    t.integer "reminder_days_before", default: 1
+    t.integer "reminder_days_before", default: 2
     t.string "slug", null: false
     t.string "support_email"
     t.datetime "updated_at", null: false

@@ -7,7 +7,6 @@
   filter_path = ->(f) { manage_ticket_listing_path(@listing, guests: f == "all" ? nil : f, q: @query.presence, anchor: "guests") }
   live = !@listing.status.in?(%w[canceled]) && !show.canceled
   upcoming = show.date_and_time > Time.current
-  public_url = tickets_event_url(org: ticketing_profile.slug, event: @listing.slug)
   short_url = short_link_url(code: ShortLink.canonical_for!(@listing.production).code, date: ShortLink.date_suffix(@listing.show))
   # Heroicons (outline), one per action.
   icons = {
@@ -46,9 +45,8 @@
       </div>
       <%= render "manage/ticket_listings/status_actions", listing: @listing %>
     </div>
-    <%= render "shared/copy_url", url: public_url, short_url: short_url, show_qr: true, qr_title: "Scan for tickets",
-          help_text: safe_join([ "This is #{possessive(@listing.production.name)} link with this date picked. ",
-                                 link_to("All of its links", manage_production_ticketing_links_path(@listing.production), class: "font-medium text-pink-700 hover:underline") ]) %>
+    <%# Just the short address: the production's code with this date picked. %>
+    <%= render "shared/copy_url", url: short_url, show_qr: true, qr_title: "Scan for tickets" %>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">

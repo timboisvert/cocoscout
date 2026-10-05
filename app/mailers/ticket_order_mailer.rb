@@ -6,7 +6,11 @@
 # from content templates; under the words of an email with tickets sits one
 # QR code per ticket.
 class TicketOrderMailer < ApplicationMailer
+  helper TicketingHelper
+
+  # Their tickets, with a receipt: what they paid, line by line.
   def confirmation(order)
+    @receipt = order.total_cents.positive?
     deliver_tickets(order, **render_words("ticket_order_confirmation", self.class.ticket_variables(order)))
   end
 

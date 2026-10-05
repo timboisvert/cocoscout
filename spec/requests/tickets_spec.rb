@@ -329,6 +329,19 @@ RSpec.describe "Public ticketing", type: :request do
       expect(mail.attachments.map(&:filename).grep(/\Aticket-/).size).to eq(2)
     end
 
+    # The confirmation is the receipt too, and every buyer email says where
+    # questions go (the theater, which is also the reply-to).
+    it "puts what they paid on the confirmation, and the theater's address under every email" do
+      profile.update!(support_email: "box@starsandgarters.com")
+      order = buy(2)
+      order.update!(buyer_name: "Avery Buyer", buyer_email: "avery@example.com")
+      TicketOrderSettlement.settle!(order)
+
+      html = TicketOrderMailer.confirmation(order.reload).html_part.body.to_s
+      expect(html).to include("What you paid", "2 × General", "$40.00", ">Fees<", "$2.53", "$42.53", "paid ", "Questions about your order?", "box@starsandgarters.com")
+      expect(TicketOrderMailer.confirmation(order).reply_to).to eq([ "box@starsandgarters.com" ])
+    end
+
     it "lets a phone camera open a ticket from its QR code" do
       order = buy(1)
       TicketOrderSettlement.settle!(order)

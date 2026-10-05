@@ -1,0 +1,11 @@
+<%# Where a buyer's questions go: the theater, not CocoScout. The email's
+    reply-to is the theater's support address too. Locals: organization. %>
+<% support = TicketingProfile.for(organization).support_email %>
+<div style="margin: 24px 0 0; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 13px; color: #4b5563;">
+  <strong style="color: #111827;">Questions about your order?</strong>
+  <% if support.present? %>
+    Reply to this email or write to <a href="mailto:<%= support %>" style="color: #be185d;"><%= support %></a> at <%= organization.name %>.
+  <% else %>
+    Get in touch with <%= organization.name %>, who sold these tickets.
+  <% end %>
+</div>

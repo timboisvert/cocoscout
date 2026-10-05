@@ -20,7 +20,30 @@
   </div>
 <% end %>
 
+<% if @receipt %>
+  <%# The receipt: every line they paid for, adding up to what their card shows. %>
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; margin: 20px 0; border: 1px solid #e5e7eb; border-radius: 12px;">
+    <tr><td style="padding: 14px 16px;">
+      <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">What you paid</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px; color: #374151;">
+        <% ticket_summary_lines(@order).each do |label, cents, muted| %>
+          <tr>
+            <td style="padding: 2px 0; color: <%= muted ? '#6b7280' : '#374151' %>;"><%= label %></td>
+            <td style="padding: 2px 0; text-align: right; white-space: nowrap;"><%= cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) %></td>
+          </tr>
+        <% end %>
+        <tr>
+          <td style="padding: 6px 0 0; border-top: 1px solid #e5e7eb; font-weight: 600; color: #111827;">Total</td>
+          <td style="padding: 6px 0 0; border-top: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #111827; white-space: nowrap;"><%= number_to_currency(@order.total_cents / 100.0) %></td>
+        </tr>
+      </table>
+      <div style="font-size: 12px; color: #9ca3af; margin-top: 8px;">Order <%= @order.code %> · paid <%= @order.paid_at&.strftime("%B %-d, %Y") %> · sold by <%= @order.organization.name %>, payment processed by CocoScout</div>
+    </td></tr>
+  </table>
+<% end %>
+
 <p style="font-size: 12px; color: #6b7280;">
   Order <%= @order.code %> · <%= link_to "View your tickets online", tickets_order_url(token: @order.token) %>
   <% if @stop_url %> · <%= link_to "Stop reminder emails", @stop_url %><% end %>
 </p>
+<%= render "ticket_order_mailer/questions", organization: @order.organization %>

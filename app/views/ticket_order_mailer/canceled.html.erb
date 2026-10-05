@@ -1,1 +1,2 @@
 <%= raw @body_html %>
+<%= render "ticket_order_mailer/questions", organization: @order.organization %>
