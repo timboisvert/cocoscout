@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["modal", "backdrop", "name", "email", "headshot", "initials",
-        "status", "amount", "date", "cancelForm", "refundForm",
+        "status", "amount", "date", "cancelForm", "refundForm", "resendForm",
         "confirmPanel", "actionPanel", "responseLink"]
 
     open(event) {
@@ -19,6 +19,7 @@ export default class extends Controller {
         const date = el.dataset.registrantDate
         const cancelUrl = el.dataset.registrantCancelUrl
         const refundUrl = el.dataset.registrantRefundUrl
+        const resendUrl = el.dataset.registrantResendUrl
         const canRefund = el.dataset.registrantCanRefund === "true"
         const responseUrl = el.dataset.registrantResponseUrl
 
@@ -48,6 +49,13 @@ export default class extends Controller {
         this.cancelFormTarget.action = cancelUrl
         if (this.hasRefundFormTarget) {
             this.refundFormTarget.action = refundUrl
+        }
+        if (this.hasResendFormTarget) {
+            this.resendFormTarget.action = resendUrl
+        }
+        const resendSection = this.element.querySelector('[data-resend-section]')
+        if (resendSection) {
+            resendSection.classList.toggle('hidden', status !== 'confirmed' || !resendUrl)
         }
 
         // Show/hide refund option based on status

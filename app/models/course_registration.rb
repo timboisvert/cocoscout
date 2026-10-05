@@ -39,6 +39,16 @@ class CourseRegistration < ApplicationRecord
 
   # Tax collected on it (CourseTax), reversed on a refund.
   has_many :tax_lines, as: :taxable, dependent: :delete_all
+  belongs_to :added_by, class_name: "User", optional: true
+
+  CHANNELS = %w[online manual].freeze
+  validates :channel, inclusion: { in: CHANNELS }
+  validates :paid_via, inclusion: { in: CourseStudents::PAID_VIA }, allow_nil: true
+
+  # "Cash", "Free", or nil for a card payment through CocoScout.
+  def paid_words
+    CourseStudents::PAID_WORDS[paid_via]
+  end
 
   validates :amount_cents, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :registered_at, presence: true

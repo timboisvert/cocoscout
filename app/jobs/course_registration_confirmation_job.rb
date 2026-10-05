@@ -3,7 +3,7 @@
 class CourseRegistrationConfirmationJob < ApplicationJob
   queue_as :default
 
-  def perform(course_registration_id)
+  def perform(course_registration_id, email_student: true)
     registration = CourseRegistration.find_by(id: course_registration_id)
     return unless registration
     return unless registration.confirmed?
@@ -26,7 +26,7 @@ class CourseRegistrationConfirmationJob < ApplicationJob
     end
 
     # Send confirmation email + in-app message to registrant
-    CourseRegistrationNotificationService.notify_registrant(registration)
+    CourseRegistrationNotificationService.notify_registrant(registration, email: email_student)
 
     # Send in-app message to production team
     CourseRegistrationNotificationService.notify_team(registration)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_05_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -731,14 +731,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_130000) do
   end
 
   create_table "course_registrations", force: :cascade do |t|
+    t.bigint "added_by_id"
     t.integer "amount_cents", null: false
+    t.jsonb "attended_show_ids", default: [], null: false
     t.datetime "cancelled_at"
+    t.string "channel", default: "online", null: false
     t.integer "cocoscout_fee_cents"
     t.bigint "course_offering_id", null: false
     t.datetime "created_at", null: false
     t.string "currency", default: "usd", null: false
     t.datetime "expires_at"
     t.datetime "paid_at"
+    t.string "paid_via"
     t.bigint "person_id", null: false
     t.datetime "refunded_at"
     t.datetime "registered_at", null: false
@@ -754,6 +758,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_130000) do
     t.jsonb "told_sessions", default: {}, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.index ["added_by_id"], name: "index_course_registrations_on_added_by_id"
     t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text, ('expired'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["expires_at"], name: "index_course_registrations_on_expires_at", where: "((status)::text = 'pending'::text)"
@@ -3714,6 +3719,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_130000) do
   add_foreign_key "course_registrations", "course_offerings"
   add_foreign_key "course_registrations", "people"
   add_foreign_key "course_registrations", "users"
+  add_foreign_key "course_registrations", "users", column: "added_by_id"
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "departments", "organizations"
   add_foreign_key "device_tokens", "users"

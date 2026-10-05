@@ -10,6 +10,7 @@ module Manage
       enable_questionnaire disable_questionnaire send_questionnaire
       questionnaire update_questionnaire_settings
       change_review tell_change mark_change_told
+      new_student create_student resend_confirmation
     ]
 
     def index
@@ -40,6 +41,7 @@ module Manage
         .includes(:person)
         .order(registered_at: :desc)
       @sessions = @course_offering.sessions
+      @stats = Courses::OfferingStats.new(@course_offering)
 
       if @course_offering.questionnaire_id?
         @questionnaire_responses_by_person = @course_offering.questionnaire
@@ -424,6 +426,29 @@ module Manage
     def mark_change_told
       count = CourseSessionChange.mark_told!(@course_offering)
       redirect_to manage_course_offering_path(@course_offering), notice: "Marked #{helpers.pluralize(count, 'student')} as told. No emails went out."
+    end
+
+    # A student added by hand: free, or paid another way.
+    def new_student
+      @paid_via = params[:paid_via].presence || "cash"
+      @email_them = true
+    end
+
+    def create_student
+      registration = CourseStudents.add!(offering: @course_offering, name: params[:name], email: params[:email], paid_via: params[:paid_via],
+                                         by: Current.user, email_them: params[:email_them] == "1")
+      redirect_to manage_new_course_offering_student_path(@course_offering, paid_via: params[:paid_via]),
+                  notice: "#{registration.person.name} is registered#{', ' + registration.paid_words.downcase if registration.paid_via != 'free'}#{' (free)' if registration.paid_via == 'free'}. Add the next one, or go back."
+    rescue CourseStudents::Error => e
+      @name, @email, @paid_via, @email_them = params[:name], params[:email], params[:paid_via].presence || "cash", params[:email_them] == "1"
+      flash.now[:alert] = e.message
+      render :new_student, status: :unprocessable_content
+    end
+
+    def resend_confirmation
+      registration = @course_offering.course_registrations.confirmed.find(params[:registration_id])
+      CourseRegistrationMailer.confirmation(registration).deliver_later
+      redirect_to manage_course_offering_path(@course_offering), notice: "Sent #{registration.person.name} their confirmation again."
     end
 
     def cancel_registration

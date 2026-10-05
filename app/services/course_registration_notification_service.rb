@@ -16,11 +16,11 @@ class CourseRegistrationNotificationService
     # The student's confirmation: the email (CourseRegistrationMailer, with
     # the when-and-where block, every session and the receipt) and the same
     # words as an in-app message.
-    def notify_registrant(registration)
+    def notify_registrant(registration, email: true)
       person = registration.person
       return unless person
 
-      CourseRegistrationMailer.confirmation(registration).deliver_later
+      CourseRegistrationMailer.confirmation(registration).deliver_later if email
 
       offering = registration.course_offering
       production = offering.production

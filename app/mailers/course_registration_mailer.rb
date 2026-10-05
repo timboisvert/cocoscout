@@ -15,8 +15,10 @@ class CourseRegistrationMailer < ApplicationMailer
   end
 
   def refunded(registration, amount_cents: registration.total_cents)
+    by_card = registration.stripe_payment_intent_id.present?
     deliver_words(registration, "course_registration_refunded", template_name: "words",
-                  extra: { refund_amount: ActiveSupport::NumberHelper.number_to_currency(amount_cents / 100.0) })
+                  extra: { refund_amount: ActiveSupport::NumberHelper.number_to_currency(amount_cents / 100.0),
+                           refund_how: (by_card ? " is on its way back to the card you paid with, usually within five to ten days" : "") })
   end
 
   def removed(registration)

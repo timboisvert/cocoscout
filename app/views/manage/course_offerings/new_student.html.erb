@@ -1,0 +1,51 @@
+<% content_for :title, "Add a student · #{@course_offering.title}" %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  spots = @course_offering.spots_remaining
+  quote = CourseTax.quote(@course_offering)
+  price = number_to_currency(quote.total_cents / 100.0)
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Courses", manage_course_offerings_path ], [ @course_offering.title, manage_course_offering_path(@course_offering) ] ],
+    text: "Add a student",
+    links: []
+  } %>
+
+  <%= form_with url: manage_course_offering_students_path(@course_offering), method: :post, class: "max-w-2xl bg-white border border-gray-200 rounded-xl overflow-hidden" do %>
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Who's joining?</h2>
+      <p class="text-sm text-gray-600 mt-1">
+        Someone who paid you cash, a guest of the instructor, a late joiner. They take a spot<%= spots ? " (#{spots} left)" : "" %>, join the course like anyone else, and get the confirmation email with every session. One person at a time; you land back here to add the next.
+      </p>
+    </div>
+    <div class="px-6 py-5 space-y-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
+          <%= text_field_tag :name, @name, placeholder: "Dana Scully", required: true, autocomplete: "off", class: input_class %>
+        </div>
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <%= email_field_tag :email, @email, placeholder: "dana@example.com", required: true, autocomplete: "off", class: input_class %>
+          <p class="text-xs text-gray-500 mt-1">Someone already on CocoScout with this email is matched; otherwise they're added as a new person.</p>
+        </div>
+      </div>
+      <div>
+        <label for="paid_via" class="block text-sm font-medium text-gray-700 mb-1.5">How they paid</label>
+        <%= select_tag :paid_via, options_for_select(CourseStudents::PAID_VIA.map { |k| [ k == "free" ? "Free (no charge)" : "#{CourseStudents::PAID_WORDS[k]} · #{price}", k ] }, @paid_via), class: "#{input_class} max-w-xs" %>
+        <p class="text-xs text-gray-500 mt-1">Money paid another way never touches CocoScout: no fee, nothing to refund through Stripe. It counts toward the instructor's share<%= quote.tax_cents.positive? ? " and the tax you collect" : "" %>.</p>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-gray-700">
+        <%= check_box_tag :email_them, "1", @email_them != false, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        Email them the confirmation
+      </label>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap gap-2">
+      <%= render "shared/button", text: "Add student", variant: "primary", size: "medium", type: :submit %>
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_course_offering_path(@course_offering) %>
+    </div>
+  <% end %>
+</div>

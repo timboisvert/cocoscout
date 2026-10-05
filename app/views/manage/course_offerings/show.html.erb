@@ -193,6 +193,27 @@
     <% end %>
   </div>
 
+  <%# The numbers (Courses::OfferingStats): one source, like a show's tiles. %>
+  <%
+    money = ->(cents) { number_to_currency(cents / 100.0) }
+    tiles = [
+      [ "Registered", @stats.capacity ? "#{@stats.registered} of #{@stats.capacity}" : @stats.registered.to_s,
+        @stats.by_hand.positive? ? "#{pluralize(@stats.by_hand, 'student')} added by hand" : (@stats.capacity.to_i.positive? ? "#{(@stats.registered * 100.0 / @stats.capacity).round}% full" : "No limit"), nil ],
+      [ "Sales", money.call(@stats.sales_cents), "Before tax", nil ],
+      [ "You keep", money.call(@stats.net_cents), @stats.tax_cents.positive? ? "Plus #{money.call(@stats.tax_cents)} tax to pay" : "After fees", nil ],
+      [ "Refunded", @stats.refunded.size.to_s, @stats.refunded_cents.positive? ? "#{money.call(@stats.refunded_cents)} back" : "None", @stats.refunded.any? ? "bg-amber-50 border-amber-200" : nil ]
+    ]
+  %>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <% tiles.each do |label, value, note, tint| %>
+      <div class="rounded-lg border px-4 py-3 <%= tint || 'bg-white border-gray-200' %>">
+        <div class="text-xs text-gray-500"><%= label %></div>
+        <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= value %></div>
+        <div class="text-xs text-gray-500 mt-0.5"><%= note %></div>
+      </div>
+    <% end %>
+  </div>
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <%# Left Column - Registrations %>
     <div class="space-y-6">
@@ -218,6 +239,9 @@
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 class="text-sm font-medium text-gray-700">Registrations</h3>
           <div class="flex items-center gap-3">
+            <% unless @course_offering.cancelled? || @course_offering.archived? %>
+              <%= render "shared/button", text: "Add a student", variant: "outline-pink", size: "small", path: manage_new_course_offering_student_path(@course_offering) %>
+            <% end %>
             <% if registrant_people.any? %>
               <%= render "shared/button",
                 text: "Contact Registrants",
@@ -256,6 +280,7 @@
                         data-registrant-date="<%= registration.registered_at.strftime("%b %-d, %Y at %-I:%M %p") %>"
                         data-registrant-cancel-url="<%= manage_course_offering_cancel_registration_path(@course_offering, registration) %>"
                         data-registrant-refund-url="<%= manage_course_offering_refund_registration_path(@course_offering, registration) %>"
+                        data-registrant-resend-url="<%= manage_course_offering_resend_confirmation_path(@course_offering, registration) %>"
                         data-registrant-can-refund="<%= can_refund %>"
                         data-registrant-response-url="<%= response_url %>">
                   <% if headshot_variant %>
@@ -268,7 +293,7 @@
                   <div>
                     <p class="text-sm font-medium text-gray-900"><%= registration.person.name %></p>
                     <p class="text-xs text-gray-500">
-                      Registered <%= registration.registered_at.strftime("%b %-d, %Y") %>
+                      Registered <%= registration.registered_at.strftime("%b %-d, %Y") %><% if registration.paid_words %> · <%= registration.paid_words %><% end %>
                     </p>
                   </div>
                 </button>
@@ -308,6 +333,7 @@
                           data-registrant-date="<%= registration.registered_at.strftime("%b %-d, %Y at %-I:%M %p") %>"
                           data-registrant-cancel-url="<%= manage_course_offering_cancel_registration_path(@course_offering, registration) %>"
                           data-registrant-refund-url="<%= manage_course_offering_refund_registration_path(@course_offering, registration) %>"
+                        data-registrant-resend-url="<%= manage_course_offering_resend_confirmation_path(@course_offering, registration) %>"
                           data-registrant-can-refund="<%= can_refund %>"
                           data-registrant-response-url="<%= response_url %>">
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -575,6 +601,23 @@
               <div class="text-xs text-gray-500">Remove from course, no refund issued</div>
             </div>
           </button>
+        </div>
+
+        <div data-resend-section>
+          <%= form_with url: "#", method: :post, authenticity_token: form_authenticity_token, data: { registrant_modal_target: "resendForm" } do %>
+            <button type="submit"
+                    class="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-left cursor-pointer">
+              <div class="flex-shrink-0 w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <div class="text-sm font-medium text-gray-900">Email the confirmation again</div>
+                <div class="text-xs text-gray-500">Every session, the receipt, the calendar file</div>
+              </div>
+            </button>
+          <% end %>
         </div>
 
         <div data-refund-section>

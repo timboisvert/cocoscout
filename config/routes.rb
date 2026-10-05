@@ -1798,6 +1798,9 @@ Rails.application.routes.draw do
     post "courses/:id/update_instructor",  to: "course_offerings#update_instructor",  as: "course_offering_update_instructor"
     post "courses/:id/invite_instructor",  to: "course_offerings#invite_instructor",  as: "course_offering_invite_instructor"
     post "courses/:id/registrations/:registration_id/cancel", to: "course_offerings#cancel_registration", as: "course_offering_cancel_registration"
+    post "courses/:id/registrations/:registration_id/resend", to: "course_offerings#resend_confirmation", as: "course_offering_resend_confirmation"
+    get  "courses/:id/students/new", to: "course_offerings#new_student",    as: "new_course_offering_student"
+    post "courses/:id/students",     to: "course_offerings#create_student", as: "course_offering_students"
     # A session moved after students registered: tell them.
     get  "courses/:id/change",      to: "course_offerings#change_review",    as: "course_offering_change"
     post "courses/:id/change",      to: "course_offerings#tell_change"
