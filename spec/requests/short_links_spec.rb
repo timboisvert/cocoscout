@@ -66,14 +66,14 @@ RSpec.describe "Short links", type: :request do
     expect(response).to redirect_to("/tickets/starsandgarters")
   end
 
-  it "shows managers the short address, with the full one under it, and encodes the short one in the QR" do
+  it "shows managers only the short address, and encodes it in the QR" do
     create(:organization_role, :manager, user: admin, organization: org)
     post handle_signin_path, params: { email_address: admin.email_address, password: "Password123!" }
     get manage_path
 
     get manage_production_ticketing_path(production)
-    expect(response.body).to include("http://www.example.com/t/#{link.code}", "/tickets/starsandgarters/#{production.public_key}",
-                                     %(data-qr-code-url-value="http://www.example.com/t/#{link.code}"))
+    expect(response.body).to include("http://www.example.com/t/#{link.code}", %(data-qr-code-url-value="http://www.example.com/t/#{link.code}"))
+    expect(response.body).not_to include("Full address", "/tickets/starsandgarters/#{production.public_key}")
 
     get manage_ticket_listing_path(listing)
     expect(response.body).to include("http://www.example.com/t/#{link.code}/oct-17")

@@ -8,9 +8,6 @@
   # - copy_button_text: Text for the copy button (default: "Copy")
   # - show_qr: Show QR code button (default: false)
   # - qr_title: Heading on the QR code modal (default: "Scan to Sign Up")
-  # - short_url: A short address for the same place (cocoscout.com/t/K7M2P). It
-  #   becomes the main line, what Copy copies and what the QR encodes; the full
-  #   address sits under it in small type with its own Copy.
 %>
 
 <%
@@ -19,8 +16,7 @@
   copy_button_text ||= "Copy"
   show_qr ||= false
   qr_title ||= "Scan to Sign Up"
-  short_url ||= nil
-  main_url = short_url || url
+  main_url = url
 %>
 
 <div data-controller="copy-url<%= ' qr-code' if show_qr %>"
@@ -66,16 +62,6 @@
       <% end %>
     </div>
   </div>
-
-  <% if short_url %>
-    <div class="mt-1.5 flex items-center gap-2 text-xs text-gray-500 min-w-0">
-      <span class="truncate">Full address: <span class="font-mono"><%= url %></span></span>
-      <span data-url="<%= url %>" class="flex-shrink-0">
-        <%= render "shared/button", text: "Copy", variant: "ghost", size: "xs", type: :button,
-              data: { action: "click->copy-url#copy" } %>
-      </span>
-    </div>
-  <% end %>
 
   <% if help_text %>
     <p class="mt-2 text-xs text-gray-600"><%= help_text %></p>

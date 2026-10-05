@@ -105,6 +105,9 @@ env:
     - SENTRY_DSN
     - REDIS_URL
     - STRIPE_SECRET_KEY
+    # Pairs with STRIPE_SECRET_KEY: the ticket and course checkout pages render
+    # Stripe's card form with it ("Card payments aren't available" without it).
+    - STRIPE_PUBLISHABLE_KEY
     - STRIPE_WEBHOOK_SECRET
     - STRIPE_CONNECT_WEBHOOK_SECRET
     - STRIPE_PRICE_PRO_MONTHLY

@@ -69,6 +69,13 @@ module TicketingHelper
     crumbs
   end
 
+  # The choices for when a ticket page says "Only N left": the usual few,
+  # the current value if it's something else, and not at all.
+  def low_stock_choices(current = nil)
+    counts = ([ 3, 5, 10, 15, 20 ] + [ current.to_i ]).select(&:positive?).uniq.sort
+    counts.map { |n| [ "When #{n} or fewer are left#{' (the usual)' if n == TicketListing::LOW_STOCK_DEFAULT}", n ] } + [ [ "Never", 0 ] ]
+  end
+
   # "$20.00" / "Free"
   def ticket_price(cents)
     cents.to_i.zero? ? "Free" : number_to_currency(cents / 100.0)

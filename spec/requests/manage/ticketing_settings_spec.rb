@@ -21,7 +21,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
     it "shows the box office's address under /tickets, and its short link" do
       sign_in(superadmin)
       get manage_ticketing_settings_path
-      expect(response.body).to include("cocoscout.com/tickets/</span>", "Its short link", "cocoscout.com/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}")
+      expect(response.body).to include("cocoscout.com/tickets/</span>", "The link you share is the short one", "cocoscout.com/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}")
       expect(response.body).not_to include("cocoscout.com/t/</span>")
     end
 
@@ -30,7 +30,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
       get manage_ticketing_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Ticketing is off for Stars &amp; Garters")
-      expect(response.body).to include("/tickets/stars-garters")
+      expect(response.body).to include("/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}")
     end
 
     it "keeps managers who aren't superadmins out while it's experimental" do

@@ -20,9 +20,9 @@
       <%= f.select :fee_mode, options_for_select(fee_options, setup.fee_mode.to_s), {}, class: input_class %>
     </div>
     <div>
-      <label for="production_ticketing_low_stock_threshold" class="block text-sm font-medium text-gray-700 mb-1.5">Say "Only N left" from</label>
-      <%= f.number_field :low_stock_threshold, min: 0, max: 500, placeholder: TicketListing::LOW_STOCK_DEFAULT.to_s, class: "#{input_class} max-w-[8rem]" %>
-      <p class="text-xs text-gray-500 mt-1">Seats left on a ticket type, or on the date. Blank: <%= TicketListing::LOW_STOCK_DEFAULT %>. 0 never says it.</p>
+      <label for="production_ticketing_low_stock_threshold" class="block text-sm font-medium text-gray-700 mb-1.5">Show an "Only N left" note</label>
+      <%= f.select :low_stock_threshold, options_for_select(low_stock_choices(setup.low_stock_threshold), setup.low_stock_threshold || TicketListing::LOW_STOCK_DEFAULT), {}, class: input_class %>
+      <p class="text-xs text-gray-500 mt-1">The note appears beside a ticket type on your ticket page once that few seats remain, for example "Only 3 left". You also get one email when a date gets that low.</p>
     </div>
     <p class="text-sm text-gray-600">
       Tax: <%= tax.set? ? "#{tax.percent}% #{tax.name.downcase}, #{tax.mode == 'included' ? 'included in prices' : 'added at checkout'}" : "none" %>.
