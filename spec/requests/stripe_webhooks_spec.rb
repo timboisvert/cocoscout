@@ -105,7 +105,7 @@ RSpec.describe "StripeWebhooksController", type: :request do
     let(:student) { create(:person) }
 
     it "posts the org's net share to the cash ledger, restated when the Stripe fee lands" do
-      allow_any_instance_of(StripeWebhooksController).to receive(:record_stripe_fee)
+      allow_any_instance_of(CourseRegistration).to receive(:record_stripe_fee!)
 
       session = Stripe::Checkout::Session.construct_from(
         id: "cs_1", payment_intent: "pi_course",

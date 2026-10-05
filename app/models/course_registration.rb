@@ -5,6 +5,8 @@ class CourseRegistration < ApplicationRecord
   # truth referenced by the Stripe webhook and CoursePayoutCalculator. Applies
   # to new transactions only — existing rows store their fee in cocoscout_fee_cents.
   PLATFORM_FEE_PERCENTAGE = 10.0
+  # A pending registration is the student's hold on a spot while they pay.
+  HOLD = 10.minutes
 
   belongs_to :course_offering
   belongs_to :person
@@ -20,14 +22,17 @@ class CourseRegistration < ApplicationRecord
   # what anyone is owed from it — a refund, a cancellation, a confirmation all
   # bring the payout back in line here, whichever path they arrived by (the
   # manage page, the Stripe webhook, the console).
-  after_save :resync_course_payout, if: -> { saved_change_to_status? || saved_change_to_amount_cents? }
+  after_save :resync_course_payout, if: :money_changed?
 
   enum :status, {
     pending: "pending",
     confirmed: "confirmed",
     cancelled: "cancelled",
-    refunded: "refunded"
+    refunded: "refunded",
+    expired: "expired"
   }, default: :pending
+
+  before_validation :assign_token, on: :create
 
   # Tax collected on it (CourseTax), reversed on a refund.
   has_many :tax_lines, as: :taxable, dependent: :delete_all
@@ -38,6 +43,35 @@ class CourseRegistration < ApplicationRecord
   scope :active, -> { where(status: %w[confirmed pending]) }
   scope :confirmed, -> { where(status: "confirmed") }
   scope :pending, -> { where(status: "pending") }
+  # Live holds, and holds that ran out (ExpireTicketHoldsJob marks them expired).
+  scope :holding, ->(at = Time.current) { where(status: "pending").where("course_registrations.expires_at > ?", at) }
+  scope :stale, ->(at = Time.current) { where(status: "pending").where("course_registrations.expires_at <= ?", at) }
+
+  def hold_expired?
+    pending? && expires_at.present? && expires_at <= Time.current
+  end
+
+  # What the student pays: the course and its tax.
+  def total_cents
+    amount_cents.to_i + tax_cents.to_i
+  end
+
+  # Stripe's actual fee on the charge, from its balance transaction. Best
+  # effort: an hourly backfill (BackfillStripeFeeJob) fills any gap.
+  def record_stripe_fee!
+    charge_id = stripe_charge_id
+    if charge_id.blank? && stripe_payment_intent_id.present?
+      charge_id = Stripe::PaymentIntent.retrieve(stripe_payment_intent_id).latest_charge
+    end
+    return if charge_id.blank?
+
+    charge = Stripe::Charge.retrieve(charge_id)
+    return if charge.balance_transaction.blank?
+
+    update!(stripe_charge_id: charge_id, stripe_fee_cents: Stripe::BalanceTransaction.retrieve(charge.balance_transaction).fee)
+  rescue Stripe::StripeError => e
+    Rails.logger.error "Failed to fetch Stripe fee for registration #{id}: #{e.message}"
+  end
 
   def formatted_amount
     return "$0" if amount_cents.nil? || amount_cents.zero?
@@ -131,6 +165,18 @@ class CourseRegistration < ApplicationRecord
   end
 
   private
+
+  def assign_token
+    self.token ||= SecureRandom.urlsafe_base64(24)
+  end
+
+  # A hold starting or lapsing moves no money; a confirmation, refund or
+  # cancellation does.
+  def money_changed?
+    return true if saved_change_to_amount_cents? && !pending? && !expired?
+
+    saved_change_to_status? && (%w[confirmed refunded cancelled] & saved_change_to_status.compact).any?
+  end
 
   def resync_course_payout
     CoursePayoutCalculator.new(course_offering).resync!

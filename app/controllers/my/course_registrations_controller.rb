@@ -2,16 +2,11 @@
 
 module My
   class CourseRegistrationsController < ApplicationController
+    include CourseStorefront
+
     allow_unauthenticated_access only: %i[entry inactive show]
 
-    skip_before_action :show_my_sidebar
-    # The storefront's layout, as a show's ticket page has: the theater's name
-    # up top, one centered column, CocoScout as a footer line.
-    layout "storefront"
-
-    before_action :load_course_offering
-    before_action :set_storefront
-    before_action :ensure_user_is_signed_in, only: %i[show checkout success]
+    before_action :ensure_user_is_signed_in, only: %i[show success]
     before_action :ensure_course_is_open, except: %i[entry inactive success]
 
     def entry
@@ -44,92 +39,17 @@ module My
       render :course
     end
 
-    def checkout
-      @person = Current.user.person
-
-      # Check if already confirmed
-      existing_confirmed = @course_offering.course_registrations
-        .where(person: @person, status: :confirmed)
-        .first
-
-      if existing_confirmed
-        redirect_to my_course_show_path(code: @course_offering.short_code),
-                    alert: "You are already registered for this course."
-        return
-      end
-
-      # Check capacity (includes Redis spot holds)
-      if @course_offering.full?
-        redirect_to my_course_show_path(code: @course_offering.short_code),
-                    alert: "Sorry, this course is full."
-        return
-      end
-
-      # Hold their spot for 5 minutes while they pay on Stripe
-      hold_result = CourseSpotHoldService.acquire(@course_offering.id, @person.id)
-      unless hold_result[:success]
-        redirect_to my_course_show_path(code: @course_offering.short_code),
-                    alert: "Unable to reserve your spot. Please try again."
-        return
-      end
-
-      # The price, and the tax on it (CourseTax): one line for the course and,
-      # when the theater adds tax on top, one for the tax, so the receipt shows
-      # both. amount_cents in the metadata is the price before tax.
-      tax = CourseTax.quote(@course_offering)
-      currency = @course_offering.currency.presence || "usd"
-      line_items = [ { quantity: 1, price_data: { currency: currency, unit_amount: tax.added? ? tax.base_cents : @course_offering.current_price_cents,
-                                                   product_data: { name: @course_offering.title.to_s.first(250).presence || "Course registration" } } } ]
-      if tax.added?
-        line_items << { quantity: 1, price_data: { currency: currency, unit_amount: tax.tax_cents, product_data: { name: tax.label } } }
-      end
-
-      # Create Stripe Checkout Session — no database registration yet.
-      # The registration will be created by the webhook after successful payment.
-      checkout_session = Stripe::Checkout::Session.create(
-        mode: "payment",
-        line_items: line_items,
-        customer_email: Current.user.email_address,
-        success_url: my_course_success_url(code: @course_offering.short_code) + "?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url: my_course_show_url(code: @course_offering.short_code),
-        metadata: {
-          course_offering_id: @course_offering.id,
-          person_id: @person.id,
-          user_id: Current.user.id,
-          amount_cents: tax.base_cents,
-          tax_cents: tax.tax_cents,
-          currency: currency,
-          organization_id: @course_offering.production.organization_id
-        },
-        # Also stamp the charge itself so the payment is traceable to the course
-        # AND the owning org from the Stripe dashboard (Session metadata doesn't
-        # reach the charge). transfer_group segregates each org's money flows
-        # Stripe-side, mirroring the OrgCashEntry ledger app-side.
-        payment_intent_data: {
-          transfer_group: "org_#{@course_offering.production.organization_id}",
-          metadata: {
-            course_offering_id: @course_offering.id,
-            person_id: @person.id,
-            organization_id: @course_offering.production.organization_id
-          }
-        }
-      )
-
-      redirect_to checkout_session.url, allow_other_host: true
-    rescue Stripe::StripeError => e
-      # Release the hold if Stripe fails
-      CourseSpotHoldService.release(@course_offering.id, @person.id) if @person
-      Rails.logger.error "Stripe checkout failed for course #{@course_offering.id}: #{e.message}"
-      redirect_to my_course_show_path(code: @course_offering.short_code),
-                  alert: "Unable to connect to our payment processor. Please try again."
-    end
-
     def success
       @production = @course_offering.production
       @person = Current.user.person
 
-      # Try to find an existing confirmed registration
-      if params[:session_id].present?
+      # From our own checkout: the registration by its token.
+      if params[:token].present?
+        @registration = @course_offering.course_registrations.confirmed.find_by(token: params[:token], person: @person)
+      end
+
+      # From Stripe's hosted page (anything still in flight from before).
+      if @registration.nil? && params[:session_id].present?
         @registration = @course_offering.course_registrations
           .find_by(stripe_checkout_session_id: params[:session_id])
 
@@ -163,31 +83,6 @@ module My
 
     private
 
-    def set_storefront
-      @production ||= @course_offering.production
-      @storefront_organization = @production.organization
-      @storefront_sold_line = "Classes by #{@storefront_organization.name}"
-      @storefront_brand = "Class registration by CocoScout"
-    end
-
-    def load_course_offering
-      @course_offering = CourseOffering.find_by!(short_code: params[:code].upcase)
-    rescue ActiveRecord::RecordNotFound
-      redirect_to root_path, alert: "Course not found."
-    end
-
-    def ensure_course_is_open
-      return if @course_offering.open?
-
-      redirect_to my_course_inactive_path(code: @course_offering.short_code), status: :see_other
-    end
-
-    def ensure_user_is_signed_in
-      return if authenticated?
-
-      redirect_to my_course_entry_path(code: @course_offering.short_code), status: :see_other
-    end
-
     # Fallback: if the Stripe webhook hasn't fired by the time the user
     # lands on the success page, retrieve the session and create the
     # registration inline. The webhook handler is idempotent and will
@@ -218,9 +113,6 @@ module My
         cocoscout_fee_cents: CourseRegistration.platform_fee_cents_for(@course_offering, metadata["amount_cents"].to_i)
       )
       CourseTax.record!(registration)
-
-      # Release Redis spot hold
-      CourseSpotHoldService.release(@course_offering.id, @person.id)
 
       # Trigger confirmation (talent pool, emails, etc.)
       CourseRegistrationConfirmationJob.perform_later(registration.id)

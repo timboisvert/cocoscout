@@ -518,7 +518,11 @@ Rails.application.routes.draw do
     scope "/courses/:code" do
       get "/register", to: "course_registrations#entry",    as: "course_entry"
       get "/details",  to: "course_registrations#show",     as: "course_show"
-      post "/checkout", to: "course_registrations#checkout", as: "course_checkout"
+      # Paying on our own page: hold the spot, the checkout page, pay, done.
+      post "/checkout",             to: "course_checkouts#create", as: "course_checkout"
+      get  "/checkout/:token",      to: "course_checkouts#show",   as: "course_checkout_show"
+      post "/checkout/:token/pay",  to: "course_checkouts#pay",    as: "course_checkout_pay"
+      get  "/checkout/:token/done", to: "course_checkouts#done",   as: "course_checkout_done"
       get "/success",  to: "course_registrations#success",  as: "course_success"
       get "/inactive", to: "course_registrations#inactive", as: "course_inactive"
     end

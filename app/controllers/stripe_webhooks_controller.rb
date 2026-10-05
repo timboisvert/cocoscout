@@ -38,6 +38,8 @@ class StripeWebhooksController < ApplicationController
       intent = event.data.object
       if intent.metadata&.[]("type") == "ticket_order"
         handle_ticket_order_payment(intent, event.type)
+      elsif intent.metadata&.[]("type") == "course_registration"
+        handle_course_registration_payment(intent, event.type)
       elsif intent.metadata&.[]("type") == "balance_top_up"
         handle_balance_top_up(intent, event.type)
       else
@@ -265,16 +267,26 @@ class StripeWebhooksController < ApplicationController
     CourseTax.record!(registration)
 
     # Fetch actual Stripe fee from the charge's balance transaction
-    record_stripe_fee(registration, session.payment_intent)
-
-    # Release Redis spot hold
-    CourseSpotHoldService.release(offering.id, person.id)
+    registration.record_stripe_fee!
 
     # Add registrant to talent pool, send emails, etc.
     CourseRegistrationConfirmationJob.perform_later(registration.id)
   rescue ActiveRecord::RecordNotUnique
     # Success page beat us to it — that's fine, it's already confirmed
     Rails.logger.info "Course registration already created for session #{session.id}"
+  end
+
+  # A course paid on our own checkout page (My::CourseCheckoutsController).
+  # The done page usually settles first; this is idempotent either way.
+  def handle_course_registration_payment(intent, event_type)
+    return unless event_type == "payment_intent.succeeded"
+
+    registration = CourseRegistration.find_by(id: intent.metadata["course_registration_id"])
+    return unless registration
+
+    CourseCheckoutSettlement.settle!(registration, payment_intent_id: intent.id, charge_id: intent.latest_charge)
+  rescue CourseCheckoutSettlement::Error => e
+    Rails.logger.warn("[StripeWebhooks] course registration #{registration&.id}: #{e.message}")
   end
 
   # Money owed to an organization under a contract, paid through the public pay
@@ -298,22 +310,5 @@ class StripeWebhooksController < ApplicationController
 
   def calculate_cocoscout_fee(offering, amount_cents)
     CourseRegistration.platform_fee_cents_for(offering, amount_cents)
-  end
-
-  def record_stripe_fee(registration, payment_intent_id)
-    return unless payment_intent_id.present?
-
-    payment_intent = Stripe::PaymentIntent.retrieve(payment_intent_id)
-    charge_id = payment_intent.latest_charge
-    return unless charge_id
-
-    charge = Stripe::Charge.retrieve(charge_id)
-    balance_transaction_id = charge.balance_transaction
-    return unless balance_transaction_id
-
-    balance_transaction = Stripe::BalanceTransaction.retrieve(balance_transaction_id)
-    registration.update!(stripe_fee_cents: balance_transaction.fee)
-  rescue Stripe::StripeError => e
-    Rails.logger.error "Failed to fetch Stripe fee for registration #{registration.id}: #{e.message}"
   end
 end

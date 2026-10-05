@@ -109,10 +109,10 @@ class CourseOffering < ApplicationRecord
     }
   end
 
-  # Effective count includes confirmed registrations PLUS
-  # temporary Redis spot holds (people currently on Stripe checkout).
+  # Confirmed registrations plus live holds (students on the checkout page,
+  # CourseCheckout), so a spot is never sold twice.
   def effective_registrations_count
-    confirmed_registrations_count + CourseSpotHoldService.active_holds_count(id)
+    confirmed_registrations_count + course_registrations.holding.count
   end
 
   def spots_remaining
