@@ -297,6 +297,8 @@ Rails.application.routes.draw do
     post   "/finances/stripe/check",  to: "superadmin/finances#run_check",      as: "finances_run_check"
     post   "/finances/stripe/lines/:id/explain", to: "superadmin/finances#explain_line", as: "finances_explain_line"
     post   "/finances/stripe/opening_difference", to: "superadmin/finances#opening_difference", as: "finances_opening_difference"
+    get    "/finances/statements/:id", to: "superadmin/finances#statement", as: "finances_statement"
+    post   "/finances/orgs/:org_id/statements", to: "superadmin/finances#make_statement", as: "finances_make_statement"
     get    "/finances/orgs/:org_id",  to: "superadmin/finances#organization",   as: "finances_org_detail"
     # Course payments recorded by hand before payout runs (legacy).
     get    "/finances/orgs/:org_id/courses", to: "superadmin#finances_org_courses", as: "finances_org_courses"
@@ -1078,6 +1080,7 @@ Rails.application.routes.draw do
     post "/billing/checkout", to: "billing#checkout", as: "billing_checkout"
     get  "/billing/success",  to: "billing#success",  as: "billing_success"
     post "/billing/portal",   to: "billing#portal",   as: "billing_portal"
+    get  "/billing/statements/:id", to: "billing#statement", as: "billing_statement"
 
     # Agreement templates (org-level) - nested under organization for better URL structure
     scope path: "organization" do

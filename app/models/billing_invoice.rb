@@ -19,7 +19,9 @@ class BillingInvoice < ApplicationRecord
   scope :unpaid, -> { where(status: %w[open uncollectible]) }
   scope :newest_first, -> { order(Arel.sql("COALESCE(period_start, created_at) DESC")) }
 
-  after_commit -> { CocoScoutLedgerPoster.post_for!(self) }
+  # Not on destroy: a bill that was paid stays in CocoScout's income even if
+  # the org is deleted.
+  after_commit -> { CocoScoutLedgerPoster.post_for!(self) }, on: %i[create update]
 
   def label
     case kind

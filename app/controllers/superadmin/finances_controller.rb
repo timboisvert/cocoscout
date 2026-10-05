@@ -100,6 +100,24 @@ module Superadmin
     def organization
       @org = Organization.find(params[:org_id])
       @summary = OrgMoneySummary.new(@org)
+      @statements = @org.org_statements.newest_first.limit(24)
+    end
+
+    def statement
+      statement = OrgStatement.find(params[:id])
+      return head :not_found unless statement.pdf.attached?
+
+      send_data statement.pdf.download, filename: statement.filename, type: "application/pdf", disposition: "inline"
+    end
+
+    # Make (or remake) a statement for a month without emailing it.
+    def make_statement
+      org = Organization.find(params[:org_id])
+      month = Date.iso8601(params[:month].presence || Date.current.prev_month.beginning_of_month.iso8601)
+      OrgStatementJob.perform_later(org.id, month.beginning_of_month.iso8601, email: false)
+      redirect_to finances_org_detail_path(org_id: org.id), notice: "Making the #{month.strftime('%B %Y')} statement. Refresh in a moment."
+    rescue Date::Error
+      redirect_to finances_org_detail_path(org_id: params[:org_id]), alert: "Pick a month."
     end
 
     private

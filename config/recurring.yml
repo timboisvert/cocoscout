@@ -45,6 +45,9 @@ development:
   platform_reconciliation:
     class: PlatformReconciliationJob
     schedule: at 6am every day
+  monthly_statements:
+    class: MonthlyStatementsJob
+    schedule: every month on the 1st at 8am
 
   # Ticketing (the same schedule production runs).
   expire_ticket_holds:
@@ -130,6 +133,9 @@ production:
   platform_reconciliation:
     class: PlatformReconciliationJob
     schedule: at 6am every day
+  monthly_statements:
+    class: MonthlyStatementsJob
+    schedule: every month on the 1st at 8am
 
   meter_staff_billing:
     class: MeterStaffBillingJob

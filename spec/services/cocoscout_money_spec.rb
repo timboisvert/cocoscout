@@ -170,3 +170,42 @@ RSpec.describe BillingInvoiceSync do
     expect(CocoScoutLedgerEntry.where(source: record)).to be_empty
   end
 end
+
+RSpec.describe "Monthly statements" do
+  include ActiveJob::TestHelper
+
+  let(:owner) { create(:user, email_address: "owner@starsandgarters.com") }
+  let(:org) { create(:organization, :pro, name: "Stars & Garters", owner: owner) }
+  let(:listing) { create(:ticket_listing, organization: org, show: create(:show, production: create(:production, organization: org), date_and_time: Time.zone.local(2026, 9, 20, 19, 30))) }
+  let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000) }
+
+  it "says what the theater paid CocoScout and what happened to its balance, and emails it once" do
+    travel_to(Time.zone.local(2026, 9, 10, 12)) do
+      order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "4" })
+      TicketOrderSettlement.settle!(order)
+      order.reload.update!(stripe_payment_intent_id: "pi_s", stripe_fee_cents: 260)
+    end
+    BillingInvoice.create!(organization: org, stripe_invoice_id: "in_u", kind: "usage", status: "paid", amount_due_cents: 3_500, amount_paid_cents: 3_500,
+                           period_start: Time.zone.local(2026, 8, 1), paid_at: Time.zone.local(2026, 9, 1, 9), number: "SG-0002")
+
+    totals = OrgStatementBuilder.totals(org, Date.new(2026, 9, 1))
+    expect(totals["paid"].to_h).to include("Ticket fees (50¢ a ticket)" => 200, "Usage" => 3_500)
+    expect(totals["paid_tickets"]).to eq(4)
+    expect(totals["opening_cents"]).to eq(0)
+    expect(totals["closing_cents"]).to eq(OrgCashEntry.balance_cents(org))
+    expect(totals["bills"].sole).to include("label" => "Usage", "status" => "Paid", "amount_cents" => 3_500)
+
+    travel_to(Time.zone.local(2026, 10, 1, 8)) do
+      expect { perform_enqueued_jobs { MonthlyStatementsJob.perform_now } }.to change { ActionMailer::Base.deliveries.size }.by(1)
+    end
+    statement = org.org_statements.sole
+    expect(statement.pdf).to be_attached
+    expect(statement.emailed_at).to be_present
+    mail = ActionMailer::Base.deliveries.last
+    expect(mail.to).to eq([ "owner@starsandgarters.com" ])
+    expect(mail.subject).to eq("Your CocoScout statement for September 2026")
+    expect(mail.attachments.map(&:filename)).to include(a_string_ending_with("2026-09.pdf"))
+
+    expect { perform_enqueued_jobs { OrgStatementJob.perform_now(org.id, "2026-09-01") } }.not_to(change { ActionMailer::Base.deliveries.size })
+  end
+end

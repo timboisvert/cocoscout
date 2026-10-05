@@ -116,6 +116,34 @@
   </div>
 
   <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-sm font-semibold text-gray-900">Monthly statements</h2>
+      <%= form_with url: finances_make_statement_path(org_id: @org.id), method: :post, class: "flex items-center gap-2" do %>
+        <% months = (1..12).map { |i| Date.current.beginning_of_month - i.months } %>
+        <%= select_tag :month, options_for_select(months.map { |m| [ m.strftime("%B %Y"), m.iso8601 ] }),
+              class: "rounded-lg border border-gray-300 py-2 pl-3 pr-8 text-sm shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500" %>
+        <%= render "shared/button", text: "Make it (no email)", variant: "secondary", size: "small" %>
+      <% end %>
+    </div>
+    <% if @statements.empty? %>
+      <p class="px-4 py-3 text-sm text-gray-500">None yet. They're made on the 1st for the month before and emailed to the owner.</p>
+    <% else %>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% @statements.each do |statement| %>
+          <li class="flex flex-wrap items-center justify-between gap-x-4 px-4 py-2">
+            <span class="text-gray-900"><%= statement.label %>
+              <span class="text-gray-500">· <%= statement.emailed_at ? "emailed #{statement.emailed_at.strftime('%b %-d')}" : "not emailed" %></span></span>
+            <span class="flex items-center gap-3">
+              <span class="tabular-nums text-gray-900"><%= usd(statement.total_paid_cents) %> paid us</span>
+              <% if statement.pdf.attached? %><%= link_to "PDF", finances_statement_path(statement), target: "_blank", rel: "noopener", class: "text-xs text-pink-600 hover:underline" %><% end %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-hidden">
     <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-4">
       <h2 class="text-sm font-semibold text-gray-900">Every movement of their balance</h2>
       <% adjust_cid = "adjust-cash-#{@org.id}" %>

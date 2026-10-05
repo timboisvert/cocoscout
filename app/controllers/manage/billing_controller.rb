@@ -35,6 +35,14 @@ module Manage
       end
     end
 
+    # GET /manage/billing/statements/:id — a monthly CocoScout statement's PDF.
+    def statement
+      statement = Current.organization.org_statements.find(params[:id])
+      return head :not_found unless statement.pdf.attached?
+
+      send_data statement.pdf.download, filename: statement.filename, type: "application/pdf", disposition: "inline"
+    end
+
     # POST /manage/billing/checkout — start a subscription Checkout Session.
     def checkout
       @organization = Current.organization

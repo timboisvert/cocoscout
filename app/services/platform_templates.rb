@@ -10,7 +10,17 @@ class PlatformTemplates
       body: %(<p>This morning's check of CocoScout's Stripe balance against its records needs a look.</p>{{findings}}<p><a href="{{check_url}}">Open the Stripe check</a></p>),
       variables: [ { "name" => "headline", "description" => "One line: what's off" },
                    { "name" => "findings", "description" => "A list of what the check found" },
-                   { "name" => "check_url", "description" => "The superadmin Stripe check page" } ] }
+                   { "name" => "check_url", "description" => "The superadmin Stripe check page" } ] },
+    { key: "org_monthly_statement", name: "Monthly CocoScout statement", channel: "email",
+      subject: "Your CocoScout statement for {{month}}",
+      body: %(<p>Hi {{first_name}},</p><p>Here's {{organization_name}}'s CocoScout statement for {{month}}. You paid CocoScout {{total_paid}}, and your CocoScout balance went from {{opening}} to {{closing}}. The statement is attached, and every statement is on your <a href="{{billing_url}}">Billing &amp; Plan page</a>.</p>),
+      variables: [ { "name" => "first_name", "description" => "The owner's first name" },
+                   { "name" => "organization_name", "description" => "The organization" },
+                   { "name" => "month", "description" => "e.g. October 2026" },
+                   { "name" => "total_paid", "description" => "What they paid CocoScout that month" },
+                   { "name" => "opening", "description" => "CocoScout balance at the start of the month" },
+                   { "name" => "closing", "description" => "CocoScout balance at the end of the month" },
+                   { "name" => "billing_url", "description" => "Their Billing & Plan page" } ] }
   ].freeze
 
   def self.ensure!(keys: nil, overwrite: false)

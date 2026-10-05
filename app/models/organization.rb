@@ -8,6 +8,12 @@ class Organization < ApplicationRecord
   include StaffingDayParts
 
   belongs_to :owner, class_name: "User"
+  # CocoScout's bills to it, and its monthly statements. CocoScout's own
+  # records of money it earned keep their amounts if the org is ever deleted.
+  has_many :billing_invoices, dependent: :destroy
+  has_many :org_statements, dependent: :destroy
+  has_many :cocoscout_ledger_entries, class_name: "CocoScoutLedgerEntry", dependent: :nullify
+  has_many :stripe_balance_transactions, dependent: :nullify
   belongs_to :organization_talent_pool, class_name: "TalentPool", optional: true
   has_many :productions, dependent: :destroy
   has_many :contracts, dependent: :destroy
