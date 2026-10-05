@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_05_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1921,6 +1921,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_100000) do
     t.string "event_matching", default: "all", null: false
     t.jsonb "event_type_filter", default: [], null: false
     t.string "fee_mode"
+    t.integer "low_stock_threshold"
     t.integer "max_per_order"
     t.integer "online_close_minutes", default: 0, null: false
     t.integer "opens_days_before", default: 30, null: false
@@ -3209,6 +3210,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_100000) do
     t.string "door_note"
     t.string "fee_mode"
     t.boolean "inherits_tiers", default: false, null: false
+    t.integer "low_stock_threshold"
     t.integer "max_per_order"
     t.datetime "off_sale_at"
     t.datetime "on_sale_at"

@@ -89,7 +89,7 @@
               data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>">
             <div class="min-w-0 flex-1">
               <div class="font-medium text-gray-900"><%= tier.name %></div>
-              <div class="text-sm text-gray-500"><%= ticket_price(tier.price_cents) %><%= " · #{left} left" if left && left <= 10 %></div>
+              <div class="text-sm text-gray-500"><%= ticket_price(tier.price_cents) %><%= " · #{left} left" if left && left <= @listing.effective_low_stock_threshold %></div>
             </div>
             <%= hidden_field_tag "quantities[#{tier.id}]", 0, id: nil, data: { door_sell_target: "input" } %>
             <div class="flex items-center gap-2">

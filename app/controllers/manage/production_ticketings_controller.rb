@@ -116,7 +116,7 @@ module Manage
     end
 
     def update_sales
-      permitted = params.require(:production_ticketing).permit(:max_per_order, :fee_mode, :title, :description,
+      permitted = params.require(:production_ticketing).permit(:max_per_order, :fee_mode, :low_stock_threshold, :title, :description,
                                                                :door_note, :age_note, :accessibility_note)
       @setup.update!(permitted.to_h.transform_values(&:presence))
       redirect_to section_path("sales"), notice: "Saved. Dates without their own settings use these."

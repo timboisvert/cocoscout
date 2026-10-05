@@ -134,8 +134,7 @@ module TicketingHelper
     return "Tickets at the door" if listing.status == "closed" || (listing.off_sale_at && listing.off_sale_at <= at)
     return "On sale #{listing.on_sale_at.strftime('%b %-d')}" if listing.on_sale_at&.>(at)
 
-    left = inventory.remaining
-    "Only #{left} left" if left && left <= 10
+    listing.low_stock_note(inventory.remaining)
   end
 
   # The lowest all-in price a buyer can see for a show, for "From $21.42".

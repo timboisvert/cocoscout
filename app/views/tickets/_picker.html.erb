@@ -78,7 +78,7 @@
                   <% if !tier.free? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
                 </div>
               <% end %>
-              <% if left && left.positive? && left <= 10 %><div class="text-xs font-semibold text-amber-700">Only <%= left %> left</div><% end %>
+              <% if (low = listing.low_stock_note(left)) %><div class="text-xs font-semibold text-amber-700"><%= low %></div><% end %>
             </div>
             <%= hidden_field_tag "quantities[#{tier.id}]", 0, data: { ticket_picker_target: "input" } %>
             <% if most.positive? %>

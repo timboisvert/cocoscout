@@ -19,6 +19,11 @@
       <label for="production_ticketing_fee_mode" class="block text-sm font-medium text-gray-700 mb-1.5">Who pays the fees</label>
       <%= f.select :fee_mode, options_for_select(fee_options, setup.fee_mode.to_s), {}, class: input_class %>
     </div>
+    <div>
+      <label for="production_ticketing_low_stock_threshold" class="block text-sm font-medium text-gray-700 mb-1.5">Say "Only N left" from</label>
+      <%= f.number_field :low_stock_threshold, min: 0, max: 500, placeholder: TicketListing::LOW_STOCK_DEFAULT.to_s, class: "#{input_class} max-w-[8rem]" %>
+      <p class="text-xs text-gray-500 mt-1">Seats left on a ticket type, or on the date. Blank: <%= TicketListing::LOW_STOCK_DEFAULT %>. 0 never says it.</p>
+    </div>
     <p class="text-sm text-gray-600">
       Tax: <%= tax.set? ? "#{tax.percent}% #{tax.name.downcase}, #{tax.mode == 'included' ? 'included in prices' : 'added at checkout'}" : "none" %>.
       <%= link_to "Change in Ticketing settings", manage_ticketing_settings_section_path(section: "tax"), class: "text-pink-600 hover:text-pink-700" %>

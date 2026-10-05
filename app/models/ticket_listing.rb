@@ -14,6 +14,9 @@ class TicketListing < ApplicationRecord
   # Online sales close at showtime unless the theater says otherwise; after
   # that it's door sales.
   DEFAULT_RUNTIME = 2.hours
+  # "Only N left" shows from this many seats left, unless the production or
+  # the date says otherwise.
+  LOW_STOCK_DEFAULT = 5
 
   belongs_to :organization
   belongs_to :show
@@ -107,6 +110,15 @@ class TicketListing < ApplicationRecord
 
   def effective_max_per_order
     max_per_order || production_ticketing&.max_per_order || profile&.default_max_per_order || 10
+  end
+
+  def effective_low_stock_threshold
+    low_stock_threshold || production_ticketing&.low_stock_threshold || LOW_STOCK_DEFAULT
+  end
+
+  # "Only 3 left" when a count is at or under the threshold, else nil.
+  def low_stock_note(left)
+    "Only #{left} left" if left && left.positive? && left <= effective_low_stock_threshold
   end
 
   def buyer_pays_fees?

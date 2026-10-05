@@ -95,6 +95,21 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).to include("Industry")
     end
 
+    it "says Only N left from the threshold the theater set" do
+      general.update!(quantity: 8)
+      get event_path
+      expect(response.body).not_to include("Only 8 left")
+
+      setup = ProductionTicketing.for(production)
+      setup.update!(low_stock_threshold: 10)
+      get event_path
+      expect(response.body).to include("Only 8 left")
+
+      TicketListing.find(listing.id).update!(low_stock_threshold: 3)
+      get event_path
+      expect(response.body).not_to include("Only 8 left")
+    end
+
     it "says so when it's sold out, or not on sale" do
       listing.update!(status: "paused")
       get event_path

@@ -8,6 +8,7 @@
   fee_default_label = setup&.fee_mode.present? ? "Use #{possessive(listing.production.name)} (#{fee_words.call(inherited_fee)})" : "Use your default (#{fee_words.call(inherited_fee)})"
   fee_options = [ [ fee_default_label, "" ], [ "Buyers pay the fees", "buyer" ], [ "You absorb the fees", "org" ] ]
   inherited_max = setup&.max_per_order || ticketing_profile.default_max_per_order
+  inherited_low = setup&.low_stock_threshold || TicketListing::LOW_STOCK_DEFAULT
 %>
 <%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, class: "space-y-6" do |f| %>
   <%= hidden_field_tag :section, "sales" %>
@@ -33,6 +34,11 @@
       <label for="ticket_listing_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
       <%= f.number_field :max_per_order, min: 1, max: 100, placeholder: inherited_max.to_s, class: "#{input_class} max-w-[8rem]" %>
       <p class="text-xs text-gray-500 mt-1">Blank: <%= inherited_max %>, <%= setup&.max_per_order ? possessive(listing.production.name) : "your default" %>.</p>
+    </div>
+    <div>
+      <label for="ticket_listing_low_stock_threshold" class="block text-sm font-medium text-gray-700 mb-1.5">Say "Only N left" from</label>
+      <%= f.number_field :low_stock_threshold, min: 0, max: 500, placeholder: inherited_low.to_s, class: "#{input_class} max-w-[8rem]" %>
+      <p class="text-xs text-gray-500 mt-1">Blank: <%= inherited_low %>, <%= setup&.low_stock_threshold ? possessive(listing.production.name) : "the usual" %>. 0 never says it.</p>
     </div>
     <div>
       <label for="ticket_listing_fee_mode" class="block text-sm font-medium text-gray-700 mb-1.5">Who pays the fees</label>
