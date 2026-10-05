@@ -40,7 +40,7 @@
     <p class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-600">No shows shared with you yet.</p>
   <% end %>
 
-  <% if @daily_viewers.any? && TicketingProfile.where(organization_id: @daily_viewers.map(&:organization_id), producer_daily_emails: true).exists? %>
+  <% if @sees_sales %>
     <%= form_with url: my_ticket_sales_daily_email_path, method: :patch, class: "mt-2 rounded-xl border border-gray-200 bg-white px-5 py-4 flex items-center justify-between gap-4", data: { controller: "auto-submit" } do |f| %>
       <div>
         <div class="text-sm font-medium text-gray-900">A morning email on how your shows are selling</div>

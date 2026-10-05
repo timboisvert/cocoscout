@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_05_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1516,7 +1516,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_140000) do
     t.boolean "comped_indefinitely", default: false, null: false
     t.datetime "comped_until"
     t.jsonb "contract_notification_user_ids", default: [], null: false
-    t.integer "course_reminder_days_before", default: 1
+    t.integer "course_reminder_days_before", default: 2
     t.datetime "created_at", null: false
     t.jsonb "default_contract_payment_methods", default: ["online"], null: false
     t.jsonb "enabled_offline_payout_methods", default: [], null: false
@@ -3490,7 +3490,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_140000) do
     t.jsonb "notification_emails", default: [], null: false
     t.jsonb "notification_rules", default: {}, null: false
     t.bigint "organization_id", null: false
-    t.boolean "producer_daily_emails", default: true, null: false
     t.boolean "refunds_after_show", default: false, null: false
     t.integer "reminder_days_before", default: 2
     t.string "slug", null: false

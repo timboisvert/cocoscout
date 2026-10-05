@@ -20,7 +20,7 @@ class TicketingDailyNoticesJob < ApplicationJob
                                                           about: listing, occasion: today.iso8601, once: true)
       end
 
-      producer_notes(organization, profile) if profile.producer_daily_emails
+      producer_notes(organization, profile)
     rescue StandardError => e
       Rails.logger.error("[TicketingDailyNoticesJob] org #{profile.organization_id}: #{e.class}: #{e.message}")
     end

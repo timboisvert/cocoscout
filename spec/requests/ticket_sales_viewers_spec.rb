@@ -160,4 +160,18 @@ RSpec.describe "Ticket sales viewers", type: :request do
     patch my_ticket_sales_daily_email_path, params: { daily_email: "0" }
     expect(org.ticket_sales_viewers.active.sole.daily_email).to be(false)
   end
+
+  # A producer who sees sales only through their contract has no share row;
+  # asking for the daily note makes one for each of their productions.
+  it "lets a contract-only producer ask for the morning note" do
+    contractor = create(:contractor, organization: org, person: producer_person, email: producer_person.email)
+    create(:contract, organization: org, production: production, contractor: contractor, status: :active, shares_ticket_sales: true)
+    sign_in(producer)
+    expect(org.ticket_sales_viewers.count).to eq(0)
+    patch my_ticket_sales_daily_email_path, params: { daily_email: "1" }
+    viewer = org.ticket_sales_viewers.active.sole
+    expect(viewer.scope).to eq(production)
+    expect(viewer.user).to eq(producer)
+    expect(viewer.daily_email).to be(true)
+  end
 end

@@ -56,6 +56,16 @@ class TicketSalesAccess
                      .preload(:user).order(:created_at)
   end
 
+  # The productions a user sees through a contract (their own shows), for a
+  # share row to hang a daily-email choice on.
+  def self.contract_productions(user)
+    return [] unless user
+
+    people_ids = user.people.select(:id)
+    Contract.joins(:contractor).where(contractors: { person_id: people_ids }).where(shares_ticket_sales: true)
+            .where.not(status: %w[draft cancelled]).includes(:production).filter_map(&:production).uniq
+  end
+
   def self.contract_show_ids(user)
     people_ids = user.people.select(:id)
     Contract.joins(:contractor).where(contractors: { person_id: people_ids }).where(shares_ticket_sales: true)

@@ -68,6 +68,12 @@ RSpec.describe "Ticketing notifications" do
     expect(mails_to("box@sg.example").size).to eq(1)
   end
 
+  it "stays quiet about a show running low when the theater doesn't say Only N left" do
+    TicketListing.find(listing.id).update!(low_stock_threshold: 0)
+    sell(8)
+    expect(mails_to("owner@sg.example").map(&:subject)).not_to include(a_string_starting_with("Only"))
+  end
+
   it "says a show is almost sold out, then sold out, once each" do
     sell(8)
     expect(mails_to("owner@sg.example").map(&:subject)).to include(a_string_starting_with("Only 2 left"))
