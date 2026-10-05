@@ -237,6 +237,9 @@
           <% if @ticket_email_subject %>
             <%= render "manage/shows/ticket_refunds", buyers: @ticket_buyers, subject: @ticket_email_subject, body: @ticket_email_body %>
           <% end %>
+          <% if @course_email_subject %>
+            <%= render "manage/shows/course_students", students: @course_students, subject: @course_email_subject, body: @course_email_body %>
+          <% end %>
 
           <div class="mt-6">
             <%= render "shared/button", text: "Cancel #{@show.event_type.titleize}", variant: "warning", size: "medium", type: :button,

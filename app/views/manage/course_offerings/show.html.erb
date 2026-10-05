@@ -86,6 +86,16 @@
           method: :delete %>
   <% end %>
 
+  <% if CourseSessionChange.pending?(@course_offering) %>
+    <div class="mb-4">
+      <%= render "shared/alert_panel",
+            eyebrow: "A session moved",
+            headline: "Students registered before a session changed",
+            body: "Read and edit the email they get, then send it. Nothing goes out by itself.",
+            actions: [ { text: "Tell students about the change", path: manage_course_offering_change_path(@course_offering) } ] %>
+    </div>
+  <% end %>
+
   <% if @course_offering.contract_id? %>
     <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
       <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">

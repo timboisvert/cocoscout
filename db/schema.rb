@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_05_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -742,6 +742,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_120000) do
     t.bigint "person_id", null: false
     t.datetime "refunded_at"
     t.datetime "registered_at", null: false
+    t.jsonb "reminded_show_ids", default: [], null: false
     t.string "status", default: "pending", null: false
     t.string "stripe_charge_id"
     t.string "stripe_checkout_session_id"
@@ -750,9 +751,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_120000) do
     t.string "stripe_refund_id"
     t.integer "tax_cents", default: 0, null: false
     t.string "token"
+    t.jsonb "told_sessions", default: {}, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying, 'expired'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text, ('expired'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["expires_at"], name: "index_course_registrations_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
@@ -1509,6 +1511,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_120000) do
     t.boolean "comped_indefinitely", default: false, null: false
     t.datetime "comped_until"
     t.jsonb "contract_notification_user_ids", default: [], null: false
+    t.integer "course_reminder_days_before", default: 1
     t.datetime "created_at", null: false
     t.jsonb "default_contract_payment_methods", default: ["online"], null: false
     t.jsonb "enabled_offline_payout_methods", default: [], null: false

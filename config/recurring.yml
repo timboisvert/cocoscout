@@ -60,6 +60,10 @@ development:
     class: TicketRemindersJob
     schedule: at 10am every day America/Chicago
 
+  course_reminders:
+    class: CourseRemindersJob
+    schedule: at 10am every day America/Chicago
+
   production_ticketing_dates:
     class: ProductionTicketingDatesJob
     schedule: every hour
@@ -164,6 +168,10 @@ production:
   # chose in Ticketing settings.
   ticket_reminders:
     class: TicketRemindersJob
+    schedule: at 10am every day America/Chicago
+
+  course_reminders:
+    class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
 
   # Productions with ticketing set up list the shows their setup includes,

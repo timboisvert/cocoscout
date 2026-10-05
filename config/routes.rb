@@ -1746,6 +1746,7 @@ Rails.application.routes.draw do
     get    "courses/settings/refresh",         to: "course_settings#connect_refresh", as: "course_settings_refresh"
     # Named sections, declared last so the specific routes above win.
     patch  "courses/settings/tax",             to: "course_settings#update_tax",     as: "course_settings_tax"
+    patch  "courses/settings/reminders",       to: "course_settings#update_reminders", as: "course_settings_reminders"
     get    "courses/settings/:section",        to: "course_settings#show",           as: "course_settings_section"
     # Stripe has live onboarding links pointing at the old return/refresh URLs.
     get    "courses/payouts/settings",         to: redirect("/manage/courses/settings")
@@ -1797,6 +1798,10 @@ Rails.application.routes.draw do
     post "courses/:id/update_instructor",  to: "course_offerings#update_instructor",  as: "course_offering_update_instructor"
     post "courses/:id/invite_instructor",  to: "course_offerings#invite_instructor",  as: "course_offering_invite_instructor"
     post "courses/:id/registrations/:registration_id/cancel", to: "course_offerings#cancel_registration", as: "course_offering_cancel_registration"
+    # A session moved after students registered: tell them.
+    get  "courses/:id/change",      to: "course_offerings#change_review",    as: "course_offering_change"
+    post "courses/:id/change",      to: "course_offerings#tell_change"
+    post "courses/:id/change/told", to: "course_offerings#mark_change_told", as: "course_offering_change_told"
     post "courses/:id/registrations/:registration_id/refund", to: "course_offerings#refund_registration", as: "course_offering_refund_registration"
     post "courses/:id/enable_questionnaire",  to: "course_offerings#enable_questionnaire",  as: "course_offering_enable_questionnaire"
     post "courses/:id/disable_questionnaire", to: "course_offerings#disable_questionnaire", as: "course_offering_disable_questionnaire"

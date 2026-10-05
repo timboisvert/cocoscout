@@ -23,6 +23,25 @@ class CourseRegistrationMailer < ApplicationMailer
     deliver_words(registration, "course_registration_removed", template_name: "words")
   end
 
+  # A session that moved: the manager's edited draft of the
+  # course_session_changed template, filled in for this student and session.
+  def session_changed(registration, moved, subject:, body:)
+    variables = CourseSessionChange.variables(registration, moved)
+    deliver_edited(registration, subject: subject, body: body, variables: variables, session: moved.show, template_name: "session")
+  end
+
+  # Canceled sessions: the manager's edited draft of course_session_canceled.
+  def session_canceled(registration, shows, subject:, body:)
+    variables = self.class.variables(registration).merge(sessions: CourseSessionCancellation.sessions_words(shows))
+    deliver_edited(registration, subject: subject, body: body, variables: variables, session: nil, template_name: "words")
+  end
+
+  # Before a session: the time and the place again.
+  def reminder(registration, show)
+    deliver_words(registration, "course_session_reminder", template_name: "session", session: show,
+                  extra: { when: TicketOrderMailer.when_words(show.date_and_time) })
+  end
+
   # The words every email can use.
   def self.variables(registration)
     offering = registration.course_offering
@@ -56,19 +75,34 @@ class CourseRegistrationMailer < ApplicationMailer
 
   private
 
-  def deliver_words(registration, key, template_name:, extra: {})
+  def deliver_words(registration, key, template_name:, extra: {}, session: nil)
+    load(registration, session)
+    variables = self.class.variables(registration).merge(extra)
+    @body_html = ContentTemplateService.render_body(key, variables.transform_values { |value| ERB::Util.html_escape(value.to_s) })
+    deliver_from_theater(ContentTemplateService.render_subject(key, variables), template_name)
+  end
+
+  # Plain text a manager edited on a review page, {{variables}} filled in.
+  def deliver_edited(registration, subject:, body:, variables:, session:, template_name:)
+    load(registration, session)
+    @body_html = TicketOrderMailer.paragraphs(ContentTemplate.interpolate(body.to_s, variables))
+    deliver_from_theater(ContentTemplate.interpolate(subject.to_s, variables), template_name)
+  end
+
+  # session: the one session this email is about (else the next one).
+  def load(registration, session)
     @registration = registration
     @offering = registration.course_offering
     @production = @offering.production
     @organization = @production.organization
     @person = registration.person
     @sessions = @offering.sessions.includes(:location, :location_space).to_a
-    first = @sessions.find { |s| s.date_and_time >= Time.current } || @sessions.first
-    @when_where = first && Ticketing::WhenWhere.for(first, notes: @offering.instruction_text.to_s.squish.presence)
-    variables = self.class.variables(registration).merge(extra)
-    @body_html = ContentTemplateService.render_body(key, variables.transform_values { |value| ERB::Util.html_escape(value.to_s) })
-    subject = ContentTemplateService.render_subject(key, variables)
-    to = @person&.email.presence || registration.user&.email_address
+    about = session || @sessions.find { |s| s.date_and_time >= Time.current } || @sessions.first
+    @when_where = about && Ticketing::WhenWhere.for(about, notes: @offering.instruction_text.to_s.squish.presence)
+  end
+
+  def deliver_from_theater(subject, template_name)
+    to = @person&.email.presence || @registration.user&.email_address
     mail(to: to, subject: subject,
          from: email_address_with_name("info@cocoscout.com", "#{@organization.name} via CocoScout"),
          reply_to: self.class.support_email(@organization), template_name: template_name)

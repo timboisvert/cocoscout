@@ -33,6 +33,9 @@ class CourseRegistration < ApplicationRecord
   }, default: :pending
 
   before_validation :assign_token, on: :create
+  # What the student was told about every session, from the moment they're
+  # in (CourseSessionChange reads it to know when a session moved).
+  before_save :remember_sessions, if: -> { confirmed? && (status_changed? || told_sessions.blank?) && told_sessions.blank? }
 
   # Tax collected on it (CourseTax), reversed on a refund.
   has_many :tax_lines, as: :taxable, dependent: :delete_all
@@ -168,6 +171,10 @@ class CourseRegistration < ApplicationRecord
 
   def assign_token
     self.token ||= SecureRandom.urlsafe_base64(24)
+  end
+
+  def remember_sessions
+    self.told_sessions = CourseSessionChange.snapshot(course_offering)
   end
 
   # A hold starting or lapsing moves no money; a confirmation, refund or

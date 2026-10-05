@@ -802,6 +802,14 @@ module Manage
         @ticket_buyers["all"] = TicketShowCancellation.summary(@show.recurrence_group.to_a)
       end
       @ticket_email_subject, @ticket_email_body = TicketShowCancellation.default_email if @ticket_buyers.values.any?(&:any?)
+
+      # Students registered for class sessions, for each way of canceling.
+      @course_students = { "this" => CourseSessionCancellation.summary([ @show ]) }
+      if @show.recurring?
+        @course_students["this_and_future"] = CourseSessionCancellation.summary(@show.recurrence_group.where("date_and_time >= ?", @show.date_and_time).to_a)
+        @course_students["all"] = CourseSessionCancellation.summary(@show.recurrence_group.to_a)
+      end
+      @course_email_subject, @course_email_body = CourseSessionCancellation.default_email if @course_students.values.any?(&:any?)
     end
 
     def cancel_show
@@ -816,6 +824,7 @@ module Manage
         count = @show.recurrence_group.update_all(canceled: true)
         dropped = drop_contract_payments_for(shows_to_cancel)
         refunding = cancel_ticket_sales_for(shows_to_cancel)
+        students = tell_course_students_for(shows_to_cancel)
 
         # Send notifications if requested (uses template automatically)
         if notify_cast
@@ -823,7 +832,7 @@ module Manage
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}",
+                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}#{students_note(students)}",
                     status: :see_other
       elsif scope == "this_and_future" && @show.recurring?
         # Cancel this and all future occurrences
@@ -835,19 +844,21 @@ module Manage
                      .update_all(canceled: true)
         dropped = drop_contract_payments_for(shows_to_cancel)
         refunding = cancel_ticket_sales_for(shows_to_cancel)
+        students = tell_course_students_for(shows_to_cancel)
 
         if notify_cast
           send_cancellation_notifications(shows_to_cancel, nil, nil, role_categories)
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}",
+                    notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}#{students_note(students)}",
                     status: :see_other
       else
         # Cancel just this occurrence
         @show.update!(canceled: true)
         dropped = drop_contract_payments_for([ @show ])
         refunding = cancel_ticket_sales_for([ @show ])
+        students = tell_course_students_for([ @show ])
 
         # Send notifications if requested (uses template automatically)
         if notify_cast
@@ -855,7 +866,7 @@ module Manage
         end
 
         redirect_to manage_production_shows_path(@production),
-                    notice: "#{event_label} was successfully canceled#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}",
+                    notice: "#{event_label} was successfully canceled#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}#{students_note(students)}",
                     status: :see_other
       end
     end
@@ -865,6 +876,18 @@ module Manage
     def cancel_ticket_sales_for(shows)
       TicketShowCancellation.cancel_shows!(shows, subject: params[:ticket_email_subject], body: params[:ticket_email_body],
                                                   by: Current.user, refund: params[:refund_tickets] == "1")
+    end
+
+    # Class sessions among the canceled shows: their students get the email
+    # the manager read and edited, when they chose to.
+    def tell_course_students_for(shows)
+      return 0 unless params[:email_students] == "1" && shows.any?(&:course_offering_id)
+
+      CourseSessionCancellation.start!(shows, subject: params[:course_email_subject], body: params[:course_email_body])
+    end
+
+    def students_note(count)
+      count.positive? ? " Emailing #{helpers.pluralize(count, 'student')}." : ""
     end
 
     def ticket_refund_note(count)

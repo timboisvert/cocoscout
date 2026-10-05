@@ -8,7 +8,7 @@ module Manage
   # Money section. Uses the shared settings layout, so a second topic (refund
   # policy, instructor defaults) is just a new entry in SECTIONS.
   class CourseSettingsController < Manage::ManageController
-    SECTIONS = %w[payments taxes].freeze
+    SECTIONS = %w[payments taxes reminders].freeze
     DEFAULT_SECTION = "payments"
 
     before_action :set_section, only: %i[show]
@@ -34,6 +34,14 @@ module Manage
       redirect_to manage_course_settings_section_path(section: "taxes"), notice: rule ? "Tax on courses saved." : "Courses now carry no tax."
     rescue ArgumentError, ActiveRecord::RecordInvalid => e
       redirect_to manage_course_settings_section_path(section: "taxes"), alert: e.message
+    end
+
+    # How many days before each class session students get their reminder.
+    def update_reminders
+      days = params[:course_reminder_days_before].presence&.to_i
+      days = nil unless days&.between?(1, 30)
+      Current.organization.update!(course_reminder_days_before: days)
+      redirect_to manage_course_settings_section_path(section: "reminders"), notice: days ? "Students get a reminder #{helpers.pluralize(days, 'day')} before each session." : "Reminders are off."
     end
 
     # Kick off (or resume) Stripe Express onboarding for the organization.

@@ -9,6 +9,7 @@ module Manage
       cancel_registration refund_registration add_sessions
       enable_questionnaire disable_questionnaire send_questionnaire
       questionnaire update_questionnaire_settings
+      change_review tell_change mark_change_told
     ]
 
     def index
@@ -397,6 +398,32 @@ module Manage
 
       CourseCancellationJob.perform_later(@course_offering.id)
       redirect_to manage_course_offering_path(@course_offering), notice: "Retrying the outstanding refunds."
+    end
+
+    # A session moved after students registered: read and edit the email,
+    # then send it (CourseSessionChange), or mark them told.
+    def change_review
+      unless CourseSessionChange.pending?(@course_offering)
+        redirect_to manage_course_offering_path(@course_offering), notice: "Every student knows when and where the sessions are." and return
+      end
+
+      @draft = CourseSessionChange.draft(@course_offering)
+    end
+
+    def tell_change
+      count = CourseSessionChange.registrations(@course_offering).size
+      redirect_to manage_course_offering_path(@course_offering) and return if count.zero?
+      if params[:subject].blank? || params[:body].blank?
+        redirect_to manage_course_offering_change_path(@course_offering), alert: "Write a subject and a message first." and return
+      end
+
+      CourseSessionChange.start!(@course_offering, subject: params[:subject], body: params[:body])
+      redirect_to manage_course_offering_path(@course_offering), notice: "Emailing #{helpers.pluralize(count, 'student')} about the change."
+    end
+
+    def mark_change_told
+      count = CourseSessionChange.mark_told!(@course_offering)
+      redirect_to manage_course_offering_path(@course_offering), notice: "Marked #{helpers.pluralize(count, 'student')} as told. No emails went out."
     end
 
     def cancel_registration

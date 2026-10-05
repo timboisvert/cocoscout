@@ -1,0 +1,8 @@
+<%= raw @body_html %>
+<% if @when_where %>
+  <%= render "shared/mailer/when_where", w: @when_where, calendar_url: my_course_calendar_url(code: @offering.short_code, token: @registration.token) %>
+<% end %>
+<p style="font-size: 12px; color: #6b7280;">
+  <%= link_to "Your registration", my_course_success_url(code: @offering.short_code, token: @registration.token) %>
+</p>
+<%= render "course_registration_mailer/questions", organization: @organization %>
