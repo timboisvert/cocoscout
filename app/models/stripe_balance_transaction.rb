@@ -22,6 +22,7 @@ class StripeBalanceTransaction < ApplicationRecord
     "top_up" => "Theater added funds",
     "run_funding" => "Payout run bank debit",
     "billing" => "Pro or usage bill",
+    "billing_refund" => "Pro or usage bill refunded",
     "ticket_refund" => "Ticket refund",
     "course_refund" => "Course refund",
     "payee_transfer" => "Paid to a payee",

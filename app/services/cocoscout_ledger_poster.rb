@@ -19,8 +19,8 @@
 #   StripeBalanceTransaction
 #                        Stripe's own fees, payouts to CocoScout's bank, the
 #                        bank-debit fee on run funding and top-ups, the
-#                        processing on a bill, and lines a superadmin
-#                        explained by hand
+#                        processing on a bill, a bill refunded, and lines a
+#                        superadmin explained by hand
 #
 # Idempotent: each call restates the source's entries from scratch.
 class CocoScoutLedgerPoster
@@ -31,7 +31,7 @@ class CocoScoutLedgerPoster
     "ContractPayment" => %w[contract_processing processing_cost],
     "BillingInvoice" => %w[subscription usage],
     "OrgPayout" => %w[paid_by_hand],
-    "StripeBalanceTransaction" => %w[stripe_fee other_income payout_to_bank added_from_bank funding_cost processing_cost explained]
+    "StripeBalanceTransaction" => %w[stripe_fee other_income payout_to_bank added_from_bank funding_cost processing_cost subscription usage explained]
   }.freeze
 
   # Sources an OrgCashEntry can point at whose CocoScout share depends on it.
@@ -154,6 +154,8 @@ class CocoScoutLedgerPoster
     # Charges whose record keeps no Stripe fee: what Stripe took is ours to bear.
     when "run_funding", "top_up" then { "funding_cost" => -row.fee_cents }
     when "billing" then { "processing_cost" => -row.fee_cents }
+    # A bill given back: the income it brought, taken back, under that org.
+    when "billing_refund" then { (row.matched.try(:kind) == "usage" ? "usage" : "subscription") => row.amount_cents }
     else {}
     end
     return entries unless row.match_status == "explained"

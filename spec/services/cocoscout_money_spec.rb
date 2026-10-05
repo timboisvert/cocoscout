@@ -164,6 +164,22 @@ RSpec.describe "CocoScout's money" do
     expect(ours("explained")).to eq(500)
   end
 
+  it "takes back a bill's income when CocoScout refunds it" do
+    bill = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_jul", kind: "usage", status: "paid", amount_due_cents: 28_000,
+                                  amount_paid_cents: 28_000, stripe_payment_intent_id: "pi_jul", paid_at: 2.months.ago)
+    StripeBalanceTransaction.import!(line("txn_bill", type: "payment", category: "charge", amount: 28_000, fee: 224,
+                                          source: { id: "py_jul", object: "charge", payment_intent: "pi_jul" }))
+    StripeBalanceTransaction.import!(line("txn_refund", type: "refund", category: "refund", amount: -28_000,
+                                          source: { id: "re_jul", object: "refund", charge: "py_jul", payment_intent: "pi_jul" }))
+
+    refund = StripeBalanceTransaction.find_by(stripe_id: "txn_refund")
+    expect([ refund.category, refund.match_status, refund.matched, refund.organization ]).to eq([ "billing_refund", "matched", bill, org ])
+    expect(ours("usage")).to eq(0)
+    expect(CocoScoutLedgerEntry.where(organization: org, entry_type: "usage").sum(:amount_cents)).to eq(0)
+    stripe_balance(28_000 - 224 - 28_000)
+    expect(PlatformReconciliationCheck.run!.difference_cents).to eq(0)
+  end
+
   it "gives back the fees a ticket refund returned to the buyer" do
     order = sell_two_tickets
     refund = TicketRefund.create!(organization: org, ticket_order: order, status: "succeeded", amount_cents: order.total_cents,

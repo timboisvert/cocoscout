@@ -93,6 +93,11 @@ class StripeTransactionMatcher
     if registration
       return [ "course_refund", registration, -(registration.amount_cents + registration.tax_cents.to_i) ]
     end
+    # A bill given back (a refund or a credit note refunding it): can be
+    # partial, so its amount isn't checked.
+    if refs["payment_intent"].present? && (invoice = BillingInvoice.find_by(stripe_payment_intent_id: refs["payment_intent"]))
+      return [ "billing_refund", invoice, nil ]
+    end
     [ "unknown", nil, nil ]
   end
 
