@@ -9,12 +9,13 @@ Sentry.init do |config|
   # either (profiles only sample within a trace). We measure query cost with
   # prosopite in development and query-count specs in the suite, not from
   # sampled production traces. Errors and breadcrumbs are unaffected.
-  # Sentry Logs product disabled: forwarding every Rails.logger call to Sentry
-  # was burning through the 5GB monthly logs budget by day ~22. Errors,
-  # breadcrumbs, and performance traces still flow normally — only the
-  # structured "Logs" tab is turned off. Rails logs still go to their usual
-  # destination.
-  config.enable_logs = false
+  # Sentry Logs product stays off: forwarding every Rails.logger call to Sentry
+  # was burning through the 5GB monthly logs budget by day ~22. Errors and
+  # breadcrumbs still flow normally; only the structured "Logs" tab is off.
+  # Rails logs still go to their usual destination. (sentry-ruby 7 dropped
+  # config.enable_logs; logs only flow when Rails structured logging, the
+  # :logger patch or Sentry.logger is used, and none is. This says so.)
+  config.rails.structured_logging.enabled = false
 
   # There was a before_send here muting N+1 events that mentioned
   # solid_cache_entries. With performance monitoring off it had no N+1 events
