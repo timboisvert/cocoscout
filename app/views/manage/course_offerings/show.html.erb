@@ -214,53 +214,44 @@
     <% end %>
   </div>
 
+  <%# What you do with the students, in one bar under the numbers. %>
+  <%
+    registrant_people = @registrations.map(&:person).uniq(&:id)
+    contact_registrants_data = {
+      recipientType: "batch",
+      recipientName: "#{registrant_people.count} #{'registrant'.pluralize(registrant_people.count)}",
+      castMembers: registrant_people.map { |person| hv = person.safe_headshot_variant(:thumb); { id: person.id, name: person.name, headshot: hv ? url_for(hv) : nil } },
+      batchPersonIds: registrant_people.map(&:id)
+    }
+  %>
+  <% if registrant_people.any? %>
+    <script type="application/json" id="contact-registrants-data-<%= @course_offering.id %>"><%= contact_registrants_data.to_json.html_safe %></script>
+  <% end %>
+  <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 mb-6 flex flex-wrap items-center gap-2">
+    <% unless @course_offering.cancelled? || @course_offering.archived? %>
+      <%= render "shared/button", text: "Add a student", variant: "primary", size: "small", path: manage_new_course_offering_student_path(@course_offering) %>
+    <% end %>
+    <% if @registrations.any? %>
+      <%= render "shared/button", text: "Attendance", variant: "secondary", size: "small", path: manage_course_offering_attendance_path(@course_offering) %>
+      <%= render "shared/button", text: "Print roster", variant: "secondary", size: "small", path: manage_course_offering_roster_path(@course_offering), target: "_blank" %>
+      <%= render "shared/button", text: "Download CSV", variant: "secondary", size: "small", path: manage_course_offering_roster_path(@course_offering, format: :csv) %>
+    <% end %>
+    <% if registrant_people.any? %>
+      <%= render "shared/button", text: "Contact registrants", variant: "secondary", size: "small", type: :button,
+            data: { controller: "compose-message", action: "click->compose-message#openFromScript",
+                    compose_message_script_id_value: "contact-registrants-data-#{@course_offering.id}" } %>
+    <% end %>
+  </div>
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <%# Left Column - Registrations %>
     <div class="space-y-6">
 
       <%# Registrations %>
-      <%
-        registrant_people = @registrations.map(&:person).uniq(&:id)
-        registrant_people_data = registrant_people.map do |person|
-          hv = person.safe_headshot_variant(:thumb)
-          { id: person.id, name: person.name, headshot: hv ? url_for(hv) : nil }
-        end
-        contact_registrants_data = {
-          recipientType: "batch",
-          recipientName: "#{registrant_people.count} #{'registrant'.pluralize(registrant_people.count)}",
-          castMembers: registrant_people_data,
-          batchPersonIds: registrant_people.map(&:id)
-        }
-      %>
-      <% if registrant_people.any? %>
-        <script type="application/json" id="contact-registrants-data-<%= @course_offering.id %>"><%= contact_registrants_data.to_json.html_safe %></script>
-      <% end %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 class="text-sm font-medium text-gray-700">Registrations</h3>
-          <div class="flex items-center gap-3">
-            <% unless @course_offering.cancelled? || @course_offering.archived? %>
-              <%= render "shared/button", text: "Add a student", variant: "outline-pink", size: "small", path: manage_new_course_offering_student_path(@course_offering) %>
-            <% end %>
-            <% if @registrations.any? %>
-              <%= render "shared/button", text: "Attendance", variant: "secondary", size: "small", path: manage_course_offering_attendance_path(@course_offering) %>
-              <%= render "shared/button", text: "Roster", variant: "secondary", size: "small", path: manage_course_offering_roster_path(@course_offering), target: "_blank" %>
-              <%= render "shared/button", text: "CSV", variant: "secondary", size: "small", path: manage_course_offering_roster_path(@course_offering, format: :csv) %>
-            <% end %>
-            <% if registrant_people.any? %>
-              <%= render "shared/button",
-                text: "Contact Registrants",
-                variant: "secondary",
-                size: "small",
-                type: :button,
-                data: {
-                  controller: "compose-message",
-                  action: "click->compose-message#openFromScript",
-                  compose_message_script_id_value: "contact-registrants-data-#{@course_offering.id}"
-                } %>
-            <% end %>
-            <span class="text-sm text-gray-500"><%= @registrations.count %> total</span>
-          </div>
+          <span class="text-sm text-gray-500"><%= @registrations.count %> total</span>
         </div>
         <% if @registrations.any? %>
           <div class="divide-y divide-gray-200">
@@ -498,13 +489,15 @@
             </div>
           <% else %>
             <% if gross_revenue > 0 %>
+              <%# The fee actually taken on each registration: none on money paid by hand. %>
+              <% fee_cents = @course_offering.course_registrations.confirmed.sum(:cocoscout_fee_cents) %>
               <div class="flex justify-between text-sm">
-                <span class="text-gray-500">Platform Fee (<%= CourseRegistration::PLATFORM_FEE_PERCENTAGE.to_i %>%)</span>
-                <span class="text-gray-900">−<%= number_to_currency(gross_revenue * (CourseRegistration::PLATFORM_FEE_PERCENTAGE / 100.0) / 100.0) %></span>
+                <span class="text-gray-500">Platform Fee (<%= CourseRegistration::PLATFORM_FEE_PERCENTAGE.to_i %>% of card payments)</span>
+                <span class="text-gray-900">−<%= number_to_currency(fee_cents / 100.0) %></span>
               </div>
               <div class="flex justify-between text-sm border-t border-gray-100 pt-2">
                 <span class="font-medium text-gray-900">Est. Net to Organization</span>
-                <span class="font-bold text-gray-900"><%= number_to_currency(gross_revenue * ((100 - CourseRegistration::PLATFORM_FEE_PERCENTAGE) / 100.0) / 100.0) %></span>
+                <span class="font-bold text-gray-900"><%= number_to_currency((gross_revenue - fee_cents) / 100.0) %></span>
               </div>
               <div class="pt-2">
                 <%= form_with url: manage_course_offering_payout_calculate_path(@course_offering), method: :post do %>
