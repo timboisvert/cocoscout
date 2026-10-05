@@ -14,6 +14,8 @@
 #   ContractPayment      collected online: the processing passed on to the
 #                        theater, Stripe's processing (they cancel out)
 #   BillingInvoice       a paid Pro or usage bill
+#   OrgPayout            a theater paid by hand from CocoScout's bank: the
+#                        Stripe money its balance gave up is CocoScout's
 #   StripeBalanceTransaction
 #                        Stripe's own fees, payouts to CocoScout's bank, the
 #                        bank-debit fee on run funding and top-ups, the
@@ -28,11 +30,12 @@ class CocoScoutLedgerPoster
     "CourseRegistration" => %w[course_fee processing_cost course_refund],
     "ContractPayment" => %w[contract_processing processing_cost],
     "BillingInvoice" => %w[subscription usage],
+    "OrgPayout" => %w[paid_by_hand],
     "StripeBalanceTransaction" => %w[stripe_fee other_income payout_to_bank added_from_bank funding_cost processing_cost explained]
   }.freeze
 
   # Sources an OrgCashEntry can point at whose CocoScout share depends on it.
-  CASH_SOURCES = %w[TicketOrder TicketRefund CourseRegistration ContractPayment].freeze
+  CASH_SOURCES = %w[TicketOrder TicketRefund CourseRegistration ContractPayment OrgPayout].freeze
 
   def self.post_for!(record)
     return if record.nil?
@@ -60,7 +63,13 @@ class CocoScoutLedgerPoster
   def self.cash_entry_changed!(entry)
     return unless CASH_SOURCES.include?(entry.source_type)
 
-    post_for!(entry.source_type.constantize.find_by(id: entry.source_id))
+    record = entry.source_type.constantize.find_by(id: entry.source_id)
+    if record
+      post_for!(record)
+    else
+      # The record is gone (a hand payment deleted): so is CocoScout's share of it.
+      CocoScoutLedgerEntry.where(source_type: entry.source_type, source_id: entry.source_id).destroy_all
+    end
   end
 
   def self.entries_for(record)
@@ -70,6 +79,7 @@ class CocoScoutLedgerPoster
     when CourseRegistration then course_registration(record)
     when ContractPayment then contract_payment(record)
     when BillingInvoice then billing_invoice(record)
+    when OrgPayout then org_payout(record)
     when StripeBalanceTransaction then stripe_line(record)
     else {}
     end
@@ -128,10 +138,15 @@ class CocoScoutLedgerPoster
     { (invoice.kind == "usage" ? "usage" : "subscription") => invoice.amount_paid_cents.to_i }
   end
 
-  def self.stripe_line(row)
-    return { "explained" => row.net_cents } if row.match_status == "explained"
+  # CocoScout paid the theater from its own bank; the money the theater's
+  # balance gave up stays in Stripe, and it's CocoScout's.
+  def self.org_payout(payout)
+    debit = cash(payout, "adjustment")
+    debit.nil? ? {} : { "paid_by_hand" => -debit }
+  end
 
-    case row.category
+  def self.stripe_line(row)
+    entries = case row.category
     when "stripe_fee" then { "stripe_fee" => row.net_cents }
     when "other_income" then { "other_income" => row.net_cents }
     when "payout_to_bank" then { "payout_to_bank" => row.net_cents }
@@ -141,6 +156,13 @@ class CocoScoutLedgerPoster
     when "billing" then { "processing_cost" => -row.fee_cents }
     else {}
     end
+    return entries unless row.match_status == "explained"
+
+    # Explained by hand: a line nothing explained counts whole; a line whose
+    # amount disagreed with its record counts only the difference (the record
+    # already posts its own amount).
+    explained = row.matched_id && row.expected_cents ? row.amount_cents - row.expected_cents : row.net_cents
+    entries.merge("explained" => explained)
   end
 
   def self.occurred_at_for(record)
@@ -161,10 +183,11 @@ class CocoScoutLedgerPoster
     when CourseRegistration then "Course registration ##{record.id}"
     when ContractPayment then "Contract payment ##{record.id}"
     when BillingInvoice then [ record.label, record.number ].compact.join(" ")
+    when OrgPayout then "Paid #{record.organization&.name} by hand (payout ##{record.id})"
     when StripeBalanceTransaction then record.description.presence || record.category_label
     end
   end
 
   private_class_method :entries_for, :cash, :ticket_order, :ticket_refund, :course_registration, :contract_payment,
-                       :billing_invoice, :stripe_line, :occurred_at_for, :description_for
+                       :billing_invoice, :org_payout, :stripe_line, :occurred_at_for, :description_for
 end

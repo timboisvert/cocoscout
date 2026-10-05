@@ -40,6 +40,11 @@ class StripeTransactionMatcher
     refs = row.refs || {}
     case row.reporting_category
     when "charge" then charge(refs)
+    # A bank debit that bounced: tied to the same record, so the two lines
+    # cancel. Its amount is the charge's, negated, so it isn't checked.
+    when "charge_failure"
+      category, record, = charge(refs)
+      [ category, record, nil ]
     when "refund" then refund(row, refs)
     when "transfer" then transfer(row.source_id, row.amount_cents)
     when "transfer_reversal" then reversal(refs)
@@ -70,11 +75,11 @@ class StripeTransactionMatcher
         return [ "run_funding", batch, funded ]
       end
       if (invoice = BillingInvoice.find_by(stripe_payment_intent_id: pi))
-        return [ "billing", invoice, invoice.amount_paid_cents ]
+        return [ "billing", invoice, invoice.amount_due_cents ]
       end
     end
     if refs["invoice"].present? && (invoice = BillingInvoice.find_by(stripe_invoice_id: refs["invoice"]))
-      return [ "billing", invoice, invoice.amount_paid_cents ]
+      return [ "billing", invoice, invoice.amount_due_cents ]
     end
     [ "unknown", nil, nil ]
   end

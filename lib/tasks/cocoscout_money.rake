@@ -34,8 +34,13 @@ namespace :cocoscout_ledger do
     puts "Imported Stripe lines:    #{fmt.call(c['imported_net_cents'])}#{' (import incomplete)' unless c['details']['import_complete']}"
     puts "Held for theaters:        #{fmt.call(c['held_for_orgs_cents'])}"
     puts "CocoScout's own:          #{fmt.call(c['cocoscout_cents'])}"
+    puts "On its way in:            #{fmt.call(c['details']['in_transit_cents'])}"
+    (c["details"]["in_transit"] || []).each { |row| puts "    #{row['label']} (#{row['organization']}) #{fmt.call(row['cents'])}" }
     puts "Difference:               #{fmt.call(c['difference_cents'])}"
     puts "Unmatched Stripe lines:   #{c['unmatched_count']}, amounts that disagree: #{c['mismatch_count']}, ours missing from Stripe: #{c['details']['missing_count']}"
+    StripeBalanceTransaction.needs_a_look.order(:occurred_at).each do |line|
+      puts "    #{line.occurred_at.to_date} #{line.category} #{line.match_status} #{line.matched_type}##{line.matched_id} Stripe #{fmt.call(line.amount_cents)} ours #{fmt.call(line.expected_cents)}"
+    end
     puts
     puts dry_run ? "Nothing was kept." : "Posted. Review the Stripe check page, then record the opening difference there (or cocoscout_ledger:opening_difference[post])."
   end

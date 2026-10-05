@@ -27,6 +27,7 @@ class CocoScoutLedgerEntry < ApplicationRecord
     "stripe_fee" => [ "Other Stripe fees (Connect, Billing)", :cost ],
     "payout_to_bank" => [ "Sent to CocoScout's bank", :bank ],
     "added_from_bank" => [ "Added from CocoScout's bank", :bank ],
+    "paid_by_hand" => [ "Theaters paid by hand from our bank", :bank ],
     "opening_difference" => [ "Opening difference", :adjustment ],
     "explained" => [ "Explained by hand", :adjustment ]
   }.freeze

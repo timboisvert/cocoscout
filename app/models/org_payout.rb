@@ -14,6 +14,13 @@ class OrgPayout < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :payout_type, inclusion: { in: PAYOUT_TYPES }
 
+  # A payment recorded by hand in superadmin (paid_by_user set) was CocoScout
+  # paying the theater outside Stripe: what CocoScout holds for it goes down
+  # by that much (and CocoScout's ledger takes the Stripe money it leaves
+  # behind, via the cash entry). Payouts a course run made have no
+  # paid_by_user: that money left by transfer, already on the ledger.
+  after_commit :sync_cash_entry
+
   scope :pending, -> { where(status: "pending") }
   scope :paid, -> { where(status: "paid") }
   scope :for_course, ->(course_offering) { where(course_offering: course_offering) }
@@ -28,6 +35,10 @@ class OrgPayout < ApplicationRecord
 
   def mark_paid!(user:)
     update!(status: "paid", paid_at: Time.current, paid_by_user: user)
+  end
+
+  def paid_by_hand?
+    paid? && paid_by_user_id.present?
   end
 
   def formatted_amount
@@ -72,5 +83,16 @@ class OrgPayout < ApplicationRecord
 
   def self.balance_cents_for_course(course_offering)
     owed_cents_for_course(course_offering) - paid_cents_for_course(course_offering)
+  end
+
+  private
+
+  def sync_cash_entry
+    if destroyed? || !paid_by_hand?
+      OrgCashEntry.unpost!(source: self, entry_type: "adjustment")
+    else
+      OrgCashEntry.post!(organization: organization, entry_type: "adjustment", amount_cents: -amount_cents, source: self,
+                         description: "Org payout ##{id} settled outside Stripe", occurred_at: paid_at || updated_at)
+    end
   end
 end

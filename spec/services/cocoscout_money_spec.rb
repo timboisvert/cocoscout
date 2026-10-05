@@ -61,7 +61,7 @@ RSpec.describe "CocoScout's money" do
     withdrawal = org.balance_withdrawals.create!(amount_cents: 1_000, status: "sent", stripe_transfer_id: "tr_withdraw")
     OrgCashEntry.post!(organization: org, entry_type: "transfer", amount_cents: -1_000, source: withdrawal, description: "Withdrawal")
     org.update!(stripe_customer_id: "cus_org")
-    BillingInvoice.create!(organization: org, stripe_invoice_id: "in_pro", kind: "pro", status: "paid", amount_paid_cents: 2_000,
+    BillingInvoice.create!(organization: org, stripe_invoice_id: "in_pro", kind: "pro", status: "paid", amount_due_cents: 2_000, amount_paid_cents: 2_000,
                            stripe_payment_intent_id: "pi_pro", paid_at: Time.current)
 
     lines = [
@@ -114,6 +114,54 @@ RSpec.describe "CocoScout's money" do
     StripeBalanceTransaction.import!(line("txn_x", type: "charge", category: "charge", amount: order.total_cents + 1, fee: 152,
                                           source: { id: "ch_x", object: "charge", payment_intent: "pi_tickets" }))
     expect(StripeBalanceTransaction.find_by(stripe_id: "txn_x").match_status).to eq("mismatch")
+  end
+
+  it "counts a bank debit Stripe shows before it lands as on its way in, and drops one that bounced" do
+    org.update!(stripe_customer_id: "cus_sg", funding_payment_method_id: "pm_bank", funding_payment_method_type: "us_bank_account")
+    batch = org.payout_batches.create!(kind: "payout", status: "funding", trigger: "manual", funding_status: "processing",
+                                       funding_payment_intent_id: "pi_run", total_cents: 205_873)
+    funding = line("txn_run", type: "payment", category: "charge", amount: 205_873, fee: 500, source: { id: "py_run", object: "charge", payment_intent: "pi_run" })
+    StripeBalanceTransaction.import!(funding)
+    stripe_balance(funding.net)
+
+    row = PlatformReconciliationCheck.run!
+    expect([ row.difference_cents, row.details["in_transit_cents"] ]).to eq([ 0, 205_873 ])
+    expect(row.details["in_transit"].sole).to include("label" => "Payout run ##{batch.id}: bank debit on its way")
+    expect(row).to be_clean
+
+    # It lands: the theater is credited and nothing is on its way any more.
+    allow(PayoutBatchService).to receive(:process!)
+    PayoutBatchService.advance_funding!(batch, "succeeded", funded_cents: 205_873)
+    row = PlatformReconciliationCheck.run!
+    expect([ row.difference_cents, row.details["in_transit_cents"] ]).to eq([ 0, 0 ])
+
+    # Another run whose debit bounced: Stripe's failure line cancels its charge.
+    bounced = org.payout_batches.create!(kind: "payout", status: "failed", trigger: "manual", funding_status: "failed",
+                                         funding_payment_intent_id: "pi_bounce", total_cents: 10_000)
+    StripeBalanceTransaction.import!(line("txn_b1", type: "payment", category: "charge", amount: 10_000, fee: 80, source: { id: "py_b", object: "charge", payment_intent: "pi_bounce" }))
+    StripeBalanceTransaction.import!(line("txn_b2", type: "payment_failure_refund", category: "charge_failure", amount: -10_000, source: { id: "py_b", object: "charge", payment_intent: "pi_bounce" }))
+    expect(StripeBalanceTransaction.where(matched: bounced).pluck(:match_status)).to eq(%w[matched matched])
+    stripe_balance(funding.net - 80)
+    expect(PlatformReconciliationCheck.run!.difference_cents).to eq(0)
+  end
+
+  it "takes the Stripe money a theater's balance gave up when CocoScout paid it by hand" do
+    payout = OrgPayout.create!(organization: org, amount_cents: 45_000, payment_method: "check", payout_type: "custom",
+                               status: "paid", paid_at: Time.current, paid_by_user: create(:user))
+    expect(OrgCashEntry.find_by(source: payout).amount_cents).to eq(-45_000)
+    expect(ours("paid_by_hand")).to eq(45_000)
+
+    payout.destroy!
+    expect(OrgCashEntry.where(source_type: "OrgPayout")).to be_empty
+    expect(ours("paid_by_hand")).to eq(0)
+  end
+
+  it "counts only the difference when a mismatched line is explained" do
+    order = sell_two_tickets
+    StripeBalanceTransaction.import!(line("txn_m", type: "charge", category: "charge", amount: order.total_cents + 500, fee: 152,
+                                          source: { id: "ch_m", object: "charge", payment_intent: "pi_tickets" }))
+    StripeBalanceTransaction.find_by(stripe_id: "txn_m").explain!(note: "Price changed after the sale", by: create(:user))
+    expect(ours("explained")).to eq(500)
   end
 
   it "gives back the fees a ticket refund returned to the buyer" do

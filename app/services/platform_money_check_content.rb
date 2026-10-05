@@ -12,7 +12,8 @@ class PlatformMoneyCheckContent
     findings = []
     money = ->(cents) { number_to_currency(cents.to_i / 100.0) }
     if row.difference_cents.to_i.nonzero?
-      findings << "Stripe holds #{money.call(row.stripe_balance_cents)}; our records account for #{money.call(row.held_for_orgs_cents + row.cocoscout_cents)}. Difference: #{money.call(row.difference_cents)}."
+      accounted = row.held_for_orgs_cents + row.cocoscout_cents + row.details["in_transit_cents"].to_i
+      findings << "Stripe holds #{money.call(row.stripe_balance_cents)}; our records account for #{money.call(accounted)}. Difference: #{money.call(row.difference_cents)}."
     end
     findings << "Stripe's balance isn't fully imported yet." unless row.details.fetch("import_complete", true)
     findings << "#{row.unmatched_count} Stripe #{'line'.pluralize(row.unmatched_count)} nothing in CocoScout explains." if row.unmatched_count.positive?

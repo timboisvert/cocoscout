@@ -142,9 +142,13 @@ class OrgCashEntry < ApplicationRecord
       source_id: source.id,
       entry_type: entry_type
     )
-    # delete_all skips callbacks, so the books are told here.
+    # delete_all skips callbacks, so the books and CocoScout's own ledger
+    # (whose share of a payment is what the theater wasn't credited) are
+    # told here.
     rows.each { |row| BooksPoster.remove!(row) }
-    rows.delete_all
+    count = rows.delete_all
+    CocoScoutLedgerPoster.post_for!(source) if CocoScoutLedgerPoster::CASH_SOURCES.include?(source.class.name)
+    count
   end
 
   # Serialize all balance mutations for one org (cross-org never contends).

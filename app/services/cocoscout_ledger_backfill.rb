@@ -13,6 +13,7 @@ class CocoScoutLedgerBackfill
     "course registrations" => -> { CourseRegistration.where.not(stripe_payment_intent_id: nil) },
     "contract payments" => -> { ContractPayment.where.not(stripe_checkout_session_id: nil) },
     "bills" => -> { BillingInvoice.all },
+    "theaters paid by hand" => -> { OrgPayout.where(status: "paid").where.not(paid_by_user_id: nil) },
     "Stripe lines" => -> { StripeBalanceTransaction.all }
   }.freeze
 
