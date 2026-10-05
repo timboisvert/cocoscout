@@ -73,6 +73,15 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(PlatformReconciliation.latest).to be_clean
     end
 
+    it "names the record a mismatched line belongs to" do
+      registration = create(:course_registration, course_offering: course_offering, amount_cents: 7_000, status: "confirmed", stripe_payment_intent_id: "pi_m")
+      StripeBalanceTransaction.create!(stripe_id: "txn_m", txn_type: "charge", reporting_category: "charge", amount_cents: 7_500, net_cents: 7_500,
+                                       occurred_at: Time.current, category: "course_registration", match_status: "mismatch",
+                                       matched: registration, expected_cents: 7_000)
+      get finances_stripe_check_path
+      expect(response.body).to include("Course registration ##{registration.id}: amount disagrees (ours $70.00)")
+    end
+
     it "redirects non-superadmins" do
       sign_in_as_regular
       get finances_path
