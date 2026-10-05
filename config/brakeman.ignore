@@ -203,7 +203,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/my/contracts_controller.rb",
-      "line": 104,
+      "line": 122,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:financials, {}).permit!",
       "render_path": null,
@@ -325,7 +325,7 @@
           "type": "controller",
           "class": "Manage::CourseSettingsController",
           "method": "show",
-          "line": 21,
+          "line": 22,
           "file": "app/controllers/manage/course_settings_controller.rb",
           "rendered": {
             "name": "manage/course_settings/show",
@@ -341,6 +341,29 @@
       "confidence": "Medium",
       "cwe_id": [
         22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "9dd4a05c6600af4b68addfbec620f700240cd4a3ce9ad5d6c5907f3245925601",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/manage/course_offerings_controller.rb",
+      "line": 480,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:attended, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Manage::CourseOfferingsController",
+        "method": "save_attendance"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
       ],
       "note": ""
     },
