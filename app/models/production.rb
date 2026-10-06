@@ -311,6 +311,10 @@ class Production < ApplicationRecord
       timestamps << posters.maximum(:updated_at)
     end
 
+    # Tickets: a date going on sale or selling out changes the page's Get tickets.
+    timestamps << TicketListing.where(production_id: id).maximum(:updated_at)
+    timestamps << TicketingProfile.where(organization_id: organization_id).maximum(:updated_at)
+
     # Include show updates for upcoming shows
     upcoming = shows.where("date_and_time > ?", Time.current)
     if upcoming.any?

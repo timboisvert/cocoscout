@@ -1,4 +1,6 @@
 <% content_for :title, "Shows & Events" %>
+<%# Where each show's tickets are, worked out once for the whole list (TicketLink). %>
+<% ticket_links = TicketLink.for_all(@shows.to_a) %>
 
 <%
   shows_actions = [
@@ -151,7 +153,8 @@
           show_production: true,
           show_event_type: true,
           right_panel: right_panel_type,
-          cast_summary: cast_summary
+          cast_summary: cast_summary,
+          ticket_link: ticket_links[show.id]
         } %>
       <% end %>
     </div>

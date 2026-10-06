@@ -1,4 +1,14 @@
 <% content_for :title, @production.name %>
+<%
+  # Where this production's tickets are (TicketLink): a Get tickets button in
+  # the hero, and a chip on every date. Only what the public may see.
+  ticket_links = TicketLink.for_all(@upcoming_shows, public: true)
+  production_ticket_url = if ticket_links.values.any?(&:cocoscout?)
+    short_link_url(code: ShortLink.canonical_for!(@production).code)
+  elsif @production.tickets_mode == "elsewhere" && @production.tickets_url.present?
+    @production.tickets_url
+  end
+%>
 
 <div class="w-full bg-gradient-to-b from-gray-50 to-white min-h-screen">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -29,8 +39,11 @@
             </div>
 
             <%# Name - Right Side %>
-            <div class="flex-1 p-6 sm:p-8 flex items-center">
+            <div class="flex-1 p-6 sm:p-8 flex flex-col justify-center gap-4">
               <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 inter-bold leading-tight"><%= @production.name %></h1>
+              <% if production_ticket_url %>
+                <div><%= render "shared/button", text: "Get tickets", variant: "primary", size: "large", path: production_ticket_url, target: "_blank", rel: "noopener" %></div>
+              <% end %>
             </div>
           </div>
         </div>
@@ -47,6 +60,9 @@
             <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 inter-bold leading-tight"><%= @production.name %></h1>
           </div>
         </div>
+        <% if production_ticket_url %>
+          <div class="mt-5"><%= render "shared/button", text: "Get tickets", variant: "primary", size: "large", path: production_ticket_url, target: "_blank", rel: "noopener" %></div>
+        <% end %>
       </div>
     <% end %>
 
@@ -126,7 +142,8 @@
 
     <%# Upcoming Shows Section %>
     <% if @upcoming_shows.any? %>
-      <% shows_cache_key = ["production_shows_v2", @production.id, @upcoming_shows.map(&:updated_at).max] %>
+      <% shows_cache_key = ["production_shows_v3", @production.id, @upcoming_shows.map(&:updated_at).max, @production.tickets_mode, @production.tickets_url,
+                            TicketListing.where(show_id: @upcoming_shows.map(&:id)).maximum(:updated_at), TicketingProfile.for(@production.organization).enabled?] %>
       <% cache shows_cache_key do %>
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
           <div class="px-6 py-4 border-b border-gray-100">
@@ -137,7 +154,8 @@
               <%= render partial: "shared/show_row", locals: {
                 show: show,
                 link_path: public_profile_show_path(@production.public_key, show.id),
-                show_location: true
+                show_location: true,
+                ticket_link: ticket_links[show.id]
               } %>
             <% end %>
           </div>

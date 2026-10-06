@@ -91,6 +91,19 @@
       </div>
     </div>
 
+    <%# Tickets (TicketLink): where to buy, before the show's own links. %>
+    <% ticket_link = TicketLink.for(@show, public: true) %>
+    <% unless ticket_link.none? %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6 p-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">Tickets</h2>
+          <p class="text-sm text-gray-600 mt-0.5"><%= ticket_link.cocoscout? ? (ticket_link.state == :on_sale ? "On sale now." : ticket_link.label) : "Sold on #{ticket_link.site || 'another site'}." %></p>
+        </div>
+        <%= render "shared/button", text: (ticket_link.state == :on_sale || ticket_link.outside? ? "Get tickets" : ticket_link.label), variant: "primary", size: "large",
+              path: ticket_link.url, target: "_blank", rel: "noopener" %>
+      </div>
+    <% end %>
+
     <%# Show Links Section %>
     <% if @show.show_links.any? %>
       <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">

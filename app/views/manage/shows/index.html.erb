@@ -1,4 +1,6 @@
 <% content_for :title, "Shows - #{@production.name}" %>
+<%# Where each show's tickets are, worked out once for the whole list (TicketLink). %>
+<% ticket_links = TicketLink.for_all(@shows.to_a) %>
 
 <div class="w-full" data-turbo-cache="false">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
@@ -84,7 +86,8 @@
           show_location: true,
           show_event_type: true,
           right_panel: is_third_party ? :rental_services : :cast_summary,
-          cast_summary: is_third_party ? nil : cast_summary
+          cast_summary: is_third_party ? nil : cast_summary,
+          ticket_link: ticket_links[show.id]
         } %>
       <% end %>
     </div>

@@ -27,6 +27,8 @@
 
   # Sort rows by show date
   sorted_rows = show_rows.sort_by { |row| row[:show].date_and_time }
+  # Where each show's tickets are (what the public can see), once for the list.
+  ticket_links = TicketLink.for_all(sorted_rows.map { |row| row[:show] }, public: true)
 %>
 
 <div class="space-y-1" data-controller="linked-highlight">
@@ -89,7 +91,8 @@
       right_panel: right_panel_type,
       show_cant_make_it: row_show_cant_make_it,
       cant_make_it_person: row_cant_make_it_person,
-      my_vacancies: my_vacancies
+      my_vacancies: my_vacancies,
+      ticket_link: ticket_links[show.id]
     } %>
   <% end %>
 </div>
