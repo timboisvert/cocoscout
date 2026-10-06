@@ -333,3 +333,29 @@ RSpec.describe UsageRules do
     expect(StaffActivation.for_month(Date.new(2026, 9, 1)).pluck(:person_id)).to eq([ ruby.id ])
   end
 end
+
+RSpec.describe UsageOverbilling do
+  let(:org) { create(:organization, :pro, stripe_customer_id: "cus_sg") }
+  let(:role) { create(:house_role, organization: org, name: "Booth Tech", pay_type: "hourly") }
+  let(:phoebe) { create(:person, name: "Phoebe Davis") }
+
+  it "works out what a bill should have been, and gives back the difference on that bill" do
+    create(:organization_staff_member, organization: org, person: phoebe, hourly_rate_cents: 2_000)
+    shift = Shift.create!(organization: org, house_role: role, starts_at: Time.zone.local(2026, 9, 12, 18), ends_at: Time.zone.local(2026, 9, 12, 22))
+    shift.shift_assignments.create!(person: phoebe)
+    bill = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_sep", number: "SG-0002", kind: "usage", status: "paid",
+                                  amount_due_cents: 20_100, amount_paid_cents: 20_100,
+                                  period_start: Time.zone.local(2026, 8, 30), period_end: Time.zone.local(2026, 9, 30))
+    allow(Stripe::Invoice).to receive(:retrieve).with("in_sep").and_return(Stripe::Invoice.construct_from(id: "in_sep", post_payment_credit_notes_amount: 0))
+
+    row = described_class.rows(org).sole
+    expect([ row.invoice, row.month, row.staff, row.performers, row.owed_cents, row.over_cents ])
+      .to eq([ bill, Date.new(2026, 9, 1), 1, 0, 500, 19_600 ])
+
+    expect(Stripe::CreditNote).to receive(:create)
+      .with(hash_including(invoice: "in_sep", refund_amount: 19_600, lines: [ hash_including(unit_amount: 19_600, quantity: 1) ]),
+            hash_including(idempotency_key: "usage-overbilled-in_sep-19600"))
+      .and_return(Stripe::CreditNote.construct_from(id: "cn_1"))
+    described_class.give_back!(row, how: "refund")
+  end
+end

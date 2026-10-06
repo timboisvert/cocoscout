@@ -76,3 +76,28 @@ namespace :usage do
     puts "Stripe already counted what was sent to it; the usage bill is corrected to these counts when Stripe drafts it." if changes.any? { |c| c.removed.any? }
   end
 end
+
+namespace :usage do
+  desc "Usage bills charged more than the rule allows, and give it back. Dry run: usage:overbilled[ORG_ID]; then [ORG_ID,refund] or [ORG_ID,credit]."
+  task :overbilled, [ :org_id, :how ] => :environment do |_t, args|
+    organization = Organization.find(args[:org_id])
+    how = args[:how]
+    fmt = ->(cents) { format("$%.2f", cents / 100.0) }
+    puts how ? "GIVING BACK the overcharges as a #{how}." : "DRY RUN for #{organization.name}: nothing is changed."
+    rows = UsageOverbilling.rows(organization)
+    BillingInvoice.where(organization: organization, kind: "usage").where.not(status: "paid").each do |open|
+      puts "#{open.number}: #{open.status_label.downcase}; run again once it's paid."
+    end
+    rows.each do |row|
+      puts "#{row.invoice.number} covers #{row.month.strftime('%B %Y')}: charged #{fmt.call(row.charged_cents)}" \
+           "#{", already credited #{fmt.call(row.credited_cents)}" if row.credited_cents.positive?}; " \
+           "owed #{fmt.call(row.owed_cents)} (#{row.staff} staff × $5, #{row.performers} performers × $3); overcharged #{fmt.call(row.over_cents)}"
+      next unless how && row.over_cents.positive?
+
+      note = UsageOverbilling.give_back!(row, how: how)
+      puts "  credit note #{note.id} for #{fmt.call(row.over_cents)} (#{how})"
+    end
+    total = rows.sum(&:over_cents)
+    puts "Overcharged in all: #{fmt.call(total)}."
+  end
+end
