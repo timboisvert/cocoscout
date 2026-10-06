@@ -15,12 +15,14 @@
 class TicketOrderSettlement
   class SeatsGone < StandardError; end
 
-  def self.settle!(order, payment_intent_id: nil, charge_id: nil)
+  # seats_checked: a purchase already made sure every order's seats are still
+  # there (TicketPurchaseSettlement), so a late payment never splits it.
+  def self.settle!(order, payment_intent_id: nil, charge_id: nil, seats_checked: false)
     settled = false
     order.with_lock do
       next if order.paid? || %w[refunded canceled exchanged].include?(order.status)
 
-      ensure_seats_still_free!(order) if order.hold_expired? || order.status == "expired"
+      ensure_seats_still_free!(order) if !seats_checked && (order.hold_expired? || order.status == "expired")
       order.told_current_show!
       order.update!(status: "paid", paid_at: Time.current, expires_at: nil,
                     stripe_payment_intent_id: payment_intent_id || order.stripe_payment_intent_id,
@@ -91,9 +93,13 @@ class TicketOrderSettlement
 
   # Seats count as free again once a hold runs out; this order's own tickets
   # are still "reserved", so check the room without them.
-  def self.ensure_seats_still_free!(order)
+  def self.seats_still_free?(order)
     requests = order.tickets.includes(:ticket_tier).group_by(&:ticket_tier).transform_values(&:size)
-    raise SeatsGone unless order.ticket_listing.inventory.fits?(requests)
+    order.ticket_listing.inventory.fits?(requests)
+  end
+
+  def self.ensure_seats_still_free!(order)
+    raise SeatsGone unless seats_still_free?(order)
   end
 
   def self.refund_late_payment!(order, payment_intent_id)

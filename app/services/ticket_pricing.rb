@@ -49,6 +49,22 @@ class TicketPricing
               org_net_cents: total - processing - platform, paid_ticket_count: paid)
   end
 
+  # Cents shared across parts in proportion to their weights, the leftover
+  # cents going to the largest remainders, so the parts always add up: how a
+  # purchase's processing and buyer-paid fees land on each show's order.
+  def self.share(cents, weights)
+    return [] if weights.empty?
+
+    total = weights.sum
+    return [ cents ] + Array.new(weights.size - 1, 0) if total.zero?
+
+    exact = weights.map { |weight| Rational(cents * weight, total) }
+    parts = exact.map(&:floor)
+    order = exact.each_with_index.sort_by { |value, index| [ -(value - value.floor), index ] }.map(&:last)
+    order.first(cents - parts.sum).each { |index| parts[index] += 1 }
+    parts
+  end
+
   # Stripe's cut of a charge, rounded half up.
   def self.processing_cents(total_cents)
     ((total_cents * PROCESSING_PER_MILLE) + 500) / 1000 + PROCESSING_FIXED_CENTS

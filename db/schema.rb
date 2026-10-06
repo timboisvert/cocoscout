@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_170200) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3451,6 +3451,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_170200) do
     t.bigint "ticket_channel_id"
     t.bigint "ticket_discount_code_id"
     t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_purchase_id"
     t.string "token", null: false
     t.bigint "told_location_id"
     t.bigint "told_location_space_id"
@@ -3471,6 +3472,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_170200) do
     t.index ["ticket_discount_code_id"], name: "index_ticket_orders_on_ticket_discount_code_id"
     t.index ["ticket_listing_id", "status"], name: "index_ticket_orders_on_ticket_listing_id_and_status"
     t.index ["ticket_listing_id"], name: "index_ticket_orders_on_ticket_listing_id"
+    t.index ["ticket_purchase_id"], name: "index_ticket_orders_on_ticket_purchase_id"
     t.index ["token"], name: "index_ticket_orders_on_token", unique: true
     t.index ["user_id"], name: "index_ticket_orders_on_user_id"
   end
@@ -3487,6 +3489,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_170200) do
     t.boolean "taxable", default: true, null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_ticket_products_on_organization_id"
+  end
+
+  create_table "ticket_purchases", force: :cascade do |t|
+    t.integer "buyer_fee_cents", default: 0, null: false
+    t.string "channel", default: "online", null: false
+    t.datetime "created_at", null: false
+    t.integer "discount_cents", default: 0, null: false
+    t.datetime "expires_at"
+    t.integer "org_net_cents", default: 0, null: false
+    t.bigint "organization_id", null: false
+    t.datetime "paid_at"
+    t.integer "platform_fee_cents", default: 0, null: false
+    t.integer "processing_cents", default: 0, null: false
+    t.string "status", default: "pending", null: false
+    t.string "stripe_charge_id"
+    t.string "stripe_payment_intent_id"
+    t.integer "subtotal_cents", default: 0, null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.string "token", null: false
+    t.integer "total_cents", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at"], name: "index_ticket_purchases_on_expires_at", where: "((status)::text = 'pending'::text)"
+    t.index ["organization_id"], name: "index_ticket_purchases_on_organization_id"
+    t.index ["stripe_payment_intent_id"], name: "index_ticket_purchases_on_stripe_payment_intent_id", unique: true, where: "(stripe_payment_intent_id IS NOT NULL)"
+    t.index ["token"], name: "index_ticket_purchases_on_token", unique: true
   end
 
   create_table "ticket_refunds", force: :cascade do |t|
@@ -4127,9 +4154,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_170200) do
   add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
   add_foreign_key "ticket_orders", "ticket_listings"
   add_foreign_key "ticket_orders", "ticket_orders", column: "exchanged_from_id"
+  add_foreign_key "ticket_orders", "ticket_purchases"
   add_foreign_key "ticket_orders", "users", column: "issued_by_id", on_delete: :nullify
   add_foreign_key "ticket_orders", "users", on_delete: :nullify
   add_foreign_key "ticket_products", "organizations"
+  add_foreign_key "ticket_purchases", "organizations"
   add_foreign_key "ticket_refunds", "organizations"
   add_foreign_key "ticket_refunds", "ticket_orders"
   add_foreign_key "ticket_refunds", "users", column: "refunded_by_id", on_delete: :nullify

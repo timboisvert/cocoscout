@@ -71,7 +71,7 @@ class TicketCheckoutsController < ApplicationController
     TicketCheckout.set_items!(@order, requested_products)
     @order.reload
     render json: {
-      total_cents: @order.total_cents,
+      total_cents: payable.reload.total_cents,
       summary_html: render_to_string(partial: "ticket_checkouts/summary", formats: [ :html ], locals: { order: @order }),
       items: @order.ticket_order_items.to_h { |item| [ item.ticket_product_id.to_s, item.quantity ] }
     }
@@ -97,9 +97,14 @@ class TicketCheckoutsController < ApplicationController
       return render(json: { error: message }, status: :unprocessable_content)
     end
     @order.save!
+    # Every show's order in the checkout belongs to the same buyer.
+    if @purchase
+      @purchase.ticket_orders.where.not(id: @order.id).update_all(buyer_name: @order.buyer_name, buyer_email: @order.buyer_email,
+                                                                  buyer_phone: @order.buyer_phone, updated_at: Time.current)
+    end
 
-    if @order.total_cents.zero?
-      TicketOrderSettlement.settle!(@order)
+    if payable.total_cents.zero?
+      settle!
       return render(json: { redirect: tickets_order_path(token: @order.token, **embed_params) })
     end
 
@@ -112,10 +117,10 @@ class TicketCheckoutsController < ApplicationController
   # Stripe sends the buyer back here. The webhook is the source of truth, but
   # settle now too so the page tells the truth straight away.
   def done
-    if @order.stripe_payment_intent_id.present? && !@order.paid?
-      intent = Stripe::PaymentIntent.retrieve(@order.stripe_payment_intent_id)
+    if intent_id.present? && !@order.paid?
+      intent = Stripe::PaymentIntent.retrieve(intent_id)
       if intent.status == "succeeded"
-        TicketOrderSettlement.settle!(@order, payment_intent_id: intent.id, charge_id: intent.latest_charge)
+        settle!(payment_intent_id: intent.id, charge_id: intent.latest_charge)
       elsif intent.status == "requires_payment_method"
         return redirect_to(tickets_checkout_path(token: @order.token, **embed_params), alert: "That payment didn't go through. Please try another way to pay.")
       end
@@ -148,7 +153,27 @@ class TicketCheckoutsController < ApplicationController
     @order = TicketOrder.includes(ticket_listing: [ :organization, { show: %i[location location_space] } ], tickets: :ticket_tier)
                         .find_by!(token: params[:token])
     @listing = @order.ticket_listing
+    @purchase = @order.ticket_purchase
     @ticketing_profile = TicketingProfile.for(@listing.organization)
+  end
+
+  # What the buyer pays for: the whole checkout, or (an order from before
+  # checkouts held several shows) the order alone.
+  def payable
+    @purchase || @order
+  end
+
+  # The checkout's PaymentIntent (its first order carries the id too).
+  def intent_id
+    payable.stripe_payment_intent_id.presence || @order.stripe_payment_intent_id
+  end
+
+  def settle!(payment_intent_id: nil, charge_id: nil)
+    if @purchase
+      TicketPurchaseSettlement.settle!(@purchase, payment_intent_id: payment_intent_id, charge_id: charge_id)
+    else
+      TicketOrderSettlement.settle!(@order, payment_intent_id: payment_intent_id, charge_id: charge_id)
+    end
   end
 
   # One PaymentIntent per order, reused if the buyer tries again, re-priced if
@@ -166,16 +191,17 @@ class TicketCheckoutsController < ApplicationController
   end
 
   def payment_intent
-    if @order.stripe_payment_intent_id.present?
-      intent = Stripe::PaymentIntent.retrieve(@order.stripe_payment_intent_id)
-      return intent if intent.amount == @order.total_cents && intent.status != "canceled"
+    if intent_id.present?
+      intent = Stripe::PaymentIntent.retrieve(intent_id)
+      return intent if intent.amount == payable.total_cents && intent.status != "canceled"
     end
 
     metadata = { type: "ticket_order", ticket_order_id: @order.id, ticket_order_code: @order.code,
                  organization_id: @order.organization_id, ticket_listing_id: @listing.id }
+    metadata = metadata.merge(type: "ticket_purchase", ticket_purchase_id: @purchase.id) if @purchase
     intent = Stripe::PaymentIntent.create(
       {
-        amount: @order.total_cents,
+        amount: payable.total_cents,
         currency: "usd",
         automatic_payment_methods: { enabled: true },
         description: "#{@listing.display_title} · #{@listing.organization.name}".first(250),
@@ -183,9 +209,12 @@ class TicketCheckoutsController < ApplicationController
         # Segregates each org's money flows Stripe-side, like the cash ledger.
         transfer_group: "org_#{@order.organization_id}"
       },
-      { idempotency_key: "ticket-order-#{@order.id}-#{@order.total_cents}" }
+      { idempotency_key: @purchase ? "ticket-purchase-#{@purchase.id}-#{@purchase.total_cents}" : "ticket-order-#{@order.id}-#{@order.total_cents}" }
     )
-    @order.update!(stripe_payment_intent_id: intent.id)
+    # The first order carries the payment's id too, so everything that finds
+    # an order by its payment still does.
+    (@purchase&.primary_order || @order).update!(stripe_payment_intent_id: intent.id)
+    @purchase&.update!(stripe_payment_intent_id: intent.id)
     intent
   end
 

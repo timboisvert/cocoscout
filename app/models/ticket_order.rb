@@ -26,6 +26,8 @@ class TicketOrder < ApplicationRecord
 
   belongs_to :organization
   belongs_to :ticket_listing
+  # The checkout this order was paid in, with any other shows bought with it.
+  belongs_to :ticket_purchase, optional: true, inverse_of: :ticket_orders
   belongs_to :ticket_discount_code, optional: true
   # The short link (cocoscout.com/t/CODE) that brought the buyer, if one did.
   belongs_to :short_link, optional: true
@@ -74,7 +76,7 @@ class TicketOrder < ApplicationRecord
   # The payment behind this order. Tickets moved to another date ride the
   # original order's payment, so refunds go back through it.
   def payment_intent_id
-    stripe_payment_intent_id || exchanged_from&.payment_intent_id
+    stripe_payment_intent_id || ticket_purchase&.stripe_payment_intent_id || exchanged_from&.payment_intent_id
   end
 
   def hold_expired?(at = Time.current)

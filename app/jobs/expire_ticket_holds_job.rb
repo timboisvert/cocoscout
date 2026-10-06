@@ -10,6 +10,7 @@ class ExpireTicketHoldsJob < ApplicationJob
 
   def perform
     TicketOrder.stale.update_all(status: "expired", updated_at: Time.current)
+    TicketPurchase.stale.update_all(status: "expired", updated_at: Time.current)
     CourseRegistration.stale.update_all(status: "expired", updated_at: Time.current)
   end
 end

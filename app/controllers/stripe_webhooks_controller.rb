@@ -59,7 +59,9 @@ class StripeWebhooksController < ApplicationController
       TicketDispute.handle(event.data.object, event.type)
     when "payment_intent.succeeded", "payment_intent.payment_failed"
       intent = event.data.object
-      if intent.metadata&.[]("type") == "ticket_order"
+      if intent.metadata&.[]("type") == "ticket_purchase"
+        handle_ticket_purchase_payment(intent, event.type)
+      elsif intent.metadata&.[]("type") == "ticket_order"
         handle_ticket_order_payment(intent, event.type)
       elsif intent.metadata&.[]("type") == "course_registration"
         handle_course_registration_payment(intent, event.type)
@@ -125,6 +127,17 @@ class StripeWebhooksController < ApplicationController
     return unless order && order.stripe_payment_intent_id.in?([ nil, intent.id ])
 
     TicketOrderSettlement.settle!(order, payment_intent_id: intent.id, charge_id: intent.latest_charge)
+  end
+
+  # A checkout's payment (one or several shows). Success settles every order
+  # in it, idempotently, like a single order.
+  def handle_ticket_purchase_payment(intent, event_type)
+    return unless event_type == "payment_intent.succeeded"
+
+    purchase = TicketPurchase.find_by(id: intent.metadata["ticket_purchase_id"])
+    return unless purchase && purchase.stripe_payment_intent_id.in?([ nil, intent.id ])
+
+    TicketPurchaseSettlement.settle!(purchase, payment_intent_id: intent.id, charge_id: intent.latest_charge)
   end
 
   # Money a theater added to its CocoScout balance from its bank landed (or

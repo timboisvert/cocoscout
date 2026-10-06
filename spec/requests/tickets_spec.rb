@@ -205,11 +205,13 @@ RSpec.describe "Public ticketing", type: :request do
         post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery Buyer", buyer_email: "Avery@Example.com" }, as: :json
         expect(response.parsed_body).to eq("client_secret" => "pi_123_secret")
         expect(Stripe::PaymentIntent).to have_received(:create).with(
-          hash_including(amount: 4_253, currency: "usd", metadata: hash_including(type: "ticket_order", ticket_order_id: order.id)),
+          hash_including(amount: 4_253, currency: "usd",
+                         metadata: hash_including(type: "ticket_purchase", ticket_purchase_id: order.ticket_purchase_id, ticket_order_id: order.id)),
           hash_including(:idempotency_key)
         )
         expect(order.reload.attributes.slice("buyer_name", "buyer_email", "stripe_payment_intent_id"))
           .to eq("buyer_name" => "Avery Buyer", "buyer_email" => "avery@example.com", "stripe_payment_intent_id" => "pi_123")
+        expect(order.ticket_purchase.stripe_payment_intent_id).to eq("pi_123")
 
         post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery Buyer", buyer_email: "avery@example.com" }, as: :json
         expect(Stripe::PaymentIntent).to have_received(:create).once

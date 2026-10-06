@@ -43,12 +43,16 @@ class TicketCheckout
     order = nil
     ActiveRecord::Base.transaction do
       # Expiring it now frees its seats for the new hold (Inventory ignores a
-      # lapsed hold); a SoldOut below rolls this back too.
-      held&.update!(status: "expired", expires_at: Time.current)
+      # lapsed hold), and anything else in its checkout goes with it; a
+      # SoldOut below rolls this back too.
+      held&.ticket_purchase ? held.ticket_purchase.expire! : held&.update!(status: "expired", expires_at: Time.current)
       Ticketing::Inventory.reserve!(listing, seats) do
+        expires_at = TicketOrder::HOLD.from_now
+        purchase = TicketPurchase.create!(organization: listing.organization, channel: channel, expires_at: expires_at)
         order = TicketOrder.create!(organization: listing.organization, ticket_listing: listing, status: "pending",
+                                    ticket_purchase: purchase,
                                     channel: channel, money_path: "cocoscout", fee_mode: listing.effective_fee_mode,
-                                    expires_at: TicketOrder::HOLD.from_now, ticket_discount_code: discount,
+                                    expires_at: expires_at, ticket_discount_code: discount,
                                     client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
                                     short_link: short_link, utm: short_link ? { "via" => short_link.code } : {})
         requests.each { |tier, count| count.times { add_purchase(order, tier, discount) } }
@@ -123,24 +127,35 @@ class TicketCheckout
     order.ticket_order_items.pluck(:ticket_product_id, :quantity).to_h
   end
 
-  # The order's numbers, from its tickets, its products and their tax.
+  # The order's numbers, from its tickets, its products and their tax. An
+  # order in a checkout is priced with the rest of it (TicketPurchase#price!),
+  # since card processing is charged once for the whole purchase.
   def self.price!(order)
-    tickets = order.tickets.includes(:tax_lines).to_a
-    products = order.ticket_order_items.includes(:tax_lines).to_a
-    items = tickets.map do |ticket|
-      { price_cents: ticket.price_cents, discount_cents: ticket.discount_cents,
-        tax_cents: ticket.tax_lines.reject(&:included).sum(&:tax_cents) }
+    if order.ticket_purchase
+      order.ticket_purchase.price!
+      return order.reload
     end
-    items += products.map do |item|
-      { price_cents: item.price_cents, discount_cents: 0, platform_fee: false,
-        tax_cents: item.tax_lines.reject(&:included).sum(&:tax_cents) }
-    end
-    quote = TicketPricing.quote(items: items, fee_mode: order.fee_mode, money_path: order.money_path)
+
+    tickets = order.tickets.to_a
+    products = order.ticket_order_items.to_a
+    quote = TicketPricing.quote(items: order_items(order), fee_mode: order.fee_mode, money_path: order.money_path)
     order.update!(subtotal_cents: quote.subtotal_cents, discount_cents: quote.discount_cents,
                   tax_cents: tickets.sum(&:tax_cents) + products.sum(&:tax_cents), platform_fee_cents: quote.platform_fee_cents,
                   processing_cents: quote.processing_cents, buyer_fee_cents: quote.buyer_fee_cents,
                   total_cents: quote.total_cents, org_net_cents: quote.org_net_cents)
     order
+  end
+
+  # An order's tickets and products as TicketPricing items.
+  def self.order_items(order)
+    items = order.tickets.includes(:tax_lines).map do |ticket|
+      { price_cents: ticket.price_cents, discount_cents: ticket.discount_cents,
+        tax_cents: ticket.tax_lines.reject(&:included).sum(&:tax_cents) }
+    end
+    items + order.ticket_order_items.includes(:tax_lines).map do |item|
+      { price_cents: item.price_cents, discount_cents: 0, platform_fee: false,
+        tax_cents: item.tax_lines.reject(&:included).sum(&:tax_cents) }
+    end
   end
 
   def self.record_item_tax(order, item, offer)
