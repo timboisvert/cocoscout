@@ -108,7 +108,7 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
 
     it "only appears in the step strip once we're selling" do
       # The step bar's label, not the sidebar's Ticketing item.
-      step_label = /whitespace-nowrap [^"]*">Ticketing</
+      step_label = /whitespace-nowrap [^"]*"\s*>Ticketing</
       choose_who_sells("contractor")
       get manage_payments_contract_wizard_path(contract)
       expect(response.body).not_to match(step_label)
