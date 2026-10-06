@@ -5,7 +5,8 @@
 
   Locals: show, production
 %>
-<% if production.organization.on_paid_plan? %>
+<%# Pro, and the organization's managers' (a producer on the team doesn't see the money). %>
+<% if production.organization.on_paid_plan? && (Current.user&.superadmin? || production.organization.manageable_by?(Current.user)) %>
   <%
     fin = show.show_financials
 

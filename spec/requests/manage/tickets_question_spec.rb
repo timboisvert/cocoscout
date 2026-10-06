@@ -58,6 +58,20 @@ RSpec.describe "The Tickets question", type: :request do
     expect(show.reload.ticket_listing).to have_attributes(status: "on_sale")
   end
 
+  it "shows someone on the production who isn't an organization manager the numbers, without the link into Ticketing" do
+    TicketsAnswer.apply!(production, mode: "cocoscout", tiers: [ { "name" => "General", "price" => "20", "seats" => "60" } ])
+    viewer = create(:user, email_address: "viewer@sg.example", password: password)
+    create(:organization_role, user: viewer, organization: org, company_role: "viewer")
+    get signout_path
+    post handle_signin_path, params: { email_address: viewer.email_address, password: password }
+    post set_organization_path(id: org.id)
+
+    get manage_production_show_path(production, show)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("On CocoScout", "of 60")
+    expect(response.body).not_to include(manage_ticket_listing_path(show.ticket_listing))
+  end
+
   it "takes a pasted link, names the site and adds it to the ticket sources; a date can point somewhere else" do
     patch manage_production_tickets_path(production), params: { tickets: { mode: "elsewhere", url: "www.tickettailor.com/events/sg/55" } }
     expect(response).to redirect_to(manage_production_path(production))

@@ -75,25 +75,27 @@ module NavigationHelper
                      active: %w[ticketing ticketing_settings ticket_listings ticket_orders ticket_balance ticket_taxes ticket_comps ticket_products
                                 production_ticketings ticket_passes ticket_offers ticket_offer_wizard ticket_sales_viewers short_links].include?(controller_name) }
     end
-    # Staffing is limited to org owners/managers; it leads the Pro group.
+    # The whole Pro group is for the organization's owners and managers
+    # (PaidFeatureGate::MANAGER_ONLY_FEATURES); a production-team member sees
+    # the free modules only. Staffing leads the group.
     if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
       pro_items << { label: "Staffing", path: manage_staffing_index_path, icon: "staffing", locked: !on_paid_plan, feature: :staffing,
                      active: controller_path.to_s.start_with?("manage/staffing") }
+      pro_items += [
+        { label: "Money", path: manage_money_index_path, icon: "money", locked: !on_paid_plan, feature: :money,
+          active: %w[money money_financials money_payouts show_payouts show_financials money_settings books ticket_balance].include?(controller_name) },
+        # Contracts is its own Pro module — a deal with someone doesn't require Money.
+        { label: "Contracts", path: manage_contracts_path, icon: "documents", locked: !on_paid_plan, feature: :contracts,
+          active: %w[contracts contract_wizard contract_payments contract_documents contractors contract_settings].include?(controller_name) },
+        { label: "Reports", path: manage_reports_path, icon: "reports", locked: !on_paid_plan, feature: :reports,
+          active: controller_name == "reports" }
+      ]
     end
-    pro_items += [
-      { label: "Money", path: manage_money_index_path, icon: "money", locked: !on_paid_plan, feature: :money,
-        active: %w[money money_financials money_payouts show_payouts show_financials money_settings books ticket_balance].include?(controller_name) },
-      # Contracts is its own Pro module — a deal with someone doesn't require Money.
-      { label: "Contracts", path: manage_contracts_path, icon: "documents", locked: !on_paid_plan, feature: :contracts,
-        active: %w[contracts contract_wizard contract_payments contract_documents contractors contract_settings].include?(controller_name) },
-      { label: "Reports", path: manage_reports_path, icon: "reports", locked: !on_paid_plan, feature: :reports,
-        active: controller_name == "reports" }
-    ]
 
-    [
-      { label: nil, items: free_items },
-      { label: "Pro", items: pro_items }
-    ]
+    # No Pro heading for someone with nothing under it (a producer on a team).
+    sections = [ { label: nil, items: free_items } ]
+    sections << { label: "Pro", items: pro_items } if pro_items.any?
+    sections
   end
 
   # --- Talent --------------------------------------------------------------

@@ -62,6 +62,13 @@ module Manage
       "manage/books" => :money
     }.freeze
 
+    # Pro modules are for the organization's owners and managers (Tim,
+    # 2026-10-06: "the Pro tier stuff should be just for managers"). A
+    # production-team member (a producer with access to their own production)
+    # keeps the free modules. Casting tables are the exception: a production's
+    # manager casts their own shows there, under that controller's own rules.
+    MANAGER_ONLY_FEATURES = %i[money contracts reports agreements staffing ticketing].freeze
+
     # What every Pro plan includes, shown as reinforcement on each upgrade screen.
     PRO_INCLUDES = [
       "Unlimited productions and shows/events",
@@ -202,7 +209,12 @@ module Manage
       # Gate by the organization's plan for everyone — superadmins included — so
       # what's locked in the nav is actually locked. Superadmins who need a paid
       # feature can comp the org to Pro.
-      return if Current.organization.feature_available?(feature)
+      if Current.organization.feature_available?(feature)
+        return unless MANAGER_ONLY_FEATURES.include?(feature)
+        return if Current.user&.superadmin? || Current.organization.manageable_by?(Current.user)
+
+        return redirect_to(manage_path, notice: "That part of CocoScout is for your organization's managers.")
+      end
 
       respond_to do |format|
         format.json do
