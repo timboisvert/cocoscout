@@ -31,7 +31,7 @@ class TicketCheckoutsController < ApplicationController
       return redirect_to(tickets_event_path(org: params[:org], event: params[:event], **embed_params))
     end
 
-    profile = TicketingProfile.find_by(slug: params[:org].to_s.downcase)
+    profile, = TicketingProfile.at_address(params[:org])
     listing = profile && profile.organization.ticket_listings.find_by(slug: params[:event])
     raise ActiveRecord::RecordNotFound unless listing && (profile.enabled? || superadmin_viewer?)
 

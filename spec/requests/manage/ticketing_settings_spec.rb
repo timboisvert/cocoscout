@@ -86,6 +86,23 @@ RSpec.describe "Manage ticketing settings", type: :request do
       expect(response.body).to include("$21.42").and include("$18.62")
     end
 
+    it "keeps an old address working and reserved after the theater changes it" do
+      profile = TicketingProfile.for(org)
+      profile.update!(enabled: true)
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { slug: "starsandgarters" } }
+      expect(profile.reload.attributes.slice("slug", "previous_slugs")).to eq("slug" => "starsandgarters", "previous_slugs" => [ "stars-garters" ])
+
+      get "/tickets/stars-garters"
+      expect(response).to redirect_to("/tickets/starsandgarters")
+      expect(response).to have_http_status(:moved_permanently)
+
+      other = create(:organization, name: "Stars and Garters Too")
+      taken = TicketingProfile.new(organization: other, slug: "stars-garters")
+      expect(taken).not_to be_valid
+      expect(taken.errors[:slug]).to include("is another box office's old address")
+      expect(TicketingProfile.for(create(:organization, name: "Stars & Garters")).slug).to eq("stars-garters-2")
+    end
+
     it "refuses an address the /t pages already use" do
       patch manage_ticketing_settings_path, params: { ticketing_profile: { slug: "orders" } }
       expect(response).to have_http_status(:unprocessable_content)

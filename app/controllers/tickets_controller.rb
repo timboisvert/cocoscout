@@ -79,8 +79,12 @@ class TicketsController < ApplicationController
   end
 
   def set_box_office
-    @ticketing_profile = TicketingProfile.find_by(slug: params[:org].to_s.downcase)
+    @ticketing_profile, moved = TicketingProfile.at_address(params[:org])
     raise ActiveRecord::RecordNotFound unless @ticketing_profile
+    # An address the theater used before: send people to its current one.
+    if moved
+      return redirect_to(request.fullpath.sub("/#{params[:org]}", "/#{@ticketing_profile.slug}"), status: :moved_permanently)
+    end
 
     @preview = !@ticketing_profile.enabled?
     raise ActiveRecord::RecordNotFound if @preview && !superadmin_viewer?
