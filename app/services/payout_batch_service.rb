@@ -381,6 +381,7 @@ class PayoutBatchService
       item.mark_paid!(transfer_id: transfer.id)
       settle_item_sources!(item, transfer.id)
       record_performer_activation!(batch, item)
+      record_staff_activation!(batch, item)
     rescue Stripe::StripeError => e
       if destination_not_ready?(e)
         # Their Stripe account isn't cleared to receive a transfer yet (see
@@ -487,26 +488,39 @@ class PayoutBatchService
     process!(batch)
   end
 
-  # Mark a paid performer a billable "active performer" for the payout's month —
-  # this is the month Stripe bills us the active-account fee, so our $3 charge
-  # lands in the same month. One rule: a Person paid performer money that
-  # month is charged, whichever button put the line on the run (show payouts,
-  # advances, a balance payout). Staff pay, contract payments and course money
-  # don't count — staff are billed separately (StaffActivation, on
-  # scheduling). Best-effort: a billing hiccup must never fail an
-  # already-completed payout.
+  # The two usage charges follow one rule: a person is billable in a month
+  # CocoScout actually pays them through Stripe, the month Stripe bills us the
+  # active-account fee for them. Paying someone any number of times in a month
+  # is one charge. Nobody is billable for being cast, scheduled or notified,
+  # for unpaid roles, or for pay settled another way.
+  #
+  # $3: performer money (show payouts, advances, a balance payout).
+  # Contract shares and course money don't count.
+  # Best-effort: a billing hiccup must never fail an already-completed payout.
   def self.record_performer_activation!(batch, item)
     return if batch.kind == "course" || !item.payee.is_a?(Person)
 
     non_performing = PayoutContribution::HELD_SOURCE_TYPES + %w[ContractPayment]
-    performing = item.payout_contributions.any? { |c| c.category == "performer" && !non_performing.include?(c.source_type) }
+    performing = item.payout_contributions.any? do |c|
+      c.category == "performer" && c.amount_cents.positive? && !non_performing.include?(c.source_type)
+    end
     return unless performing
 
-    PerformerActivation.record!(
-      organization: batch.organization, person: item.payee, month: item.paid_at || Time.current
-    )
+    paid_at = item.paid_at || Time.current
+    PerformerActivation.record!(organization: batch.organization, person: item.payee, month: paid_at, at: paid_at)
   rescue StandardError => e
     Rails.logger.warn("Performer activation failed for payout item #{item.id}: #{e.message}")
+  end
+
+  # $5: staff pay (approved hours or any paid shift) on the run.
+  def self.record_staff_activation!(batch, item)
+    return if batch.kind == "course" || !item.payee.is_a?(Person)
+    return unless item.payout_contributions.any? { |c| c.category == "staffing" && c.amount_cents.positive? }
+
+    paid_at = item.paid_at || Time.current
+    StaffActivation.record!(organization: batch.organization, person: item.payee, month: paid_at, at: paid_at)
+  rescue StandardError => e
+    Rails.logger.warn("Staff activation failed for payout item #{item.id}: #{e.message}")
   end
 
   # Flip each of a paid item's contribution sources to "paid" for traceability

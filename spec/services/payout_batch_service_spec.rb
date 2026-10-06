@@ -235,7 +235,7 @@ RSpec.describe PayoutBatchService do
       expect { PayoutBatchService.process!(batch) }.to change(PerformerActivation, :count).by(1)
     end
 
-    it "doesn't charge for someone paid only staff pay" do
+    it "charges staff pay as a staff member, not a performer" do
       allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_s"))
 
       batch = org.payout_batches.create!(kind: "payout", status: "draft", trigger: "manual")
@@ -243,7 +243,33 @@ RSpec.describe PayoutBatchService do
       batch.payout_contributions.create!(payout_batch_item: item, payee: ready, amount_cents: 5000,
                                          label: "Worked hours (5h)", category: "staffing")
 
-      expect { PayoutBatchService.process!(batch) }.not_to change(PerformerActivation, :count)
+      expect { PayoutBatchService.process!(batch) }.to change(StaffActivation, :count).by(1)
+        .and change(PerformerActivation, :count).by(0)
+      activation = StaffActivation.last
+      expect([ activation.person, activation.billing_month ]).to eq([ ready, item.reload.paid_at.to_date.beginning_of_month ])
+    end
+
+    it "charges nobody for a line that pays nothing (an unpaid role, a deduction)" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_z"))
+
+      batch = org.payout_batches.create!(kind: "payout", status: "draft", trigger: "manual")
+      item = batch.items.create!(payee: ready, amount_cents: 5000, status: "pending")
+      batch.payout_contributions.create!(payout_batch_item: item, payee: ready, amount_cents: 5_000, label: "Course share", category: "performer",
+                                         source: create(:contract_payment))
+      batch.payout_contributions.create!(payout_batch_item: item, payee: ready, amount_cents: 0, label: "Usher (unpaid)", category: "staffing")
+
+      expect { PayoutBatchService.process!(batch) }.not_to change { [ StaffActivation.count, PerformerActivation.count ] }
+    end
+
+    it "charges once a month however many times someone is paid" do
+      allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_m"))
+      2.times do
+        batch = org.payout_batches.create!(kind: "payout", status: "draft", trigger: "manual")
+        item = batch.items.create!(payee: ready, amount_cents: 2_000, status: "pending")
+        batch.payout_contributions.create!(payout_batch_item: item, payee: ready, amount_cents: 2_000, label: "Hours", category: "staffing")
+        PayoutBatchService.process!(batch)
+      end
+      expect(StaffActivation.where(person: ready).count).to eq(1)
     end
   end
 

@@ -58,3 +58,20 @@ namespace :cocoscout_ledger do
     end
   end
 end
+
+namespace :usage do
+  desc "Rebuild a month's billable staff and performers from who was actually paid. Dry run by default; usage:rebuild[2026-10,post] keeps it."
+  task :rebuild, [ :month, :mode ] => :environment do |_t, args|
+    month = Date.strptime(args[:month].to_s, "%Y-%m")
+    post = args[:mode] == "post"
+    puts post ? "REBUILDING #{month.strftime('%B %Y')}." : "DRY RUN for #{month.strftime('%B %Y')}: nothing is changed."
+    changes = UsageRebuild.run!(month, post: post)
+    puts "Every record already matches who was paid." if changes.empty?
+    changes.each do |change|
+      puts "#{change.organization.name}, #{change.kind}:"
+      puts "  remove (not paid that month): #{change.removed.join(', ')}" if change.removed.any?
+      puts "  add (paid, not counted): #{change.added.join(', ')}" if change.added.any?
+    end
+    puts "Stripe already counted what was sent to it; removing a record here doesn't take it off a bill." if changes.any?
+  end
+end

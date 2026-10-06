@@ -69,22 +69,9 @@ RSpec.describe "Manage::Staffing finalize & staff visibility", type: :request do
         .and change(StaffingFinalization, :count).by(0)
     end
 
-    it "records a durable billable activation that survives removing the assignment" do
-      expect {
-        post manage_finalize_staffing_path(week_start: week_start.to_s)
-      }.to change(StaffActivation, :count).by(1)
-
-      activation = StaffActivation.last
-      expect(activation.person).to eq(staff_person)
-      expect(activation.billing_month).to eq(shift.starts_at.to_date.beginning_of_month)
-
-      # Fraud-proof: pulling the assignment later doesn't erase the charge.
-      assignment.destroy
-      expect(StaffBillingService.new(org, month: shift.starts_at.to_date).active_count).to eq(1)
-    end
-
-    it "doesn't create a duplicate activation on re-finalize" do
-      post manage_finalize_staffing_path(week_start: week_start.to_s)
+    # Tim, 2026-10-05: active staff are the ones CocoScout pays. Scheduling
+    # and notifying someone (an unpaid role, a volunteer) never bills.
+    it "bills nothing for scheduling someone" do
       expect {
         post manage_finalize_staffing_path(week_start: week_start.to_s)
       }.not_to change(StaffActivation, :count)

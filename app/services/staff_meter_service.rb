@@ -4,7 +4,8 @@
 # $5/month per active staff member on their existing Pro subscription.
 #
 # Each StaffActivation (a durable, once-per-person-per-month record created when
-# a staffer is notified of a shift) reports a single meter event of value 1.
+# a staffer is paid staff pay on a payout run) reports a single meter event of
+# value 1.
 # Because activations are unique per person/month and the event carries a stable
 # `identifier`, Stripe counts each active person exactly once — even if the
 # event is retried or re-sent by the nightly reconciliation.
@@ -37,7 +38,8 @@ module StaffMeterService
     Stripe::Billing::MeterEvent.create(
       event_name: active_event_name,
       identifier: identifier_for(activation),
-      payload: { stripe_customer_id: org.stripe_customer_id, value: "1" }
+      payload: { stripe_customer_id: org.stripe_customer_id, value: "1" },
+      timestamp: meter_timestamp(activation.first_notified_at)
     )
     activation.update_column(:reported_at, Time.current)
     :reported
@@ -99,6 +101,13 @@ module StaffMeterService
       report_activation!(activation)
     end
     :reconciled
+  end
+
+  # When the person became billable, so a re-send still counts in that
+  # period. Stripe takes events up to 35 days old; anything older goes as now.
+  def meter_timestamp(time)
+    time = Time.current if time.nil? || time < 34.days.ago
+    time.to_i
   end
 
   def identifier_for(activation)

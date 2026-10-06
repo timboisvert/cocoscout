@@ -380,12 +380,8 @@ module Manage
           s.shift_assignments.where(person_id: person.id).update_all(notified_at: Time.current)
         end
         StaffScheduleRemoval.where(id: person_removals.map(&:id)).update_all(notified_at: Time.current, updated_at: Time.current)
-
-        # Durably mark billable for every month notified about (survives later
-        # changes, so removing assignments can't dodge the charge).
-        person_shifts.map { |s| s.starts_at.to_date.beginning_of_month }.uniq.each do |month|
-          StaffActivation.record!(organization: Current.organization, person: person, month: month)
-        end
+        # Scheduling someone bills nothing: a staff member is billable in a
+        # month CocoScout pays them (PayoutBatchService.record_staff_activation!).
         notified += 1
       end
       notified

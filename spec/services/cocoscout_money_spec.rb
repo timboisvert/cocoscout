@@ -273,3 +273,24 @@ RSpec.describe "Monthly statements" do
     expect { perform_enqueued_jobs { OrgStatementJob.perform_now(org.id, "2026-09-01") } }.not_to(change { ActionMailer::Base.deliveries.size })
   end
 end
+
+RSpec.describe UsageRebuild do
+  let(:org) { create(:organization, :pro) }
+  let(:paid) { create(:person, name: "Paid Pat") }
+  let(:unpaid) { create(:person, name: "Volunteer Val") }
+
+  it "keeps only the people actually paid that month" do
+    month = Date.new(2026, 10, 1)
+    StaffActivation.record!(organization: org, person: unpaid, month: month)
+    batch = org.payout_batches.create!(kind: "payout", status: "completed", trigger: "manual")
+    item = batch.items.create!(payee: paid, amount_cents: 4_000, status: "paid", paid_at: Time.zone.local(2026, 10, 3, 12), stripe_transfer_id: "tr_1")
+    batch.payout_contributions.create!(payout_batch_item: item, payee: paid, amount_cents: 4_000, label: "Hours", category: "staffing")
+
+    change = described_class.run!(month).sole
+    expect([ change.kind, change.added, change.removed ]).to eq([ "staff", [ "Paid Pat" ], [ "Volunteer Val" ] ])
+    expect(StaffActivation.for_month(month).pluck(:person_id)).to eq([ unpaid.id ])
+
+    described_class.run!(month, post: true)
+    expect(StaffActivation.for_month(month).pluck(:person_id)).to eq([ paid.id ])
+  end
+end

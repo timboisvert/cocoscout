@@ -18,7 +18,7 @@ class PerformerActivation < ApplicationRecord
   scope :for_month, ->(date) { where(billing_month: date.to_date.beginning_of_month) }
 
   # Meter a new billable performer to Stripe (once — only on insert). Async so a
-  # Stripe hiccup never blocks casting; the nightly reconciliation re-sends
+  # Stripe hiccup never blocks a payout run; the nightly reconciliation re-sends
   # anything that didn't land.
   after_create_commit :report_to_meter
 
