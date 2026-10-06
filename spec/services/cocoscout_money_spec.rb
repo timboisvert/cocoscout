@@ -274,23 +274,62 @@ RSpec.describe "Monthly statements" do
   end
 end
 
-RSpec.describe UsageRebuild do
+RSpec.describe UsageRules do
   let(:org) { create(:organization, :pro) }
-  let(:paid) { create(:person, name: "Paid Pat") }
-  let(:unpaid) { create(:person, name: "Volunteer Val") }
+  let(:paid_role) { create(:house_role, organization: org, name: "Bartender", pay_type: "hourly", default_hourly_rate_cents: 2_000) }
+  let(:unpaid_role) { create(:house_role, organization: org, name: "Greeter", pay_type: "hourly", default_hourly_rate_cents: nil) }
+  let(:ruby) { create(:person, name: "Ruby Infante") }
+  let(:colin) { create(:person, name: "Colin Kelty") }
+  let(:phoebe) { create(:person, name: "Phoebe Davis") }
 
-  it "keeps only the people actually paid that month" do
-    month = Date.new(2026, 10, 1)
-    StaffActivation.record!(organization: org, person: unpaid, month: month)
-    batch = org.payout_batches.create!(kind: "payout", status: "completed", trigger: "manual")
-    item = batch.items.create!(payee: paid, amount_cents: 4_000, status: "paid", paid_at: Time.zone.local(2026, 10, 3, 12), stripe_transfer_id: "tr_1")
-    batch.payout_contributions.create!(payout_batch_item: item, payee: paid, amount_cents: 4_000, label: "Hours", category: "staffing")
+  def staff!(person, rate_cents: nil)
+    create(:organization_staff_member, organization: org, person: person, hourly_rate_cents: rate_cents)
+  end
 
-    change = described_class.run!(month).sole
-    expect([ change.kind, change.added, change.removed ]).to eq([ "staff", [ "Paid Pat" ], [ "Volunteer Val" ] ])
-    expect(StaffActivation.for_month(month).pluck(:person_id)).to eq([ unpaid.id ])
+  def shift!(role, person, at)
+    shift = Shift.create!(organization: org, house_role: role, starts_at: at, ends_at: at + 4.hours)
+    shift.shift_assignments.create!(person: person)
+    shift
+  end
 
-    described_class.run!(month, post: true)
-    expect(StaffActivation.for_month(month).pluck(:person_id)).to eq([ paid.id ])
+  # Tim, 2026-10-05: charged for each month someone works a shift, once it's
+  # over, in a role that pays them; to the month of the work, not the payout.
+  it "counts a staff member for the month of a paid shift that's over, and nobody else" do
+    staff!(ruby, rate_cents: 2_000)
+    staff!(colin)
+    staff!(phoebe, rate_cents: 2_000)
+    shift!(paid_role, ruby, Time.zone.local(2026, 9, 27, 18))      # worked in September
+    shift!(unpaid_role, colin, Time.zone.local(2026, 10, 2, 18))   # a role that pays nothing
+    shift!(paid_role, phoebe, Time.zone.local(2026, 10, 20, 18))   # scheduled, not worked yet
+
+    now = Time.zone.local(2026, 10, 5, 12)
+    expect(described_class.staff(Date.new(2026, 9, 1), now: now).transform_values(&:keys)).to eq(org.id => [ ruby.id ])
+    expect(described_class.staff(Date.new(2026, 10, 1), now: now)).to eq({})
+    expect(described_class.staff(Date.new(2026, 10, 1), now: Time.zone.local(2026, 10, 21)).transform_values(&:keys)).to eq(org.id => [ phoebe.id ])
+  end
+
+  it "counts a flat-paid role, and not a declined shift" do
+    flat = create(:house_role, organization: org, name: "Door", pay_type: "flat", default_flat_rate_cents: 5_000)
+    staff!(ruby)
+    staff!(colin, rate_cents: 2_000)
+    shift!(flat, ruby, Time.zone.local(2026, 9, 10, 18))
+    shift!(paid_role, colin, Time.zone.local(2026, 9, 11, 18)).shift_assignments.first.update!(declined_at: Time.zone.local(2026, 9, 1))
+    expect(described_class.staff(Date.new(2026, 9, 1), now: Time.zone.local(2026, 10, 1)).transform_values(&:keys)).to eq(org.id => [ ruby.id ])
+  end
+
+  it "rebuilds a month counted under the old rule, and the sweep only adds" do
+    staff!(ruby, rate_cents: 2_000)
+    shift!(paid_role, ruby, Time.zone.local(2026, 9, 27, 18))
+    StaffActivation.record!(organization: org, person: colin, month: Date.new(2026, 9, 1))
+
+    change = UsageRebuild.run!(Date.new(2026, 9, 1), now: Time.zone.local(2026, 10, 5)).sole
+    expect([ change.kind, change.added, change.removed ]).to eq([ "staff", [ "Ruby Infante" ], [ "Colin Kelty" ] ])
+    expect(StaffActivation.for_month(Date.new(2026, 9, 1)).pluck(:person_id)).to eq([ colin.id ])
+
+    travel_to(Time.zone.local(2026, 10, 5, 12)) { UsageSweepJob.perform_now }
+    expect(StaffActivation.for_month(Date.new(2026, 9, 1)).pluck(:person_id)).to contain_exactly(colin.id, ruby.id)
+
+    UsageRebuild.run!(Date.new(2026, 9, 1), post: true, now: Time.zone.local(2026, 10, 5))
+    expect(StaffActivation.for_month(Date.new(2026, 9, 1)).pluck(:person_id)).to eq([ ruby.id ])
   end
 end

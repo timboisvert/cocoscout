@@ -39,6 +39,9 @@ development:
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
+  usage_sweep:
+    class: UsageSweepJob
+    schedule: every hour at minute 40
   billing_invoice_sync:
     class: BillingInvoiceSyncJob
     schedule: at 3am every day
@@ -127,6 +130,9 @@ production:
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
+  usage_sweep:
+    class: UsageSweepJob
+    schedule: every hour at minute 40
   billing_invoice_sync:
     class: BillingInvoiceSyncJob
     schedule: at 3am every day

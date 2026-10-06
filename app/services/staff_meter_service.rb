@@ -4,7 +4,7 @@
 # $5/month per active staff member on their existing Pro subscription.
 #
 # Each StaffActivation (a durable, once-per-person-per-month record created when
-# a staffer is paid staff pay on a payout run) reports a single meter event of
+# a staffer's paid shift that month is over) reports a single meter event of
 # value 1.
 # Because activations are unique per person/month and the event carries a stable
 # `identifier`, Stripe counts each active person exactly once — even if the

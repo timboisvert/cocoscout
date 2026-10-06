@@ -4,8 +4,8 @@
 # $3/month per active performer — the performer analog of StaffMeterService.
 #
 # Each PerformerActivation (a durable, once-per-person-per-month record created
-# when a performer is paid performer money on a payout run) reports a single
-# meter event of value 1.
+# when a performer's paid show that month is over) reports a single meter event
+# of value 1.
 # Because activations are unique per person/month and the event carries a stable
 # `identifier`, Stripe counts each active performer exactly once — even on retry
 # or nightly reconciliation.

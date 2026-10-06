@@ -380,8 +380,8 @@ module Manage
           s.shift_assignments.where(person_id: person.id).update_all(notified_at: Time.current)
         end
         StaffScheduleRemoval.where(id: person_removals.map(&:id)).update_all(notified_at: Time.current, updated_at: Time.current)
-        # Scheduling someone bills nothing: a staff member is billable in a
-        # month CocoScout pays them (PayoutBatchService.record_staff_activation!).
+        # Scheduling someone bills nothing: a staff member is billable once a
+        # paid shift is over (UsageRules, UsageSweepJob).
         notified += 1
       end
       notified

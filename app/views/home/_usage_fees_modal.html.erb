@@ -36,7 +36,7 @@
     <div class="px-6 py-5">
       <p class="text-sm text-slate-600 mb-5">
         Pro is a flat <strong class="text-slate-900">$<%= pro_monthly %>/month</strong> (or <strong class="text-slate-900">$<%= pro_annual %>/year</strong> — two months free). On top of that,
-        you only pay for the people you actually pay through CocoScout — and nothing for anyone you don't.
+        you only pay for the people who do paid work for you that month — and nothing for anyone who doesn't.
       </p>
 
       <div class="space-y-3">
@@ -47,19 +47,19 @@
             <span class="font-bold text-pink-600 whitespace-nowrap">$<%= performer_fee %><span class="text-xs font-medium text-slate-500"> / active performer / mo</span></span>
           </div>
           <p class="mt-1.5 text-sm text-slate-600">
-            An active performer is anyone you pay through a payout run that month. Pay 10 performers in a month,
-            that's $<%= performer_fee * 10 %>. Pay no one, pay nothing.
+            An active performer is anyone who performs in a show that pays them that month. Ten paid performers in a month
+            is $<%= performer_fee * 10 %>. No paid shows, nothing.
           </p>
         </div>
 
         <%# Scheduling staff %>
         <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div class="flex items-baseline justify-between gap-3">
-            <h4 class="font-semibold text-slate-900">When you pay staff</h4>
+            <h4 class="font-semibold text-slate-900">When your staff work</h4>
             <span class="font-bold text-slate-900 whitespace-nowrap">$<%= staff_fee %><span class="text-xs font-medium text-slate-500"> / active staff / mo</span></span>
           </div>
           <p class="mt-1.5 text-sm text-slate-600">
-            An active staff member is anyone you pay through CocoScout that month, for any paid shift or hours.
+            An active staff member is anyone who works a shift in a paid role that month.
             Unpaid roles and volunteers never count, and neither does the rest of your roster.
           </p>
         </div>

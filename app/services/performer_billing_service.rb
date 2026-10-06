@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 # Fair-pricing billing for the money/production-economics module: an org is
-# charged $3/month per *active* performer — active meaning paid through a payout
-# run that calendar month (a durable PerformerActivation, recorded when we pay
-# them). This lines up with the month Stripe bills us the ~$2 active-account fee.
-# A performer you don't pay that month costs nothing, and paying someone any
-# number of times in a month is a single $3 — no per-payment fee.
+# charged $3/month per *active* performer — active meaning they performed that
+# calendar month in a show that pays them, and the show is over (a durable
+# PerformerActivation, recorded by UsageSweepJob; see UsageRules). A performer
+# with no paid show that month costs nothing, and any number of paid shows in
+# a month is a single $3.
 #
 # The monthly meter job reports the active count as usage on the org's metered
 # Stripe subscription item; #monthly_estimate_cents drives the running preview
@@ -26,7 +26,7 @@ class PerformerBillingService
     activations.count
   end
 
-  # The people billable this month (paid through a payout run this month).
+  # The people billable this month (a paid show this month that's over).
   def active_performers
     Person.where(id: activations.select(:person_id)).order(:name)
   end
