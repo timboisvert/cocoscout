@@ -195,7 +195,7 @@ module Manage
         @wizard_state[:has_shows] = "no"
         @wizard_state[:shows] = []
         save_wizard_state
-        redirect_to manage_productions_wizard_review_path and return
+        redirect_to manage_productions_wizard_tickets_path and return
       end
 
       @wizard_state[:has_shows] ||= nil
@@ -206,13 +206,13 @@ module Manage
 
       save_wizard_state
 
-      # If they have shows, go to schedule step; otherwise go to review
+      # If they have shows, go to schedule step; otherwise on to tickets
       if @wizard_state[:has_shows] == "yes"
         redirect_to manage_productions_wizard_schedule_path
       else
         @wizard_state[:shows] = []
         save_wizard_state
-        redirect_to manage_productions_wizard_review_path
+        redirect_to manage_productions_wizard_tickets_path
       end
     end
 
@@ -250,10 +250,27 @@ module Manage
       end
 
       save_wizard_state
+      redirect_to manage_productions_wizard_tickets_path
+    end
+
+    # Step 7: Tickets — the Tickets question (Round 9 §3): sell them on
+    # CocoScout (Pro), somewhere else (a link), or no tickets. Applied once the
+    # production exists, by TicketsAnswer.
+    def tickets
+      @answer = (@wizard_state[:tickets] || {}).to_h
+    end
+
+    def save_tickets
+      t = params.fetch(:tickets, {}).to_unsafe_h
+      tiers = t["tiers"].is_a?(Hash) ? t["tiers"].values : Array(t["tiers"])
+      @wizard_state[:tickets] = { "mode" => t["mode"].to_s.presence_in(Production::TICKETS_MODES - %w[unset]), "url" => t["url"].to_s.strip,
+                                  "fee_mode" => t["fee_mode"], "schedule_mode" => t["schedule_mode"], "opens_days_before" => t["opens_days_before"],
+                                  "tiers" => tiers.map { |r| r.to_h.slice("name", "price", "seats") } }
+      save_wizard_state
       redirect_to manage_productions_wizard_review_path
     end
 
-    # Step 7: Review - Confirm and create
+    # Step 8: Review - Confirm and create
     def review
       details = @wizard_state[:details] || {}
       @location = Current.organization.locations.find_by(id: details[:location_id]) if details[:location_id].present?
@@ -356,6 +373,11 @@ module Manage
         # or a new one built in the calculation wizard right after this.
         # (After the shows, so the calculation reaches back to the first night.)
         pay_outcome = apply_wizard_pay_choice!
+
+        # Tickets: the answer to the Tickets question, now that the dates exist
+        # to list. On a show-first run the setup picks the dates up as the show
+        # wizard makes them.
+        apply_wizard_tickets_answer!
       end
 
       # Clear wizard state (remembering whether a show comes next)
@@ -381,7 +403,7 @@ module Manage
       else
         redirect_to manage_path, notice: "#{@production.name} has been created!"
       end
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid, TicketsAnswer::Error => e
       flash.now[:alert] = e.message
       render :review, status: :unprocessable_content
     end
@@ -436,9 +458,23 @@ module Manage
     end
     helper_method :show_first?
 
-    # Review's Back: the step before it, which is never Shows on a show-first
-    # run (Shows would just bounce straight back to Review).
+    def apply_wizard_tickets_answer!
+      answer = (@wizard_state[:tickets] || {}).to_h.with_indifferent_access
+      return if answer[:mode].blank?
+
+      TicketsAnswer.apply!(@production, mode: answer[:mode], url: answer[:url], tiers: answer[:tiers], fee_mode: answer[:fee_mode],
+                           schedule_mode: answer[:schedule_mode], opens_days_before: answer[:opens_days_before])
+    end
+
+    # Review's Back is always Tickets, the step before it.
     def review_back_path
+      manage_productions_wizard_tickets_path
+    end
+    helper_method :review_back_path
+
+    # Tickets' Back: the step before it, which is never Shows on a show-first
+    # run (Shows would just bounce straight on).
+    def tickets_back_path
       if show_first?
         if @wizard_state[:casting_source] == "none"
           manage_productions_wizard_casting_path
@@ -453,7 +489,7 @@ module Manage
         manage_productions_wizard_shows_path
       end
     end
-    helper_method :review_back_path
+    helper_method :tickets_back_path
 
     def org_payout_calculations
       Current.organization.payout_schemes.active

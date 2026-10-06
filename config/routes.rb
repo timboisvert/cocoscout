@@ -651,6 +651,8 @@ Rails.application.routes.draw do
     post   "/productions/wizard/shows",       to: "production_wizard#save_shows",    as: "productions_wizard_save_shows"
     get    "/productions/wizard/schedule",    to: "production_wizard#schedule",      as: "productions_wizard_schedule"
     post   "/productions/wizard/schedule",    to: "production_wizard#save_schedule", as: "productions_wizard_save_schedule"
+    get    "/productions/wizard/tickets",     to: "production_wizard#tickets",       as: "productions_wizard_tickets"
+    post   "/productions/wizard/tickets",     to: "production_wizard#save_tickets",  as: "productions_wizard_save_tickets"
     get    "/productions/wizard/review",      to: "production_wizard#review",        as: "productions_wizard_review"
     post   "/productions/wizard/create",      to: "production_wizard#create_production", as: "productions_wizard_create"
     delete "/productions/wizard/cancel",      to: "production_wizard#cancel",        as: "productions_wizard_cancel"

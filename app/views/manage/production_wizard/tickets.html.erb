@@ -1,0 +1,25 @@
+<%# Step: the Tickets question (Round 9 §3). The same three answers as the
+    production page's card; applied when the production is created. %>
+<%= render layout: "manage/production_wizard/wizard_layout", locals: { current_step: :tickets, step_name: "Tickets" } do %>
+  <div class="text-center mb-6">
+    <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 coustard-regular">Where do people get tickets for <%= @wizard_state[:name] %>?</h2>
+    <p class="text-gray-600 mt-2">Sell them here, point to where they're sold, or say there aren't any. Every date you add later follows this; you can change it any time on the production's page.</p>
+  </div>
+
+  <%= form_with url: manage_productions_wizard_save_tickets_path, method: :post, local: true, class: "space-y-3",
+        data: { controller: "radio-card tickets-question", tickets_question_sites_value: TicketLink::KNOWN_SITES.to_json } do %>
+    <%= render "shared/ticketing/tickets_fields", organization: Current.organization, name: @wizard_state[:name], answer: @answer, setup: nil %>
+
+    <div class="mt-8 flex justify-between items-center">
+      <%= link_to tickets_back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Next", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

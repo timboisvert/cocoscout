@@ -1,35 +1,12 @@
 <%# The Tickets question (Round 9 §3): "Where do people get tickets?" asked
-    once per production, three answers, applied by TicketsAnswer. The same
-    card sits on the production page, in a modal on the show page, and in the
-    wizards. Locals: production, return_to (optional), heading (default true). %>
+    once per production, three answers, applied by TicketsAnswer. The fields
+    are shared/ticketing/tickets_fields; this wraps them in the form the
+    production page (and the show page's modal) posts.
+    Locals: production, return_to (optional), heading (default true). %>
 <%
   heading = local_assigns.fetch(:heading, true)
   return_to = local_assigns[:return_to]
-  organization = production.organization
-  pro = organization.feature_available?(:ticketing)
-  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  setup = production.production_ticketing
-  has_tiers = setup&.ticket_tiers&.active&.any?
-  mode = production.tickets_mode == "unset" ? (pro ? "cocoscout" : "elsewhere") : production.tickets_mode
-  profile = TicketingProfile.for(organization)
-  fee_default = setup&.fee_mode.presence || profile.default_fee_mode
-  schedule = setup&.schedule_mode.presence || "immediate"
-  site = production.tickets_url.present? ? TicketLink.recognize(production.tickets_url) : nil
-  tier_row = lambda do |index, name, price, seats|
-    capture do
-%>
-      <div class="grid grid-cols-[minmax(0,1fr)_7rem_6rem_auto] gap-x-2 items-center">
-        <%= text_field_tag "tickets[tiers][#{index}][name]", name, placeholder: "General", "aria-label": "Ticket type", class: input_class %>
-        <div class="relative">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
-          <%= text_field_tag "tickets[tiers][#{index}][price]", price, inputmode: "decimal", placeholder: "20.00", "aria-label": "Price", class: "#{input_class} pl-7" %>
-        </div>
-        <%= number_field_tag "tickets[tiers][#{index}][seats]", seats, min: 1, placeholder: "Seats", "aria-label": "Seats", class: input_class %>
-        <%= render "shared/button", text: "Remove", variant: "ghost", size: "xs", type: :button, data: { action: "nested-form#remove" } %>
-      </div>
-<%
-    end
-  end
+  answer = { "mode" => (production.tickets_mode == "unset" ? nil : production.tickets_mode), "url" => production.tickets_url }
 %>
 <%= form_with url: manage_production_tickets_path(production), method: :patch, class: "space-y-3",
       data: { turbo: false, controller: "radio-card tickets-question", tickets_question_sites_value: TicketLink::KNOWN_SITES.to_json } do %>
@@ -37,52 +14,7 @@
   <% if heading %>
     <h3 class="text-base font-semibold text-gray-900">Where do people get tickets for <%= production.name %>?</h3>
   <% end %>
-
-  <%= render layout: "shared/choice_card", locals: { name: "tickets[mode]", value: "cocoscout", selected: mode,
-        title: "Sell them on CocoScout", hint: (pro ? "Your own box office page, checkout and the door. 50¢ a paid ticket; the money fills in each show's financials and pays your people." : "Part of Pro: your own box office, 50¢ a paid ticket."), disabled: !pro } do %>
-    <% if pro %>
-      <% if has_tiers %>
-        <p class="text-sm text-gray-700"><%= production.name %> already has its ticket types: <%= setup.ticket_tiers.active.map { |t| "#{t.name} #{number_to_currency(t.price_cents / 100.0)}" }.to_sentence %>. Change them in Ticketing.</p>
-      <% else %>
-        <div data-controller="nested-form" class="space-y-2">
-          <div class="grid grid-cols-[minmax(0,1fr)_7rem_6rem_auto] gap-x-2 text-xs font-medium text-gray-500"><span>Ticket type</span><span>Price</span><span>Seats</span><span></span></div>
-          <div class="space-y-2" data-nested-form-target="children"><%= tier_row.call(0, "General", nil, nil) %></div>
-          <template data-nested-form-target="template"><%= tier_row.call("NEW_CHILD_RECORD", nil, nil, nil) %></template>
-          <%= render "shared/button", text: "Add a ticket type", variant: "secondary", size: "xs", type: :button, icon: "plus", data: { action: "nested-form#add" } %>
-        </div>
-      <% end %>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-        <div>
-          <label for="tickets_fee_mode" class="block text-xs font-medium text-gray-700 mb-1">Fees</label>
-          <%= select_tag "tickets[fee_mode]", options_for_select([ [ "Buyers pay the fees", "buyer" ], [ "You absorb the fees", "org" ] ], fee_default), id: "tickets_fee_mode", class: input_class %>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">Sales open</label>
-          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-900">
-            <label class="inline-flex items-center gap-1.5"><%= radio_button_tag "tickets[schedule_mode]", "immediate", schedule == "immediate", class: "accent-pink-500" %> Right away</label>
-            <label class="inline-flex items-center gap-1.5"><%= radio_button_tag "tickets[schedule_mode]", "relative", schedule == "relative", class: "accent-pink-500" %>
-              <%= number_field_tag "tickets[opens_days_before]", (setup&.opens_days_before || 30), min: 1, max: 365, "aria-label": "Days before each date", class: "w-16 px-2 py-1 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-right" %> days before each date</label>
-          </div>
-        </div>
-      </div>
-      <% unless profile.enabled? %>
-        <p class="text-xs text-gray-500">Your box office opens with this: the public pages go live, and course and contract money you collect online joins your CocoScout balance from now on.</p>
-      <% end %>
-    <% else %>
-      <%= render "shared/button", text: "See Pro", variant: "secondary", size: "xs", path: manage_billing_path %>
-    <% end %>
-  <% end %>
-
-  <%= render layout: "shared/choice_card", locals: { name: "tickets[mode]", value: "elsewhere", selected: mode,
-        title: "Somewhere else", hint: "Paste the link where they buy. We read the site from it and add it to your ticket sources, so the financials know it too." } do %>
-    <%= url_field_tag "tickets[url]", production.tickets_url, placeholder: "https://www.tickettailor.com/events/…", "aria-label": "Where people buy tickets", class: input_class,
-          data: { tickets_question_target: "url", action: "input->tickets-question#recognize" } %>
-    <p class="text-xs text-pink-700 <%= 'hidden' unless site %>" data-tickets-question-target="siteNote"><%= site ? "#{site[:name]}: got it." : "" %></p>
-  <% end %>
-
-  <%= render layout: "shared/choice_card", locals: { name: "tickets[mode]", value: "none", selected: mode,
-        title: "No tickets", hint: "Free, or not ticketed." } do %><% end %>
-
+  <%= render "shared/ticketing/tickets_fields", organization: production.organization, name: production.name, answer: answer, setup: production.production_ticketing %>
   <div class="pt-1">
     <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
   </div>

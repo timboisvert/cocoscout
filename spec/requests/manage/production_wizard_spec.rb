@@ -92,11 +92,13 @@ RSpec.describe "Production wizard", type: :request do
       post manage_productions_wizard_save_casting_path, params: { casting_source: "none" }
 
       get manage_productions_wizard_shows_path
-      expect(response).to redirect_to(manage_productions_wizard_review_path)
+      expect(response).to redirect_to(manage_productions_wizard_tickets_path)
 
+      get manage_productions_wizard_tickets_path
+      expect(response.body).to include(manage_productions_wizard_casting_path) # Back skips Shows
       get manage_productions_wizard_review_path
       expect(response.body).not_to include(">Shows<")
-      expect(response.body).to include(manage_productions_wizard_casting_path) # Back skips Shows
+      expect(response.body).to include(manage_productions_wizard_tickets_path) # Back is Tickets
       expect(response.body).to include("set up its first show or event")
 
       post manage_productions_wizard_create_path
@@ -455,6 +457,56 @@ RSpec.describe "Production wizard", type: :request do
       expect(shows.map(&:recurrence_group_id).uniq.size).to eq(1)
       expect(shows.first.recurrence_group_id).to be_present
       expect(shows.map(&:recurrence_pattern).uniq).to eq([ "weekly" ])
+    end
+  end
+
+  # Round 9 §3 (2026-10-06): the Tickets question is a step of its own.
+  describe "the Tickets step" do
+    def walk_to_tickets(name)
+      post manage_productions_wizard_save_name_path, params: { name: name }
+      post manage_productions_wizard_save_poster_path, params: { skip: "true" }
+      post manage_productions_wizard_save_casting_path, params: { casting_source: "none" }
+      post manage_productions_wizard_save_shows_path, params: { has_shows: "yes" }
+      post manage_productions_wizard_save_schedule_path, params: { schedule_type: "single", details: { event_type: "show", is_online: "true", online_location_info: "Zoom" },
+                                                                   shows: { "0" => { date_and_time: 10.days.from_now.change(hour: 19).iso8601 } } }
+      expect(response).to redirect_to(manage_productions_wizard_tickets_path)
+    end
+
+    it "sells on CocoScout from the wizard: the setup, every date on sale right away, the box office open" do
+      org = set_up_org(pro: true)
+      walk_to_tickets("Twilight")
+      get manage_productions_wizard_tickets_path
+      expect(response.body).to include("Where do people get tickets for Twilight?", "Sell them on CocoScout", "Somewhere else", "No tickets")
+
+      post manage_productions_wizard_save_tickets_path, params: { tickets: { mode: "cocoscout", fee_mode: "buyer", schedule_mode: "immediate",
+                                                                            tiers: { "0" => { name: "General", price: "20", seats: "60" } } } }
+      expect(response).to redirect_to(manage_productions_wizard_review_path)
+      get manage_productions_wizard_review_path
+      expect(response.body).to include("Sold on CocoScout: General $20", "Every date goes on sale right away")
+
+      post manage_productions_wizard_create_path
+      production = Production.find_by!(name: "Twilight")
+      expect(production.tickets_mode).to eq("cocoscout")
+      expect(production.production_ticketing).to have_attributes(enabled: true, schedule_mode: "immediate")
+      expect(production.shows.sole.ticket_listing).to have_attributes(status: "on_sale", on_sale_at: nil)
+      expect(TicketingProfile.for(org).enabled?).to be(true)
+    end
+
+    it "offers only a link or no tickets on a free plan, and keeps the answer" do
+      set_up_org(pro: false)
+      walk_to_tickets("Open Mic")
+      get manage_productions_wizard_tickets_path
+      expect(response.body).to include("Part of Pro")
+      expect(response.body).to match(/value="cocoscout"[^>]*disabled="disabled"/)
+
+      post manage_productions_wizard_save_tickets_path, params: { tickets: { mode: "elsewhere", url: "eventbrite.com/e/open-mic" } }
+      get manage_productions_wizard_review_path
+      expect(response.body).to include("On Eventbrite")
+      post manage_productions_wizard_create_path
+      production = Production.find_by!(name: "Open Mic")
+      expect(production.attributes.values_at("tickets_mode", "tickets_url")).to eq([ "elsewhere", "https://eventbrite.com/e/open-mic" ])
+      expect(production.organization.ticket_sources.pluck(:name)).to include("Eventbrite")
+      expect(TicketLink.for(production.shows.sole).site).to eq("Eventbrite")
     end
   end
 end

@@ -212,6 +212,28 @@
       <%= link_to "Edit", back_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
     </div>
     <% end %>
+
+    <!-- Tickets -->
+    <% answer = (@wizard_state[:tickets] || {}).to_h.with_indifferent_access %>
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Tickets</p>
+        <% case answer[:mode] %>
+        <% when "cocoscout" %>
+          <% tiers = Array(answer[:tiers]).select { |r| r["name"].present? } %>
+          <p class="text-sm text-gray-900">Sold on CocoScout<%= ": #{tiers.map { |r| "#{r['name']}#{" $#{r['price'].to_s.delete('$')}" if r['price'].present?}" }.to_sentence}" if tiers.any? %></p>
+          <p class="text-xs text-gray-500"><%= answer[:schedule_mode] == "relative" ? "Each date goes on sale #{answer[:opens_days_before].presence || 30} days before" : "Every date goes on sale right away" %> · <%= answer[:fee_mode] == "org" ? "you absorb the fees" : "buyers pay the fees" %></p>
+        <% when "elsewhere" %>
+          <p class="text-sm text-gray-900">On <%= TicketLink.recognize(answer[:url])&.dig(:name) || "another site" %></p>
+          <p class="text-xs text-gray-500 truncate max-w-md"><%= answer[:url] %></p>
+        <% when "none" %>
+          <p class="text-sm text-gray-900">No tickets</p>
+        <% else %>
+          <p class="text-sm text-gray-500">Not set: you can answer this on the production's page</p>
+        <% end %>
+      </div>
+      <%= link_to "Edit", manage_productions_wizard_tickets_path, class: "text-sm text-pink-500 hover:text-pink-600" %>
+    </div>
   </div>
 
   <!-- Summary Box -->

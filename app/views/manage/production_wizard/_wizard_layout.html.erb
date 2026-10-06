@@ -38,6 +38,7 @@
         wizard_steps << { key: :schedule, name: "Schedule", path: manage_productions_wizard_schedule_path }
       end
     end
+    wizard_steps << { key: :tickets, name: "Tickets", path: manage_productions_wizard_tickets_path }
     wizard_steps << { key: :review, name: "Review", path: manage_productions_wizard_review_path }
 
     current_index = if current_step.is_a?(Integer)
