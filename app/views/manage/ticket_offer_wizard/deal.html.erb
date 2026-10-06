@@ -6,21 +6,21 @@
 
   <%= form_with url: manage_ticket_offer_wizard_save_deal_path, method: :post, local: true, data: { controller: "radio-card" } do %>
     <div class="space-y-2">
-      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "deal_kind", value: "amount_off", selected: kind,
+      <%= render layout: "shared/choice_card", locals: { name: "deal_kind", value: "amount_off", selected: kind,
             title: "An amount off", hint: "$5 off a $20 ticket is $15." } do %>
         <div class="relative w-40">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
           <%= text_field_tag :amount, wizard_state[:amount], inputmode: "decimal", placeholder: "5.00", "aria-label": "Amount off", class: "#{input_class} pl-7" %>
         </div>
       <% end %>
-      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "deal_kind", value: "percent_off", selected: kind,
+      <%= render layout: "shared/choice_card", locals: { name: "deal_kind", value: "percent_off", selected: kind,
             title: "A percent off", hint: "20% off a $20 ticket is $16." } do %>
         <div class="relative w-40">
           <%= text_field_tag :percent, wizard_state[:percent], inputmode: "decimal", placeholder: "20", "aria-label": "Percent off", class: "#{input_class} pr-8" %>
           <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">%</span>
         </div>
       <% end %>
-      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "deal_kind", value: "price", selected: kind,
+      <%= render layout: "shared/choice_card", locals: { name: "deal_kind", value: "price", selected: kind,
             title: "A set price", hint: "Whatever the ticket usually costs, they pay this." } do %>
         <div class="relative w-40">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>

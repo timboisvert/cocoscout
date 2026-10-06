@@ -69,6 +69,8 @@ class ProductionTicketing < ApplicationRecord
   # The production's upcoming, uncanceled shows this setup sells.
   def matching_shows(now: Time.current)
     base = production.shows.where(canceled: false).where("shows.date_and_time > ?", now)
+    # A date the theater kept out of sales ("Not this one" when it was made).
+    base = base.where.not(id: excluded_show_ids) if excluded_show_ids.present?
     case event_matching
     when "event_types" then base.where(event_type: event_type_filter.presence || EventTypes.revenue_event_types)
     when "manual" then base.where(id: production_ticketing_shows.select(:show_id))

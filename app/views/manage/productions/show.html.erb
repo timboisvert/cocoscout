@@ -287,6 +287,20 @@
     </div>
   <% end %>
 
+  <%# The Tickets question (Round 9 §3): asked once, then where its tickets stand. %>
+  <% if (Current.organization&.manageable_by?(Current.user) || Current.user&.superadmin?) && !@production.type_course? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
+      <%= render "shared/card_header", title: "Tickets" %>
+      <div class="p-4">
+        <% if @production.tickets_mode == "unset" %>
+          <%= render "shared/ticketing/tickets_question", production: @production, return_to: manage_production_path(@production) %>
+        <% else %>
+          <%= render "shared/ticketing/tickets_status", production: @production, return_to: manage_production_path(@production) %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
   <!-- Upcoming Shows & Availability -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
     <% if current_user_can_manage?(@production) %>

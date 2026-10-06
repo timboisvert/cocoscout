@@ -1,0 +1,75 @@
+<%# Tickets on the show page (Round 9 §3): the production's answer to the
+    Tickets question, this date's standing when it sells on CocoScout, and
+    this date's own link when its tickets are somewhere else.
+    Locals: show, production. %>
+<%
+  manager = Current.organization&.manageable_by?(Current.user) || Current.user&.superadmin?
+  listing = show.ticket_listing
+  listing = nil if listing&.status == "canceled"
+  link = TicketLink.for(show, listing: listing)
+  mode = production.tickets_mode
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  modal_id = "tickets-question-#{production.id}"
+  here = manage_production_show_path(production, show)
+%>
+<div class="border border-gray-200 rounded-lg overflow-hidden">
+  <%= render "shared/card_header", title: "Tickets" do %>
+    <% if listing %>
+      <%= render "shared/button", text: "Open ticketing", variant: "primary", size: "small", path: manage_ticket_listing_path(listing) %>
+    <% elsif manager && mode == "cocoscout" %>
+      <%= render "shared/button", text: "Add this date", variant: "primary", size: "small", path: manage_edit_production_ticketing_path(production, section: "dates") %>
+    <% elsif manager %>
+      <%= render "shared/button", text: (mode == "unset" ? "Answer" : "Change"), variant: "primary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+    <% end %>
+  <% end %>
+  <div class="p-4 space-y-3 text-sm">
+    <% if listing %>
+      <%
+        stats = Ticketing::ListingStats.of(listing)
+        label, classes = ticket_listing_status_badge(listing, stats.inventory)
+        today = show.date_and_time.to_date == Date.current
+      %>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= classes %>"><%= label %></span>
+        <span class="text-gray-900"><strong class="tabular-nums"><%= stats.sold %></strong><% if stats.capacity %> of <%= stats.capacity %><% end %> sold · <%= number_to_currency(stats.gross_cents / 100.0) %></span>
+      </div>
+      <% if stats.capacity.to_i.positive? %>
+        <div class="h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-full bg-pink-500" style="width: <%= [ (stats.sold + stats.outside_sold) * 100.0 / stats.capacity, 100 ].min.round(1) %>%"></div></div>
+      <% end %>
+      <%= render "shared/copy_url", url: link.url, show_qr: true, qr_title: "Scan for tickets" %>
+      <% if manager %>
+        <div class="flex flex-wrap gap-2 pt-1">
+          <% if today && !show.canceled %><%= render "shared/button", text: "Door", variant: "secondary", size: "small", path: door_path(listing) %><% end %>
+          <%= render "shared/button", text: "Give tickets", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "comps-modal" } %>
+        </div>
+        <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: listing %>
+      <% end %>
+    <% elsif mode == "cocoscout" %>
+      <p class="text-gray-700"><%= production.name %> sells on CocoScout, but this date isn't listed<%= show.canceled ? ": it's canceled" : "" %>.</p>
+    <% elsif link.outside? %>
+      <div class="font-medium text-gray-900">Tickets on <%= link.site || "another site" %><% if show.tickets_url.present? %> <span class="font-normal text-gray-500">(this date)</span><% end %></div>
+      <%= link_to link.url, link.url, target: "_blank", rel: "noopener", class: "block truncate text-pink-600 hover:text-pink-700" %>
+    <% elsif mode == "none" %>
+      <p class="text-gray-700">No tickets: free, or not ticketed.</p>
+    <% else %>
+      <p class="text-gray-700">Where do people get tickets for <%= production.name %>? Sold on CocoScout, somewhere else, or no tickets.</p>
+    <% end %>
+
+    <% if manager && !listing && mode != "unset" %>
+      <%# This date's own link, when it's somewhere else than the production's. %>
+      <%= form_with url: manage_production_show_tickets_path(production, show), method: :patch, data: { turbo: false }, class: "pt-3 border-t border-gray-100 space-y-1.5" do %>
+        <%= hidden_field_tag :return_to, here, id: nil %>
+        <label for="show_tickets_url" class="block text-xs font-medium text-gray-700">This date's tickets are somewhere else <span class="font-normal text-gray-500">(link, optional)</span></label>
+        <div class="flex gap-2">
+          <%= url_field_tag :tickets_url, show.tickets_url, id: "show_tickets_url", placeholder: "Same as the production", class: input_class %>
+          <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+<% if manager && !listing %>
+  <%= render "shared/ticketing/tickets_question_modal", id: modal_id, production: production, return_to: here %>
+<% end %>

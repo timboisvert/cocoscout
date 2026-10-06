@@ -6,13 +6,13 @@
 
   <%= form_with url: manage_ticket_offer_wizard_save_offer_path, method: :post, local: true, data: { controller: "radio-card" } do %>
     <div class="space-y-2">
-      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "target_scope", value: "same_night", selected: scope,
+      <%= render layout: "shared/choice_card", locals: { name: "target_scope", value: "same_night", selected: scope,
             title: "The same night at another production", hint: "Whatever date of it is on the night they're buying. Nothing shows on a night it isn't on." } do %>
         <%= select_tag :target_production_id, options_for_select(production_choices, wizard_state[:target_production_id]),
               include_blank: "Pick a production", class: input_class %>
         <%= text_field_tag :target_tier_name, wizard_state[:target_tier_name], placeholder: "Ticket type, like General (blank: its first)", class: input_class %>
       <% end %>
-      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "target_scope", value: "listing", selected: scope,
+      <%= render layout: "shared/choice_card", locals: { name: "target_scope", value: "listing", selected: scope,
             title: "One date's ticket type", hint: "A specific night, whatever they're buying." } do %>
         <%= select_tag :target_tier_id, grouped_options_for_select(tier_choices, wizard_state[:target_tier_id]),
               include_blank: "Pick a date and ticket type", class: input_class %>

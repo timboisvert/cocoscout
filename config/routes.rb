@@ -1320,6 +1320,9 @@ Rails.application.routes.draw do
     get    "ticketing/products/:id/edit",         to: "ticket_products#edit",            as: "edit_ticket_product"
     patch  "ticketing/products/:id",              to: "ticket_products#update",          as: "ticket_product"
     delete "ticketing/products/:id",              to: "ticket_products#destroy"
+    # The Tickets question: where people get tickets for a production (and one date's own link).
+    patch  "productions/:id/tickets",             to: "tickets_answers#update",          as: "production_tickets"
+    patch  "productions/:production_id/shows/:id/tickets", to: "tickets_answers#update_show", as: "production_show_tickets"
     get    "ticketing/shows",                     to: "ticket_listings#index",           as: "ticket_listings"
     # A production's ticketing, set up once for all its dates.
     get    "ticketing/productions/new",           to: "production_ticketings#new",       as: "new_production_ticketing"

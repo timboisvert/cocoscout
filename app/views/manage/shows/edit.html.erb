@@ -19,6 +19,7 @@
       { label: "Location" },
       { label: "Casting & Visibility" },
       { label: "Images, Links & Notes" },
+      { label: "Tickets" },
       { label: "Linked Events" },
       { label: "Danger Zone", danger: true }
     ]
@@ -51,6 +52,7 @@
     <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_location", form: form, location_spaces_map: location_spaces_map %></div>
     <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_visibility", form: form %></div>
     <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_media", form: form %></div>
+    <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_tickets", form: form %></div>
     <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/linked_events", show: @show, production: @production %></div>
     <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_danger", form: form %></div>
 

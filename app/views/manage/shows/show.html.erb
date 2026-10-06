@@ -724,6 +724,9 @@
         <% end %>
       <% end %>
 
+      <%# Tickets: the production's answer to the Tickets question, and this date's standing. %>
+      <%= render "manage/shows/tickets_card", show: @show, production: @production %>
+
       <%# Money — bridge to this show's financials, payouts, and advances (Pro). %>
       <%= render "manage/shows/money_section", show: @show, production: @production %>
 

@@ -1,0 +1,43 @@
+<%# Where a production's tickets stand once the question is answered, with
+    Change reopening it. Locals: production, return_to (optional). %>
+<%
+  return_to = local_assigns[:return_to]
+  modal_id = "tickets-question-#{production.id}"
+  setup = production.production_ticketing
+%>
+<div class="flex flex-wrap items-start justify-between gap-4">
+  <div class="min-w-0 flex-1 space-y-2 text-sm">
+    <% case production.tickets_mode %>
+    <% when "cocoscout" %>
+      <%
+        listings = production.ticket_listings.joins(:show).where.not(status: "canceled").where(shows: { canceled: false }).where("shows.date_and_time >= ?", Time.current).includes(:show).to_a
+        stats = Ticketing::ListingStats.for(listings)
+        sold = stats.values.sum(&:sold)
+        on_sale = listings.count { |l| l.selling? }
+        short = short_link_url(code: ShortLink.canonical_for!(production).code)
+      %>
+      <div class="font-medium text-gray-900">Sold on CocoScout<% unless setup&.enabled? %> <span class="font-normal text-amber-700">· paused</span><% end %></div>
+      <div class="text-gray-600">
+        <%= pluralize(listings.size, "upcoming date") %><% if on_sale != listings.size %>, <%= on_sale %> on sale now<% end %> · <%= pluralize(sold, "ticket") %> sold
+        <% if setup && setup.ticket_tiers.active.any? %> · <%= setup.ticket_tiers.active.map { |t| "#{t.name} #{number_to_currency(t.price_cents / 100.0)}" }.to_sentence %><% end %>
+      </div>
+      <%= render "shared/copy_url", url: short, show_qr: true, qr_title: "Scan for tickets" %>
+    <% when "elsewhere" %>
+      <% site = TicketLink.recognize(production.tickets_url) %>
+      <div class="font-medium text-gray-900">Tickets on <%= site ? site[:name] : "another site" %></div>
+      <%= link_to production.tickets_url, production.tickets_url, target: "_blank", rel: "noopener", class: "block truncate text-pink-600 hover:text-pink-700" %>
+      <p class="text-xs text-gray-500">Every date links here; a date can point somewhere else from its own page.</p>
+    <% when "none" %>
+      <div class="font-medium text-gray-900">No tickets</div>
+      <p class="text-gray-600">Free, or not ticketed.</p>
+    <% end %>
+  </div>
+  <div class="flex flex-wrap gap-2 shrink-0">
+    <% if production.tickets_mode == "cocoscout" %>
+      <%= render "shared/button", text: "Open ticketing", variant: "primary", size: "small", path: manage_production_ticketing_path(production) %>
+    <% end %>
+    <%= render "shared/button", text: "Change", variant: "secondary", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+  </div>
+</div>
+<%= render "shared/ticketing/tickets_question_modal", id: modal_id, production: production, return_to: return_to %>

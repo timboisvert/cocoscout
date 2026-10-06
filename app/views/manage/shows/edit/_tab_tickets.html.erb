@@ -1,0 +1,35 @@
+<%# Tickets tab: this date's own ticket link, when its tickets are somewhere
+    other than the production's. Selling on CocoScout is set up in Ticketing. %>
+<%
+  production = @show.production
+  listing = @show.ticket_listing
+  input_class = "block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+%>
+<div class="space-y-6">
+  <div>
+    <h4 class="text-sm font-semibold text-gray-900 mb-1">Tickets</h4>
+    <% if listing && listing.status != "canceled" %>
+      <p class="text-sm text-gray-600">This date sells on CocoScout. Its prices, seats and sales window live in <%= link_to "its ticketing settings", manage_edit_ticket_listing_path(listing), class: "text-pink-600 hover:text-pink-700 font-medium" %>.</p>
+    <% else %>
+      <p class="text-sm text-gray-600">
+        <% if production.tickets_mode == "cocoscout" %>
+          <%= production.name %> sells on CocoScout; this date isn't listed. Add it from <%= link_to "the production's ticketing", manage_edit_production_ticketing_path(production, section: "dates"), class: "text-pink-600 hover:text-pink-700 font-medium" %>.
+        <% elsif production.tickets_mode == "elsewhere" %>
+          <%= production.name %>'s tickets are on <%= TicketLink.recognize(production.tickets_url)&.dig(:name) || "another site" %>. Leave the link below blank to use that.
+        <% elsif production.tickets_mode == "none" %>
+          <%= production.name %> has no tickets. A link below gives this date its own.
+        <% else %>
+          Where people get tickets for <%= production.name %> isn't set yet; answer it on <%= link_to "the production's page", manage_production_path(production), class: "text-pink-600 hover:text-pink-700 font-medium" %>.
+        <% end %>
+      </p>
+    <% end %>
+  </div>
+  <% unless listing && listing.status != "canceled" %>
+    <div>
+      <%= form.label :tickets_url, class: "block text-sm font-medium text-gray-700 mb-1" do %>
+        This date's tickets are somewhere else <span class="font-normal text-gray-500">(link, optional)</span>
+      <% end %>
+      <%= form.url_field :tickets_url, placeholder: "Same as the production", class: input_class %>
+    </div>
+  <% end %>
+</div>

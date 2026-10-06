@@ -6,17 +6,17 @@
 
   <%= form_with url: manage_ticket_offer_wizard_save_buying_path, method: :post, local: true, data: { controller: "radio-card" } do %>
     <div class="space-y-2">
-      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "trigger_scope", value: "production", selected: scope,
+      <%= render layout: "shared/choice_card", locals: { name: "trigger_scope", value: "production", selected: scope,
             title: "Anyone buying a date of a production", hint: "Whichever night they pick." } do %>
         <%= select_tag :trigger_production_id, options_for_select(production_choices, wizard_state[:trigger_production_id]),
               include_blank: "Pick a production", class: input_class %>
       <% end %>
-      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "trigger_scope", value: "listing", selected: scope,
+      <%= render layout: "shared/choice_card", locals: { name: "trigger_scope", value: "listing", selected: scope,
             title: "Anyone buying one date", hint: "Just that night." } do %>
         <%= select_tag :trigger_listing_id, grouped_options_for_select(listing_choices, wizard_state[:trigger_listing_id]),
               include_blank: "Pick a date", class: input_class %>
       <% end %>
-      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "trigger_scope", value: "any", selected: scope,
+      <%= render layout: "shared/choice_card", locals: { name: "trigger_scope", value: "any", selected: scope,
             title: "Anyone buying anything", hint: "Every show you sell." } do %><% end %>
     </div>
 

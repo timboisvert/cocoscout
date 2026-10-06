@@ -66,6 +66,12 @@ class Production < ApplicationRecord
 
   # Ticketing set up for the whole production, and each show's listing.
   has_one :production_ticketing, dependent: :destroy
+
+  # Where people get tickets (the Tickets question, TicketsAnswer): not asked
+  # yet, sold on CocoScout, somewhere else (tickets_url), or no tickets.
+  TICKETS_MODES = %w[unset cocoscout elsewhere none].freeze
+  validates :tickets_mode, inclusion: { in: TICKETS_MODES }
+  validates :tickets_url, format: { with: %r{\Ahttps?://\S+\z}, message: "must start with http:// or https://" }, allow_blank: true
   has_many :ticket_listings
   # cocoscout.com/t/CODE: the production's one short code (kept while dates come
   # and go) and any named links a manager made for it.
