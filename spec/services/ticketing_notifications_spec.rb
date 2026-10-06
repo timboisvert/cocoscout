@@ -93,7 +93,16 @@ RSpec.describe "Ticketing notifications" do
     expect(subjects.grep(/\ATicket sales for/).size).to eq(1)
     expect(subjects.grep(/\AToday:/).size).to eq(1)
     summary = mails_to("manager@sg.example").find { |m| m.subject.start_with?("Ticket sales for") }
-    expect(html(summary)).to include("3 tickets sold", "Coming up")
+    expect(html(summary)).to include("3 tickets sold", ">Now<", "3 of 10")
+    expect(html(summary)).not_to include("Coming up")
+  end
+
+  it "sends no digest on a day nothing sold, even with shows coming up" do
+    listing.show.update!(date_and_time: 3.days.from_now)
+    travel_to(3.days.ago) { sell(2) }
+
+    perform_enqueued_jobs { TicketingDailyNoticesJob.perform_now }
+    expect(mails_to("manager@sg.example").map(&:subject).grep(/\ATicket sales for/)).to be_empty
   end
 
   it "tells the team about refunds, and about refunds that fail" do

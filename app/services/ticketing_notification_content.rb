@@ -182,20 +182,21 @@ class TicketingNotificationContent
                              orders_url: routes.manage_ticket_orders_url(listing_id: listing.id, **url_options))
   end
 
-  # Yesterday's sales by show, and how each upcoming show is selling.
+  # Yesterday's sales, by show: what sold, and where each of those shows
+  # stands now. Only shows that sold (or were refunded) that day are listed;
+  # the digest isn't a status report on every show (Tim, 2026-10-06). A day
+  # with no sales and no refunds sends nothing (`anything`).
   def self.daily_summary(organization, day)
     # Moved tickets aren't new sales: count each purchase once, as bought.
     orders = organization.ticket_orders.was_paid.where(exchanged_from_id: nil).where.not(channel: "comp")
                          .where(paid_at: day.all_day).includes(:tickets, ticket_listing: :show)
     refunds = TicketRefund.succeeded.where(organization_id: organization.id, created_at: day.all_day)
+                          .includes(ticket_order: { ticket_listing: :show })
     by_show = orders.group_by(&:ticket_listing)
     bought = Ticket::SOLD_STATUSES + %w[exchanged]
     tickets = orders.sum { |o| o.tickets.count { |t| bought.include?(t.status) } }
     sales = orders.sum { |o| o.subtotal_cents - o.discount_cents }
-    upcoming = organization.ticket_listings.joins(:show).where.not(status: %w[draft canceled])
-                           .where(shows: { canceled: false, date_and_time: Time.current..14.days.from_now })
-                           .order("shows.date_and_time").limit(15).to_a
-    stats = Ticketing::ListingStats.for(upcoming)
+    stats = Ticketing::ListingStats.for(by_show.keys)
     items = TicketOrderItem.where(ticket_order_id: orders.map(&:id), status: TicketOrderItem::SOLD_STATUSES).to_a
     products_sold = items.sum(&:quantity)
     product_sales = items.sum(&:price_cents)
@@ -204,13 +205,13 @@ class TicketingNotificationContent
       ids = os.map(&:id).to_set
       count = os.sum { |o| o.tickets.count { |t| bought.include?(t.status) } }
       mine = items.select { |i| ids.include?(i.ticket_order_id) }
-      [ label.call(listing), count.to_s, mine.any? ? mine.sum(&:quantity).to_s : "—", money(os.sum { |o| o.subtotal_cents - o.discount_cents }) ]
-    end
-    yesterday_rows << { cells: [ "Total", tickets.to_s, products_sold.positive? ? products_sold.to_s : "—", money(sales) ] } if yesterday_rows.size > 1
-    upcoming_rows = upcoming.map do |listing|
       s = stats[listing.id]
-      state = if listing.selling? then "On sale" elsif listing.status == "paused" then "Paused" elsif listing.status == "closed" then "Online sales closed" else listing.status.humanize end
-      [ label.call(listing), s.capacity ? "#{s.sold} of #{s.capacity}" : s.sold.to_s, s.products_sold.positive? ? s.products_sold.to_s : "—", money(s.gross_cents + s.product_cents), state ]
+      [ label.call(listing), count.to_s, mine.any? ? mine.sum(&:quantity).to_s : "—", money(os.sum { |o| o.subtotal_cents - o.discount_cents }),
+        s.capacity ? "#{s.sold} of #{s.capacity}" : s.sold.to_s ]
+    end
+    yesterday_rows << { cells: [ "Total", tickets.to_s, products_sold.positive? ? products_sold.to_s : "—", money(sales), "" ] } if yesterday_rows.size > 1
+    refund_rows = refunds.group_by { |r| r.ticket_order.ticket_listing }.sort_by { |l, _| l.show.date_and_time }.map do |listing, rs|
+      [ label.call(listing), rs.sum { |r| r.ticket_ids.size }.to_s, money(rs.sum(&:amount_cents)) ]
     end
     {
       date_label: day.strftime("%A, %B %-d"),
@@ -218,9 +219,9 @@ class TicketingNotificationContent
       products_sold: products_sold.positive? ? ActionController::Base.helpers.pluralize(products_sold, "product") : "",
       product_sales: money(product_sales),
       refunded: refunds.any? ? money(refunds.sum(:amount_cents)) : "",
-      yesterday_table: yesterday_rows.any? ? table([ "Show", "Sold", "Products", "Sales" ], yesterday_rows) : "<p>No sales that day.</p>",
-      upcoming_table: upcoming_rows.any? ? table([ "Show", "Sold", "Products", "Sales", "" ], upcoming_rows) : "<p>Nothing on sale in the next two weeks.</p>",
-      anything: orders.any? || refunds.any? || upcoming.any?
+      yesterday_table: yesterday_rows.any? ? table([ "Show", "Sold", "Products", "Sales", "Now" ], yesterday_rows) : "<p>No sales that day.</p>",
+      refunds_table: refund_rows.any? ? %(<h3 style="font-size:15px;margin:24px 0 8px">Refunded</h3>#{table([ 'Show', 'Tickets', 'Refunded' ], refund_rows)}) : "",
+      anything: orders.any? || refunds.any?
     }
   end
 end
