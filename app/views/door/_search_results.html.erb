@@ -1,7 +1,10 @@
-<%# Orders matching a door search (the same rows as the list). Locals: orders, query, listing. %>
+<%# Orders matching a door search (the same rows as the list), and pass
+    holders who can use a credit on this show. Locals: orders, query,
+    listing, holdings. %>
+<% holdings = local_assigns[:holdings] || [] %>
 <% if query.length < 2 %>
   <%# Nothing typed yet. %>
-<% elsif orders.empty? %>
+<% elsif orders.empty? && holdings.empty? %>
   <p class="text-sm text-gray-500">Nobody matching “<%= query %>”.</p>
 <% else %>
   <ul class="divide-y divide-gray-100">
@@ -9,4 +12,30 @@
       <%= render "door/party", order: order, listing: listing %>
     <% end %>
   </ul>
+<% end %>
+
+<% if holdings.any? %>
+  <div class="mt-3 rounded-lg border border-pink-200 bg-pink-50">
+    <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-pink-700">Pass holders</div>
+    <ul class="divide-y divide-pink-100">
+      <% holdings.each do |holding| %>
+        <li class="px-3 py-2.5">
+          <%= form_with url: door_use_pass_path(listing), method: :post, data: { turbo: false }, class: "flex flex-wrap items-center justify-between gap-2" do %>
+            <%= hidden_field_tag :holding_id, holding.id %>
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900"><%= holding.holder_name.presence || holding.holder_email %></div>
+              <div class="text-xs text-gray-600"><%= holding.ticket_pass.name %> · <%= pluralize(holding.credits_left, "credit") %> left</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <% if !holding.season? && holding.credits_left > 1 %>
+                <%= select_tag :people, options_for_select((1..[ holding.credits_left, 10 ].min).to_a, 1), "aria-label": "How many people",
+                      class: "px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <% end %>
+              <%= render "shared/button", text: "Use a credit", variant: "primary", size: "small", type: :submit %>
+            </div>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
 <% end %>

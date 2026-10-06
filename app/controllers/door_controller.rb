@@ -10,7 +10,7 @@ class DoorController < ApplicationController
   layout "door"
 
   before_action :set_listing, except: :index
-  before_action -> { require_level(:box_office) }, only: %i[sell card card_status card_cancel]
+  before_action -> { require_level(:box_office) }, only: %i[sell card card_status card_cancel use_pass]
   before_action :set_card_order, only: %i[card card_status card_cancel]
 
   def index
@@ -77,7 +77,27 @@ class DoorController < ApplicationController
            .or(scope.where("ticket_orders.buyer_email ILIKE ?", "%#{TicketOrder.sanitize_sql_like(q)}%"))
            .limit(20).to_a
     end
-    render partial: "door/search_results", locals: { orders: @orders, query: q, listing: @listing }
+    @holdings = q.length < 2 ? [] : pass_holders(q)
+    render partial: "door/search_results", locals: { orders: @orders, query: q, listing: @listing, holdings: @holdings }
+  end
+
+  # Someone with a punch card or season pass at the door: a credit becomes
+  # their tickets, checked in at once (TicketPassCredits).
+  def use_pass
+    holding = TicketPassHolding.active.where(organization_id: @listing.organization_id).find(params[:holding_id])
+    order = TicketPassCredits.use!(holding, listing: @listing, people: params[:people] || 1, by: Current.user, at_door: true)
+    redirect_to door_path(@listing), notice: "#{holding.holder_name.presence || 'Pass holder'}: #{helpers.pluralize(order.tickets.size, 'ticket')} from their pass, checked in."
+  rescue TicketPassCredits::Error => e
+    redirect_to door_path(@listing), alert: e.message
+  end
+
+  # Live credit passes covering this show whose holder matches a search.
+  def pass_holders(query)
+    like = "%#{TicketPassHolding.sanitize_sql_like(query)}%"
+    TicketPassHolding.active.joins(ticket_pass: :coverages).includes(:ticket_pass)
+                     .where(organization_id: @listing.organization_id, ticket_pass_coverages: { production_id: @listing.production_id })
+                     .where("ticket_pass_holdings.holder_name ILIKE :q OR ticket_pass_holdings.holder_email ILIKE :q", q: like)
+                     .where(ends_on: @listing.show.date_and_time.to_date..).limit(10).to_a.select(&:usable?)
   end
 
   def stats

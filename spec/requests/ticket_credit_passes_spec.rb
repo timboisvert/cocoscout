@@ -69,6 +69,21 @@ RSpec.describe "Credit passes", type: :request do
       get manage_path
     end
 
+    it "finds a pass holder at the door and checks them in on a credit" do
+      holding = TicketPassCredits.start!(pass: pass, quantity: 1).ticket_pass_holdings.first
+      holding.update!(holder_name: "Bella Swan", holder_email: "bella@example.com")
+      TicketPassCredits.settle!(holding, paid_at: Time.current)
+
+      get door_search_path(listing, q: "bella")
+      expect(response.body).to include("Pass holders", "Bella Swan", "5 credits left")
+
+      post door_use_pass_path(listing), params: { holding_id: holding.id, people: 2 }
+      expect(response).to redirect_to(door_path(listing))
+      expect(flash[:notice]).to eq("Bella Swan: 2 tickets from their pass, checked in.")
+      expect(holding.tickets.pluck(:status).uniq).to eq([ "checked_in" ])
+      expect(holding.credits_left).to eq(3)
+    end
+
     it "builds a season pass covering a production, and lists who has one" do
       post manage_ticket_passes_path, params: { ticket_pass: {
         name: "Twilight Season", kind: "season", price: "80", credits: "4", ends_on: 60.days.from_now.to_date.iso8601, status: "on_sale",
