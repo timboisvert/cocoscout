@@ -48,14 +48,49 @@ RSpec.describe "Contract payment checkout", type: :request do
       expect(response.body).not_to include("Gigi Noble Wolf")
     end
 
-    it "shows a receipt rather than a pay button once it's paid" do
+    it "is the invoice: numbered, with a PDF to download" do
+      get pay_contract_path(token: payment.payment_token!)
+
+      invoice = payment.reload.contract_invoice
+      expect(invoice.display_number).to eq("#{org.invoice_prefix_or_default}-0001")
+      expect(response.body).to include("Invoice from", invoice.display_number, "Download invoice (PDF)")
+
+      get pay_contract_invoice_path(token: payment.payment_token, format: :pdf)
+      expect(response.media_type).to eq("application/pdf")
+      expect(response.body).to start_with("%PDF")
+      expect(response.headers["Content-Disposition"]).to include("Invoice #{invoice.display_number}.pdf")
+    end
+
+    it "shows the paid invoice, the receipt, rather than a pay button once it's paid" do
       token = payment.payment_token!
       payment.update!(status: "paid", paid_date: Date.current)
 
       get pay_contract_path(token: token)
 
-      expect(response.body).to include("Payment received")
+      expect(response.body).to include("Paid to", "Download receipt (PDF)")
       expect(response.body).not_to include("Pay $250.00")
+    end
+
+    it "sends an old link to a payment combined into another to the combined invoice" do
+      old_token = payment.payment_token!
+      get pay_contract_path(token: old_token)
+      host = create(:contract_payment, contract: contract, direction: "incoming", status: "pending",
+                                       amount: 100, amount_tbd: false, due_date: Date.current + 3, description: "Booth tech")
+      host.merge_in!([ payment ])
+
+      get pay_contract_path(token: old_token)
+      expect(response).to redirect_to(pay_contract_path(token: host.reload.payment_token))
+      follow_redirect!
+      expect(response.body).to include("combined with others into one invoice", "$350.00")
+    end
+
+    it "shows no invoice number for an amount that isn't settled yet" do
+      payment.update!(amount_tbd: true, amount: 0)
+
+      get pay_contract_path(token: payment.payment_token!)
+
+      expect(response.body).to include("isn't ready to be paid yet")
+      expect(payment.reload.contract_invoice).to be_nil
     end
 
     it "shows the payer only CocoScout when the contract is online-only" do

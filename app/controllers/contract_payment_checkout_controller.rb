@@ -6,15 +6,27 @@
 # in My Contracts. The token is the only credential, so it names exactly one
 # payment and nothing else about the contract is exposed.
 #
+# The page is the invoice (ContractInvoice): numbered, downloadable as a PDF,
+# and once paid, the receipt.
+#
 # CocoScout collects the money into its own balance (like course registrations)
 # and remits the organization's share through the course payout rail.
 class ContractPaymentCheckoutController < ApplicationController
   allow_unauthenticated_access
   before_action :set_payment
 
-  # Landing page: what's owed, to whom, and a button to pay it.
+  # The invoice: what's owed, to whom, and a button to pay it (or PAID).
   def show
-    render :paid if @payment.status_paid?
+    @invoice = invoice_for(@payment)
+  end
+
+  # The invoice as a PDF, made fresh every time so it matches the payment.
+  def invoice
+    invoice = invoice_for(@payment)
+    return redirect_to(pay_contract_path(token: @token)) unless invoice
+
+    send_data InvoicePdf.new(invoice.document(pdf: true)).render, filename: invoice.filename,
+                                                                  type: "application/pdf", disposition: "inline"
   end
 
   # Hand off to Stripe hosted checkout.
@@ -70,7 +82,9 @@ class ContractPaymentCheckoutController < ApplicationController
       end
     end
 
-    render :paid
+    @just_paid = @payment.reload.status_paid?
+    @invoice = invoice_for(@payment)
+    render :show
   end
 
   private
@@ -83,12 +97,32 @@ class ContractPaymentCheckoutController < ApplicationController
     }
   end
 
+  # Its invoice, numbered the first time anyone opens it. A payment still
+  # waiting on its amount has none yet; a cancelled one shows the one it had,
+  # void.
+  def invoice_for(payment)
+    payment.invoiceable? ? ContractInvoice.for!(payment) : payment.contract_invoice
+  end
+
   def set_payment
     @token = params[:token].to_s
     @payment = ContractPayment.find_by(payment_token: @token) if @token.present?
-    return render :invalid, status: :not_found unless @payment
+    return if @payment.nil? && redirect_to_combined_payment
+    return render :invalid, status: :not_found, formats: :html unless @payment
 
     @contract = @payment.contract
     @organization = @contract.organization
+  end
+
+  # A link to a payment that was since combined into another opens the
+  # combined one, whose invoice now covers it.
+  def redirect_to_combined_payment
+    return false if @token.blank?
+
+    host = ContractInvoice.find_by(payment_token: @token)&.combined_into_payment
+    return false if host&.payment_token.blank?
+
+    redirect_to pay_contract_path(token: host.payment_token), notice: "This payment was combined with others into one invoice."
+    true
   end
 end

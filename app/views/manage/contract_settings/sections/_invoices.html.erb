@@ -1,0 +1,77 @@
+<%
+  org = Current.organization
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  next_number = "#{org.invoice_prefix_or_default}-#{org.invoice_next_number.to_s.rjust(4, '0')}"
+  seller = org.invoice_seller
+%>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Invoices</h2>
+    <p class="text-sm text-gray-600 mt-1">
+      Every payment someone owes you under a contract has an invoice: its pay link opens it, and they can
+      download it as a PDF. Once it's paid, the same invoice is their receipt, and it's emailed to them
+      automatically. You send the invoice itself whenever you like, from the payment's Collect page.
+    </p>
+  </div>
+
+  <%= form_with url: manage_contract_settings_invoices_path, method: :patch, class: "px-6 py-5 space-y-6" do %>
+    <div class="max-w-xl">
+      <label for="invoice_prefix" class="block text-sm font-medium text-gray-700 mb-1">Invoice numbers start with</label>
+      <div class="flex items-center gap-3">
+        <%= text_field_tag :invoice_prefix, org.invoice_prefix, maxlength: 8, placeholder: org.class.invoice_initials(org.name),
+              class: "#{input_class} w-32 uppercase" %>
+        <span class="text-sm text-gray-500">Your next invoice is <strong class="text-gray-700 tabular-nums"><%= next_number %></strong>.</span>
+      </div>
+      <p class="text-xs text-gray-500 mt-1">Letters and numbers, up to 8. Numbers go in order and are never reused; invoices already issued keep theirs.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-6">
+      <div class="space-y-4 max-w-xl">
+        <p class="text-sm text-gray-600">What your invoices say about you. Leave a field blank to use what's shown in gray.</p>
+        <div>
+          <label for="invoice_details_name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <%= text_field_tag "invoice_details[name]", @invoice_details["name"], id: "invoice_details_name", placeholder: @invoice_defaults["name"], class: input_class %>
+        </div>
+        <div>
+          <label for="invoice_details_address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+          <%= text_area_tag "invoice_details[address]", @invoice_details["address"], id: "invoice_details_address", rows: 3,
+                placeholder: @invoice_defaults["address"].presence || "Street\nCity, State ZIP", class: input_class %>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="invoice_details_email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <%= email_field_tag "invoice_details[email]", @invoice_details["email"], id: "invoice_details_email", placeholder: @invoice_defaults["email"], class: input_class %>
+            <p class="text-xs text-gray-500 mt-1">Replies to invoices and receipts go here.</p>
+          </div>
+          <div>
+            <label for="invoice_details_phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <%= telephone_field_tag "invoice_details[phone]", @invoice_details["phone"], id: "invoice_details_phone", placeholder: @invoice_defaults["phone"].presence || "Optional", class: input_class %>
+          </div>
+        </div>
+        <div>
+          <label for="invoice_details_note" class="block text-sm font-medium text-gray-700 mb-1">Note on every invoice</label>
+          <%= text_area_tag "invoice_details[note]", @invoice_details["note"], id: "invoice_details_note", rows: 2,
+                placeholder: "Optional, like: Make checks payable to Stars & Garters LLC.", class: input_class %>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Your invoices show</div>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+          <% if org.logo.attached? %>
+            <%= image_tag org.logo.variant(resize_to_limit: [ 240, 96 ]), alt: org.name, class: "h-10 w-auto max-w-[8rem] object-contain mb-2" %>
+          <% end %>
+          <div class="font-semibold text-gray-900"><%= seller.name %></div>
+          <% [ *seller.lines, seller.email, seller.phone ].compact_blank.each do |line| %>
+            <div class="text-gray-500"><%= line %></div>
+          <% end %>
+          <div class="mt-3 text-xs text-gray-400">The logo is your organization's, from its <%= link_to "profile", section_manage_organization_path(org, section: "basic"), class: "underline hover:text-gray-600" %>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

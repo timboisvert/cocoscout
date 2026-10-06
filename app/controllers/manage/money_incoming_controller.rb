@@ -9,8 +9,6 @@ module Manage
   # time (a Stripe pay link, an in-person QR code, or recorded by hand when it
   # arrives offline), so the depth is index → per-production list → payment detail.
   class MoneyIncomingController < Manage::ManageController
-    include ActionView::Helpers::NumberHelper
-
     # Ways an incoming payment can arrive outside CocoScout's Stripe rail — the
     # one list shared with the contract page (ContractPayment::RECEIVED_PAYMENT_METHODS).
     RECEIVED_METHODS = ContractPayment::RECEIVED_PAYMENT_METHODS
@@ -119,6 +117,8 @@ module Manage
       @contractor = @contract.contractor
       # Only mint/expose a pay link when there's actually a settled amount to charge.
       @pay_url = @payment.collectable_online? ? pay_contract_url(token: @payment.payment_token!) : nil
+      # Opening the Collect page numbers the invoice, like opening the invoice.
+      @invoice = @payment.invoiceable? ? ContractInvoice.for!(@payment) : @payment.contract_invoice
       @received_methods = RECEIVED_METHODS
     end
 
@@ -144,47 +144,26 @@ module Manage
                   notice: "Added to your payout run#{" — pay it out to send it to your bank" if batch&.open?}."
     end
 
-    # Nudge the payer about this receivable. Renders the seeded
-    # contract_payment_reminder template (channel "both") to the payer's Person —
-    # in-app message if they have an account, plus an email carrying the pay link.
-    def remind
-      @payment    = find_payment
-      contract    = @payment.contract
-      contractor  = contract.contractor
-      person      = contractor&.ensure_person!
-
-      if person.nil? || person.email.blank?
+    # Email the payer their invoice, PDF attached, with an optional note from
+    # the manager; after the first send it goes as a reminder. Only ever on a
+    # manager's press: nothing sends invoices on its own.
+    def send_invoice
+      @payment = find_payment
+      unless @payment.invoiceable? && @payment.status_pending?
         redirect_to manage_money_incoming_payment_path(@payment),
-                    alert: "No email on file for this payer — add one on the contract to send a reminder."
-        return
+                    alert: "There's nothing to invoice on this payment yet." and return
       end
 
-      pay_url = @payment.collectable_online? ? pay_contract_url(token: @payment.payment_token!) : manage_contract_url(contract)
-
-      ContentTemplateService.deliver(
-        template_key: "contract_payment_reminder",
-        variables: {
-          payer_name: contractor.name.presence || person.name,
-          organization_name: Current.organization.name,
-          amount: number_to_currency(@payment.amount),
-          description: @payment.description.presence || "a payment",
-          due_date: @payment.due_date.strftime("%B %-d, %Y"),
-          pay_url: pay_url,
-          custom_message: params[:custom_message].to_s.strip,
-          # Only the ways this contract says they may pay; blank means the
-          # template shows CocoScout alone.
-          other_payment_methods: contract.offline_payment_methods_sentence.to_s
-        },
-        sender: Current.user,
-        recipients: [ person ],
-        organization: Current.organization,
-        production: contract.production,
-        mailer_class: Manage::ContractPaymentMailer,
-        mailer_method: :payment_reminder
-      )
-
-      redirect_to manage_money_incoming_payment_path(@payment),
-                  notice: "Reminder sent to #{person.email}."
+      invoice = ContractInvoice.for!(@payment)
+      reminder = invoice.sent_count.positive?
+      to = ContractInvoiceDelivery.send_invoice!(invoice, sender: Current.user, note: params[:custom_message])
+      if to
+        redirect_to manage_money_incoming_payment_path(@payment),
+                    notice: "#{reminder ? 'Reminder about invoice' : 'Invoice'} #{invoice.display_number} sent to #{to}."
+      else
+        redirect_to manage_money_incoming_payment_path(@payment),
+                    alert: "No email on file for this payer. Add one on the contract to send the invoice."
+      end
     end
 
     # Mark an incoming payment as received outside CocoScout (cash, check, Zelle,

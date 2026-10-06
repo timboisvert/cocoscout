@@ -12,6 +12,8 @@ module Tax
   # Pure renderer: generated on demand from the encrypted record, never stored,
   # so the full TIN only exists in the bytes handed to whoever opened it.
   class W9Pdf
+    include PdfHelpers
+
     def initialize(submission)
       @w9 = submission
     end
@@ -39,7 +41,7 @@ module Tax
       pdf.text "Request for Taxpayer Identification Number and Certification (Rev. March 2024)", size: 10, color: "555555"
       pdf.move_down 4
       pdf.text "Given to #{winansi(@w9.organization.name)}", size: 9, color: "888888"
-      rule(pdf)
+      rule(pdf, gap: 12)
     end
 
     def part_one(pdf)
@@ -100,7 +102,7 @@ module Tax
     end
 
     def footer(pdf)
-      rule(pdf)
+      rule(pdf, gap: 12)
       details = [ "Signed electronically on CocoScout", "form revision #{@w9.form_revision}" ]
       details << "IP #{@w9.signed_ip}" if @w9.signed_ip.present?
       details << (@w9.e_delivery_consented? ? "consented to electronic 1099 delivery" : "no consent to electronic 1099 delivery")
@@ -112,21 +114,6 @@ module Tax
       parts << "Exempt payee code #{@w9.exempt_payee_code}" if @w9.exempt_payee_code.present?
       parts << "FATCA code #{@w9.fatca_code}" if @w9.fatca_code.present?
       parts.join(" · ").presence || "None"
-    end
-
-    def rule(pdf)
-      pdf.move_down 12
-      pdf.stroke_color "cccccc"
-      pdf.stroke_horizontal_rule
-      pdf.stroke_color "000000"
-      pdf.move_down 12
-    end
-
-    # The built-in PDF font only covers Windows-1252 (see ContractPdf).
-    def winansi(str)
-      str.to_s.encode("Windows-1252", undef: :replace, invalid: :replace, replace: "").encode("UTF-8")
-    rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
-      str.to_s
     end
   end
 end

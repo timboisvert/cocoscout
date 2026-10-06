@@ -11,6 +11,8 @@ module Tax
   # electronic delivery to the recipient. E-filing goes through IRIS with the
   # bulk CSV export, not by uploading these PDFs.
   class Form1099NecPdf
+    include PdfHelpers
+
     def initialize(form, copy: :recipient)
       @form = form
       @copy = copy
@@ -109,22 +111,8 @@ module Tax
       formatted.presence || @form.masked_recipient_tin
     end
 
-    def rule(pdf)
-      pdf.move_down 10
-      pdf.stroke_color "cccccc"
-      pdf.stroke_horizontal_rule
-      pdf.stroke_color "000000"
-      pdf.move_down 10
-    end
-
     def sanitize(str)
       str.to_s.gsub(/[^\w\s-]/, "").squish.presence || "Recipient"
-    end
-
-    def winansi(str)
-      str.to_s.encode("Windows-1252", undef: :replace, invalid: :replace, replace: "").encode("UTF-8")
-    rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
-      str.to_s
     end
   end
 end

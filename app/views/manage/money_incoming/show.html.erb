@@ -3,7 +3,8 @@
   is_late = @payment.overdue?
   is_paid = @payment.status_paid?
   amount_tbd = @payment.amount_tbd? && @payment.amount.to_f.zero?
-  reminder_cid = "send-reminder-#{@payment.id}"
+  send_cid = "send-invoice-#{@payment.id}"
+  payer_email = @contract.contractor_email.presence || @contractor&.email.presence
   record_cid = "record-payment-#{@payment.id}"
 %>
 
@@ -60,6 +61,13 @@
           <% prod_name = @contract.production_name.presence || @contract.production&.name %>
           <% if prod_name.present? %>
             <div class="text-sm text-gray-500 mt-0.5"><%= prod_name %></div>
+          <% end %>
+          <% if is_paid && @invoice %>
+            <div class="text-sm text-gray-500 mt-0.5">
+              Invoice <%= @invoice.display_number %>, paid ·
+              <%= link_to "Receipt (PDF)", pay_contract_invoice_path(token: @payment.payment_token!, format: :pdf), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+              <% if @invoice.receipt_emailed_at %><span class="text-gray-400">· emailed <%= @invoice.receipt_emailed_at.strftime("%b %-d") %></span><% end %>
+            </div>
           <% end %>
         </div>
         <div class="text-right flex-shrink-0">
@@ -151,18 +159,34 @@
           </div>
         <% end %>
 
-        <%# Send a reminder %>
-        <div class="p-6 flex items-start justify-between gap-4">
+        <%# The invoice: the pay link is it. Sent only when someone presses Send. %>
+        <div id="send-invoice" class="p-6 flex items-start justify-between gap-4">
           <div class="flex-1 min-w-0">
-            <h3 class="font-semibold text-gray-900">Send a reminder</h3>
+            <h3 class="font-semibold text-gray-900">
+              <%= @invoice ? "Invoice #{@invoice.display_number}" : "Invoice" %>
+            </h3>
             <p class="text-sm text-gray-500 mt-0.5">
-              Email <%= @contractor&.display_email.presence || @contract.contractor_name.presence || "the payer" %> a nudge<%= @pay_url ? " with the pay link" : "" %>.
+              <% if @invoice.nil? %>
+                Set the amount on the contract and the invoice is ready to send.
+              <% elsif @invoice.sent_count.positive? %>
+                Sent <%= pluralize(@invoice.sent_count, "time") %>, last on <%= @invoice.sent_at.strftime("%b %-d") %>. Sending again goes as a reminder.
+              <% else %>
+                Email <%= payer_email || @contract.contractor_name.presence || "the payer" %> the invoice, with the PDF attached and a link to pay it. Nothing is sent until you press Send.
+              <% end %>
             </p>
+            <% if @invoice %>
+              <p class="text-sm mt-1">
+                <%= link_to "View invoice", pay_contract_path(token: @payment.payment_token!), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+                · <%= link_to "Download PDF", pay_contract_invoice_path(token: @payment.payment_token!, format: :pdf), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+              </p>
+            <% end %>
           </div>
-          <div class="flex-shrink-0">
-            <%= render "shared/button", text: "Send reminder", variant: "primary", size: "small", icon: "mail", type: :button,
-                  data: { controller: "modal", action: "click->modal#open", modal_id: reminder_cid } %>
-          </div>
+          <% if @invoice %>
+            <div class="flex-shrink-0">
+              <%= render "shared/button", text: @invoice.sent_count.positive? ? "Send reminder" : "Send invoice", variant: "primary", size: "small", icon: "paper-airplane", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: send_cid } %>
+            </div>
+          <% end %>
         </div>
 
       </div>
@@ -185,39 +209,47 @@
   </div>
 </div>
 
-<%# ================= Reminder modal ================= %>
-<% unless is_paid %>
-  <div id="<%= reminder_cid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+<%# ================= Send invoice modal ================= %>
+<% if !is_paid && @invoice %>
+  <div id="<%= send_cid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
        data-controller="modal" data-action="click->modal#closeOnBackdrop">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
       <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
-        <h3 class="text-lg font-semibold text-white">Send payment reminder</h3>
+        <h3 class="text-lg font-semibold text-white"><%= @invoice.sent_count.positive? ? "Send a reminder" : "Send the invoice" %></h3>
         <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <%= form_with url: manage_remind_money_incoming_payment_path(@payment), method: :post, data: { turbo: false } do %>
+      <%= form_with url: manage_send_invoice_money_incoming_payment_path(@payment), method: :post, data: { turbo: false } do %>
         <div class="p-6 space-y-4">
           <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
-            Reminding <strong><%= @contract.contractor_name.presence || "the payer" %></strong> about
-            <strong><%= amount_tbd ? "this payment" : number_to_currency(@payment.amount) %></strong>
-            for <%= @payment.display_name %>, due <%= @payment.due_date.strftime("%b %-d, %Y") %>.
+            Invoice <strong><%= @invoice.display_number %></strong> for <strong><%= number_to_currency(@payment.amount) %></strong>,
+            <%= @payment.display_name %>, due <%= @payment.due_date.strftime("%b %-d, %Y") %>.
+            <span class="block mt-1">
+              <% if payer_email %>
+                To <strong><%= payer_email %></strong><%= ", and to their CocoScout messages" if @contract.signer_member_person %>.
+              <% else %>
+                <span class="text-red-600">There's no email on this contract. Add one on the contract first.</span>
+              <% end %>
+            </span>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Add a note (optional)</label>
-            <%= text_area_tag :custom_message, nil, rows: 3, placeholder: "e.g. Thanks so much — the link below takes care of it in a minute.",
+            <label for="custom_message" class="block text-sm font-medium text-gray-700 mb-1">Add a note (optional)</label>
+            <%= text_area_tag :custom_message, nil, rows: 3, placeholder: "e.g. Thanks so much! The link takes care of it in a minute.",
                   class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
-            <p class="text-xs text-gray-400 mt-1">We include the amount, what it's for, and the pay link automatically.</p>
+            <p class="text-xs text-gray-400 mt-1">The email says what it's for, the amount and due date, links to pay, and attaches the PDF.</p>
           </div>
         </div>
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
           <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
-          <%= render "shared/button", text: "Send reminder", variant: "primary", size: "medium", type: :submit, icon: "mail" %>
+          <%= render "shared/button", text: @invoice.sent_count.positive? ? "Send reminder" : "Send invoice", variant: "primary", size: "medium", type: :submit, icon: "paper-airplane" %>
         </div>
       <% end %>
     </div>
   </div>
+<% end %>
 
+<% unless is_paid %>
   <%# ================= Mark-received modal (any method) ================= %>
   <div id="<%= record_cid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
        data-controller="modal" data-action="click->modal#closeOnBackdrop">

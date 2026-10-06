@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_170200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -509,6 +509,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_160000) do
     t.datetime "updated_at", null: false
     t.index ["contract_id"], name: "index_contract_documents_on_contract_id"
     t.index ["contract_version_id"], name: "index_contract_documents_on_contract_version_id"
+  end
+
+  create_table "contract_invoices", force: :cascade do |t|
+    t.bigint "combined_into_payment_id"
+    t.bigint "contract_payment_id"
+    t.datetime "created_at", null: false
+    t.datetime "issued_at", null: false
+    t.integer "number", null: false
+    t.bigint "organization_id", null: false
+    t.string "payment_token"
+    t.string "prefix", null: false
+    t.datetime "receipt_emailed_at"
+    t.datetime "sent_at"
+    t.integer "sent_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.string "void_reason"
+    t.datetime "voided_at"
+    t.index ["contract_payment_id"], name: "index_contract_invoices_on_contract_payment_id", unique: true
+    t.index ["organization_id", "number"], name: "index_contract_invoices_on_organization_id_and_number", unique: true
+    t.index ["organization_id"], name: "index_contract_invoices_on_organization_id"
+    t.index ["payment_token"], name: "index_contract_invoices_on_payment_token"
   end
 
   create_table "contract_payments", force: :cascade do |t|
@@ -1587,6 +1608,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_160000) do
     t.string "funding_payment_method_id"
     t.string "funding_payment_method_label"
     t.string "funding_payment_method_type"
+    t.jsonb "invoice_details", default: {}, null: false
+    t.integer "invoice_next_number", default: 1, null: false
+    t.string "invoice_prefix"
     t.string "invite_token"
     t.boolean "is_demo", default: false, null: false
     t.date "last_auto_payout_on"
@@ -3818,6 +3842,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_160000) do
   add_foreign_key "contract_appendixes", "contracts"
   add_foreign_key "contract_documents", "contract_versions"
   add_foreign_key "contract_documents", "contracts"
+  add_foreign_key "contract_invoices", "contract_payments", on_delete: :nullify
+  add_foreign_key "contract_invoices", "organizations"
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
   add_foreign_key "contract_service_options", "organizations"

@@ -71,6 +71,7 @@ Rails.application.routes.draw do
   get  "/pay/contract/:token",          to: "contract_payment_checkout#show",     as: "pay_contract"
   post "/pay/contract/:token/checkout", to: "contract_payment_checkout#checkout", as: "pay_contract_checkout"
   get  "/pay/contract/:token/success",  to: "contract_payment_checkout#success",  as: "pay_contract_success"
+  get  "/pay/contract/:token/invoice",  to: "contract_payment_checkout#invoice",  as: "pay_contract_invoice", defaults: { format: "pdf" }
 
   # Public, no-login contract signing link. The token names one contract.
   get  "/sign/contract/:token",      to: "contract_signing#show",    as: "sign_contract"
@@ -298,6 +299,7 @@ Rails.application.routes.draw do
     post   "/finances/stripe/lines/:id/explain", to: "superadmin/finances#explain_line", as: "finances_explain_line"
     post   "/finances/stripe/opening_difference", to: "superadmin/finances#opening_difference", as: "finances_opening_difference"
     get    "/finances/statements/:id", to: "superadmin/finances#statement", as: "finances_statement"
+    get    "/finances/invoices/:id", to: "superadmin/finances#invoice", as: "finances_invoice"
     post   "/finances/orgs/:org_id/statements", to: "superadmin/finances#make_statement", as: "finances_make_statement"
     get    "/finances/orgs/:org_id",  to: "superadmin/finances#organization",   as: "finances_org_detail"
     # Course payments recorded by hand before payout runs (legacy).
@@ -1081,6 +1083,7 @@ Rails.application.routes.draw do
     get  "/billing/success",  to: "billing#success",  as: "billing_success"
     post "/billing/portal",   to: "billing#portal",   as: "billing_portal"
     get  "/billing/statements/:id", to: "billing#statement", as: "billing_statement"
+    get  "/billing/invoices/:id", to: "billing#invoice", as: "billing_invoice"
 
     # Agreement templates (org-level) - nested under organization for better URL structure
     scope path: "organization" do
@@ -1493,7 +1496,7 @@ Rails.application.routes.draw do
     get  "money/incoming", to: "money_incoming#index", as: "money_incoming"
     get  "money/incoming/received", to: "money_incoming#received", as: "money_incoming_received"
     get  "money/incoming/payment/:id", to: "money_incoming#show", as: "money_incoming_payment"
-    post "money/incoming/payment/:id/remind", to: "money_incoming#remind", as: "remind_money_incoming_payment"
+    post "money/incoming/payment/:id/send_invoice", to: "money_incoming#send_invoice", as: "send_invoice_money_incoming_payment"
     post "money/incoming/payment/:id/mark_received", to: "money_incoming#mark_received", as: "mark_received_money_incoming_payment"
     post "money/incoming/payment/:id/remit", to: "money_incoming#remit", as: "remit_money_incoming_payment"
     get  "money/incoming/:production_id/payments", to: "money_incoming#payments", as: "money_production_incoming_payments"
@@ -1606,6 +1609,8 @@ Rails.application.routes.draw do
                                                as: "contract_settings_notifications"
     patch  "contracts/settings/signing",      to: "contract_settings#update_signing",
                                               as: "contract_settings_signing"
+    patch  "contracts/settings/invoices",     to: "contract_settings#update_invoices",
+                                              as: "contract_settings_invoices"
     post   "contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
     patch  "contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
     delete "contracts/settings/services/:id", to: "contract_settings#destroy_service"

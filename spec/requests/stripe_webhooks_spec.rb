@@ -305,7 +305,10 @@ RSpec.describe "StripeWebhooksController", type: :request do
       mail = ActionMailer::Base.deliveries.last
       expect(mail.to).to eq([ owner.email_address ])
       expect(mail.subject).to eq("Your CocoScout bill: September 2026 usage, $41.00")
-      expect(mail.html_part&.body&.to_s || mail.body.to_s).to include("7 × active staff member: $35.00", "https://invoice.stripe.com/i/x")
+      # CocoScout's own invoice, attached and linked; never Stripe's page.
+      expect(mail.html_part&.body&.to_s || mail.body.to_s).to include("7 × active staff member: $35.00", "/manage/billing/invoices/")
+      expect(mail.html_part&.body&.to_s || mail.body.to_s).not_to include("invoice.stripe.com")
+      expect(mail.attachments.reject(&:inline?).map(&:filename)).to eq([ "CocoScout invoice SG-0009 (September 2026 usage).pdf" ])
 
       allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(base.merge(status: "paid", amount_paid: 4_100, amount_remaining: 0,
                                                                                                          status_transitions: { paid_at: Time.zone.local(2026, 10, 4).to_i })))

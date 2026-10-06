@@ -14,7 +14,7 @@ class BillingInvoiceEmailContent
       "paid_on" => invoice.paid_at&.strftime("%B %-d, %Y").to_s,
       "lines" => lines.any? ? "<ul>#{lines.map { |l| "<li>#{ERB::Util.html_escape(l['description'])}: #{money.call(l['amount_cents'])}</li>" }.join}</ul>" : "",
       "how_paid" => "It's paid automatically from the payment method on file with CocoScout (for usage, the bank account you fund payout runs from) in the next few days. Nothing to do.",
-      "invoice_url" => invoice.hosted_invoice_url.presence || Rails.application.routes.url_helpers.section_manage_organization_url(invoice.organization, section: "billing", **url_options),
+      "invoice_url" => Rails.application.routes.url_helpers.manage_billing_invoice_url(invoice, **url_options),
       "billing_url" => Rails.application.routes.url_helpers.section_manage_organization_url(invoice.organization, section: "billing", **url_options)
     }
   end

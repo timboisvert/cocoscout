@@ -196,6 +196,10 @@
             <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
             Paid<%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %>
           </span>
+          <% if show_actions && payment.invoiceable? %>
+            <%= link_to "Receipt", pay_contract_invoice_path(token: payment.payment_token!, format: :pdf), target: "_blank", rel: "noopener",
+                  class: "text-xs text-pink-600 hover:text-pink-700 hover:underline", title: "Their invoice, marked paid (PDF)" %>
+          <% end %>
           <%# Money they paid through CocoScout is held for the org until the
               remittance run sends it on — say where it is, right on the row. %>
           <% if show_actions %>
@@ -317,6 +321,13 @@
                       <%= icon("link", class: "w-4 h-4 text-gray-400") %> Copy pay link
                     </button>
                   </div>
+                  <%# The pay link is the invoice; sending it happens on the Collect page. %>
+                  <%= link_to pay_contract_path(token: payment.payment_token!), target: "_blank", rel: "noopener", class: menu_item_classes do %>
+                    <%= icon("file-text", class: "w-4 h-4 text-gray-400") %> View invoice
+                  <% end %>
+                  <%= link_to manage_money_incoming_payment_path(payment, anchor: "send-invoice"), class: menu_item_classes do %>
+                    <%= icon("envelope", class: "w-4 h-4 text-gray-400") %> Send invoice
+                  <% end %>
                 <% end %>
                 <% if can_record %>
                   <button type="button" data-action="click->payment-modal#open" class="<%= menu_item_classes %>"

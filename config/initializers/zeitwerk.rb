@@ -8,6 +8,8 @@ Rails.autoloaders.each do |autoloader|
     "cocoscout_ledger_entry" => "CocoScoutLedgerEntry",
     "cocoscout_ledger_poster" => "CocoScoutLedgerPoster",
     "cocoscout_ledger_backfill" => "CocoScoutLedgerBackfill",
-    "cocoscout_finances" => "CocoScoutFinances"
+    "cocoscout_finances" => "CocoScoutFinances",
+    "cocoscout_identity" => "CocoScoutIdentity",
+    "cocoscout_invoice" => "CocoScoutInvoice"
   )
 end

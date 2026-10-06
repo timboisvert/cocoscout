@@ -43,6 +43,14 @@ module Manage
       send_data statement.pdf.download, filename: statement.filename, type: "application/pdf", disposition: "inline"
     end
 
+    # GET /manage/billing/invoices/:id — CocoScout's invoice for one bill
+    # (Pro or usage), made fresh as a PDF.
+    def invoice
+      bill = Current.organization.billing_invoices.find(params[:id])
+      send_data InvoicePdf.new(CocoScoutInvoice.document(bill)).render, filename: CocoScoutInvoice.filename(bill),
+                                                                         type: "application/pdf", disposition: "inline"
+    end
+
     # POST /manage/billing/checkout — start a subscription Checkout Session.
     def checkout
       @organization = Current.organization

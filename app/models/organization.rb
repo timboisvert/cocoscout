@@ -6,6 +6,7 @@ class Organization < ApplicationRecord
   # course revenue CocoScout holds) to its bank — same rail as Person/Contractor.
   include StripeConnectable
   include StaffingDayParts
+  include IssuesInvoices
 
   belongs_to :owner, class_name: "User"
   # CocoScout's bills to it, and its monthly statements. CocoScout's own

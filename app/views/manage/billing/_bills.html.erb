@@ -13,7 +13,8 @@
           <% bills.each do |bill| %>
             <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
               <span class="text-gray-900"><%= bill.full_title %>
-                <% if bill.hosted_invoice_url %><%= link_to "View", bill.hosted_invoice_url, target: "_blank", rel: "noopener", class: "ml-1 text-xs text-pink-600 hover:underline" %><% end %>
+                <%= link_to "Invoice", manage_billing_invoice_path(bill), target: "_blank", rel: "noopener", class: "ml-1 text-xs text-pink-600 hover:underline" %>
+                <% if bill.failed? && bill.hosted_invoice_url %><%= link_to "Pay or update your payment method", bill.hosted_invoice_url, target: "_blank", rel: "noopener", class: "ml-1 text-xs text-pink-600 hover:underline" %><% end %>
               </span>
               <span class="tabular-nums <%= bill.failed? ? 'text-red-600 font-medium' : 'text-gray-700' %>">
                 <%= number_to_currency(bill.amount_due_cents / 100.0) %> · <%= bill.status_label %>

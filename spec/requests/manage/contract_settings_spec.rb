@@ -37,6 +37,35 @@ RSpec.describe "Manage::ContractSettings", type: :request do
     expect(response).to redirect_to(manage_contract_settings_section_path(section: "payments"))
   end
 
+  describe "invoices" do
+    it "shows the next number and what invoices will say, falling back to what CocoScout knows" do
+      org.update!(name: "Stars & Garters")
+
+      get manage_contract_settings_section_path(section: "invoices")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("SG-0001", "Stars &amp; Garters", owner.email_address)
+    end
+
+    it "saves the prefix and only the details someone typed" do
+      patch manage_contract_settings_invoices_path, params: {
+        invoice_prefix: "sng", invoice_details: { name: "", address: "1 Main St\nChicago, IL", note: "Checks to S&G LLC" }
+      }
+
+      expect(response).to redirect_to(manage_contract_settings_section_path(section: "invoices"))
+      expect(org.reload.invoice_prefix).to eq("SNG")
+      expect(org.invoice_details).to eq("address" => "1 Main St\nChicago, IL", "note" => "Checks to S&G LLC")
+      expect(org.invoice_seller.name).to eq(org.name)
+    end
+
+    it "refuses a prefix that isn't letters and numbers" do
+      patch manage_contract_settings_invoices_path, params: { invoice_prefix: "S&G!" }
+
+      expect(flash[:alert]).to include("letters and numbers")
+      expect(org.reload.invoice_prefix).to be_nil
+    end
+  end
+
   it "adds a service (dollars → cents)" do
     expect {
       post manage_contract_settings_services_path, params: {

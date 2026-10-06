@@ -5,7 +5,7 @@ module Manage
   # as a tab, so only the section you're looking at loads its data and a link
   # can point straight at it.
   class ContractSettingsController < Manage::ManageController
-    SECTIONS = %w[payments services templates signing notifications].freeze
+    SECTIONS = %w[payments invoices services templates signing notifications].freeze
     DEFAULT_SECTION = "payments"
 
     before_action :set_section, only: %i[show]
@@ -15,6 +15,9 @@ module Manage
       case @section
       when "payments"
         @offline_payment_methods = Current.organization.default_offline_payment_methods
+      when "invoices"
+        @invoice_defaults = Current.organization.defaults_for_invoices
+        @invoice_details = Hash(Current.organization.invoice_details)
       when "services"
         @services = Current.organization.contract_service_options.ordered
         @service = Current.organization.contract_service_options.new(unit: "hourly", default_direction: "incoming")
@@ -34,6 +37,19 @@ module Manage
       offline = Array(params[:offline_payment_methods]) & Contract::OFFLINE_PAYMENT_METHODS
       Current.organization.update!(default_contract_payment_methods: [ "online" ] + offline)
       redirect_to section_path("payments"), notice: "Payment methods updated."
+    end
+
+    # What the organization's invoices say about it, and how they're numbered.
+    # Only what someone typed is stored: a blank field keeps following what
+    # CocoScout already knows (the name, the tax address, the support email).
+    def update_invoices
+      details = params.fetch(:invoice_details, {}).permit(*Organization::INVOICE_DETAIL_KEYS).to_h
+                      .transform_values { |value| value.to_s.strip }.compact_blank
+      if Current.organization.update(invoice_prefix: params[:invoice_prefix], invoice_details: details)
+        redirect_to section_path("invoices"), notice: "Invoice details saved."
+      else
+        redirect_to section_path("invoices"), alert: Current.organization.errors.full_messages.to_sentence
+      end
     end
 
     # Which managers get an in-app message when a contract is signed. Store only

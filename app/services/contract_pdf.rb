@@ -12,6 +12,8 @@ require "prawn/table"
 # generated HTML (rich-text template wording + a Deal Terms table), so a small
 # Nokogiri walker maps the tags we actually emit onto Prawn.
 class ContractPdf
+  include PdfHelpers
+
   # Takes a ContractVersion: the document is that version's snapshot, never a
   # live re-render, so a PDF can't drift from what was signed.
   def initialize(version)
@@ -29,14 +31,6 @@ class ContractPdf
   end
 
   private
-
-  # The built-in PDF font only covers Windows-1252; drop anything outside it so a
-  # stray glyph in a template can never raise mid-render and kill the job.
-  def winansi(str)
-    str.to_s.encode("Windows-1252", undef: :replace, invalid: :replace, replace: "").encode("UTF-8")
-  rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
-    str.to_s
-  end
 
   def render_header(pdf)
     title = @contract.production_name.presence || @contract.production&.name || "Contract Agreement"

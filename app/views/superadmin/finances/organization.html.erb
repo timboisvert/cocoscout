@@ -88,6 +88,7 @@
             <li class="flex flex-wrap justify-between gap-x-4 px-4 py-2">
               <span class="text-gray-900"><%= invoice.full_title %>
                 <span class="text-gray-500"><%= " · #{invoice.number}" if invoice.number %></span>
+                <%= link_to "Invoice", finances_invoice_path(invoice), target: "_blank", rel: "noopener", class: "text-xs text-pink-600 hover:underline" %>
                 <% if invoice.hosted_invoice_url %><%= link_to "View in Stripe", invoice.hosted_invoice_url, target: "_blank", rel: "noopener", class: "text-xs text-pink-600 hover:underline" %><% end %>
               </span>
               <span class="tabular-nums <%= invoice.failed? ? 'text-red-600 font-medium' : 'text-gray-900' %>"><%= usd(invoice.amount_due_cents) %> · <%= invoice.status_label %></span>

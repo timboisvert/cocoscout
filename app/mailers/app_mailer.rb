@@ -26,6 +26,11 @@ class AppMailer < ApplicationMailer
     @body = rendered[:body]
 
     headers["X-Email-Batch-ID"] = @email_batch_id.to_s if @email_batch_id.present?
+    # PDFs to attach, as { "filename.pdf" => bytes } (deliver_now only: the
+    # bytes don't go through a job queue).
+    Hash(params[:attachments]).each do |filename, content|
+      attachments[filename] = { mime_type: "application/pdf", content: content }
+    end
 
     mail(to: @to, subject: @subject) do |format|
       format.html { render html: @body.html_safe, layout: "mailer" }

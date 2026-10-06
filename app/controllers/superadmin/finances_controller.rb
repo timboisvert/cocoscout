@@ -110,6 +110,13 @@ module Superadmin
       send_data statement.pdf.download, filename: statement.filename, type: "application/pdf", disposition: "inline"
     end
 
+    # CocoScout's invoice for any organization's bill, as the org sees it.
+    def invoice
+      bill = BillingInvoice.find(params[:id])
+      send_data InvoicePdf.new(CocoScoutInvoice.document(bill)).render, filename: CocoScoutInvoice.filename(bill),
+                                                                         type: "application/pdf", disposition: "inline"
+    end
+
     # Make (or remake) a statement for a month without emailing it.
     def make_statement
       org = Organization.find(params[:org_id])

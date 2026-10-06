@@ -8,6 +8,10 @@ class ContractPayment < ApplicationRecord
   # :destroy so removing it detaches from the run (see PayoutContribution).
   has_one :payout_contribution, as: :source, dependent: :destroy
 
+  # Its invoice, once anyone has opened it (ContractInvoice.for!). The invoice
+  # outlives the payment, void, so its number is never reused.
+  has_one :contract_invoice, inverse_of: :contract_payment
+
   # Direction: whether they pay us or we pay them
   enum :direction, {
     incoming: "incoming",  # They pay us (rental fee, deposit)
@@ -52,6 +56,11 @@ class ContractPayment < ApplicationRecord
   after_commit -> { BooksOutsidePoster.post_contract_payment!(self) }, on: %i[create update]
   after_commit -> { BooksOutsidePoster.remove_contract_payment!(self) }, on: :destroy
   after_commit -> { CocoScoutLedgerPoster.post_for!(self) }, if: -> { (saved_changes.keys & %w[stripe_fee_cents amount]).any? }
+  # Whoever paid gets a receipt, however the money arrived: online, or
+  # recorded by hand. Netting it out of their payout isn't a payment from them.
+  after_commit -> { ContractPaymentReceiptJob.perform_later(id) }, on: :update,
+               if: -> { saved_change_to_status?(to: "paid") && direction_incoming? && payment_method != "payout_deduction" }
+  before_destroy -> { contract_invoice&.void!("Removed from the contract") }
 
   scope :upcoming, -> { status_pending.where("due_date >= ?", Date.current).order(:due_date) }
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }
@@ -186,6 +195,11 @@ class ContractPayment < ApplicationRecord
         merged["show_id"] = other.show_id if other.show_id
         update!(amount: (amount.to_f + other.amount.to_f).round(2),
                 components: Array(components) + other.service_components + [ merged ])
+        # Its invoice, if anyone opened it, now points at this one: an old
+        # link to it shows this payment's invoice.
+        if other.contract_invoice
+          other.contract_invoice.void!("Combined into #{ContractInvoice.for!(self).display_number}", combined_into: self)
+        end
         other.destroy!
       end
     end
@@ -497,17 +511,26 @@ class ContractPayment < ApplicationRecord
       end
   end
 
-  # Paid by hand rather than through a payout run or a pay link.
+  # Paid by hand rather than through a payout run or a pay link: money we
+  # handed them, or money they brought us (a bank transfer included).
   def paid_offline?
-    status_paid? && payment_method.in?(OFFLINE_PAYOUT_METHODS)
+    status_paid? && payment_method.in?(OFFLINE_PAYOUT_METHODS | RECEIVED_PAYMENT_METHODS.map(&:last))
   end
 
   # How the money moved, for the paid badge. Nil for methods that speak for
   # themselves (a payout run, a pay link).
   def offline_payment_method_label
     return nil unless paid_offline?
+    return "Another way" if payment_method == "other"
 
-    payment_method == "other" ? "Another way" : payment_method.titleize
+    RECEIVED_PAYMENT_METHODS.to_h.invert[payment_method] || payment_method.titleize
+  end
+
+  # Money they owe us that an invoice can ask for: a real amount they pay
+  # directly (not netted out of their payout), not cancelled.
+  def invoiceable?
+    direction_incoming? && !amount_tbd? && amount.to_f.positive? && !status_cancelled? &&
+      !deduct_from_payout? && payment_method != "payout_deduction"
   end
 
   # Mark as paid
