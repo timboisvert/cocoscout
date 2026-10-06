@@ -202,7 +202,7 @@ module My
       entity_key = params[:entity_key]
       entity = resolve_entity_from_key(entity_key)
 
-      return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
+      return render json: { error: "Invalid entity" }, status: :unprocessable_content unless entity
 
       @show = show_for_entity(entity, params[:show_id])
 
@@ -212,7 +212,7 @@ module My
       if @availability.save
         render json: { status: @availability.status, note: @availability.note }
       else
-        render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_content
       end
     rescue ActiveRecord::RecordNotUnique
       # Race condition: another request created the record, so find and update it
@@ -225,7 +225,7 @@ module My
       entity_key = params[:entity_key]
       entity = resolve_entity_from_key(entity_key)
 
-      return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
+      return render json: { error: "Invalid entity" }, status: :unprocessable_content unless entity
 
       @show = show_for_entity(entity, params[:show_id])
 
@@ -235,7 +235,7 @@ module My
       if @availability.update(note: params[:note])
         render json: { status: @availability.status, note: @availability.note }
       else
-        render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_content
       end
     end
 
@@ -244,7 +244,7 @@ module My
       entity_key = params[:entity_key]
       entity = resolve_entity_from_key(entity_key)
 
-      return render json: { error: "Invalid entity" }, status: :unprocessable_entity unless entity
+      return render json: { error: "Invalid entity" }, status: :unprocessable_content unless entity
 
       @session = AuditionSession.joins(audition_cycle: :production)
                                 .where(productions: { organization_id: entity.organization_ids })
@@ -255,7 +255,7 @@ module My
       if @availability.save
         render json: { status: @availability.status }
       else
-        render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        render json: { error: @availability.errors.full_messages.join(", ") }, status: :unprocessable_content
       end
     rescue ActiveRecord::RecordNotUnique
       # Race condition: another request created the record, so find and update it

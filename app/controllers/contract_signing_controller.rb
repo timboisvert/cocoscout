@@ -33,7 +33,7 @@ class ContractSigningController < ApplicationController
     if signer_name.blank? || !agreed
       @document = signable_document
       flash.now[:alert] = "Please type your full name and check the box to agree."
-      render :show, status: :unprocessable_entity
+      render :show, status: :unprocessable_content
       return
     end
 

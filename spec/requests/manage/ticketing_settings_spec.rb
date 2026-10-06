@@ -78,7 +78,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
       patch manage_ticketing_settings_path, params: { ticketing_profile: { reminder_days_before: "" } }
       expect(org.reload.ticketing_profile.reminder_days_before).to be_nil
       patch manage_ticketing_settings_path, params: { ticketing_profile: { reminder_days_before: "45" } }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it "explains the fee switch with a real $20 ticket" do
@@ -88,7 +88,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
 
     it "refuses an address the /t pages already use" do
       patch manage_ticketing_settings_path, params: { ticketing_profile: { slug: "orders" } }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(org.reload.ticketing_profile.slug).to eq("stars-garters")
     end
   end

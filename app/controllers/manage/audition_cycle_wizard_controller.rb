@@ -21,7 +21,7 @@ module Manage
       if production_id.blank?
         flash.now[:alert] = "Please select a production"
         @productions = Current.user.accessible_productions.castable.order(:name)
-        render :select_production, status: :unprocessable_entity and return
+        render :select_production, status: :unprocessable_content and return
       end
 
       # Only allow in-house productions for audition cycles
@@ -29,7 +29,7 @@ module Manage
       unless production
         flash.now[:alert] = "Production not found"
         @productions = Current.user.accessible_productions.castable.order(:name)
-        render :select_production, status: :unprocessable_entity and return
+        render :select_production, status: :unprocessable_content and return
       end
 
       # Redirect to the production-level wizard
@@ -56,7 +56,7 @@ module Manage
 
         unless @wizard_state[:allow_video_submissions] || @wizard_state[:allow_in_person_auditions]
           flash.now[:alert] = "Choose at least one audition format — Scheduled Sessions or Video Submissions."
-          render :format, status: :unprocessable_entity and return
+          render :format, status: :unprocessable_content and return
         end
       end
 
@@ -76,7 +76,7 @@ module Manage
 
       if @wizard_state[:opens_at].blank?
         flash.now[:alert] = "Please set an opening date"
-        render :schedule, status: :unprocessable_entity and return
+        render :schedule, status: :unprocessable_content and return
       end
 
       save_wizard_state
@@ -124,25 +124,25 @@ module Manage
       if count <= 0 || count > 20
         flash.now[:alert] = "Please enter a valid number of sessions (1-20)"
         @locations = @production.organization.locations.order(:name)
-        render :sessions, status: :unprocessable_entity and return
+        render :sessions, status: :unprocessable_content and return
       end
 
       if duration <= 0
         flash.now[:alert] = "Please enter a valid session duration"
         @locations = @production.organization.locations.order(:name)
-        render :sessions, status: :unprocessable_entity and return
+        render :sessions, status: :unprocessable_content and return
       end
 
       if start_at.blank?
         flash.now[:alert] = "Please select a start date/time"
         @locations = @production.organization.locations.order(:name)
-        render :sessions, status: :unprocessable_entity and return
+        render :sessions, status: :unprocessable_content and return
       end
 
       if !is_online && location_id.blank?
         flash.now[:alert] = "Please select a location"
         @locations = @production.organization.locations.order(:name)
-        render :sessions, status: :unprocessable_entity and return
+        render :sessions, status: :unprocessable_content and return
       end
 
       @wizard_state[:audition_sessions] ||= []
@@ -506,7 +506,7 @@ module Manage
           end
         else
           flash.now[:alert] = @audition_cycle.errors.full_messages.to_sentence
-          render :review, status: :unprocessable_entity
+          render :review, status: :unprocessable_content
         end
       end
     rescue ActiveRecord::RecordInvalid => e
@@ -514,7 +514,7 @@ module Manage
       # reviewers, questions). Without this rescue the exception escapes the
       # action and the user sees a 500 with no idea what to fix.
       flash.now[:alert] = "Couldn't create the audition cycle: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
-      render :review, status: :unprocessable_entity
+      render :review, status: :unprocessable_content
     end
 
     # Cancel wizard and clear state

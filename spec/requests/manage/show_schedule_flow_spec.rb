@@ -85,7 +85,7 @@ RSpec.describe "Show schedule flow", type: :request do
         recurrence_group_id: group_id, reschedule_from: "#{Date.current - 1}T20:00", new_pattern: "weekly"
       }, as: :json
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.parsed_body["error"]).to include("today or later")
     end
   end

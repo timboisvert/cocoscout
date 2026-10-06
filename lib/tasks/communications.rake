@@ -172,7 +172,9 @@ namespace :communications do
       service: "AuditionNotificationService",
       template_key: "audition_invitation",
       description: "Invite talent to audition",
-      callers: [ "AuditionNotificationService.send_audition_invitations" ]
+      callers: [ "AuditionNotificationService.send_audition_invitations" ],
+      # AuditionNotificationService builds these in a local hash
+      variables: %w[recipient_name production_name audition_cycle_name audition_date audition_time audition_location audition_url]
     },
     audition_not_invited: {
       name: "Audition Not Invited",
@@ -284,7 +286,9 @@ namespace :communications do
       service: "MessageService (in mailer)",
       template_key: "vacancy_invitation",
       description: "Invite person to fill vacant role (supports both single and linked shows)",
-      callers: [ "Manage::VacanciesController", "Manage::RoleVacanciesController" ]
+      callers: [ "Manage::VacanciesController", "Manage::RoleVacanciesController" ],
+      # VacancyInvitationMailer#build_template_vars
+      variables: %w[role_name production_name claim_url shows_list show_date event_name show_name show_info recipient_name]
     },
     vacancy_created: {
       name: "Vacancy Created",
@@ -1029,13 +1033,11 @@ namespace :communications do
         # Get variables used in the template content
         used_vars = template.variable_names
 
-        # Get variables the code provides (from static analysis)
-        provided_vars = code_variables[template_key] || []
-
-        # If code tracing failed, check if registry has variables defined
-        if provided_vars.empty? && config[:variables].present?
-          provided_vars = config[:variables].map(&:to_s)
-        end
+        # Variables the code provides: what static analysis traced from the
+        # hashes written at each call, plus what the registry lists for code it
+        # can't trace (a mailer that builds its variables in a helper method;
+        # tracing then only sees a subject-only call elsewhere).
+        provided_vars = (code_variables[template_key] || []) | Array(config[:variables]).map(&:to_s)
 
         # If we couldn't find code for this template, skip (other validations cover this)
         if provided_vars.empty?

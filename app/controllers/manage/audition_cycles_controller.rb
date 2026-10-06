@@ -99,9 +99,9 @@ module Manage
         # On error, render the appropriate view
         if params[:redirect_to] == "form"
           setup_form_variables
-          render :form, status: :unprocessable_entity
+          render :form, status: :unprocessable_content
         else
-          render template: "manage/auditions/settings", status: :unprocessable_entity
+          render template: "manage/auditions/settings", status: :unprocessable_content
         end
       end
     end
@@ -169,7 +169,7 @@ module Manage
       else
         @question_error = true
         setup_form_variables
-        render :form, status: :unprocessable_entity
+        render :form, status: :unprocessable_content
       end
     end
 
@@ -180,7 +180,7 @@ module Manage
                     notice: "Question was successfully updated", status: :see_other
       else
         setup_form_variables
-        render :form, status: :unprocessable_entity
+        render :form, status: :unprocessable_content
       end
     end
 
@@ -223,13 +223,13 @@ module Manage
         if @audition_cycle.update(audition_voting_enabled: voting_enabled)
           render json: { success: true, voting_enabled: @audition_cycle.audition_voting_enabled }
         else
-          render json: { success: false, error: "Failed to update voting status" }, status: :unprocessable_entity
+          render json: { success: false, error: "Failed to update voting status" }, status: :unprocessable_content
         end
       else
         if @audition_cycle.update(voting_enabled: voting_enabled)
           render json: { success: true, voting_enabled: @audition_cycle.voting_enabled }
         else
-          render json: { success: false, error: "Failed to update voting status" }, status: :unprocessable_entity
+          render json: { success: false, error: "Failed to update voting status" }, status: :unprocessable_content
         end
       end
     end

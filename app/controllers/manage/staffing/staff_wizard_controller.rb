@@ -31,7 +31,7 @@ module Manage
         if first.blank? || last.blank?
           flash.now[:alert] = "First and last name are required."
           @staff_member = build_preview_member
-          return render :details, status: :unprocessable_entity
+          return render :details, status: :unprocessable_content
         end
 
         @wizard_state.merge!(

@@ -78,7 +78,7 @@ module Manage
         redirect_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
                     notice: "Sign-up was successfully created"
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -137,13 +137,13 @@ module Manage
       end
 
       if @missing_required_questions.any?
-        render :edit_answers, status: :unprocessable_entity
+        render :edit_answers, status: :unprocessable_content
       elsif @audition_request.valid?
         @audition_request.save!
         redirect_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
                     notice: "Sign-up successfully updated", status: :see_other
       else
-        render :edit_answers, status: :unprocessable_entity
+        render :edit_answers, status: :unprocessable_content
       end
     end
 
@@ -164,7 +164,7 @@ module Manage
           redirect_url = manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, alert: "Please cast a vote before adding a comment" }
-          format.json { render json: { success: false, errors: [ "Please cast a vote first" ] }, status: :unprocessable_entity }
+          format.json { render json: { success: false, errors: [ "Please cast a vote first" ] }, status: :unprocessable_content }
         end
         return
       end
@@ -201,7 +201,7 @@ module Manage
           redirect_url = manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, alert: vote.errors.full_messages.join(", ") }
-          format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_entity }
+          format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_content }
         end
       end
     end
@@ -235,7 +235,7 @@ module Manage
       if availability.save
         render json: { status: availability.status }
       else
-        render json: { error: availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        render json: { error: availability.errors.full_messages.join(", ") }, status: :unprocessable_content
       end
     end
 
@@ -252,7 +252,7 @@ module Manage
       if availability.save
         render json: { status: availability.status }
       else
-        render json: { error: availability.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        render json: { error: availability.errors.full_messages.join(", ") }, status: :unprocessable_content
       end
     end
 

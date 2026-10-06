@@ -60,11 +60,11 @@ RSpec.describe "Course offering: invite instructor", type: :request do
 
   it "rejects a blank name or email" do
     invite(name: "", email: "someone@example.com")
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body["success"]).to be(false)
 
     invite(name: "Someone", email: "")
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body["success"]).to be(false)
   end
 
@@ -75,7 +75,7 @@ RSpec.describe "Course offering: invite instructor", type: :request do
       invite(name: "Colliding Person", email: "taken@example.com")
     }.not_to change(PersonInvitation, :count)
 
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body["success"]).to be(false)
   end
 end

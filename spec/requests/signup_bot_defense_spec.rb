@@ -47,7 +47,7 @@ RSpec.describe "Signup bot defense", type: :request do
       expect do
         post handle_signup_path, params: { user: { email_address: "fast@example.com", password: password }, signup_token: token }
       end.not_to change { user_count }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("Please click Create Account again")
       expect(response.body).to include(%(value="#{token}"))
 
@@ -62,7 +62,7 @@ RSpec.describe "Signup bot defense", type: :request do
       expect do
         post handle_signup_path, params: { user: { email_address: "cold@example.com", password: password } }
       end.not_to change { user_count }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to match(/name="signup_token" value="[^"]+"/)
     end
 
@@ -71,7 +71,7 @@ RSpec.describe "Signup bot defense", type: :request do
         post handle_signup_path,
              params: { user: { email_address: "forged@example.com", password: password }, signup_token: "not-a-real-token" }
       end.not_to change { user_count }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it "refuses an expired token" do
@@ -80,7 +80,7 @@ RSpec.describe "Signup bot defense", type: :request do
              params: signup_params(email_address: "stale@example.com", password: password,
                                    issued_at: SignupFormToken::MAX_AGE.ago - 1.minute)
       end.not_to change { user_count }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 

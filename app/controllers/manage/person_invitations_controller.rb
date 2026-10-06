@@ -57,7 +57,7 @@ module Manage
         user.password = params[:password]
         unless user.valid?
           @user = user
-          render :accept, status: :unprocessable_entity and return
+          render :accept, status: :unprocessable_content and return
         end
         user.save!
       else
@@ -67,7 +67,7 @@ module Manage
         result = AccountCreator.call(email: @person_invitation.email.downcase, password: params[:password])
         unless result.user.persisted?
           @user = result.user
-          render :accept, status: :unprocessable_entity and return
+          render :accept, status: :unprocessable_content and return
         end
         user = result.user
         person = result.person

@@ -62,7 +62,7 @@ module Manage
           format.html { redirect_to [ :manage, @production ], notice: "Production was successfully updated", status: :see_other }
         end
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

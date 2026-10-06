@@ -1393,7 +1393,7 @@ class SuperadminController < ApplicationController
       redirect_to content_templates_path, notice: "Template '#{@template.name}' created successfully"
     else
       @categories = ContentTemplate::CATEGORIES
-      render :content_template_new, status: :unprocessable_entity
+      render :content_template_new, status: :unprocessable_content
     end
   end
 
@@ -1409,7 +1409,7 @@ class SuperadminController < ApplicationController
       redirect_to content_templates_path, notice: "Template '#{@template.name}' updated successfully"
     else
       @categories = ContentTemplate::CATEGORIES
-      render :content_template_edit, status: :unprocessable_entity
+      render :content_template_edit, status: :unprocessable_content
     end
   end
 
@@ -2287,7 +2287,7 @@ class SuperadminController < ApplicationController
     if @promo_code.save
       redirect_to promo_codes_path, notice: "Promo code #{@promo_code.code} created."
     else
-      render :promo_code_new, status: :unprocessable_entity
+      render :promo_code_new, status: :unprocessable_content
     end
   end
 

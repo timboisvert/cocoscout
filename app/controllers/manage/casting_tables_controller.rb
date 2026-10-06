@@ -122,7 +122,7 @@ module Manage
     # AJAX: Add a draft assignment
     def assign
       unless @casting_table.draft?
-        render json: { error: "Cannot modify finalized casting table" }, status: :unprocessable_entity
+        render json: { error: "Cannot modify finalized casting table" }, status: :unprocessable_content
         return
       end
 
@@ -136,14 +136,14 @@ module Manage
       # too, so every writer is covered; caught here for a readable message.
       if role.break?
         render json: { error: "#{role.name} is an intermission — there's nothing to cast." },
-               status: :unprocessable_entity and return
+               status: :unprocessable_content and return
       end
 
       taken = @casting_table.casting_table_draft_assignments.where(show_id: show.id, role_id: role.id).count +
               ShowPersonRoleAssignment.where(show_id: show.id, role_id: role.id).count
       if taken >= role.total_slots
         render json: { error: "#{role.name} is already full (#{role.total_slots} allowed)." },
-               status: :unprocessable_entity and return
+               status: :unprocessable_content and return
       end
 
       # A batch board is the likeliest place to double-book somebody, so the
@@ -165,13 +165,13 @@ module Manage
 
       render json: cell_refresh(show, member)
     rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      render json: { error: e.message }, status: :unprocessable_content
     end
 
     # AJAX: Remove a draft assignment
     def unassign
       unless @casting_table.draft?
-        render json: { error: "Cannot modify finalized casting table" }, status: :unprocessable_entity
+        render json: { error: "Cannot modify finalized casting table" }, status: :unprocessable_content
         return
       end
 
@@ -479,7 +479,7 @@ module Manage
     # Renders the error and returns nil when either is foreign to it.
     def resolve_cell
       unless @casting_table.draft? || action_name == "cell"
-        render json: { error: "This casting table is finalized." }, status: :unprocessable_entity
+        render json: { error: "This casting table is finalized." }, status: :unprocessable_content
         return nil
       end
 
@@ -489,13 +489,13 @@ module Manage
 
       unless show && %w[Person Group].include?(type) &&
              @casting_table.casting_table_members.exists?(memberable_type: type, memberable_id: id)
-        render json: { error: "That event or member isn't on this casting table." }, status: :unprocessable_entity
+        render json: { error: "That event or member isn't on this casting table." }, status: :unprocessable_content
         return nil
       end
 
       member = type.constantize.find_by(id: id)
       if member.nil?
-        render json: { error: "That member no longer exists." }, status: :unprocessable_entity
+        render json: { error: "That member no longer exists." }, status: :unprocessable_content
         return nil
       end
 
@@ -524,7 +524,7 @@ module Manage
       end
 
       render json: { error: "This show's lineup has changed — reload the page and try again." },
-             status: :unprocessable_entity
+             status: :unprocessable_content
       nil
     end
 

@@ -111,3 +111,17 @@ namespace :usage do
     puts "Overcharged in all: #{fmt.call(total)}."
   end
 end
+
+namespace :usage do
+  desc "Move an org onto a usage subscription that bills calendar months (bills on the 1st). usage:resubscribe[ORG_ID]"
+  task :resubscribe, [ :org_id ] => :environment do |_t, args|
+    organization = Organization.find(args[:org_id])
+    old = organization.staffing_subscription_id
+    new_id = StaffMeterService.resubscribe_calendar_month!(organization)
+    if new_id
+      puts "#{organization.name}: usage now bills on the 1st (#{old || 'none'} → #{new_id}). This month's bill is corrected to its paid work."
+    else
+      puts "#{organization.name} isn't billed for usage (not on Pro, or usage comped). Nothing changed."
+    end
+  end
+end

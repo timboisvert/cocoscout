@@ -262,7 +262,7 @@ module My
 
       # Check if slot is actually available
       if slot.is_held || slot.full?
-        render json: { success: false, error: "Slot is not available" }, status: :unprocessable_entity
+        render json: { success: false, error: "Slot is not available" }, status: :unprocessable_content
         return
       end
 

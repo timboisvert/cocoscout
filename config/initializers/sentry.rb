@@ -4,7 +4,9 @@ Sentry.init do |config|
   config.enabled_environments = %w[production]
   config.breadcrumbs_logger = %i[active_support_logger http_logger]
   config.dsn = ENV["SENTRY_DSN"]
-  config.send_default_pii = true
+  # Everything send_default_pii = true used to send (user, cookies, headers,
+  # request bodies, query params). Sentry 7 deprecated that switch for this.
+  config.data_collection = Sentry::DataCollection.new
   # Performance monitoring is off: no traces_sample_rate, so no profiling
   # either (profiles only sample within a trace). We measure query cost with
   # prosopite in development and query-count specs in the suite, not from

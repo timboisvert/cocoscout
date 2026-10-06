@@ -90,7 +90,7 @@ module Manage
             @person = Person.new(person_params)
             @multiple_profiles = existing_profiles
             load_talent_pools
-            render :new, status: :unprocessable_entity
+            render :new, status: :unprocessable_content
           elsif existing_profiles.count == 1
             # Single profile exists - use it
             existing_person = existing_profiles.first
@@ -267,7 +267,7 @@ module Manage
         redirect_to new_manage_person_path, notice: "Invitation sent to #{@person.name}"
       else
         load_talent_pools
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -277,7 +277,7 @@ module Manage
       if @person.update(person_params)
         redirect_to [ :manage, @person ], notice: "Person was successfully updated", status: :see_other
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

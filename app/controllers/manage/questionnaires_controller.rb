@@ -48,7 +48,7 @@ module Manage
         redirect_to manage_form_contacts_questionnaire_path(@questionnaire),
                     notice: "Questionnaire created successfully"
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -72,8 +72,8 @@ module Manage
         end
       else
         respond_to do |format|
-          format.html { render :edit, status: :unprocessable_entity }
-          format.json { render json: { success: false, errors: @questionnaire.errors }, status: :unprocessable_entity }
+          format.html { render :edit, status: :unprocessable_content }
+          format.json { render json: { success: false, errors: @questionnaire.errors }, status: :unprocessable_content }
         end
       end
     end
@@ -116,7 +116,7 @@ module Manage
                     notice: "Question added successfully"
       else
         @questions = @questionnaire.questions.order(:position)
-        render :form, status: :unprocessable_entity
+        render :form, status: :unprocessable_content
       end
     end
 
@@ -128,7 +128,7 @@ module Manage
                     notice: "Question updated successfully"
       else
         @questions = @questionnaire.questions.order(:position)
-        render :form, status: :unprocessable_entity
+        render :form, status: :unprocessable_content
       end
     end
 

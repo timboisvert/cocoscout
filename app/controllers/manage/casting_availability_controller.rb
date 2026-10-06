@@ -267,7 +267,7 @@ module Manage
 
       render json: { success: true, assignment_id: assignment.id }
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+      render json: { success: false, error: e.message }, status: :unprocessable_content
     end
 
     def org_sign_up_person
@@ -282,13 +282,13 @@ module Manage
 
       sign_up_form = find_sign_up_form_for_show(show)
       unless sign_up_form
-        render json: { success: false, error: "No sign-up form for this show" }, status: :unprocessable_entity
+        render json: { success: false, error: "No sign-up form for this show" }, status: :unprocessable_content
         return
       end
 
       instance = sign_up_form.sign_up_form_instances.find_by(show: show)
       unless instance
-        render json: { success: false, error: "No sign-up form instance for this show" }, status: :unprocessable_entity
+        render json: { success: false, error: "No sign-up form instance for this show" }, status: :unprocessable_content
         return
       end
 
@@ -298,7 +298,7 @@ module Manage
         .where(person: person, status: %w[confirmed waitlisted queued])
         .exists?
       if already_registered
-        render json: { success: false, error: "#{person.name} is already registered for this event" }, status: :unprocessable_entity
+        render json: { success: false, error: "#{person.name} is already registered for this event" }, status: :unprocessable_content
         return
       end
 
@@ -313,17 +313,17 @@ module Manage
       if slot_id.present?
         slot = instance.sign_up_slots.find_by(id: slot_id)
         unless slot
-          render json: { success: false, error: "Slot not found" }, status: :unprocessable_entity
+          render json: { success: false, error: "Slot not found" }, status: :unprocessable_content
           return
         end
         unless slot_has_capacity.call(slot)
-          render json: { success: false, error: "Slot is full" }, status: :unprocessable_entity
+          render json: { success: false, error: "Slot is full" }, status: :unprocessable_content
           return
         end
       else
         slot = instance.sign_up_slots.order(:position).find { |s| slot_has_capacity.call(s) }
         unless slot
-          render json: { success: false, error: "No available slots" }, status: :unprocessable_entity
+          render json: { success: false, error: "No available slots" }, status: :unprocessable_content
           return
         end
       end
@@ -340,7 +340,7 @@ module Manage
 
       render json: { success: true, registration_id: registration.id }
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+      render json: { success: false, error: e.message }, status: :unprocessable_content
     end
 
     def org_pre_register
@@ -350,7 +350,7 @@ module Manage
 
       sign_up_form = find_sign_up_form_for_show(show)
       unless sign_up_form
-        render json: { success: false, error: "No sign-up form for this show" }, status: :unprocessable_entity
+        render json: { success: false, error: "No sign-up form for this show" }, status: :unprocessable_content
         return
       end
 
@@ -366,7 +366,7 @@ module Manage
           .where(person: person, status: %w[confirmed waitlisted queued]))
         .exists?
       if already_registered
-        render json: { success: false, error: "#{person.name} is already registered for this event" }, status: :unprocessable_entity
+        render json: { success: false, error: "#{person.name} is already registered for this event" }, status: :unprocessable_content
         return
       end
 
@@ -379,7 +379,7 @@ module Manage
 
       render json: { success: true, registration_id: registration.id }
     rescue StandardError => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+      render json: { success: false, error: e.message }, status: :unprocessable_content
     end
 
     def org_pre_register_all
@@ -388,7 +388,7 @@ module Manage
 
       sign_up_form = find_sign_up_form_for_show(show)
       unless sign_up_form
-        render json: { success: false, error: "No sign-up form for this show" }, status: :unprocessable_entity
+        render json: { success: false, error: "No sign-up form for this show" }, status: :unprocessable_content
         return
       end
 
@@ -438,7 +438,7 @@ module Manage
       if registered_count > 0
         render json: { success: true, registered_count: registered_count, errors: errors }
       else
-        render json: { success: false, error: "No people were registered", errors: errors }, status: :unprocessable_entity
+        render json: { success: false, error: "No people were registered", errors: errors }, status: :unprocessable_content
       end
     end
 
@@ -448,7 +448,7 @@ module Manage
       status = params[:status]
 
       unless %w[available unavailable].include?(status)
-        render json: { success: false, error: "Invalid status" }, status: :unprocessable_entity
+        render json: { success: false, error: "Invalid status" }, status: :unprocessable_content
         return
       end
 
@@ -458,7 +458,7 @@ module Manage
 
       render json: { success: true }
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+      render json: { success: false, error: e.message }, status: :unprocessable_content
     end
 
     private

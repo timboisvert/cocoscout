@@ -65,7 +65,7 @@ module Manage
         redirect_to manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
                     notice: "Audition session was successfully created", status: :see_other
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -74,7 +74,7 @@ module Manage
         redirect_to manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
                     notice: "Audition session was successfully rescheduled", status: :see_other
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

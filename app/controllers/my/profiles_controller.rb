@@ -21,7 +21,7 @@ module My
         set_default_if_requested
         redirect_to account_profiles_path, notice: "Profile '#{@profile.name}' created successfully!"
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 

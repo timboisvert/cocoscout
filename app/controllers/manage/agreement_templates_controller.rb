@@ -20,7 +20,7 @@ module Manage
       if @agreement_template.save
         redirect_to manage_agreement_templates_path, notice: "Agreement template created successfully."
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -31,7 +31,7 @@ module Manage
       if @agreement_template.update(agreement_template_params)
         redirect_to manage_agreement_templates_path, notice: "Agreement template updated successfully."
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

@@ -34,7 +34,7 @@ class GroupsController < ApplicationController
 
       redirect_to edit_group_path(@group), notice: "Group created successfully!"
     else
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 
@@ -107,7 +107,7 @@ class GroupsController < ApplicationController
             locals: { notice: error_message }
           )
         end
-        format.html { render :edit, status: :unprocessable_entity }
+        format.html { render :edit, status: :unprocessable_content }
       end
     end
   end
@@ -139,7 +139,7 @@ class GroupsController < ApplicationController
     ]
 
     unless allowed_fields.include?(field)
-      head :unprocessable_entity
+      head :unprocessable_content
       return
     end
 
@@ -147,7 +147,7 @@ class GroupsController < ApplicationController
     if @group.update(field => value)
       head :ok
     else
-      head :unprocessable_entity
+      head :unprocessable_content
     end
   end
 
@@ -173,7 +173,7 @@ class GroupsController < ApplicationController
     proposed_key = params[:public_key]
     result = PublicKeyService.validate(proposed_key, entity_type: :group, exclude_entity: @group)
 
-    status = result[:available] ? :ok : :unprocessable_entity
+    status = result[:available] ? :ok : :unprocessable_content
     render json: result, status: status
   end
 
@@ -202,7 +202,7 @@ class GroupsController < ApplicationController
     if membership.update(permission_level: params[:role])
       render json: { notice: "Member role updated successfully" }
     else
-      head :unprocessable_entity
+      head :unprocessable_content
     end
   end
 
@@ -211,7 +211,7 @@ class GroupsController < ApplicationController
 
     # Prevent removing the last owner
     if membership.owner? && @group.group_memberships.where(permission_level: :owner).count == 1
-      head :unprocessable_entity
+      head :unprocessable_content
       return
     end
 

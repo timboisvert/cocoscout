@@ -56,7 +56,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_1", kind: "usage", status: "open", amount_due_cents: 3_500,
                              amount_remaining_cents: 3_500, failed_at: Time.current, period_start: 1.month.ago)
       get finances_subscriptions_path
-      expect(response.body).to include("Plan comped · usage billed", "Usage $35.00: payment failed", "Bills that failed")
+      expect(response.body).to include("Plan comped · usage billed", "Usage, $35.00: payment failed", "Bills that failed")
     end
 
     it "shows the Stripe check, and lets a line be explained" do

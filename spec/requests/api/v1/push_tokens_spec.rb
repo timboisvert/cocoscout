@@ -43,7 +43,7 @@ RSpec.describe "API V1 Push Tokens", type: :request do
         params: { token: "abc", platform: "windows" },
         headers: auth_headers
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 

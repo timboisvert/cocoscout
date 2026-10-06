@@ -86,7 +86,7 @@
         <ul class="mt-2 divide-y divide-gray-100 text-sm border-t border-gray-100">
           <% invoices.each do |invoice| %>
             <li class="flex flex-wrap justify-between gap-x-4 px-4 py-2">
-              <span class="text-gray-900"><%= invoice.title %>
+              <span class="text-gray-900"><%= invoice.full_title %>
                 <span class="text-gray-500"><%= " · #{invoice.number}" if invoice.number %></span>
                 <% if invoice.hosted_invoice_url %><%= link_to "View in Stripe", invoice.hosted_invoice_url, target: "_blank", rel: "noopener", class: "text-xs text-pink-600 hover:underline" %><% end %>
               </span>

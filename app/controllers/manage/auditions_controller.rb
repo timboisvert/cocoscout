@@ -347,7 +347,7 @@ module Manage
           redirect_url = manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition)
           redirect_url += "?tab=#{params[:tab]}" if params[:tab].present?
           format.html { redirect_back_or_to redirect_url, alert: vote.errors.full_messages.join(", ") }
-          format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_entity }
+          format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_content }
         end
       end
     end
@@ -597,7 +597,7 @@ module Manage
       audition_cycle = @audition_cycle
 
       unless audition_cycle
-        render json: { error: "No audition cycle found" }, status: :unprocessable_entity
+        render json: { error: "No audition cycle found" }, status: :unprocessable_content
         return
       end
 
@@ -754,7 +754,7 @@ module Manage
       audition_cycle = @audition_cycle
 
       unless audition_cycle
-        render json: { error: "No audition cycle found" }, status: :unprocessable_entity
+        render json: { error: "No audition cycle found" }, status: :unprocessable_content
         return
       end
 

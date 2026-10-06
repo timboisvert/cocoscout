@@ -36,7 +36,7 @@ RSpec.describe "Ticket products", type: :request do
     expect(product.reload.attributes.values_at("name", "price_cents", "counts_toward_ticket_revenue", "taxable")).to eq([ "Champagne", 5_000, true, false ])
 
     post manage_ticket_products_path, params: { ticket_product: { name: "", price: "" } }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
 
     delete manage_ticket_product_path(product)
     expect(TicketProduct.exists?(product.id)).to be(false)

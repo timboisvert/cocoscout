@@ -149,7 +149,7 @@ RSpec.describe "Manage::Staffing::Taxes", type: :request do
 
     it "re-renders with errors on a bad EIN" do
       patch manage_staffing_settings_path, params: { updating_taxes: "1", w9_required: "1", ein: "123" }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("must be 9 digits")
     end
   end

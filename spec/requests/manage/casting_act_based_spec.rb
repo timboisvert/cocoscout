@@ -81,7 +81,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       post manage_casting_show_assign_person_path(production, show),
            params: { person_id: performer.id, role_id: foreign_role.id }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(JSON.parse(response.body)["error"]).to include("reload the page")
       expect(show.show_person_role_assignments.count).to eq(0)
     end
@@ -109,7 +109,7 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
     it "refuses to cast anyone into the intermission" do
       post manage_casting_show_assign_person_path(production, show),
            params: { person_id: performer.id, role_id: intermission.id }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(show.show_person_role_assignments.count).to eq(0)
     end
   end

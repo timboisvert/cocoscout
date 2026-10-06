@@ -94,6 +94,22 @@ module StaffMeterService
     true
   end
 
+  # Move an org onto a usage subscription that bills calendar months (one
+  # made before subscriptions were anchored to the 1st bills from whatever
+  # day it started). The old one is canceled without a final bill; the new
+  # one starts now and bills on the 1st, and the first bill is corrected to
+  # the month's paid work when Stripe drafts it (UsageInvoiceCorrection), so
+  # nothing from this month is lost or billed twice.
+  def resubscribe_calendar_month!(org)
+    return nil unless org.bills_usage?
+
+    if org.staffing_subscription_id.present?
+      Stripe::Subscription.cancel(org.staffing_subscription_id)
+      org.update_column(:staffing_subscription_id, nil)
+    end
+    ensure_staffing_subscription!(org)
+  end
+
   # Re-send any of an org's activations for `month` that haven't been metered yet
   # (catches events that failed to send). Idempotent thanks to the event
   # identifiers.

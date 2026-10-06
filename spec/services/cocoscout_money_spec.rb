@@ -369,7 +369,7 @@ RSpec.describe UsageOverbilling do
                                      category: "billing", match_status: "matched", matched: bill)
     allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_coll"))
     allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
-    expect(bill.title).to eq("Usage · September 2026")
+    expect(bill.full_title).to eq("September 2026 usage · billed Sep 30")
     expect(bill.status_label).to eq("Being collected, lands about Oct 7")
 
     row = described_class.rows(org).sole

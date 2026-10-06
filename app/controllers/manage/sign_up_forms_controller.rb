@@ -132,7 +132,7 @@ module Manage
       else
         @shows = available_shows
         @question = Question.new
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -156,9 +156,9 @@ module Manage
           format.html do
             @question = Question.new
             @questions = @sign_up_form.questions.order(:position)
-            render :edit, status: :unprocessable_entity
+            render :edit, status: :unprocessable_content
           end
-          format.json { render json: { success: false, errors: @sign_up_form.errors }, status: :unprocessable_entity }
+          format.json { render json: { success: false, errors: @sign_up_form.errors }, status: :unprocessable_content }
         end
       end
     end
@@ -268,7 +268,7 @@ module Manage
         @shows = available_shows
         @event_types = EventTypes.for_select
         @slots = @sign_up_form.sign_up_slots.order(:position)
-        render :settings, status: :unprocessable_entity
+        render :settings, status: :unprocessable_content
       end
     end
 

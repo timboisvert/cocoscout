@@ -77,8 +77,8 @@ module Manage
         end
       else
         respond_to do |format|
-          format.html { render :new, status: :unprocessable_entity }
-          format.json { render json: { errors: @contractor.errors.full_messages }, status: :unprocessable_entity }
+          format.html { render :new, status: :unprocessable_content }
+          format.json { render json: { errors: @contractor.errors.full_messages }, status: :unprocessable_content }
         end
       end
     end
@@ -90,7 +90,7 @@ module Manage
       if @contractor.update(contractor_params)
         redirect_to manage_contractor_path(@contractor), notice: "Contractor updated."
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 
@@ -279,7 +279,7 @@ module Manage
     end
 
     def render_preview_error(message)
-      render partial: "manage/contractors/invite_preview_error", locals: { message: message }, status: :unprocessable_entity
+      render partial: "manage/contractors/invite_preview_error", locals: { message: message }, status: :unprocessable_content
     end
 
     # Give the person a login (if needed) and send them the CocoScout invitation

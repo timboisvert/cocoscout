@@ -23,7 +23,7 @@ module Manage
       if production_id.blank?
         flash.now[:alert] = "Please select a production"
         @productions = Current.user.accessible_productions.castable.order(:name)
-        render :select_production, status: :unprocessable_entity and return
+        render :select_production, status: :unprocessable_content and return
       end
 
       # Only allow in-house productions for sign-up forms
@@ -31,7 +31,7 @@ module Manage
       unless production
         flash.now[:alert] = "Production not found"
         @productions = Current.user.accessible_productions.castable.order(:name)
-        render :select_production, status: :unprocessable_entity and return
+        render :select_production, status: :unprocessable_content and return
       end
 
       # Redirect to the production-level wizard
@@ -48,7 +48,7 @@ module Manage
 
       unless %w[single_event repeated shared_pool].include?(@wizard_state[:scope])
         flash.now[:alert] = "Please select a registration scope"
-        render :scope, status: :unprocessable_entity and return
+        render :scope, status: :unprocessable_content and return
       end
 
       save_wizard_state
@@ -96,7 +96,7 @@ module Manage
           flash.now[:alert] = "Please select a show for this sign-up form"
           @shows = @production.shows.where(canceled: false).where("date_and_time >= ?", Time.current).order(:date_and_time)
           @event_types = EventTypes.for_select
-          render :events, status: :unprocessable_entity and return
+          render :events, status: :unprocessable_content and return
         end
       end
 
@@ -134,29 +134,29 @@ module Manage
       # Validation
       if @wizard_state[:slot_generation_mode].blank?
         flash.now[:alert] = "Please choose how slots are structured"
-        render :slots, status: :unprocessable_entity and return
+        render :slots, status: :unprocessable_content and return
       end
 
       case @wizard_state[:slot_generation_mode]
       when "numbered", "time_based"
         if @wizard_state[:slot_count] <= 0 || @wizard_state[:slot_count] > 100
           flash.now[:alert] = "Please enter a valid number of slots (1-100)"
-          render :slots, status: :unprocessable_entity and return
+          render :slots, status: :unprocessable_content and return
         end
       when "named"
         if @wizard_state[:slot_names].empty?
           flash.now[:alert] = "Please enter at least one slot name"
-          render :slots, status: :unprocessable_entity and return
+          render :slots, status: :unprocessable_content and return
         end
       when "open_list"
         if @wizard_state[:open_list_limit] != "unlimited" && @wizard_state[:open_list_capacity] <= 0
           flash.now[:alert] = "Please enter a valid capacity"
-          render :slots, status: :unprocessable_entity and return
+          render :slots, status: :unprocessable_content and return
         end
       when "simple_capacity"
         if @wizard_state[:slot_count] <= 0
           flash.now[:alert] = "Please enter a valid total capacity"
-          render :slots, status: :unprocessable_entity and return
+          render :slots, status: :unprocessable_content and return
         end
       end
 
@@ -243,7 +243,7 @@ module Manage
 
       if @wizard_state[:registrations_per_person] <= 0
         flash.now[:alert] = "Registrations per person must be at least 1"
-        render :rules, status: :unprocessable_entity and return
+        render :rules, status: :unprocessable_content and return
       end
 
       save_wizard_state
@@ -461,7 +461,7 @@ module Manage
           redirect_to manage_signups_form_path(@production, @sign_up_form, just_created: true)
         else
           flash.now[:alert] = @sign_up_form.errors.full_messages.to_sentence
-          render :review, status: :unprocessable_entity
+          render :review, status: :unprocessable_content
         end
       end
     end

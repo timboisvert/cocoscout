@@ -138,7 +138,7 @@ RSpec.describe "Producer setup", type: :request do
       sign_up
       post manage_producer_setup_save_genre_path, params: { genre: "polka" }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(Organization.count).to eq(0)
     end
 

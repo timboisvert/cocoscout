@@ -33,11 +33,11 @@ module Manage
           update_eligible_members(@role)
           render json: { success: true, role: role_json(@role) }
         else
-          render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_entity
+          render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_content
         end
       end
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
+      render json: { success: false, errors: [ e.message ] }, status: :unprocessable_content
     rescue => e
       Rails.logger.error "Error creating role: #{e.message}\n#{e.backtrace.first(10).join("\n")}"
       render json: { success: false, errors: [ "An unexpected error occurred" ] }, status: :internal_server_error
@@ -52,11 +52,11 @@ module Manage
           update_eligible_members(@role)
           render json: { success: true, role: role_json(@role) }
         else
-          render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_entity
+          render json: { success: false, errors: @role.errors.full_messages }, status: :unprocessable_content
         end
       end
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, errors: [ e.message ] }, status: :unprocessable_entity
+      render json: { success: false, errors: [ e.message ] }, status: :unprocessable_content
     rescue => e
       Rails.logger.error "Error updating role: #{e.message}\n#{e.backtrace.first(10).join("\n")}"
       render json: { success: false, errors: [ "An unexpected error occurred" ] }, status: :internal_server_error
@@ -74,7 +74,7 @@ module Manage
           needs_confirmation: true,
           assignments_count: assignments_count,
           message: "This role has #{assignments_count} #{'assignment'.pluralize(assignments_count)}. Are you sure you want to delete it?"
-        }, status: :unprocessable_entity
+        }, status: :unprocessable_content
       end
     end
 
@@ -91,7 +91,7 @@ module Manage
         render json: {
           success: false,
           message: "This event already has custom roles. Delete them first to copy from production."
-        }, status: :unprocessable_entity
+        }, status: :unprocessable_content
         return
       end
 
@@ -303,7 +303,7 @@ module Manage
       notify_changes = params[:notify_changes] != false
 
       unless %w[custom production].include?(switching_to)
-        render json: { success: false, error: "Invalid switching_to value" }, status: :unprocessable_entity
+        render json: { success: false, error: "Invalid switching_to value" }, status: :unprocessable_content
         return
       end
 
@@ -432,7 +432,7 @@ module Manage
         }
       end
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+      render json: { success: false, error: e.message }, status: :unprocessable_content
     rescue => e
       Rails.logger.error "Error executing role migration: #{e.message}\n#{e.backtrace.first(10).join("\n")}"
       render json: { success: false, error: "An unexpected error occurred" }, status: :internal_server_error
@@ -503,7 +503,7 @@ module Manage
       keep_assignment_ids = (params[:keep_assignment_ids] || []).map(&:to_i)
 
       if new_quantity < 1
-        render json: { success: false, error: "Quantity must be at least 1" }, status: :unprocessable_entity
+        render json: { success: false, error: "Quantity must be at least 1" }, status: :unprocessable_content
         return
       end
 
@@ -543,7 +543,7 @@ module Manage
         }
       end
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+      render json: { success: false, error: e.message }, status: :unprocessable_content
     rescue => e
       Rails.logger.error "Error executing slot change: #{e.message}\n#{e.backtrace.first(10).join("\n")}"
       render json: { success: false, error: "An unexpected error occurred" }, status: :internal_server_error

@@ -134,7 +134,7 @@ RSpec.describe "Manage::CastingTables on act-based shows", type: :request do
     it "refuses to cast an intermission" do
       assign!(interval)
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(JSON.parse(response.body)["error"]).to include("intermission")
     end
 
@@ -160,7 +160,7 @@ RSpec.describe "Manage::CastingTables on act-based shows", type: :request do
       if foreign && foreign.show_id.present?
         post manage_casting_table_assign_path(table),
              params: cell_params.merge(role_id: foreign.id), as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end

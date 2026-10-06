@@ -12,7 +12,7 @@ module Api
         if device_token.save
           render json: { id: device_token.id }, status: :created
         else
-          render json: { errors: device_token.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: device_token.errors.full_messages }, status: :unprocessable_content
         end
       end
 

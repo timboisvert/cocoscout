@@ -253,7 +253,7 @@ class My::MessagesController < ApplicationController
 
     # Validate emoji is in allowed list
     unless MessageReaction::REACTIONS.include?(emoji)
-      head :unprocessable_entity
+      head :unprocessable_content
       return
     end
 

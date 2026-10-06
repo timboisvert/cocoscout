@@ -98,7 +98,7 @@ RSpec.describe "Manage::CastingTableWizard members step", type: :request do
     it "says so instead of silently bouncing off the review step" do
       use_talent_pool!
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("nobody in the talent pool")
       expect(response.body).to include("Main Stage")
     end

@@ -274,7 +274,7 @@ module Manage
       if @contract.save
         redirect_to contractor_contract_wizard_path(@contract), notice: "Contract draft created."
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -285,7 +285,7 @@ module Manage
       if @contract.update(contract_params)
         redirect_to manage_contract_path(@contract), notice: "Contract updated."
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 
@@ -476,7 +476,7 @@ module Manage
           { rental: rental, space_name: space_name_for(rental.location_id, @selected[rental.id]), reasons: reasons }
         end
 
-        return render :amend_space, status: :unprocessable_entity if @conflicts.any?
+        return render :amend_space, status: :unprocessable_content if @conflicts.any?
       end
 
       moved = []

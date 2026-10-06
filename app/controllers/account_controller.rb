@@ -16,7 +16,7 @@ class AccountController < ApplicationController
     if Current.user.update(user_params)
       redirect_to account_path, notice: "Account updated successfully."
     else
-      render :show, status: :unprocessable_entity
+      render :show, status: :unprocessable_content
     end
   end
 
@@ -25,19 +25,19 @@ class AccountController < ApplicationController
 
     # Check rate limit
     if Current.user.email_changed_at.present? && Current.user.email_changed_at > EMAIL_CHANGE_COOLDOWN.ago
-      render json: { success: false, error: "You've changed your email too recently. Please try again later." }, status: :unprocessable_entity
+      render json: { success: false, error: "You've changed your email too recently. Please try again later." }, status: :unprocessable_content
       return
     end
 
     # Check if email is same as current
     if new_email == Current.user.email_address
-      render json: { success: false, error: "This is already your email address." }, status: :unprocessable_entity
+      render json: { success: false, error: "This is already your email address." }, status: :unprocessable_content
       return
     end
 
     # Check if email already exists
     if User.where.not(id: Current.user.id).exists?(email_address: new_email)
-      render json: { success: false, error: "An account with this email address already exists." }, status: :unprocessable_entity
+      render json: { success: false, error: "An account with this email address already exists." }, status: :unprocessable_content
       return
     end
 
@@ -60,7 +60,7 @@ class AccountController < ApplicationController
 
     render json: { success: true, message: "Email updated successfully." }
   rescue ActiveRecord::RecordInvalid => e
-    render json: { success: false, error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_entity
+    render json: { success: false, error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_content
   end
 
   def profiles
@@ -82,7 +82,7 @@ class AccountController < ApplicationController
     else
       @profiles = Current.user.people.active.order(:created_at)
       @default_profile = Current.user.default_person
-      render :profiles, status: :unprocessable_entity
+      render :profiles, status: :unprocessable_content
     end
   end
 

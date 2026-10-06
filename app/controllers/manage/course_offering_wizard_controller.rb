@@ -18,7 +18,7 @@ module Manage
         if production.nil?
           @existing_courses = existing_course_productions
           flash.now[:alert] = "Pick a course to add a run to."
-          render :start, status: :unprocessable_entity
+          render :start, status: :unprocessable_content
           return
         end
         @wizard_state[:existing_course_production_id] = production.id
@@ -47,7 +47,7 @@ module Manage
       unless @wizard_state[:title].present?
         @step = 1
         flash.now[:alert] = "Please enter a course title."
-        render :basics, status: :unprocessable_entity
+        render :basics, status: :unprocessable_content
         return
       end
 
@@ -273,7 +273,7 @@ module Manage
       name = params[:name]&.strip
 
       if email.blank? || name.blank?
-        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_entity
+        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_content
         return
       end
 
@@ -320,7 +320,7 @@ module Manage
         }
       end
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+      render json: { success: false, error: e.message }, status: :unprocessable_content
     end
 
     # Step 4: Pricing
@@ -334,7 +334,7 @@ module Manage
       if price_dollars.blank? || price_dollars.to_f <= 0
         @step = 4
         flash.now[:alert] = "Please enter a valid price."
-        render :pricing, status: :unprocessable_entity
+        render :pricing, status: :unprocessable_content
         return
       end
 
@@ -617,7 +617,7 @@ module Manage
             .order(:date_and_time)
         end
       end
-      render :review, status: :unprocessable_entity
+      render :review, status: :unprocessable_content
     end
 
     # Cancel wizard

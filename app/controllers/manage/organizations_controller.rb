@@ -73,7 +73,7 @@ module Manage
 
         redirect_to_intent_or(manage_path, notice: "#{@organization.name} was successfully created")
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -91,7 +91,7 @@ module Manage
         @team_invitation = TeamInvitation.new
         @productions = @organization.productions.order(:name)
         @agreement_templates = @organization.agreement_templates.order(:name)
-        render :show, status: :unprocessable_entity
+        render :show, status: :unprocessable_content
       end
     end
 

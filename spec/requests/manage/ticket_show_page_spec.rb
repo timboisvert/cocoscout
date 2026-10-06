@@ -79,7 +79,7 @@ RSpec.describe "Manage a show's tickets", type: :request do
     expect(response.body).to include("Walter Skinner", "Monica Reyes", "Comp")
 
     post manage_ticket_listing_comps_path(listing), params: { name: "Too Many", quantity: "50", tier_id: general.id }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("more than the seats left", 'value="Too Many"')
   end
 

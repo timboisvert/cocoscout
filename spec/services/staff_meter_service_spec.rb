@@ -96,4 +96,16 @@ RSpec.describe StaffMeterService do
       expect(org.reload.staffing_subscription_id).to eq("sub_usage")
     end
   end
+
+  describe ".resubscribe_calendar_month!" do
+    it "cancels the old usage subscription without a bill and starts one that bills on the 1st" do
+      org.update!(staffing_subscription_id: "sub_old")
+      allow(SubscriptionPlan).to receive(:staffing_subscription_items).and_return([ { price: "price_staff" } ])
+      expect(Stripe::Subscription).to receive(:cancel).with("sub_old")
+      expect(Stripe::Subscription).to receive(:create).with(hash_including(billing_cycle_anchor_config: { day_of_month: 1 }))
+                                                      .and_return(double("subscription", id: "sub_cal"))
+      expect(described_class.resubscribe_calendar_month!(org)).to eq("sub_cal")
+      expect(org.reload.staffing_subscription_id).to eq("sub_cal")
+    end
+  end
 end

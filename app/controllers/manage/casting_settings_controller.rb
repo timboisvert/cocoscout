@@ -38,7 +38,7 @@ module Manage
       else
         @section = DEFAULT_SECTION
         load_section_data
-        render :show, status: :unprocessable_entity
+        render :show, status: :unprocessable_content
       end
     end
 

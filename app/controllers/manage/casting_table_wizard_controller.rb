@@ -29,7 +29,7 @@ module Manage
         flash.now[:alert] = "Please select at least one production"
         @productions = Current.user.accessible_productions.castable.order(:name)
         @selected_production_ids = []
-        render :productions, status: :unprocessable_entity and return
+        render :productions, status: :unprocessable_content and return
       end
 
       # Verify all productions belong to this org and are not third-party
@@ -38,7 +38,7 @@ module Manage
         flash.now[:alert] = "Invalid production selection"
         @productions = Current.user.accessible_productions.castable.order(:name)
         @selected_production_ids = []
-        render :productions, status: :unprocessable_entity and return
+        render :productions, status: :unprocessable_content and return
       end
 
       @wizard_state[:production_ids] = production_ids
@@ -66,7 +66,7 @@ module Manage
       if show_ids.empty?
         flash.now[:alert] = "Please select at least one event"
         load_events_data
-        render :events, status: :unprocessable_entity and return
+        render :events, status: :unprocessable_content and return
       end
 
       # Verify shows belong to selected productions and org
@@ -79,7 +79,7 @@ module Manage
       if valid_ids.sort != show_ids.sort
         flash.now[:alert] = "Invalid event selection"
         load_events_data
-        render :events, status: :unprocessable_entity and return
+        render :events, status: :unprocessable_content and return
       end
 
       # Check if any are already finalized
@@ -87,7 +87,7 @@ module Manage
       if already_finalized.any?
         flash.now[:alert] = "Some events have already been included in a finalized casting table"
         load_events_data
-        render :events, status: :unprocessable_entity and return
+        render :events, status: :unprocessable_content and return
       end
 
       @wizard_state[:show_ids] = show_ids
@@ -124,7 +124,7 @@ module Manage
           flash.now[:alert] = "There's nobody in the talent pool for #{selected_productions.map(&:name).to_sentence}. " \
                               "Add people to the pool, or choose them by hand below."
           load_members_data
-          render :members, status: :unprocessable_entity and return
+          render :members, status: :unprocessable_content and return
         end
 
         @wizard_state[:member_source] = "talent_pool"
@@ -138,7 +138,7 @@ module Manage
         if person_ids.empty? && group_ids.empty?
           flash.now[:alert] = "Please select at least one person or group"
           load_members_data
-          render :members, status: :unprocessable_entity and return
+          render :members, status: :unprocessable_content and return
         end
 
         @wizard_state[:member_source] = "manual"
@@ -197,7 +197,7 @@ module Manage
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = "Error creating casting table: #{e.message}"
       load_review_data
-      render :review, status: :unprocessable_entity
+      render :review, status: :unprocessable_content
     end
 
     def cancel

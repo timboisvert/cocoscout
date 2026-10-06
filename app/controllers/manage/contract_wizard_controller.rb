@@ -35,7 +35,7 @@ module Manage
         @contract = Current.organization.contracts.build
         @contractors = Current.organization.contractors.alphabetical
         flash.now[:alert] = "Please select a contractor or create a new one."
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
         return
       end
 
@@ -45,7 +45,7 @@ module Manage
         redirect_to manage_production_contract_wizard_path(@contract)
       else
         @contractors = Current.organization.contractors.alphabetical
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -310,7 +310,7 @@ module Manage
           @step = 7
           @documents = @contract.contract_documents.recent
           flash.now[:alert] = doc.errors.full_messages.join(", ")
-          render :documents, status: :unprocessable_entity
+          render :documents, status: :unprocessable_content
           return
         end
       end
@@ -350,7 +350,7 @@ module Manage
         @valid_for_activation = @contract.valid_for_activation?
         @validation_errors = @contract.errors.full_messages unless @valid_for_activation
         flash.now[:alert] = "There's a scheduling conflict — choose how to handle it before continuing."
-        render :review, status: :unprocessable_entity
+        render :review, status: :unprocessable_content
         return
       end
 
@@ -400,7 +400,7 @@ module Manage
         @step = 10
         @rendered_document = @contract.render_signable_document
         flash.now[:alert] = "Type your name and confirm to sign."
-        render :sign, status: :unprocessable_entity
+        render :sign, status: :unprocessable_content
         return
       end
 
@@ -485,7 +485,7 @@ module Manage
         # Re-detect conflicts so the bar (and its calendar/choices) reappears if
         # the clash showed up between page load and submit.
         @conflicts = contract_conflicts
-        render :review, status: :unprocessable_entity
+        render :review, status: :unprocessable_content
       end
     end
 

@@ -20,14 +20,14 @@ module Manage
       if production_id.blank?
         flash.now[:alert] = "Please select a production"
         @productions = Current.user.accessible_productions.schedulable.order(:name)
-        render :select_production, status: :unprocessable_entity and return
+        render :select_production, status: :unprocessable_content and return
       end
 
       production = Current.user.accessible_productions.schedulable.find_by(id: production_id)
       unless production
         flash.now[:alert] = "Production not found"
         @productions = Current.user.accessible_productions.schedulable.order(:name)
-        render :select_production, status: :unprocessable_entity and return
+        render :select_production, status: :unprocessable_content and return
       end
 
       # Redirect to the production-level wizard
@@ -66,7 +66,7 @@ module Manage
 
       unless EventTypes.all.include?(@wizard_state[:event_type])
         flash.now[:alert] = "Please select an event type"
-        render :event_type, status: :unprocessable_entity and return
+        render :event_type, status: :unprocessable_content and return
       end
 
       # Set defaults based on event type. Call time defaults to OFF in the
@@ -106,24 +106,24 @@ module Manage
       if @wizard_state[:event_frequency] == "single"
         if @wizard_state[:date_and_time].blank?
           flash.now[:alert] = "Please select a date and time"
-          render :schedule, status: :unprocessable_entity and return
+          render :schedule, status: :unprocessable_content and return
         end
       else
         if @wizard_state[:recurrence_start_datetime].blank?
           flash.now[:alert] = "Please select a start date and time"
-          render :schedule, status: :unprocessable_entity and return
+          render :schedule, status: :unprocessable_content and return
         end
         if @wizard_state[:recurrence_pattern].blank?
           flash.now[:alert] = "Please select a repeat pattern"
-          render :schedule, status: :unprocessable_entity and return
+          render :schedule, status: :unprocessable_content and return
         end
         if @wizard_state[:recurrence_end_date].blank?
           flash.now[:alert] = "Please choose the date the series runs until"
-          render :schedule, status: :unprocessable_entity and return
+          render :schedule, status: :unprocessable_content and return
         end
         if Date.parse(@wizard_state[:recurrence_end_date]) < Time.zone.parse(@wizard_state[:recurrence_start_datetime]).to_date
           flash.now[:alert] = "The series can't end before it starts"
-          render :schedule, status: :unprocessable_entity and return
+          render :schedule, status: :unprocessable_content and return
         end
       end
 
@@ -152,7 +152,7 @@ module Manage
       if !@wizard_state[:is_online] && @wizard_state[:location_id].blank?
         flash.now[:alert] = "Please select a location or mark as online"
         @locations = Current.organization.locations.includes(:location_spaces).order(:created_at)
-        render :location, status: :unprocessable_entity and return
+        render :location, status: :unprocessable_content and return
       end
 
       save_wizard_state
@@ -260,7 +260,7 @@ module Manage
         flash.now[:alert] = @show.errors.full_messages.join(", ")
         @location = @wizard_state[:location_id].present? ? Current.organization.locations.find_by(id: @wizard_state[:location_id]) : nil
         @location_space = @location && @wizard_state[:location_space_id].present? ? @location.location_spaces.find_by(id: @wizard_state[:location_space_id]) : nil
-        render :review, status: :unprocessable_entity
+        render :review, status: :unprocessable_content
       end
     end
 

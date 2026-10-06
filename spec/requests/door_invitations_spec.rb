@@ -32,7 +32,7 @@ RSpec.describe "Door invitations", type: :request do
     expect(response.body).to include("Your CocoScout password", "Sign in and accept")
 
     post door_invitation_accept_path(token: grant.invitation_token), params: { password: "wrong" }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("That password isn&#39;t right.")
 
     post door_invitation_accept_path(token: grant.invitation_token), params: { password: "Password123!" }

@@ -52,9 +52,21 @@ class BillingInvoice < ApplicationRecord
     UsageInvoiceCorrection.billed_month(self)
   end
 
-  # "Usage · September 2026"
+  # What the bill is for: "September 2026 usage", "Pro plan".
   def title
-    [ label, covered_month&.strftime("%B %Y") ].compact.join(" · ")
+    return "#{covered_month.strftime('%B %Y')} usage" if kind == "usage" && covered_month
+
+    label
+  end
+
+  # The day Stripe billed it.
+  def billed_on
+    (finalized_at || period_end)&.to_date
+  end
+
+  # "September 2026 usage · billed Sep 30"
+  def full_title
+    [ title, billed_on && "billed #{billed_on.strftime('%b %-d')}" ].compact.join(" · ")
   end
 
   # Stripe has started taking the money (a bank debit takes a few business

@@ -114,7 +114,7 @@ class ProfileController < ApplicationController
     else
       respond_to do |format|
         format.json do
-          render json: { success: false, errors: @person.errors.full_messages }, status: :unprocessable_entity
+          render json: { success: false, errors: @person.errors.full_messages }, status: :unprocessable_content
         end
         format.turbo_stream do
           error_message = @person.errors.full_messages.join(", ")
@@ -124,7 +124,7 @@ class ProfileController < ApplicationController
             locals: { notice: error_message }
           )
         end
-        format.html { render :index, status: :unprocessable_entity }
+        format.html { render :index, status: :unprocessable_content }
       end
     end
   end
@@ -140,7 +140,7 @@ class ProfileController < ApplicationController
     ]
 
     unless allowed_fields.include?(field)
-      head :unprocessable_entity
+      head :unprocessable_content
       return
     end
 
@@ -148,7 +148,7 @@ class ProfileController < ApplicationController
     if @person.update(field => value)
       head :ok
     else
-      head :unprocessable_entity
+      head :unprocessable_content
     end
   end
 
@@ -183,7 +183,7 @@ class ProfileController < ApplicationController
     proposed_key = params[:public_key]
     result = PublicKeyService.validate(proposed_key, entity_type: :person, exclude_entity: @person)
 
-    status = result[:available] ? :ok : :unprocessable_entity
+    status = result[:available] ? :ok : :unprocessable_content
     render json: result, status: status
   end
 
@@ -252,7 +252,7 @@ class ProfileController < ApplicationController
 
     # Check if already a member
     if @person.group_memberships.exists?(group: group)
-      render json: { error: "You're already a member of this group" }, status: :unprocessable_entity
+      render json: { error: "You're already a member of this group" }, status: :unprocessable_content
       return
     end
 
@@ -268,7 +268,7 @@ class ProfileController < ApplicationController
       message: "Successfully joined #{group.name}"
     }
   rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: e.message }, status: :unprocessable_content
   end
 
   def leave_group
@@ -279,7 +279,7 @@ class ProfileController < ApplicationController
       owner_count = membership.group.group_memberships.where(permission_level: :owner).count
       if owner_count <= 1
         render json: { error: "You're the only owner. Transfer ownership before leaving." },
-               status: :unprocessable_entity
+               status: :unprocessable_content
         return
       end
     end
@@ -297,7 +297,7 @@ class ProfileController < ApplicationController
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Membership not found" }, status: :not_found
   rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: e.message }, status: :unprocessable_content
   end
 
   private

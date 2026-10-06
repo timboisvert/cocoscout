@@ -47,7 +47,7 @@ module Manage
         @upcoming_shows = @production.shows.upcoming.order(:date_and_time).limit(30)
         @people = fetch_production_people
         @advance = @production.person_advances.build(advance_params)
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -60,7 +60,7 @@ module Manage
         redirect_back fallback_location: manage_money_production_advances_path(@production),
                       notice: "Advance updated."
       else
-        render :show, status: :unprocessable_entity
+        render :show, status: :unprocessable_content
       end
     end
 

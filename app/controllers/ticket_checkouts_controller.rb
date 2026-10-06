@@ -66,7 +66,7 @@ class TicketCheckoutsController < ApplicationController
   # The products the buyer added (or took off) on the checkout page. The
   # order is repriced and the page gets its new summary and total.
   def items
-    return render(json: { error: "This order can't be changed anymore." }, status: :unprocessable_entity) unless @order.pending? && !@order.hold_expired?
+    return render(json: { error: "This order can't be changed anymore." }, status: :unprocessable_content) unless @order.pending? && !@order.hold_expired?
 
     TicketCheckout.set_items!(@order, requested_products)
     @order.reload
@@ -76,15 +76,15 @@ class TicketCheckoutsController < ApplicationController
       items: @order.ticket_order_items.to_h { |item| [ item.ticket_product_id.to_s, item.quantity ] }
     }
   rescue TicketCheckout::Error => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: e.message }, status: :unprocessable_content
   end
 
   # The buyer's details are in: record them, then either finish a free order
   # or hand back the PaymentIntent's client secret for Stripe to confirm.
   def pay
     return render(json: { redirect: tickets_order_path(token: @order.token, **embed_params) }) if @order.paid?
-    return render(json: { error: "Your hold on these seats ran out. Please start again." }, status: :unprocessable_entity) if @order.hold_expired? || @order.status != "pending"
-    return render(json: { error: "Please check your details and try again." }, status: :unprocessable_entity) unless human_pace?
+    return render(json: { error: "Your hold on these seats ran out. Please start again." }, status: :unprocessable_content) if @order.hold_expired? || @order.status != "pending"
+    return render(json: { error: "Please check your details and try again." }, status: :unprocessable_content) unless human_pace?
 
     # At the door (the buyer paying on their own phone) the details are
     # optional, and a name the door typed in stays unless they give one.
@@ -94,7 +94,7 @@ class TicketCheckoutsController < ApplicationController
                              buyer_email: buyer[:buyer_email].presence, buyer_phone: buyer[:buyer_phone].to_s.strip.presence)
     if !@order.valid? || (!at_door && (@order.buyer_name.blank? || @order.buyer_email.blank?))
       message = at_door ? "Check your email address, or leave it blank." : "Add your name and a valid email so we can send your tickets."
-      return render(json: { error: message }, status: :unprocessable_entity)
+      return render(json: { error: message }, status: :unprocessable_content)
     end
     @order.save!
 

@@ -33,7 +33,7 @@ class AuthController < ApplicationController
       @user = User.new(user_params)
       @user_exists_error = true
       @email_address = normalized_email
-      render :signin, status: :unprocessable_entity
+      render :signin, status: :unprocessable_content
       return
     end
 
@@ -48,7 +48,7 @@ class AuthController < ApplicationController
       redirect_to post_authentication_landing_path(@user, new_signup: true) and return
     else
       @signup_token = SignupFormToken.generate
-      render :signup, status: :unprocessable_entity
+      render :signup, status: :unprocessable_content
     end
   end
 
@@ -101,7 +101,7 @@ class AuthController < ApplicationController
       redirect_to post_authentication_landing_path(user) and return
     else
       @error = true
-      render :signin, status: :unprocessable_entity
+      render :signin, status: :unprocessable_content
     end
   end
 
@@ -169,7 +169,7 @@ class AuthController < ApplicationController
                   notice: "Your password has been set — welcome back!" and return
     else
       @password_unsuccessfully_reset = true
-      render :reset, status: :unprocessable_entity
+      render :reset, status: :unprocessable_content
     end
   end
 
@@ -205,7 +205,7 @@ class AuthController < ApplicationController
     @user = User.new(user_params)
     @signup_retry = true
     @signup_token = age ? params[:signup_token] : SignupFormToken.generate
-    render :signup, status: :unprocessable_entity
+    render :signup, status: :unprocessable_content
     false
   end
 

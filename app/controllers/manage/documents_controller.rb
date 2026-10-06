@@ -33,7 +33,7 @@ module Manage
         @document.apply_default_sharing! # visible to the production team by default
         redirect_to edit_manage_production_document_path(@production, @document), notice: "Document created."
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -44,7 +44,7 @@ module Manage
       if @document.update(document_params)
         redirect_to manage_production_document_path(@production, @document), notice: "Document saved."
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

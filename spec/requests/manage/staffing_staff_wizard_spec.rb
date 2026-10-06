@@ -108,7 +108,7 @@ RSpec.describe "Manage::Staffing::StaffWizard", type: :request do
     expect {
       post manage_save_details_staffing_staff_wizard_path, params: { first_name: "", last_name: "", personal_email: "nope" }
     }.not_to change { org.organization_staff_members.count }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("required")
   end
 

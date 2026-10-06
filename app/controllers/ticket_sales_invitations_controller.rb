@@ -20,13 +20,13 @@ class TicketSalesInvitationsController < ApplicationController
       unless user.authenticate(params[:password].to_s)
         @existing_user = user
         @error = "That password isn't right."
-        render :show, status: :unprocessable_entity and return
+        render :show, status: :unprocessable_content and return
       end
     else
       user = User.new(email_address: @viewer.invited_email, password: params[:password].to_s)
       unless user.save
         @error = user.errors.full_messages.to_sentence
-        render :show, status: :unprocessable_entity and return
+        render :show, status: :unprocessable_content and return
       end
       person = Person.where(email: @viewer.invited_email, user_id: nil).first ||
                Person.new(email: @viewer.invited_email, name: @viewer.invited_name.presence || @viewer.invited_email.split("@").first)

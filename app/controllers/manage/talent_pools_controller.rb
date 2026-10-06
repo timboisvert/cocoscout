@@ -216,7 +216,7 @@ module Manage
       name = params[:name]&.strip
 
       if email.blank? || name.blank?
-        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_entity
+        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_content
         return
       end
 

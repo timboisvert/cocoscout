@@ -10,10 +10,10 @@ module Manage
         if @expense_item.save
           render json: { success: true, receipt_url: url_for(@expense_item.receipt) }
         else
-          render json: { success: false, error: @expense_item.errors.full_messages.join(", ") }, status: :unprocessable_entity
+          render json: { success: false, error: @expense_item.errors.full_messages.join(", ") }, status: :unprocessable_content
         end
       else
-        render json: { success: false, error: "No file provided" }, status: :unprocessable_entity
+        render json: { success: false, error: "No file provided" }, status: :unprocessable_content
       end
     end
 

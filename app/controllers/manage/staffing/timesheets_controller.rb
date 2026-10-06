@@ -125,7 +125,7 @@ module Manage
           render :edit
         else
           load_adjust_context
-          render :edit, status: :unprocessable_entity
+          render :edit, status: :unprocessable_content
         end
       end
 

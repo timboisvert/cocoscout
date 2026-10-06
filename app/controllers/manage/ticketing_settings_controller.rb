@@ -42,7 +42,7 @@ module Manage
       else
         @section = "box_office"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
-        render :show, status: :unprocessable_entity
+        render :show, status: :unprocessable_content
       end
     end
 

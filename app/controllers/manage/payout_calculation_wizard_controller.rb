@@ -124,7 +124,7 @@ module Manage
         flash.now[:alert] = "Give the calculation a name — that's how you'll pick it from a list."
         review
         @name = ""
-        render :review, status: :unprocessable_entity and return
+        render :review, status: :unprocessable_content and return
       end
 
       calculation = if @state[:editing_id].present?
@@ -146,7 +146,7 @@ module Manage
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.record.errors.full_messages.to_sentence
       review
-      render :review, status: :unprocessable_entity
+      render :review, status: :unprocessable_content
     end
 
     def cancel

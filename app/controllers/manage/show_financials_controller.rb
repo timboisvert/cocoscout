@@ -38,7 +38,7 @@ module Manage
           format.turbo_stream { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }
         end
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

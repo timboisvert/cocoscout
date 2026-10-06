@@ -30,13 +30,13 @@ module My
 
       unless params[:certify] == "1"
         @w9.errors.add(:base, "Please check the box to certify the information is correct.")
-        return render :w9, status: :unprocessable_entity
+        return render :w9, status: :unprocessable_content
       end
 
       @w9.submit!
       redirect_to after_submit_path, notice: "Thanks — your W-9 is on file with #{@member.organization.name}."
     rescue ActiveRecord::RecordInvalid
-      render :w9, status: :unprocessable_entity
+      render :w9, status: :unprocessable_content
     end
 
     # Your own copy of your 1099-NEC for the year (Copy B).

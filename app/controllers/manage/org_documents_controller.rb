@@ -39,7 +39,7 @@ module Manage
         redirect_to edit_manage_production_document_path(primary, @document), notice: "Document created."
       else
         @selected_production_ids = chosen.map(&:id)
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 

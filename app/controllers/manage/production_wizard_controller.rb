@@ -46,7 +46,7 @@ module Manage
 
       if @wizard_state[:name].blank?
         flash.now[:alert] = "Please enter a production name"
-        render :name, status: :unprocessable_entity and return
+        render :name, status: :unprocessable_content and return
       end
 
       save_wizard_state
@@ -181,7 +181,7 @@ module Manage
 
       if @pay_error
         load_pay_step_data
-        render :pay, status: :unprocessable_entity and return
+        render :pay, status: :unprocessable_content and return
       end
 
       save_wizard_state
@@ -264,7 +264,7 @@ module Manage
       # Validate wizard state is present
       if @wizard_state[:name].blank?
         flash.now[:alert] = "Your wizard session has expired. Please start again."
-        render :review, status: :unprocessable_entity and return
+        render :review, status: :unprocessable_content and return
       end
 
       pay_outcome = nil
@@ -286,7 +286,7 @@ module Manage
 
         unless @production.save
           flash.now[:alert] = @production.errors.full_messages.join(", ")
-          render :review, status: :unprocessable_entity and return
+          render :review, status: :unprocessable_content and return
         end
 
         # Attach the poster if one was picked (held as base64 in the cache).
@@ -383,7 +383,7 @@ module Manage
       end
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.message
-      render :review, status: :unprocessable_entity
+      render :review, status: :unprocessable_content
     end
 
     def cancel

@@ -95,7 +95,7 @@ module Manage
         redirect_to settings_path(@section), notice: notice
       else
         flash.now[:alert] = @listing.errors.full_messages.to_sentence
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

@@ -11,7 +11,7 @@ module Manage
       if @stage.save
         head :ok
       else
-        render json: { errors: @stage.errors.full_messages }, status: :unprocessable_entity
+        render json: { errors: @stage.errors.full_messages }, status: :unprocessable_content
       end
     end
 
@@ -19,7 +19,7 @@ module Manage
       if @stage.update(stage_params)
         head :ok
       else
-        render json: { errors: @stage.errors.full_messages }, status: :unprocessable_entity
+        render json: { errors: @stage.errors.full_messages }, status: :unprocessable_content
       end
     end
 
@@ -27,7 +27,7 @@ module Manage
       if @stage.destroy
         head :ok
       else
-        render json: { errors: @stage.errors.full_messages }, status: :unprocessable_entity
+        render json: { errors: @stage.errors.full_messages }, status: :unprocessable_content
       end
     end
 

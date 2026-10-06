@@ -32,7 +32,7 @@ module Manage
                     notice: "Production expense created."
       else
         @upcoming_shows = upcoming_shows_for_selection
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -47,7 +47,7 @@ module Manage
                     notice: "Production expense updated."
       else
         @upcoming_shows = upcoming_shows_for_selection
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

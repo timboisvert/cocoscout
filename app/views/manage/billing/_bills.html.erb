@@ -12,7 +12,7 @@
         <ul class="mt-3 divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
           <% bills.each do |bill| %>
             <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
-              <span class="text-gray-900"><%= bill.title %>
+              <span class="text-gray-900"><%= bill.full_title %>
                 <% if bill.hosted_invoice_url %><%= link_to "View", bill.hosted_invoice_url, target: "_blank", rel: "noopener", class: "ml-1 text-xs text-pink-600 hover:underline" %><% end %>
               </span>
               <span class="tabular-nums <%= bill.failed? ? 'text-red-600 font-medium' : 'text-gray-700' %>">

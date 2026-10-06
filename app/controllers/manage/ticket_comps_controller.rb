@@ -26,7 +26,7 @@ module Manage
       @note = params[:note]
       @email_them = params[:email_them] == "1"
       flash.now[:alert] = e.message
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
 
     private

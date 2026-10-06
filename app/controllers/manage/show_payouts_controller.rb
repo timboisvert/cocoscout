@@ -42,7 +42,7 @@ module Manage
         redirect_to manage_money_show_payout_path(@show),
                     notice: "Payout updated."
       else
-        render :show, status: :unprocessable_entity
+        render :show, status: :unprocessable_content
       end
     end
 

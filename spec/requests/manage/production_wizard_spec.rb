@@ -333,7 +333,7 @@ RSpec.describe "Production wizard", type: :request do
       walk_to_pay
 
       post manage_productions_wizard_save_pay_path, params: { pays_performers: "yes", pay_choice: "existing", payout_scheme_id: other_org_scheme.id }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("or set up a new one")
 
       post manage_productions_wizard_save_shows_path, params: { has_shows: "no" }

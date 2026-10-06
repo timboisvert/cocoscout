@@ -86,7 +86,7 @@ module Manage
       else
         @sessions = @course_offering.sessions.includes(:location)
         @instructor_people = @course_offering.instructor_people.to_a
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 
@@ -205,7 +205,7 @@ module Manage
       name = params[:name]&.strip
 
       if email.blank? || name.blank?
-        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_entity
+        render json: { success: false, error: "Name and email are required" }, status: :unprocessable_content
         return
       end
 
@@ -240,7 +240,7 @@ module Manage
         render json: { success: true, person_id: person.id, message: "Invitation sent to #{name}" }
       end
     rescue ActiveRecord::RecordInvalid => e
-      render json: { success: false, error: e.message }, status: :unprocessable_entity
+      render json: { success: false, error: e.message }, status: :unprocessable_content
     end
 
     def destroy

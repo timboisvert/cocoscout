@@ -207,7 +207,7 @@ module My
 
       # Validate and save
       if @missing_required_questions.any?
-        render :form, status: :unprocessable_entity
+        render :form, status: :unprocessable_content
       elsif @questionnaire_response.valid?
         @questionnaire_response.save!
 

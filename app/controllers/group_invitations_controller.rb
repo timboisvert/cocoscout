@@ -156,7 +156,7 @@ class GroupInvitationsController < ApplicationController
         user.password = params[:password]
         unless user.valid?
           @user = user
-          render :accept, status: :unprocessable_entity and return
+          render :accept, status: :unprocessable_content and return
         end
         user.save!
       elsif params[:password].present?
@@ -164,13 +164,13 @@ class GroupInvitationsController < ApplicationController
         user = User.new(email_address: @invitation.email.downcase, password: params[:password])
         unless user.save
           @user = user
-          render :accept, status: :unprocessable_entity and return
+          render :accept, status: :unprocessable_content and return
         end
       else
         # No password provided
         @user = User.new(email_address: @invitation.email.downcase)
         @user.errors.add(:password, "can't be blank")
-        render :accept, status: :unprocessable_entity and return
+        render :accept, status: :unprocessable_content and return
       end
 
       # Ensure person exists and is linked to user

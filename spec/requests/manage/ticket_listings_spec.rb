@@ -73,7 +73,7 @@ RSpec.describe "Manage ticket listings", type: :request do
       patch manage_ticket_listing_path(listing), params: { ticket_listing: { ticket_tiers_attributes: {
         "0" => { id: general.id, name: "General", price: "20", quantity: "1" }
       } } }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("fewer than the 2 already sold")
 
       patch manage_ticket_listing_path(listing), params: { ticket_listing: { ticket_tiers_attributes: {

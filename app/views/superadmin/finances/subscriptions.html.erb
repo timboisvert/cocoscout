@@ -60,7 +60,7 @@
             </td>
             <td class="px-4 py-2">
               <% if last %>
-                <span class="<%= last.failed? ? 'text-red-600 font-medium' : 'text-gray-700' %>"><%= last.title %> <%= usd(last.amount_due_cents) %>: <%= last.status_label.downcase %></span>
+                <span class="<%= last.failed? ? 'text-red-600 font-medium' : 'text-gray-700' %>"><%= last.full_title %>, <%= usd(last.amount_due_cents) %>: <%= last.status_label.downcase %></span>
               <% else %>
                 <span class="text-gray-400">None yet</span>
               <% end %>

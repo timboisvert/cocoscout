@@ -213,7 +213,7 @@ module My
       # Validate and save
       if @missing_required_questions.any? || @missing_availability || @missing_audition_availability || @missing_slot
         load_open_signup_slots if @audition_cycle.signup_mode_open?
-        render :form, status: :unprocessable_entity
+        render :form, status: :unprocessable_content
       elsif @audition_request.valid?
 
         # Track if this is a new request (for notification)
@@ -278,7 +278,7 @@ module My
           rescue SlotFull
             load_open_signup_slots
             @slot_taken = true
-            render :form, status: :unprocessable_entity and return
+            render :form, status: :unprocessable_content and return
           end
         end
 

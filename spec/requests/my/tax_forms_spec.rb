@@ -44,13 +44,13 @@ RSpec.describe "My::TaxForms", type: :request do
     expect {
       post my_w9_path(org.id), params: { w9: w9_params }
     }.not_to change(W9Submission, :count)
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("certify")
   end
 
   it "shows errors for a bad TIN without echoing it back" do
     post my_w9_path(org.id), params: { w9: w9_params.merge(tin: "12345"), certify: "1" }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("must be 9 digits")
     expect(response.body).not_to include('value="12345"')
   end

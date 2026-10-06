@@ -19,7 +19,7 @@ module Manage
         if @agreement_template.save
           redirect_to manage_staffing_settings_path, notice: "Staff agreement created."
         else
-          render :new, status: :unprocessable_entity
+          render :new, status: :unprocessable_content
         end
       end
 
@@ -30,7 +30,7 @@ module Manage
         if @agreement_template.update(agreement_template_params)
           redirect_to manage_staffing_settings_path, notice: "Staff agreement updated."
         else
-          render :edit, status: :unprocessable_entity
+          render :edit, status: :unprocessable_content
         end
       end
 

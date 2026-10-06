@@ -24,7 +24,7 @@ module Manage
       if @product.save
         redirect_to manage_ticket_products_path, notice: "Added #{@product.name}. Pick it on a production's Products tab to sell it."
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -34,7 +34,7 @@ module Manage
       if @product.update(product_params)
         redirect_to manage_ticket_products_path, notice: "Saved #{@product.name}."
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

@@ -387,7 +387,7 @@ module Manage
       elsif params[:group_id].present?
         assignable = Current.organization.groups.find(params[:group_id])
       else
-        render json: { error: "Must provide person_id or group_id" }, status: :unprocessable_entity
+        render json: { error: "Must provide person_id or group_id" }, status: :unprocessable_content
         return
       end
 
@@ -396,7 +396,7 @@ module Manage
 
       # Validate eligibility for restricted roles (unless force is true - user confirmed in modal)
       if role.restricted? && !role.eligible?(assignable) && !params[:force]
-        render json: { error: "This cast member is not eligible for this restricted role" }, status: :unprocessable_entity
+        render json: { error: "This cast member is not eligible for this restricted role" }, status: :unprocessable_content
         return
       end
 
@@ -410,7 +410,7 @@ module Manage
 
       # Check if role has available slots
       if role.fully_filled?(@show)
-        render json: { error: "This role is already fully cast" }, status: :unprocessable_entity
+        render json: { error: "This role is already fully cast" }, status: :unprocessable_content
         return
       end
 
@@ -491,7 +491,7 @@ module Manage
       guest_email = params[:guest_email].to_s.strip.presence
 
       if guest_name.blank?
-        render json: { error: "Guest name is required" }, status: :unprocessable_entity
+        render json: { error: "Guest name is required" }, status: :unprocessable_content
         return
       end
 
@@ -500,13 +500,13 @@ module Manage
 
       # Check if role is restricted - guests cannot be assigned unless force is true
       if role.restricted? && !params[:force]
-        render json: { error: "Guests cannot be assigned to restricted roles" }, status: :unprocessable_entity
+        render json: { error: "Guests cannot be assigned to restricted roles" }, status: :unprocessable_content
         return
       end
 
       # Check if role has available slots
       if role.fully_filled?(@show)
-        render json: { error: "This role is already fully cast" }, status: :unprocessable_entity
+        render json: { error: "This role is already fully cast" }, status: :unprocessable_content
         return
       end
 
@@ -517,7 +517,7 @@ module Manage
           # Found matching person - assign them instead of creating a guest
           existing_assignment = @show.show_person_role_assignments.find_by(assignable: existing_person, role: role)
           if existing_assignment
-            render json: { error: "This person is already assigned to this role" }, status: :unprocessable_entity
+            render json: { error: "This person is already assigned to this role" }, status: :unprocessable_content
             return
           end
 
@@ -694,14 +694,14 @@ module Manage
       elsif params[:new_group_id].present?
         new_assignable = Current.organization.groups.find(params[:new_group_id])
       else
-        render json: { error: "Must provide new_person_id or new_group_id" }, status: :unprocessable_entity
+        render json: { error: "Must provide new_person_id or new_group_id" }, status: :unprocessable_content
         return
       end
 
       # Check if the new assignable is already assigned to this role
       existing = @show.show_person_role_assignments.find_by(assignable: new_assignable, role: role)
       if existing && existing.id != assignment.id
-        render json: { error: "#{new_assignable.name} is already assigned to this role" }, status: :unprocessable_entity
+        render json: { error: "#{new_assignable.name} is already assigned to this role" }, status: :unprocessable_content
         return
       end
 
@@ -802,7 +802,7 @@ module Manage
       unless assignment
         respond_to do |format|
           format.html { redirect_to manage_casting_show_cast_path(@production, @show), alert: "No assignment found for this role." }
-          format.json { render json: { error: "No assignment found for this role" }, status: :unprocessable_entity }
+          format.json { render json: { error: "No assignment found for this role" }, status: :unprocessable_content }
         end
         return
       end
@@ -835,7 +835,7 @@ module Manage
     rescue ActiveRecord::RecordInvalid => e
       respond_to do |format|
         format.html { redirect_to manage_casting_show_cast_path(@production, @show), alert: e.message }
-        format.json { render json: { error: e.message }, status: :unprocessable_entity }
+        format.json { render json: { error: e.message }, status: :unprocessable_content }
       end
     end
 
@@ -1030,7 +1030,7 @@ module Manage
       # its lineup — translate each onto the copy it means.
       ordered_ids = Array(params[:role_ids]).filter_map { |id| locate_custom_role(id, mapping)&.id }
       lineup, standing = @show.custom_roles.reload.partition { |r| !r.standing? }
-      return render json: { error: "This show's lineup has changed — reload the page and try again." }, status: :unprocessable_entity unless ordered_ids.sort == lineup.map(&:id).sort
+      return render json: { error: "This show's lineup has changed — reload the page and try again." }, status: :unprocessable_content unless ordered_ids.sort == lineup.map(&:id).sort
 
       by_id = lineup.index_by(&:id)
       ActiveRecord::Base.transaction do
@@ -1065,10 +1065,10 @@ module Manage
       name = params[:name].to_s.strip
       name = source&.name if name.blank?
       name = "Intermission" if name.blank? && kind == "break"
-      return render json: { error: "#{kind == 'show_role' ? 'Role' : 'Act'} name is required" }, status: :unprocessable_entity if name.blank?
+      return render json: { error: "#{kind == 'show_role' ? 'Role' : 'Act'} name is required" }, status: :unprocessable_content if name.blank?
 
       # Wrong-production sources 404 via org scoping above; belt and suspenders.
-      return render json: { error: "That act belongs to another production" }, status: :unprocessable_entity if source && source.production_id != @production.id
+      return render json: { error: "That act belongs to another production" }, status: :unprocessable_content if source && source.production_id != @production.id
 
       ActiveRecord::Base.transaction do
         lineup, standing = @show.custom_roles.reload.partition { |r| !r.standing? }
@@ -1128,7 +1128,7 @@ module Manage
 
       render_running_order_response
     rescue ActiveRecord::RecordInvalid => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      render json: { error: e.message }, status: :unprocessable_content
     end
 
     # Removing an act removes its assignments with it; the client confirms
@@ -1162,14 +1162,14 @@ module Manage
       return render_stale_lineup_error if role.nil?
 
       name = params[:name].to_s.strip
-      return render json: { error: "Name is required" }, status: :unprocessable_entity if name.blank?
+      return render json: { error: "Name is required" }, status: :unprocessable_content if name.blank?
 
       role.name = name
       if role.standing? && params[:quantity].present?
         quantity = params[:quantity].to_i.clamp(1, 20)
         filled = @show.show_person_role_assignments.where(role_id: role.id).count
         if quantity < filled
-          return render json: { error: "#{filled} #{'person'.pluralize(filled)} are cast in this role — remove some before shrinking it." }, status: :unprocessable_entity
+          return render json: { error: "#{filled} #{'person'.pluralize(filled)} are cast in this role — remove some before shrinking it." }, status: :unprocessable_content
         end
         role.quantity = quantity
       end
@@ -1177,7 +1177,7 @@ module Manage
 
       render_running_order_response
     rescue ActiveRecord::RecordInvalid => e
-      render json: { error: e.record.errors.full_messages.to_sentence }, status: :unprocessable_entity
+      render json: { error: e.record.errors.full_messages.to_sentence }, status: :unprocessable_content
     end
 
     # What "Reset to default lineup" would do: the new running order, which
@@ -1228,7 +1228,7 @@ module Manage
     def require_act_based!
       return true if @show.act_based?
 
-      render json: { error: "This show isn't cast by acts" }, status: :unprocessable_entity
+      render json: { error: "This show isn't cast by acts" }, status: :unprocessable_content
       false
     end
 
@@ -1277,7 +1277,7 @@ module Manage
     end
 
     def render_stale_lineup_error
-      render json: { error: "This show's lineup has changed — reload the page and try again." }, status: :unprocessable_entity
+      render json: { error: "This show's lineup has changed — reload the page and try again." }, status: :unprocessable_content
     end
 
     # Act names this production keeps using, most-used first — every show's
@@ -1859,8 +1859,9 @@ module Manage
     end
 
     def default_cast_email_subject
-      template = ContentTemplate.active.find_by(key: "cast_notification")
-      template&.subject || "Cast Confirmation"
+      ContentTemplateService.render_subject("cast_notification", build_casting_email_variables)
+    rescue ContentTemplateService::TemplateNotFoundError
+      "Cast Confirmation"
     end
 
     def default_cast_email_body

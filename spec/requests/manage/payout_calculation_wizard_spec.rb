@@ -379,7 +379,7 @@ RSpec.describe "Payout calculation wizard", type: :request do
     it "insists on a name" do
       save_it(name: "   ")
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("Give the calculation a name")
       expect(PayoutScheme.count).to eq(0)
     end
@@ -389,7 +389,7 @@ RSpec.describe "Payout calculation wizard", type: :request do
 
       save_it(name: "Taken")
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("Name has already been taken")
       expect(response.body).to include('value="Taken"')
     end

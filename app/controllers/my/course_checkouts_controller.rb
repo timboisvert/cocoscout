@@ -37,8 +37,8 @@ module My
     # secret for Stripe to confirm.
     def pay
       return render(json: { redirect: my_course_success_path(code: @course_offering.short_code, token: @registration.token) }) if @registration.confirmed?
-      return render(json: { error: "Your hold on your spot ran out. Please start again." }, status: :unprocessable_entity) if @registration.hold_expired? || !@registration.pending?
-      return render(json: { error: "Please try again." }, status: :unprocessable_entity) unless human_pace?
+      return render(json: { error: "Your hold on your spot ran out. Please start again." }, status: :unprocessable_content) if @registration.hold_expired? || !@registration.pending?
+      return render(json: { error: "Please try again." }, status: :unprocessable_content) unless human_pace?
 
       if @registration.total_cents.zero?
         CourseCheckoutSettlement.settle!(@registration)

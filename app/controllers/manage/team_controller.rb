@@ -141,7 +141,7 @@ module Manage
           end
         else
           respond_to do |format|
-            format.json { render json: { success: false }, status: :unprocessable_entity }
+            format.json { render json: { success: false }, status: :unprocessable_content }
             format.html do
               redirect_to section_manage_organization_path(Current.organization, section: "team"),
                           alert: "Could not remove Team member"
@@ -150,7 +150,7 @@ module Manage
         end
       else
         respond_to do |format|
-          format.json { render json: { success: false }, status: :unprocessable_entity }
+          format.json { render json: { success: false }, status: :unprocessable_content }
           format.html do
             redirect_to section_manage_organization_path(Current.organization, section: "team"),
                         alert: "Unable to remove team member"
@@ -202,7 +202,7 @@ module Manage
           respond_to do |format|
             format.json do
               render json: { success: false, error: permission.errors.full_messages.join(", ") },
-                     status: :unprocessable_entity
+                     status: :unprocessable_content
             end
             format.html do
               redirect_to section_manage_organization_path(Current.organization, section: "team"),
@@ -213,7 +213,7 @@ module Manage
         end
       else
         respond_to do |format|
-          format.json { render json: { success: false }, status: :unprocessable_entity }
+          format.json { render json: { success: false }, status: :unprocessable_content }
           format.html do
             redirect_to section_manage_organization_path(Current.organization, section: "team"), alert: "Invalid role"
           end
@@ -250,7 +250,7 @@ module Manage
         end
       else
         respond_to do |format|
-          format.json { render json: { success: false }, status: :unprocessable_entity }
+          format.json { render json: { success: false }, status: :unprocessable_content }
           format.html do
             redirect_to section_manage_organization_path(Current.organization, section: "team"),
                         alert: "Could not update global role"

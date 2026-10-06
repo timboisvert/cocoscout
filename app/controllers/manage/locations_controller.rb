@@ -38,7 +38,7 @@ module Manage
         end
       elsif request.accept == "application/json" || request.xhr?
         # Handle AJAX error requests
-        render json: { errors: @location.errors.messages }, status: :unprocessable_entity
+        render json: { errors: @location.errors.messages }, status: :unprocessable_content
       else
         redirect_to section_manage_organization_path(Current.organization, section: "locations"),
                     alert: "Could not create location"
@@ -57,7 +57,7 @@ module Manage
         end
       elsif request.accept == "application/json" || request.xhr?
         # Handle AJAX error requests
-        render json: { errors: @location.errors.messages }, status: :unprocessable_entity
+        render json: { errors: @location.errors.messages }, status: :unprocessable_content
       else
         redirect_to section_manage_organization_path(Current.organization, section: "locations"),
                     alert: "Could not update location"

@@ -19,7 +19,7 @@ module Manage
       if @contract_template.save
         redirect_to templates_section_path, notice: "Contract template created."
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -30,7 +30,7 @@ module Manage
       if @contract_template.update(contract_template_params)
         redirect_to templates_section_path, notice: "Contract template updated."
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

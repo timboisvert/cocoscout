@@ -22,7 +22,7 @@ module Manage
       genre = params[:genre].to_s
       unless ProductionGenres.keys.include?(genre)
         flash.now[:alert] = "Pick what you're creating to continue"
-        render :genre, status: :unprocessable_entity and return
+        render :genre, status: :unprocessable_content and return
       end
 
       @setup_state[:genre] = genre
@@ -40,7 +40,7 @@ module Manage
 
       if @setup_state[:name].blank?
         flash.now[:alert] = "Please enter a name"
-        render :name, status: :unprocessable_entity and return
+        render :name, status: :unprocessable_content and return
       end
 
       save_setup_state
@@ -104,7 +104,7 @@ module Manage
       end
     rescue ActiveRecord::RecordInvalid => e
       flash.now[:alert] = e.record.errors.full_messages.to_sentence.presence || e.message
-      render :plan, status: :unprocessable_entity
+      render :plan, status: :unprocessable_content
     end
 
     def cancel

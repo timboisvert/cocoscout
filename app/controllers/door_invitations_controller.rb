@@ -21,13 +21,13 @@ class DoorInvitationsController < ApplicationController
       unless user.authenticate(params[:password].to_s)
         @existing_user = user
         @error = "That password isn't right."
-        render :show, status: :unprocessable_entity and return
+        render :show, status: :unprocessable_content and return
       end
     else
       user = User.new(email_address: @grant.invited_email, password: params[:password].to_s)
       unless user.save
         @error = user.errors.full_messages.to_sentence
-        render :show, status: :unprocessable_entity and return
+        render :show, status: :unprocessable_content and return
       end
       person = Person.where(email: @grant.invited_email, user_id: nil).first ||
                Person.new(email: @grant.invited_email, name: @grant.invited_name.presence || @grant.invited_email.split("@").first)

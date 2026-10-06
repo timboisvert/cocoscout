@@ -396,7 +396,7 @@ module Manage
 
       extend_through = compute_extend_through_date
       if extend_through.nil?
-        render json: { error: "Pick a date after #{@last_show.date_and_time.strftime('%B %-d, %Y')}." }, status: :unprocessable_entity
+        render json: { error: "Pick a date after #{@last_show.date_and_time.strftime('%B %-d, %Y')}." }, status: :unprocessable_content
         return
       end
 
@@ -404,7 +404,7 @@ module Manage
       new_dates = new_dates.drop(1)
 
       if new_dates.empty?
-        render json: { error: "No new dates to add. The series may already extend past the selected date." }, status: :unprocessable_entity
+        render json: { error: "No new dates to add. The series may already extend past the selected date." }, status: :unprocessable_content
         return
       end
 
@@ -558,7 +558,7 @@ module Manage
                       notice: "#{@show.event_type.titleize} was successfully updated",
                       status: :see_other
         else
-          render :edit, status: :unprocessable_entity
+          render :edit, status: :unprocessable_content
         end
       end
     end
@@ -1017,7 +1017,7 @@ module Manage
 
       # Validate role
       unless %w[sibling child].include?(linkage_role)
-        return render json: { error: "Invalid linkage role" }, status: :unprocessable_entity
+        return render json: { error: "Invalid linkage role" }, status: :unprocessable_content
       end
 
       # Create or get the event linkage
@@ -1031,7 +1031,7 @@ module Manage
 
       # Check if target show is already linked elsewhere
       if target_show.event_linkage.present? && target_show.event_linkage != event_linkage
-        return render json: { error: "That event is already part of another linkage" }, status: :unprocessable_entity
+        return render json: { error: "That event is already part of another linkage" }, status: :unprocessable_content
       end
 
       # Link the target show
@@ -1076,7 +1076,7 @@ module Manage
       event_linkage = @show.event_linkage
 
       unless event_linkage
-        return render json: { error: "This event is not linked" }, status: :unprocessable_entity
+        return render json: { error: "This event is not linked" }, status: :unprocessable_content
       end
 
       # Get the requesting show (the one whose view needs to be refreshed)
@@ -1128,7 +1128,7 @@ module Manage
       event_linkage = @show.event_linkage
 
       unless event_linkage
-        return render json: { error: "This event is not linked" }, status: :unprocessable_entity
+        return render json: { error: "This event is not linked" }, status: :unprocessable_content
       end
 
       # Unlink all shows from this linkage
@@ -1407,7 +1407,7 @@ module Manage
               render json: {
                 success: false,
                 error: "#{person.name} is already marked as attending this event"
-              }, status: :unprocessable_entity
+              }, status: :unprocessable_content
             end
           end
           return
@@ -1421,7 +1421,7 @@ module Manage
               render json: {
                 success: false,
                 error: "#{person.name} is already cast in this event. Use the attendance list to mark them present."
-              }, status: :unprocessable_entity
+              }, status: :unprocessable_content
             end
           end
           return
@@ -1444,7 +1444,7 @@ module Manage
               render json: {
                 success: false,
                 error: person.errors.full_messages.join(", ")
-              }, status: :unprocessable_entity
+              }, status: :unprocessable_content
             end
           end
           return
@@ -1495,7 +1495,7 @@ module Manage
             render json: {
               success: false,
               error: record.errors.full_messages.join(", ")
-            }, status: :unprocessable_entity
+            }, status: :unprocessable_content
           end
         end
       end
@@ -1505,7 +1505,7 @@ module Manage
           render json: {
             success: false,
             error: "Email is required"
-          }, status: :unprocessable_entity
+          }, status: :unprocessable_content
         end
       end
     rescue StandardError => e
@@ -1530,7 +1530,7 @@ module Manage
     def preview_reschedule
       plan = build_reschedule_plan
       if plan[:error]
-        render json: { error: plan[:error] }, status: :unprocessable_entity
+        render json: { error: plan[:error] }, status: :unprocessable_content
         return
       end
 

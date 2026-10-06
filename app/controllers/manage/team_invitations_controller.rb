@@ -38,7 +38,7 @@ module Manage
         else
           @authentication_error = true
           @user = user
-          render :accept, status: :unprocessable_entity and return
+          render :accept, status: :unprocessable_content and return
         end
       else
         user = User.new(email_address: @team_invitation.email.downcase)
@@ -47,7 +47,7 @@ module Manage
 
         unless user.valid?
           @user = user
-          render :accept, status: :unprocessable_entity and return
+          render :accept, status: :unprocessable_content and return
         end
 
         user.save!

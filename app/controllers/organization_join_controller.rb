@@ -37,7 +37,7 @@ class OrganizationJoinController < ApplicationController
     if email.blank? || password.blank?
       @email = email
       flash.now[:alert] = "Email and password are required"
-      render :show, status: :unprocessable_entity
+      render :show, status: :unprocessable_content
       return
     end
 
@@ -54,7 +54,7 @@ class OrganizationJoinController < ApplicationController
         # Wrong password - show error with link to sign in
         @email = email
         @existing_user_wrong_password = true
-        render :show, status: :unprocessable_entity
+        render :show, status: :unprocessable_content
       end
     else
       # New user - create the account (User + Person together)
@@ -63,7 +63,7 @@ class OrganizationJoinController < ApplicationController
       unless result.user.persisted?
         @email = email
         @user = result.user
-        render :show, status: :unprocessable_entity
+        render :show, status: :unprocessable_content
         return
       end
 

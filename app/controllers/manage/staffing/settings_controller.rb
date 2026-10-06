@@ -207,7 +207,7 @@ module Manage
         else
           @section = "taxes"
           flash.now[:alert] = "Couldn't save: #{@tax_setting.errors.full_messages.to_sentence}"
-          render :show, status: :unprocessable_entity
+          render :show, status: :unprocessable_content
         end
       end
     end

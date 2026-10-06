@@ -199,7 +199,7 @@ RSpec.describe "Public ticketing", type: :request do
 
       travel 5.seconds do
         post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "", buyer_email: "nope" }, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(Stripe::PaymentIntent).not_to have_received(:create)
 
         post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery Buyer", buyer_email: "Avery@Example.com" }, as: :json
@@ -226,10 +226,10 @@ RSpec.describe "Public ticketing", type: :request do
 
       order = buy(1)
       post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery", buyer_email: "avery@example.com" }, as: :json
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       travel 5.seconds do
         post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery", buyer_email: "avery@example.com", website: "x" }, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
       expect(Stripe::PaymentIntent).not_to have_received(:create)
       expect(order.reload.buyer_email).to be_nil
@@ -270,7 +270,7 @@ RSpec.describe "Public ticketing", type: :request do
         expect(response.body).to include("Your hold on these seats ran out")
 
         post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Avery", buyer_email: "avery@example.com" }, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end

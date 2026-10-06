@@ -97,7 +97,7 @@ RSpec.describe "Intro guides", type: :request do
 
   it "rejects keys outside the catalog" do
     post guide_dismiss_path("made_up_guide")
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(owner.reload.dismissed_guides).to be_empty
   end
 
