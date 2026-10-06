@@ -366,6 +366,13 @@ Rails.application.routes.draw do
     get  "checkout/:token/hold",       to: "ticket_checkouts#hold",   as: "checkout_hold", defaults: { format: :json }
     patch "checkout/:token/items",     to: "ticket_checkouts#items",  as: "checkout_items", defaults: { format: :json }
     get  "v/:code",                    to: "tickets#ticket",          as: "ticket"
+    # Credit passes: paying for them (no seats, so no show to key it by), and
+    # each holder's page where credits become tickets.
+    get  "pass-checkout/:token",       to: "ticket_pass_purchases#show", as: "pass_purchase"
+    post "pass-checkout/:token/pay",   to: "ticket_pass_purchases#pay",  as: "pass_purchase_pay"
+    get  "pass-checkout/:token/done",  to: "ticket_pass_purchases#done", as: "pass_purchase_done"
+    get  "my-pass/:token",             to: "ticket_pass_holdings#show",  as: "pass_holding"
+    post "my-pass/:token/use",         to: "ticket_pass_holdings#use",   as: "pass_holding_use"
     get  ":org",                       to: "tickets#box_office",      as: "box_office"
     # A pass: several shows sold together (TicketPass).
     get  ":org/passes/:pass",          to: "ticket_passes#show",      as: "pass"

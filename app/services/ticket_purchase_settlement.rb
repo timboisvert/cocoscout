@@ -35,7 +35,30 @@ class TicketPurchaseSettlement
     end
     # Several shows: one email with all of them.
     TicketPurchaseConfirmationJob.perform_later(purchase.id) if orders.size > 1
+    settle_passes!(purchase, payment_intent_id)
     purchase
+  end
+
+  # Credit passes in the purchase go live, their money held; with no ticket
+  # order to carry it, the first one records what Stripe took.
+  def self.settle_passes!(purchase, payment_intent_id)
+    holdings = purchase.ticket_pass_holdings.to_a
+    return if holdings.empty?
+
+    holdings.each { |holding| TicketPassCredits.settle!(holding, paid_at: purchase.paid_at || Time.current) }
+    record_stripe_fee!(holdings.first, payment_intent_id || purchase.stripe_payment_intent_id) if purchase.ticket_orders.empty?
+    holdings.each { |holding| CocoScoutLedgerPoster.post_for!(holding.reload) }
+    TicketPassConfirmationJob.perform_later(purchase.id)
+  end
+
+  def self.record_stripe_fee!(holding, intent_id)
+    return if intent_id.blank? || holding.stripe_fee_cents.present?
+
+    intent = Stripe::PaymentIntent.retrieve({ id: intent_id, expand: [ "latest_charge.balance_transaction" ] })
+    fee = intent.latest_charge&.balance_transaction&.fee
+    holding.update_columns(stripe_fee_cents: fee) if fee
+  rescue Stripe::StripeError => e
+    Rails.logger.warn("[TicketPurchaseSettlement] pass holding #{holding.id}: couldn't read Stripe's fee: #{e.message}")
   end
 
   def self.refund_late_payment!(purchase, payment_intent_id)
@@ -50,5 +73,5 @@ class TicketPurchaseSettlement
     Rails.logger.warn("[TicketPurchaseSettlement] purchase #{purchase.id} paid after its seats were gone; refunded")
   end
 
-  private_class_method :refund_late_payment!
+  private_class_method :refund_late_payment!, :settle_passes!, :record_stripe_fee!
 end

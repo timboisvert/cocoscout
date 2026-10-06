@@ -1,0 +1,9 @@
+<%# A production a credit pass covers, and the ticket type a credit gives.
+    Locals: cf (fields builder), input_class. %>
+<div class="nested-fields grid grid-cols-[minmax(0,1fr)_10rem_auto] items-start gap-2">
+  <%= cf.select :production_id, production_choices, { include_blank: "Pick a production" }, "aria-label": "Production it covers", class: input_class %>
+  <%= cf.text_field :tier_name, placeholder: "Type (blank: first)", "aria-label": "Ticket type a credit gives", class: input_class %>
+  <%= cf.hidden_field :_destroy, value: "0" %>
+  <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Remove", icon: "x-mark",
+        classes: "!p-2 text-gray-400 hover:text-pink-600", data: { action: "nested-form#remove" } %>
+</div>

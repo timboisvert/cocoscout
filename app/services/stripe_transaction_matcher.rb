@@ -62,6 +62,10 @@ class StripeTransactionMatcher
         # A checkout with several shows is one charge for all of them.
         return [ "ticket_order", order, order.ticket_purchase&.total_cents || order.total_cents ]
       end
+      # Credit passes bought on their own: no ticket order carries the payment.
+      if (purchase = TicketPurchase.find_by(stripe_payment_intent_id: pi)) && (holding = purchase.ticket_pass_holdings.first)
+        return [ "ticket_pass", holding, purchase.total_cents ]
+      end
       if (registration = CourseRegistration.find_by(stripe_payment_intent_id: pi))
         return [ "course_registration", registration, registration.amount_cents + registration.tax_cents.to_i ]
       end

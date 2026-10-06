@@ -9,7 +9,7 @@ class TicketingProfile < ApplicationRecord
   # by default: money left here pays payout runs without a bank debit.
   AUTO_WITHDRAW = %w[off weekly after_shows].freeze
   # Path words under /tickets that an org's slug must never shadow.
-  RESERVED_SLUGS = %w[orders checkout embed embed-js v p go door api assets help admin].freeze
+  RESERVED_SLUGS = %w[orders checkout embed embed-js v p go door api assets help admin pass-checkout my-pass].freeze
 
   belongs_to :organization
   has_many :short_links, as: :target, dependent: :destroy

@@ -36,8 +36,13 @@
                     <span class="inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= status_badge[pass.status] %>"><%= pass.status.humanize %></span>
                   </div>
                   <div class="text-xs text-gray-500">
-                    <%= pluralize(rows.size, "show") %><% if rows.first %>, from <%= rows.first.ticket_listing.show.date_and_time.strftime("%b %-d") %><% end %>
-                    · <%= pluralize(pass.sold_count(rows), "sold") %>
+                    <% if pass.credit_kind? %>
+                      <%= pass.kind == "season" ? "Season pass" : "Punch card" %>, <%= pluralize(pass.credits.to_i, "credit") %>, until <%= pass.ends_on&.strftime("%b %-d") %>
+                      · <%= pluralize(pass.holdings.where(status: %w[active ended]).count, "sold") %>
+                    <% else %>
+                      <%= pluralize(rows.size, "show") %><% if rows.first %>, from <%= rows.first.ticket_listing.show.date_and_time.strftime("%b %-d") %><% end %>
+                      · <%= pluralize(pass.sold_count(rows), "sold") %>
+                    <% end %>
                   </div>
                 </div>
                 <div class="text-sm font-semibold tabular-nums text-gray-900"><%= number_to_currency(pass.price_cents / 100.0) %></div>

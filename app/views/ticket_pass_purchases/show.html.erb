@@ -1,0 +1,55 @@
+<%
+  total = @purchase.total_cents
+  free = total.zero?
+  back_path = tickets_pass_path(org: @ticketing_profile.slug, pass: @pass.slug, **embed_params)
+  lines = [ [ "#{@holdings.size} × #{@pass.name}", @holdings.sum(&:price_cents), false ] ]
+  fees = @holdings.sum(&:buyer_fee_cents)
+  lines << [ "Fees", fees, true ] if fees.positive?
+  added_tax = TaxLine.where(taxable: @holdings, included: false).group(:name, :rate_bps).sum(:tax_cents)
+  added_tax.each { |(name, rate_bps), cents| lines << [ "#{name} #{format('%g', rate_bps / 100.0)}%", cents, true ] if cents.positive? }
+%>
+<% content_for :title, "Checkout · #{@pass.name}" %>
+<% content_for :head do %>
+  <% unless free || @expired %><script src="https://js.stripe.com/v3/"></script><% end %>
+<% end %>
+
+<div class="mx-auto max-w-xl space-y-5">
+  <h1 class="text-center text-3xl sm:text-4xl coustard-regular text-gray-900">Checkout</h1>
+
+  <% if @expired %>
+    <%= render "shared/checkout/expired", held: "this price", back_path: back_path, back_text: "Back to the pass" %>
+  <% else %>
+    <%= form_with url: tickets_pass_purchase_pay_path(token: @purchase.token, **embed_params), method: :post, class: "space-y-5",
+          data: {
+            controller: "checkout",
+            action: "submit->checkout#submit",
+            checkout_target: "form",
+            checkout_publishable_key_value: stripe_publishable_key.to_s,
+            checkout_amount_value: total,
+            checkout_free_value: free,
+            checkout_return_url_value: tickets_pass_purchase_done_url(token: @purchase.token, **embed_params),
+            checkout_expires_at_value: @purchase.expires_at&.iso8601,
+            checkout_token_value: @purchase.token
+          } do %>
+      <%= render "tickets/bot_trap", id: "checkout_website" %>
+      <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div class="px-5 py-4">
+          <div class="font-semibold text-gray-900"><%= @pass.name %></div>
+          <div class="text-sm text-gray-600">
+            <%= @pass.kind == "season" ? "A seat at up to #{@pass.credits} shows" : pluralize(@pass.credits, "admission") %>,
+            for <%= @pass.coverages.map { |coverage| coverage.production.name }.to_sentence %>, until <%= @pass.ends_on.strftime("%b %-d, %Y") %>
+          </div>
+        </div>
+        <%= render "shared/checkout/summary", lines: lines, total_cents: total %>
+        <%= render "shared/checkout/countdown", back_path: back_path, back_text: "Change" %>
+      </div>
+
+      <%= render "shared/checkout/buyer_details", name: @holdings.first.holder_name, email: @holdings.first.holder_email, phone: nil, required: true,
+            email_note: "We'll email your pass to this address." %>
+      <%= render "shared/checkout/payment" unless free %>
+      <p data-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
+      <%= render "shared/button", text: (free ? "Get my pass" : "Pay #{number_to_currency(total / 100.0)}"), variant: "primary", size: "jumbo", type: :submit,
+            classes: "disabled:opacity-50", data: { checkout_target: "submit", pay_prefix: (free ? "" : "Pay ") } %>
+    <% end %>
+  <% end %>
+</div>

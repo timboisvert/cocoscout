@@ -12,8 +12,9 @@ module Manage
     end
 
     def new
-      @pass = Current.organization.ticket_passes.new(split: "regular_price")
+      @pass = Current.organization.ticket_passes.new(split: "regular_price", kind: "dated")
       2.times { @pass.pass_shows.build }
+      @pass.coverages.build
     end
 
     def create
@@ -22,11 +23,17 @@ module Manage
         redirect_to manage_ticket_pass_path(@pass), notice: "#{@pass.name} saved#{' and on sale' if @pass.status == 'on_sale'}."
       else
         @pass.pass_shows.build while @pass.pass_shows.size < 2
+        @pass.coverages.build if @pass.coverages.empty?
         render :new, status: :unprocessable_content
       end
     end
 
     def show
+      if @pass.credit_kind?
+        @holdings = @pass.holdings.where(status: %w[active ended]).order(paid_at: :desc).to_a
+        return render(:credits)
+      end
+
       @rows = @pass.rows
       @shares = @pass.shares(@rows)
       @sold = @pass.sold_count(@rows)
@@ -37,6 +44,7 @@ module Manage
 
     def edit
       @pass.pass_shows.build if @pass.pass_shows.size < 2
+      @pass.coverages.build if @pass.coverages.empty?
     end
 
     def update
@@ -51,7 +59,7 @@ module Manage
     # buyers' tickets keep their pass.
     def destroy
       name = @pass.name
-      if @pass.tickets.exists?
+      if @pass.tickets.exists? || @pass.holdings.exists?
         @pass.update_columns(status: "closed", updated_at: Time.current)
         redirect_to manage_ticket_passes_path, notice: "#{name} is closed. Its buyers keep their tickets."
       else
@@ -71,8 +79,17 @@ module Manage
     # organization's own ticket types.
     def pass_params
       permitted = params.require(:ticket_pass).permit(:name, :slug, :description, :price, :split, :status, :max_sold, :max_per_order,
-                                                      :sales_end_at, :wide_image,
-                                                      pass_shows_attributes: %i[id ticket_tier_id share _destroy])
+                                                      :sales_end_at, :wide_image, :kind, :credits, :ends_on,
+                                                      pass_shows_attributes: %i[id ticket_tier_id share _destroy],
+                                                      coverages_attributes: %i[id production_id tier_name _destroy])
+      permitted[:credits] = permitted[:credits].presence if permitted.key?(:credits)
+      permitted[:ends_on] = permitted[:ends_on].presence if permitted.key?(:ends_on)
+      own_productions = Current.organization.productions.select(:id)
+      coverage_rows = permitted[:coverages_attributes]
+      coverage_rows&.keys&.each do |key|
+        row = coverage_rows[key]
+        row[:production_id] = nil if row[:production_id].present? && !own_productions.exists?(id: row[:production_id])
+      end
       permitted[:price_cents] = dollars_to_cents(permitted.delete(:price))
       permitted[:max_sold] = permitted[:max_sold].presence
       permitted[:max_per_order] = permitted[:max_per_order].presence

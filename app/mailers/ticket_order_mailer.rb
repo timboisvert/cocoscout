@@ -79,6 +79,47 @@ class TicketOrderMailer < ApplicationMailer
     deliver_from_theater(words[:subject])
   end
 
+  # Credit passes bought (TicketPassCredits): each one's page, where its
+  # credits are used, and a receipt.
+  def passes(purchase)
+    @purchase = purchase
+    @holdings = purchase.ticket_pass_holdings.select { |holding| holding.status == "active" }
+    holding = @holdings.first
+    @organization = holding.organization
+    words = render_words("ticket_pass_bought", self.class.pass_variables(holding))
+    @intro_html = words[:body_html]
+    mail(to: holding.holder_email, subject: words[:subject],
+         from: email_address_with_name("info@cocoscout.com", "#{@organization.name} via CocoScout"),
+         reply_to: TicketingProfile.for(@organization).support_email.presence)
+  end
+
+  # A credit pass ending with credits left (TicketPassEndingJob).
+  def pass_ending(holding)
+    @organization = holding.organization
+    variables = self.class.pass_variables(holding).merge(
+      credits_left: ActionController::Base.helpers.pluralize(holding.credits_left, "credit"),
+      pass_url: tickets_pass_holding_url(token: holding.token)
+    )
+    words = render_words("ticket_pass_ending", variables)
+    mail(to: holding.holder_email, subject: words[:subject],
+         from: email_address_with_name("info@cocoscout.com", "#{@organization.name} via CocoScout"),
+         reply_to: TicketingProfile.for(@organization).support_email.presence) do |format|
+      format.html { render html: words[:body_html].html_safe, layout: "mailer" }
+    end
+  end
+
+  def self.pass_variables(holding)
+    pass = holding.ticket_pass
+    {
+      first_name: holding.holder_name.to_s.split.first.presence || "there",
+      organization_name: holding.organization.name,
+      pass_name: pass.name,
+      credits_words: pass.kind == "season" ? "a seat at up to #{holding.credits} shows" : ActionController::Base.helpers.pluralize(holding.credits, "credit"),
+      covers: pass.coverages.includes(:production).map { |coverage| coverage.production.name }.to_sentence,
+      ends_on: holding.ends_on.strftime("%B %-d, %Y")
+    }
+  end
+
   # The words every email with tickets in it can use.
   def self.ticket_variables(order)
     listing = order.ticket_listing

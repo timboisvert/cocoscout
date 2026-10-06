@@ -19,7 +19,9 @@ class TicketBalance
   SETTLE_AFTER = 2.days
   # A moved order's money leaves its old show (ticket_exchange_out) and joins
   # the new one (ticket_exchange_in), so it's held for the show it's for.
-  ENTRY_TYPES = %w[ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in].freeze
+  # pass_sale: a credit pass's money (TicketPassCredits), held until the pass
+  # ends; it never joins an order, so the per-show buckets skip it.
+  ENTRY_TYPES = %w[ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in pass_sale].freeze
   ORDER_OF_ENTRY = <<~SQL.squish
     LEFT JOIN ticket_refunds r ON e.source_type = 'TicketRefund' AND r.id = e.source_id
     LEFT JOIN ticket_exchanges x ON e.source_type = 'TicketExchange' AND x.id = e.source_id
@@ -93,7 +95,23 @@ class TicketBalance
     row = OrgCashEntry.connection.select_rows(
       OrgCashEntry.sanitize_sql([ sql, { organization_id: organization.id, types: ENTRY_TYPES, cutoff: SETTLE_AFTER.ago } ])
     ).first
-    row.map(&:to_i)
+    upcoming, settling, settled = row.map(&:to_i)
+    held_passes, ended_passes = pass_buckets(organization)
+    [ upcoming + held_passes, settling, settled + ended_passes ]
+  end
+
+  # Credit passes' money: held while the pass runs (its credits are shows
+  # still to come), the organization's once it ends.
+  def self.pass_buckets(organization)
+    sql = <<~SQL.squish
+      SELECT
+        COALESCE(SUM(e.amount_cents) FILTER (WHERE h.status <> 'ended'), 0),
+        COALESCE(SUM(e.amount_cents) FILTER (WHERE h.status = 'ended'), 0)
+      FROM org_cash_entries e
+      JOIN ticket_pass_holdings h ON e.source_type = 'TicketPassHolding' AND h.id = e.source_id
+      WHERE e.organization_id = :organization_id AND e.entry_type = 'pass_sale'
+    SQL
+    OrgCashEntry.connection.select_rows(OrgCashEntry.sanitize_sql([ sql, { organization_id: organization.id } ])).first.map(&:to_i)
   end
 
   # A run claims its share while it's being funded (still a draft for those
@@ -122,5 +140,5 @@ class TicketBalance
       BalanceWithdrawal.where(organization_id: organization.id).not_failed.sum(:amount_cents)
   end
 
-  private_class_method :buckets, :spent_cents, :top_ups_cents
+  private_class_method :buckets, :pass_buckets, :spent_cents, :top_ups_cents
 end

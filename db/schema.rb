@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_210100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3521,6 +3521,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_200000) do
     t.index ["organization_id"], name: "index_ticket_products_on_organization_id"
   end
 
+  create_table "ticket_pass_coverages", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "production_id", null: false
+    t.bigint "ticket_pass_id", null: false
+    t.string "tier_name"
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_ticket_pass_coverages_on_production_id"
+    t.index ["ticket_pass_id", "production_id"], name: "idx_on_ticket_pass_id_production_id_f40faf7b3b", unique: true
+    t.index ["ticket_pass_id"], name: "index_ticket_pass_coverages_on_ticket_pass_id"
+  end
+
+  create_table "ticket_pass_holdings", force: :cascade do |t|
+    t.integer "buyer_fee_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.integer "credit_value_cents", default: 0, null: false
+    t.integer "credits", null: false
+    t.datetime "ended_at"
+    t.date "ends_on", null: false
+    t.string "holder_email"
+    t.string "holder_name"
+    t.integer "org_net_cents", default: 0, null: false
+    t.bigint "organization_id", null: false
+    t.datetime "paid_at"
+    t.integer "platform_fee_cents", default: 0, null: false
+    t.integer "price_cents", default: 0, null: false
+    t.integer "processing_cents", default: 0, null: false
+    t.datetime "reminded_at"
+    t.string "status", default: "pending", null: false
+    t.integer "stripe_fee_cents"
+    t.integer "tax_cents", default: 0, null: false
+    t.bigint "ticket_pass_id", null: false
+    t.bigint "ticket_purchase_id"
+    t.string "token", null: false
+    t.integer "total_cents", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_pass_holdings_on_organization_id"
+    t.index ["ticket_pass_id"], name: "index_ticket_pass_holdings_on_ticket_pass_id"
+    t.index ["ticket_purchase_id"], name: "index_ticket_pass_holdings_on_ticket_purchase_id"
+    t.index ["token"], name: "index_ticket_pass_holdings_on_token", unique: true
+  end
+
   create_table "ticket_pass_shows", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "position", default: 0, null: false
@@ -3537,7 +3578,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_200000) do
 
   create_table "ticket_passes", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.integer "credits"
     t.text "description"
+    t.date "ends_on"
     t.string "kind", default: "dated", null: false
     t.integer "max_per_order"
     t.integer "max_sold"
@@ -3755,6 +3798,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_200000) do
     t.bigint "ticket_listing_id", null: false
     t.bigint "ticket_offer_id"
     t.bigint "ticket_order_id", null: false
+    t.bigint "ticket_pass_holding_id"
     t.bigint "ticket_pass_id"
     t.bigint "ticket_tier_id", null: false
     t.datetime "updated_at", null: false
@@ -3765,6 +3809,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_200000) do
     t.index ["ticket_listing_id", "status"], name: "index_tickets_on_ticket_listing_id_and_status"
     t.index ["ticket_offer_id"], name: "index_tickets_on_ticket_offer_id"
     t.index ["ticket_order_id"], name: "index_tickets_on_ticket_order_id"
+    t.index ["ticket_pass_holding_id"], name: "index_tickets_on_ticket_pass_holding_id"
     t.index ["ticket_pass_id"], name: "index_tickets_on_ticket_pass_id"
     t.index ["ticket_tier_id"], name: "index_tickets_on_ticket_tier_id"
   end
@@ -4234,6 +4279,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_200000) do
   add_foreign_key "ticket_orders", "users", column: "issued_by_id", on_delete: :nullify
   add_foreign_key "ticket_orders", "users", on_delete: :nullify
   add_foreign_key "ticket_products", "organizations"
+  add_foreign_key "ticket_pass_coverages", "productions"
+  add_foreign_key "ticket_pass_coverages", "ticket_passes"
+  add_foreign_key "ticket_pass_holdings", "organizations"
+  add_foreign_key "ticket_pass_holdings", "ticket_passes"
+  add_foreign_key "ticket_pass_holdings", "ticket_purchases"
   add_foreign_key "ticket_pass_shows", "ticket_listings"
   add_foreign_key "ticket_pass_shows", "ticket_passes"
   add_foreign_key "ticket_pass_shows", "ticket_tiers"
@@ -4263,6 +4313,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_200000) do
   add_foreign_key "tickets", "ticket_listings"
   add_foreign_key "tickets", "ticket_offers"
   add_foreign_key "tickets", "ticket_orders"
+  add_foreign_key "tickets", "ticket_pass_holdings"
   add_foreign_key "tickets", "ticket_passes"
   add_foreign_key "tickets", "ticket_tiers"
   add_foreign_key "tickets", "ticket_tiers", column: "bundle_tier_id"

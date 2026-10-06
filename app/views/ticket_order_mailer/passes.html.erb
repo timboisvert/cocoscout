@@ -1,0 +1,18 @@
+<%= raw @intro_html %>
+
+<% @holdings.each_with_index do |holding, index| %>
+  <div style="margin: 16px 0; padding: 16px; border: 1px solid #fbcfe8; background: #fdf2f8; border-radius: 12px; text-align: center;">
+    <div style="font-size: 14px; color: #6b7280;"><%= holding.ticket_pass.name %><% if @holdings.size > 1 %> · <%= index + 1 %> of <%= @holdings.size %><% end %></div>
+    <div style="font-size: 16px; font-weight: 600; color: #111827; margin-top: 4px;"><%= pluralize(holding.credits_left, "credit") %> · until <%= holding.ends_on.strftime("%b %-d, %Y") %></div>
+    <div style="margin-top: 10px;"><%= link_to "Pick your shows", tickets_pass_holding_url(token: holding.token) %></div>
+  </div>
+<% end %>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; margin: 20px 0; border: 1px solid #e5e7eb; border-radius: 12px;">
+  <tr><td style="padding: 14px 16px;">
+    <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">What you paid</div>
+    <div style="font-size: 14px; color: #374151;"><%= pluralize(@holdings.size, "pass") %>: <%= number_to_currency(@purchase.total_cents / 100.0) %> (fees and tax included)</div>
+    <div style="font-size: 12px; color: #9ca3af; margin-top: 8px;">Paid <%= @purchase.paid_at&.strftime("%B %-d, %Y") %> · sold by <%= @organization.name %>, payment processed by CocoScout</div>
+  </td></tr>
+</table>
+<%= render "ticket_order_mailer/questions", organization: @organization %>

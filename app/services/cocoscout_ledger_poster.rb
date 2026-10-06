@@ -26,6 +26,7 @@
 class CocoScoutLedgerPoster
   TYPES_FOR = {
     "TicketOrder" => %w[ticket_fee ticket_processing processing_cost],
+    "TicketPassHolding" => %w[ticket_fee ticket_processing processing_cost],
     "TicketRefund" => %w[ticket_refund],
     "CourseRegistration" => %w[course_fee processing_cost course_refund],
     "ContractPayment" => %w[contract_processing processing_cost],
@@ -35,7 +36,7 @@ class CocoScoutLedgerPoster
   }.freeze
 
   # Sources an OrgCashEntry can point at whose CocoScout share depends on it.
-  CASH_SOURCES = %w[TicketOrder TicketRefund CourseRegistration ContractPayment OrgPayout].freeze
+  CASH_SOURCES = %w[TicketOrder TicketPassHolding TicketRefund CourseRegistration ContractPayment OrgPayout].freeze
 
   def self.post_for!(record)
     return if record.nil?
@@ -75,6 +76,7 @@ class CocoScoutLedgerPoster
   def self.entries_for(record)
     case record
     when TicketOrder then ticket_order(record)
+    when TicketPassHolding then pass_holding(record)
     when TicketRefund then ticket_refund(record)
     when CourseRegistration then course_registration(record)
     when ContractPayment then contract_payment(record)
@@ -101,6 +103,16 @@ class CocoScoutLedgerPoster
     { "ticket_fee" => order.platform_fee_cents.to_i,
       "ticket_processing" => order.total_cents.to_i - credit - order.platform_fee_cents.to_i,
       "processing_cost" => -order.stripe_fee_cents.to_i }
+  end
+
+  # A credit pass, like a ticket order: our 50¢ a credit, and the processing.
+  def self.pass_holding(holding)
+    credit = cash(holding, "pass_sale")
+    return {} if credit.nil?
+
+    { "ticket_fee" => holding.platform_fee_cents.to_i,
+      "ticket_processing" => holding.total_cents.to_i - credit - holding.platform_fee_cents.to_i,
+      "processing_cost" => -holding.stripe_fee_cents.to_i }
   end
 
   # The buyer got back more than the theater gave up: the difference is the
@@ -169,7 +181,7 @@ class CocoScoutLedgerPoster
 
   def self.occurred_at_for(record)
     case record
-    when TicketOrder then record.paid_at || record.created_at
+    when TicketOrder, TicketPassHolding then record.paid_at || record.created_at
     when CourseRegistration then record.paid_at || record.registered_at || record.created_at
     when ContractPayment then record.paid_date&.in_time_zone || record.updated_at
     when BillingInvoice then record.paid_at || record.finalized_at || record.created_at
@@ -181,6 +193,7 @@ class CocoScoutLedgerPoster
   def self.description_for(record)
     case record
     when TicketOrder then "Ticket order #{record.code}"
+    when TicketPassHolding then "Pass #{record.ticket_pass.name} ##{record.id}"
     when TicketRefund then "Ticket refund, order ##{record.ticket_order_id}"
     when CourseRegistration then "Course registration ##{record.id}"
     when ContractPayment then "Contract payment ##{record.id}"
@@ -190,6 +203,6 @@ class CocoScoutLedgerPoster
     end
   end
 
-  private_class_method :entries_for, :cash, :ticket_order, :ticket_refund, :course_registration, :contract_payment,
+  private_class_method :entries_for, :cash, :ticket_order, :pass_holding, :ticket_refund, :course_registration, :contract_payment,
                        :billing_invoice, :org_payout, :stripe_line, :occurred_at_for, :description_for
 end

@@ -50,7 +50,11 @@ class BooksReconciliation
                      .joins("JOIN course_registrations ON course_registrations.id = tax_lines.taxable_id")
                      .where.not(course_registrations: { stripe_payment_intent_id: nil })
                      .sum(:tax_cents)
-    expected = tickets + products + courses
+    passes = TaxLine.where(organization_id: organization.id, taxable_type: "TicketPassHolding", remitter: "organization")
+                    .joins("JOIN ticket_pass_holdings ON ticket_pass_holdings.id = tax_lines.taxable_id")
+                    .where(ticket_pass_holdings: { status: %w[active ended] })
+                    .sum(:tax_cents)
+    expected = tickets + products + courses + passes
     Mismatch.new(account: "tax_to_remit", books_cents: books, expected_cents: expected) unless books == expected
   end
 

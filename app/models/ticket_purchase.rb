@@ -17,6 +17,8 @@ class TicketPurchase < ApplicationRecord
   # A checkout opened from an earlier purchase's deal (TicketOffer).
   belongs_to :earned_by_purchase, class_name: "TicketPurchase", optional: true
   has_many :ticket_orders, -> { order(:id) }, inverse_of: :ticket_purchase, dependent: :nullify
+  # Credit passes bought in it (no show yet: credits used later).
+  has_many :ticket_pass_holdings, -> { order(:id) }, dependent: :nullify
 
   validates :status, inclusion: { in: STATUSES }
 
@@ -49,9 +51,11 @@ class TicketPurchase < ApplicationRecord
   # processing, so every show nets exactly its tickets.
   def price!
     orders = ticket_orders.includes(tickets: :tax_lines, ticket_order_items: :tax_lines).to_a
-    parts = orders.map { |order| TicketCheckout.order_items(order) }
-    quote = TicketPricing.quote(items: parts.flatten, fee_mode: orders.first&.fee_mode || "buyer")
-    own = parts.each_with_index.map { |items, index| TicketPricing.quote(items: items, fee_mode: orders[index].fee_mode) }
+    holdings = ticket_pass_holdings.includes(:tax_lines, :ticket_pass).to_a
+    fee_mode = orders.first&.fee_mode || holdings.first&.ticket_pass&.fee_mode([]) || "buyer"
+    parts = orders.map { |order| TicketCheckout.order_items(order) } + holdings.map { |holding| self.class.holding_items(holding) }
+    quote = TicketPricing.quote(items: parts.flatten, fee_mode: fee_mode)
+    own = parts.map { |items| TicketPricing.quote(items: items, fee_mode: fee_mode) }
     bases = own.map { |q| q.subtotal_cents - q.discount_cents + q.tax_cents }
     processing = TicketPricing.share(quote.processing_cents, bases)
     buyer_fees = Array.new(orders.size, 0)
@@ -70,12 +74,29 @@ class TicketPurchase < ApplicationRecord
                       buyer_fee_cents: buyer_fees[index], total_cents: total,
                       org_net_cents: total - processing[index] - own[index].platform_fee_cents)
       end
-      update!(subtotal_cents: orders.sum(&:subtotal_cents), discount_cents: orders.sum(&:discount_cents),
-              tax_cents: orders.sum(&:tax_cents), platform_fee_cents: orders.sum(&:platform_fee_cents),
-              processing_cents: orders.sum(&:processing_cents), buyer_fee_cents: orders.sum(&:buyer_fee_cents),
-              total_cents: orders.sum(&:total_cents), org_net_cents: orders.sum(&:org_net_cents))
+      holdings.each_with_index do |holding, offset|
+        index = orders.size + offset
+        total = bases[index] + buyer_fees[index]
+        holding.update!(platform_fee_cents: own[index].platform_fee_cents, processing_cents: processing[index],
+                        buyer_fee_cents: buyer_fees[index], total_cents: total,
+                        org_net_cents: total - processing[index] - own[index].platform_fee_cents)
+      end
+      lines = orders + holdings
+      update!(subtotal_cents: orders.sum(&:subtotal_cents) + holdings.sum(&:price_cents), discount_cents: orders.sum(&:discount_cents),
+              tax_cents: orders.sum(&:tax_cents) + holdings.sum(&:tax_cents), platform_fee_cents: lines.sum(&:platform_fee_cents),
+              processing_cents: lines.sum(&:processing_cents), buyer_fee_cents: lines.sum(&:buyer_fee_cents),
+              total_cents: lines.sum(&:total_cents), org_net_cents: lines.sum(&:org_net_cents))
     end
     self
+  end
+
+  # A credit pass as TicketPricing items: one per credit (our 50¢ is per
+  # admission), sharing the price and the tax added on top.
+  def self.holding_items(holding)
+    added = holding.tax_lines.reject(&:included).sum(&:tax_cents)
+    prices = TicketPricing.share(holding.price_cents, Array.new(holding.credits, 1))
+    taxes = TicketPricing.share(added, Array.new(holding.credits, 1))
+    prices.zip(taxes).map { |price, tax| { price_cents: price, discount_cents: 0, tax_cents: tax } }
   end
 
   # Ends a hold: this purchase and every order in it.

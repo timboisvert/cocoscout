@@ -13,14 +13,20 @@
 class TicketPass < ApplicationRecord
   include HasWideImage
 
-  KINDS = %w[dated].freeze
+  # dated: fixed shows, seats taken at purchase. punch_card: N admissions to
+  # use on what it covers, any mix. season: one seat a show, up to N shows.
+  KINDS = %w[dated punch_card season].freeze
+  CREDIT_KINDS = %w[punch_card season].freeze
   SPLITS = %w[regular_price even custom].freeze
   STATUSES = %w[draft on_sale closed].freeze
 
   belongs_to :organization
   has_many :pass_shows, -> { order(:position, :id) }, class_name: "TicketPassShow", dependent: :destroy, inverse_of: :ticket_pass
   has_many :tickets, dependent: :restrict_with_error
+  has_many :coverages, class_name: "TicketPassCoverage", dependent: :destroy, inverse_of: :ticket_pass
+  has_many :holdings, class_name: "TicketPassHolding", dependent: :restrict_with_error
   accepts_nested_attributes_for :pass_shows, allow_destroy: true, reject_if: ->(attrs) { attrs[:ticket_tier_id].blank? }
+  accepts_nested_attributes_for :coverages, allow_destroy: true, reject_if: ->(attrs) { attrs[:production_id].blank? }
 
   normalizes :slug, with: ->(slug) { slug.to_s.parameterize.presence }
 
@@ -31,12 +37,31 @@ class TicketPass < ApplicationRecord
   validates :split, inclusion: { in: SPLITS }
   validates :status, inclusion: { in: STATUSES }
   validates :max_sold, :max_per_order, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
-  validate :at_least_two_shows, if: -> { status == "on_sale" }
-  validate :custom_shares_add_up, if: -> { split == "custom" }
+  validate :at_least_two_shows, if: -> { status == "on_sale" && !credit_kind? }
+  validate :custom_shares_add_up, if: -> { split == "custom" && !credit_kind? }
+  validates :credits, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 100 }, if: :credit_kind?
+  validates :ends_on, presence: true, if: :credit_kind?
+  validate :covers_something, if: -> { credit_kind? && status == "on_sale" }
 
   before_validation { self.slug = name if slug.blank? && name.present? }
 
   scope :on_sale, -> { where(status: "on_sale") }
+
+  def credit_kind?
+    kind.in?(CREDIT_KINDS)
+  end
+
+  # What one credit counts at the show it's used on.
+  def credit_value_cents
+    credits.to_i.positive? ? price_cents / credits : 0
+  end
+
+  # A credit pass sells while it's on sale and hasn't ended.
+  def selling_credits?(at = Time.current)
+    status == "on_sale" && credit_kind? && ends_on.present? && at.to_date <= ends_on &&
+      (sales_start_at.nil? || sales_start_at <= at) && (sales_end_at.nil? || at < sales_end_at) &&
+      (max_sold.nil? || holdings.where(status: %w[active ended]).count < max_sold)
+  end
 
   # The shows in date order, with what's needed to sell them.
   def rows
@@ -74,8 +99,10 @@ class TicketPass < ApplicationRecord
     for_rows.sum { |row| TicketPricing.all_in_price_cents(row.ticket_listing, row.ticket_tier) }
   end
 
+  # Who pays the fees: the first show's setting, or (a credit pass, no show
+  # yet) the organization's default.
   def fee_mode(for_rows = rows)
-    for_rows.first&.ticket_listing&.effective_fee_mode || "buyer"
+    for_rows.first&.ticket_listing&.effective_fee_mode || organization.ticketing_profile&.default_fee_mode.presence || "buyer"
   end
 
   # Sales stop at the pass's own end, or when the first show's online sales
@@ -116,6 +143,10 @@ class TicketPass < ApplicationRecord
   end
 
   private
+
+  def covers_something
+    errors.add(:base, "A pass used later needs at least one production it covers") if coverages.reject(&:marked_for_destruction?).empty?
+  end
 
   def at_least_two_shows
     errors.add(:base, "A pass needs at least two shows") if pass_shows.reject(&:marked_for_destruction?).size < 2

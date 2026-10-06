@@ -1,0 +1,69 @@
+<% content_for :title, "#{@pass.name} · #{@organization.name}" %>
+<% season = @holding.season? %>
+
+<div class="mx-auto max-w-xl space-y-5">
+  <div class="text-center space-y-1.5">
+    <p class="text-sm font-medium text-pink-700"><%= @organization.name %></p>
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @pass.name %></h1>
+    <p class="text-base text-gray-800">
+      <% if @holding.status == "ended" || @holding.ends_on < Date.current %>
+        This pass ended <%= @holding.ends_on.strftime("%B %-d, %Y") %>.
+      <% else %>
+        <strong><%= pluralize(@holding.credits_left, season ? "show" : "credit") %></strong> left · use by <%= @holding.ends_on.strftime("%B %-d, %Y") %>
+      <% end %>
+    </p>
+    <% if @holding.holder_name.present? %><p class="text-sm text-gray-500"><%= @holding.holder_name %></p><% end %>
+  </div>
+
+  <% if flash[:alert] %>
+    <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 text-center"><%= flash[:alert] %></div>
+  <% end %>
+
+  <% if @holding.usable? %>
+    <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <div class="px-5 py-4">
+        <h2 class="font-semibold text-gray-900">Pick a show</h2>
+        <p class="text-xs text-gray-500 mt-0.5"><%= season ? "One seat a show." : "Each person is one credit." %> Your tickets come right away.</p>
+      </div>
+      <% if @listings.empty? %>
+        <p class="border-t border-gray-100 px-5 py-6 text-sm text-gray-600 text-center">No dates on sale right now. Check back soon.</p>
+      <% else %>
+        <ul class="divide-y divide-gray-100 border-t border-gray-100">
+          <% @listings.each do |listing| %>
+            <li class="px-5 py-3">
+              <%= form_with url: tickets_pass_holding_use_path(token: @holding.token, **embed_params), method: :post, data: { turbo: false },
+                    class: "flex flex-wrap items-center justify-between gap-3" do %>
+                <%= hidden_field_tag :listing_id, listing.id %>
+                <div class="min-w-0">
+                  <div class="font-medium text-gray-900"><%= listing.display_title %></div>
+                  <div class="text-sm text-gray-600"><%= listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %><% if listing.show.location %> · <%= listing.show.location.name %><% end %></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <% unless season || @holding.credits_left == 1 %>
+                    <%= select_tag :people, options_for_select((1..@holding.credits_left).to_a, 1), "aria-label": "How many people",
+                          class: "px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+                  <% end %>
+                  <%= render "shared/button", text: "Use #{season ? 'my seat' : 'credits'}", variant: "primary", size: "small", type: :submit %>
+                </div>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @used.any? %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+      <h2 class="font-semibold text-gray-900">Used</h2>
+      <ul class="mt-2 space-y-2">
+        <% @used.group_by(&:ticket_order).each do |order, tickets| %>
+          <li class="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span class="text-gray-800"><%= order.ticket_listing.display_title %> · <%= order.ticket_listing.show.date_and_time.strftime("%a, %b %-d") %> · <%= pluralize(tickets.size, "ticket") %></span>
+            <%= link_to "Your tickets", tickets_order_path(token: order.token, **embed_params), class: "font-medium text-pink-700 hover:text-pink-800" %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+</div>

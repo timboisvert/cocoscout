@@ -20,7 +20,7 @@
 # Idempotent per row (LedgerPosting restates on change), reversed when a row
 # is removed. Both models call in from after_commit and from unpost!.
 class BooksPoster
-  TICKETING_POSTS_ITSELF = %w[ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in top_up].freeze
+  TICKETING_POSTS_ITSELF = %w[ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in top_up pass_sale].freeze
 
   def self.post!(row)
     case row

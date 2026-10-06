@@ -27,7 +27,7 @@ RSpec.describe "Ticket passes", type: :request do
 
     it "builds a pass from two dates, puts it on sale and shows what each show counts" do
       get manage_new_ticket_pass_path
-      expect(response.body).to include("Shows in the pass", "Twilight: Breaking Dawn")
+      expect(response.body).to include("the shows in the pass", "Twilight: Breaking Dawn")
 
       post manage_ticket_passes_path, params: { ticket_pass: {
         name: "Twilight Double Feature", price: "30", split: "regular_price", status: "on_sale",

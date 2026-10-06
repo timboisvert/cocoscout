@@ -1,0 +1,72 @@
+<% content_for :title, @pass.name %>
+<%
+  money = ->(cents) { number_to_currency(cents.to_i / 100.0) }
+  pass_url = tickets_pass_url(org: ticketing_profile.slug, pass: @pass.slug)
+  active = @holdings.select { |h| h.status == "active" }
+  used = @holdings.sum(&:credits_used)
+  total = @holdings.sum(&:credits)
+  held = active.sum(&:org_net_cents)
+  remove_id = "confirm-remove-pass-#{@pass.id}"
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Passes", manage_ticket_passes_path ] ],
+    text: @pass.name,
+    links: [ { text: "Edit", path: manage_edit_ticket_pass_path(@pass) } ]
+  } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">
+    <div class="space-y-6 min-w-0">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <% [ [ "Sold", @holdings.size.to_s, @pass.kind == "season" ? "Season passes" : "Punch cards" ],
+             [ "Credits used", "#{used} of #{total}", "Each one a ticket" ],
+             [ "Price", money.call(@pass.price_cents), "#{money.call(@pass.credit_value_cents)} a credit" ],
+             [ "Held", money.call(held), "Yours when each pass ends" ] ].each do |label, value, note| %>
+          <div class="bg-white border border-gray-200 rounded-lg px-4 py-3">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide"><%= label %></div>
+            <div class="mt-1 text-xl font-bold text-gray-900 tabular-nums"><%= value %></div>
+            <div class="text-xs text-gray-500"><%= note %></div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-100">
+          <h2 class="text-sm font-semibold text-gray-900">Who has it</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Covers <%= @pass.coverages.includes(:production).map { |c| c.production.name }.to_sentence %>, until <%= @pass.ends_on&.strftime("%B %-d, %Y") %>.</p>
+        </div>
+        <% if @holdings.empty? %>
+          <p class="px-5 py-6 text-sm text-gray-500">Nobody yet.</p>
+        <% else %>
+          <ul class="divide-y divide-gray-100">
+            <% @holdings.each do |holding| %>
+              <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 text-sm">
+                <span class="text-gray-900"><%= holding.holder_name.presence || "Unnamed" %> <span class="text-gray-500"><%= holding.holder_email %></span></span>
+                <span class="text-gray-600 tabular-nums"><%= holding.credits_left %> of <%= holding.credits %> left<%= " · ended" if holding.status == "ended" %></span>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h2 class="text-sm font-semibold text-gray-900">Pass page</h2>
+        <div class="mt-3"><%= render "shared/copy_url", url: pass_url, show_qr: true, qr_title: "Scan for the pass" %></div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <h2 class="text-sm font-semibold text-gray-900"><%= @holdings.any? ? "Close this pass" : "Delete this pass" %></h2>
+        <p class="mt-1 text-xs text-gray-500"><%= @holdings.any? ? "It stops selling. Everyone who has it keeps it until it ends." : "Nobody has bought it, so it goes for good." %></p>
+        <div class="mt-3">
+          <%= render "shared/button", text: (@holdings.any? ? "Close pass" : "Delete pass"), variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: remove_id } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%= render "shared/confirm_modal", id: remove_id, title: (@holdings.any? ? "Close #{@pass.name}?" : "Delete #{@pass.name}?"),
+      message: (@holdings.any? ? "It stops selling. Everyone who has it keeps it until it ends." : "Nobody has bought it, so it's deleted for good."),
+      confirm_text: (@holdings.any? ? "Close pass" : "Delete pass"), url: manage_ticket_pass_path(@pass), method: :delete %>

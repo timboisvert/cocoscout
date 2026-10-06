@@ -32,7 +32,7 @@ class OrgCashEntry < ApplicationRecord
   ENTRY_TYPES = %w[course_registration contract_payment funding transfer
                    refund transfer_reversal opening_balance adjustment
                    ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in
-                   top_up].freeze
+                   top_up pass_sale].freeze
 
   # Namespace for pg_advisory_xact_lock so our (ns, org_id) pairs can't collide
   # with any other advisory-lock user in the app.

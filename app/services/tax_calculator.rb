@@ -44,6 +44,14 @@ class TaxCalculator
     quote(rule, base_cents)
   end
 
+  # A credit pass (punch card, season pass) is admission paid in advance, so
+  # it's taxed at purchase as tickets are: the rule of the productions it
+  # covers, else the org's ticket default.
+  def self.for_pass(pass, base_cents)
+    rule = rule_for(pass.organization, "tickets", scopes: pass.coverages.map(&:production))
+    quote(rule, base_cents)
+  end
+
   # A course registration: the course's own rule, its production's, or the
   # org's default for courses.
   def self.for_course(offering, base_cents)

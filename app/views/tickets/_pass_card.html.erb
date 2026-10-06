@@ -2,10 +2,22 @@
     pass"): its shows, its all-in price against buying them separately, and
     a link to it. Locals: pass, profile, save (optional: the show-page wording). %>
 <%
-  rows = pass.rows
-  all_in = pass.all_in_price_cents(rows)
-  separately = pass.separately_all_in_cents(rows)
   save = local_assigns[:save]
+  if pass.credit_kind?
+    rows = []
+    tax = TaxCalculator.for_pass(pass, pass.price_cents)
+    items = TicketPricing.share(pass.price_cents, Array.new(pass.credits.to_i, 1)).zip(TicketPricing.share(tax.added_cents, Array.new(pass.credits.to_i, 1)))
+                         .map { |price, added| { price_cents: price, discount_cents: 0, tax_cents: added } }
+    all_in = TicketPricing.quote(items: items, fee_mode: pass.fee_mode([])).total_cents
+    separately = 0
+    summary = "#{pass.kind == 'season' ? "A seat at up to #{pass.credits} shows" : pluralize(pass.credits, 'admission')} of " \
+              "#{pass.coverages.map { |coverage| coverage.production.name }.to_sentence}, until #{pass.ends_on.strftime('%b %-d')}"
+  else
+    rows = pass.rows
+    all_in = pass.all_in_price_cents(rows)
+    separately = pass.separately_all_in_cents(rows)
+    summary = rows.map { |row| "#{row.ticket_listing.display_title} · #{row.ticket_listing.show.date_and_time.strftime('%a %b %-d')}" }.join(", ")
+  end
 %>
 <%= link_to tickets_pass_path(org: profile.slug, pass: pass.slug, **embed_params),
       class: "block rounded-2xl border border-pink-200 bg-pink-50 px-5 py-4 hover:border-pink-400 transition-colors" do %>
@@ -13,9 +25,7 @@
     <div class="min-w-0">
       <div class="text-xs font-semibold uppercase tracking-wide text-pink-700"><%= save && separately > all_in ? "Save with the pass" : "Pass" %></div>
       <div class="mt-0.5 font-semibold text-gray-900"><%= pass.name %></div>
-      <div class="text-sm text-gray-700">
-        <%= rows.map { |row| "#{row.ticket_listing.display_title} · #{row.ticket_listing.show.date_and_time.strftime('%a %b %-d')}" }.join(", ") %>
-      </div>
+      <div class="text-sm text-gray-700"><%= summary %></div>
     </div>
     <div class="text-right flex-shrink-0">
       <div class="font-semibold tabular-nums text-gray-900"><%= number_to_currency(all_in / 100.0) %></div>

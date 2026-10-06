@@ -19,6 +19,8 @@ class Ticket < ApplicationRecord
   belongs_to :ticket_pass, optional: true
   # The deal on another show it was bought with, if any.
   belongs_to :ticket_offer, optional: true
+  # The credit pass it was a credit from (punch card, season pass), if any.
+  belongs_to :ticket_pass_holding, optional: true
   belongs_to :checked_in_by, class_name: "User", optional: true
 
   has_many :tax_lines, as: :taxable, dependent: :delete_all

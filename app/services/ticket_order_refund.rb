@@ -91,6 +91,7 @@ class TicketOrderRefund
   # showtime, isn't stopped by the setting if it finishes after.
   def self.issue!(order, ticket_ids: nil, item_ids: nil, keep_fees: false, by: nil, reason: nil, notify: true, allow_after_show: false, reprice: true)
     raise Error, "Only a paid order can be refunded." unless order.paid?
+    raise Error, "These tickets used a pass's credits, which were paid for with the pass. Refund the pass instead." if order.channel.in?(%w[pass door_pass])
     unless allow_after_show || allowed?(order)
       raise Error, "Refunds after the show are off. You can turn them on in Ticketing settings."
     end

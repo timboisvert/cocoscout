@@ -77,6 +77,10 @@ development:
     class: TicketRemindersJob
     schedule: at 10am every day America/Chicago
 
+  ticket_pass_endings:
+    class: TicketPassEndingJob
+    schedule: at 9am every day America/Chicago
+
   course_reminders:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
@@ -203,6 +207,10 @@ production:
   ticket_reminders:
     class: TicketRemindersJob
     schedule: at 10am every day America/Chicago
+
+  ticket_pass_endings:
+    class: TicketPassEndingJob
+    schedule: at 9am every day America/Chicago
 
   course_reminders:
     class: CourseRemindersJob

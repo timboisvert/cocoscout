@@ -11,6 +11,8 @@ class TicketPassesController < TicketsController
 
   def show
     @pass = find_pass
+    return render(:credits) if @pass.credit_kind?
+
     @rows = @pass.rows
     @selling = @pass.selling?(Time.current, @rows)
     @remaining = @pass.remaining(@rows)
@@ -22,10 +24,16 @@ class TicketPassesController < TicketsController
       return redirect_to(tickets_pass_path(org: params[:org], pass: params[:pass], **embed_params))
     end
 
-    order = TicketCheckout.start_pass!(pass: find_pass, quantity: params[:quantity], client_ip: request.remote_ip,
+    pass = find_pass
+    if pass.credit_kind?
+      purchase = TicketPassCredits.start!(pass: pass, quantity: params[:quantity])
+      return redirect_to(tickets_pass_purchase_path(token: purchase.token, **embed_params))
+    end
+
+    order = TicketCheckout.start_pass!(pass: pass, quantity: params[:quantity], client_ip: request.remote_ip,
                                        referrer: request.referer, via: cookies[ShortLinksController::COOKIE])
     redirect_to tickets_checkout_path(token: order.token, **embed_params)
-  rescue TicketCheckout::Error => e
+  rescue TicketCheckout::Error, TicketPassCredits::Error => e
     redirect_to tickets_pass_path(org: params[:org], pass: params[:pass], **embed_params), alert: e.message
   end
 
