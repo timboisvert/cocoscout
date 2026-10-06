@@ -57,6 +57,19 @@ RSpec.describe "Ticket passes", type: :request do
       expect(TicketPassShow.where(ticket_tier: elsewhere)).to be_empty
     end
 
+    it "shows the fair refund for part of a pass, with the full share one tap away" do
+      pass = org.ticket_passes.create!(name: "Twilight Double Feature", price_cents: 3_000, status: "on_sale",
+                                       pass_shows_attributes: [ { ticket_tier_id: one_general.id }, { ticket_tier_id: two_general.id } ])
+      order = TicketCheckout.start_pass!(pass: pass, quantity: 1)
+      TicketPurchaseSettlement.settle!(order.ticket_purchase, payment_intent_id: "pi_review")
+
+      get manage_ticket_order_refund_path(order.id, ticket_ids: order.tickets.pluck(:id), item_ids: [ "" ])
+      expect(response.body).to include("at its regular price", "Refund the full share instead")
+
+      get manage_ticket_order_refund_path(order.id, ticket_ids: order.tickets.pluck(:id), item_ids: [ "" ], reprice: "0")
+      expect(response.body).to include("Refunding this show's full share", "Price what they keep at regular")
+    end
+
     it "can't open another organization's pass" do
       theirs = create(:organization).ticket_passes.create!(name: "Theirs", price_cents: 100)
       get manage_ticket_pass_path(theirs)

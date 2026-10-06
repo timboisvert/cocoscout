@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_191000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3563,6 +3563,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_190000) do
     t.integer "product_cents", default: 0, null: false
     t.string "reason"
     t.bigint "refunded_by_id"
+    t.jsonb "repriced", default: [], null: false
+    t.integer "repriced_cents", default: 0, null: false
     t.string "status", default: "pending", null: false
     t.string "stripe_refund_id"
     t.integer "tax_cents", default: 0, null: false

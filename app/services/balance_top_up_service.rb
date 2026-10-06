@@ -65,7 +65,7 @@ class BalanceTopUpService
     return unless order&.paid?
 
     TicketOrderRefund.issue!(order, ticket_ids: request["ticket_ids"], item_ids: request["item_ids"], keep_fees: request["keep_fees"],
-                                    reason: request["reason"], by: User.find_by(id: request["user_id"]))
+                                    reason: request["reason"], by: User.find_by(id: request["user_id"]), reprice: request["reprice"] != false)
   rescue TicketOrderRefund::Error => e
     Rails.logger.warn("[BalanceTopUpService] waiting refund for order #{request['order_id']}: #{e.message}")
   end

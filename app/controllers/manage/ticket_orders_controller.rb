@@ -91,7 +91,8 @@ module Manage
       end
 
       @keep_fees = params[:keep_fees] == "1"
-      @quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: @keep_fees)
+      @reprice = reprice?
+      @quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: @keep_fees, reprice: @reprice)
       if @quote.empty?
         redirect_to manage_ticket_order_path(@order.id), alert: "Choose the tickets to refund." and return
       end
@@ -104,7 +105,7 @@ module Manage
 
     def refund
       refund = TicketOrderRefund.issue!(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: params[:keep_fees] == "1",
-                                                by: Current.user, reason: params[:reason].presence)
+                                                by: Current.user, reason: params[:reason].presence, reprice: reprice?)
       notice = if @order.money_path == "none"
         "Canceled #{helpers.pluralize(refund.ticket_ids.size, 'ticket')} for #{@order.buyer_name.presence || 'the guest'}. The seats are free again."
       elsif @order.money_path == "cash"
@@ -122,7 +123,7 @@ module Manage
     # by card; in a few days by bank debit).
     def refund_top_up
       keep_fees = params[:keep_fees] == "1"
-      quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: keep_fees)
+      quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: keep_fees, reprice: reprice?)
       short = CocoScoutBalance.shortfall_cents(Current.organization, quote.org_debit_cents)
       unless short.positive?
         redirect_to manage_ticket_order_refund_path(@order.id, ticket_ids: params[:ticket_ids], item_ids: params[:item_ids], keep_fees: params[:keep_fees]) and return
@@ -130,6 +131,7 @@ module Manage
 
       top_up = BalanceTopUpService.start!(Current.organization, amount_cents: short, by: Current.user, refund_request: {
         "order_id" => @order.id, "ticket_ids" => quote.tickets.map(&:id), "item_ids" => quote.items.map(&:id), "keep_fees" => keep_fees,
+        "reprice" => reprice?,
         "reason" => params[:reason].presence, "user_id" => Current.user.id
       })
       notice = if top_up.status == "succeeded"
@@ -152,6 +154,12 @@ module Manage
     end
 
     private
+
+    # Returning part of a pass prices what they keep at regular, unless the
+    # manager chose to refund the full share (reprice=0).
+    def reprice?
+      params[:reprice] != "0"
+    end
 
     # { old ticket type id => chosen new one } from the move form.
     def tier_params

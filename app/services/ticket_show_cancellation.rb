@@ -31,7 +31,7 @@ class TicketShowCancellation
   def self.summary(shows)
     listings = TicketListing.where(show_id: shows.map(&:id)).where.not(status: "canceled").to_a
     found = listings.flat_map { |listing| orders(listing).to_a }
-    Summary.new(orders: found, refund_cents: found.sum { |order| TicketOrderRefund.quote(order).amount_cents })
+    Summary.new(orders: found, refund_cents: found.sum { |order| TicketOrderRefund.quote(order, reprice: false).amount_cents })
   end
 
   # The ticketing part of canceling shows: every listing stops selling, and

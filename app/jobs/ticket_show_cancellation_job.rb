@@ -16,7 +16,7 @@ class TicketShowCancellationJob < ApplicationJob
     refunded = []
     failed = 0
     TicketShowCancellation.orders(listing).find_each do |order|
-      refund = TicketOrderRefund.issue!(order, by: user, reason: "Show canceled", notify: false, allow_after_show: true)
+      refund = TicketOrderRefund.issue!(order, by: user, reason: "Show canceled", notify: false, allow_after_show: true, reprice: false)
       refunded << refund
       TicketOrderMailer.canceled(refund, subject: subject, body: body).deliver_later if order.buyer_email.present?
     rescue TicketOrderRefund::Error => e
