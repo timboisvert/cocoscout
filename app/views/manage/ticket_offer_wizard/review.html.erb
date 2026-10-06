@@ -1,0 +1,70 @@
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  offer = @offer
+  editing = wizard_state[:editing_id].present?
+  change = ->(step) { link_to "Change", wizard_step_link(step), class: "text-sm text-pink-600 hover:text-pink-700 font-medium shrink-0" }
+  rows = [
+    [ "Who it's for", "Anyone buying #{offer.buying_words}", :buying ],
+    [ "What they get", offer.offer_words, :offer ],
+    [ "The deal", [ offer.deal_words, (offer.max_per_order ? "up to #{offer.max_per_order} an order" : nil), (offer.max_uses ? "#{offer.max_uses} in all" : nil) ].compact.join(" · "), :deal ]
+  ]
+  starts = wizard_state[:starts_at].presence || offer.starts_at&.strftime("%Y-%m-%dT%H:%M")
+  ends = wizard_state[:ends_at].presence || offer.ends_at&.strftime("%Y-%m-%dT%H:%M")
+%>
+<%= render layout: "manage/ticket_offer_wizard/wizard_layout", locals: { step: :review } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review</h2>
+  <p class="text-gray-600 mb-6">Here's the deal. Name it, say when it runs, and save.</p>
+
+  <% if offer.errors.any? %>
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><%= offer.errors.full_messages.to_sentence %></div>
+  <% end %>
+
+  <div class="rounded-lg bg-pink-50 border border-pink-200 px-4 py-3 text-sm text-pink-900 font-medium"><%= offer.sentence %></div>
+
+  <dl class="mt-4 divide-y divide-gray-200 border-y border-gray-200">
+    <% rows.each do |label, words, step| %>
+      <div class="py-3 flex items-start justify-between gap-4">
+        <div>
+          <dt class="text-xs font-medium text-gray-500"><%= label %></dt>
+          <dd class="text-sm text-gray-900 mt-0.5"><%= words %></dd>
+        </div>
+        <%= change.call(step) %>
+      </div>
+    <% end %>
+  </dl>
+
+  <%= form_with url: manage_ticket_offer_wizard_save_path, method: :post, local: true, class: "mt-6 space-y-5" do %>
+    <div>
+      <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">Name <span class="font-normal text-gray-500">(for you)</span></label>
+      <%= text_field_tag :name, offer.name, required: true, maxlength: 80, class: input_class %>
+    </div>
+    <div class="flex items-center justify-between gap-4 py-3 border-y border-gray-100">
+      <div>
+        <div class="text-sm font-medium text-gray-900">On</div>
+        <div class="text-xs text-gray-600 mt-0.5">Off, nobody sees it. Tickets already bought with it keep their price.</div>
+      </div>
+      <%= render "shared/toggle_switch", name: "active", checked: offer.active, hidden_false: true, aria_label: "On" %>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="sm:col-span-2">
+        <label for="after_purchase_days" class="block text-sm font-medium text-gray-700 mb-1.5">After they buy, offer it for</label>
+        <%= select_tag :after_purchase_days, options_for_select([ [ "Not after buying", 0 ], [ "1 day", 1 ], [ "2 days", 2 ], [ "3 days", 3 ], [ "A week", 7 ] ], offer.after_purchase_days),
+              class: "#{input_class} max-w-xs" %>
+        <p class="mt-1 text-xs text-gray-500">On their order page and in their confirmation email.</p>
+      </div>
+      <div>
+        <label for="starts_at" class="block text-sm font-medium text-gray-700 mb-1.5">Starts <span class="font-normal text-gray-500">(optional)</span></label>
+        <%= datetime_local_field_tag :starts_at, starts, class: input_class %>
+      </div>
+      <div>
+        <label for="ends_at" class="block text-sm font-medium text-gray-700 mb-1.5">Ends <span class="font-normal text-gray-500">(optional)</span></label>
+        <%= datetime_local_field_tag :ends_at, ends, class: input_class %>
+      </div>
+    </div>
+
+    <div class="pt-2 flex justify-between">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_ticket_offer_wizard_deal_path %>
+      <%= render "shared/button", text: (editing ? "Save" : "Save deal"), variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

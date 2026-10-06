@@ -1,0 +1,27 @@
+<% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+<% scope = wizard_state[:target_scope] || "same_night" %>
+<%= render layout: "manage/ticket_offer_wizard/wizard_layout", locals: { step: :offer } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">What do they get?</h2>
+  <p class="text-gray-600 mb-6">The other show, at its own ticket type. That show counts the deal price in its financials and any revenue share.</p>
+
+  <%= form_with url: manage_ticket_offer_wizard_save_offer_path, method: :post, local: true, data: { controller: "radio-card" } do %>
+    <div class="space-y-2">
+      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "target_scope", value: "same_night", selected: scope,
+            title: "The same night at another production", hint: "Whatever date of it is on the night they're buying. Nothing shows on a night it isn't on." } do %>
+        <%= select_tag :target_production_id, options_for_select(production_choices, wizard_state[:target_production_id]),
+              include_blank: "Pick a production", class: input_class %>
+        <%= text_field_tag :target_tier_name, wizard_state[:target_tier_name], placeholder: "Ticket type, like General (blank: its first)", class: input_class %>
+      <% end %>
+      <%= render layout: "manage/ticket_offer_wizard/choice_card", locals: { name: "target_scope", value: "listing", selected: scope,
+            title: "One date's ticket type", hint: "A specific night, whatever they're buying." } do %>
+        <%= select_tag :target_tier_id, grouped_options_for_select(tier_choices, wizard_state[:target_tier_id]),
+              include_blank: "Pick a date and ticket type", class: input_class %>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_ticket_offer_wizard_buying_path %>
+      <%= render "shared/button", text: "Next: The deal", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,35 @@
+<%# The deal wizard's frame: breadcrumbs, the step bar, one step card, and a
+    Cancel that asks first. Locals: step (one of STEPS). %>
+<%
+  editing = wizard_state[:editing_id].present?
+  steps = Manage::TicketOfferWizardController::STEPS
+  current = steps.index(step.to_s)
+  bar = steps.each_with_index.map do |s, i|
+    { name: Manage::TicketOfferWizardController::STEP_NAMES[s], path: ((i < current || editing) ? wizard_step_link(s) : nil) }
+  end
+%>
+<% content_for :title, editing ? "Edit deal" : "New deal" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Deals", manage_ticket_offers_path ] ],
+    text: (editing ? "Edit deal" : "New deal"),
+    links: []
+  } %>
+  <%= render "shared/wizard_steps", steps: bar, current_index: current %>
+
+  <div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
+      <%= yield %>
+    </div>
+    <div class="mt-4 text-center">
+      <%= render "shared/button", text: "Cancel", variant: "ghost", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-cancel-deal-wizard" } %>
+    </div>
+  </div>
+</div>
+<%= render "shared/confirm_modal", id: "confirm-cancel-deal-wizard",
+      title: (editing ? "Leave without saving?" : "Discard this deal?"),
+      message: (editing ? "The deal stays as it was." : "Nothing you've picked so far is kept."),
+      confirm_text: (editing ? "Leave" : "Discard"), cancel_text: "Keep working",
+      url: manage_ticket_offer_wizard_cancel_path, method: :delete %>

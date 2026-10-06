@@ -92,37 +92,69 @@ RSpec.describe "Ticket deals", type: :request do
     expect(TicketCheckout.deals_for(start(1))).to eq([])
   end
 
+  # The wizard keeps its state in Rails.cache, a null store in test: give it a real one.
   describe "managing deals" do
+    let(:memory_cache) { ActiveSupport::Cache::MemoryStore.new }
+
     before do
+      allow(Rails).to receive(:cache).and_return(memory_cache)
       create(:organization_role, :manager, user: superadmin, organization: org)
       post handle_signin_path, params: { email_address: superadmin.email_address, password: password }
       get manage_path
     end
 
-    it "lists deals with how often they were shown and taken, and builds a new one" do
+    it "lists deals with how often they were shown and taken, and builds a new one through the wizard" do
       get manage_ticket_offers_path
-      expect(response.body).to include("Boylesque → Laugh Along", "$5.00 off")
+      expect(response.body).to include("Boylesque → Laugh Along", "$5.00 off", "any date of Boylesque")
 
       get manage_new_ticket_offer_path
-      expect(response).to have_http_status(:ok)
-      post manage_ticket_offers_path, params: { ticket_offer: {
-        name: "Twenty off", trigger_scope: "any", target_scope: "listing", target_tier_id: late_general.id,
-        deal_kind: "percent_off", percent: "20", active: "1", after_purchase_days: "2"
-      } }
-      expect(response).to redirect_to(manage_ticket_offers_path)
-      expect(org.ticket_offers.find_by(name: "Twenty off").deal_price_cents(late_general)).to eq(1_600)
+      expect(response).to redirect_to(manage_ticket_offer_wizard_buying_path)
+      follow_redirect!
+      expect(response.body).to include("Who is it for?", "Anyone buying anything")
+      # The pickers sit under the cards, never inside a has-[:checked] label.
+      expect(response.body).not_to match(/<label[^>]*has-\[:checked\][^>]*>(?:(?!<\/label>).)*<select/m)
 
-      get manage_edit_ticket_offer_path(org.ticket_offers.find_by(name: "Twenty off"))
-      expect(response).to have_http_status(:ok)
+      post manage_ticket_offer_wizard_save_buying_path, params: { trigger_scope: "any", trigger_production_id: boylesque.id }
+      expect(response).to redirect_to(manage_ticket_offer_wizard_offer_path)
+      post manage_ticket_offer_wizard_save_offer_path, params: { target_scope: "listing", target_tier_id: late_general.id }
+      expect(response).to redirect_to(manage_ticket_offer_wizard_deal_path)
+      post manage_ticket_offer_wizard_save_deal_path, params: { deal_kind: "percent_off", percent: "20", max_per_order: "2" }
+      expect(response).to redirect_to(manage_ticket_offer_wizard_review_path)
+      follow_redirect!
+      expect(response.body).to include("Anyone buying anything gets Laugh Along Live", "20% off", "up to 2 an order", 'value="Anything → Laugh Along Live')
+
+      post manage_ticket_offer_wizard_save_path, params: { name: "Twenty off", active: "1", after_purchase_days: "3" }
+      expect(response).to redirect_to(manage_ticket_offers_path)
+      offer = org.ticket_offers.find_by!(name: "Twenty off")
+      expect(offer.attributes.values_at("trigger_scope", "trigger_production_id", "deal_kind", "max_per_order", "after_purchase_days", "active"))
+        .to eq([ "any", nil, "percent_off", 2, 3, true ])
+      expect(offer.deal_price_cents(late_general)).to eq(1_600)
+
+      # Editing opens on the review, prefilled, and saves over the same deal.
+      get manage_edit_ticket_offer_path(offer)
+      expect(response).to redirect_to(manage_ticket_offer_wizard_review_path)
+      follow_redirect!
+      expect(response.body).to include('value="Twenty off"', "Change", "Leave without saving?")
+      post manage_ticket_offer_wizard_save_path, params: { name: "Twenty off", active: "0", after_purchase_days: "3" }
+      expect(offer.reload.active).to be(false)
+      expect(org.ticket_offers.count).to eq(2)
     end
 
-    it "never offers another organization's show" do
+    it "never offers another organization's show, and says so on the review" do
       theirs = create(:ticket_listing).ticket_tiers.create!(name: "General", price_cents: 1_000, quantity: 5)
-      post manage_ticket_offers_path, params: { ticket_offer: {
-        name: "Sneaky", trigger_scope: "any", target_scope: "listing", target_tier_id: theirs.id, deal_kind: "amount_off", amount: "1"
-      } }
+      get manage_new_ticket_offer_path
+      post manage_ticket_offer_wizard_save_buying_path, params: { trigger_scope: "any" }
+      post manage_ticket_offer_wizard_save_offer_path, params: { target_scope: "listing", target_tier_id: theirs.id }
+      post manage_ticket_offer_wizard_save_deal_path, params: { deal_kind: "amount_off", amount: "1" }
+      post manage_ticket_offer_wizard_save_path, params: { name: "Sneaky" }
       expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include("must be one of your shows")
       expect(org.ticket_offers.find_by(name: "Sneaky")).to be_nil
+
+      delete manage_ticket_offer_wizard_cancel_path
+      expect(response).to redirect_to(manage_ticket_offers_path)
+      get manage_ticket_offer_wizard_review_path
+      expect(response).to redirect_to(manage_ticket_offer_wizard_start_path)
     end
   end
 end

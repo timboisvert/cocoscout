@@ -1,0 +1,21 @@
+<%# A radio card: the radio and its words, and nothing else inside the label.
+    (A select inside a has-[:checked] card reads as checked, so every card
+    with one turns pink.) What the choice needs sits under the card, shown for
+    the chosen one by radio-card. Locals: name, value, selected, title, hint
+    (optional). The block is the card's extras; leave it empty for none. %>
+<% extras = capture { yield } %>
+<div>
+  <label class="flex items-start gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
+    <%= radio_button_tag name, value, selected.to_s == value.to_s, class: "mt-0.5 accent-pink-500", data: { action: "change->radio-card#select" } %>
+    <span>
+      <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+      <% if local_assigns[:hint].present? %><span class="block text-xs text-gray-600 mt-0.5"><%= hint %></span><% end %>
+    </span>
+  </label>
+  <% if extras.present? %>
+    <div class="mt-2 ml-4 pl-4 border-l-2 border-pink-200 space-y-2 <%= 'hidden' unless selected.to_s == value.to_s %>"
+         data-radio-card-target="extras" data-for="<%= value %>">
+      <%= extras %>
+    </div>
+  <% end %>
+</div>

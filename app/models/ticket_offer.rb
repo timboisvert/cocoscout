@@ -105,6 +105,37 @@ class TicketOffer < ApplicationRecord
     end
   end
 
+  # Who it's offered to: "any date of Boylesque", "Boylesque, Oct 10", "anything".
+  def buying_words
+    case trigger_scope
+    when "listing" then trigger_listing ? "#{trigger_listing.display_title}, #{trigger_listing.show.date_and_time.strftime('%b %-d')}" : "a date"
+    when "production" then trigger_production ? "any date of #{trigger_production.name}" : "a production"
+    else "anything"
+    end
+  end
+
+  # What it offers: "Laugh Along Live the same night", "Laugh Along Live, Oct 10 (General)".
+  def offer_words
+    if target_scope == "same_night"
+      "#{target_production&.name || 'another production'} the same night"
+    elsif (listing = target_tier&.ticket_listing)
+      "#{listing.display_title}, #{listing.show.date_and_time.strftime('%b %-d')} (#{target_tier.name})"
+    else
+      "another show"
+    end
+  end
+
+  # The whole deal in one line, as the wizard's review and the list say it.
+  def sentence
+    "Anyone buying #{buying_words} gets #{offer_words} for #{deal_words}."
+  end
+
+  # A name to start from: "Boylesque → Laugh Along Live the same night".
+  def suggested_name
+    from = trigger_scope == "any" ? "Anything" : buying_words.delete_prefix("any date of ")
+    "#{from} → #{offer_words}".truncate(80)
+  end
+
   private
 
   def everything_is_this_organizations

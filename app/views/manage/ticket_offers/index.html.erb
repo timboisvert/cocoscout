@@ -1,22 +1,4 @@
 <% content_for :title, "Deals" %>
-<%
-  when_words = ->(offer) do
-    case offer.trigger_scope
-    when "listing" then offer.trigger_listing ? "#{offer.trigger_listing.display_title}, #{offer.trigger_listing.show.date_and_time.strftime('%b %-d')}" : "a date"
-    when "production" then offer.trigger_production&.name || "a production"
-    else "anything"
-    end
-  end
-  what_words = ->(offer) do
-    if offer.target_scope == "same_night"
-      "#{offer.target_production&.name} the same night"
-    elsif (listing = offer.target_tier&.ticket_listing)
-      "#{listing.display_title}, #{listing.show.date_and_time.strftime('%b %-d')} (#{offer.target_tier.name})"
-    else
-      "another show"
-    end
-  end
-%>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -52,7 +34,7 @@
                   <span class="inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= offer.active? ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' %>"><%= offer.active? ? "On" : "Off" %></span>
                 </div>
                 <div class="text-xs text-gray-500">
-                  Buying <%= when_words.call(offer) %> → <%= what_words.call(offer) %>, <%= offer.deal_words %>
+                  Buying <%= offer.buying_words %> → <%= offer.offer_words %>, <%= offer.deal_words %>
                 </div>
                 <div class="text-xs text-gray-500">Shown <%= pluralize(offer.shown_count, "time") %> · <%= pluralize(@taken.fetch(offer.id, 0), "ticket") %> sold</div>
               </div>

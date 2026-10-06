@@ -1297,11 +1297,22 @@ Rails.application.routes.draw do
     delete "ticketing/passes/:id",                to: "ticket_passes#destroy"
     post   "ticketing/passes/:id/holdings/:holding_id/refund", to: "ticket_passes#refund_holding", as: "ticket_pass_holding_refund"
     get    "ticketing/deals",                     to: "ticket_offers#index",             as: "ticket_offers"
-    get    "ticketing/deals/new",                 to: "ticket_offers#new",               as: "new_ticket_offer"
-    post   "ticketing/deals",                     to: "ticket_offers#create"
-    get    "ticketing/deals/:id/edit",            to: "ticket_offers#edit",              as: "edit_ticket_offer"
-    patch  "ticketing/deals/:id",                 to: "ticket_offers#update",            as: "ticket_offer"
-    delete "ticketing/deals/:id",                 to: "ticket_offers#destroy"
+    # New and edit both run through the deal wizard.
+    get    "ticketing/deals/new",                 to: "ticket_offer_wizard#start",       as: "new_ticket_offer"
+    get    "ticketing/deals/:id/edit",            to: "ticket_offer_wizard#start",       as: "edit_ticket_offer"
+    delete "ticketing/deals/:id",                 to: "ticket_offers#destroy",           as: "ticket_offer"
+    scope "ticketing/deals/wizard", as: "ticket_offer_wizard", controller: "ticket_offer_wizard" do
+      get "start", action: :start
+      get "buying", action: :buying
+      post "buying", action: :save_buying, as: "save_buying"
+      get "offer", action: :offer
+      post "offer", action: :save_offer, as: "save_offer"
+      get "deal", action: :deal
+      post "deal", action: :save_deal, as: "save_deal"
+      get "review", action: :review
+      post "save", action: :save, as: "save"
+      delete "cancel", action: :cancel, as: "cancel"
+    end
     get    "ticketing/products",                  to: "ticket_products#index",           as: "ticket_products"
     get    "ticketing/products/new",              to: "ticket_products#new",             as: "new_ticket_product"
     post   "ticketing/products",                  to: "ticket_products#create"

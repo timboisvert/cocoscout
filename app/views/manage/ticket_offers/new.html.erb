@@ -1,9 +1,0 @@
-<% content_for :title, "New deal" %>
-<div class="w-full mb-10">
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Deals", manage_ticket_offers_path ] ],
-    text: "New deal",
-    links: []
-  } %>
-  <div class="max-w-2xl"><%= render "manage/ticket_offers/form", offer: @offer %></div>
-</div>
