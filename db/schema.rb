@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3544,6 +3544,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150000) do
   create_table "ticket_tiers", force: :cascade do |t|
     t.integer "admits", default: 1, null: false
     t.datetime "archived_at"
+    t.bigint "bundle_of_tier_id"
     t.datetime "created_at", null: false
     t.string "description"
     t.boolean "hidden", default: false, null: false
@@ -3560,6 +3561,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150000) do
     t.bigint "ticket_listing_id"
     t.string "unlock_code"
     t.datetime "updated_at", null: false
+    t.index ["bundle_of_tier_id"], name: "index_ticket_tiers_on_bundle_of_tier_id"
     t.index ["production_ticketing_id"], name: "index_ticket_tiers_on_production_ticketing_id"
     t.index ["source_tier_id"], name: "index_ticket_tiers_on_source_tier_id"
     t.index ["ticket_listing_id"], name: "index_ticket_tiers_on_ticket_listing_id"
@@ -3620,6 +3622,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150000) do
   end
 
   create_table "tickets", force: :cascade do |t|
+    t.bigint "bundle_tier_id"
     t.datetime "checked_in_at"
     t.bigint "checked_in_by_id"
     t.string "code", null: false
@@ -3635,6 +3638,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150000) do
     t.bigint "ticket_order_id", null: false
     t.bigint "ticket_tier_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["bundle_tier_id"], name: "index_tickets_on_bundle_tier_id"
     t.index ["checked_in_by_id"], name: "index_tickets_on_checked_in_by_id"
     t.index ["code"], name: "index_tickets_on_code", unique: true
     t.index ["ticket_listing_id", "external_barcode"], name: "index_tickets_on_ticket_listing_id_and_external_barcode", unique: true, where: "(external_barcode IS NOT NULL)"
@@ -4112,6 +4116,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150000) do
   add_foreign_key "ticket_sources", "organizations"
   add_foreign_key "ticket_tiers", "production_ticketings"
   add_foreign_key "ticket_tiers", "ticket_listings"
+  add_foreign_key "ticket_tiers", "ticket_tiers", column: "bundle_of_tier_id"
   add_foreign_key "ticket_tiers", "ticket_tiers", column: "source_tier_id"
   add_foreign_key "ticketing_access_grants", "organizations"
   add_foreign_key "ticketing_access_grants", "users", column: "granted_by_id", on_delete: :nullify
@@ -4122,6 +4127,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150000) do
   add_foreign_key "tickets", "ticket_listings"
   add_foreign_key "tickets", "ticket_orders"
   add_foreign_key "tickets", "ticket_tiers"
+  add_foreign_key "tickets", "ticket_tiers", column: "bundle_tier_id"
   add_foreign_key "tickets", "users", column: "checked_in_by_id", on_delete: :nullify
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"

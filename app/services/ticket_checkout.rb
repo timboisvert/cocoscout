@@ -62,16 +62,20 @@ class TicketCheckout
     raise Error, "Sorry, there aren't enough seats left for that. Try fewer tickets."
   end
 
-  # A live hold's purchases by type: { tier_id => count } (a held 4-pack is
-  # four tickets and counts once), as the show's page steppers count them.
+  # A live hold's purchases by type: { tier_id => count } (a held bundle is
+  # several tickets and counts once), as the show's page steppers count them.
   def self.held_quantities(order)
-    admits = TicketTier.where(id: order.tickets.select(:ticket_tier_id)).pluck(:id, :admits).to_h
-    order.tickets.group(:ticket_tier_id).count.to_h { |tier_id, tickets| [ tier_id, tickets / [ admits[tier_id].to_i, 1 ].max ] }
+    counts = order.tickets.group(Arel.sql("COALESCE(bundle_tier_id, ticket_tier_id)")).count
+    admits = TicketTier.where(id: counts.keys).pluck(:id, :admits).to_h
+    counts.to_h { |tier_id, tickets| [ tier_id, tickets / [ admits[tier_id].to_i, 1 ].max ] }
   end
 
-  # Seats a request takes: { tier => people }.
+  # Seats a request takes, on the types that hold them: { tier => people }.
+  # A bundle's people take its type's seats.
   def self.seat_requests(requests)
-    requests.to_h { |tier, count| [ tier, count * tier.admits.to_i.clamp(1, 20) ] }
+    requests.each_with_object(Hash.new(0)) do |(tier, count), seats|
+      seats[tier.base_tier] += count * tier.admits.to_i.clamp(1, 20)
+    end
   end
 
   def self.same_request?(order, requests, discount)
@@ -188,11 +192,13 @@ class TicketCheckout
     tier.seat_prices.zip(tier.seat_prices(off)).each { |price, seat_off| add_ticket(order, tier, price, seat_off) }
   end
 
+  # One person's ticket: always of the type that holds the seat (a bundle's
+  # tickets are its type's, remembering the bundle).
   def self.add_ticket(order, tier, price_cents, off)
     listing = order.ticket_listing
-    ticket = order.tickets.create!(ticket_tier: tier, ticket_listing: listing, status: "reserved",
-                                   price_cents: price_cents, discount_cents: off)
-    tax = TaxCalculator.for_ticket(listing, tier, price_cents - off)
+    ticket = order.tickets.create!(ticket_tier: tier.base_tier, bundle_tier: (tier if tier.bundle?), ticket_listing: listing,
+                                   status: "reserved", price_cents: price_cents, discount_cents: off)
+    tax = TaxCalculator.for_ticket(listing, tier.base_tier, price_cents - off)
     tax.lines.each do |line|
       TaxLine.create!(organization_id: order.organization_id, taxable: ticket, tax_rate: line.tax_rate,
                       name: line.name, rate_bps: line.rate_bps, jurisdiction: line.jurisdiction, remitter: line.remitter,

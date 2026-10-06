@@ -1,11 +1,16 @@
 <%# One ticket type in a Tickets form, shared by a production's setup and a
     single date's own prices: drag handle and arrows to reorder, name, price,
-    seats, a short description, and remove. Locals: tf (the fields builder),
-    sold (optional: how many this type has sold, on a date). %>
+    seats, a short description, and remove. A bundle ("4 tickets for $70")
+    also says how many people it admits; a plain ticket type admits one and
+    never asks. Locals: tf (the fields builder), sold (optional: how many this
+    type has sold, on a date), bundle (optional: a new bundle row), bases
+    (the plain ticket types a bundle can admit: [[name, id]]). %>
 <%
   tier = tf.object
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   sold = local_assigns[:sold].to_i
+  bundle = local_assigns.fetch(:bundle, tier.bundle?)
+  bases = local_assigns[:bases] || []
 %>
 <div class="rounded-lg border border-gray-200 bg-white p-3 nested-fields" data-position="<%= tier.position %>">
   <%= tf.hidden_field :position %>
@@ -20,16 +25,27 @@
             classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveDown" } %>
     </div>
     <div class="flex-1 min-w-0 space-y-2">
-      <div class="grid grid-cols-[minmax(0,1fr)_6.5rem_5.5rem_5.5rem] gap-2">
-        <%= tf.text_field :name, placeholder: "Ticket type, like General", "aria-label": "Ticket name", class: input_class %>
+      <% if bundle %>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="inline-flex rounded-full bg-pink-50 border border-pink-200 px-2 py-0.5 font-semibold text-pink-700">Bundle</span>
+          <span class="text-gray-500">One price for several people of a ticket type, using its seats; each person gets their own ticket.</span>
+        </div>
+      <% end %>
+      <div class="grid <%= bundle ? 'grid-cols-[minmax(0,1fr)_6.5rem_5rem_minmax(0,9rem)]' : 'grid-cols-[minmax(0,1fr)_7rem_6rem]' %> gap-2">
+        <%= tf.text_field :name, placeholder: (bundle ? "Bundle, like 4-pack" : "Ticket type, like General"), "aria-label": (bundle ? "Bundle name" : "Ticket name"), class: input_class %>
         <div class="relative">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
           <%= tf.text_field :price, value: (tier.persisted? || tier.name.present? ? format("%.2f", tier.price_cents / 100.0) : nil), inputmode: "decimal", placeholder: "0.00", "aria-label": "Price", class: "#{input_class} pl-7" %>
         </div>
-        <%= tf.number_field :admits, min: 1, max: 20, value: tier.admits || 1, title: "People one purchase admits: 4 for a 4-pack", "aria-label": "Admits (people per purchase)", class: input_class %>
-        <%= tf.number_field :quantity, min: 1, placeholder: "Seats", "aria-label": "Seats", class: input_class %>
+        <% if bundle %>
+          <%= tf.number_field :admits, min: 2, max: 20, value: (tier.admits.to_i > 1 ? tier.admits : nil), placeholder: "People", required: true,
+                title: "How many people the bundle admits", "aria-label": "People the bundle admits", class: input_class %>
+          <%= tf.select :bundle_of_tier_id, options_for_select(bases, tier.bundle_of_tier_id), { prompt: (bases.any? ? "of which ticket?" : "Save a ticket type first") },
+                required: true, "aria-label": "Which ticket type it admits", class: input_class %>
+        <% else %>
+          <%= tf.number_field :quantity, min: 1, placeholder: "Seats", "aria-label": "Seats", class: input_class %>
+        <% end %>
       </div>
-      <p class="text-xs text-gray-500">Admits: people one purchase lets in, like 4 for "4 tickets for $70" (each person gets their own ticket). Seats count people.</p>
       <%= tf.text_field :description, placeholder: "Short description (optional), like “Front row and a drink”", "aria-label": "Description", class: input_class %>
       <% if sold.positive? %><p class="text-xs text-gray-500"><%= sold %> sold</p><% end %>
     </div>

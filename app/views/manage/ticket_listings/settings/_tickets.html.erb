@@ -9,6 +9,7 @@
   own = setup.nil? || !listing.inherits_tiers
   rows = listing.ticket_tiers.active.to_a
   rows = [ TicketTier.new(position: 0) ] if rows.empty?
+  bases = rows.select { |t| t.persisted? && !t.bundle? }.map { |t| [ t.name, t.id ] }
 %>
 <%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, class: "space-y-6",
       data: { controller: "fieldset-toggle" } do |f| %>
@@ -34,17 +35,26 @@
             data-controller="reorderable nested-form" data-reorderable-handle-value=".tier-drag-handle" data-reorderable-auto-save-value="false">
     <div class="space-y-3" data-reorderable-target="list" data-nested-form-target="children">
       <%= f.fields_for :ticket_tiers, rows do |tf| %>
-        <%= render "manage/ticketing/tier_row", tf: tf, sold: (tf.object.persisted? ? inventory.sold(tier: tf.object) : 0) %>
+        <%= render "manage/ticketing/tier_row", tf: tf, bases: bases, sold: (tf.object.persisted? ? inventory.sold(tier: tf.object) : 0) %>
       <% end %>
     </div>
     <template data-nested-form-target="template">
       <%= f.fields_for :ticket_tiers, TicketTier.new(position: 999), child_index: "NEW_CHILD_RECORD" do |tf| %>
-        <%= render "manage/ticketing/tier_row", tf: tf %>
+        <%= render "manage/ticketing/tier_row", tf: tf, bases: bases %>
+      <% end %>
+    </template>
+      <template data-nested-form-target="bundleTemplate">
+      <%= f.fields_for :ticket_tiers, TicketTier.new(position: 999), child_index: "NEW_CHILD_RECORD" do |tf| %>
+        <%= render "manage/ticketing/tier_row", tf: tf, bundle: true, bases: bases %>
       <% end %>
     </template>
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <%= render "shared/button", text: "Add a ticket type", variant: "secondary", size: "small", type: :button, icon: "plus",
-            data: { action: "nested-form#add" } %>
+      <div class="flex flex-wrap items-center gap-2">
+        <%= render "shared/button", text: "Add a ticket type", variant: "secondary", size: "small", type: :button, icon: "plus",
+              data: { action: "nested-form#add" } %>
+        <%= render "shared/button", text: "Add a bundle", variant: "secondary", size: "small", type: :button, icon: "plus",
+              title: "One price for several people, like 4 tickets for $70", data: { action: "nested-form#addBundle" } %>
+      </div>
       <p class="text-xs text-gray-500">A type that has sold is kept for its buyers when you remove it. Leave seats blank for no limit.</p>
     </div>
   </fieldset>

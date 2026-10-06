@@ -144,9 +144,17 @@ module Ticketing
 
     def by_tier
       @tiers.map do |tier|
-        mine = held_tickets.select { |t| t.ticket_tier_id == tier.id }
-        TierRow.new(tier: tier, sold: mine.size, seats: tier.quantity, held: inventory.held(tier: tier),
-                    remaining: inventory.remaining(tier: tier), gross_cents: mine.sum { |t| face_cents(t) })
+        if tier.bundle?
+          # Purchases of the bundle (its tickets are its type's, counted there too).
+          mine = held_tickets.select { |t| t.bundle_tier_id == tier.id }
+          admits = [ tier.admits.to_i, 1 ].max
+          TierRow.new(tier: tier, sold: mine.size / admits, seats: nil, held: inventory.held(tier: tier) / admits,
+                      remaining: tier.units_for(inventory.remaining(tier: tier)), gross_cents: mine.sum { |t| face_cents(t) })
+        else
+          mine = held_tickets.select { |t| t.ticket_tier_id == tier.id }
+          TierRow.new(tier: tier, sold: mine.size, seats: tier.quantity, held: inventory.held(tier: tier),
+                      remaining: inventory.remaining(tier: tier), gross_cents: mine.sum { |t| face_cents(t) })
+        end
       end
     end
 

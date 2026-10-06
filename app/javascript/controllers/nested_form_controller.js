@@ -2,15 +2,22 @@ import { Controller } from "@hotwired/stimulus"
 
 // Connects to data-controller="nested-form"
 export default class extends Controller {
-  static targets = ["children", "template"]
+  static targets = ["children", "template", "bundleTemplate"]
 
   add(event) {
     event.preventDefault()
-    const template = this.templateTarget.innerHTML.replace(
-      /NEW_CHILD_RECORD/g,
-      new Date().getTime()
-    )
-    this.childrenTarget.insertAdjacentHTML("beforeend", template)
+    this.insert(this.templateTarget)
+  }
+
+  // A second kind of row from its own template (a ticket bundle).
+  addBundle(event) {
+    event.preventDefault()
+    this.insert(this.bundleTemplateTarget)
+  }
+
+  insert(template) {
+    const html = template.innerHTML.replace(/NEW_CHILD_RECORD/g, new Date().getTime())
+    this.childrenTarget.insertAdjacentHTML("beforeend", html)
   }
 
   remove(event) {

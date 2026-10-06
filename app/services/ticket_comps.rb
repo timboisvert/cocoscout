@@ -32,7 +32,7 @@ class TicketComps
     bad = guests.find { |g| g.name.blank? || g.quantity.to_i < 1 || g.tier.nil? || (g.email.present? && !g.email.match?(URI::MailTo::EMAIL_REGEXP)) }
     raise Error, "Check #{bad.name.presence || 'each row'}: every person needs a name, a ticket type and a count, and a valid email if there is one." if bad
 
-    requests = guests.group_by(&:tier).to_h { |tier, gs| [ tier, gs.sum(&:quantity) * tier.admits.to_i.clamp(1, 20) ] }
+    requests = TicketCheckout.seat_requests(guests.group_by(&:tier).transform_values { |gs| gs.sum(&:quantity) })
     orders = []
     Ticketing::Inventory.reserve!(listing, requests) do
       guests.each do |guest|
@@ -43,7 +43,8 @@ class TicketComps
         # A 4-pack given is four tickets, one per person.
         guest.quantity.times do
           guest.tier.seat_prices.each do |cents|
-            order.tickets.create!(ticket_tier: guest.tier, ticket_listing: listing, status: "valid", price_cents: cents, discount_cents: cents)
+            order.tickets.create!(ticket_tier: guest.tier.base_tier, bundle_tier: (guest.tier if guest.tier.bundle?), ticket_listing: listing,
+                                  status: "valid", price_cents: cents, discount_cents: cents)
           end
         end
         TicketCheckout.price!(order)

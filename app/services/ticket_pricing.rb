@@ -72,7 +72,7 @@ class TicketPricing
   # together: 50¢ for each person, processing once.
   def self.all_in_price_cents(listing, tier)
     items = tier.seat_prices.map do |cents|
-      { price_cents: cents, discount_cents: 0, tax_cents: TaxCalculator.for_ticket(listing, tier, cents).added_cents }
+      { price_cents: cents, discount_cents: 0, tax_cents: TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents }
     end
     quote(items: items, fee_mode: listing.effective_fee_mode).total_cents
   end

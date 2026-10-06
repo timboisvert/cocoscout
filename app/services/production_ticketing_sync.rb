@@ -37,9 +37,12 @@ class ProductionTicketingSync
     skipped = []
     sources ||= sources_for(production_ticketing)
     copies = listing.ticket_tiers.to_a.index_by(&:source_tier_id)
+    made = {}
     TicketTier.transaction do
-      sources.each do |source|
+      # Plain types first, so a bundle can point at this date's copy of its type.
+      sources.sort_by { |s| s.bundle? ? 1 : 0 }.each do |source|
         attrs = source.attributes.slice(*SYNCED).merge("archived_at" => source.archived_at)
+        attrs["bundle_of_tier_id"] = made[source.bundle_of_tier_id]&.id if source.bundle?
         copy = copies.delete(source.id)
         if copy
           unless copy.update(attrs)
@@ -48,8 +51,9 @@ class ProductionTicketingSync
             copy.reload.update!(attrs.except("quantity"))
             skipped << copy
           end
+          made[source.id] = copy
         else
-          listing.ticket_tiers.create!(attrs.merge("source_tier_id" => source.id))
+          made[source.id] = listing.ticket_tiers.create!(attrs.merge("source_tier_id" => source.id))
         end
       end
       # Types the production no longer has (or a show's own leftovers): gone,

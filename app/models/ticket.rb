@@ -12,6 +12,8 @@ class Ticket < ApplicationRecord
 
   belongs_to :ticket_order
   belongs_to :ticket_tier
+  # The bundle it was bought in ("4 × General for $70"), if any.
+  belongs_to :bundle_tier, class_name: "TicketTier", optional: true, inverse_of: :bundle_tickets
   belongs_to :ticket_listing
   belongs_to :checked_in_by, class_name: "User", optional: true
 

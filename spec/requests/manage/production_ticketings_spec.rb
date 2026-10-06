@@ -48,7 +48,10 @@ RSpec.describe "Production ticketing", type: :request do
     expect(response.body).to include("Not set up", "Sell tickets for every date of Rising Stars", "Set it up")
 
     get manage_edit_production_ticketing_path(production, section: "tickets")
-    expect(response.body).to include('value="General admission"', "Drag to reorder", "Move up", "Add a ticket type")
+    expect(response.body).to include('value="General admission"', "Drag to reorder", "Move up", "Add a ticket type", "Add a bundle")
+    # A plain ticket type never asks how many it admits; only a bundle row does.
+    plain = response.body.split('data-nested-form-target="template"').first
+    expect(plain).not_to include("People the bundle admits")
 
     save_tickets("0" => { name: "General", price: "20", quantity: "60", position: "1" },
                  "1" => { name: "Student", price: "$15.00", quantity: "", position: "0" },

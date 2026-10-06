@@ -51,13 +51,13 @@
               four of the order's limit. %>
           <% left = tier.units_for(inventory.remaining(tier: tier)) %>
           <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
-          <% added_tax = tax_added ? tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(listing, tier, cents).added_cents } : 0 %>
+          <% added_tax = tax_added ? tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents } : 0 %>
           <% breakdown = tier.free? ? nil : ticket_price_breakdown(listing, tier) %>
           <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>" data-tier-id="<%= tier.id %>"
               data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
               data-admits="<%= tier.admits %>" data-left="<%= left %>" data-per-order="<%= tier.units_for(max_per_order) %>">
             <div class="min-w-0 flex-1">
-              <div class="font-semibold text-gray-900"><%= tier.name %><% if tier.bundle? %> <span class="text-sm font-normal text-gray-600">· admits <%= tier.admits %></span><% end %></div>
+              <div class="font-semibold text-gray-900"><%= tier.name %><% if tier.bundle? %> <span class="text-sm font-normal text-gray-600">· <%= tier.bundle_label %></span><% end %></div>
               <% if tier.description.present? %><div class="text-sm text-gray-600"><%= tier.description %></div><% end %>
               <% if breakdown && breakdown.rows.size > 1 %>
                 <details class="mt-0.5">

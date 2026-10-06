@@ -13,14 +13,25 @@ class TicketTier < ApplicationRecord
   belongs_to :source_tier, class_name: "TicketTier", optional: true
   has_many :tickets, dependent: :restrict_with_error
   has_many :copies, class_name: "TicketTier", foreign_key: :source_tier_id, inverse_of: :source_tier, dependent: :nullify
+  # A bundle ("4 × General for $70") admits several people of another type,
+  # using that type's seats; each ticket it makes is that type's ticket.
+  belongs_to :bundle_of, class_name: "TicketTier", foreign_key: :bundle_of_tier_id, optional: true
+  has_many :bundles, class_name: "TicketTier", foreign_key: :bundle_of_tier_id, inverse_of: :bundle_of, dependent: :nullify
+  # The tickets a bundle made (they belong to its type, remembering the bundle).
+  has_many :bundle_tickets, class_name: "Ticket", foreign_key: :bundle_tier_id, inverse_of: :bundle_tier, dependent: :restrict_with_error
 
   normalizes :unlock_code, with: ->(c) { c.to_s.strip.upcase.presence }
 
   validates :name, presence: true, length: { maximum: 80 }
   validates :price_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :quantity, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
-  # People one purchase admits: 1 for a ticket, 4 for "4 tickets for $70".
+  # People one purchase admits: 1 for a ticket; 2 to 20 for a bundle.
   validates :admits, numericality: { only_integer: true, in: 1..20 }
+  validates :admits, numericality: { greater_than: 1, message: "must be at least 2 for a bundle" }, if: :bundle?
+  validate :bundles_a_plain_type_of_its_own
+  # A plain ticket admits one; a bundle has no seats of its own (it uses its
+  # type's).
+  before_validation { bundle? ? self.quantity = nil : self.admits = 1 }
   validates :min_per_order, numericality: { only_integer: true, greater_than: 0 }
   validates :max_per_order, numericality: { only_integer: true, greater_than_or_equal_to: :min_per_order }, allow_nil: true
   validates :unlock_code, presence: true, if: :hidden?
@@ -29,9 +40,19 @@ class TicketTier < ApplicationRecord
 
   scope :active, -> { where(archived_at: nil) }
 
-  # A ticket type that admits several people for one price.
+  # A ticket type that admits several people of another type for one price.
   def bundle?
-    admits.to_i > 1
+    bundle_of_tier_id.present?
+  end
+
+  # The type whose tickets (and seats) a purchase of this one uses.
+  def base_tier
+    bundle? ? bundle_of : self
+  end
+
+  # "4 × General"
+  def bundle_label
+    "#{admits} × #{bundle_of&.name}" if bundle?
   end
 
   # One purchase's price split into one ticket per person: $70 for 4 is
@@ -55,14 +76,15 @@ class TicketTier < ApplicationRecord
     price_cents.zero?
   end
 
+  # People sold on it (a bundle: people its purchases admitted).
   def sold_count
-    tickets.where(status: Ticket::SOLD_STATUSES).count
+    (bundle? ? bundle_tickets : tickets).where(status: Ticket::SOLD_STATUSES).count
   end
 
   # A type the show no longer sells: deleted outright when no ticket was ever
   # bought on it, archived (so those tickets keep their type) when one was.
   def retire!
-    if tickets.exists?
+    if tickets.exists? || bundle_tickets.exists?
       update_columns(archived_at: Time.current, updated_at: Time.current) if archived_at.nil?
     else
       destroy!
@@ -85,5 +107,13 @@ class TicketTier < ApplicationRecord
   def seats_cover_tickets_sold
     sold = sold_count
     errors.add(:quantity, "can't be fewer than the #{sold} already sold") if quantity < sold
+  end
+
+  def bundles_a_plain_type_of_its_own
+    return unless bundle?
+
+    base = bundle_of
+    same_home = base && base.ticket_listing_id == ticket_listing_id && base.production_ticketing_id == production_ticketing_id
+    errors.add(:bundle_of_tier_id, "must be one of this show's ticket types") unless same_home && !base.bundle? && base.id != id
   end
 end

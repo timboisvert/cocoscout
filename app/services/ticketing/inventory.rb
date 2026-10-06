@@ -21,7 +21,8 @@ module Ticketing
     # The seats on sale: the ticket types' seats added up, when every type
     # has a count; otherwise there's no limit.
     def capacity
-      tiers = @listing.ticket_tiers.active.to_a
+      # A bundle has no seats of its own: it uses its type's.
+      tiers = @listing.ticket_tiers.active.reject(&:bundle?)
       tiers.sum(&:quantity) if tiers.any? && tiers.all?(&:quantity)
     end
 
@@ -38,8 +39,9 @@ module Ticketing
     end
 
     # Seats left for the listing, or for one tier (the lesser of its own seats
-    # and the room's). nil = unlimited.
+    # and the room's). A bundle's are its type's. nil = unlimited.
     def remaining(tier: nil)
+      tier = tier.base_tier if tier&.bundle?
       overall = capacity && [ capacity - taken, 0 ].max
       return overall unless tier
 
@@ -51,7 +53,7 @@ module Ticketing
       left = remaining
       return left.zero? unless left.nil?
 
-      selling = @listing.ticket_tiers.active.reject(&:hidden)
+      selling = @listing.ticket_tiers.active.reject(&:hidden).reject(&:bundle?)
       selling.any? && selling.all? { |tier| remaining(tier: tier)&.zero? }
     end
 
@@ -81,9 +83,12 @@ module Ticketing
 
     private
 
+    # A bundle's tickets are its type's, remembering the bundle.
     def scope(tier)
       tickets = Ticket.where(ticket_listing_id: @listing.id)
-      tier ? tickets.where(ticket_tier_id: tier.id) : tickets
+      return tickets unless tier
+
+      tier.bundle? ? tickets.where(bundle_tier_id: tier.id) : tickets.where(ticket_tier_id: tier.id)
     end
   end
 end
