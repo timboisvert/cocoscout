@@ -1,0 +1,117 @@
+<%# A pass's editor: its name and price, the shows in it (a date and the ticket
+    type at each), how the price splits between them, and when it sells.
+    Locals: pass. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  choices = tier_choices
+  dollars = ->(cents) { cents.nil? ? nil : format("%.2f", cents / 100.0) }
+  splits = [
+    [ "regular_price", "By each show's regular price", "A $45 pass for a $20 and a $40 show counts $15 and $30. The usual choice." ],
+    [ "even", "Evenly", "Every show counts the same share, whatever its regular price." ],
+    [ "custom", "I'll type each show's share", "Type a share beside each show; they must add up to the pass price." ]
+  ]
+%>
+<%= form_with model: pass, url: (pass.persisted? ? manage_ticket_pass_path(pass) : manage_ticket_passes_path),
+      method: (pass.persisted? ? :patch : :post), class: "space-y-6", multipart: true do |f| %>
+  <% if pass.errors.any? %>
+    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><%= pass.errors.full_messages.to_sentence %></div>
+  <% end %>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+    <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_9rem] gap-4">
+      <div>
+        <%= f.label :name, "Name", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+        <%= f.text_field :name, placeholder: "Twilight Double Feature", required: true, class: input_class %>
+      </div>
+      <div>
+        <%= f.label :price, "Price per person", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+          <%= f.text_field :price, value: (pass.persisted? || pass.price_cents.positive? ? dollars.call(pass.price_cents) : nil),
+                inputmode: "decimal", placeholder: "0.00", required: true, class: "#{input_class} pl-7" %>
+        </div>
+      </div>
+    </div>
+    <div>
+      <%= f.label :description, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>
+        Description <span class="font-normal text-gray-500">(optional)</span>
+      <% end %>
+      <%= f.text_area :description, rows: 3, placeholder: "Both nights of Breaking Dawn, for less than buying them one at a time.", class: input_class %>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-5" data-controller="nested-form">
+    <h2 class="text-sm font-semibold text-gray-900">Shows in the pass</h2>
+    <p class="text-xs text-gray-600 mt-0.5">Each buyer gets a seat at every one of these, in the ticket type you pick. The shows can be dates of one production or of different ones.</p>
+    <div class="mt-4 space-y-3" data-nested-form-target="children">
+      <%= f.fields_for :pass_shows do |sf| %>
+        <%= render "manage/ticket_passes/show_row", sf: sf, choices: choices, input_class: input_class, dollars: dollars %>
+      <% end %>
+    </div>
+    <template data-nested-form-target="template">
+      <%= f.fields_for :pass_shows, TicketPassShow.new, child_index: "NEW_CHILD_RECORD" do |sf| %>
+        <%= render "manage/ticket_passes/show_row", sf: sf, choices: choices, input_class: input_class, dollars: dollars %>
+      <% end %>
+    </template>
+    <div class="mt-3">
+      <%= render "shared/button", text: "Add a show", variant: "secondary", size: "small", type: :button, icon: "plus", data: { action: "nested-form#add" } %>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-5">
+    <h2 class="text-sm font-semibold text-gray-900">How the price counts at each show</h2>
+    <p class="text-xs text-gray-600 mt-0.5">Each show's share is what its financials, any contract's revenue share and its tax see.</p>
+    <div class="mt-3 space-y-2">
+      <% splits.each do |value, label, hint| %>
+        <label class="flex items-start gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
+          <%= f.radio_button :split, value, class: "mt-0.5 accent-pink-500" %>
+          <span>
+            <span class="block text-sm font-medium text-gray-900"><%= label %></span>
+            <span class="block text-xs text-gray-600 mt-0.5"><%= hint %></span>
+          </span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+    <h2 class="text-sm font-semibold text-gray-900">Selling it</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <%= f.label :status, "Status", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+        <%= f.select :status, [ [ "Draft (not for sale yet)", "draft" ], [ "On sale", "on_sale" ], [ "Closed", "closed" ] ], {}, class: input_class %>
+      </div>
+      <div>
+        <%= f.label :sales_end_at, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>
+          Stop selling <span class="font-normal text-gray-500">(optional)</span>
+        <% end %>
+        <%= f.datetime_local_field :sales_end_at, class: input_class %>
+        <p class="mt-1 text-xs text-gray-500">It always stops when its first show's online sales close.</p>
+      </div>
+      <div>
+        <%= f.label :max_sold, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>
+          Most passes to sell <span class="font-normal text-gray-500">(optional)</span>
+        <% end %>
+        <%= f.number_field :max_sold, min: 1, placeholder: "No limit beyond the seats", class: input_class %>
+      </div>
+      <div>
+        <%= f.label :max_per_order, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>
+          Most per order <span class="font-normal text-gray-500">(optional)</span>
+        <% end %>
+        <%= f.number_field :max_per_order, min: 1, placeholder: "Same as the shows'", class: input_class %>
+      </div>
+    </div>
+    <div>
+      <%= f.label :wide_image, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>
+        Wide image <span class="font-normal text-gray-500">(optional, 16:9)</span>
+      <% end %>
+      <%= f.file_field :wide_image, accept: "image/jpeg,image/png,image/webp", class: "block w-full text-sm text-gray-700" %>
+      <p class="mt-1 text-xs text-gray-500">Without one, the pass page uses its first show's picture. Shown whole, never cropped.</p>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-2">
+    <%= render "shared/button", text: (pass.persisted? ? "Save" : "Save pass"), variant: "primary", size: "medium", type: :submit %>
+    <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: (pass.persisted? ? manage_ticket_pass_path(pass) : manage_ticket_passes_path) %>
+  </div>
+<% end %>

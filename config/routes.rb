@@ -366,6 +366,9 @@ Rails.application.routes.draw do
     patch "checkout/:token/items",     to: "ticket_checkouts#items",  as: "checkout_items", defaults: { format: :json }
     get  "v/:code",                    to: "tickets#ticket",          as: "ticket"
     get  ":org",                       to: "tickets#box_office",      as: "box_office"
+    # A pass: several shows sold together (TicketPass).
+    get  ":org/passes/:pass",          to: "ticket_passes#show",      as: "pass"
+    post ":org/passes/:pass/checkout", to: "ticket_passes#checkout",  as: "pass_checkout"
     # A date's page by its slug, or a production's page by its public key
     # (never an internal id).
     get  ":org/:event",                to: "tickets#event",           as: "event"
@@ -1275,6 +1278,13 @@ Rails.application.routes.draw do
     patch  "ticketing/settings/door/:id",         to: "ticketing_settings#update_door_access", as: "ticketing_door_access_grant"
     delete "ticketing/settings/door/:id",         to: "ticketing_settings#revoke_door_access"
     # Products sold with tickets (bottles for the table), defined once per org.
+    get    "ticketing/passes",                    to: "ticket_passes#index",             as: "ticket_passes"
+    get    "ticketing/passes/new",                to: "ticket_passes#new",               as: "new_ticket_pass"
+    post   "ticketing/passes",                    to: "ticket_passes#create"
+    get    "ticketing/passes/:id",                to: "ticket_passes#show",              as: "ticket_pass"
+    get    "ticketing/passes/:id/edit",           to: "ticket_passes#edit",              as: "edit_ticket_pass"
+    patch  "ticketing/passes/:id",                to: "ticket_passes#update"
+    delete "ticketing/passes/:id",                to: "ticket_passes#destroy"
     get    "ticketing/products",                  to: "ticket_products#index",           as: "ticket_products"
     get    "ticketing/products/new",              to: "ticket_products#new",             as: "new_ticket_product"
     post   "ticketing/products",                  to: "ticket_products#create"

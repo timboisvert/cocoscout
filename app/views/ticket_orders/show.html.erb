@@ -90,6 +90,28 @@
       </div>
     <% end %>
 
+    <%# A pass (or any checkout with several shows): each show's tickets live on
+        its own order page, one tap away. %>
+    <% siblings = @order.ticket_purchase ? @order.ticket_purchase.ticket_orders.where.not(id: @order.id).includes(ticket_listing: :show).to_a : [] %>
+    <% if siblings.any? %>
+      <% pass = tickets.first&.ticket_pass %>
+      <div class="mt-6 rounded-xl border border-pink-200 bg-pink-50 p-5">
+        <div class="text-sm font-semibold text-gray-900"><%= pass ? "Your #{pass.name} also covers" : "Also in this purchase" %></div>
+        <ul class="mt-2 space-y-2">
+          <% siblings.each do |sibling| %>
+            <li class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-sm text-gray-800">
+                <span class="font-medium"><%= sibling.ticket_listing.display_title %></span>
+                · <%= sibling.ticket_listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %>
+              </span>
+              <%= render "shared/button", text: "See these tickets", variant: "secondary", size: "small",
+                    path: tickets_order_path(token: sibling.token, **embed_params) %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
       <span>Order <%= @order.code %> · <%= number_to_currency(@order.total_cents / 100.0) %></span>
       <%= render "shared/button", text: "Email my tickets again", variant: "secondary", size: "small",

@@ -1,0 +1,51 @@
+<% content_for :title, "Passes" %>
+<% status_badge = { "draft" => "bg-gray-100 text-gray-700", "on_sale" => "bg-green-100 text-green-800", "closed" => "bg-gray-100 text-gray-500" } %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
+    text: "Passes",
+    links: [ { text: "New pass", path: manage_new_ticket_pass_path } ]
+  } %>
+
+  <div class="max-w-3xl space-y-6">
+    <p class="text-sm text-gray-600">
+      Several shows sold together, usually for less than buying them one at a time: both nights of a two-part show, or two
+      productions on the same night. A buyer gets a seat at every show in one checkout, and each show counts its share of the price.
+    </p>
+
+    <% if @passes.empty? %>
+      <div class="bg-white border border-gray-200 rounded-lg px-6 py-10 text-center">
+        <p class="text-gray-900 font-medium">No passes yet.</p>
+        <p class="mt-1 text-sm text-gray-600">Pick two or more dates, set a price, and put it on sale.</p>
+        <div class="mt-4 flex justify-center">
+          <%= render "shared/button", text: "New pass", variant: "primary", size: "medium", path: manage_new_ticket_pass_path %>
+        </div>
+      </div>
+    <% else %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <ul class="divide-y divide-gray-100">
+          <% @passes.each do |pass| %>
+            <% rows = pass.rows %>
+            <li>
+              <%= link_to manage_ticket_pass_path(pass), class: "flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 hover:bg-gray-50" do %>
+                <div class="min-w-[12rem] flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-medium text-gray-900"><%= pass.name %></span>
+                    <span class="inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= status_badge[pass.status] %>"><%= pass.status.humanize %></span>
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    <%= pluralize(rows.size, "show") %><% if rows.first %>, from <%= rows.first.ticket_listing.show.date_and_time.strftime("%b %-d") %><% end %>
+                    · <%= pluralize(pass.sold_count(rows), "sold") %>
+                  </div>
+                </div>
+                <div class="text-sm font-semibold tabular-nums text-gray-900"><%= number_to_currency(pass.price_cents / 100.0) %></div>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+</div>

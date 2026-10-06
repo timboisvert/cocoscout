@@ -86,6 +86,36 @@ module TicketingHelper
   # The checkout summary's lines for a ticket order: tickets by type,
   # products, then the discount, fees and added tax (muted). Rendered by
   # shared/checkout/_summary.
+  # What a checkout is paying for. One show without a pass reads as it always
+  # has (ticket_summary_lines); a pass is one line ("2 × Twilight Double
+  # Feature"), with any other shows' tickets, products, discounts, fees and
+  # tax across the whole purchase.
+  def checkout_summary_lines(order)
+    orders = order.ticket_purchase ? order.ticket_purchase.ticket_orders.to_a : [ order ]
+    tickets = orders.flat_map { |o| o.tickets.to_a }
+    return ticket_summary_lines(order) if orders.size == 1 && tickets.none?(&:ticket_pass_id)
+
+    items = orders.flat_map { |o| o.ticket_order_items.to_a }
+    passes, singles = tickets.partition(&:ticket_pass)
+    lines = passes.group_by(&:ticket_pass).map do |pass, rows|
+      people = rows.size / [ rows.map(&:ticket_listing_id).uniq.size, 1 ].max
+      [ "#{people} × #{pass.name}", rows.sum { |t| t.price_cents - t.discount_cents }, false ]
+    end
+    singles.group_by { |t| [ t.ticket_listing, t.bundle_tier || t.ticket_tier ] }.each do |(listing, tier), rows|
+      count = rows.size / [ tier.admits.to_i, 1 ].max
+      lines << [ "#{count} × #{tier.name} · #{listing.display_title}", rows.sum(&:price_cents), false ]
+    end
+    items.each { |item| lines << [ "#{item.quantity} × #{item.name}", item.price_cents, false ] }
+    discount = singles.sum(&:discount_cents)
+    lines << [ "Discount", -discount, true ] if discount.positive?
+    fees = orders.sum(&:buyer_fee_cents)
+    lines << [ "Fees", fees, true ] if fees.positive?
+    TaxLine.where(taxable: tickets + items, included: false).group(:name, :rate_bps).sum(:tax_cents).each do |(name, rate_bps), cents|
+      lines << [ "#{name} #{format('%g', rate_bps / 100.0)}%", cents, true ] if cents.positive?
+    end
+    lines
+  end
+
   def ticket_summary_lines(order)
     tickets = order.tickets.to_a
     items = order.ticket_order_items.to_a

@@ -81,6 +81,10 @@
   <%= render "tickets/picker", listing: @listing, tiers: @tiers, inventory: @inventory, tax: @tax, code: @code, preview: @preview,
         profile: @ticketing_profile, code_url: tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug) %>
 
+  <% @passes.each do |pass| %>
+    <%= render "tickets/pass_card", pass: pass, profile: @ticketing_profile, save: true %>
+  <% end %>
+
   <% if description %>
     <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
       <h2 class="font-semibold text-gray-900">About the show</h2>

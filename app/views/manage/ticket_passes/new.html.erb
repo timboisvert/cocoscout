@@ -1,0 +1,11 @@
+<% content_for :title, "New pass" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Passes", manage_ticket_passes_path ] ],
+    text: "New pass",
+    links: []
+  } %>
+  <div class="max-w-2xl">
+    <%= render "manage/ticket_passes/form", pass: @pass %>
+  </div>
+</div>

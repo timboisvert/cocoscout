@@ -16,6 +16,7 @@ class TicketsController < ApplicationController
     @productions = selling_listings.map(&:production).uniq.sort_by(&:name)
     @production_filter = @productions.find { |p| p.public_key.present? && p.public_key == params[:production].to_s }
     @listings = selling_listings.select { |l| @production_filter.nil? || l.production_id == @production_filter.id }
+    @passes = @production_filter ? [] : selling_passes
   end
 
   # /tickets/<org>/<slug>: a date's ticket page, or — when the slug is a
@@ -35,6 +36,7 @@ class TicketsController < ApplicationController
     @tiers = @listing.ticket_tiers.active.select(&:selling?).reject { |t| t.hidden? && t.unlock_code != @code }
     @inventory = @listing.inventory
     @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
+    @passes = selling_passes.select { |pass| pass.rows.any? { |row| row.ticket_listing_id == @listing.id } }
   end
 
   # What a phone camera opens from a ticket's QR code: the ticket itself.
@@ -101,6 +103,12 @@ class TicketsController < ApplicationController
                                        .where("shows.date_and_time >= ?", Time.current)
                                        .includes(:production, :ticket_tiers, show: %i[location location_space])
                                        .order("shows.date_and_time").to_a
+  end
+
+  # Passes buyers can get right now (TicketPass), soonest first.
+  def selling_passes
+    @selling_passes ||= @organization.ticket_passes.on_sale.to_a.select(&:selling?)
+                                     .sort_by { |pass| pass.rows.first.ticket_listing.starts_at || Time.current }
   end
 
   def superadmin_viewer?

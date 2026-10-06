@@ -20,6 +20,14 @@
   </nav>
 <% end %>
 
+<% if @passes.any? %>
+  <div class="mt-6 space-y-2">
+    <% @passes.each do |pass| %>
+      <%= render "tickets/pass_card", pass: pass, profile: @ticketing_profile %>
+    <% end %>
+  </div>
+<% end %>
+
 <div class="mt-6 space-y-2">
   <% if @listings.any? %>
     <% @listings.each do |listing| %>

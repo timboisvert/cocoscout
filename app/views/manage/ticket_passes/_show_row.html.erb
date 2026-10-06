@@ -1,0 +1,14 @@
+<%# One show in a pass's editor: a date's ticket type and, for a typed split,
+    its share. Locals: sf (fields builder), choices, input_class, dollars. %>
+<div class="nested-fields grid grid-cols-[minmax(0,1fr)_7rem_auto] items-start gap-2">
+  <%= sf.select :ticket_tier_id, grouped_options_for_select(choices, sf.object.ticket_tier_id), { prompt: "Pick a date and ticket type" },
+        "aria-label": "Date and ticket type", class: input_class %>
+  <div class="relative" title="Only used when you type each show's share">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+    <%= sf.text_field :share, value: dollars.call(sf.object.share_cents), inputmode: "decimal", placeholder: "Share",
+          "aria-label": "This show's share (typed split only)", class: "#{input_class} pl-7" %>
+  </div>
+  <%= sf.hidden_field :_destroy, value: "0" %>
+  <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Remove this show", icon: "x-mark",
+        classes: "!p-2 text-gray-400 hover:text-pink-600", data: { action: "nested-form#remove" } %>
+</div>

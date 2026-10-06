@@ -1,14 +1,18 @@
 <%
   show = @listing.show
-  free = @order.total_cents.zero?
-  pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(@order.total_cents / 100.0)}"
+  # Several shows in one checkout (a pass) pay one total.
+  total_cents = (@purchase || @order).total_cents
+  orders = @purchase ? @purchase.ticket_orders.includes(ticket_listing: { show: %i[location location_space] }).to_a : [ @order ]
+  pass = @order.tickets.first&.ticket_pass
+  free = total_cents.zero?
+  pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(total_cents / 100.0)}"
   image, page_image = ticket_page_image(@listing)
   place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
-  back_path = tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params)
+  back_path = pass ? tickets_pass_path(org: @ticketing_profile.slug, pass: pass.slug, **embed_params) : tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params)
   # Paying on their own phone at the door: the door picked the tickets, and
   # the buyer's details are optional.
   at_door = @order.channel == "door_card"
-  offers = @expired ? [] : @listing.product_offers(at_door: at_door)
+  offers = @expired || orders.size > 1 ? [] : @listing.product_offers(at_door: at_door)
 %>
 <% content_for :title, "Checkout · #{@listing.display_title}" %>
 <% content_for :head do %>
@@ -30,11 +34,11 @@
             action: "submit->checkout#submit",
             checkout_target: "form",
             checkout_publishable_key_value: stripe_publishable_key.to_s,
-            checkout_amount_value: @order.total_cents,
+            checkout_amount_value: total_cents,
             checkout_free_value: free,
             checkout_return_url_value: tickets_checkout_done_url(token: @order.token, **embed_params),
             checkout_expires_at_value: @order.expires_at&.iso8601,
-            checkout_hold_key_value: ("cocoscout:ticket-hold:#{@listing.id}" unless at_door),
+            checkout_hold_key_value: ("cocoscout:ticket-hold:#{@listing.id}" unless at_door || pass),
             checkout_token_value: @order.token,
             checkout_items_url_value: tickets_checkout_items_path(token: @order.token)
           } do %>
@@ -47,13 +51,20 @@
             <%= image_tag image, alt: "", class: "#{page_image.wide? ? 'w-24' : 'w-14'} h-auto rounded-lg flex-shrink-0" %>
           <% end %>
           <div class="min-w-0 flex-1 text-left">
-            <div class="font-semibold text-gray-900 truncate"><%= @listing.display_title %></div>
-            <div class="text-sm text-gray-600"><%= show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></div>
-            <% if place.present? %><div class="text-sm text-gray-500 truncate"><%= place %></div><% end %>
+            <% if orders.size > 1 %>
+              <div class="font-semibold text-gray-900 truncate"><%= pass ? pass.name : "#{orders.size} shows" %></div>
+              <% orders.each do |order| %>
+                <div class="text-sm text-gray-600 truncate"><%= order.ticket_listing.display_title %> · <%= order.ticket_listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></div>
+              <% end %>
+            <% else %>
+              <div class="font-semibold text-gray-900 truncate"><%= @listing.display_title %></div>
+              <div class="text-sm text-gray-600"><%= show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></div>
+              <% if place.present? %><div class="text-sm text-gray-500 truncate"><%= place %></div><% end %>
+            <% end %>
           </div>
         </div>
         <div data-checkout-target="summary"><%= render "ticket_checkouts/summary", order: @order %></div>
-        <%= render "shared/checkout/countdown", back_path: back_path, back_text: (at_door ? nil : "Change tickets") %>
+        <%= render "shared/checkout/countdown", back_path: back_path, back_text: (at_door ? nil : (pass ? "Change passes" : "Change tickets")) %>
       </div>
 
       <% if offers.any? %>

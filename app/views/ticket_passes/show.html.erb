@@ -1,0 +1,116 @@
+<%
+  rows = @rows
+  shares = @pass.shares(rows)
+  per_pass_base = rows.zip(shares).sum { |row, share| share + TaxCalculator.for_ticket(row.ticket_listing, row.ticket_tier, share).added_cents }
+  paid_per_pass = shares.count(&:positive?)
+  all_in = @pass.all_in_price_cents(rows)
+  separately = @pass.separately_all_in_cents(rows)
+  page_url = tickets_pass_url(org: @ticketing_profile.slug, pass: @pass.slug)
+  if @pass.wide_image.attached? && (variant = @pass.safe_wide_image_variant)
+    image_url = url_for(variant)
+    wide = true
+  elsif (first = @pass.page_image_listing(rows))
+    image, page_image = ticket_page_image(first)
+    image_url = image && url_for(image)
+    wide = page_image&.wide?
+  end
+  max = [ @pass.effective_max_per_order(rows), @remaining ].compact.min
+%>
+<% content_for :title, "#{@pass.name} · #{@organization.name}" %>
+<% content_for :head do %>
+  <meta name="description" content="<%= @pass.description.to_s.truncate(160) %>">
+  <meta property="og:title" content="<%= @pass.name %>">
+  <meta property="og:url" content="<%= page_url %>">
+  <% if image_url %>
+    <meta property="og:image" content="<%= image_url %>">
+    <meta name="twitter:card" content="summary_large_image">
+  <% end %>
+<% end %>
+
+<%# Layout A, like a show's page: one calm centered column. %>
+<div class="mx-auto max-w-xl space-y-5">
+  <% if image_url %>
+    <%= image_tag image_url, alt: "", class: wide ? "w-full h-auto rounded-2xl" : "mx-auto max-h-[28rem] w-auto h-auto rounded-2xl" %>
+  <% end %>
+
+  <div class="text-center space-y-1.5">
+    <p class="text-sm font-medium text-pink-700">A pass for <%= pluralize(rows.size, "show") %></p>
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @pass.name %></h1>
+  </div>
+
+  <% if flash[:alert] %>
+    <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 text-center"><%= flash[:alert] %></div>
+  <% end %>
+
+  <div class="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100">
+    <% rows.each do |row| %>
+      <% listing = row.ticket_listing %>
+      <% show = listing.show %>
+      <div class="flex items-center gap-3 px-5 py-3">
+        <div class="flex-shrink-0 w-12 rounded-lg border border-gray-200 overflow-hidden text-center leading-none">
+          <div class="bg-pink-500 text-white text-[10px] font-semibold uppercase py-1"><%= show.date_and_time.strftime("%b") %></div>
+          <div class="text-xl font-bold text-gray-900 py-1"><%= show.date_and_time.strftime("%-d") %></div>
+        </div>
+        <div class="min-w-0 flex-1">
+          <%= link_to listing.display_title, tickets_event_path(org: @ticketing_profile.slug, event: listing.slug, **embed_params),
+                class: "font-medium text-gray-900 hover:text-pink-700" %>
+          <div class="text-sm text-gray-600">
+            <%= show.date_and_time.strftime("%A · %-l:%M %p") %><% if show.location %> · <%= show.location.name %><% end %>
+          </div>
+          <div class="text-xs text-gray-500"><%= row.ticket_tier.name %></div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @selling %>
+    <%= form_with url: tickets_pass_checkout_path(org: @ticketing_profile.slug, pass: @pass.slug, **embed_params), method: :post,
+          data: { turbo: false, controller: "pass-picker",
+                  pass_picker_base_value: per_pass_base, pass_picker_paid_value: paid_per_pass,
+                  pass_picker_fee_mode_value: @pass.fee_mode(rows), pass_picker_platform_fee_value: TicketPricing::PLATFORM_FEE_CENTS,
+                  pass_picker_per_mille_value: TicketPricing::PROCESSING_PER_MILLE, pass_picker_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS,
+                  pass_picker_max_value: max.to_i } do %>
+      <%= render "tickets/bot_trap", id: "pass_website" %>
+      <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <div class="font-semibold text-gray-900">The pass</div>
+            <div class="text-sm text-gray-900"><span class="font-semibold"><%= number_to_currency(all_in / 100.0) %></span>
+              <% if separately > all_in %><span class="text-gray-500"> · <%= number_to_currency(separately / 100.0) %> separately</span><% end %></div>
+            <% if @remaining && @remaining <= 10 %><div class="text-xs font-medium text-pink-700">Only <%= @remaining %> left</div><% end %>
+          </div>
+          <div class="flex items-center gap-2">
+            <%= render "shared/button", text: "−", variant: "secondary", size: "xs", type: :button, title: "One fewer pass",
+                  classes: "w-11 h-11 !p-0 !rounded-full !text-xl disabled:opacity-40 disabled:cursor-default",
+                  data: { action: "pass-picker#decrement" } %>
+            <span class="w-6 text-center text-lg font-semibold tabular-nums" data-pass-picker-target="count" aria-live="polite">0</span>
+            <%= render "shared/button", text: "+", variant: "outline-pink", size: "xs", type: :button, title: "One more pass",
+                  classes: "w-11 h-11 !p-0 !rounded-full !text-xl disabled:opacity-40 disabled:cursor-default",
+                  data: { action: "pass-picker#increment" } %>
+          </div>
+        </div>
+        <%= hidden_field_tag :quantity, 0, data: { pass_picker_target: "quantity" } %>
+        <p class="mt-3 text-xs text-gray-500">Prices include fees and tax. Each pass is a seat at every show above.</p>
+      </div>
+      <div class="mt-4 space-y-3">
+        <div class="flex items-baseline justify-between">
+          <span class="text-gray-700" data-pass-picker-target="summary">Pick how many</span>
+          <span class="text-lg font-bold tabular-nums text-gray-900" data-pass-picker-target="total"></span>
+        </div>
+        <%= render "shared/button", text: "Continue to checkout", variant: "primary", size: "jumbo", type: :submit, classes: "disabled:opacity-50",
+              data: { pass_picker_target: "button" } %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-center text-sm text-gray-600">
+      This pass isn't on sale right now. You can still get tickets to each show on its own page.
+    </div>
+  <% end %>
+
+  <% if @pass.description.present? %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+      <h2 class="font-semibold text-gray-900">About the pass</h2>
+      <div class="mt-2 text-gray-700 space-y-3 leading-relaxed"><%= simple_format(@pass.description) %></div>
+    </div>
+  <% end %>
+</div>

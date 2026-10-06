@@ -1,0 +1,16 @@
+<% content_for :title, "Edit #{@pass.name}" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Passes", manage_ticket_passes_path ], [ @pass.name, manage_ticket_pass_path(@pass) ] ],
+    text: "Edit",
+    links: []
+  } %>
+  <div class="max-w-2xl">
+    <% if @pass.tickets.exists? %>
+      <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        This pass has sold. Changes apply to passes bought from now on; tickets already bought keep their shows and shares.
+      </div>
+    <% end %>
+    <%= render "manage/ticket_passes/form", pass: @pass %>
+  </div>
+</div>
