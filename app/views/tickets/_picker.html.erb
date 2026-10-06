@@ -57,7 +57,7 @@
               data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
               data-admits="<%= tier.admits %>" data-left="<%= left %>" data-per-order="<%= tier.units_for(max_per_order) %>">
             <div class="min-w-0 flex-1">
-              <div class="font-semibold text-gray-900"><%= tier.name %><% if tier.bundle? %> <span class="text-sm font-normal text-gray-600">· <%= tier.bundle_label %></span><% end %></div>
+              <div class="font-semibold text-gray-900"><%= tier.name %></div>
               <% if tier.description.present? %><div class="text-sm text-gray-600"><%= tier.description %></div><% end %>
               <% if breakdown && breakdown.rows.size > 1 %>
                 <details class="mt-0.5">

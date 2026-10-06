@@ -91,7 +91,7 @@ module TicketingHelper
     items = order.ticket_order_items.to_a
     lines = tickets.group_by { |t| t.bundle_tier || t.ticket_tier }.map do |tier, rows|
       count = rows.size / [ tier.admits.to_i, 1 ].max
-      [ "#{count} × #{tier.name}#{" (#{tier.bundle_label})" if tier.bundle?}", rows.sum(&:price_cents), false ]
+      [ "#{count} × #{tier.name}", rows.sum(&:price_cents), false ]
     end
     items.each { |item| lines << [ "#{item.quantity} × #{item.name}", item.price_cents, false ] }
     if order.discount_cents.positive?
@@ -119,7 +119,7 @@ module TicketingHelper
     fees = total - tier.price_cents - added
 
     # Tax inside the price is shown apart too, so the rows always add up.
-    rows = [ [ tier.bundle? ? "#{tier.admits} #{tier.bundle_of&.name} tickets" : "Ticket", tier.price_cents - included ] ]
+    rows = [ [ tier.bundle? ? tier.name : "Ticket", tier.price_cents - included ] ]
     rows << [ "Fees", fees ] if fees.positive?
     rows << [ label, included + added ] if (included + added).positive?
     PriceBreakdown.new(rows: rows, total_cents: total)

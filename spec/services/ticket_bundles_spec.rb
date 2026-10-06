@@ -24,7 +24,8 @@ RSpec.describe "Ticket bundles" do
     expect(listing.inventory.remaining(tier: general)).to eq(6)
     expect(pack.units_for(listing.inventory.remaining(tier: pack))).to eq(1)
     expect(TicketCheckout.held_quantities(order)).to eq(pack.id => 1)
-    expect(ticket_summary_lines(order).first.first(2)).to eq([ "1 × 4-pack (4 × General)", 7_000 ])
+    # Only the bundle's own name: what it admits is the theater's to say in its description.
+    expect(ticket_summary_lines(order).first.first(2)).to eq([ "1 × 4-pack", 7_000 ])
   end
 
   it "shares General's seats with single tickets, and counts people against the order limit" do
