@@ -38,17 +38,17 @@ development:
 test:
   primary:
     <<: *postgres_default
-    database: cocoscout_test
+    database: cocoscout_test<%= ENV["TEST_ENV_NUMBER"] %>
     host: localhost
   cache:
     <<: *postgres_default
-    database: cocoscout_test
+    database: cocoscout_test<%= ENV["TEST_ENV_NUMBER"] %>
     host: localhost
     migrations_paths: db/cache_migrate
     schema_dump: false
   queue:
     <<: *postgres_default
-    database: cocoscout_test
+    database: cocoscout_test<%= ENV["TEST_ENV_NUMBER"] %>
     host: localhost
     migrations_paths: db/queue_migrate
     schema_dump: false

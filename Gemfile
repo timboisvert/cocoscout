@@ -63,4 +63,7 @@ group :development, :test do
   gem "pg_query"
   gem "prosopite"
   gem "rspec-rails"
+  # The suite split across every core (bin/rails parallel:setup once, then
+  # bundle exec parallel_rspec). Each process gets its own test database.
+  gem "parallel_tests"
 end

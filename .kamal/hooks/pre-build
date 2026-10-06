@@ -16,6 +16,13 @@
 # SKIP_VALIDATION - set to "1" to skip all validation checks
 
 set -e
+set -o pipefail
+
+# Kamal only shows a hook's output when the hook fails, so a passing check
+# looked frozen for minutes. Send everything straight to the terminal too.
+if { : > /dev/tty; } 2>/dev/null; then
+  exec > >(tee /dev/tty) 2>&1
+fi
 
 echo ""
 echo "============================================================"
@@ -88,11 +95,13 @@ if [ "$SKIP_TESTS" = "1" ]; then
   echo "   Only skip tests for critical hotfixes."
   echo ""
 else
-  echo "🧪 Running test suite..."
+  echo "🧪 Running test suite across every core..."
   echo ""
 
-  # Run RSpec tests
-  if bundle exec rspec --format progress; then
+  # One test database per core (created once, schema kept current), then the
+  # suite split across them: about a minute instead of five.
+  bundle exec rake parallel:create parallel:load_schema > /dev/null 2>&1
+  if TZ=UTC bundle exec parallel_rspec spec/; then
     echo ""
     echo "✅ All tests passed"
   else
