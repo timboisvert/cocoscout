@@ -15,6 +15,8 @@ class Ticket < ApplicationRecord
   # The bundle it was bought in ("4 × General for $70"), if any.
   belongs_to :bundle_tier, class_name: "TicketTier", optional: true, inverse_of: :bundle_tickets
   belongs_to :ticket_listing
+  # The pass this ticket came with ("Twilight Double Feature"), if any.
+  belongs_to :ticket_pass, optional: true
   belongs_to :checked_in_by, class_name: "User", optional: true
 
   has_many :tax_lines, as: :taxable, dependent: :delete_all

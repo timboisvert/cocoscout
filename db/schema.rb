@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3491,6 +3491,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_180000) do
     t.index ["organization_id"], name: "index_ticket_products_on_organization_id"
   end
 
+  create_table "ticket_pass_shows", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "share_cents"
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_pass_id", null: false
+    t.bigint "ticket_tier_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ticket_listing_id"], name: "index_ticket_pass_shows_on_ticket_listing_id"
+    t.index ["ticket_pass_id", "ticket_listing_id"], name: "index_ticket_pass_shows_on_ticket_pass_id_and_ticket_listing_id", unique: true
+    t.index ["ticket_pass_id"], name: "index_ticket_pass_shows_on_ticket_pass_id"
+    t.index ["ticket_tier_id"], name: "index_ticket_pass_shows_on_ticket_tier_id"
+  end
+
+  create_table "ticket_passes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "kind", default: "dated", null: false
+    t.integer "max_per_order"
+    t.integer "max_sold"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "price_cents", default: 0, null: false
+    t.datetime "sales_end_at"
+    t.datetime "sales_start_at"
+    t.string "slug", null: false
+    t.string "split", default: "regular_price", null: false
+    t.string "status", default: "draft", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "slug"], name: "index_ticket_passes_on_organization_id_and_slug", unique: true
+    t.index ["organization_id"], name: "index_ticket_passes_on_organization_id"
+  end
+
   create_table "ticket_purchases", force: :cascade do |t|
     t.integer "buyer_fee_cents", default: 0, null: false
     t.string "channel", default: "online", null: false
@@ -3687,6 +3720,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_180000) do
     t.integer "tax_cents", default: 0, null: false
     t.bigint "ticket_listing_id", null: false
     t.bigint "ticket_order_id", null: false
+    t.bigint "ticket_pass_id"
     t.bigint "ticket_tier_id", null: false
     t.datetime "updated_at", null: false
     t.index ["bundle_tier_id"], name: "index_tickets_on_bundle_tier_id"
@@ -3695,6 +3729,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_180000) do
     t.index ["ticket_listing_id", "external_barcode"], name: "index_tickets_on_ticket_listing_id_and_external_barcode", unique: true, where: "(external_barcode IS NOT NULL)"
     t.index ["ticket_listing_id", "status"], name: "index_tickets_on_ticket_listing_id_and_status"
     t.index ["ticket_order_id"], name: "index_tickets_on_ticket_order_id"
+    t.index ["ticket_pass_id"], name: "index_tickets_on_ticket_pass_id"
     t.index ["ticket_tier_id"], name: "index_tickets_on_ticket_tier_id"
   end
 
@@ -4158,6 +4193,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_180000) do
   add_foreign_key "ticket_orders", "users", column: "issued_by_id", on_delete: :nullify
   add_foreign_key "ticket_orders", "users", on_delete: :nullify
   add_foreign_key "ticket_products", "organizations"
+  add_foreign_key "ticket_pass_shows", "ticket_listings"
+  add_foreign_key "ticket_pass_shows", "ticket_passes"
+  add_foreign_key "ticket_pass_shows", "ticket_tiers"
+  add_foreign_key "ticket_passes", "organizations"
   add_foreign_key "ticket_purchases", "organizations"
   add_foreign_key "ticket_refunds", "organizations"
   add_foreign_key "ticket_refunds", "ticket_orders"
@@ -4181,6 +4220,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_180000) do
   add_foreign_key "ticketing_profiles", "organizations"
   add_foreign_key "tickets", "ticket_listings"
   add_foreign_key "tickets", "ticket_orders"
+  add_foreign_key "tickets", "ticket_passes"
   add_foreign_key "tickets", "ticket_tiers"
   add_foreign_key "tickets", "ticket_tiers", column: "bundle_tier_id"
   add_foreign_key "tickets", "users", column: "checked_in_by_id", on_delete: :nullify

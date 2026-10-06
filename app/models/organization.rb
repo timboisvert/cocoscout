@@ -72,6 +72,7 @@ class Organization < ApplicationRecord
   has_many :ticket_sales_viewers, dependent: :delete_all
   has_many :ticketing_notification_logs, dependent: :delete_all
   has_one :ticketing_profile, dependent: :destroy
+  has_many :ticket_passes, dependent: :destroy
   has_many :tax_lines, dependent: :delete_all
   has_many :tax_rules, dependent: :delete_all
   has_many :tax_rates, dependent: :delete_all

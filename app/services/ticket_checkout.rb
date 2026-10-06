@@ -66,6 +66,59 @@ class TicketCheckout
     raise Error, "Sorry, there aren't enough seats left for that. Try fewer tickets."
   end
 
+  # A buyer starting on a pass: a seat at every show in it for each pass,
+  # held together for ten minutes in one checkout (one order per show, one
+  # payment), every ticket carrying its show's share of the pass price. A
+  # show without the seats stops the whole pass; nothing is held.
+  def self.start_pass!(pass:, quantity:, client_ip: nil, referrer: nil, via: nil)
+    rows = pass.rows
+    raise Error, "This pass isn't on sale right now." unless pass.selling?(Time.current, rows)
+
+    quantity = quantity.to_i
+    raise Error, "Pick at least one pass." unless quantity.positive?
+    max = pass.effective_max_per_order(rows)
+    raise Error, "You can buy up to #{max} passes at a time." if max && quantity > max
+    if pass.max_sold && quantity > pass.max_sold - pass.sold_count(rows)
+      raise Error, "Sorry, there aren't that many passes left."
+    end
+
+    shares = pass.shares(rows)
+    fee_mode = pass.fee_mode(rows)
+    short_link = via.present? ? ShortLink.live.where(organization: pass.organization).find_by(code: via.to_s.strip.upcase) : nil
+    orders = []
+    ActiveRecord::Base.transaction do
+      # Shows locked in one order, so two buyers' passes can't deadlock.
+      reserve_all!(rows.sort_by(&:ticket_listing_id), quantity) do
+        expires_at = TicketOrder::HOLD.from_now
+        purchase = TicketPurchase.create!(organization: pass.organization, channel: "online", expires_at: expires_at)
+        rows.each_with_index do |row, index|
+          order = TicketOrder.create!(organization: pass.organization, ticket_listing: row.ticket_listing, ticket_purchase: purchase,
+                                      status: "pending", channel: "online", money_path: "cocoscout", fee_mode: fee_mode,
+                                      expires_at: expires_at, client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
+                                      short_link: short_link, utm: short_link ? { "via" => short_link.code } : {})
+          # The regular price, less the pass's saving; a share above the
+          # regular price is simply the price.
+          price = [ row.ticket_tier.price_cents, shares[index] ].max
+          quantity.times { add_ticket(order, row.ticket_tier, price, price - shares[index], pass: pass) }
+          orders << order
+        end
+        purchase.price!
+      end
+    end
+    orders.first.reload
+  rescue Ticketing::Inventory::SoldOut
+    raise Error, "Sorry, one of the shows in this pass doesn't have enough seats left. Try fewer passes."
+  end
+
+  # Holds each show's seats under its own lock, one after another, and runs
+  # the block once every show has them.
+  def self.reserve_all!(rows, quantity, &block)
+    return yield if rows.empty?
+
+    row, *rest = rows
+    Ticketing::Inventory.reserve!(row.ticket_listing, { row.ticket_tier => quantity }) { reserve_all!(rest, quantity, &block) }
+  end
+
   # A live hold's purchases by type: { tier_id => count } (a held bundle is
   # several tickets and counts once), as the show's page steppers count them.
   def self.held_quantities(order)
@@ -209,10 +262,10 @@ class TicketCheckout
 
   # One person's ticket: always of the type that holds the seat (a bundle's
   # tickets are its type's, remembering the bundle).
-  def self.add_ticket(order, tier, price_cents, off)
+  def self.add_ticket(order, tier, price_cents, off, pass: nil)
     listing = order.ticket_listing
     ticket = order.tickets.create!(ticket_tier: tier.base_tier, bundle_tier: (tier if tier.bundle?), ticket_listing: listing,
-                                   status: "reserved", price_cents: price_cents, discount_cents: off)
+                                   status: "reserved", price_cents: price_cents, discount_cents: off, ticket_pass: pass)
     tax = TaxCalculator.for_ticket(listing, tier.base_tier, price_cents - off)
     tax.lines.each do |line|
       TaxLine.create!(organization_id: order.organization_id, taxable: ticket, tax_rate: line.tax_rate,
@@ -224,5 +277,5 @@ class TicketCheckout
     ticket.update_columns(tax_cents: tax.tax_cents)
   end
 
-  private_class_method :requested_tiers, :add_purchase, :add_ticket, :same_request?, :held_item_quantities
+  private_class_method :requested_tiers, :add_purchase, :add_ticket, :same_request?, :held_item_quantities, :reserve_all!
 end
