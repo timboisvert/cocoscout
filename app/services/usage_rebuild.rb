@@ -9,7 +9,7 @@
 # back from here; the bill is corrected when Stripe drafts it
 # (UsageInvoiceCorrection).
 class UsageRebuild
-  Change = Data.define(:organization, :kind, :added, :removed)
+  Change = Data.define(:organization, :kind, :added, :removed, :kept)
 
   def self.run!(month, post: false, remove: true, now: Time.current)
     month = month.to_date.beginning_of_month
@@ -23,10 +23,13 @@ class UsageRebuild
           have = model.where(organization: organization).for_month(month).pluck(:person_id)
           added = want.keys - have
           removed = remove ? have - want.keys : []
-          next if added.empty? && removed.empty?
+          kept = have & want.keys
+          next if added.empty? && removed.empty? && !remove
 
+          names = ->(ids) { Person.where(id: ids).order(:name).pluck(:name) }
           changes << Change.new(organization: organization, kind: model == StaffActivation ? "staff" : "performers",
-                                added: Person.where(id: added).order(:name).pluck(:name), removed: Person.where(id: removed).order(:name).pluck(:name))
+                                added: names.call(added), removed: names.call(removed), kept: names.call(kept))
+          next if added.empty? && removed.empty?
           next unless post
 
           model.where(organization: organization, person_id: removed).for_month(month).delete_all if removed.any?

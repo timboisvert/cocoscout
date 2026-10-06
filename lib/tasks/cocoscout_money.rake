@@ -68,10 +68,11 @@ namespace :usage do
     changes = UsageRebuild.run!(month, post: post)
     puts "Every record already matches the paid work that's over." if changes.empty?
     changes.each do |change|
-      puts "#{change.organization.name}, #{change.kind}:"
+      puts "#{change.organization.name}, #{change.kind} (#{change.kept.size + change.added.size} counted after this):"
+      puts "  stays (paid work that's over): #{change.kept.join(', ')}" if change.kept.any?
       puts "  remove (no paid work that month that's over): #{change.removed.join(', ')}" if change.removed.any?
       puts "  add (paid work that's over, not counted yet): #{change.added.join(', ')}" if change.added.any?
     end
-    puts "Stripe already counted what was sent to it; removing a record here doesn't take it off a bill." if changes.any?
+    puts "Stripe already counted what was sent to it; the usage bill is corrected to these counts when Stripe drafts it." if changes.any? { |c| c.removed.any? }
   end
 end

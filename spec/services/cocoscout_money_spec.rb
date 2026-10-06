@@ -323,7 +323,7 @@ RSpec.describe UsageRules do
     StaffActivation.record!(organization: org, person: colin, month: Date.new(2026, 9, 1))
 
     change = UsageRebuild.run!(Date.new(2026, 9, 1), now: Time.zone.local(2026, 10, 5)).sole
-    expect([ change.kind, change.added, change.removed ]).to eq([ "staff", [ "Ruby Infante" ], [ "Colin Kelty" ] ])
+    expect([ change.kind, change.added, change.removed, change.kept ]).to eq([ "staff", [ "Ruby Infante" ], [ "Colin Kelty" ], [] ])
     expect(StaffActivation.for_month(Date.new(2026, 9, 1)).pluck(:person_id)).to eq([ colin.id ])
 
     travel_to(Time.zone.local(2026, 10, 5, 12)) { UsageSweepJob.perform_now }
