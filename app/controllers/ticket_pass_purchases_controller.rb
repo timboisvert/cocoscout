@@ -11,6 +11,7 @@ class TicketPassPurchasesController < ApplicationController
   skip_forgery_protection only: :pay
 
   before_action :set_purchase
+  helper_method :superadmin_viewer?
 
   def show
     return redirect_to(holding_path) if @purchase.paid?
@@ -93,5 +94,11 @@ class TicketPassPurchasesController < ApplicationController
     )
     @purchase.update!(stripe_payment_intent_id: intent.id)
     intent
+  end
+
+  # The checkout partial tells a superadmin (never a buyer) when Stripe's
+  # publishable key is missing; the same helper every checkout page has.
+  def superadmin_viewer?
+    authenticated? && Current.user&.superadmin?
   end
 end

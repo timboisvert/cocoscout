@@ -53,6 +53,25 @@ RSpec.describe "Credit passes", type: :request do
     expect(order.tickets.count).to eq(2)
   end
 
+  # CI has no Stripe publishable key: the page must still render for a buyer,
+  # and only a superadmin reads why payments are off (this was failing CI).
+  it "renders the pass checkout without a publishable key, telling only a superadmin why" do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("STRIPE_PUBLISHABLE_KEY").and_return(nil)
+    allow(Rails.application.credentials).to receive(:dig).and_call_original
+    allow(Rails.application.credentials).to receive(:dig).with(:stripe, :publishable_key).and_return(nil)
+    allow(Rails.env).to receive(:development?).and_return(false)
+
+    purchase = TicketPassCredits.start!(pass: pass, quantity: 1)
+    get tickets_pass_purchase_path(token: purchase.token)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("publishable key isn't set")
+
+    post handle_signin_path, params: { email_address: superadmin.email_address, password: password }
+    get tickets_pass_purchase_path(token: purchase.token)
+    expect(response.body).to include("publishable key isn't set")
+  end
+
   it "keeps another organization's show off a holder's page" do
     holding = TicketPassCredits.start!(pass: pass, quantity: 1).ticket_pass_holdings.first
     TicketPassCredits.settle!(holding, paid_at: Time.current)
