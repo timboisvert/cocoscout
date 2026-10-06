@@ -1347,6 +1347,7 @@ Rails.application.routes.draw do
     post   "ticketing/shows/:id/codes",           to: "ticket_listings#create_code",     as: "ticket_listing_codes"
     delete "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#destroy_code",    as: "ticket_listing_code"
     post   "ticketing/shows/:id/refund-buyers",   to: "ticket_listings#cancel",          as: "ticket_listing_cancel"
+    patch  "ticketing/shows/:id/outside-sales",   to: "ticket_listings#outside_sales",   as: "ticket_listing_outside_sales"
     get    "ticketing/shows/:id/change",          to: "ticket_listings#change_review",   as: "ticket_listing_change"
     post   "ticketing/shows/:id/change",          to: "ticket_listings#tell_change"
     post   "ticketing/shows/:id/change/told",     to: "ticket_listings#mark_change_told", as: "ticket_listing_change_told"

@@ -37,7 +37,8 @@
     </div>
     <div class="rounded-xl border border-gray-200 bg-white py-3">
       <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="sold"><%= @counts[:sold] %></div>
-      <div class="text-xs text-gray-500">Sold</div>
+      <% outside = @listing.inventory.outside_sold %>
+      <div class="text-xs text-gray-500">Sold<% if outside.positive? %> <span class="text-gray-400">· <%= outside %> elsewhere</span><% end %></div>
     </div>
     <div class="rounded-xl border border-gray-200 bg-white py-3">
       <div class="text-2xl font-bold tabular-nums text-gray-900"><%= @counts[:capacity] || "—" %></div>

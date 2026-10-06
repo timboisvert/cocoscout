@@ -86,6 +86,11 @@ module Ticketing
       inventory.remaining
     end
 
+    # Tickets sold on other sites, as typed on the show's page.
+    def outside_sold
+      inventory.outside_sold
+    end
+
     def held_tickets
       @tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     end

@@ -16,11 +16,15 @@
     eye: [ "M15 12a3 3 0 11-6 0 3 3 0 016 0z", "M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" ],
     cog: [ "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z", "M15 12a3 3 0 11-6 0 3 3 0 016 0z" ],
     cancel: "M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z",
-    share: "M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+    share: "M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z",
+    globe: "M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
   }
+  outside = @stats.outside_sold
   actions = [
     ({ text: "Door", description: "Scan tickets and sell at the door", path: door_path(@listing), icon: icons[:door] } if live && @listing.status != "draft"),
     ({ text: "Give tickets", description: "Comps for guests and press", path: manage_new_ticket_listing_comps_path(@listing), icon: icons[:gift] } if live),
+    ({ text: "Sold elsewhere", description: outside.positive? ? "#{pluralize(outside, 'ticket')} on other sites" : "Tickets sold on other sites",
+       path: "#", icon: icons[:globe], data: { controller: "modal", action: "click->modal#open", modal_id: "outside-sales-modal" } } if live),
     { text: "Orders", description: "Every order for this show", path: manage_ticket_orders_path(listing_id: @listing.id), icon: icons[:orders] },
     { text: "Settings", description: "Prices, seats, sales window, page and image", path: manage_edit_ticket_listing_path(@listing), icon: icons[:cog] },
     { text: "Visibility", description: "Who can see this show's sales", path: manage_ticket_listing_visibility_path(@listing), icon: icons[:share] },
@@ -91,6 +95,10 @@
 
     <aside class="space-y-6">
       <%= render "shared/action_list", items: actions %>
+      <% if live %>
+        <%= render "manage/ticket_listings/outside_sales_modal", id: "outside-sales-modal", listing: @listing,
+              sources: @outside_sources, lines: @outside_lines %>
+      <% end %>
 
       <div class="bg-white rounded-lg border border-gray-200 p-5">
         <h3 class="font-semibold text-gray-900 mb-4">Money</h3>

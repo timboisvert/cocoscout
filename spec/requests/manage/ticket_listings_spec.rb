@@ -36,6 +36,38 @@ RSpec.describe "Manage ticket listings", type: :request do
       expect(response.body).to include("On sale").and include("of 60")
     end
 
+    it "records tickets sold on other sites into the show's financials, and takes those seats out of the room" do
+      listing.update!(status: "on_sale")
+      eventbrite = org.ticket_sources.create!(name: "Eventbrite")
+      theirs = create(:organization).ticket_sources.create!(name: "Theirs")
+
+      get manage_ticket_listing_path(listing)
+      expect(response.body).to include("Sold elsewhere", "Tickets sold on other sites", "Eventbrite", 'id="outside-sales-modal"')
+
+      patch manage_ticket_listing_outside_sales_path(listing), params: {
+        new_source_name: "Ticket Tailor", reduce_seats: "1",
+        sales: { eventbrite.id.to_s => { tickets: "4", amount: "$80" }, "new" => { tickets: "6", amount: "" }, theirs.id.to_s => { tickets: "50", amount: "" } }
+      }
+      expect(response).to redirect_to(manage_ticket_listing_path(listing))
+      expect(flash[:notice]).to eq("10 tickets sold elsewhere, taken out of the seats here.")
+
+      tailor = org.ticket_sources.find_by!(name: "Ticket Tailor")
+      lines = friday.show_financials.ticket_sales_lines.index_by(&:ticket_source_id)
+      expect(lines[eventbrite.id].attributes.values_at("tickets_sold", "amount")).to eq([ 4, 80.to_d ])
+      expect(lines[tailor.id].attributes.values_at("tickets_sold", "amount")).to eq([ 6, 0.to_d ])
+      expect(lines).not_to have_key(theirs.id)
+      expect(friday.show_financials.ticket_count).to eq(10)
+      expect(listing.inventory.remaining).to eq(50)
+
+      get manage_ticket_listing_path(listing)
+      expect(response.body).to include("10 tickets on other sites", "10 sold elsewhere")
+
+      # Cleared to nothing, the rows go; switched off, the seats come back.
+      patch manage_ticket_listing_outside_sales_path(listing), params: { reduce_seats: "0", sales: { eventbrite.id.to_s => { tickets: "", amount: "" }, tailor.id.to_s => { tickets: "6", amount: "" } } }
+      expect(friday.show_financials.reload.ticket_sales_lines.count).to eq(1)
+      expect(listing.reload.inventory.remaining).to eq(60)
+    end
+
     it "pauses, resumes and closes, but never jumps a step that doesn't exist" do
       post manage_ticket_listing_status_path(listing), params: { status: "paused" }
       expect(flash[:alert]).to be_present

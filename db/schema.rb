@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_091000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_092000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3371,6 +3371,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_091000) do
     t.datetime "off_sale_at"
     t.datetime "on_sale_at"
     t.bigint "organization_id", null: false
+    t.boolean "outside_sales_reduce_seats", default: true, null: false
     t.bigint "production_id", null: false
     t.datetime "released_at"
     t.boolean "sell_products", default: true, null: false

@@ -17,7 +17,7 @@ module Manage
     SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
-                                           change_review tell_change mark_change_told]
+                                           change_review tell_change mark_change_told outside_sales]
     before_action :set_settings_section, only: %i[edit update]
 
     # Productions first: every production selling tickets, by its next date.
@@ -41,6 +41,9 @@ module Manage
       @guest_filter = params[:guests].presence_in(GUEST_FILTERS) || "all"
       @query = params[:q].to_s.strip
       @guest_orders = guest_orders(@guest_filter, @query)
+      # The Sold elsewhere modal: the organization's other sites and what each sold here.
+      @outside_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
+      @outside_lines = @listing.show.show_financials&.ticket_sales_lines&.where(ticket_source_id: @outside_sources.map(&:id))&.index_by(&:ticket_source_id) || {}
     end
 
     # Everyone holding tickets, as a spreadsheet.
@@ -73,6 +76,42 @@ module Manage
     end
 
     def edit; end
+
+    # Tickets sold on other sites (Ticket Tailor, Eventbrite): the counts go
+    # into the same Show Financials rows the worksheet edits, so they're
+    # already there at settlement. A new site becomes a ticket source for the
+    # whole organization. The switch says whether those seats come out of
+    # what CocoScout sells (Ticketing::Inventory#outside).
+    def outside_sales
+      org = Current.organization
+      financials = @listing.show.show_financials || @listing.show.create_show_financials!
+      rows = params.fetch(:sales, {}).to_unsafe_h
+      new_name = params[:new_source_name].to_s.squish
+      ActiveRecord::Base.transaction do
+        if new_name.present?
+          source = org.ticket_sources.find_by("LOWER(name) = ?", new_name.downcase) || org.ticket_sources.create!(name: new_name, position: org.ticket_sources.count)
+          source.restore! if source.archived?
+          rows[source.id.to_s] = rows.delete("new") || {}
+        end
+        org.ticket_sources.hand_made.active.where(id: rows.keys).find_each do |source|
+          row = rows[source.id.to_s]
+          tickets = row["tickets"].to_i
+          amount = row["amount"].to_s.delete("$,").to_d
+          line = financials.ticket_sales_lines.find_or_initialize_by(ticket_source: source)
+          if tickets.zero? && amount.zero?
+            line.destroy! if line.persisted?
+          else
+            line.update!(tickets_sold: tickets, amount: amount)
+          end
+        end
+        @listing.update!(outside_sales_reduce_seats: params[:reduce_seats] == "1")
+      end
+      total = @listing.inventory.outside_sold
+      redirect_to manage_ticket_listing_path(@listing),
+                  notice: total.positive? ? "#{helpers.pluralize(total, 'ticket')} sold elsewhere#{@listing.outside_sales_reduce_seats ? ', taken out of the seats here' : ''}." : "No tickets sold elsewhere."
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to manage_ticket_listing_path(@listing), alert: e.record.errors.full_messages.to_sentence
+    end
 
     def update
       attrs = listing_params

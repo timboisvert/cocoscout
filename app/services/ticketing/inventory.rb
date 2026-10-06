@@ -5,11 +5,14 @@ module Ticketing
   #
   # A seat is taken by a sold ticket (valid or checked in), and by a reserved
   # one while its order is still holding it — wherever the ticket was sold.
-  # Tickets sold on other sites later are tickets here too, so the same count
-  # keeps every site in balance. Nothing else in the app counts tickets.
+  # Tickets sold on other sites (Ticket Tailor, Eventbrite) are the counts the
+  # theater types on the show's page, kept in Show Financials; when the show
+  # says so, they take seats from the room too (Tim, 2026-10-06). Those sites
+  # don't say which ticket type, so they count against the room, never a type.
+  # Nothing else in the app counts tickets.
   #
-  # Capacity is the listing's, or else the sum of its tiers' seats when every
-  # tier has a count; nil means no limit. A tier's own seats cap it too.
+  # Capacity is the sum of the tiers' seats when every tier has a count; nil
+  # means no limit. A tier's own seats cap it too.
   class Inventory
     class SoldOut < StandardError; end
 
@@ -34,8 +37,23 @@ module Ticketing
       scope(tier).where(status: "reserved").joins(:ticket_order).merge(TicketOrder.holding(@at)).count
     end
 
+    # Seats taken by sales on other sites: the room's, never a type's.
+    def outside(tier: nil)
+      return 0 if tier || !@listing.outside_sales_reduce_seats
+
+      outside_sold
+    end
+
+    # Tickets sold on other sites, as typed on the show's page: every Show
+    # Financials ticket line but CocoScout's own.
+    def outside_sold
+      @outside_sold ||= TicketSalesLine.joins(:show_financials).left_joins(:ticket_source)
+                                       .where(show_financials: { show_id: @listing.show_id }, ticket_sources: { system_key: nil })
+                                       .sum(:tickets_sold)
+    end
+
     def taken(tier: nil)
-      sold(tier: tier) + held(tier: tier)
+      sold(tier: tier) + held(tier: tier) + outside(tier: tier)
     end
 
     # Seats left for the listing, or for one tier (the lesser of its own seats

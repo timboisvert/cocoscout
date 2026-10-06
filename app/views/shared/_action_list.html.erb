@@ -4,14 +4,15 @@
       title (optional, default "Actions")
       items — array of hashes: text:, description:, path:, icon: (one SVG path
               "d", or an array of them), target: (optional), tone: (:muted
-              for the quiet ones, like canceling) %>
+              for the quiet ones, like canceling), data: (optional, e.g. to
+              open a modal instead of leaving the page) %>
 <% title = local_assigns.fetch(:title, "Actions") %>
 <div class="bg-white rounded-lg border border-gray-200 p-5">
   <h3 class="font-semibold text-gray-900 mb-4"><%= title %></h3>
   <div class="space-y-3">
     <% items.compact.each do |item| %>
       <% muted = item[:tone] == :muted %>
-      <%= link_to item[:path], target: item[:target], rel: ("noopener" if item[:target]),
+      <%= link_to item[:path], target: item[:target], rel: ("noopener" if item[:target]), data: item[:data],
             class: "flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors" do %>
         <div class="w-10 h-10 rounded-lg <%= muted ? 'bg-gray-100' : 'bg-pink-100' %> flex items-center justify-center flex-shrink-0">
           <svg class="w-5 h-5 <%= muted ? 'text-gray-500' : 'text-pink-600' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -7,8 +7,16 @@
   listing = stats.listing
   money = ->(cents) { number_to_currency(cents / 100.0) }
   started = listing.show.date_and_time <= Time.current
+  outside = stats.outside_sold
+  sold_note = if outside.positive?
+    "#{(((stats.sold + outside) * 100.0 / stats.capacity).round.to_s + '% full, ') if stats.capacity.to_i.positive?}#{outside} sold elsewhere"
+  elsif stats.capacity.to_i.positive?
+    "#{(stats.sold * 100.0 / stats.capacity).round}% full"
+  else
+    "No seat limit"
+  end
   tiles = [
-    [ "Sold", stats.capacity ? "#{stats.sold} of #{stats.capacity}" : stats.sold.to_s, stats.capacity && stats.capacity.positive? ? "#{(stats.sold * 100.0 / stats.capacity).round}% full" : "No seat limit", nil ],
+    [ "Sold", stats.capacity ? "#{stats.sold} of #{stats.capacity}" : stats.sold.to_s, sold_note, nil ],
     [ "Ticket sales", money.call(stats.gross_cents), "Before fees and tax", nil ],
     (read_only ? nil : [ "You keep", money.call(stats.net_cents), stats.tax_cents.positive? ? "Plus #{money.call(stats.tax_cents)} tax to pay" : "After fees and refunds", nil ]),
     (started ? [ "Checked in", "#{stats.checked_in} of #{stats.sold}", stats.no_shows.to_i.positive? ? "#{stats.no_shows} didn't come" : "Everyone came", nil ] : nil),
@@ -32,7 +40,7 @@
   </div>
   <% if stats.capacity.to_i.positive? %>
     <div class="h-2 rounded-full bg-gray-100 overflow-hidden" aria-hidden="true">
-      <div class="h-full bg-pink-500" style="width: <%= [ stats.sold * 100.0 / stats.capacity, 100 ].min.round(1) %>%"></div>
+      <div class="h-full bg-pink-500" style="width: <%= [ (stats.sold + outside) * 100.0 / stats.capacity, 100 ].min.round(1) %>%"></div>
     </div>
   <% end %>
 

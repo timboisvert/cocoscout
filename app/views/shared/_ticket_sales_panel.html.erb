@@ -6,15 +6,16 @@
   stats = local_assigns[:stats]
   inventory = stats ? stats.inventory : listing.inventory
   sold = stats ? stats.sold : inventory.sold
+  outside = inventory.outside_sold
   capacity = inventory.capacity
   this_week = stats&.sold_since(7.days.ago).to_i
-  percent = capacity.to_i.positive? ? [ (sold * 100.0 / capacity).round, 100 ].min : nil
+  percent = capacity.to_i.positive? ? [ ((sold + outside) * 100.0 / capacity).round, 100 ].min : nil
   label, badge_classes = ticket_listing_status_badge(listing, inventory)
 %>
 <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex items-center justify-between gap-3 border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
   <div class="min-w-0 flex-1">
     <div class="text-sm text-gray-900">
-      <span class="font-semibold tabular-nums"><%= sold %></span><% if capacity %> <span class="text-gray-500">of <%= capacity %></span><% end %> sold
+      <span class="font-semibold tabular-nums"><%= sold %></span><% if capacity %> <span class="text-gray-500">of <%= capacity %></span><% end %> sold<% if outside.positive? %> <span class="text-gray-500">· <%= outside %> elsewhere</span><% end %>
       <% if stats %>
         <span class="text-gray-500">· <%= number_to_currency(stats.gross_cents / 100.0, precision: 0) %></span>
         <% if this_week.positive? %><span class="text-green-700 text-xs font-medium">+<%= this_week %> this week</span><% end %>
