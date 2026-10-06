@@ -42,6 +42,18 @@
   </table>
 <% end %>
 
+<% if @deals.present? %>
+  <div style="margin: 20px 0; padding: 16px; border: 1px solid #fbcfe8; background: #fdf2f8; border-radius: 12px;">
+    <div style="font-size: 14px; font-weight: 600; color: #111827;">Make it a night</div>
+    <% @deals.each do |offer, listing, tier| %>
+      <div style="font-size: 14px; color: #374151; margin-top: 6px;">
+        <%= listing.display_title %>, <%= listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %>: <%= offer.deal_words %>
+      </div>
+    <% end %>
+    <div style="margin-top: 10px;"><%= link_to "Add a show", tickets_order_url(token: @order.token, anchor: "deals") %></div>
+  </div>
+<% end %>
+
 <p style="font-size: 12px; color: #6b7280;">
   Order <%= @order.code %> · <%= link_to "View your tickets online", tickets_order_url(token: @order.token) %>
   <% if @stop_url %> · <%= link_to "Stop reminder emails", @stop_url %><% end %>

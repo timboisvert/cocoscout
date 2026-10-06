@@ -14,6 +14,8 @@ class TicketPurchase < ApplicationRecord
   STATUSES = %w[pending paid expired canceled].freeze
 
   belongs_to :organization
+  # A checkout opened from an earlier purchase's deal (TicketOffer).
+  belongs_to :earned_by_purchase, class_name: "TicketPurchase", optional: true
   has_many :ticket_orders, -> { order(:id) }, inverse_of: :ticket_purchase, dependent: :nullify
 
   validates :status, inclusion: { in: STATUSES }

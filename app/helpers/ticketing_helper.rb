@@ -93,13 +93,17 @@ module TicketingHelper
   def checkout_summary_lines(order)
     orders = order.ticket_purchase ? order.ticket_purchase.ticket_orders.to_a : [ order ]
     tickets = orders.flat_map { |o| o.tickets.to_a }
-    return ticket_summary_lines(order) if orders.size == 1 && tickets.none?(&:ticket_pass_id)
+    return ticket_summary_lines(order) if orders.size == 1 && tickets.none? { |t| t.ticket_pass_id || t.ticket_offer_id }
 
     items = orders.flat_map { |o| o.ticket_order_items.to_a }
     passes, singles = tickets.partition(&:ticket_pass)
+    deals, singles = singles.partition(&:ticket_offer_id)
     lines = passes.group_by(&:ticket_pass).map do |pass, rows|
       people = rows.size / [ rows.map(&:ticket_listing_id).uniq.size, 1 ].max
       [ "#{people} × #{pass.name}", rows.sum { |t| t.price_cents - t.discount_cents }, false ]
+    end
+    deals.group_by { |t| [ t.ticket_listing, t.ticket_tier ] }.each do |(listing, tier), rows|
+      lines << [ "#{rows.size} × #{tier.name} · #{listing.display_title} (deal)", rows.sum { |t| t.price_cents - t.discount_cents }, false ]
     end
     singles.group_by { |t| [ t.ticket_listing, t.bundle_tier || t.ticket_tier ] }.each do |(listing, tier), rows|
       count = rows.size / [ tier.admits.to_i, 1 ].max

@@ -8,6 +8,9 @@
 # and the tax on the saving with it. Never more than the returned tickets
 # would have given back: a buyer is never asked for money.
 #
+# Deals on another show work the same way: returning the tickets that earned
+# a deal takes the deal back from deal tickets left without one.
+#
 # The saving stays with the kept show (its ticket now carries its regular
 # price), so a later refund of that show gives its regular price back and the
 # whole pass always refunds in full.
@@ -22,10 +25,17 @@ class TicketPassRepricing
 
   # tickets: the tickets being refunded from this order.
   def self.for(order, tickets)
-    returned = tickets.select(&:ticket_pass_id)
-    return [] if returned.empty? || order.ticket_purchase_id.nil?
+    return [] if order.ticket_purchase_id.nil?
 
-    room = returned.sum { |t| t.price_cents - t.discount_cents + t.tax_lines.reject(&:included).sum(&:tax_cents) }
+    room = tickets.sum { |t| t.price_cents - t.discount_cents + t.tax_lines.reject(&:included).sum(&:tax_cents) }
+    reprices = pass_reprices(order, tickets, room)
+    reprices + deal_reprices(order, tickets, room - reprices.sum(&:cents))
+  end
+
+  def self.pass_reprices(order, tickets, room)
+    returned = tickets.select(&:ticket_pass_id)
+    return [] if returned.empty?
+
     siblings = order.ticket_purchase.ticket_orders.where.not(id: order.id).includes(:ticket_listing).to_a
     reprices = []
     returned.group_by(&:ticket_pass_id).each do |pass_id, rows|
@@ -38,6 +48,34 @@ class TicketPassRepricing
           reprices << reprice
           room -= reprice.cents
         end
+      end
+    end
+    reprices
+  end
+
+  # A deal on another show (TicketOffer) is one per ticket bought: returning
+  # tickets that earned deals takes the deal back from deal tickets that no
+  # longer have a ticket behind them, in this checkout or one opened from
+  # it. With no tickets left, every deal goes.
+  def self.deal_reprices(order, tickets, room)
+    returned = tickets.reject { |t| t.ticket_pass_id || t.ticket_offer_id }
+    return [] if returned.empty? || !room.positive?
+
+    remaining = order.tickets.where(status: Ticket::SOLD_STATUSES, ticket_pass_id: nil, ticket_offer_id: nil).count - returned.size
+    purchase = order.ticket_purchase
+    orders = TicketOrder.where(ticket_purchase_id: [ purchase.id, *TicketPurchase.where(earned_by_purchase_id: purchase.id).select(:id) ])
+                        .where.not(id: order.id).includes(:ticket_listing)
+    deal_tickets = Ticket.where(ticket_order_id: orders.select(:id), status: Ticket::SOLD_STATUSES).where.not(ticket_offer_id: nil)
+                         .where("discount_cents > 0").includes(:ticket_tier, :ticket_offer, :ticket_listing).order(:id).to_a
+    reprices = []
+    deal_tickets.group_by(&:ticket_offer).each do |offer, rows|
+      allowed = remaining.positive? ? offer.limit_for(remaining) : 0
+      rows.drop(allowed).each do |kept|
+        reprice = fit(kept.ticket_listing, kept, kept.discount_cents, room)
+        break unless reprice
+
+        reprices << reprice
+        room -= reprice.cents
       end
     end
     reprices
@@ -93,5 +131,5 @@ class TicketPassRepricing
     TicketListing.where(id: Array(refund.repriced).map { |entry| entry["ticket_listing_id"] }.uniq).includes(:show)
   end
 
-  private_class_method :fit
+  private_class_method :fit, :pass_reprices, :deal_reprices
 end

@@ -7,7 +7,8 @@
   tickets_cents = q.amount_cents - q.fees_cents - product_paid + q.repriced_cents
   # Kept pass shows going back to regular, by show: "Breaking Dawn Part 2" => cents.
   kept = q.repriced.group_by { |r| r.ticket.ticket_listing }.transform_values { |rows| rows.sum(&:cents) }
-  pass_tickets = q.tickets.any?(&:ticket_pass_id)
+  # Tickets that came with a pass, or that earned a deal on another show.
+  pass_tickets = q.tickets.any?(&:ticket_pass_id) || kept.any? || (!@reprice && @order.ticket_purchase_id.present?)
   # An empty list still has to reach the link ("no products"), or it would read as "all of them".
   same_review = { ticket_ids: q.tickets.map(&:id), item_ids: q.items.map(&:id).presence || [ "" ], keep_fees: (@keep_fees ? "1" : "0") }
   comp = @order.money_path == "none"
@@ -63,10 +64,10 @@
       <% if pass_tickets && !comp %>
         <div class="px-6 pb-4 text-sm text-gray-600">
           <% if @reprice && kept.any? %>
-            <p>These came with a pass. The shows they keep go back to their regular price, so returning part of a pass is never cheaper than buying the rest alone.
+            <p>These came with a pass or earned a deal. What they keep goes back to its regular price, so returning part is never cheaper than buying the rest alone.
               <%= link_to "Refund the full share instead", manage_ticket_order_refund_path(@order.id, **same_review, reprice: "0"), class: "font-medium text-pink-600 hover:text-pink-700" %></p>
           <% elsif !@reprice %>
-            <p>Refunding this show's full share of the pass; the shows they keep stay at the pass price.
+            <p>Refunding the full amount; what they keep stays at the pass or deal price.
               <%= link_to "Price what they keep at regular", manage_ticket_order_refund_path(@order.id, **same_review), class: "font-medium text-pink-600 hover:text-pink-700" %></p>
           <% end %>
         </div>

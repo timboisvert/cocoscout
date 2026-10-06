@@ -11,6 +11,8 @@ class TicketOrderMailer < ApplicationMailer
   # Their tickets, with a receipt: what they paid, line by line.
   def confirmation(order)
     @receipt = order.total_cents.positive?
+    # Deals on another show they can still add (TicketCheckout.deals_after).
+    @deals = TicketCheckout.deals_after(order)
     deliver_tickets(order, **render_words("ticket_order_confirmation", self.class.ticket_variables(order)))
   end
 

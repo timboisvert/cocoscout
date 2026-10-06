@@ -47,6 +47,8 @@ class TicketCheckoutsController < ApplicationController
     return redirect_to(tickets_order_path(token: @order.token, **embed_params)) if @order.paid?
 
     @expired = @order.hold_expired? || @order.status != "pending"
+    @deals = @expired ? [] : TicketCheckout.deals_for(@order)
+    TicketOffer.where(id: @deals.map { |offer, _, _| offer.id }).update_all("shown_count = shown_count + 1") if @deals.any?
   end
 
   # Is this hold still the buyer's? The show's page asks when they come back
@@ -69,6 +71,7 @@ class TicketCheckoutsController < ApplicationController
     return render(json: { error: "This order can't be changed anymore." }, status: :unprocessable_content) unless @order.pending? && !@order.hold_expired?
 
     TicketCheckout.set_items!(@order, requested_products)
+    TicketCheckout.set_deals!(@order, requested_deals) if params.key?(:deals)
     @order.reload
     render json: {
       total_cents: payable.reload.total_cents,
@@ -144,6 +147,14 @@ class TicketCheckoutsController < ApplicationController
   # { product_id => count } from the checkout page's steppers.
   def requested_products
     raw = params[:products]
+    return {} unless raw.respond_to?(:each_pair)
+
+    raw.each_pair.to_h { |id, count| [ id.to_s, count.to_s ] }
+  end
+
+  # { offer_id => count } from the checkout page's deal steppers.
+  def requested_deals
+    raw = params[:deals]
     return {} unless raw.respond_to?(:each_pair)
 
     raw.each_pair.to_h { |id, count| [ id.to_s, count.to_s ] }

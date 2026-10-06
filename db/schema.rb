@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3385,6 +3385,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
     t.index ["show_id"], name: "index_ticket_listings_on_show_id", unique: true
   end
 
+  create_table "ticket_offers", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.integer "after_purchase_days", default: 2, null: false
+    t.integer "amount_cents"
+    t.datetime "created_at", null: false
+    t.string "deal_kind", default: "amount_off", null: false
+    t.datetime "ends_at"
+    t.integer "max_per_order"
+    t.integer "max_uses"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.decimal "percent", precision: 5, scale: 2
+    t.integer "price_cents"
+    t.integer "shown_count", default: 0, null: false
+    t.datetime "starts_at"
+    t.bigint "target_production_id"
+    t.string "target_scope", default: "listing", null: false
+    t.bigint "target_tier_id"
+    t.string "target_tier_name"
+    t.bigint "trigger_listing_id"
+    t.bigint "trigger_production_id"
+    t.string "trigger_scope", default: "production", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_offers_on_organization_id"
+    t.index ["target_production_id"], name: "index_ticket_offers_on_target_production_id"
+    t.index ["target_tier_id"], name: "index_ticket_offers_on_target_tier_id"
+    t.index ["trigger_listing_id"], name: "index_ticket_offers_on_trigger_listing_id"
+    t.index ["trigger_production_id"], name: "index_ticket_offers_on_trigger_production_id"
+  end
+
   create_table "ticket_order_items", force: :cascade do |t|
     t.boolean "counts_toward_ticket_revenue", default: false, null: false
     t.datetime "created_at", null: false
@@ -3529,6 +3559,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
     t.string "channel", default: "online", null: false
     t.datetime "created_at", null: false
     t.integer "discount_cents", default: 0, null: false
+    t.bigint "earned_by_purchase_id"
     t.datetime "expires_at"
     t.integer "org_net_cents", default: 0, null: false
     t.bigint "organization_id", null: false
@@ -3543,6 +3574,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
     t.string "token", null: false
     t.integer "total_cents", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.index ["earned_by_purchase_id"], name: "index_ticket_purchases_on_earned_by_purchase_id"
     t.index ["expires_at"], name: "index_ticket_purchases_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["organization_id"], name: "index_ticket_purchases_on_organization_id"
     t.index ["stripe_payment_intent_id"], name: "index_ticket_purchases_on_stripe_payment_intent_id", unique: true, where: "(stripe_payment_intent_id IS NOT NULL)"
@@ -3721,6 +3753,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
     t.string "status", default: "reserved", null: false
     t.integer "tax_cents", default: 0, null: false
     t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_offer_id"
     t.bigint "ticket_order_id", null: false
     t.bigint "ticket_pass_id"
     t.bigint "ticket_tier_id", null: false
@@ -3730,6 +3763,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
     t.index ["code"], name: "index_tickets_on_code", unique: true
     t.index ["ticket_listing_id", "external_barcode"], name: "index_tickets_on_ticket_listing_id_and_external_barcode", unique: true, where: "(external_barcode IS NOT NULL)"
     t.index ["ticket_listing_id", "status"], name: "index_tickets_on_ticket_listing_id_and_status"
+    t.index ["ticket_offer_id"], name: "index_tickets_on_ticket_offer_id"
     t.index ["ticket_order_id"], name: "index_tickets_on_ticket_order_id"
     t.index ["ticket_pass_id"], name: "index_tickets_on_ticket_pass_id"
     t.index ["ticket_tier_id"], name: "index_tickets_on_ticket_tier_id"
@@ -4181,6 +4215,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
   add_foreign_key "ticket_listings", "organizations"
   add_foreign_key "ticket_listings", "productions"
   add_foreign_key "ticket_listings", "shows"
+  add_foreign_key "ticket_offers", "organizations"
+  add_foreign_key "ticket_offers", "productions", column: "target_production_id"
+  add_foreign_key "ticket_offers", "productions", column: "trigger_production_id"
+  add_foreign_key "ticket_offers", "ticket_listings", column: "trigger_listing_id"
+  add_foreign_key "ticket_offers", "ticket_tiers", column: "target_tier_id"
   add_foreign_key "ticket_order_items", "organizations"
   add_foreign_key "ticket_order_items", "ticket_listings"
   add_foreign_key "ticket_order_items", "ticket_orders"
@@ -4200,6 +4239,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
   add_foreign_key "ticket_pass_shows", "ticket_tiers"
   add_foreign_key "ticket_passes", "organizations"
   add_foreign_key "ticket_purchases", "organizations"
+  add_foreign_key "ticket_purchases", "ticket_purchases", column: "earned_by_purchase_id"
   add_foreign_key "ticket_refunds", "organizations"
   add_foreign_key "ticket_refunds", "ticket_orders"
   add_foreign_key "ticket_refunds", "users", column: "refunded_by_id", on_delete: :nullify
@@ -4221,6 +4261,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_192000) do
   add_foreign_key "ticketing_notification_logs", "organizations"
   add_foreign_key "ticketing_profiles", "organizations"
   add_foreign_key "tickets", "ticket_listings"
+  add_foreign_key "tickets", "ticket_offers"
   add_foreign_key "tickets", "ticket_orders"
   add_foreign_key "tickets", "ticket_passes"
   add_foreign_key "tickets", "ticket_tiers"

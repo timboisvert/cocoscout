@@ -17,6 +17,8 @@ class Ticket < ApplicationRecord
   belongs_to :ticket_listing
   # The pass this ticket came with ("Twilight Double Feature"), if any.
   belongs_to :ticket_pass, optional: true
+  # The deal on another show it was bought with, if any.
+  belongs_to :ticket_offer, optional: true
   belongs_to :checked_in_by, class_name: "User", optional: true
 
   has_many :tax_lines, as: :taxable, dependent: :delete_all

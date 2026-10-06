@@ -12,7 +12,7 @@
   # Paying on their own phone at the door: the door picked the tickets, and
   # the buyer's details are optional.
   at_door = @order.channel == "door_card"
-  offers = @expired || orders.size > 1 ? [] : @listing.product_offers(at_door: at_door)
+  offers = @expired || pass ? [] : @listing.product_offers(at_door: at_door)
 %>
 <% content_for :title, "Checkout · #{@listing.display_title}" %>
 <% content_for :head do %>
@@ -66,6 +66,10 @@
         <div data-checkout-target="summary"><%= render "ticket_checkouts/summary", order: @order %></div>
         <%= render "shared/checkout/countdown", back_path: back_path, back_text: (at_door ? nil : (pass ? "Change passes" : "Change tickets")) %>
       </div>
+
+      <% if @deals.any? %>
+        <%= render "ticket_checkouts/deals", order: @order, deals: @deals %>
+      <% end %>
 
       <% if offers.any? %>
         <%= render "ticket_checkouts/products", order: @order, offers: offers %>

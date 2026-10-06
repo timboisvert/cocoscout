@@ -124,9 +124,14 @@ export default class extends Controller {
 
     async saveProducts() {
         if (!this.itemsUrlValue) return
+        // Products and deals on another show share the steppers; each row
+        // says which it is.
         const products = {}
+        const deals = {}
         this.productRowTargets.forEach((row) => {
-            products[row.dataset.productId] = Number(row.querySelector("[data-checkout-target='productCount']").textContent)
+            const count = Number(row.querySelector("[data-checkout-target='productCount']").textContent)
+            if (row.dataset.kind === "deal") deals[row.dataset.offerId] = count
+            else products[row.dataset.productId] = count
         })
         this.hideError()
         this.busy(true)
@@ -134,7 +139,7 @@ export default class extends Controller {
             const response = await fetch(this.itemsUrlValue, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-Token": this.csrfToken() },
-                body: JSON.stringify({ products })
+                body: JSON.stringify(Object.keys(deals).length ? { products, deals } : { products })
             })
             const data = await response.json()
             if (data.error) return this.fail(data.error)

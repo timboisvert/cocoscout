@@ -90,6 +90,10 @@
       </div>
     <% end %>
 
+    <% if @deals.present? %>
+      <%= render "ticket_orders/deals", order: @order, deals: @deals %>
+    <% end %>
+
     <%# A pass (or any checkout with several shows): each show's tickets live on
         its own order page, one tap away. %>
     <% siblings = @order.ticket_purchase ? @order.ticket_purchase.ticket_orders.where.not(id: @order.id).includes(ticket_listing: :show).to_a : [] %>

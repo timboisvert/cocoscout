@@ -71,7 +71,7 @@ RSpec.describe "Ticket passes", type: :request do
       expect(response.body).to include("at its regular price", "Refund the full share instead")
 
       get manage_ticket_order_refund_path(order.id, ticket_ids: order.tickets.pluck(:id), item_ids: [ "" ], reprice: "0")
-      expect(response.body).to include("Refunding this show's full share", "Price what they keep at regular")
+      expect(response.body).to include("Refunding the full amount", "Price what they keep at regular")
     end
 
     it "can't open another organization's pass" do

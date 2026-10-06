@@ -62,23 +62,6 @@ module Manage
 
     private
 
-    # The ticket types a pass can include, grouped by production: every
-    # upcoming date's plain types ("Fri Oct 10, 7:30 PM · General, $20.00").
-    def tier_choices
-      listings = Current.organization.ticket_listings.joins(:show).includes(:production, :show, :ticket_tiers)
-                        .where.not(status: %w[canceled closed]).where(shows: { canceled: false })
-                        .where("shows.date_and_time > ?", Time.current).order("shows.date_and_time")
-      listings.group_by { |listing| listing.production&.name || "Other" }.map do |production, dates|
-        options = dates.flat_map do |listing|
-          listing.ticket_tiers.select { |tier| tier.archived_at.nil? && !tier.bundle? }.map do |tier|
-            [ "#{listing.show.date_and_time.strftime('%a %b %-d, %-l:%M %p')} · #{tier.name}, #{helpers.number_to_currency(tier.price_cents / 100.0)}", tier.id ]
-          end
-        end
-        [ production, options ]
-      end
-    end
-    helper_method :tier_choices
-
     # Scoped to the org: a bare find here would reach another theater's pass.
     def set_pass
       @pass = Current.organization.ticket_passes.find(params[:id])

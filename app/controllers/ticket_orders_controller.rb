@@ -10,11 +10,23 @@ class TicketOrdersController < ApplicationController
   # The token is the key, and the embed has no session cookie (see
   # TicketCheckoutsController). Mail apps' one-click unsubscribe posts
   # straight to stop_reminders.
-  skip_forgery_protection only: %i[resend stop_reminders]
+  skip_forgery_protection only: %i[resend stop_reminders add_deal]
 
   before_action :set_order
 
-  def show; end
+  def show
+    @deals = TicketCheckout.deals_after(@order)
+  end
+
+  # Taking a deal on another show after paying: a new checkout at the deal
+  # price, remembering this purchase (TicketCheckout.start_deal!).
+  def add_deal
+    offer = @order.organization.ticket_offers.find(params[:offer])
+    new_order = TicketCheckout.start_deal!(order: @order, offer: offer, quantity: params[:quantity])
+    redirect_to tickets_checkout_path(token: new_order.token, **embed_params)
+  rescue TicketCheckout::Error => e
+    redirect_to tickets_order_path(token: @order.token, anchor: "deals", **embed_params), alert: e.message
+  end
 
   # "Add to calendar": the show as a one-event .ics file.
   def calendar

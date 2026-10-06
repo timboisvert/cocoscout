@@ -1,0 +1,49 @@
+<%# Deals on another show (TicketOffer): "Add tonight's Laugh Along Live for
+    $15", with the same − / + steppers as products. Each change is saved to
+    the hold at once (the other show's seats held on the same clock) and the
+    summary and total follow. Locals: order, deals ([[offer, listing, tier]]). %>
+<%
+  purchase = order.ticket_purchase
+  held = purchase.ticket_orders.flat_map(&:tickets).select(&:ticket_offer_id).group_by(&:ticket_offer_id).transform_values(&:size)
+  bought = order.tickets.size
+%>
+<div class="rounded-2xl border border-pink-200 bg-white overflow-hidden">
+  <div class="px-5 py-4">
+    <h2 class="font-semibold text-gray-900">Make it a night</h2>
+    <p class="text-xs text-gray-500 mt-0.5">Add another show for less, paid with your tickets.</p>
+  </div>
+  <ul class="divide-y divide-gray-100 border-t border-gray-100">
+    <% deals.each do |offer, listing, tier| %>
+      <%
+        deal = offer.deal_price_cents(tier)
+        tax = TaxCalculator.for_ticket(listing, tier, deal).added_cents
+        deal_all_in = TicketPricing.quote(items: [ { price_cents: deal, discount_cents: 0, tax_cents: tax } ], fee_mode: order.fee_mode).total_cents
+        normal_all_in = TicketPricing.all_in_price_cents(listing, tier)
+        left = listing.inventory.remaining(tier: tier)
+        max = left.nil? ? offer.limit_for(bought) : [ offer.limit_for(bought), left + held[offer.id].to_i ].min
+      %>
+      <li class="flex items-center gap-3 px-5 py-4" data-checkout-target="productRow" data-kind="deal" data-offer-id="<%= offer.id %>" data-max="<%= max %>">
+        <div class="min-w-0 flex-1">
+          <div class="font-medium text-gray-900"><%= listing.display_title %></div>
+          <div class="text-sm text-gray-600"><%= listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %> · <%= tier.name %></div>
+          <div class="text-sm mt-0.5">
+            <span class="font-semibold text-gray-900"><%= number_to_currency(deal_all_in / 100.0) %></span>
+            <% if normal_all_in > deal_all_in %><span class="text-gray-500"> · normally <%= number_to_currency(normal_all_in / 100.0) %></span><% end %>
+          </div>
+          <% if offer.limit_for(bought) < TicketOffer::CEILING && offer.max_per_order.nil? %>
+            <div class="text-xs text-gray-500">One for each ticket you're buying</div>
+          <% end %>
+        </div>
+        <div class="flex items-center gap-2">
+          <%= render "shared/button", text: "−", variant: "secondary", size: "xs", type: :button, title: "One fewer for #{listing.display_title}",
+                classes: "w-11 h-11 !p-0 !rounded-full !text-xl disabled:opacity-40 disabled:cursor-default",
+                data: { checkout_target: "productMinus", action: "checkout#fewerProducts" } %>
+          <span class="w-6 text-center text-lg font-semibold tabular-nums" data-checkout-target="productCount" aria-live="polite"><%= held[offer.id].to_i %></span>
+          <%= render "shared/button", text: "+", variant: "outline-pink", size: "xs", type: :button, title: "One more for #{listing.display_title}",
+                classes: "w-11 h-11 !p-0 !rounded-full !text-xl disabled:opacity-40 disabled:cursor-default",
+                data: { checkout_target: "productPlus", action: "checkout#moreProducts" } %>
+        </div>
+      </li>
+    <% end %>
+  </ul>
+</div>
