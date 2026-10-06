@@ -63,8 +63,11 @@ class TicketLink
       return cocoscout(listing, code)
     end
 
-    url = show.tickets_url.presence || production.tickets_url.presence
-    return NONE if url.blank? || production.tickets_mode == "none"
+    # A date answering for itself: its own link, or no tickets. Otherwise the production's.
+    return NONE if show.tickets_mode == "none"
+
+    url = show.tickets_mode == "elsewhere" ? show.tickets_url.presence : production.tickets_url.presence
+    return NONE if url.blank? || (show.tickets_mode.nil? && production.tickets_mode == "none")
 
     site = recognize(url)
     Link.new(kind: :outside, url: url, label: "Get tickets", state: :outside, site: site && site[:name])

@@ -73,8 +73,15 @@ class Show < ApplicationRecord
   has_one :show_financials, dependent: :destroy
   # On sale through CocoScout Ticketing. A draft goes with its show; one with
   # orders refuses (the show gets cancelled and refunded instead).
-  # This date's tickets, when they're somewhere other than the production's (TicketLink).
+  # This date's own answer to the Tickets question (TicketLink): nil follows
+  # the production; "elsewhere" points at tickets_url; "none" means no tickets.
+  TICKETS_MODES = %w[elsewhere none].freeze
+  validates :tickets_mode, inclusion: { in: TICKETS_MODES }, allow_nil: true
   validates :tickets_url, format: { with: %r{\Ahttps?://\S+\z}, message: "must start with http:// or https://" }, allow_blank: true
+
+  def tickets_override?
+    tickets_mode.present?
+  end
   has_one :ticket_listing, dependent: :destroy
   has_one :show_payout, dependent: :destroy
   has_many :production_expense_allocations, dependent: :destroy

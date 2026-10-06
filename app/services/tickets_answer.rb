@@ -15,7 +15,7 @@
 class TicketsAnswer
   class Error < StandardError; end
 
-  Result = Struct.new(:mode, :site, :listings, keyword_init: true)
+  Result = Struct.new(:mode, :site, :listings, :needs_prices, keyword_init: true)
 
   def self.apply!(production, mode:, url: nil, tiers: [], fee_mode: nil, schedule_mode: nil, opens_days_before: nil)
     case mode.to_s
@@ -36,18 +36,41 @@ class TicketsAnswer
     attrs[:schedule_mode] = schedule_mode if schedule_mode.in?(ProductionTicketing::SCHEDULE_MODES)
     attrs[:opens_days_before] = opens_days_before.to_i if schedule_mode == "relative" && opens_days_before.to_i.positive?
     rows = tier_rows(tiers)
-    raise Error, "Add at least one ticket type with a price." if setup.ticket_tiers.active.none? && rows.empty?
+    # Without prices yet (the production's Tickets tab sends them to Ticketing
+    # for that), the setup is made but stays off until the prices are set.
+    needs_prices = setup.ticket_tiers.active.none? && rows.empty?
+    attrs[:enabled] = false if needs_prices
 
     ProductionTicketing.transaction do
       setup.update!(attrs)
       rows.each_with_index { |row, i| setup.ticket_tiers.create!(row.merge(position: i)) } if setup.ticket_tiers.active.none?
       production.update!(tickets_mode: "cocoscout", tickets_url: nil)
-      TicketingProfile.for(organization).update!(enabled: true)
+      TicketingProfile.for(organization).update!(enabled: true) if setup.enabled?
     end
+    return Result.new(mode: "cocoscout", needs_prices: true) if needs_prices
+
     ProductionTicketingSync.sync_all!(setup)
     ProductionTicketingDates.switch!(setup, on: true)
     result = ProductionTicketingDates.sync!(setup)
     Result.new(mode: "cocoscout", listings: result)
+  end
+
+  # A date's own answer (Show#tickets_mode), after it's saved: a date answering
+  # for itself isn't sold on CocoScout, so it leaves the production's setup
+  # (its unsold listing goes); one following the production again rejoins.
+  def self.apply_show!(show)
+    setup = show.production&.production_ticketing
+    return unless setup
+
+    excluded = setup.excluded_show_ids.include?(show.id)
+    if show.tickets_override? && !excluded
+      setup.update!(excluded_show_ids: setup.excluded_show_ids + [ show.id ])
+    elsif !show.tickets_override? && excluded
+      setup.update!(excluded_show_ids: setup.excluded_show_ids - [ show.id ])
+    else
+      return
+    end
+    ProductionTicketingDates.sync!(setup) if setup.enabled?
   end
 
   def self.elsewhere!(production, url)

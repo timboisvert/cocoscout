@@ -49,10 +49,12 @@ RSpec.describe TicketLink do
       expect(described_class.for(show).kind).to eq(:none)
       production.update!(tickets_mode: "elsewhere", tickets_url: "https://www.tickettailor.com/events/sg")
       expect(described_class.for(show)).to have_attributes(kind: :outside, url: "https://www.tickettailor.com/events/sg", site: "Ticket Tailor", label: "Get tickets")
-      show.update!(tickets_url: "https://www.eventbrite.com/e/1")
+      show.update!(tickets_mode: "elsewhere", tickets_url: "https://www.eventbrite.com/e/1")
       expect(described_class.for(show)).to have_attributes(url: "https://www.eventbrite.com/e/1", site: "Eventbrite")
+      show.update!(tickets_mode: "none", tickets_url: nil)
+      expect(described_class.for(show).kind).to eq(:none) # the date says no tickets, whatever the production says
+      show.update!(tickets_mode: nil)
       production.update!(tickets_mode: "none", tickets_url: nil)
-      show.update!(tickets_url: nil)
       expect(described_class.for(show).kind).to eq(:none)
     end
   end

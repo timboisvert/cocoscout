@@ -1601,6 +1601,9 @@ module Manage
       was_act_based = show.act_based?
       return false unless show.update(attrs)
 
+      # A date answering the Tickets question for itself leaves (or rejoins) the production's sales.
+      TicketsAnswer.apply_show!(show) if attrs.key?(:tickets_mode)
+
       if !was_act_based && show.act_based?
         CastingModeConverter.to_acts_for_show!(show)
       elsif was_act_based && show.role_based?
@@ -1718,8 +1721,20 @@ module Manage
       permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :wide_image, :remove_wide_image, :production_id, :location_id, :location_space_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_date, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :casting_mode, :is_online, :online_location_info,
-                                               :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes, :tickets_url,
+                                               :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,
+                                               :tickets_override, :tickets_mode, :tickets_url,
                                                show_links_attributes: %i[id url text _destroy])
+
+      # The Tickets tab: off, the date follows the production (nothing of its
+      # own); on, its own answer, with a link only when it points somewhere.
+      if permitted.key?(:tickets_override)
+        if permitted.delete(:tickets_override) == "1" && permitted[:tickets_mode].in?(Show::TICKETS_MODES)
+          permitted[:tickets_url] = permitted[:tickets_mode] == "elsewhere" ? TicketLink.recognize(permitted[:tickets_url])&.dig(:url) : nil
+        else
+          permitted[:tickets_mode] = nil
+          permitted[:tickets_url] = nil
+        end
+      end
 
       # If is_online is true, clear location_id; if false, clear online_location_info
       if [ "1", "true", true ].include?(permitted[:is_online])

@@ -4,9 +4,13 @@
     data-controller="radio-card tickets-question" and the sites value.
     Locals: organization, name (the production's), answer ({ "mode", "url",
     "fee_mode", "schedule_mode", "opens_days_before", "tiers" }), setup
-    (ProductionTicketing or nil). %>
+    (ProductionTicketing or nil), cocoscout_fields (default true; false on
+    Production Settings, where prices and dates are Ticketing's: the CocoScout
+    answer just points there), production (optional, for that link). %>
 <%
   pro = organization.feature_available?(:ticketing)
+  cocoscout_fields = local_assigns.fetch(:cocoscout_fields, true)
+  production = local_assigns[:production]
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   answer = (local_assigns[:answer] || {}).to_h.stringify_keys
   has_tiers = setup&.ticket_tiers&.active&.any?
@@ -37,7 +41,13 @@
 
   <%= render layout: "shared/choice_card", locals: { name: "tickets[mode]", value: "cocoscout", selected: mode,
         title: "Sell them on CocoScout", hint: (pro ? "Your own box office page, checkout and the door. 50¢ a paid ticket; the money fills in each show's financials and pays your people." : "Part of Pro: your own box office, 50¢ a paid ticket."), disabled: !pro } do %>
-    <% if pro %>
+    <% if pro && !cocoscout_fields %>
+      <% if setup&.persisted? %>
+        <p class="text-sm text-gray-700">Ticket types, prices, dates and the page are set in <%= link_to "Ticketing", manage_production_ticketing_path(production), class: "font-medium text-pink-600 hover:text-pink-700" %><%= setup.enabled? ? "; it's on." : "; turn it on there when the prices are set." %></p>
+      <% else %>
+        <p class="text-sm text-gray-700">Save, and you'll set the ticket types and prices in Ticketing next. Every date goes on sale right away once it's on.</p>
+      <% end %>
+    <% elsif pro %>
       <% if has_tiers %>
         <p class="text-sm text-gray-700"><%= name %> already has its ticket types: <%= setup.ticket_tiers.active.map { |t| "#{t.name} #{number_to_currency(t.price_cents / 100.0)}" }.to_sentence %>. Change them in Ticketing.</p>
       <% else %>

@@ -19,7 +19,7 @@
       { label: "Location" },
       { label: "Casting & Visibility" },
       { label: "Images, Links & Notes" },
-      { label: "Tickets" },
+      { label: "Tickets", pro: true },
       { label: "Linked Events" },
       { label: "Danger Zone", danger: true }
     ]
@@ -39,8 +39,12 @@
   <nav class="hidden sm:flex space-x-1 border-b border-gray-200 mt-6 mb-6 overflow-x-auto">
     <% edit_tabs.each_with_index do |tab, i| %>
       <button type="button" data-tabs-target="tab" data-index="<%= i %>" data-action="tabs#select"
-              class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap <%= tab[:danger] ? 'text-red-500' : '' %> <%= i.zero? ? 'border-pink-500 text-pink-600 bg-white' : 'border-transparent text-gray-500 bg-gray-50' %>">
+              class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap <%= tab[:pro] ? 'inline-flex items-center gap-1' : '' %> <%= tab[:danger] ? 'text-red-500' : '' %> <%= i.zero? ? 'border-pink-500 text-pink-600 bg-white' : 'border-transparent text-gray-500 bg-gray-50' %>">
         <%= tab[:label] %>
+        <% if tab[:pro] %>
+          <%= render "shared/pro_marker" %>
+          <%= render "shared/pro_marker", kind: :lock unless @production.organization.feature_available?(:ticketing) %>
+        <% end %>
       </button>
     <% end %>
   </nav>

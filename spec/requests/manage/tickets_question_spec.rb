@@ -47,6 +47,15 @@ RSpec.describe "The Tickets question", type: :request do
     get manage_production_show_path(production, show)
     expect(response.body).to include("On CocoScout", "of 70", manage_ticket_listing_path(show.ticket_listing))
     expect(response.body).not_to include("Give tickets", "Where do people get tickets")
+
+    # A date answering for itself leaves the production's CocoScout sales; following it again rejoins.
+    patch manage_show_path(production, show), params: { show: { tickets_override: "1", tickets_mode: "none" } }
+    expect(show.reload.tickets_mode).to eq("none")
+    expect(setup.reload.excluded_show_ids).to eq([ show.id ])
+    expect(show.ticket_listing).to be_nil
+    patch manage_show_path(production, show), params: { show: { tickets_override: "0" } }
+    expect(setup.reload.excluded_show_ids).to eq([])
+    expect(show.reload.ticket_listing).to have_attributes(status: "on_sale")
   end
 
   it "takes a pasted link, names the site and adds it to the ticket sources; a date can point somewhere else" do
@@ -62,12 +71,19 @@ RSpec.describe "The Tickets question", type: :request do
     get manage_production_show_path(production, show)
     expect(response.body).to include("Sold on Ticket Tailor", "The production&#39;s link")
 
-    patch manage_production_show_tickets_path(production, show), params: { tickets_url: "https://www.eventbrite.com/e/99" }
-    expect(response).to redirect_to(manage_production_show_path(production, show))
-    expect(show.reload.tickets_url).to eq("https://www.eventbrite.com/e/99")
+    # The date's own answer, from its Tickets tab: inherit, or set it for this date only.
+    get manage_edit_show_path(production, show)
+    expect(response.body).to include("Set tickets for this date only", "Sold on Ticket Tailor", 'name="show[tickets_override]"')
+    patch manage_show_path(production, show), params: { show: { tickets_override: "1", tickets_mode: "elsewhere", tickets_url: "eventbrite.com/e/99" } }
+    expect(response).to redirect_to(manage_show_path(production, show))
+    expect(show.reload.attributes.values_at("tickets_mode", "tickets_url")).to eq([ "elsewhere", "https://eventbrite.com/e/99" ])
     expect(TicketLink.for(show).site).to eq("Eventbrite")
     get manage_production_show_path(production, show)
     expect(response.body).to include("Sold on Eventbrite", "This date&#39;s own link")
+
+    patch manage_show_path(production, show), params: { show: { tickets_override: "0", tickets_mode: "elsewhere", tickets_url: "eventbrite.com/e/99" } }
+    expect(show.reload.attributes.values_at("tickets_mode", "tickets_url")).to eq([ nil, nil ])
+    expect(TicketLink.for(show).site).to eq("Ticket Tailor")
 
     patch manage_production_tickets_path(production), params: { tickets: { mode: "elsewhere", url: "nope" } }
     expect(flash[:alert]).to eq("Paste the link where people buy tickets.")
@@ -82,8 +98,12 @@ RSpec.describe "The Tickets question", type: :request do
     org.update!(comped_indefinitely: false)
     patch manage_production_tickets_path(production), params: { tickets: { mode: "cocoscout", tiers: { "0" => { name: "General", price: "20" } } } }
     expect(flash[:alert]).to eq("Selling tickets on CocoScout is part of Pro.")
+    # A free plan sees the Pro pitch on both Tickets tabs, not the question.
     get edit_manage_production_path(production, tab: 7)
-    expect(response.body).to include("Part of Pro")
+    expect(response.body).to include("Pro feature", "Your own box office")
+    expect(response.body).not_to include("Where do people get tickets for Boylesque?")
+    get manage_edit_show_path(production, show)
+    expect(response.body).to include("Pro feature", "Your own box office")
 
     org.update!(comped_indefinitely: true)
     patch manage_production_tickets_path(production), params: { tickets: { mode: "cocoscout", tiers: { "0" => { name: "General", price: "20", seats: "60" } } } }

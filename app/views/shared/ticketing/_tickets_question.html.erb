@@ -2,7 +2,8 @@
     once per production, three answers, applied by TicketsAnswer. The fields
     are shared/ticketing/tickets_fields; this wraps them in the form the
     production page (and the show page's modal) posts.
-    Locals: production, return_to (optional), heading (default true). %>
+    Locals: production, return_to (optional), heading (default true),
+    cocoscout_fields (default true; see tickets_fields). %>
 <%
   heading = local_assigns.fetch(:heading, true)
   return_to = local_assigns[:return_to]
@@ -14,7 +15,8 @@
   <% if heading %>
     <h3 class="text-base font-semibold text-gray-900">Where do people get tickets for <%= production.name %>?</h3>
   <% end %>
-  <%= render "shared/ticketing/tickets_fields", organization: production.organization, name: production.name, answer: answer, setup: production.production_ticketing %>
+  <%= render "shared/ticketing/tickets_fields", organization: production.organization, name: production.name, answer: answer, setup: production.production_ticketing,
+        production: production, cocoscout_fields: local_assigns.fetch(:cocoscout_fields, true) %>
   <div class="pt-1">
     <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
   </div>
