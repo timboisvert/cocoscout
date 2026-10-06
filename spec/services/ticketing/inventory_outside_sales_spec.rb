@@ -30,8 +30,8 @@ RSpec.describe Ticketing::Inventory, "with tickets sold elsewhere" do
     expect(listing.show.show_financials.ticket_count).to eq(19)
     expect(TicketOutsideSales.fed_source_ids(listing.show)).to contain_exactly(ticket_tailor.id, eventbrite.id)
 
-    # Cleared, a site's rows and its financials line go; the other site's stay.
-    TicketOutsideSales.record!(listing, { ticket_tailor.id.to_s => { vip.id.to_s => { "tickets" => "", "amount" => "" }, general.id.to_s => { "tickets" => "0" } } })
+    # Cleared (or left out of the form), a site's rows and its financials line go; the other site's stay.
+    TicketOutsideSales.record!(listing, { ticket_tailor.id.to_s => { vip.id.to_s => { "tickets" => "", "amount" => "" } } })
     expect(listing.ticket_outside_sales.count).to eq(1)
     expect(listing.show.show_financials.reload.ticket_sales_lines.pluck(:ticket_source_id)).to eq([ eventbrite.id ])
     expect(listing.inventory.remaining(tier: vip)).to eq(10)
@@ -44,7 +44,8 @@ RSpec.describe Ticketing::Inventory, "with tickets sold elsewhere" do
 
     theirs = create(:organization).ticket_sources.create!(name: "Theirs")
     other_tier = create(:ticket_listing, organization: org).ticket_tiers.create!(name: "General", price_cents: 1_000, quantity: 5)
-    TicketOutsideSales.record!(listing, { theirs.id.to_s => { vip.id.to_s => { "tickets" => "3" } }, ticket_tailor.id.to_s => { other_tier.id.to_s => { "tickets" => "3" } } })
-    expect(listing.ticket_outside_sales.sum(:tickets_sold)).to eq(10)
+    TicketOutsideSales.record!(listing, { theirs.id.to_s => { vip.id.to_s => { "tickets" => "3" } },
+                                          ticket_tailor.id.to_s => { vip.id.to_s => { "tickets" => "10" }, other_tier.id.to_s => { "tickets" => "3" } } })
+    expect(listing.ticket_outside_sales.pluck(:ticket_source_id, :ticket_tier_id, :tickets_sold)).to eq([ [ ticket_tailor.id, vip.id, 10 ] ])
   end
 end

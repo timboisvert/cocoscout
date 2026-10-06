@@ -1,0 +1,15 @@
+<%# One ticket type's row for one site in the Sold elsewhere modal: the type,
+    how many sold there, the money (optional), Remove. Also the modal's
+    template, with __SOURCE__ / __TIER__ / __TIER_NAME__ for the JS to fill.
+    Locals: source_key, tier_id, tier_name, tickets, amount, input_class. %>
+<div class="grid grid-cols-[minmax(0,1fr)_5.5rem_7rem_auto] gap-x-2 items-center" data-tier-id="<%= tier_id %>">
+  <label for="outside_tickets_<%= source_key %>_<%= tier_id %>" class="text-sm text-gray-900 truncate"><%= tier_name %></label>
+  <%= number_field_tag "sales[#{source_key}][#{tier_id}][tickets]", tickets, id: "outside_tickets_#{source_key}_#{tier_id}", min: 0, inputmode: "numeric", placeholder: "0",
+        "aria-label": "#{tier_name} sold there", class: "#{input_class} text-right" %>
+  <div class="relative">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+    <%= text_field_tag "sales[#{source_key}][#{tier_id}][amount]", amount, id: "outside_amount_#{source_key}_#{tier_id}", inputmode: "decimal", placeholder: "Later",
+          "aria-label": "#{tier_name} sales there", class: "#{input_class} pl-7 text-right" %>
+  </div>
+  <%= render "shared/button", text: "Remove", variant: "ghost", size: "xs", type: :button, data: { action: "click->outside-sales#remove" } %>
+</div>

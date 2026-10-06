@@ -60,7 +60,9 @@ RSpec.describe "Manage ticket listings", type: :request do
       expect([ listing.inventory.remaining(tier: general), listing.inventory.remaining(tier: vip) ]).to eq([ 56, 4 ])
 
       get manage_ticket_listing_path(listing)
-      expect(response.body).to include("6 on Ticket Tailor", "4 on Eventbrite", "with sales elsewhere")
+      expect(response.body).to include("6 on Ticket Tailor", "4 on Eventbrite", "with sales elsewhere", "Add a ticket type", 'data-tier-chip="')
+      # Only the rows a site has are drawn; the rest come from the template on Add.
+      expect(response.body.scan(/name="sales\[#{eventbrite.id}\]\[\d+\]\[tickets\]"/).size).to eq(1)
 
       # The worksheet shows those rows but doesn't let anyone type over them.
       get manage_money_show_financials_path(friday)

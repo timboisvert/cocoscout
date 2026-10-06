@@ -10,7 +10,9 @@
 #   fed_source_ids the sites whose financials line comes from here, which
 #                 the worksheet shows but doesn't let anyone type over.
 class TicketOutsideSales
-  # rows: { source_id => { tier_id => { "tickets" => "6", "amount" => "$120" } } }
+  # rows: { source_id => { tier_id => { "tickets" => "6", "amount" => "$120" } } }.
+  # A site in the form is the whole truth for that site: a type it leaves out
+  # sold nothing there. Sites not in the form are left alone.
   def self.record!(listing, rows)
     organization = listing.organization
     tiers = listing.ticket_tiers.active.reject(&:bundle?).index_by(&:id)
@@ -18,8 +20,8 @@ class TicketOutsideSales
     ActiveRecord::Base.transaction do
       rows.each do |source_id, by_tier|
         source = sources[source_id.to_i] or next
-        by_tier.to_h.each do |tier_id, cells|
-          tier = tiers[tier_id.to_i] or next
+        tiers.each_value do |tier|
+          cells = by_tier.to_h.fetch(tier.id.to_s, {})
           tickets = cells["tickets"].to_i
           cents = dollars_to_cents(cells["amount"])
           row = listing.ticket_outside_sales.find_or_initialize_by(ticket_tier: tier, ticket_source: source)

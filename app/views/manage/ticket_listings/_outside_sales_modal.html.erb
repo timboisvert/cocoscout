@@ -1,12 +1,47 @@
-<%# Tickets sold on other sites for this date (Ticket Tailor, Eventbrite): for
-    each site, a count per ticket type (required) and the money (optional),
-    plus a place to add a site. Each type's seats here shrink by its count,
+<%# Tickets sold on other sites for this date (Ticket Tailor, Eventbrite): one
+    block per site, listing only the ticket types it has numbers for; "Add a
+    ticket type" adds the only one left, or offers the choice
+    (outside_sales_controller). Each type's seats here shrink by its count,
     and the sums feed the show's financials rows.
     Locals: id, listing, sources (hand-made, active), rows ({ [source_id, tier_id] => TicketOutsideSale }). %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   tiers = listing.ticket_tiers.active.reject(&:bundle?)
-  grid = "grid grid-cols-[minmax(0,1fr)_5.5rem_7rem] gap-x-3 gap-y-2 items-center"
+  site_block = lambda do |key, heading|
+    capture do
+%>
+      <div class="space-y-2" data-outside-sales-target="site" data-outside-sales-site data-source="<%= key %>">
+        <div class="flex items-center justify-between gap-3">
+          <%= heading %>
+          <%# A plain wrapper carries `hidden`: the button itself is inline-flex. %>
+          <span data-outside-sales-add>
+            <%= render "shared/button", text: (tiers.size == 1 ? "Add #{tiers.first.name}" : "Add a ticket type"), variant: "secondary", size: "xs", type: :button, icon: "plus",
+                  data: { action: "click->outside-sales#add" } %>
+          </span>
+        </div>
+        <%= hidden_field_tag "sales[#{key}][any]", "1", id: nil %>
+        <div class="space-y-2" data-outside-sales-rows>
+          <% tiers.each do |tier| %>
+            <% row = key == "new" ? nil : rows[[ key.to_i, tier.id ]] %>
+            <% next unless row %>
+            <%= render "manage/ticket_listings/outside_sales_row", source_key: key, tier_id: tier.id, tier_name: tier.name, input_class: input_class,
+                  tickets: (row.tickets_sold.positive? ? row.tickets_sold : nil), amount: (row.amount_cents.positive? ? format("%.2f", row.amount_cents / 100.0) : nil) %>
+          <% end %>
+        </div>
+        <div class="hidden" data-outside-sales-chooser>
+          <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+            Which type?
+            <% tiers.each do |tier| %>
+              <span data-tier-chip="<%= tier.id %>">
+                <%= render "shared/button", text: tier.name, variant: "outline-pink", size: "xs", type: :button, data: { action: "click->outside-sales#pick", tier_id: tier.id } %>
+              </span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+<%
+    end
+  end
 %>
 <div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
      data-controller="modal" data-action="click->modal#closeOnBackdrop">
@@ -17,49 +52,21 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <%= form_with url: manage_ticket_listing_outside_sales_path(listing), method: :patch, data: { turbo: false } do %>
+    <%= form_with url: manage_ticket_listing_outside_sales_path(listing), method: :patch, data: { turbo: false, controller: "outside-sales",
+          outside_sales_tiers_value: tiers.map { |t| { id: t.id, name: t.name } }.to_json } do %>
+      <template data-outside-sales-target="rowTemplate">
+        <%= render "manage/ticket_listings/outside_sales_row", source_key: "__SOURCE__", tier_id: "__TIER__", tier_name: "__TIER_NAME__", tickets: nil, amount: nil, input_class: input_class %>
+      </template>
       <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
         <p class="text-sm text-gray-600">
-          Tickets for <%= ticket_listing_date_label(listing) %> sold on other sites, by ticket type. Each type has that many fewer seats here, and the counts go straight into this show's financials.
+          Tickets for <%= ticket_listing_date_label(listing) %> sold on other sites. Each ticket type has that many fewer seats here, and the counts go straight into this show's financials.
           <% if sources.empty? %>Name the site first; it joins your ticket sources for every show.<% end %>
         </p>
         <% sources.each do |source| %>
-          <div class="space-y-2">
-            <div class="text-sm font-semibold text-gray-900"><%= source.name %></div>
-            <div class="<%= grid %> text-sm">
-              <div class="text-xs font-medium text-gray-500">Ticket type</div>
-              <div class="text-xs font-medium text-gray-500 text-right">Sold there</div>
-              <div class="text-xs font-medium text-gray-500 text-right">Sales <span class="font-normal">(optional)</span></div>
-              <% tiers.each do |tier| %>
-                <% row = rows[[ source.id, tier.id ]] %>
-                <% key = "#{source.id}_#{tier.id}" %>
-                <label for="outside_tickets_<%= key %>" class="text-gray-900 truncate"><%= tier.name %></label>
-                <%= number_field_tag "sales[#{source.id}][#{tier.id}][tickets]", (row&.tickets_sold.to_i.positive? ? row.tickets_sold : nil), id: "outside_tickets_#{key}",
-                      min: 0, inputmode: "numeric", placeholder: "0", class: "#{input_class} text-right" %>
-                <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
-                  <%= text_field_tag "sales[#{source.id}][#{tier.id}][amount]", (row && row.amount_cents.positive? ? format("%.2f", row.amount_cents / 100.0) : nil), id: "outside_amount_#{key}",
-                        inputmode: "decimal", placeholder: "Later", "aria-label": "#{source.name} #{tier.name} sales", class: "#{input_class} pl-7 text-right" %>
-                </div>
-              <% end %>
-            </div>
-          </div>
+          <%= site_block.call(source.id.to_s, %(<div class="text-sm font-semibold text-gray-900">#{ERB::Util.html_escape(source.name)}</div>).html_safe) %>
         <% end %>
-        <div class="rounded-lg border border-dashed border-gray-300 p-3 space-y-2">
-          <label for="new_source_name" class="block text-xs font-medium text-gray-700"><%= sources.any? ? "Add another site" : "The site" %></label>
-          <%= text_field_tag :new_source_name, nil, placeholder: "Ticket Tailor", class: input_class %>
-          <div class="<%= grid %> text-sm">
-            <% tiers.each do |tier| %>
-              <label for="outside_tickets_new_<%= tier.id %>" class="text-gray-900 truncate"><%= tier.name %></label>
-              <%= number_field_tag "sales[new][#{tier.id}][tickets]", nil, id: "outside_tickets_new_#{tier.id}", min: 0, inputmode: "numeric", placeholder: "0",
-                    class: "#{input_class} text-right" %>
-              <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
-                <%= text_field_tag "sales[new][#{tier.id}][amount]", nil, id: "outside_amount_new_#{tier.id}", inputmode: "decimal", placeholder: "Later",
-                      "aria-label": "New site #{tier.name} sales", class: "#{input_class} pl-7 text-right" %>
-              </div>
-            <% end %>
-          </div>
+        <div class="rounded-lg border border-dashed border-gray-300 p-3">
+          <%= site_block.call("new", text_field_tag(:new_source_name, nil, placeholder: (sources.any? ? "Add another site" : "The site, like Ticket Tailor"), "aria-label": "New site", class: "#{input_class} max-w-xs")) %>
         </div>
       </div>
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
