@@ -1,0 +1,36 @@
+<%# Who gets CocoScout's bills, receipts and monthly statements: ticked
+    managers plus other addresses. Nobody chosen means the owner, so the owner
+    shows ticked until someone chooses. locals: organization %>
+<%
+  managers = organization.contract_notification_manager_users.to_a.sort_by { |u| (u.person&.name.presence || u.email_address).downcase }
+  chosen = organization.billing_contact_user_ids
+  chosen = [ organization.owner_id ] if chosen.empty? && organization.billing_contact_emails.empty?
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+%>
+<div class="mt-8 border-t border-gray-200 pt-6">
+  <h4 class="text-base font-semibold text-gray-900">Who gets the bills</h4>
+  <p class="text-sm text-gray-500 mt-1">CocoScout emails each bill, its receipt and the monthly statement to these people. With nobody chosen, they go to the owner.</p>
+  <%= form_with url: manage_billing_contacts_path, method: :patch, class: "mt-4 space-y-4" do %>
+    <div class="space-y-3">
+      <% managers.each do |user| %>
+        <% label = user.person&.name.presence || user.email_address %>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <%= check_box_tag "billing_contact_user_ids[]", user.id, chosen.include?(user.id), id: "billing_contact_user_#{user.id}",
+                class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <span>
+            <span class="block text-sm font-medium text-gray-900"><%= label %><% if user.id == organization.owner_id %> <span class="font-normal text-gray-500">(owner)</span><% end %></span>
+            <% if user.person&.name.present? %>
+              <span class="block text-xs text-gray-500"><%= user.email_address %></span>
+            <% end %>
+          </span>
+        </label>
+      <% end %>
+    </div>
+    <div>
+      <label for="billing_contact_emails" class="block text-sm font-medium text-gray-700 mb-1.5">Other email addresses <span class="font-normal text-gray-500">(one per line)</span></label>
+      <%= text_area_tag :billing_contact_emails, organization.billing_contact_emails.join("\n"), rows: 2,
+            placeholder: "accounting@yourorganization.com", class: input_class %>
+    </div>
+    <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+  <% end %>
+</div>

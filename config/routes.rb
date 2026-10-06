@@ -1096,6 +1096,7 @@ Rails.application.routes.draw do
     post "/billing/portal",   to: "billing#portal",   as: "billing_portal"
     get  "/billing/statements/:id", to: "billing#statement", as: "billing_statement"
     get  "/billing/invoices/:id", to: "billing#invoice", as: "billing_invoice"
+    patch "/billing/contacts",   to: "billing#update_contacts", as: "billing_contacts"
 
     # Agreement templates (org-level) - nested under organization for better URL structure
     scope path: "organization" do

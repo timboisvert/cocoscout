@@ -51,6 +51,17 @@ module Manage
                                                                          type: "application/pdf", disposition: "inline"
     end
 
+    # PATCH /manage/billing/contacts — who gets the bills, receipts and
+    # monthly statements: ticked managers plus other addresses, one per line.
+    def update_contacts
+      @organization = Current.organization
+      @organization.save_billing_contacts!(user_ids: params[:billing_contact_user_ids],
+                                                   emails: params[:billing_contact_emails].to_s.split(/[\s,;]+/))
+      redirect_to org_billing_tab_path, notice: "Saved who gets the bills."
+    rescue ArgumentError => e
+      redirect_to org_billing_tab_path, alert: e.message
+    end
+
     # POST /manage/billing/checkout — start a subscription Checkout Session.
     def checkout
       @organization = Current.organization

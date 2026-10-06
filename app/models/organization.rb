@@ -194,6 +194,46 @@ class Organization < ApplicationRecord
     contract_notification_manager_users.where(id: ids)
   end
 
+  # --- Billing contacts -------------------------------------------------------
+  # Who gets CocoScout's bills, receipts and monthly statements: the managers
+  # ticked on the Billing & Plan tab plus any other addresses typed there.
+  # Nobody chosen means the owner (Tim, 2026-10-06). Chosen managers are
+  # intersected with the current manager pool, so a removed manager drops out.
+  BillingContact = Struct.new(:email, :first_name)
+
+  def billing_contact_user_ids
+    Array(self[:billing_contact_user_ids]).map(&:to_i)
+  end
+
+  def billing_contact_emails
+    Array(self[:billing_contact_emails]).map(&:to_s)
+  end
+
+  def billing_contacts
+    first_name = ->(user) { user.person&.name.to_s.split.first.presence || "there" }
+    users = billing_contact_user_ids.any? ? contract_notification_manager_users.where(id: billing_contact_user_ids).order(:id).to_a : []
+    contacts = users.map { |u| BillingContact.new(u.email_address, first_name.call(u)) } +
+               billing_contact_emails.map { |e| BillingContact.new(e, "there") }
+    contacts = contacts.select { |c| c.email.present? }.uniq(&:email)
+    return contacts if contacts.any?
+    return [] if owner&.email_address.blank?
+
+    [ BillingContact.new(owner.email_address, first_name.call(owner)) ]
+  end
+
+  # Saves the Billing & Plan tab's choices. Addresses must look like emails;
+  # ids outside the manager pool are dropped. Stripe's customer email follows
+  # the first contact, so Stripe's own payment-problem emails reach them too.
+  def save_billing_contacts!(user_ids:, emails:)
+    emails = Array(emails).map { |e| e.to_s.strip.downcase }.compact_blank.uniq
+    bad = emails.reject { |e| e.match?(URI::MailTo::EMAIL_REGEXP) }
+    raise ArgumentError, "#{bad.first} isn't an email address." if bad.any?
+
+    allowed = contract_notification_manager_users.pluck(:id)
+    update!(billing_contact_user_ids: Array(user_ids).map(&:to_i) & allowed, billing_contact_emails: emails)
+    BillingContactsStripeSyncJob.perform_later(id) if stripe_customer_id.present?
+  end
+
   # --- Contract signature deadlines -------------------------------------------
   # How long a signature request stays valid. Every request gets a deadline —
   # a promise that a contract expires has to be true, or people learn it isn't.

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Makes (or remakes) one theater's statement for a month: the totals, the
-# PDF, and, the first time only, the email to the owner.
+# PDF, and, the first time only, the email to the billing contacts.
 class OrgStatementJob < ApplicationJob
   queue_as :default
 
@@ -15,11 +15,12 @@ class OrgStatementJob < ApplicationJob
     statement.pdf.attach(io: StringIO.new(OrgStatementPdf.new(statement).render), filename: statement.filename, content_type: "application/pdf")
     return unless email && statement.emailed_at.nil?
 
-    owner = organization.owner
-    return if owner&.email_address.blank?
+    contacts = organization.billing_contacts
+    return if contacts.empty?
 
-    first_name = owner.person&.name.to_s.split.first.presence || "there"
-    OrgStatementMailer.statement(statement, to: owner.email_address, first_name: first_name).deliver_now
+    contacts.each do |contact|
+      OrgStatementMailer.statement(statement, to: contact.email, first_name: contact.first_name).deliver_now
+    end
     statement.update!(emailed_at: Time.current)
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_091000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1597,6 +1597,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_090000) do
 
   create_table "organizations", force: :cascade do |t|
     t.boolean "alert_uncovered_show_roles", default: false, null: false
+    t.jsonb "billing_contact_emails", default: [], null: false
+    t.jsonb "billing_contact_user_ids", default: [], null: false
     t.boolean "comped_indefinitely", default: false, null: false
     t.datetime "comped_until"
     t.boolean "comped_usage", default: false, null: false

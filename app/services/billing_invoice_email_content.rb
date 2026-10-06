@@ -2,12 +2,12 @@
 
 # What the bill and receipt emails say about one CocoScout bill.
 class BillingInvoiceEmailContent
-  def self.for(invoice, owner)
+  def self.for(invoice, first_name)
     money = ->(cents) { ActiveSupport::NumberHelper.number_to_currency(cents.to_i / 100.0) }
     url_options = Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
     lines = Array(invoice.lines).reject { |line| line["amount_cents"].to_i.zero? }
     {
-      "first_name" => owner.person&.name.to_s.split.first.presence || "there",
+      "first_name" => first_name.presence || "there",
       "organization_name" => invoice.organization.name,
       "bill_title" => invoice.title,
       "amount" => money.call(invoice.status == "paid" ? invoice.amount_paid_cents : invoice.amount_due_cents),

@@ -14,6 +14,7 @@
       </p>
     <% end %>
     <%= render "manage/billing/bills", organization: @organization %>
+    <%= render "manage/billing/contacts", organization: @organization %>
     <div class="mt-6">
       <%= render "manage/funding_source", org: @organization,
             return_to: section_manage_organization_path(@organization, section: "billing") %>
