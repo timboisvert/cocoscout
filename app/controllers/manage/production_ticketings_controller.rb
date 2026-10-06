@@ -97,7 +97,16 @@ module Manage
         return redirect_to(section_path(@section), notice: "Off. Its dates stopped selling; turn it on to resume.")
       end
       ProductionTicketingDates.switch!(@setup, on: true) if !was.enabled && @setup.enabled
-      finish(ProductionTicketingDates.sync!(@setup))
+      result = ProductionTicketingDates.sync!(@setup)
+      # Turned on with nothing to sell yet: say so, rather than a quiet "Saved".
+      if !was.enabled && @setup.enabled
+        if @setup.ticket_tiers.active.none?
+          flash[:alert] = "It's on, but there are no ticket types yet: set them on the Tickets tab and the dates go on sale."
+        elsif @setup.matching_shows.none?
+          flash[:alert] = "It's on, but no upcoming dates are picked yet: pick them below and they go on sale."
+        end
+      end
+      finish(result)
     end
 
     def choose_dates!

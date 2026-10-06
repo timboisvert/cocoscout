@@ -109,7 +109,7 @@ RSpec.describe "Production ticketing", type: :request do
     expect(second_show.reload.ticket_listing).to be_nil
 
     get manage_production_ticketing_path(production)
-    expect(response.body).to include("Dates picked by hand")
+    expect(response.body).to include("upcoming date picked by hand")
     expect(response.body).not_to include("New dates join on their own")
   end
 
