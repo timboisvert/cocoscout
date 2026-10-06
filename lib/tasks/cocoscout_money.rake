@@ -73,7 +73,13 @@ namespace :usage do
       puts "  remove (no paid work that month that's over): #{change.removed.join(', ')}" if change.removed.any?
       puts "  add (paid work that's over, not counted yet): #{change.added.join(', ')}" if change.added.any?
     end
-    puts "Stripe already counted what was sent to it; the usage bill is corrected to these counts when Stripe drafts it." if changes.any? { |c| c.removed.any? }
+    if changes.any? { |c| c.removed.any? || c.added.any? }
+      if month >= Date.current.beginning_of_month
+        puts "This month's usage bill is corrected to these counts when Stripe drafts it."
+      else
+        puts "A bill already sent for this month isn't changed by this; usage:overbilled[ORG_ID] gives back any overcharge."
+      end
+    end
   end
 end
 
