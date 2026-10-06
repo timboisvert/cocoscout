@@ -42,7 +42,7 @@ class TicketPassesController < TicketsController
   # A draft is only for a superadmin checking it.
   def find_pass
     pass = @organization.ticket_passes.find_by!(slug: params[:pass].to_s)
-    raise ActiveRecord::RecordNotFound if pass.status == "draft" && !superadmin_viewer?
+    raise ActiveRecord::RecordNotFound if pass.status == "draft" && !preview_viewer?(@organization)
 
     pass
   end

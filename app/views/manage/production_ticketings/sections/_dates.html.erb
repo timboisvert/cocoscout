@@ -85,7 +85,12 @@
 
   <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
     <h3 class="font-semibold text-gray-900">When sales open and close</h3>
+    <%# Right away is the default (Tim, 2026-10-06): you list a date to sell it. %>
     <div class="space-y-2">
+      <label class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+        <%= f.radio_button :schedule_mode, "immediate", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-900">Right away, as soon as a date is listed</span>
+      </label>
       <label class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
         <%= f.radio_button :schedule_mode, "relative", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
         <span class="text-sm text-gray-900 flex flex-wrap items-center gap-2">
@@ -94,10 +99,6 @@
                 class: "w-20 px-3 py-1.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
           days before each date
         </span>
-      </label>
-      <label class="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-        <%= f.radio_button :schedule_mode, "immediate", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
-        <span class="text-sm text-gray-900">As soon as a date is listed</span>
       </label>
     </div>
     <div>

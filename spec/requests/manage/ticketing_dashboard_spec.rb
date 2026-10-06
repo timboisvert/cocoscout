@@ -70,9 +70,9 @@ RSpec.describe "Ticketing dashboard", type: :request do
     expect(response.body).to include("1 show in the next two weeks isn&#39;t on sale")
   end
 
-  it "says ticketing is off until it's switched on" do
+  it "says the box office isn't open until they open it" do
     TicketingProfile.for(org).update!(enabled: false)
     get manage_ticketing_path
-    expect(response.body).to include("Ticketing is off for Stars &amp; Garters")
+    expect(response.body).to include("Your box office isn&#39;t open yet", manage_ticketing_settings_section_path(section: "box_office"))
   end
 end

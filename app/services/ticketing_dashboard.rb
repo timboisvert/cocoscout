@@ -95,9 +95,9 @@ class TicketingDashboard
     list = []
     profile = TicketingProfile.for(@organization)
     unless profile.enabled?
-      list << Alert.new(eyebrow: "Not open yet", headline: "Ticketing is off for #{@organization.name}",
-                        body: "Your box office page and checkout stay hidden until it's switched on in Settings.",
-                        actions: [ { text: "Open settings", path: routes.manage_ticketing_settings_path } ], tone: :pink)
+      list << Alert.new(eyebrow: "Not open yet", headline: "Your box office isn't open yet",
+                        body: "Set your shows up and preview their pages as you like; buyers see nothing until you open it.",
+                        actions: [ { text: "Open your box office", path: routes.manage_ticketing_settings_section_path(section: "box_office") } ], tone: :pink)
     end
     tonight.each do |listing, stats|
       list << Alert.new(eyebrow: "Tonight", headline: "#{listing.display_title} at #{listing.show.date_and_time.strftime('%-l:%M %p')}: #{stats.sold}#{" of #{stats.capacity}" if stats.capacity} sold",

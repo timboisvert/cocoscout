@@ -2,9 +2,10 @@
 
 require "rails_helper"
 
-# Ticketing is a Pro module, open only to superadmins while it's experimental.
-# Its settings hold the box office (address, fee switch, pilot switch) and the
-# v1 tax setup: one name and percentage for every ticket.
+# Ticketing is a Pro module for an organization's owners and managers (open
+# to every Pro organization since 2026-10-06). Its settings hold the box
+# office (address, fee switch, opening it) and the v1 tax setup: one name and
+# percentage for every ticket.
 RSpec.describe "Manage ticketing settings", type: :request do
   let(:password) { "Password123!" }
   let(:superadmin) { create(:user, email_address: "boisvert@gmail.com", password: password) }
@@ -25,17 +26,40 @@ RSpec.describe "Manage ticketing settings", type: :request do
       expect(response.body).not_to include("cocoscout.com/t/</span>")
     end
 
-    it "opens for a superadmin on a Pro org, and says ticketing is off until switched on" do
+    it "opens for a superadmin on a Pro org, and says the box office isn't open until they open it" do
       sign_in(superadmin)
       get manage_ticketing_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Ticketing is off for Stars &amp; Garters")
+      expect(response.body).to include("Your box office isn&#39;t open yet", "Open your box office")
       expect(response.body).to include("/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}")
     end
 
-    it "keeps managers who aren't superadmins out while it's experimental" do
+    it "lets any manager of a Pro organization in, and lets them open the box office themselves" do
       manager = create(:user, password: password)
       sign_in(manager)
+      get manage_ticketing_path
+      expect(response).to have_http_status(:ok)
+
+      get manage_ticketing_settings_section_path(section: "box_office")
+      expect(response.body).to include("Open your box office?", manage_ticketing_open_box_office_path)
+      expect(TicketingProfile.for(org).enabled?).to be(false)
+      expect(CocoScoutBalance.pooled?(org)).to be(false)
+
+      post manage_ticketing_open_box_office_path
+      expect(response).to redirect_to(manage_ticketing_path)
+      expect(TicketingProfile.for(org).reload.enabled?).to be(true)
+      expect(CocoScoutBalance.pooled?(org)).to be(true)
+
+      # Closing it again isn't theirs to do.
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { enabled: "0", default_fee_mode: "buyer" } }
+      expect(TicketingProfile.for(org).reload.enabled?).to be(true)
+    end
+
+    it "keeps a production-team member who isn't a manager out" do
+      member = create(:user, password: password)
+      create(:organization_role, user: member, organization: org, company_role: "member")
+      post handle_signin_path, params: { email_address: member.email_address, password: password }
+      get manage_path
       get manage_ticketing_path
       expect(response).to redirect_to(manage_path)
     end
@@ -47,8 +71,8 @@ RSpec.describe "Manage ticketing settings", type: :request do
       expect(response).to have_http_status(:payment_required)
     end
 
-    it "puts Ticketing in the Pro nav only for superadmins" do
-      sign_in(superadmin)
+    it "puts Ticketing in the Pro nav for managers" do
+      sign_in(create(:user, password: password))
       get manage_path
       expect(response.body).to include(manage_ticketing_path)
     end

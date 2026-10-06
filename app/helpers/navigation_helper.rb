@@ -69,10 +69,11 @@ module NavigationHelper
     # The Pro-tier modules, grouped under a small "Pro" heading so the whole set
     # reads as Pro without a badge on each one.
     pro_items = []
-    # Ticketing is experimental: superadmins only, ahead of the rest of Pro.
-    if Current.user&.superadmin?
+    # Ticketing, like Staffing, is for org owners and managers.
+    if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
       pro_items << { label: "Ticketing", path: manage_ticketing_path, icon: "ticketing", locked: !on_paid_plan, feature: :ticketing,
-                     active: %w[ticketing ticketing_settings ticket_listings ticket_orders ticket_balance ticket_taxes ticket_comps ticket_products production_ticketings].include?(controller_name) }
+                     active: %w[ticketing ticketing_settings ticket_listings ticket_orders ticket_balance ticket_taxes ticket_comps ticket_products
+                                production_ticketings ticket_passes ticket_offers ticket_offer_wizard ticket_sales_viewers short_links].include?(controller_name) }
     end
     # Staffing is limited to org owners/managers; it leads the Pro group.
     if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)

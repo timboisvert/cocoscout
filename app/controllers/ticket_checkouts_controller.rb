@@ -33,7 +33,7 @@ class TicketCheckoutsController < ApplicationController
 
     profile, = TicketingProfile.at_address(params[:org])
     listing = profile && profile.organization.ticket_listings.find_by(slug: params[:event])
-    raise ActiveRecord::RecordNotFound unless listing && (profile.enabled? || superadmin_viewer?)
+    raise ActiveRecord::RecordNotFound unless listing && (profile.enabled? || preview_viewer?(profile.organization))
 
     order = TicketCheckout.start!(listing: listing, quantities: requested_quantities, code: params[:code],
                                   client_ip: request.remote_ip, referrer: request.referer, replacing: params[:hold],
@@ -233,4 +233,9 @@ class TicketCheckoutsController < ApplicationController
     authenticated? && Current.user&.superadmin?
   end
   helper_method :superadmin_viewer?
+
+  # A closed box office can be tried by the organization's own managers.
+  def preview_viewer?(organization)
+    authenticated? && (Current.user&.superadmin? || organization&.manageable_by?(Current.user))
+  end
 end

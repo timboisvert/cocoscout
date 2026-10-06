@@ -25,9 +25,9 @@ class TicketsController < ApplicationController
     @listing = @organization.ticket_listings.find_by(slug: params[:event])
     return production(@organization.productions.find_by(public_key: params[:event].to_s.downcase)) unless @listing
 
-    # A draft's page is only for a superadmin checking it before it goes on sale.
+    # A draft's page is for the organization's managers (and superadmins) checking it before it goes on sale.
     if @listing.status == "draft"
-      raise ActiveRecord::RecordNotFound unless superadmin_viewer?
+      raise ActiveRecord::RecordNotFound unless preview_viewer?(@organization)
 
       @preview = true
     end
@@ -91,7 +91,7 @@ class TicketsController < ApplicationController
     end
 
     @preview = !@ticketing_profile.enabled?
-    raise ActiveRecord::RecordNotFound if @preview && !superadmin_viewer?
+    raise ActiveRecord::RecordNotFound if @preview && !preview_viewer?(@ticketing_profile.organization)
 
     @organization = @ticketing_profile.organization
   end
@@ -114,7 +114,9 @@ class TicketsController < ApplicationController
                                      .sort_by { |pass| pass.rows.first&.ticket_listing&.starts_at || Time.current }
   end
 
-  def superadmin_viewer?
-    authenticated? && Current.user&.superadmin?
+  # Who may see a closed box office or a draft page: the organization's own
+  # managers, and superadmins.
+  def preview_viewer?(organization)
+    authenticated? && (Current.user&.superadmin? || organization&.manageable_by?(Current.user))
   end
 end

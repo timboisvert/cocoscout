@@ -67,12 +67,7 @@ RSpec.describe "Manage::Reports", type: :request do
       TicketOrderSettlement.settle!(order, payment_intent_id: "pi_1", charge_id: "ch_1")
     end
 
-    it "live in the Reports section, for superadmins while ticketing is experimental" do
-      get manage_reports_path
-      expect(response.body).not_to include("Ticket Sales by Show")
-      get manage_report_ticket_sales_by_show_path
-      expect(response).to redirect_to(manage_reports_path)
-
+    it "live in the Reports section for the organization's managers" do
       post handle_signin_path, params: { email_address: superadmin.email_address, password: password }
       post set_organization_path(id: org.id)
       get manage_reports_path

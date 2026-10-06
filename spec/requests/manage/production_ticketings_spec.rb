@@ -22,6 +22,14 @@ RSpec.describe "Production ticketing", type: :request do
     get manage_path
   end
 
+  # Tim (2026-10-06): a listed date is for sale; "N days before" is the alternative.
+  it "sells each date right away by default" do
+    setup = ProductionTicketing.for(production)
+    expect([ setup.schedule_mode, setup.opens_days_before ]).to eq([ "immediate", 30 ])
+    get manage_edit_production_ticketing_path(production, section: "dates")
+    expect(response.body.index("Right away, as soon as a date is listed")).to be < response.body.index("days before each date")
+  end
+
   def save_tickets(rows)
     patch manage_update_production_ticketing_path(production, section: "tickets"),
           params: { production_ticketing: { ticket_tiers_attributes: rows } }

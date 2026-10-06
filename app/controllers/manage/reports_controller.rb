@@ -16,9 +16,6 @@ module Manage
     TICKET_REPORTS = %i[ticket_sales_by_show ticket_sales_by_type ticket_sales_by_channel ticket_buyers].freeze
 
     before_action :ensure_reports_access
-    # Ticketing is experimental: its reports show for superadmins only, like
-    # the rest of the module. Drop this with ensure_user_is_superadmin there.
-    before_action :ensure_ticketing_reports_access, only: TICKET_REPORTS
     # Buyers' emails and phones are the theater's to see, never a
     # production-team member's.
     before_action -> { redirect_to(manage_reports_path, notice: "Only the theater's managers can see buyers.") unless reports_org_wide? }, only: :ticket_buyers
@@ -44,7 +41,6 @@ module Manage
       {
         title: "Ticketing",
         icon: "ticketing",
-        superadmin_only: true,
         reports: [
           { key: :ticket_sales_by_show, title: "Ticket Sales by Show", description: "Tickets, sales, products, refunds and what you keep, per show." },
           { key: :ticket_sales_by_type, title: "Ticket Sales by Type", description: "How each ticket type sold across a period." },
@@ -299,10 +295,6 @@ module Manage
 
     def organization
       Current.organization
-    end
-
-    def ensure_ticketing_reports_access
-      redirect_to manage_reports_path, notice: "You do not have permission to access that page." unless Current.user&.superadmin?
     end
 
     # The period and basis chosen (TicketingPeriods), scoped to the

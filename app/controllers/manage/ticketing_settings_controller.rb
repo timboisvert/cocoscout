@@ -30,11 +30,22 @@ module Manage
       redirect_to section_path("notifications"), alert: e.message
     end
 
+    # POST ticketing/settings/open: the organization opens its own box office
+    # (Tim, 2026-10-06). The public pages and checkout go live, and from here
+    # on course and contract money collected online joins the CocoScout
+    # balance (CocoScoutBalance.pooled?). Closing it again is a superadmin's
+    # call, on the same tab.
+    def open_box_office
+      ticketing_profile.update!(enabled: true)
+      redirect_to manage_ticketing_path, notice: "Your box office is open. Buyers can find your shows at your box office link."
+    end
+
     def update
       attrs = params.require(:ticketing_profile)
                     .permit(:slug, :support_email, :default_fee_mode, :default_max_per_order, :refunds_after_show,
                             :reminder_days_before, :enabled)
-      # The pilot switch is a superadmin's call, even once managers can get here.
+      # Closing a box office (or reopening it from here) is a superadmin's call;
+      # managers open theirs with open_box_office.
       attrs.delete(:enabled) unless Current.user.superadmin?
 
       if ticketing_profile.update(attrs)

@@ -66,6 +66,7 @@ module Manage
     PRO_INCLUDES = [
       "Unlimited productions and shows/events",
       "Money: financials, payouts, contracts & advances",
+      "Ticketing: your own box office, 50¢ a paid ticket",
       "Staffing and Casting Tables",
       "Company-wide Reports",
       "Everything in Producer, with no monthly limits"
@@ -81,6 +82,20 @@ module Manage
     #   capabilities– [{ title:, body: }] concrete things you can do
     #   outcome     – the "why it matters" payoff line
     FEATURE_DETAILS = {
+      ticketing: {
+        name: "Ticketing",
+        icon: "ticketing",
+        headline: "Sell your own tickets, and let the money do the rest",
+        subhead: "Your box office page, checkout and the door, for 50¢ a paid ticket. Ticket money fills in your financials and pays your people.",
+        description: "Ticketing is CocoScout as the box office. Set a production up once and every date goes on sale; buyers get QR tickets; your team checks them in on a phone. Each sale lands in your CocoScout balance, fills in the show's financials, and is there to pay performers, staff and contractors on the next payout run.",
+        capabilities: [
+          { title: "Your own box office", body: "One page for every show you sell, a short link and QR code for posters, and a widget for your own website." },
+          { title: "50¢ a paid ticket", body: "Card processing passed through at cost, charged once per order. Buyers pay the fees or you absorb them; free tickets and comps are free." },
+          { title: "The door on a phone", body: "Scan tickets, find people by name, check whole parties in, sell at the door for cash or card." },
+          { title: "Money that does the work", body: "Sales fill in each show's financials, settle revenue shares, and pay your people from the balance, no bank debit to wait on." }
+        ],
+        outcome: "Sell the tickets, run the door, and pay everyone from the same money, without another platform in the middle."
+      },
       money: {
         name: "Money & Payments",
         icon: "dollar-sign",

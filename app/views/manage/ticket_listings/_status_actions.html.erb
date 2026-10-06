@@ -22,7 +22,7 @@
   <% end %>
 </div>
 <%= render "shared/confirm_modal", id: "confirm-put-on-sale", title: "Put this show on sale?",
-      message: "Buyers can get tickets at #{h(ticket_public_path_text(listing))}#{' once ticketing is on for your organization' unless ticketing_profile.enabled?}.",
+      message: "Buyers can get tickets at #{h(ticket_public_path_text(listing))}#{' once your box office is open' unless ticketing_profile.enabled?}.",
       confirm_text: "Put on sale", url: manage_ticket_listing_status_path(listing), method: :post, params: { status: "on_sale" } %>
 <%= render "shared/confirm_modal", id: "confirm-close-sales", title: "Close online sales?",
       message: "Nobody can buy online after this. Door sales and check-in keep working, and you can reopen sales any time.",

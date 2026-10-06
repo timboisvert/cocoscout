@@ -27,6 +27,9 @@
           { icon: "cog", text: "Settings", description: "Box office, fees, tax and door access", path: manage_ticketing_settings_path }
         ] %>
 
+  <%= render "shared/intro_guide", guide_key: "ticketing_intro", title: "How ticketing works",
+        body: %(<ol class="list-decimal pl-5 space-y-1"><li>Set a production up once: its ticket types, prices and seats. Every date goes on sale as soon as it's listed, and new dates join on their own.</li><li>Share the production's short link or QR code; buyers check out here and get QR tickets by email.</li><li>On the night, open the Door on a phone: find people by name, scan tickets, sell at the door.</li><li>Each sale lands in your CocoScout balance and fills in the show's financials; our fee is 50¢ a paid ticket.</li></ol>).html_safe %>
+
   <% d.alerts.each do |a| %>
     <%= render "shared/alert_panel", eyebrow: a.eyebrow, headline: a.headline, body: a.body, actions: a.actions, tone: a.tone %>
   <% end %>

@@ -10,6 +10,21 @@
     [ "org", "You absorb the fees", "A $20 ticket costs the buyer $20, and you keep #{number_to_currency(absorbed_net / 100.0)}." ]
   ]
 %>
+<% unless profile.enabled? %>
+  <%# Opening is the organization's own call (Tim, 2026-10-06). Outside the
+      settings form: the confirm modal carries its own form. %>
+  <div class="mb-6 rounded-xl border border-pink-200 bg-pink-50 px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+    <div class="min-w-0">
+      <div class="text-base font-semibold text-gray-900">Open your box office</div>
+      <p class="text-sm text-gray-700 mt-1">Until you do, buyers see nothing: set your shows up and preview their pages as you like. Opening makes your box office page and checkout live, charges 50¢ a paid ticket (card processing passed through at cost), and from then on course and contract money you collect online joins your CocoScout balance, where payout runs spend it first.</p>
+    </div>
+    <%= render "shared/button", text: "Open your box office", variant: "primary", size: "medium", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-open-box-office" } %>
+  </div>
+  <%= render "shared/confirm_modal", id: "confirm-open-box-office", title: "Open your box office?",
+        message: "Your box office page and checkout go live for every date on sale. Course and contract money you collect online joins your CocoScout balance from now on.",
+        confirm_text: "Open it", cancel_text: "Not yet", url: manage_ticketing_open_box_office_path, method: :post %>
+<% end %>
 <%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
   <div class="space-y-6">
     <p class="text-sm text-gray-600">Where buyers find your shows and how checkout works. Every organization gets the same page design.</p>
@@ -73,13 +88,15 @@
         <p class="text-xs text-gray-500 mt-1">Buyers get the time, the place and their tickets again. Each order gets one reminder, sent at 10am.</p>
       </div>
 
-      <% if Current.user.superadmin? %>
-        <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex items-center justify-between gap-4">
+      <% if profile.enabled? %>
+        <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between gap-4">
           <div>
-            <div class="text-sm font-medium text-gray-900">Ticketing is on</div>
-            <div class="text-xs text-gray-600 mt-0.5">The box office page and checkout are live for this organization. While ticketing is experimental, only superadmins can switch this.</div>
+            <div class="text-sm font-medium text-gray-900">Your box office is open</div>
+            <div class="text-xs text-gray-600 mt-0.5">Buyers can find your shows and check out. Course and contract money you collect online joins your CocoScout balance.</div>
           </div>
-          <%= render "shared/toggle_switch", form: f, field: :enabled %>
+          <% if Current.user.superadmin? %>
+            <%= render "shared/toggle_switch", form: f, field: :enabled, aria_label: "Box office open" %>
+          <% end %>
         </div>
       <% end %>
     </div>

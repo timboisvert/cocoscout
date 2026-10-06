@@ -38,9 +38,8 @@
 
   <%# Sell the contract's shows on CocoScout Ticketing: the production's
       ticketing takes these prices, seats and codes, with the deal's nights
-      picked (TicketListingSync). Experimental, so only superadmins on an org
-      with Ticketing see it. %>
-  <% if Current.user&.superadmin? && Current.organization&.feature_available?(:ticketing) %>
+      picked (TicketListingSync). Pro organizations only. %>
+  <% if Current.organization&.feature_available?(:ticketing) %>
     <div class="mb-6 pt-6 border-t border-gray-200 flex items-center justify-between gap-4">
       <div>
         <div class="text-sm font-medium text-gray-900">Sell these on CocoScout Ticketing</div>

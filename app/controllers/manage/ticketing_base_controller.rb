@@ -2,11 +2,9 @@
 
 module Manage
   # Everything in the Ticketing section. It's a Pro module (the paid-feature
-  # gate maps these controllers to :ticketing), for org owners and managers,
-  # and while ticketing is experimental, for superadmins only. Drop
-  # ensure_user_is_superadmin when it opens up.
+  # gate maps these controllers to :ticketing), for org owners and managers.
+  # Open to every Pro organization since 2026-10-06, the first customer live.
   class TicketingBaseController < Manage::ManageController
-    before_action :ensure_user_is_superadmin
     before_action :ensure_org_owner_or_manager
 
     private

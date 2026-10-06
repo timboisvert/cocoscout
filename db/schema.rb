@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_093000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2051,7 +2051,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_093000) do
     t.boolean "own_product_prices", default: false, null: false
     t.bigint "production_id", null: false
     t.boolean "products_at_door", default: false, null: false
-    t.string "schedule_mode", default: "relative", null: false
+    t.string "schedule_mode", default: "immediate", null: false
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
