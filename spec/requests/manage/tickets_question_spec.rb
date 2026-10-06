@@ -44,6 +44,16 @@ RSpec.describe "The Tickets question", type: :request do
     expect(response.body).to include("Open ticketing", "Give tickets", "of 70", manage_ticket_listing_path(show.ticket_listing))
   end
 
+  it "nudges from Shows & Events for the soonest production that hasn't answered, until it has" do
+    get manage_shows_path
+    expect(response.body).to include("Where do people get tickets for Boylesque?", "id=\"tickets-question-#{production.id}\"")
+
+    patch manage_production_tickets_path(production), params: { return_to: manage_shows_path, tickets: { mode: "none" } }
+    expect(response).to redirect_to(manage_shows_path)
+    get manage_shows_path
+    expect(response.body).not_to include("Where do people get tickets for Boylesque?")
+  end
+
   it "takes a pasted link, names the site and adds it to the ticket sources; a date can point somewhere else" do
     patch manage_production_tickets_path(production), params: { tickets: { mode: "elsewhere", url: "www.tickettailor.com/events/sg/55" } }
     expect(response).to redirect_to(manage_production_path(production))

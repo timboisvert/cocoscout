@@ -102,6 +102,7 @@
                 <div class="text-sm text-gray-600">
                   <span class="text-pink-600 font-medium"><%= assignment.role.name %></span>
                   · <%= show.time_range_display %>
+                  <%= render "shared/ticket_chip", link: TicketLink.for(show, public: true) %>
                 </div>
               </div>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">

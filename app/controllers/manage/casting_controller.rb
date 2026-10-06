@@ -1802,7 +1802,9 @@ module Manage
         "role_name" => role_names.join(", "),
         "role_names" => role_names.join(", "),
         "casting_unit" => unit,
-        "casting_units" => unit.pluralize
+        "casting_units" => unit.pluralize,
+        # Where their friends buy (TicketLink), for a template that shares it; blank when there's nothing to link.
+        "ticket_link" => (shows.first && TicketLink.for(shows.first, public: true).url).to_s
       }
 
       # Interpolate {{placeholders}} in the body and subject

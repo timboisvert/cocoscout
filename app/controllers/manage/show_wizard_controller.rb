@@ -195,6 +195,18 @@ module Manage
       end
     end
 
+    # "Not this one" on the review step: the production sells on CocoScout, but
+    # these dates don't (ProductionTicketing#excluded_show_ids). Inside the
+    # shows' transaction, so the sale-opening job never sees them unexcluded.
+    def keep_out_of_ticket_sales!(shows)
+      return true unless params[:exclude_from_tickets] == "1" && shows.any?
+
+      setup = @production.production_ticketing
+      return true unless setup
+
+      setup.update!(excluded_show_ids: (setup.excluded_show_ids + shows.map(&:id)).uniq)
+    end
+
     def cancel
       clear_wizard_state
       redirect_to manage_production_shows_path(@production), notice: "Show creation cancelled"
@@ -253,7 +265,10 @@ module Manage
         call_time: wizard_call_time(@wizard_state[:date_and_time])
       )
 
-      if @show.save
+      saved = Show.transaction do
+        @show.save && keep_out_of_ticket_sales!([ @show ]) && true
+      end
+      if saved
         clear_wizard_state
         redirect_to manage_production_shows_path(@production), notice: "Show was successfully created"
       else
@@ -275,6 +290,7 @@ module Manage
       # Generate a shared recurrence_group_id for all shows in this series
       recurrence_group_id = SecureRandom.uuid
 
+      created = []
       dates.each do |date|
         show = @production.shows.new(
           event_type: @wizard_state[:event_type],
@@ -292,8 +308,12 @@ module Manage
           call_time_enabled: @wizard_state[:call_time_enabled] || false,
           call_time: wizard_call_time(date)
         )
-        created_count += 1 if show.save
+        if show.save
+          created_count += 1
+          created << show
+        end
       end
+      Show.transaction { keep_out_of_ticket_sales!(created) }
 
       clear_wizard_state
       redirect_to manage_production_shows_path(@production), notice: "#{created_count} recurring events were successfully created"

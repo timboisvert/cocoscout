@@ -80,9 +80,36 @@
       </div>
       <%= link_to "Edit", manage_shows_wizard_details_path(@production), class: "text-sm text-pink-500 hover:text-pink-600" %>
     </div>
+
+    <%# Tickets: what the production's answer to the Tickets question means for this date (Round 9 §3). %>
+    <% setup = @production.production_ticketing %>
+    <% sells_here = @production.tickets_mode == "cocoscout" && setup&.enabled? && setup.ticket_tiers.active.any? %>
+    <div class="flex items-start justify-between py-3 border-b border-gray-200">
+      <div>
+        <p class="text-sm font-medium text-gray-500">Tickets</p>
+        <% if sells_here %>
+          <p class="text-sm text-gray-900">
+            <%= @wizard_state[:event_frequency] == "recurring" ? "Each date goes" : "This date goes" %> on sale on CocoScout <%= setup.schedule_mode == "relative" ? "#{setup.opens_days_before} days before" : "right away" %>:
+            <%= setup.ticket_tiers.active.map { |t| "#{t.name} #{number_to_currency(t.price_cents / 100.0)}" }.to_sentence %>.
+          </p>
+        <% elsif @production.tickets_mode == "elsewhere" && @production.tickets_url.present? %>
+          <p class="text-sm text-gray-900">Tickets on <%= TicketLink.recognize(@production.tickets_url)&.dig(:name) || "another site" %>, like the production's other dates.</p>
+        <% elsif @production.tickets_mode == "none" %>
+          <p class="text-sm text-gray-900">No tickets, like the production's other dates.</p>
+        <% else %>
+          <p class="text-sm text-gray-500">Where people get tickets for <%= @production.name %> isn't set; answer it on <%= link_to "the production's page", manage_production_path(@production), class: "text-pink-500 hover:text-pink-600" %> once this is made.</p>
+        <% end %>
+      </div>
+    </div>
   </div>
 
   <%= form_with url: manage_shows_wizard_create_path(@production), method: :post, local: true do |form| %>
+    <% if sells_here %>
+      <label class="mt-6 flex items-start gap-3 cursor-pointer">
+        <%= check_box_tag :exclude_from_tickets, "1", false, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">Not this one</span>: don't sell tickets to <%= @wizard_state[:event_frequency] == "recurring" ? "these dates" : "this date" %> on CocoScout.</span>
+      </label>
+    <% end %>
     <div class="mt-8 flex justify-between">
       <%= link_to manage_shows_wizard_details_path(@production), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
         ← Back

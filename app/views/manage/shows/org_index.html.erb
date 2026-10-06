@@ -37,6 +37,20 @@
           { text: "View the calendar", path: manage_shows_calendar_path }
         ] %>
 
+  <%# The Tickets question, for the soonest production that hasn't answered it (Round 9 §3). %>
+  <% if Current.organization&.manageable_by?(Current.user) || Current.user&.superadmin? %>
+    <% unanswered = Current.organization.productions.where(tickets_mode: "unset").where.not(production_type: "course")
+                           .joins(:shows).where(shows: { canceled: false }).where("shows.date_and_time >= ?", Time.current)
+                           .group("productions.id").order(Arel.sql("MIN(shows.date_and_time)")).first %>
+    <% if unanswered %>
+      <%= render "shared/alert_panel", eyebrow: "Tickets",
+            headline: "Where do people get tickets for #{unanswered.name}?",
+            body: "Sold on CocoScout, somewhere else, or no tickets. Every page that lists its dates follows the answer.",
+            actions: [ { text: "Answer", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "tickets-question-#{unanswered.id}" } } ] %>
+      <%= render "shared/ticketing/tickets_question_modal", id: "tickets-question-#{unanswered.id}", production: unanswered, return_to: manage_shows_path %>
+    <% end %>
+  <% end %>
+
   <div class="border-t border-gray-200 pt-4 mt-2">
     <%= render "shared/filters/filter_bar", wrapper_data_controller: "filter-select", filter_groups: [
     {
