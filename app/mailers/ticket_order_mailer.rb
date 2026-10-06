@@ -49,6 +49,34 @@ class TicketOrderMailer < ApplicationMailer
     )))
   end
 
+  # Several shows bought at once (a pass): one email, each show with its
+  # when and where and its QR codes, and one receipt for the whole purchase.
+  def purchase_confirmation(purchase)
+    @purchase = purchase
+    @orders = purchase.ticket_orders.select(&:paid?)
+    @order = @orders.first
+    pass = @order.tickets.first&.ticket_pass
+    shows = @orders.map { |order| "#{order.ticket_listing.display_title} (#{order.ticket_listing.show.date_and_time.strftime('%a, %b %-d')})" }
+    words = render_words("ticket_purchase_confirmation", {
+      first_name: @order.buyer_name.to_s.split.first.presence || "there",
+      organization_name: @order.organization.name,
+      what: pass&.name || shows.to_sentence,
+      show_count: ActionController::Base.helpers.pluralize(@orders.size, "show"),
+      show_list: shows.to_sentence,
+      pass_name: pass&.name.to_s
+    })
+    @intro_html = words[:body_html]
+    @sections = @orders.map do |order|
+      tickets = order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:ticket_tier, :ticket_pass).order(:id).to_a
+      tickets.each do |ticket|
+        png = RQRCode::QRCode.new(tickets_ticket_url(code: ticket.code)).as_png(size: 360, border_modules: 2)
+        attachments.inline["ticket-#{ticket.id}.png"] = png.to_s
+      end
+      { order: order, when_where: self.class.when_where(order.ticket_listing), tickets: tickets }
+    end
+    deliver_from_theater(words[:subject])
+  end
+
   # The words every email with tickets in it can use.
   def self.ticket_variables(order)
     listing = order.ticket_listing

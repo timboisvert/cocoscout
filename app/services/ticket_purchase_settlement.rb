@@ -28,10 +28,13 @@ class TicketPurchaseSettlement
     end
     return purchase unless go
 
-    purchase.ticket_orders.each_with_index do |order, index|
+    orders = purchase.ticket_orders.to_a
+    orders.each_with_index do |order, index|
       TicketOrderSettlement.settle!(order, payment_intent_id: (payment_intent_id if index.zero?),
-                                           charge_id: (charge_id if index.zero?), seats_checked: true)
+                                           charge_id: (charge_id if index.zero?), seats_checked: true, confirm: orders.size == 1)
     end
+    # Several shows: one email with all of them.
+    TicketPurchaseConfirmationJob.perform_later(purchase.id) if orders.size > 1
     purchase
   end
 

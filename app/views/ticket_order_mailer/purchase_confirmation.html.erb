@@ -1,0 +1,35 @@
+<%= raw @intro_html %>
+
+<% @sections.each do |section| %>
+  <% order = section[:order] %>
+  <h2 style="font-size: 18px; color: #111827; margin: 28px 0 4px;"><%= order.ticket_listing.display_title %></h2>
+  <%= render "shared/mailer/when_where", w: section[:when_where], calendar_url: tickets_order_calendar_url(token: order.token) %>
+  <% section[:tickets].each_with_index do |ticket, index| %>
+    <div style="margin: 16px 0; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; text-align: center;">
+      <div style="font-size: 14px; color: #6b7280;">Ticket <%= index + 1 %> of <%= section[:tickets].size %> · <%= ticket.type_label %></div>
+      <%= image_tag attachments["ticket-#{ticket.id}.png"].url, alt: "Ticket QR code", width: 180, height: 180, style: "display: block; margin: 12px auto;" %>
+      <div style="font-size: 12px; color: #9ca3af;">Order <%= order.code %> · <%= link_to "View online", tickets_order_url(token: order.token) %></div>
+    </div>
+  <% end %>
+<% end %>
+
+<%# The receipt: every line they paid for, adding up to what their card shows. %>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; margin: 20px 0; border: 1px solid #e5e7eb; border-radius: 12px;">
+  <tr><td style="padding: 14px 16px;">
+    <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">What you paid</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px; color: #374151;">
+      <% checkout_summary_lines(@order).each do |label, cents, muted| %>
+        <tr>
+          <td style="padding: 2px 0; color: <%= muted ? '#6b7280' : '#374151' %>;"><%= label %></td>
+          <td style="padding: 2px 0; text-align: right; white-space: nowrap;"><%= cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) %></td>
+        </tr>
+      <% end %>
+      <tr>
+        <td style="padding: 6px 0 0; border-top: 1px solid #e5e7eb; font-weight: 600; color: #111827;">Total</td>
+        <td style="padding: 6px 0 0; border-top: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #111827; white-space: nowrap;"><%= number_to_currency(@purchase.total_cents / 100.0) %></td>
+      </tr>
+    </table>
+    <div style="font-size: 12px; color: #9ca3af; margin-top: 8px;">Paid <%= @purchase.paid_at&.strftime("%B %-d, %Y") %> · sold by <%= @order.organization.name %>, payment processed by CocoScout</div>
+  </td></tr>
+</table>
+<%= render "ticket_order_mailer/questions", organization: @order.organization %>

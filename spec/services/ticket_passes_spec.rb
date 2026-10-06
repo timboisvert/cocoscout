@@ -8,6 +8,7 @@ require "rails_helper"
 # ticket carries its share of the price: by regular price (the default),
 # evenly, or shares the manager types.
 RSpec.describe TicketPass do
+  include ActiveJob::TestHelper
   let(:org) { create(:organization, :pro) }
   let(:part_one) { create(:ticket_listing, organization: org, show: create(:show, production: create(:production, organization: org), date_and_time: 2.weeks.from_now)) }
   let(:part_two) { create(:ticket_listing, organization: org, show: create(:show, production: part_one.production, date_and_time: 2.weeks.from_now + 1.day)) }
@@ -52,6 +53,20 @@ RSpec.describe TicketPass do
     expect(part_one.show.reload.show_financials.ticket_sales_lines.pluck(:tickets_sold, :amount)).to eq([ [ 1, 15.to_d ] ])
     expect(part_two.show.reload.show_financials.ticket_sales_lines.pluck(:amount)).to eq([ 30.to_d ])
     expect(pass.sold_count).to eq(1)
+  end
+
+  it "sends the buyer one email with every show's tickets" do
+    order = TicketCheckout.start_pass!(pass: pass, quantity: 2)
+    order.ticket_purchase.ticket_orders.update_all(buyer_name: "Bella Swan", buyer_email: "bella@example.com")
+    ActionMailer::Base.deliveries.clear
+
+    perform_enqueued_jobs { TicketPurchaseSettlement.settle!(order.ticket_purchase, payment_intent_id: "pi_mail") }
+
+    expect(ActionMailer::Base.deliveries.size).to eq(1)
+    mail = ActionMailer::Base.deliveries.last
+    expect(mail.subject).to eq("Your tickets for Twilight Double Feature")
+    expect(mail.html_part.body.decoded).to include(part_one.display_title, part_two.display_title, "with your Twilight Double Feature")
+    expect(mail.attachments.count { |a| a.filename.start_with?("ticket-") }).to eq(4)
   end
 
   it "holds nothing when one show hasn't the seats, and respects the cap" do

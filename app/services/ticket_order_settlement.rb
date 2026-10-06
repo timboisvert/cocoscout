@@ -17,7 +17,8 @@ class TicketOrderSettlement
 
   # seats_checked: a purchase already made sure every order's seats are still
   # there (TicketPurchaseSettlement), so a late payment never splits it.
-  def self.settle!(order, payment_intent_id: nil, charge_id: nil, seats_checked: false)
+  # confirm: false when a purchase sends one email for all its shows.
+  def self.settle!(order, payment_intent_id: nil, charge_id: nil, seats_checked: false, confirm: true)
     settled = false
     order.with_lock do
       next if order.paid? || %w[refunded canceled exchanged].include?(order.status)
@@ -43,7 +44,7 @@ class TicketOrderSettlement
 
     if settled
       TicketSalesSync.sync!(order.ticket_listing.show)
-      TicketOrderConfirmationJob.perform_later(order.id) if order.buyer_email.present?
+      TicketOrderConfirmationJob.perform_later(order.id) if confirm && order.buyer_email.present?
       TicketingAfterSaleJob.perform_later(order.id)
     end
     order
