@@ -107,13 +107,15 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
     end
 
     it "only appears in the step strip once we're selling" do
+      # The step bar's label, not the sidebar's Ticketing item.
+      step_label = /whitespace-nowrap [^"]*">Ticketing</
       choose_who_sells("contractor")
       get manage_payments_contract_wizard_path(contract)
-      expect(response.body).not_to include("Ticketing")
+      expect(response.body).not_to match(step_label)
 
       choose_who_sells("org")
       get manage_payments_contract_wizard_path(contract)
-      expect(response.body).to include("Ticketing")
+      expect(response.body).to match(step_label)
     end
 
     it "is no longer folded into the Financials step" do
