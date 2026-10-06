@@ -163,6 +163,12 @@ RSpec.describe "Manage ticketing money", type: :request do
       expect(response.body).to include("On its way")
     end
 
+    it "lists payout runs already on their way instead of keeping money back for them" do
+      org.payout_batches.create!(kind: "payout", status: "funding", trigger: "manual", funding_status: "processing", total_cents: 205_873)
+      get manage_ticket_balance_path
+      expect(response.body).to include("Already on its way, nothing here needed for it", "funded from your bank, the money&#39;s on its way", "$2,058.73")
+    end
+
     it "turns automatic withdrawal on and off" do
       patch manage_ticket_balance_auto_withdraw_path, params: { auto_withdraw: "weekly" }
       expect(TicketingProfile.find_by!(organization: org).auto_withdraw).to eq("weekly")

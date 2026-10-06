@@ -40,6 +40,20 @@ RSpec.describe "Balance extras" do
       expect(BalanceObligations.safe_to_withdraw_cents(org)).to eq(20_000 - 6_500)
     end
 
+    it "doesn't keep back a contract payment that's already on a payout run" do
+      sell_and_release(10)
+      contract = create(:contract, organization: org)
+      due = contract.contract_payments.create!(direction: "outgoing", amount: 2_000, due_date: 3.days.from_now, description: "Settlement")
+      expect(BalanceObligations.items(org).to_h { |i| [ i.label, i.cents ] })
+        .to include("Contract payments due in the next two weeks, not on a run yet" => 200_000)
+
+      batch = org.payout_batches.create!(kind: "payout", status: "funding", trigger: "manual", funding_status: "processing", total_cents: 200_000)
+      payee = create(:person)
+      item = batch.items.create!(payee: payee, amount_cents: 200_000, status: "pending")
+      PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: payee, source: due, amount_cents: 200_000, label: "Settlement")
+      expect(BalanceObligations.items(org).map(&:label)).not_to include("Contract payments due in the next two weeks, not on a run yet")
+    end
+
     it "prices approved staff hours the way payout runs do" do
       person = create(:person)
       create(:organization_staff_member, organization: org, person: person, hourly_rate_cents: 2_000)

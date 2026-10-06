@@ -9,6 +9,7 @@ module Manage
     def show
       @summary = CocoScoutBalance.summary(Current.organization)
       @obligations = BalanceObligations.items(Current.organization)
+      @in_flight = runs_in_flight
       @safe_cents = [ @summary.available_cents - @obligations.sum(&:cents), 0 ].max
       @top_ups = Current.organization.balance_top_ups.order(created_at: :desc).limit(10)
       @withdrawals = Current.organization.balance_withdrawals.order(created_at: :desc).limit(20).includes(:requested_by)
@@ -49,6 +50,21 @@ module Manage
     end
 
     private
+
+    # Payout runs already moving: what they took from the balance is already
+    # out of "available", and the rest is coming from the bank, so nothing
+    # needs keeping back for them. [label, cents]
+    def runs_in_flight
+      Current.organization.payout_batches.where(status: %w[funding funded processing partially_paid]).order(:created_at).filter_map do |batch|
+        if batch.status == "funding"
+          debit = [ batch.total_cents - batch.held_cents - batch.credit_applied_cents - batch.balance_applied_cents, 0 ].max
+          [ "Payout run ##{batch.id}: funded from your bank, the money's on its way", debit ]
+        else
+          unpaid = batch.items.where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES).sum(:amount_cents)
+          [ "Payout run ##{batch.id}: paying people now", unpaid ] if unpaid.positive?
+        end
+      end
+    end
 
     # Upcoming shows and what each holds for the theater: what it sold
     # through CocoScout, less what it refunded.

@@ -8,7 +8,9 @@
 #   - the open payout run (what it needs after held money and credit);
 #   - approved staff hours not on a run yet (priced the way runs price them);
 #   - money owed to payees that isn't on a run yet;
-#   - contract payments the theater owes in the next two weeks.
+#   - contract payments the theater owes in the next two weeks that aren't
+#     on a payout run yet (one on a run is counted by that run, or is
+#     already on its way: a funded run's money is coming from the bank).
 #
 # Shows that haven't happened aren't estimated: their pay isn't owed yet.
 class BalanceObligations
@@ -21,7 +23,7 @@ class BalanceObligations
       Item.new("Your open payout run", BalanceWithdrawalService.open_run_need_cents(organization)),
       Item.new("Approved staff hours not yet paid", staff_hours_cents(organization)),
       Item.new("Owed to performers and others, not yet on a run", owed_not_staged_cents(organization)),
-      Item.new("Contract payments due in the next two weeks", contract_payments_due_cents(organization))
+      Item.new("Contract payments due in the next two weeks, not on a run yet", contract_payments_due_cents(organization))
     ].select { |item| item.cents.positive? }
   end
 
@@ -51,9 +53,12 @@ class BalanceObligations
   end
 
   def self.contract_payments_due_cents(organization)
+    on_a_run = PayoutContribution.joins(:payout_batch).where(source_type: "ContractPayment")
+                                 .where.not(payout_batches: { status: %w[failed canceled] }).select(:source_id)
     ContractPayment.direction_outgoing.status_pending.joins(:contract)
                    .where(contracts: { organization_id: organization.id })
                    .where(due_date: ..HORIZON.from_now.to_date)
+                   .where.not(id: on_a_run)
                    .sum(&:amount_cents)
   end
 

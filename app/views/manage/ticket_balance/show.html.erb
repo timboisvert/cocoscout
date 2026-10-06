@@ -57,6 +57,19 @@
         <p class="text-sm text-gray-600 mt-1">It goes to your organization's connected bank, usually within two business days.</p>
       </div>
       <div class="px-6 py-5">
+        <%# Payout runs already moving don't need anything kept back: what they
+            claimed from the balance is already out of "available", and the
+            rest is coming from the bank. %>
+        <% if @in_flight.any? %>
+          <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-gray-700">
+            <p class="font-semibold text-gray-900">Already on its way, nothing here needed for it</p>
+            <ul class="mt-1 space-y-0.5">
+              <% @in_flight.each do |label, cents| %>
+                <li class="flex justify-between gap-4"><span><%= label %></span><span class="tabular-nums"><%= number_to_currency(cents / 100.0) %></span></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
         <% if !org.can_receive_payouts? %>
           <p class="text-sm text-gray-600">Connect your organization's bank first: it's where withdrawals go. You can still spend your balance on payout runs.</p>
         <% elsif s.available_cents.zero? %>
