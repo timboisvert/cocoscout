@@ -252,6 +252,8 @@ module Manage
       # settles — we might sell the tickets on a deal that's a flat rental.
       who_sells = params[:who_sells_tickets].presence
       payment_config["who_sells_tickets"] = who_sells.in?(%w[org contractor]) ? who_sells : nil
+      # Where they sell, when they do: the link every page of these nights carries.
+      payment_config["contractor_tickets_url"] = TicketLink.recognize(params[:contractor_tickets_url])&.dig(:url)
       payment_config["settlement_basis"] = settlement_basis_for(payment_structure, payment_config)
 
       # How they may pay us. Online is always allowed; the offline methods are

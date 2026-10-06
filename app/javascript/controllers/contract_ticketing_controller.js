@@ -3,12 +3,14 @@ import { Controller } from "@hotwired/stimulus"
 // Ticket tiers and discount codes, each managed as a list you add to through a
 // modal. Everything serializes into a hidden JSON field for the wizard submit:
 //   { tiers: [{name, price, quantity}], discounts: [{code, amount, amount_type, applies_to, tier_names}],
-//     list_on_cocoscout }
-// quantity is the tier's seats (null = no limit). list_on_cocoscout asks for
-// the contract's shows to be listed on CocoScout Ticketing (see TicketListingSync).
+//     cocoscout, list_on_cocoscout, tickets_url }
+// quantity is the tier's seats (null = no limit). cocoscout is the answer to
+// where these nights' tickets are: "on_sale" / "setup_only" on CocoScout, or
+// "none" (then tickets_url says where). list_on_cocoscout mirrors it for
+// older readers (see TicketListingSync).
 export default class extends Controller {
     static targets = [
-        "tierList", "tierModal", "tierName", "tierPrice", "tierSeats", "tierError", "listOnCocoscout",
+        "tierList", "tierModal", "tierName", "tierPrice", "tierSeats", "tierError", "listOnCocoscout", "cocoscoutMode", "ticketsUrl",
         "discountList", "discountModal", "discountError",
         "discountCode", "discountAmount", "discountType",
         "discountTierWrapper", "discountTiers",
@@ -211,10 +213,20 @@ export default class extends Controller {
             discounts: this.discounts,
             discount: this.discounts[0] || {}
         }
-        // Only sent when the switch is on the page, so saving without it never
-        // turns off a listing someone else asked for.
-        if (this.hasListOnCocoscoutTarget) payload.list_on_cocoscout = this.listOnCocoscoutTarget.checked
-        else if (this.existingValue && this.existingValue.list_on_cocoscout !== undefined) payload.list_on_cocoscout = this.existingValue.list_on_cocoscout
+        // Only sent when the cards are on the page, so saving without them never
+        // changes an answer someone else gave.
+        if (this.hasCocoscoutModeTarget) {
+            const picked = this.cocoscoutModeTargets.find(radio => radio.checked)
+            payload.cocoscout = picked ? picked.value : "none"
+            payload.list_on_cocoscout = payload.cocoscout !== "none"
+            if (this.hasTicketsUrlTarget) payload.tickets_url = this.ticketsUrlTarget.value.trim()
+        } else if (this.hasListOnCocoscoutTarget) {
+            payload.list_on_cocoscout = this.listOnCocoscoutTarget.checked
+        } else if (this.existingValue) {
+            for (const key of ["cocoscout", "list_on_cocoscout", "tickets_url"]) {
+                if (this.existingValue[key] !== undefined) payload[key] = this.existingValue[key]
+            }
+        }
         this.ticketingJsonTarget.value = JSON.stringify(payload)
     }
 

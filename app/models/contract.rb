@@ -1888,6 +1888,25 @@ class Contract < ApplicationRecord
     draft_payment_config["who_sells_tickets"].presence || legacy_who_sells_tickets
   end
 
+  # The contract's answer to where its nights' tickets are, when we sell them
+  # (Round 9 §3): on sale on CocoScout, set up on CocoScout with sales
+  # closed, or not on CocoScout (tickets_url says where). Older contracts
+  # only had the "list on CocoScout" switch, which meant set up, closed.
+  COCOSCOUT_TICKETING_MODES = %w[on_sale setup_only none].freeze
+
+  def cocoscout_ticketing_mode
+    mode = draft_ticketing["cocoscout"].to_s
+    return mode if COCOSCOUT_TICKETING_MODES.include?(mode)
+
+    ActiveModel::Type::Boolean.new.cast(draft_ticketing["list_on_cocoscout"]) ? "setup_only" : "none"
+  end
+
+  # Where tickets are sold when they aren't on CocoScout: the step's link when
+  # we sell, the Financials step's when they do.
+  def outside_tickets_url
+    (org_sells_tickets? ? draft_ticketing["tickets_url"] : draft_payment_config["contractor_tickets_url"]).presence
+  end
+
   # True when we're the ones selling, so this contract needs ticketing set up.
   def org_sells_tickets?
     who_sells_tickets == "org"

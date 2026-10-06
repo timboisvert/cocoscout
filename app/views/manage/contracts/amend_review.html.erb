@@ -146,6 +146,14 @@
               <% else %>
                 <p class="text-sm text-gray-500">No ticket tiers.</p>
               <% end %>
+              <% if @contract.org_sells_tickets? && Current.organization&.feature_available?(:ticketing) %>
+                <% mode = @new_ticketing["cocoscout"].presence || (ActiveModel::Type::Boolean.new.cast(@new_ticketing["list_on_cocoscout"]) ? "setup_only" : "none") %>
+                <p class="mt-2 text-sm text-gray-700">
+                  <%= { "on_sale" => "On CocoScout: nights added go on sale when the amendment takes effect; prices change for sales from now on, seats never drop below what's sold.",
+                        "setup_only" => "On CocoScout, sales closed: set up in Ticketing; you turn the production on.",
+                        "none" => "Not on CocoScout." }.fetch(mode, "") %>
+                </p>
+              <% end %>
               <% discounts.each do |discount| %>
                 <p class="text-sm text-gray-600 mt-2">
                   Discount <span class="font-medium"><%= discount["code"] %></span>:

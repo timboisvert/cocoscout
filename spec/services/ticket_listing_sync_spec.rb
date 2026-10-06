@@ -2,9 +2,10 @@
 
 require "rails_helper"
 
-# A contract where we sell the tickets can list its shows on CocoScout
-# Ticketing: drafts carrying the contract's prices, seats and codes, kept in
-# step when the contract is amended, without ever changing what a buyer bought.
+# A contract answers the Tickets question for its production: on CocoScout
+# (on sale, or set up with sales closed) with the contract's prices, seats and
+# codes, kept in step when the contract is amended without ever changing what
+# a buyer bought; or not on CocoScout, pointing where tickets are sold.
 RSpec.describe TicketListingSync do
   let(:org) { create(:organization, :pro) }
   let(:location) { create(:location, organization: org) }
@@ -15,17 +16,19 @@ RSpec.describe TicketListingSync do
     { "location_id" => location.id, "starts_at" => time.iso8601, "ends_at" => (time + 3.hours).iso8601, "event_type" => type }
   end
 
-  def ticketing(list: true, general_price: 20.0, general_seats: 60)
+  def ticketing(list: true, cocoscout: nil, general_price: 20.0, general_seats: 60, tickets_url: nil)
     {
       "tiers" => [ { "name" => "General", "price" => general_price, "quantity" => general_seats },
                    { "name" => "VIP", "price" => 35.0 } ],
       "discounts" => [ { "code" => "friends", "amount" => 5, "amount_type" => "fixed",
                          "applies_to" => "specific", "tier_names" => [ "General" ] } ],
-      "list_on_cocoscout" => list
-    }
+      "list_on_cocoscout" => list,
+      "cocoscout" => (cocoscout || (list ? "setup_only" : "none")),
+      "tickets_url" => tickets_url
+    }.compact
   end
 
-  def build_contract(list: true)
+  def build_contract(list: true, cocoscout: nil, tickets_url: nil)
     create(:contract, organization: org, contractor_name: "Improvised Animorphs",
                       contract_start_date: rehearsal_at.to_date, contract_end_date: nights.last.to_date,
                       draft_data: {
@@ -34,7 +37,7 @@ RSpec.describe TicketListingSync do
                         "payment_structure" => "revenue_share",
                         "payment_config" => { "who_sells_tickets" => "org", "settlement_basis" => "revenue_share",
                                               "revenue_our_share" => 30, "revenue_settlement" => "per_event" },
-                        "ticketing" => ticketing(list: list)
+                        "ticketing" => ticketing(list: list, cocoscout: cocoscout, tickets_url: tickets_url)
                       })
   end
 
@@ -60,6 +63,7 @@ RSpec.describe TicketListingSync do
     contract.activate!
 
     setup = setup_for(contract)
+    expect(contract.production.reload.tickets_mode).to eq("cocoscout")
     expect(setup.attributes.slice("enabled", "event_matching")).to eq("enabled" => false, "event_matching" => "manual")
     expect(setup.ticket_tiers.map { |t| [ t.name, t.price_cents, t.quantity ] }).to eq([ [ "General", 2_000, 60 ], [ "VIP", 3_500, nil ] ])
     expect(setup.selected_shows.map(&:event_type)).to eq(%w[show show]) # never the rehearsal
@@ -81,11 +85,65 @@ RSpec.describe TicketListingSync do
     contract = build_contract(list: false)
     contract.activate!
     expect(ProductionTicketing.count).to eq(0)
+    expect(contract.production.reload.tickets_mode).to eq("elsewhere") # we sell, just not here
 
     contract.update_draft_step(:ticketing, ticketing(list: true))
     org.update!(comped_indefinitely: false)
     expect(described_class.for_contract(contract.reload)).to be_nil
     expect(ProductionTicketing.count).to eq(0)
+  end
+
+  # Round 9 §3 (2026-10-06): "Put them on sale" means on sale when the contract takes effect.
+  it "puts the nights on sale right away when asked, opens the box office, and stamps the dates with the contract" do
+    contract = build_contract(cocoscout: "on_sale")
+    expect(TicketingProfile.for(org).enabled?).to be(false)
+    contract.activate!
+
+    setup = setup_for(contract)
+    expect(setup.enabled).to be(true)
+    listings = listings_for(contract)
+    expect(listings.map(&:status)).to eq(%w[on_sale on_sale])
+    expect(listings.map(&:contract_id).uniq).to eq([ contract.id ])
+    expect(listings.map(&:on_sale_at).uniq).to eq([ nil ]) # right away
+    expect(TicketingProfile.for(org).reload.enabled?).to be(true)
+    expect(contract.production.reload.tickets_mode).to eq("cocoscout")
+  end
+
+  it "leaves a manager's own setup matching as it was" do
+    contract = build_contract(cocoscout: "on_sale")
+    production = create(:production, organization: org, production_type: "third_party", name: "Improvised Animorphs")
+    contract.update!(production: production)
+    setup = ProductionTicketing.for(production)
+    setup.ticket_tiers.create!(name: "General", price_cents: 1_500, quantity: 40)
+    setup.update!(event_matching: "all", enabled: true)
+
+    expect(contract.activate!).to be(true)
+    expect(setup.reload.event_matching).to eq("all")
+    expect(listings_for(contract).size).to eq(2)
+  end
+
+  it "adds its nights to a hand-picked setup without dropping the manager's own picks" do
+    contract = build_contract(cocoscout: "on_sale")
+    production = create(:production, organization: org, production_type: "third_party", name: "Late Show")
+    contract.update!(production: production)
+    picked = production.shows.create!(date_and_time: 30.days.from_now.change(hour: 21), duration_minutes: 90, location: location)
+    setup = ProductionTicketing.for(production)
+    setup.update!(event_matching: "manual")
+    setup.production_ticketing_shows.create!(show: picked)
+
+    expect(contract.activate!).to be(true)
+    expect(setup.reload.selected_shows).to include(picked)
+    expect(setup.selected_shows.count).to eq(3)
+  end
+
+  it "points the production where they sell when they're the ones selling" do
+    contract = build_contract(list: false)
+    contract.update_draft_step(:payment_config, contract.draft_payment_config.merge("who_sells_tickets" => "contractor", "contractor_tickets_url" => "https://www.eventbrite.com/e/animorphs"))
+    contract.activate!
+    production = contract.production.reload
+    expect(production.attributes.values_at("tickets_mode", "tickets_url")).to eq([ "elsewhere", "https://www.eventbrite.com/e/animorphs" ])
+    expect(org.ticket_sources.pluck(:name)).to include("Eventbrite")
+    expect(TicketLink.for(production.shows.first).site).to eq("Eventbrite")
   end
 
   it "follows an amendment without touching what buyers bought" do

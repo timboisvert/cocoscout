@@ -82,6 +82,26 @@
                 <%= discount["applies_to"] == "specific" ? "(#{(discount["tier_names"] || []).join(", ")})" : "(all tickets)" %>
               </p>
             <% end %>
+            <%# Where the nights stand on CocoScout, or where their tickets are instead (Round 9 §3). %>
+            <% if (production = contract.production) %>
+              <% listings = production.ticket_listings.joins(:show).where(shows: { canceled: false }).where.not(status: "canceled")
+                                      .where("shows.date_and_time >= ?", Time.current).includes(:show).order("shows.date_and_time").limit(8).to_a %>
+              <% if listings.any? %>
+                <% stats = Ticketing::ListingStats.for(listings) %>
+                <ul class="mt-3 pt-3 border-t border-gray-200 space-y-1 text-sm">
+                  <% listings.each do |listing| %>
+                    <% s = stats[listing.id] %>
+                    <li class="flex items-center justify-between gap-3">
+                      <span class="text-gray-700"><%= listing.show.date_and_time.strftime("%a %b %-d") %></span>
+                      <%= link_to manage_ticket_listing_path(listing), class: "tabular-nums text-pink-600 hover:text-pink-700" do %><%= s.sold %><% if s.capacity %> of <%= s.capacity %><% end %> sold<% end %>
+                    </li>
+                  <% end %>
+                </ul>
+                <%= link_to "Open ticketing", manage_production_ticketing_path(production), class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
+              <% elsif production.tickets_mode == "elsewhere" && production.tickets_url.present? %>
+                <p class="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-700">Tickets on <%= link_to (TicketLink.recognize(production.tickets_url)&.dig(:name) || "another site"), production.tickets_url, target: "_blank", rel: "noopener", class: "font-medium text-pink-600 hover:text-pink-700" %>.</p>
+              <% end %>
+            <% end %>
           </div>
         <% end %>
 

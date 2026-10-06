@@ -2,13 +2,15 @@
     (A select inside a has-[:checked] card reads as checked, so every card
     with one turns pink.) What the choice needs sits under the card, shown for
     the chosen one by radio-card. Locals: name, value, selected, title, hint
-    (optional), disabled (optional: shown, not choosable). The block is the
-    card's extras; leave it empty for none. %>
+    (optional), disabled (optional: shown, not choosable), radio_data
+    (optional: the radio's data attributes, instead of radio-card's own). The
+    block is the card's extras; leave it empty for none. %>
 <% extras = capture { yield } %>
 <% disabled = local_assigns[:disabled] %>
 <div>
   <label class="flex items-start gap-3 p-3 border border-gray-300 rounded-lg <%= disabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer' %> has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
-    <%= radio_button_tag name, value, selected.to_s == value.to_s, class: "mt-0.5 accent-pink-500", disabled: disabled, data: { action: "change->radio-card#select" } %>
+    <%= radio_button_tag name, value, selected.to_s == value.to_s, class: "mt-0.5 accent-pink-500", disabled: disabled,
+          data: (local_assigns[:radio_data] || { action: "change->radio-card#select" }) %>
     <span>
       <span class="block text-sm font-medium text-gray-900"><%= title %></span>
       <% if local_assigns[:hint].present? %><span class="block text-xs text-gray-600 mt-0.5"><%= hint %></span><% end %>

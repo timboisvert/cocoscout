@@ -43,7 +43,7 @@ RSpec.describe "Contract wizard ticketing step", type: :request do
 
   it "takes seats per tier, and offers selling on CocoScout Ticketing to a Pro organization" do
     get manage_ticketing_contract_wizard_path(contract)
-    expect(response.body).to include(%(data-contract-ticketing-target="tierSeats"), "Sell these on CocoScout Ticketing")
+    expect(response.body).to include(%(data-contract-ticketing-target="tierSeats"), "Put them on sale on CocoScout", "Set it up on CocoScout, but don&#39;t open sales yet", "Not on CocoScout")
 
     payload = { tiers: [ { name: "General", price: 20, quantity: 60 } ], discounts: [], list_on_cocoscout: true }
     post manage_ticketing_contract_wizard_path(contract), params: { ticketing: payload.to_json }

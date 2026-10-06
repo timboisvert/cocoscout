@@ -189,6 +189,18 @@
         <% else %>
           <p class="text-sm text-amber-600">No ticket tiers set yet.</p>
         <% end %>
+        <% if @contract.org_sells_tickets? && Current.organization&.feature_available?(:ticketing) %>
+          <% mode = @contract.cocoscout_ticketing_mode %>
+          <p class="mt-2 text-sm text-gray-700">
+            <% if mode == "on_sale" %>
+              <span class="font-medium text-pink-700">On CocoScout:</span> these nights go on sale when the contract takes effect.
+            <% elsif mode == "setup_only" %>
+              <span class="font-medium text-gray-900">On CocoScout, sales closed:</span> set up in Ticketing; you turn the production on.
+            <% else %>
+              <span class="font-medium text-gray-900">Not on CocoScout</span><%= ": tickets at #{TicketLink.recognize(@contract.outside_tickets_url)&.dig(:name) || 'another site'}" if @contract.outside_tickets_url %>.
+            <% end %>
+          </p>
+        <% end %>
         <% discounts.each do |discount| %>
           <p class="text-sm text-gray-600 mt-2">
             Discount <span class="font-medium"><%= discount["code"] %></span>:

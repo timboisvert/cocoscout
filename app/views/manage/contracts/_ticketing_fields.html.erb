@@ -36,18 +36,28 @@
     </div>
   </div>
 
-  <%# Sell the contract's shows on CocoScout Ticketing: the production's
-      ticketing takes these prices, seats and codes, with the deal's nights
-      picked (TicketListingSync). Pro organizations only. %>
+  <%# The Tickets question for the contract's production (Round 9 §3): put
+      these on sale on CocoScout, set it up but keep sales closed, or not on
+      CocoScout (then: where?). TicketListingSync applies it on activation
+      and on every amendment. Pro organizations only. %>
   <% if Current.organization&.feature_available?(:ticketing) %>
-    <div class="mb-6 pt-6 border-t border-gray-200 flex items-center justify-between gap-4">
-      <div>
-        <div class="text-sm font-medium text-gray-900">Sell these on CocoScout Ticketing</div>
-        <div class="text-xs text-gray-600 mt-0.5">The production's ticketing takes these prices, seats and codes, with the deal's nights picked. Nothing goes on sale until you turn it on in Ticketing.</div>
-      </div>
-      <%= render "shared/toggle_switch", checked: ActiveModel::Type::Boolean.new.cast(ticketing["list_on_cocoscout"]),
-            aria_label: "Sell these on CocoScout Ticketing",
-            data: { contract_ticketing_target: "listOnCocoscout", action: "change->contract-ticketing#toggleListing" } %>
+    <%
+      cocoscout_mode = ticketing["cocoscout"].presence || (ActiveModel::Type::Boolean.new.cast(ticketing["list_on_cocoscout"]) ? "setup_only" : "on_sale")
+      cocoscout_mode = "on_sale" unless cocoscout_mode.in?(Contract::COCOSCOUT_TICKETING_MODES)
+      radio_data = { contract_ticketing_target: "cocoscoutMode", action: "change->contract-ticketing#toggleListing change->radio-card#select" }
+    %>
+    <div class="mb-6 pt-6 border-t border-gray-200 space-y-2" data-controller="radio-card">
+      <h3 class="text-sm font-semibold text-gray-900">Where do people get tickets for these nights?</h3>
+      <%= render layout: "shared/choice_card", locals: { name: "cocoscout_mode", value: "on_sale", selected: cocoscout_mode, radio_data: radio_data,
+            title: "Put them on sale on CocoScout", hint: "These prices, seats and codes become the production's ticketing; the nights go on sale when the contract takes effect (right away, or when it's signed). Your box office opens if it isn't yet." } do %><% end %>
+      <%= render layout: "shared/choice_card", locals: { name: "cocoscout_mode", value: "setup_only", selected: cocoscout_mode, radio_data: radio_data,
+            title: "Set it up on CocoScout, but don't open sales yet", hint: "Everything is ready in Ticketing; you turn the production on when you're ready." } do %><% end %>
+      <%= render layout: "shared/choice_card", locals: { name: "cocoscout_mode", value: "none", selected: cocoscout_mode, radio_data: radio_data,
+            title: "Not on CocoScout", hint: "Tickets are sold somewhere else." } do %>
+        <%= url_field_tag :cocoscout_tickets_url, ticketing["tickets_url"], placeholder: "Where people buy (link, optional)", "aria-label": "Where people buy tickets",
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition",
+              data: { contract_ticketing_target: "ticketsUrl", action: "input->contract-ticketing#toggleListing" } %>
+      <% end %>
     </div>
   <% end %>
 
