@@ -140,6 +140,56 @@ class TicketPassCredits
            .where.not(id: used).order("shows.date_and_time").to_a.select(&:selling?)
   end
 
+  # A pass nobody has used yet, refunded in full: what they paid comes back,
+  # fees included. Like a ticket refund, CocoScout gives back its 50¢s and the
+  # card's processing (which Stripe keeps) comes out of the organization's
+  # money. A used pass can't be refunded from here: its tickets were paid for
+  # with it.
+  def self.refund!(holding, by: nil)
+    raise Error, "Only a live pass can be refunded." unless holding.status == "active"
+    raise Error, "This pass has been used, so it can't be refunded here." if holding.credits_used.positive?
+
+    organization = holding.organization
+    amount = holding.total_cents
+    waived = holding.platform_fee_cents
+    debit = amount - waived
+    intent_id = holding.ticket_purchase&.stripe_payment_intent_id
+    OrgCashEntry.with_org_lock(organization) do
+      if debit.nonzero?
+        OrgCashEntry.post!(organization: organization, entry_type: "pass_refund", amount_cents: -debit, source: holding,
+                           description: "Pass refund, #{holding.ticket_pass.name}")
+      end
+    end
+    stripe_refund = if amount.positive? && intent_id.present?
+      Stripe::Refund.create({ payment_intent: intent_id, amount: amount, metadata: { ticket_pass_holding_id: holding.id } },
+                            { idempotency_key: "pass-refund-#{holding.id}" })
+    end
+
+    ActiveRecord::Base.transaction do
+      holding.update!(status: "canceled", refunded_cents: amount, refund_org_debit_cents: debit, stripe_refund_id: stripe_refund&.id,
+                      refunded_at: Time.current)
+      holding.tax_lines.where(reversal_of_id: nil).where("tax_cents >= 0").each do |line|
+        TaxLine.create!(line.attributes.except("id", "created_at", "updated_at")
+                            .merge("base_cents" => -line.base_cents, "tax_cents" => -line.tax_cents, "sale_date" => Date.current, "reversal_of_id" => line.id))
+      end
+      if amount.positive?
+        LedgerPosting.post!(organization: organization, source: holding, kind: "refund", entry_date: Date.current, cash_date: Date.current,
+                            memo: "Pass refund, #{holding.ticket_pass.name}", lines: [
+                              { account: :cocoscout_balance, amount_cents: -debit },
+                              { account: :pass_credits_unused, amount_cents: face_cents(holding) },
+                              { account: :tax_to_remit, amount_cents: holding.tax_cents },
+                              { account: :fees_paid_by_buyers, amount_cents: holding.buyer_fee_cents },
+                              { account: :ticketing_fees, amount_cents: -waived }
+                            ])
+      end
+    end
+    CocoScoutLedgerPoster.post_for!(holding.reload)
+    holding
+  rescue Stripe::StripeError => e
+    OrgCashEntry.unpost!(source: holding, entry_type: "pass_refund")
+    raise Error, "Stripe couldn't refund it: #{e.message}"
+  end
+
   def self.end!(holding, at: Time.current)
     holding.with_lock do
       next unless holding.status == "active"

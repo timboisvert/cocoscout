@@ -21,7 +21,7 @@ class TicketBalance
   # the new one (ticket_exchange_in), so it's held for the show it's for.
   # pass_sale: a credit pass's money (TicketPassCredits), held until the pass
   # ends; it never joins an order, so the per-show buckets skip it.
-  ENTRY_TYPES = %w[ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in pass_sale].freeze
+  ENTRY_TYPES = %w[ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in pass_sale pass_refund].freeze
   ORDER_OF_ENTRY = <<~SQL.squish
     LEFT JOIN ticket_refunds r ON e.source_type = 'TicketRefund' AND r.id = e.source_id
     LEFT JOIN ticket_exchanges x ON e.source_type = 'TicketExchange' AND x.id = e.source_id
@@ -105,11 +105,11 @@ class TicketBalance
   def self.pass_buckets(organization)
     sql = <<~SQL.squish
       SELECT
-        COALESCE(SUM(e.amount_cents) FILTER (WHERE h.status <> 'ended'), 0),
-        COALESCE(SUM(e.amount_cents) FILTER (WHERE h.status = 'ended'), 0)
+        COALESCE(SUM(e.amount_cents) FILTER (WHERE h.status NOT IN ('ended', 'canceled')), 0),
+        COALESCE(SUM(e.amount_cents) FILTER (WHERE h.status IN ('ended', 'canceled')), 0)
       FROM org_cash_entries e
       JOIN ticket_pass_holdings h ON e.source_type = 'TicketPassHolding' AND h.id = e.source_id
-      WHERE e.organization_id = :organization_id AND e.entry_type = 'pass_sale'
+      WHERE e.organization_id = :organization_id AND e.entry_type IN ('pass_sale', 'pass_refund')
     SQL
     OrgCashEntry.connection.select_rows(OrgCashEntry.sanitize_sql([ sql, { organization_id: organization.id } ])).first.map(&:to_i)
   end

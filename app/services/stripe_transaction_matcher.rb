@@ -93,6 +93,9 @@ class StripeTransactionMatcher
     if (refund = TicketRefund.find_by(stripe_refund_id: row.source_id))
       return [ "ticket_refund", refund, -refund.amount_cents ]
     end
+    if (holding = TicketPassHolding.find_by(stripe_refund_id: row.source_id))
+      return [ "ticket_refund", holding, -holding.refunded_cents ]
+    end
     registration = CourseRegistration.find_by(stripe_refund_id: row.source_id) ||
                    (refs["payment_intent"].present? && CourseRegistration.find_by(stripe_payment_intent_id: refs["payment_intent"], status: "refunded"))
     if registration

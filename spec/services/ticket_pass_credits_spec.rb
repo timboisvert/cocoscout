@@ -24,10 +24,10 @@ RSpec.describe TicketPassCredits do
       .and_return(Stripe::PaymentIntent.construct_from(id: "pi_card", latest_charge: { balance_transaction: { fee: 220 } }))
   end
 
-  def bought(the_pass = pass)
+  def bought(the_pass = pass, intent: "pi_card")
     purchase = described_class.start!(pass: the_pass, quantity: 1)
     purchase.ticket_pass_holdings.update_all(holder_name: "Bella Swan", holder_email: "bella@example.com")
-    perform_enqueued_jobs { TicketPurchaseSettlement.settle!(purchase.reload, payment_intent_id: "pi_card") }
+    perform_enqueued_jobs { TicketPurchaseSettlement.settle!(purchase.reload, payment_intent_id: intent) }
     purchase.ticket_pass_holdings.first.reload
   end
 
@@ -84,6 +84,24 @@ RSpec.describe TicketPassCredits do
     expect(ChartOfAccounts.account(org, :pass_credits_unused).natural_balance_cents).to eq(0)
     expect(TicketBalance.summary(org).upcoming_cents).to eq(0)
     expect(BooksReconciliation.check(org)).to eq([])
+  end
+
+  it "refunds an unused pass in full, our fees given back and the processing the organization's, and never a used one" do
+    allow(Stripe::Refund).to receive(:create).and_return(double("refund", id: "re_card"))
+    holding = bought
+
+    TicketPassCredits.refund!(holding)
+    expect(Stripe::Refund).to have_received(:create).with(hash_including(payment_intent: "pi_card", amount: holding.total_cents), anything)
+    expect(holding.reload.status).to eq("canceled")
+    expect(OrgCashEntry.find_by(entry_type: "pass_refund").amount_cents).to eq(-(holding.total_cents - holding.platform_fee_cents))
+    expect(TicketBalance.summary(org).upcoming_cents).to eq(0)
+    expect(BooksReconciliation.check(org)).to eq([])
+    category, record, = StripeTransactionMatcher.send(:refund, Struct.new(:source_id).new("re_card"), {})
+    expect([ category, record ]).to eq([ "ticket_refund", holding ])
+
+    used = bought(intent: "pi_second")
+    described_class.use!(used, listing: listing)
+    expect { TicketPassCredits.refund!(used) }.to raise_error(described_class::Error, /has been used/)
   end
 
   it "matches the Stripe charge to the pass, and refuses a show it doesn't cover" do

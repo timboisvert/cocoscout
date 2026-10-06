@@ -5,7 +5,7 @@ module Manage
   # an editor (the shows, the ticket type at each, the price and how it splits
   # between them) and a page per pass with its sales.
   class TicketPassesController < Manage::TicketingBaseController
-    before_action :set_pass, only: %i[show edit update destroy]
+    before_action :set_pass, only: %i[show edit update destroy refund_holding]
 
     def index
       @passes = Current.organization.ticket_passes.order(created_at: :desc).to_a
@@ -30,7 +30,7 @@ module Manage
 
     def show
       if @pass.credit_kind?
-        @holdings = @pass.holdings.where(status: %w[active ended]).order(paid_at: :desc).to_a
+        @holdings = @pass.holdings.where(status: %w[active ended canceled]).order(paid_at: :desc).to_a
         return render(:credits)
       end
 
@@ -66,6 +66,15 @@ module Manage
         @pass.destroy!
         redirect_to manage_ticket_passes_path, notice: "#{name} deleted."
       end
+    end
+
+    # A credit pass nobody used yet, refunded in full (TicketPassCredits.refund!).
+    def refund_holding
+      holding = @pass.holdings.find(params[:holding_id])
+      TicketPassCredits.refund!(holding, by: Current.user)
+      redirect_to manage_ticket_pass_path(@pass), notice: "Refunded #{helpers.number_to_currency(holding.refunded_cents / 100.0)} to #{holding.holder_name.presence || 'the buyer'}."
+    rescue TicketPassCredits::Error => e
+      redirect_to manage_ticket_pass_path(@pass), alert: e.message
     end
 
     private

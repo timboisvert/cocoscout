@@ -84,6 +84,22 @@ RSpec.describe "Credit passes", type: :request do
       expect(holding.credits_left).to eq(3)
     end
 
+    it "refunds an unused pass from the pass's page" do
+      allow(Stripe::Refund).to receive(:create).and_return(double("refund", id: "re_page"))
+      holding = TicketPassCredits.start!(pass: pass, quantity: 1).ticket_pass_holdings.first
+      holding.update!(holder_name: "Bella Swan", holder_email: "bella@example.com")
+      holding.ticket_purchase.update!(stripe_payment_intent_id: "pi_page")
+      TicketPassCredits.settle!(holding, paid_at: Time.current)
+
+      get manage_ticket_pass_path(pass)
+      expect(response.body).to include("Refund this pass?")
+
+      post manage_ticket_pass_holding_refund_path(pass, holding.id)
+      expect(response).to redirect_to(manage_ticket_pass_path(pass))
+      expect(flash[:notice]).to start_with("Refunded $")
+      expect(holding.reload.status).to eq("canceled")
+    end
+
     it "builds a season pass covering a production, and lists who has one" do
       post manage_ticket_passes_path, params: { ticket_pass: {
         name: "Twilight Season", kind: "season", price: "80", credits: "4", ends_on: 60.days.from_now.to_date.iso8601, status: "on_sale",

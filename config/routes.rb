@@ -1294,6 +1294,7 @@ Rails.application.routes.draw do
     get    "ticketing/passes/:id/edit",           to: "ticket_passes#edit",              as: "edit_ticket_pass"
     patch  "ticketing/passes/:id",                to: "ticket_passes#update"
     delete "ticketing/passes/:id",                to: "ticket_passes#destroy"
+    post   "ticketing/passes/:id/holdings/:holding_id/refund", to: "ticket_passes#refund_holding", as: "ticket_pass_holding_refund"
     get    "ticketing/deals",                     to: "ticket_offers#index",             as: "ticket_offers"
     get    "ticketing/deals/new",                 to: "ticket_offers#new",               as: "new_ticket_offer"
     post   "ticketing/deals",                     to: "ticket_offers#create"

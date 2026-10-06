@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_210100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3547,9 +3547,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_210100) do
     t.integer "platform_fee_cents", default: 0, null: false
     t.integer "price_cents", default: 0, null: false
     t.integer "processing_cents", default: 0, null: false
+    t.integer "refund_org_debit_cents", default: 0, null: false
+    t.datetime "refunded_at"
+    t.integer "refunded_cents", default: 0, null: false
     t.datetime "reminded_at"
     t.string "status", default: "pending", null: false
     t.integer "stripe_fee_cents"
+    t.string "stripe_refund_id"
     t.integer "tax_cents", default: 0, null: false
     t.bigint "ticket_pass_id", null: false
     t.bigint "ticket_purchase_id"
@@ -3557,6 +3561,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_210100) do
     t.integer "total_cents", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_ticket_pass_holdings_on_organization_id"
+    t.index ["stripe_refund_id"], name: "index_ticket_pass_holdings_on_stripe_refund_id"
     t.index ["ticket_pass_id"], name: "index_ticket_pass_holdings_on_ticket_pass_id"
     t.index ["ticket_purchase_id"], name: "index_ticket_pass_holdings_on_ticket_purchase_id"
     t.index ["token"], name: "index_ticket_pass_holdings_on_token", unique: true

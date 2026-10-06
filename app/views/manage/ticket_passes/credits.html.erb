@@ -3,8 +3,9 @@
   money = ->(cents) { number_to_currency(cents.to_i / 100.0) }
   pass_url = tickets_pass_url(org: ticketing_profile.slug, pass: @pass.slug)
   active = @holdings.select { |h| h.status == "active" }
-  used = @holdings.sum(&:credits_used)
-  total = @holdings.sum(&:credits)
+  live = @holdings.reject { |h| h.status == "canceled" }
+  used = live.sum(&:credits_used)
+  total = live.sum(&:credits)
   held = active.sum(&:org_net_cents)
   remove_id = "confirm-remove-pass-#{@pass.id}"
 %>
@@ -19,7 +20,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">
     <div class="space-y-6 min-w-0">
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <% [ [ "Sold", @holdings.size.to_s, @pass.kind == "season" ? "Season passes" : "Punch cards" ],
+        <% [ [ "Sold", live.size.to_s, @pass.kind == "season" ? "Season passes" : "Punch cards" ],
              [ "Credits used", "#{used} of #{total}", "Each one a ticket" ],
              [ "Price", money.call(@pass.price_cents), "#{money.call(@pass.credit_value_cents)} a credit" ],
              [ "Held", money.call(held), "Yours when each pass ends" ] ].each do |label, value, note| %>
@@ -43,7 +44,15 @@
             <% @holdings.each do |holding| %>
               <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 text-sm">
                 <span class="text-gray-900"><%= holding.holder_name.presence || "Unnamed" %> <span class="text-gray-500"><%= holding.holder_email %></span></span>
-                <span class="text-gray-600 tabular-nums"><%= holding.credits_left %> of <%= holding.credits %> left<%= " · ended" if holding.status == "ended" %></span>
+                <span class="flex items-center gap-3">
+                  <span class="text-gray-600 tabular-nums">
+                    <% if holding.status == "canceled" %>Refunded <%= money.call(holding.refunded_cents) %><% else %><%= holding.credits_left %> of <%= holding.credits %> left<%= " · ended" if holding.status == "ended" %><% end %>
+                  </span>
+                  <% if holding.status == "active" && holding.credits_used.zero? %>
+                    <%= render "shared/button", text: "Refund", variant: "secondary", size: "xs", type: :button,
+                          data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-refund-holding-#{holding.id}" } %>
+                  <% end %>
+                </span>
               </li>
             <% end %>
           </ul>
@@ -70,3 +79,8 @@
 <%= render "shared/confirm_modal", id: remove_id, title: (@holdings.any? ? "Close #{@pass.name}?" : "Delete #{@pass.name}?"),
       message: (@holdings.any? ? "It stops selling. Everyone who has it keeps it until it ends." : "Nobody has bought it, so it's deleted for good."),
       confirm_text: (@holdings.any? ? "Close pass" : "Delete pass"), url: manage_ticket_pass_path(@pass), method: :delete %>
+<% @holdings.select { |h| h.status == "active" && h.credits_used.zero? }.each do |holding| %>
+  <%= render "shared/confirm_modal", id: "confirm-refund-holding-#{holding.id}", title: "Refund this pass?",
+        message: "#{h(holding.holder_name.presence || 'The buyer')} gets back #{number_to_currency(holding.total_cents / 100.0)}, everything they paid. The pass stops working.",
+        confirm_text: "Refund #{number_to_currency(holding.total_cents / 100.0)}", url: manage_ticket_pass_holding_refund_path(@pass, holding.id), method: :post %>
+<% end %>

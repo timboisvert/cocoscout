@@ -26,7 +26,7 @@
 class CocoScoutLedgerPoster
   TYPES_FOR = {
     "TicketOrder" => %w[ticket_fee ticket_processing processing_cost],
-    "TicketPassHolding" => %w[ticket_fee ticket_processing processing_cost],
+    "TicketPassHolding" => %w[ticket_fee ticket_processing processing_cost ticket_refund],
     "TicketRefund" => %w[ticket_refund],
     "CourseRegistration" => %w[course_fee processing_cost course_refund],
     "ContractPayment" => %w[contract_processing processing_cost],
@@ -112,7 +112,9 @@ class CocoScoutLedgerPoster
 
     { "ticket_fee" => holding.platform_fee_cents.to_i,
       "ticket_processing" => holding.total_cents.to_i - credit - holding.platform_fee_cents.to_i,
-      "processing_cost" => -holding.stripe_fee_cents.to_i }
+      "processing_cost" => -holding.stripe_fee_cents.to_i,
+      # Refunded: the buyer got back more than the organization gave up.
+      "ticket_refund" => -(holding.refunded_cents.to_i - holding.refund_org_debit_cents.to_i) }
   end
 
   # The buyer got back more than the theater gave up: the difference is the
