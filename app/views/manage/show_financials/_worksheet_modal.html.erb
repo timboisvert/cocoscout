@@ -101,13 +101,15 @@
               <%
                 line_input = "w-full rounded-lg border border-gray-300 shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 existing = @show_financials.ticket_sales_lines.to_a
-                # CocoScout Ticketing fills its own row from real sales: shown,
-                # counted in the total, never typed into.
-                built_in_lines = existing.select { |l| l.ticket_source&.built_in? }
+                # CocoScout Ticketing fills its own row from real sales, and a
+                # site's row typed on the show's ticketing page (Sold elsewhere)
+                # comes from there: shown, counted in the total, never typed into.
+                fed = TicketOutsideSales.fed_source_ids(@show_financials.show)
+                built_in_lines = existing.select { |l| l.ticket_source&.built_in? || fed.include?(l.ticket_source_id) }
                 existing -= built_in_lines
                 by_source = existing.group_by(&:ticket_source_id)
                 rows = []
-                sources = (@ticket_sources + existing.filter_map(&:ticket_source)).uniq
+                sources = (@ticket_sources.reject { |source| fed.include?(source.id) } + existing.filter_map(&:ticket_source)).uniq
                 sources.each do |source|
                   lines = by_source.delete(source.id) || []
                   if lines.empty?
@@ -140,7 +142,7 @@
                   <% built_in_lines.each do |fixed| %>
                     <div class="grid grid-cols-[minmax(0,1fr)_6rem_8rem] sm:grid-cols-[minmax(0,1fr)_7rem_9rem] items-center gap-2 px-3 py-2.5 bg-pink-50/40"
                          data-ticket-line data-fixed-tickets="<%= fixed.tickets_sold %>" data-fixed-amount="<%= fixed.amount.to_f %>">
-                      <span class="min-w-0 truncate text-sm font-medium text-gray-900"><%= fixed.ticket_source.name %> <span class="font-normal text-xs text-gray-500">· from ticket sales</span></span>
+                      <span class="min-w-0 truncate text-sm font-medium text-gray-900"><%= fixed.ticket_source.name %> <span class="font-normal text-xs text-gray-500">· <%= fixed.ticket_source.built_in? ? "from ticket sales" : "typed on the ticketing page" %></span></span>
                       <span class="text-sm text-right tabular-nums text-gray-900"><%= fixed.tickets_sold %></span>
                       <span class="text-sm text-right tabular-nums text-gray-900"><%= number_to_currency(fixed.amount) %></span>
                     </div>

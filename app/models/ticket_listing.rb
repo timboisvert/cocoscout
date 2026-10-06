@@ -28,6 +28,7 @@ class TicketListing < ApplicationRecord
   has_many :tickets
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :ticket_order_items
+  has_many :ticket_outside_sales, dependent: :destroy
 
   # Prices are edited in place on the listing page; an empty new row is skipped.
   accepts_nested_attributes_for :ticket_tiers, allow_destroy: true,

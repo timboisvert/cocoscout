@@ -1,15 +1,12 @@
-<%# Tickets sold on other sites for this date (Ticket Tailor, Eventbrite): one
-    row per site the organization sells through, a place to add a site, and the
-    switch that takes those seats out of what CocoScout sells. The counts are
-    the same Show Financials rows the worksheet edits.
-    Locals: id, listing, sources (hand-made, active), lines ({ source_id => TicketSalesLine }). %>
+<%# Tickets sold on other sites for this date (Ticket Tailor, Eventbrite): for
+    each site, a count per ticket type (required) and the money (optional),
+    plus a place to add a site. Each type's seats here shrink by its count,
+    and the sums feed the show's financials rows.
+    Locals: id, listing, sources (hand-made, active), rows ({ [source_id, tier_id] => TicketOutsideSale }). %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  row = lambda do |key, label, line|
-    tickets = line&.tickets_sold.to_i
-    amount = line && line.amount.to_f.positive? ? format("%.2f", line.amount) : nil
-    [ key, label, tickets.positive? ? tickets : nil, amount ]
-  end
+  tiers = listing.ticket_tiers.active.reject(&:bundle?)
+  grid = "grid grid-cols-[minmax(0,1fr)_5.5rem_7rem] gap-x-3 gap-y-2 items-center"
 %>
 <div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
      data-controller="modal" data-action="click->modal#closeOnBackdrop">
@@ -21,49 +18,48 @@
       </button>
     </div>
     <%= form_with url: manage_ticket_listing_outside_sales_path(listing), method: :patch, data: { turbo: false } do %>
-      <div class="p-6 space-y-4">
+      <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
         <p class="text-sm text-gray-600">
-          Tickets for <%= ticket_listing_date_label(listing) %> sold on other sites. They go straight into this show's financials, so there's nothing to type again at settlement.
+          Tickets for <%= ticket_listing_date_label(listing) %> sold on other sites, by ticket type. Each type has that many fewer seats here, and the counts go straight into this show's financials.
           <% if sources.empty? %>Name the site first; it joins your ticket sources for every show.<% end %>
         </p>
-        <% if sources.any? %>
-          <div class="grid grid-cols-[minmax(0,1fr)_5.5rem_7rem] gap-x-3 gap-y-2 items-center text-sm">
-            <div class="text-xs font-medium text-gray-500">Site</div>
-            <div class="text-xs font-medium text-gray-500 text-right">Tickets</div>
-            <div class="text-xs font-medium text-gray-500 text-right">Sales <span class="font-normal">(optional)</span></div>
-            <% sources.each do |source| %>
-              <% key, label, tickets, amount = row.call(source.id, source.name, lines[source.id]) %>
-              <label for="outside_tickets_<%= key %>" class="text-gray-900 truncate"><%= label %></label>
-              <%= number_field_tag "sales[#{key}][tickets]", tickets, id: "outside_tickets_#{key}", min: 0, inputmode: "numeric", placeholder: "0",
-                    class: "#{input_class} text-right" %>
-              <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
-                <%= text_field_tag "sales[#{key}][amount]", amount, id: "outside_amount_#{key}", inputmode: "decimal", placeholder: "Later",
-                      "aria-label": "#{label} sales", class: "#{input_class} pl-7 text-right" %>
-              </div>
-            <% end %>
+        <% sources.each do |source| %>
+          <div class="space-y-2">
+            <div class="text-sm font-semibold text-gray-900"><%= source.name %></div>
+            <div class="<%= grid %> text-sm">
+              <div class="text-xs font-medium text-gray-500">Ticket type</div>
+              <div class="text-xs font-medium text-gray-500 text-right">Sold there</div>
+              <div class="text-xs font-medium text-gray-500 text-right">Sales <span class="font-normal">(optional)</span></div>
+              <% tiers.each do |tier| %>
+                <% row = rows[[ source.id, tier.id ]] %>
+                <% key = "#{source.id}_#{tier.id}" %>
+                <label for="outside_tickets_<%= key %>" class="text-gray-900 truncate"><%= tier.name %></label>
+                <%= number_field_tag "sales[#{source.id}][#{tier.id}][tickets]", (row&.tickets_sold.to_i.positive? ? row.tickets_sold : nil), id: "outside_tickets_#{key}",
+                      min: 0, inputmode: "numeric", placeholder: "0", class: "#{input_class} text-right" %>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+                  <%= text_field_tag "sales[#{source.id}][#{tier.id}][amount]", (row && row.amount_cents.positive? ? format("%.2f", row.amount_cents / 100.0) : nil), id: "outside_amount_#{key}",
+                        inputmode: "decimal", placeholder: "Later", "aria-label": "#{source.name} #{tier.name} sales", class: "#{input_class} pl-7 text-right" %>
+                </div>
+              <% end %>
+            </div>
           </div>
         <% end %>
         <div class="rounded-lg border border-dashed border-gray-300 p-3 space-y-2">
           <label for="new_source_name" class="block text-xs font-medium text-gray-700"><%= sources.any? ? "Add another site" : "The site" %></label>
-          <div class="grid grid-cols-[minmax(0,1fr)_5.5rem_7rem] gap-x-3 items-center">
-            <%= text_field_tag :new_source_name, nil, placeholder: "Ticket Tailor", class: input_class %>
-            <%= number_field_tag "sales[new][tickets]", nil, id: "outside_tickets_new", min: 0, inputmode: "numeric", placeholder: "0", "aria-label": "Tickets sold on the new site",
-                  class: "#{input_class} text-right" %>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
-              <%= text_field_tag "sales[new][amount]", nil, id: "outside_amount_new", inputmode: "decimal", placeholder: "Later", "aria-label": "Sales on the new site",
-                    class: "#{input_class} pl-7 text-right" %>
-            </div>
+          <%= text_field_tag :new_source_name, nil, placeholder: "Ticket Tailor", class: input_class %>
+          <div class="<%= grid %> text-sm">
+            <% tiers.each do |tier| %>
+              <label for="outside_tickets_new_<%= tier.id %>" class="text-gray-900 truncate"><%= tier.name %></label>
+              <%= number_field_tag "sales[new][#{tier.id}][tickets]", nil, id: "outside_tickets_new_#{tier.id}", min: 0, inputmode: "numeric", placeholder: "0",
+                    class: "#{input_class} text-right" %>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+                <%= text_field_tag "sales[new][#{tier.id}][amount]", nil, id: "outside_amount_new_#{tier.id}", inputmode: "decimal", placeholder: "Later",
+                      "aria-label": "New site #{tier.name} sales", class: "#{input_class} pl-7 text-right" %>
+              </div>
+            <% end %>
           </div>
-        </div>
-        <div class="flex items-center justify-between gap-4 pt-2 border-t border-gray-100">
-          <div>
-            <div class="text-sm font-medium text-gray-900">Take these seats out of what CocoScout sells</div>
-            <div class="text-xs text-gray-600 mt-0.5">On, a ticket sold elsewhere is one fewer seat here, so the room never oversells. Off, the counts are for the financials only.</div>
-          </div>
-          <%= render "shared/toggle_switch", name: "reduce_seats", checked: listing.outside_sales_reduce_seats, hidden_false: true,
-                aria_label: "Take these seats out of what CocoScout sells" %>
         </div>
       </div>
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">

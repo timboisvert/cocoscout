@@ -36,36 +36,36 @@ RSpec.describe "Manage ticket listings", type: :request do
       expect(response.body).to include("On sale").and include("of 60")
     end
 
-    it "records tickets sold on other sites into the show's financials, and takes those seats out of the room" do
+    it "records tickets sold on other sites by ticket type, takes those seats here, and says why" do
       listing.update!(status: "on_sale")
+      vip = listing.ticket_tiers.create!(name: "VIP", price_cents: 3_500, quantity: 10)
       eventbrite = org.ticket_sources.create!(name: "Eventbrite")
-      theirs = create(:organization).ticket_sources.create!(name: "Theirs")
 
       get manage_ticket_listing_path(listing)
-      expect(response.body).to include("Sold elsewhere", "Tickets sold on other sites", "Eventbrite", 'id="outside-sales-modal"')
+      expect(response.body).to include("Sold elsewhere", 'id="outside-sales-modal"', 'id="comps-modal"', "Eventbrite")
+      expect(response.body).not_to include("Give tickets</div>")
 
       patch manage_ticket_listing_outside_sales_path(listing), params: {
-        new_source_name: "Ticket Tailor", reduce_seats: "1",
-        sales: { eventbrite.id.to_s => { tickets: "4", amount: "$80" }, "new" => { tickets: "6", amount: "" }, theirs.id.to_s => { tickets: "50", amount: "" } }
+        new_source_name: "Ticket Tailor",
+        sales: { eventbrite.id.to_s => { general.id.to_s => { tickets: "4", amount: "$80" } },
+                 "new" => { vip.id.to_s => { tickets: "6", amount: "" } } }
       }
       expect(response).to redirect_to(manage_ticket_listing_path(listing))
-      expect(flash[:notice]).to eq("10 tickets sold elsewhere, taken out of the seats here.")
+      expect(flash[:notice]).to eq("10 tickets sold elsewhere, off this show's seats.")
 
       tailor = org.ticket_sources.find_by!(name: "Ticket Tailor")
       lines = friday.show_financials.ticket_sales_lines.index_by(&:ticket_source_id)
       expect(lines[eventbrite.id].attributes.values_at("tickets_sold", "amount")).to eq([ 4, 80.to_d ])
       expect(lines[tailor.id].attributes.values_at("tickets_sold", "amount")).to eq([ 6, 0.to_d ])
-      expect(lines).not_to have_key(theirs.id)
-      expect(friday.show_financials.ticket_count).to eq(10)
-      expect(listing.inventory.remaining).to eq(50)
+      expect([ listing.inventory.remaining(tier: general), listing.inventory.remaining(tier: vip) ]).to eq([ 56, 4 ])
 
       get manage_ticket_listing_path(listing)
-      expect(response.body).to include("10 tickets on other sites", "10 sold elsewhere")
+      expect(response.body).to include("6 on Ticket Tailor", "4 on Eventbrite", "with sales elsewhere")
 
-      # Cleared to nothing, the rows go; switched off, the seats come back.
-      patch manage_ticket_listing_outside_sales_path(listing), params: { reduce_seats: "0", sales: { eventbrite.id.to_s => { tickets: "", amount: "" }, tailor.id.to_s => { tickets: "6", amount: "" } } }
-      expect(friday.show_financials.reload.ticket_sales_lines.count).to eq(1)
-      expect(listing.reload.inventory.remaining).to eq(60)
+      # The worksheet shows those rows but doesn't let anyone type over them.
+      get manage_money_show_financials_path(friday)
+      expect(response.body).to include("typed on the ticketing page")
+      expect(response.body).not_to match(/ticket_sales_lines_attributes\]\[\d+\]\[ticket_source_id\]"[^>]*value="#{eventbrite.id}"/)
     end
 
     it "pauses, resumes and closes, but never jumps a step that doesn't exist" do

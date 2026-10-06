@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_092000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_093000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3371,7 +3371,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_092000) do
     t.datetime "off_sale_at"
     t.datetime "on_sale_at"
     t.bigint "organization_id", null: false
-    t.boolean "outside_sales_reduce_seats", default: true, null: false
     t.bigint "production_id", null: false
     t.datetime "released_at"
     t.boolean "sell_products", default: true, null: false
@@ -3522,6 +3521,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_092000) do
     t.boolean "taxable", default: true, null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_ticket_products_on_organization_id"
+  end
+
+  create_table "ticket_outside_sales", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_tier_id", null: false
+    t.bigint "ticket_source_id", null: false
+    t.integer "tickets_sold", default: 0, null: false
+    t.integer "amount_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_outside_sales_on_organization_id"
+    t.index ["ticket_listing_id", "ticket_tier_id", "ticket_source_id"], name: "index_ticket_outside_sales_unique", unique: true
+    t.index ["ticket_listing_id"], name: "index_ticket_outside_sales_on_ticket_listing_id"
+    t.index ["ticket_source_id"], name: "index_ticket_outside_sales_on_ticket_source_id"
+    t.index ["ticket_tier_id"], name: "index_ticket_outside_sales_on_ticket_tier_id"
   end
 
   create_table "ticket_pass_coverages", force: :cascade do |t|
@@ -4286,6 +4301,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_092000) do
   add_foreign_key "ticket_orders", "ticket_purchases"
   add_foreign_key "ticket_orders", "users", column: "issued_by_id", on_delete: :nullify
   add_foreign_key "ticket_orders", "users", on_delete: :nullify
+  add_foreign_key "ticket_outside_sales", "organizations"
+  add_foreign_key "ticket_outside_sales", "ticket_listings"
+  add_foreign_key "ticket_outside_sales", "ticket_sources"
+  add_foreign_key "ticket_outside_sales", "ticket_tiers"
   add_foreign_key "ticket_products", "organizations"
   add_foreign_key "ticket_pass_coverages", "productions"
   add_foreign_key "ticket_pass_coverages", "ticket_passes"

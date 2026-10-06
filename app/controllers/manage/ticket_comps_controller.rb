@@ -3,13 +3,14 @@
 module Manage
   # Giving tickets away from a show's page (TicketComps): one person at a
   # time — name, email, how many, which ticket type — and they get their
-  # tickets. (A pasted list can come back if a theater asks for it.)
+  # tickets. The form is the Comps modal on the show's page (Tim,
+  # 2026-10-06). (A pasted list can come back if a theater asks for it.)
   class TicketCompsController < Manage::TicketingBaseController
     before_action :set_listing
 
+    # The old Give tickets page: the form is a modal on the show's page now.
     def new
-      @tier_id = params[:tier_id].presence&.to_i || (@tiers.find { |t| t.price_cents.zero? } || @tiers.first)&.id
-      @note = params[:note]
+      redirect_to manage_ticket_listing_path(@listing, anchor: "guests")
     end
 
     def create
@@ -17,16 +18,10 @@ module Manage
       guest = TicketComps::Guest.new(name: params[:name].to_s.squish, email: params[:email].to_s.strip.downcase.presence,
                                      tier: tier, quantity: params[:quantity].to_i)
       order = TicketComps.give!(@listing, [ guest ], by: Current.user, note: params[:note], email_them: params[:email_them] == "1").sole
-      # Back here for the next guest; the show page lists them all.
-      redirect_to manage_new_ticket_listing_comps_path(@listing, tier_id: tier&.id, note: params[:note].presence),
-                  notice: "Gave #{helpers.pluralize(order.tickets.size, 'ticket')} to #{guest.name}. They're on the guest list; add the next person below."
+      redirect_to manage_ticket_listing_path(@listing, anchor: "guests"),
+                  notice: "Gave #{helpers.pluralize(order.tickets.size, 'ticket')} to #{guest.name}. They're on the guest list."
     rescue TicketComps::Error => e
-      @name, @email, @quantity = params[:name], params[:email], params[:quantity]
-      @tier_id = tier&.id
-      @note = params[:note]
-      @email_them = params[:email_them] == "1"
-      flash.now[:alert] = e.message
-      render :new, status: :unprocessable_content
+      redirect_to manage_ticket_listing_path(@listing, anchor: "guests"), alert: e.message
     end
 
     private

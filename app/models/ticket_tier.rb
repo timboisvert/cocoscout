@@ -19,6 +19,7 @@ class TicketTier < ApplicationRecord
   has_many :bundles, class_name: "TicketTier", foreign_key: :bundle_of_tier_id, inverse_of: :bundle_of, dependent: :nullify
   # The tickets a bundle made (they belong to its type, remembering the bundle).
   has_many :bundle_tickets, class_name: "Ticket", foreign_key: :bundle_tier_id, inverse_of: :bundle_tier, dependent: :restrict_with_error
+  has_many :ticket_outside_sales, dependent: :destroy
 
   normalizes :unlock_code, with: ->(c) { c.to_s.strip.upcase.presence }
 

@@ -59,17 +59,20 @@ RSpec.describe "Manage a show's tickets", type: :request do
     expect(response.body.index("Fox Mulder")).to be < response.body.index("Dana Scully")
   end
 
-  # Tim (2026-10-02): one person at a time, no pasted list.
-  it "gives tickets away one person at a time, and says so" do
-    get manage_new_ticket_listing_comps_path(listing)
-    expect(response.body).to include("coming as your guest?", 'name="name"', 'name="quantity"')
+  # Tim (2026-10-02): one person at a time, no pasted list. Tim (2026-10-06):
+  # the form is a modal behind the Comps tile, not its own page.
+  it "gives tickets away one person at a time, from the Comps tile, and says so" do
+    get manage_ticket_listing_path(listing)
+    expect(response.body).to include('data-modal-id="comps-modal"', 'id="comps-modal"', 'name="name"', 'name="quantity"')
     expect(response.body).not_to include("One person per line")
+    get manage_new_ticket_listing_comps_path(listing)
+    expect(response).to redirect_to(manage_ticket_listing_path(listing, anchor: "guests"))
 
     expect {
       post manage_ticket_listing_comps_path(listing),
            params: { name: "Walter Skinner", email: "walter@example.com", quantity: "2", tier_id: general.id, note: "Press", email_them: "1" }
     }.to have_enqueued_job(TicketOrderConfirmationJob).once
-    expect(response).to redirect_to(manage_new_ticket_listing_comps_path(listing, tier_id: general.id, note: "Press"))
+    expect(response).to redirect_to(manage_ticket_listing_path(listing, anchor: "guests"))
     expect(flash[:notice]).to start_with("Gave 2 tickets to Walter Skinner.")
 
     expect {
@@ -79,8 +82,8 @@ RSpec.describe "Manage a show's tickets", type: :request do
     expect(response.body).to include("Walter Skinner", "Monica Reyes", "Comp")
 
     post manage_ticket_listing_comps_path(listing), params: { name: "Too Many", quantity: "50", tier_id: general.id }
-    expect(response).to have_http_status(:unprocessable_content)
-    expect(response.body).to include("more than the seats left", 'value="Too Many"')
+    expect(response).to redirect_to(manage_ticket_listing_path(listing, anchor: "guests"))
+    expect(flash[:alert]).to include("more than the seats left")
   end
 
   it "goes back where it came from after a status change" do
