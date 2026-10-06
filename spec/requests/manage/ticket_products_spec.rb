@@ -32,6 +32,10 @@ RSpec.describe "Ticket products", type: :request do
     get manage_ticket_products_path
     expect(response.body).to include("Champagne bottle", "$45.00", "Not offered on any production yet")
 
+    # Its two rules are toggles, never plain checkboxes (Tim, 2026-10-06).
+    get manage_edit_ticket_product_path(product)
+    expect(response.body).to match(/<input class="sr-only peer"[^>]*name="ticket_product\[taxable\]"/)
+
     patch manage_ticket_product_path(product), params: { ticket_product: { name: "Champagne", price: "50", counts_toward_ticket_revenue: "1", taxable: "0" } }
     expect(product.reload.attributes.values_at("name", "price_cents", "counts_toward_ticket_revenue", "taxable")).to eq([ "Champagne", 5_000, true, false ])
 

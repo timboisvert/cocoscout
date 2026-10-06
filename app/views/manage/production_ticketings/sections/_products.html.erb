@@ -61,12 +61,12 @@
                         id: "product_price_#{product.id}", inputmode: "decimal", placeholder: format("%.2f", product.price_cents / 100.0),
                         "aria-label": "#{product.name} price here", class: "#{input_class} pl-7" %>
                 </div>
-                <label class="flex items-center gap-2 text-xs text-gray-700">
-                  <%= check_box_tag "products[#{product.id}][counts_toward_ticket_revenue]", "1",
-                        (link && !link.counts_toward_ticket_revenue.nil? ? link.counts_toward_ticket_revenue : product.counts_toward_ticket_revenue),
-                        id: "product_counts_#{product.id}", class: checkbox_class %>
-                  Counts as ticket revenue here
-                </label>
+                <div class="flex items-center gap-2 text-xs text-gray-700">
+                  <%= render "shared/toggle_switch", name: "products[#{product.id}][counts_toward_ticket_revenue]", id: "product_counts_#{product.id}",
+                        checked: (link && !link.counts_toward_ticket_revenue.nil? ? link.counts_toward_ticket_revenue : product.counts_toward_ticket_revenue),
+                        aria_label: "#{product.name} counts as ticket revenue here" %>
+                  <label for="product_counts_<%= product.id %>" class="cursor-pointer">Counts as ticket revenue here</label>
+                </div>
               </fieldset>
             </div>
           </li>

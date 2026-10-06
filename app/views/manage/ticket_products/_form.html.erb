@@ -1,7 +1,6 @@
 <%# One product's name, standard price, description and rules. Locals: product. %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  checkbox_class = "h-4 w-4 mt-0.5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
 %>
 <%= form_with model: product, url: (product.persisted? ? manage_ticket_product_path(product) : manage_ticket_products_path),
       method: (product.persisted? ? :patch : :post), class: "space-y-6" do |f| %>
@@ -33,25 +32,25 @@
     </div>
   </div>
 
-  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
-    <label class="flex items-start gap-3">
-      <%= f.check_box :counts_toward_ticket_revenue, class: checkbox_class %>
-      <span>
-        <span class="block text-sm font-medium text-gray-900">Count its sales as ticket revenue</span>
-        <span class="block text-xs text-gray-600 mt-0.5">
+  <div class="bg-white border border-gray-200 rounded-lg px-5 divide-y divide-gray-100">
+    <div class="py-4 flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-medium text-gray-900">Count its sales as ticket revenue</div>
+        <div class="text-xs text-gray-600 mt-0.5">
           On, what it sells joins the show's ticket revenue, which a contract's revenue share is worked out on.
           Off (the usual choice), the money is yours alone: it shows in the show's financials as other revenue and never in a split.
           A production can decide differently on its Products tab.
-        </span>
-      </span>
-    </label>
-    <label class="flex items-start gap-3">
-      <%= f.check_box :taxable, class: checkbox_class %>
-      <span>
-        <span class="block text-sm font-medium text-gray-900">Charge the ticket tax on it</span>
-        <span class="block text-xs text-gray-600 mt-0.5">The tax you set in Ticketing settings applies to this product the way it does to a ticket.</span>
-      </span>
-    </label>
+        </div>
+      </div>
+      <%= render "shared/toggle_switch", form: f, field: :counts_toward_ticket_revenue %>
+    </div>
+    <div class="py-4 flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-medium text-gray-900">Charge the ticket tax on it</div>
+        <div class="text-xs text-gray-600 mt-0.5">The tax you set in Ticketing settings applies to this product the way it does to a ticket.</div>
+      </div>
+      <%= render "shared/toggle_switch", form: f, field: :taxable %>
+    </div>
   </div>
 
   <div class="flex flex-wrap gap-2">

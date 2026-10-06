@@ -41,16 +41,14 @@
       picked (TicketListingSync). Experimental, so only superadmins on an org
       with Ticketing see it. %>
   <% if Current.user&.superadmin? && Current.organization&.feature_available?(:ticketing) %>
-    <div class="mb-6 pt-6 border-t border-gray-200">
-      <label class="flex items-start gap-3 cursor-pointer">
-        <input type="checkbox" data-contract-ticketing-target="listOnCocoscout" data-action="change->contract-ticketing#toggleListing"
-               <%= "checked" if ActiveModel::Type::Boolean.new.cast(ticketing["list_on_cocoscout"]) %>
-               class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-        <span>
-          <span class="block text-sm font-medium text-gray-900">Sell these on CocoScout Ticketing</span>
-          <span class="block text-xs text-gray-600 mt-0.5">The production's ticketing takes these prices, seats and codes, with the deal's nights picked. Nothing goes on sale until you turn it on in Ticketing.</span>
-        </span>
-      </label>
+    <div class="mb-6 pt-6 border-t border-gray-200 flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-medium text-gray-900">Sell these on CocoScout Ticketing</div>
+        <div class="text-xs text-gray-600 mt-0.5">The production's ticketing takes these prices, seats and codes, with the deal's nights picked. Nothing goes on sale until you turn it on in Ticketing.</div>
+      </div>
+      <%= render "shared/toggle_switch", checked: ActiveModel::Type::Boolean.new.cast(ticketing["list_on_cocoscout"]),
+            aria_label: "Sell these on CocoScout Ticketing",
+            data: { contract_ticketing_target: "listOnCocoscout", action: "change->contract-ticketing#toggleListing" } %>
     </div>
   <% end %>
 

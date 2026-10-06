@@ -1,13 +1,21 @@
 <%#
-  Pink iOS-style toggle switch bound to a Rails form checkbox. Replaces the
-  hand-rolled `sr-only peer` block that was duplicated across forms.
+  Pink iOS-style toggle switch: the one way to turn a saved setting on or off.
+  Replaces the hand-rolled `sr-only peer` block that was duplicated across
+  forms. Picking items from a list, and one-time options on an action form,
+  stay plain checkboxes.
 
-  Locals:
-    form  - the form builder (required)
-    field - checkbox attribute name (required)
+  Bound to a form builder:
+    form  - the form builder (required unless name/tag mode)
+    field - checkbox attribute name (required with form)
     checked         - force checked state (optional; omit to use the model value)
     data            - data attributes for the checkbox (optional)
     unchecked_value - paired hidden-field false value (optional)
+
+  Or a bare checkbox (no form builder):
+    name         - the input's name (optional: a JS-only switch can have none)
+    checked      - true/false (required)
+    id, data, aria_label - optional
+    hidden_false - also send "0" when off, like form.check_box does (optional)
 %>
 <%
   cb_options = { class: "sr-only peer" }
@@ -15,9 +23,16 @@
   cb_options[:data] = local_assigns[:data] if local_assigns[:data].present?
   checked_value = "1"
   unchecked_value = local_assigns[:unchecked_value]
+  form = local_assigns[:form]
 %>
 <label class="relative inline-flex items-center cursor-pointer">
-  <% if unchecked_value %>
+  <% if form.nil? %>
+    <% if local_assigns[:name] && local_assigns[:hidden_false] %>
+      <%= hidden_field_tag local_assigns[:name], "0", id: nil %>
+    <% end %>
+    <%= tag.input type: "checkbox", name: local_assigns[:name], value: checked_value, id: local_assigns[:id],
+          checked: local_assigns[:checked], "aria-label": local_assigns[:aria_label], **cb_options %>
+  <% elsif unchecked_value %>
     <%= form.check_box field, cb_options, checked_value, unchecked_value %>
   <% else %>
     <%= form.check_box field, cb_options %>
