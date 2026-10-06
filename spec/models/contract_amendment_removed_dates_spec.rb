@@ -34,4 +34,21 @@ RSpec.describe Contract, "#apply_amendment! removing booked dates" do
     expect(SpaceRental.exists?(rental.id)).to be(false)
     expect(payment.reload.show_id).to be_nil
   end
+
+  # Round 9 §0 (2026-10-06): a night people hold tickets for can't be dropped
+  # by an amendment; it's canceled in Shows & Events, where they're refunded.
+  it "refuses to drop a night that sold tickets" do
+    starts_at = 3.weeks.from_now.change(hour: 20)
+    rental = contract.space_rentals.create!(location: location, starts_at: starts_at, ends_at: starts_at + 2.hours, confirmed: true)
+    show = production.shows.create!(date_and_time: starts_at, duration_minutes: 120, location: location, space_rental: rental)
+    listing = TicketListing.create!(show: show, status: "on_sale")
+    general = listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60)
+    order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "1" })
+    TicketOrderSettlement.settle!(order, payment_intent_id: "pi_amend")
+
+    expect {
+      contract.transaction { contract.apply_amendment!({ "removed_rental_ids" => [ rental.id ] }) }
+    }.to raise_error(Contract::TicketsSoldError, /Cancel it in Shows & Events first/)
+    expect(Show.exists?(show.id)).to be(true)
+  end
 end

@@ -48,6 +48,9 @@ class TicketSalesSync
       line.update!(tickets_sold: count, amount: (face_cents + counted) / 100.0)
     end
     sync_other_revenue!(financials, other)
+    # A contract settling off this show's sales (a revenue share, a minus-fee
+    # deal) follows every sale, refund and exchange, not just worksheet saves.
+    ContractPaymentSyncService.new(show).call unless Show.skip_contract_payment_sync?
   end
 
   # Face value of the products sold for this show (no fees, no tax), split

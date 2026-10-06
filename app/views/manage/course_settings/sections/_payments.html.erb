@@ -10,7 +10,8 @@
     When students register for your courses, CocoScout collects the money and holds it for you.
     <% if CocoScoutBalance.pooled?(@organization) %>
       Your share stays in your CocoScout balance, where payout runs spend it first and you can
-      <%= link_to "withdraw it to your bank", manage_ticket_balance_path, class: "font-medium text-pink-700 hover:underline" %> whenever you like.
+      <%# The balance page is in Ticketing: only link it for someone who can open it. %>
+      <% if Current.user&.superadmin? %><%= link_to "withdraw it to your bank", manage_ticket_balance_path, class: "font-medium text-pink-700 hover:underline" %><% else %>withdraw it to your bank from Ticketing<% end %> whenever you like.
       Connect your organization's bank here so withdrawals have somewhere to go, and so we can pay your instructors directly.
     <% else %>
       Connect your organization's bank account here so we can send your share straight to you after

@@ -53,6 +53,12 @@ module Manage
       "manage/ticket_comps" => :ticketing,
       "manage/ticket_balance" => :ticketing,
       "manage/ticket_taxes" => :ticketing,
+      "manage/ticket_offers" => :ticketing,
+      "manage/ticket_offer_wizard" => :ticketing,
+      "manage/ticket_passes" => :ticketing,
+      "manage/ticket_products" => :ticketing,
+      "manage/ticket_sales_viewers" => :ticketing,
+      "manage/short_links" => :ticketing,
       "manage/books" => :money
     }.freeze
 

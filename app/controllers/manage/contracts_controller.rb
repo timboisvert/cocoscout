@@ -744,6 +744,8 @@ module Manage
       else
         apply_amendment_now!(force_overlap)
       end
+    rescue Contract::TicketsSoldError => e
+      redirect_to amend_review_manage_contract_path(@contract), alert: e.message
     rescue ActiveRecord::RecordInvalid => e
       redirect_to amend_review_manage_contract_path(@contract), alert: "Could not apply amendments: #{e.message}"
     end
