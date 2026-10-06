@@ -8,7 +8,7 @@
 
   <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
     <p class="text-sm text-gray-600 max-w-3xl">
-      Every morning CocoScout copies its Stripe balance, line by line, and checks it against its own records: what it holds for theaters plus
+      Every morning CocoScout copies its Stripe balance, line by line, and checks it against its own records: what it holds for organizations plus
       CocoScout's own money must equal what Stripe holds, and every Stripe line must be explained by something in CocoScout.
       You get an email when it doesn't add up.
       <% if @last_import_at %><span class="text-gray-500">Last copied from Stripe <%= @last_import_at.strftime("%b %-d, %-l:%M %p") %>.</span><% end %>
@@ -25,7 +25,7 @@
       <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">The check, <%= @check.checked_at.strftime("%b %-d at %-l:%M %p") %></h2>
       <dl class="divide-y divide-gray-100 text-sm">
         <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700">Stripe holds (available <%= usd(@check.details["stripe_available_cents"]) %>, on its way <%= usd(@check.details["stripe_pending_cents"]) %>)</dt><dd class="tabular-nums font-medium text-gray-900"><%= usd(@check.stripe_balance_cents) %></dd></div>
-        <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700">Held for theaters (their CocoScout balances)</dt><dd class="tabular-nums text-gray-900"><%= usd(@check.held_for_orgs_cents) %></dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700">Held for organizations (their CocoScout balances)</dt><dd class="tabular-nums text-gray-900"><%= usd(@check.held_for_orgs_cents) %></dd></div>
         <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700">CocoScout's own</dt><dd class="tabular-nums text-gray-900"><%= usd(@check.cocoscout_cents) %></dd></div>
         <% transit = @check.details["in_transit"] || [] %>
         <div class="px-4 py-2">
@@ -104,7 +104,7 @@
               <% else %>
                 Once explained it counts as CocoScout's own money.
               <% end %>
-              If it was a theater's, adjust that theater's balance on its Finances page instead.
+              If it was an organization's, adjust that organization's balance on its Finances page instead.
             </p>
             <input type="text" name="note" required placeholder="e.g. Test charge from setting up Stripe"
                    class="block w-full rounded-lg border border-gray-300 py-2.5 px-3 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 text-sm">

@@ -186,7 +186,7 @@
 
   <% if OrgPayout.exists?(organization: @org) || CourseOffering.joins(:production).exists?(productions: { organization_id: @org.id }) %>
     <p class="mt-4 text-sm text-gray-600">
-      Before payout runs, course money was paid to theaters by hand: <%= link_to "Course payments recorded by hand", finances_org_courses_path(org_id: @org.id), class: "text-pink-600 hover:underline" %>.
+      Before payout runs, course money was paid to organizations by hand: <%= link_to "Course payments recorded by hand", finances_org_courses_path(org_id: @org.id), class: "text-pink-600 hover:underline" %>.
     </p>
   <% end %>
 

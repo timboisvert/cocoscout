@@ -21,7 +21,16 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
   describe "the Finances pages" do
     before { sign_in_as_superadmin }
 
-    it "shows CocoScout's own money, apart from the theaters'" do
+    it "says in words when CocoScout is short, never as a minus sign" do
+      PlatformReconciliation.create!(checked_at: Time.current, checked_on: Date.current, stripe_balance_cents: 100_000,
+                                     held_for_orgs_cents: 130_985, cocoscout_cents: -30_985, imported_net_cents: 100_000, difference_cents: 0)
+      CocoScoutLedgerEntry.create!(entry_type: "funding_cost", amount_cents: -50_000, occurred_at: Time.current)
+      get finances_path
+      expect(response.body).to include("CocoScout is short", "$309.85", "Held for organizations", "Spent more than earned", "$500.00 spent against $0.00 earned")
+      expect(response.body).not_to include("-$309.85", "-$500.00", "theater")
+    end
+
+    it "shows CocoScout's own money, apart from the organizations'" do
       listing = create(:ticket_listing, organization: organization)
       tier = listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60)
       order = TicketCheckout.start!(listing: listing, quantities: { tier.id.to_s => "2" })

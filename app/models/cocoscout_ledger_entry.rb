@@ -18,7 +18,7 @@ class CocoScoutLedgerEntry < ApplicationRecord
     "ticket_refund" => [ "Fees given back on ticket refunds", :income ],
     "course_fee" => [ "Course fees", :income ],
     "course_refund" => [ "Course fees given back on refunds", :income ],
-    "contract_processing" => [ "Card processing passed on to theaters", :income ],
+    "contract_processing" => [ "Card processing passed on to organizations", :income ],
     "subscription" => [ "Pro subscriptions", :income ],
     "usage" => [ "Usage ($3 per performer, $5 per staff)", :income ],
     "other_income" => [ "Other Stripe income", :income ],
@@ -27,7 +27,7 @@ class CocoScoutLedgerEntry < ApplicationRecord
     "stripe_fee" => [ "Other Stripe fees (Connect, Billing)", :cost ],
     "payout_to_bank" => [ "Sent to CocoScout's bank", :bank ],
     "added_from_bank" => [ "Added from CocoScout's bank", :bank ],
-    "paid_by_hand" => [ "Theaters paid by hand from our bank", :bank ],
+    "paid_by_hand" => [ "Organizations paid by hand from our bank", :bank ],
     "opening_difference" => [ "Opening difference", :adjustment ],
     "explained" => [ "Explained by hand", :adjustment ]
   }.freeze

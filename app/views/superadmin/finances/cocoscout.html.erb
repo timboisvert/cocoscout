@@ -7,7 +7,7 @@
   <%= render "superadmin/finances/tabs", current: :cocoscout %>
 
   <p class="mt-4 text-sm text-gray-600 max-w-3xl">
-    CocoScout's own money: what it earned, what it spent, what went to its bank. The theaters' money in the same Stripe balance is on
+    CocoScout's own money: what it earned, what it spent, what went to its bank. The organizations' money in the same Stripe balance is on
     <%= link_to "Organizations", finances_organizations_path, class: "text-pink-600 hover:underline" %>.
   </p>
 
@@ -21,15 +21,27 @@
         <p class="text-xs text-gray-500 mt-1">Everything in CocoScout's Stripe balance</p>
       </div>
       <div class="rounded-lg border border-gray-200 bg-white p-4">
-        <div class="text-sm text-gray-600">Held for theaters</div>
+        <div class="text-sm text-gray-600">Held for organizations</div>
         <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@check.held_for_orgs_cents) %></div>
         <p class="text-xs text-gray-500 mt-1">Their money, not ours</p>
       </div>
-      <div class="rounded-lg border <%= @check.cocoscout_cents.positive? ? 'border-pink-200 bg-pink-50' : 'border-gray-200 bg-white' %> p-4">
-        <div class="text-sm text-gray-600">CocoScout's own, in Stripe</div>
-        <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@check.cocoscout_cents) %></div>
-        <p class="text-xs text-gray-500 mt-1">Earned and not yet sent to our bank</p>
-      </div>
+      <%# What's left after the organizations' money is CocoScout's. Below zero
+          it isn't a balance at all: the organizations are owed more than the
+          account holds, so say that in words, never as a minus sign. %>
+      <% own = @check.cocoscout_cents %>
+      <% if own.negative? %>
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div class="text-sm text-amber-800">CocoScout is short</div>
+          <div class="text-2xl font-bold tabular-nums text-amber-900 mt-0.5"><%= usd(-own) %></div>
+          <p class="text-xs text-amber-800 mt-1">The Stripe balance holds that much less than organizations are owed. CocoScout's costs (funding fees it absorbs, Stripe's charges, money sent to its bank) have outrun what it earned; its next earnings close the gap.</p>
+        </div>
+      <% else %>
+        <div class="rounded-lg border <%= own.positive? ? 'border-pink-200 bg-pink-50' : 'border-gray-200 bg-white' %> p-4">
+          <div class="text-sm text-gray-600">CocoScout's own, in Stripe</div>
+          <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(own) %></div>
+          <p class="text-xs text-gray-500 mt-1">Earned and not yet sent to our bank</p>
+        </div>
+      <% end %>
     </div>
   <% end %>
 
@@ -51,10 +63,20 @@
       <div class="text-sm text-gray-600">Spent</div>
       <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(-@finances.costs_cents) %></div>
     </div>
-    <div class="rounded-lg border <%= @finances.net_cents.negative? ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50' %> p-4">
-      <div class="text-sm text-gray-600">Net</div>
-      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@finances.net_cents) %></div>
-    </div>
+    <% net = @finances.net_cents %>
+    <% if net.negative? %>
+      <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div class="text-sm text-amber-800">Spent more than earned</div>
+        <div class="text-2xl font-bold tabular-nums text-amber-900 mt-0.5"><%= usd(-net) %></div>
+        <p class="text-xs text-amber-800 mt-1"><%= usd(-@finances.costs_cents) %> spent against <%= usd(@finances.income_cents) %> earned</p>
+      </div>
+    <% else %>
+      <div class="rounded-lg border <%= net.positive? ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white' %> p-4">
+        <div class="text-sm text-gray-600">Kept</div>
+        <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(net) %></div>
+        <p class="text-xs text-gray-500 mt-1">Earned less spent</p>
+      </div>
+    <% end %>
   </div>
 
   <% daily = @finances.daily_net %>
