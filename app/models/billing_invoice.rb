@@ -34,11 +34,43 @@ class BillingInvoice < ApplicationRecord
   def status_label
     case status
     when "paid" then "Paid"
-    when "open" then failed_at.present? ? "Payment failed" : "Due"
+    when "open"
+      if failed_at.present? then "Payment failed"
+      elsif collecting? then lands_on ? "Being collected, lands about #{lands_on.strftime('%b %-d')}" : "Being collected"
+      else "Due"
+      end
     when "uncollectible" then "Couldn't collect"
     when "void" then "Voided"
     else "Draft"
     end
+  end
+
+  # The month the bill covers: the middle of its period. A usage period that
+  # runs from the 30th to the 30th covers the second month, so a bill whose
+  # period starts August 30 is September's.
+  def covered_month
+    UsageInvoiceCorrection.billed_month(self)
+  end
+
+  # "Usage · September 2026"
+  def title
+    [ label, covered_month&.strftime("%B %Y") ].compact.join(" · ")
+  end
+
+  # Stripe has started taking the money (a bank debit takes a few business
+  # days to land): its line is already on CocoScout's Stripe statement.
+  def collection_line
+    return @collection_line if defined?(@collection_line)
+
+    @collection_line = StripeBalanceTransaction.where(matched: self, category: "billing").order(:occurred_at).last
+  end
+
+  def collecting?
+    status == "open" && failed_at.nil? && collection_line.present?
+  end
+
+  def lands_on
+    collection_line&.available_on
   end
 
   def failed?

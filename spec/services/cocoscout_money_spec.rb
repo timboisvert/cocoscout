@@ -347,6 +347,7 @@ RSpec.describe UsageOverbilling do
                                   amount_due_cents: 20_100, amount_paid_cents: 20_100,
                                   period_start: Time.zone.local(2026, 8, 30), period_end: Time.zone.local(2026, 9, 30))
     allow(Stripe::Invoice).to receive(:retrieve).with("in_sep").and_return(Stripe::Invoice.construct_from(id: "in_sep", post_payment_credit_notes_amount: 0))
+    allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
 
     row = described_class.rows(org).sole
     expect([ row.invoice, row.month, row.staff, row.performers, row.owed_cents, row.over_cents ])
@@ -357,5 +358,25 @@ RSpec.describe UsageOverbilling do
             hash_including(idempotency_key: "usage-overbilled-in_sep-19600"))
       .and_return(Stripe::CreditNote.construct_from(id: "cn_1"))
     described_class.give_back!(row, how: "refund")
+  end
+
+  it "credits a bill still being collected on the customer's balance now, and names the month it covers" do
+    bill = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_coll", number: "SG-0003", kind: "usage", status: "open",
+                                  amount_due_cents: 20_100, amount_paid_cents: 0, stripe_payment_intent_id: "pi_coll",
+                                  period_start: Time.zone.local(2026, 8, 30), period_end: Time.zone.local(2026, 9, 30))
+    StripeBalanceTransaction.create!(stripe_id: "txn_coll", txn_type: "payment", reporting_category: "charge", amount_cents: 20_100, net_cents: 20_000,
+                                     status: "pending", available_on: Date.new(2026, 10, 7), occurred_at: Time.zone.local(2026, 9, 30),
+                                     category: "billing", match_status: "matched", matched: bill)
+    allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_coll"))
+    allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
+    expect(bill.title).to eq("Usage · September 2026")
+    expect(bill.status_label).to eq("Being collected, lands about Oct 7")
+
+    row = described_class.rows(org).sole
+    expect([ row.charged_cents, row.over_cents ]).to eq([ 20_100, 20_100 ])
+    expect(described_class.give_back!(row, how: "refund")).to be_nil
+    expect(Stripe::Customer).to receive(:create_balance_transaction)
+      .with("cus_sg", hash_including(amount: -20_100, metadata: hash_including(usage_overbilled_invoice: "in_coll")), anything)
+    described_class.give_back!(row, how: "credit")
   end
 end

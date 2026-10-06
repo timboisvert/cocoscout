@@ -91,17 +91,21 @@ namespace :usage do
     fmt = ->(cents) { format("$%.2f", cents / 100.0) }
     puts how ? "GIVING BACK the overcharges as a #{how}." : "DRY RUN for #{organization.name}: nothing is changed."
     rows = UsageOverbilling.rows(organization)
-    BillingInvoice.where(organization: organization, kind: "usage").where.not(status: "paid").each do |open|
-      puts "#{open.number}: #{open.status_label.downcase}; run again once it's paid."
-    end
     rows.each do |row|
-      puts "#{row.invoice.number} covers #{row.month.strftime('%B %Y')}: charged #{fmt.call(row.charged_cents)}" \
+      state = row.invoice.collecting? ? " (#{row.invoice.status_label.downcase})" : ""
+      puts "#{row.invoice.number}#{state} covers #{row.month.strftime('%B %Y')}: charged #{fmt.call(row.charged_cents)}" \
            "#{", already credited #{fmt.call(row.credited_cents)}" if row.credited_cents.positive?}; " \
            "owed #{fmt.call(row.owed_cents)} (#{row.staff} staff × $5, #{row.performers} performers × $3); overcharged #{fmt.call(row.over_cents)}"
       next unless how && row.over_cents.positive?
 
-      note = UsageOverbilling.give_back!(row, how: how)
-      puts "  credit note #{note.id} for #{fmt.call(row.over_cents)} (#{how})"
+      result = UsageOverbilling.give_back!(row, how: how)
+      if result.nil?
+        puts "  still being collected: refund it once it lands, or give it back now as a credit with [#{organization.id},credit]"
+      elsif row.invoice.collecting?
+        puts "  credited #{fmt.call(row.over_cents)} to their Stripe balance now (it pays down their next bills)"
+      else
+        puts "  credit note #{result.id} for #{fmt.call(row.over_cents)} (#{how})"
+      end
     end
     total = rows.sum(&:over_cents)
     puts "Overcharged in all: #{fmt.call(total)}."

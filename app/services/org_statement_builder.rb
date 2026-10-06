@@ -44,7 +44,7 @@ class OrgStatementBuilder
       "fees_paid_by_buyers_cents" => orders.where(fee_mode: "buyer").sum(:buyer_fee_cents),
       "fees_paid_by_you_cents" => orders.where(fee_mode: "org").sum("platform_fee_cents + processing_cents"),
       "bills" => bills.order(:period_start).map do |bill|
-        { "label" => bill.label, "number" => bill.number, "period" => bill.period_start&.strftime("%B %Y"),
+        { "label" => bill.label, "number" => bill.number, "period" => bill.covered_month&.strftime("%B %Y"),
           "amount_cents" => bill.amount_due_cents, "status" => bill.status_label, "lines" => bill.lines }
       end,
       "opening_cents" => opening,
