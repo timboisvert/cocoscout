@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_140100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -305,6 +305,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_130000) do
     t.bigint "amount_due_cents", default: 0, null: false
     t.bigint "amount_paid_cents", default: 0, null: false
     t.bigint "amount_remaining_cents", default: 0, null: false
+    t.datetime "bill_emailed_at"
     t.datetime "created_at", null: false
     t.datetime "failed_at"
     t.string "failure_message"
@@ -318,6 +319,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_130000) do
     t.datetime "paid_at"
     t.datetime "period_end"
     t.datetime "period_start"
+    t.datetime "receipt_emailed_at"
     t.string "status", null: false
     t.string "stripe_invoice_id", null: false
     t.string "stripe_payment_intent_id"

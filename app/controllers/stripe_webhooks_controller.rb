@@ -255,6 +255,12 @@ class StripeWebhooksController < ApplicationController
     # paid, before Stripe finalizes and charges it. A Stripe error here
     # answers 500, and Stripe keeps the draft until it goes through.
     UsageInvoiceCorrection.apply!(record) if event_type == "invoice.created"
+    # The owner hears about each bill when it's issued, and gets a receipt
+    # when it's paid.
+    return unless record
+
+    BillingInvoiceEmailJob.perform_later(record.id, "bill") if event_type == "invoice.finalized"
+    BillingInvoiceEmailJob.perform_later(record.id, "receipt") if event_type == "invoice.paid"
   end
 
   def handle_invoice_event(invoice)

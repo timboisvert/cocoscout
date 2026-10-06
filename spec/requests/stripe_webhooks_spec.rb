@@ -5,6 +5,8 @@ require "rails_helper"
 # The money-moving webhook handlers. There were no webhook specs at all before
 # this: a bank rejecting a deposit produced no signal anywhere in the app.
 RSpec.describe "StripeWebhooksController", type: :request do
+  include ActiveJob::TestHelper
+
   let(:owner) { create(:user) }
   let!(:org) { create(:organization, owner: owner) }
   let(:payee) { create(:person, name: "Sam Staffer", stripe_account_id: "acct_123", payouts_enabled: true) }
@@ -287,6 +289,30 @@ RSpec.describe "StripeWebhooksController", type: :request do
       )
       expect(Stripe::InvoiceItem).not_to receive(:create)
       deliver("invoice.created", draft)
+    end
+  end
+
+  describe "bill emails" do
+    it "emails the owner the bill when Stripe issues it, and a receipt when it's paid, once each" do
+      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      base = { id: "in_sep", object: "invoice", customer: "cus_sg", amount_due: 4_100, amount_remaining: 4_100, number: "SG-0009",
+               period_start: Time.zone.local(2026, 9, 1).to_i, period_end: Time.zone.local(2026, 10, 1).to_i,
+               hosted_invoice_url: "https://invoice.stripe.com/i/x", parent: { subscription_details: { subscription: "sub_usage" } },
+               lines: { data: [ { description: "7 × active staff member", quantity: 7, amount: 3_500 }, { description: "2 × active performer", quantity: 2, amount: 600 } ] } }
+      expect {
+        perform_enqueued_jobs { deliver("invoice.finalized", Stripe::Invoice.construct_from(base.merge(status: "open", amount_paid: 0))) }
+      }.to change { ActionMailer::Base.deliveries.size }.by(1)
+      mail = ActionMailer::Base.deliveries.last
+      expect(mail.to).to eq([ owner.email_address ])
+      expect(mail.subject).to eq("Your CocoScout bill: September 2026 usage, $41.00")
+      expect(mail.html_part&.body&.to_s || mail.body.to_s).to include("7 × active staff member: $35.00", "https://invoice.stripe.com/i/x")
+
+      allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(base.merge(status: "paid", amount_paid: 4_100, amount_remaining: 0,
+                                                                                                         status_transitions: { paid_at: Time.zone.local(2026, 10, 4).to_i })))
+      expect {
+        perform_enqueued_jobs { 2.times { deliver("invoice.paid", Stripe::Invoice.construct_from(base.merge(status: "paid"))) } }
+      }.to change { ActionMailer::Base.deliveries.size }.by(1)
+      expect(ActionMailer::Base.deliveries.last.subject).to eq("Receipt: September 2026 usage, $41.00 paid")
     end
   end
 
