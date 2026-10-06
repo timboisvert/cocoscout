@@ -85,4 +85,15 @@ RSpec.describe StaffMeterService do
       expect(described_class.sync_usage_subscription!(org)).to be(false)
     end
   end
+
+  describe ".ensure_staffing_subscription!" do
+    it "bills calendar months, the months the Billing page counts" do
+      allow(SubscriptionPlan).to receive(:staffing_subscription_items).and_return([ { price: "price_staff" } ])
+      expect(Stripe::Subscription).to receive(:create)
+        .with(hash_including(customer: "cus_meter", billing_cycle_anchor_config: { day_of_month: 1 }, metadata: hash_including(kind: "staffing")))
+        .and_return(double("subscription", id: "sub_usage"))
+      expect(described_class.ensure_staffing_subscription!(org)).to eq("sub_usage")
+      expect(org.reload.staffing_subscription_id).to eq("sub_usage")
+    end
+  end
 end

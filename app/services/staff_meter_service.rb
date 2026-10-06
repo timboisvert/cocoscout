@@ -60,10 +60,14 @@ module StaffMeterService
     items = SubscriptionPlan.staffing_subscription_items
     return nil if items.nil? || org.stripe_customer_id.blank?
 
+    # Bills calendar months (the 1st to the end of the month), the same months
+    # the Billing page counts, so a bill matches the table.
     subscription = Stripe::Subscription.create(
       customer: org.stripe_customer_id,
       items: items,
-      metadata: { organization_id: org.id, kind: "staffing" }
+      metadata: { organization_id: org.id, kind: "staffing" },
+      billing_cycle_anchor_config: { day_of_month: 1 },
+      proration_behavior: "none"
     )
     org.update_column(:staffing_subscription_id, subscription.id)
     subscription.id
