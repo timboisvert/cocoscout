@@ -21,15 +21,14 @@ RSpec.describe "The ticket link everywhere", type: :request do
     listing
   end
 
-  it "chips every row on the manager's Shows & Events list" do
+  it "leaves the manager's Shows & Events list alone: no chips, no nudge (Tim, 2026-10-06)" do
     sell!
     create(:organization_role, :manager, user: manager, organization: org)
     post handle_signin_path, params: { email_address: manager.email_address, password: password }
     get manage_path
 
     get manage_shows_path
-    expect(response.body).to include("/t/#{ShortLink.canonical_for!(production).code}/#{ShortLink.date_suffix(show)}", "Tickets · Eventbrite", "https://www.eventbrite.com/e/mic")
-    expect(response.body.scan(/data-tooltip-text="Get tickets"/).size).to eq(1)
+    expect(response.body).not_to include("Where do people get tickets", "Tickets · Eventbrite", "data-tooltip-text=\"Get tickets\"")
   end
 
   it "puts Get tickets on the public production and show pages, only while the box office is open" do

@@ -30,9 +30,11 @@
             <%= render "shared/pro_marker", kind: :lock %>
           <% end %>
         </button>
-        <button type="button" data-tabs-target="tab" data-index="7" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <button type="button" data-tabs-target="tab" data-index="7" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Tickets</button>
+        <button type="button" data-tabs-target="tab" data-index="8" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
       <% else %>
-        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Tickets</button>
+        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
       <% end %>
     </nav>
 
@@ -694,6 +696,23 @@
       <%= render "manage/productions/pay_tab", production: @production %>
     </div>
     <% end %><%# end unless type_third_party %>
+
+    <!-- Tickets: the Tickets question (Round 9 §3). Dates inherit the answer; a date can override it on its own Tickets tab. -->
+    <div data-tabs-target="panel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/card_header", title: "Tickets" %>
+        <div class="p-6">
+          <% if @production.tickets_mode != "unset" %>
+            <div class="mb-6 pb-6 border-b border-gray-200">
+              <%= render "shared/ticketing/tickets_status", production: @production, edit_path: manage_production_ticketing_path(@production) %>
+            </div>
+          <% end %>
+          <%= render "shared/ticketing/tickets_question", production: @production,
+                return_to: edit_manage_production_path(@production, tab: (@production.type_third_party? ? 3 : 7)) %>
+          <p class="mt-4 text-xs text-gray-500">Every date of <%= @production.name %> follows this. A date can point somewhere else from its own Tickets tab.</p>
+        </div>
+      </div>
+    </div>
 
     <!-- Danger Zone Tab -->
     <div data-tabs-target="panel" class="hidden">

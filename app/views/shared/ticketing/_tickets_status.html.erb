@@ -1,8 +1,6 @@
-<%# Where a production's tickets stand once the question is answered, with
-    Change reopening it. Locals: production, return_to (optional). %>
+<%# Where a production's tickets stand once the question is answered; Change
+    goes to the production's Tickets tab. Locals: production, edit_path. %>
 <%
-  return_to = local_assigns[:return_to]
-  modal_id = "tickets-question-#{production.id}"
   setup = production.production_ticketing
 %>
 <div class="flex flex-wrap items-start justify-between gap-4">
@@ -36,8 +34,6 @@
     <% if production.tickets_mode == "cocoscout" %>
       <%= render "shared/button", text: "Open ticketing", variant: "primary", size: "small", path: manage_production_ticketing_path(production) %>
     <% end %>
-    <%= render "shared/button", text: "Change", variant: "secondary", size: "small", type: :button,
-          data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+    <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: edit_path %>
   </div>
 </div>
-<%= render "shared/ticketing/tickets_question_modal", id: modal_id, production: production, return_to: return_to %>

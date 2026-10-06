@@ -287,15 +287,16 @@
     </div>
   <% end %>
 
-  <%# The Tickets question (Round 9 §3): asked once, then where its tickets stand. %>
+  <%# Where this production's tickets are (Round 9 §3). Set on Production Settings → Tickets. %>
   <% if (Current.organization&.manageable_by?(Current.user) || Current.user&.superadmin?) && !@production.type_course? %>
+    <% tickets_tab = edit_manage_production_path(@production, tab: (@production.type_third_party? ? 3 : 7)) %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Tickets" %>
+      <%= render "shared/card_header", title: "Tickets", links: [ { text: "Production Settings", path: tickets_tab } ] %>
       <div class="p-4">
         <% if @production.tickets_mode == "unset" %>
-          <%= render "shared/ticketing/tickets_question", production: @production, return_to: manage_production_path(@production) %>
+          <p class="text-sm text-gray-500">Where people get tickets isn't set. <%= link_to "Set it", tickets_tab, class: "text-pink-500 hover:text-pink-600 underline" %>: sold on CocoScout, somewhere else, or no tickets.</p>
         <% else %>
-          <%= render "shared/ticketing/tickets_status", production: @production, return_to: manage_production_path(@production) %>
+          <%= render "shared/ticketing/tickets_status", production: @production, edit_path: tickets_tab %>
         <% end %>
       </div>
     </div>

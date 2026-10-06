@@ -18,8 +18,11 @@ RSpec.describe "The Tickets question", type: :request do
     get manage_path
   end
 
-  it "asks on the production page, and selling on CocoScout lists every date and opens the box office" do
+  it "asks on the production's Tickets tab, and selling on CocoScout lists every date and opens the box office" do
     get manage_production_path(production)
+    expect(response.body).to include("Where people get tickets isn", edit_manage_production_path(production, tab: 7))
+    expect(response.body).not_to include("Sell them on CocoScout")
+    get edit_manage_production_path(production, tab: 7)
     expect(response.body).to include("Where do people get tickets for Boylesque?", "Sell them on CocoScout", "Somewhere else", "No tickets")
     expect(TicketingProfile.for(org).enabled?).to be(false)
 
@@ -40,18 +43,10 @@ RSpec.describe "The Tickets question", type: :request do
     get manage_production_path(production)
     expect(response.body).to include("Sold on CocoScout", "1 upcoming date", "/t/#{ShortLink.canonical_for!(production).code}", "Open ticketing")
 
+    # The show page shows where the tickets are, small, for reading only.
     get manage_production_show_path(production, show)
-    expect(response.body).to include("Open ticketing", "Give tickets", "of 70", manage_ticket_listing_path(show.ticket_listing))
-  end
-
-  it "nudges from Shows & Events for the soonest production that hasn't answered, until it has" do
-    get manage_shows_path
-    expect(response.body).to include("Where do people get tickets for Boylesque?", "id=\"tickets-question-#{production.id}\"")
-
-    patch manage_production_tickets_path(production), params: { return_to: manage_shows_path, tickets: { mode: "none" } }
-    expect(response).to redirect_to(manage_shows_path)
-    get manage_shows_path
-    expect(response.body).not_to include("Where do people get tickets for Boylesque?")
+    expect(response.body).to include("On CocoScout", "of 70", manage_ticket_listing_path(show.ticket_listing))
+    expect(response.body).not_to include("Give tickets", "Where do people get tickets")
   end
 
   it "takes a pasted link, names the site and adds it to the ticket sources; a date can point somewhere else" do
@@ -65,12 +60,14 @@ RSpec.describe "The Tickets question", type: :request do
     get manage_production_path(production)
     expect(response.body).to include("Tickets on Ticket Tailor", "Change")
     get manage_production_show_path(production, show)
-    expect(response.body).to include("Tickets on Ticket Tailor", "This date's tickets are somewhere else")
+    expect(response.body).to include("Sold on Ticket Tailor", "The production&#39;s link")
 
     patch manage_production_show_tickets_path(production, show), params: { tickets_url: "https://www.eventbrite.com/e/99" }
     expect(response).to redirect_to(manage_production_show_path(production, show))
     expect(show.reload.tickets_url).to eq("https://www.eventbrite.com/e/99")
     expect(TicketLink.for(show).site).to eq("Eventbrite")
+    get manage_production_show_path(production, show)
+    expect(response.body).to include("Sold on Eventbrite", "This date&#39;s own link")
 
     patch manage_production_tickets_path(production), params: { tickets: { mode: "elsewhere", url: "nope" } }
     expect(flash[:alert]).to eq("Paste the link where people buy tickets.")
@@ -85,7 +82,7 @@ RSpec.describe "The Tickets question", type: :request do
     org.update!(comped_indefinitely: false)
     patch manage_production_tickets_path(production), params: { tickets: { mode: "cocoscout", tiers: { "0" => { name: "General", price: "20" } } } }
     expect(flash[:alert]).to eq("Selling tickets on CocoScout is part of Pro.")
-    get manage_production_path(production)
+    get edit_manage_production_path(production, tab: 7)
     expect(response.body).to include("Part of Pro")
 
     org.update!(comped_indefinitely: true)

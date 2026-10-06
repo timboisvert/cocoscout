@@ -53,8 +53,11 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
       get edit_manage_production_path(production)
 
       pay_at = response.body.index('data-index="6"')
-      danger_at = response.body.index('data-index="7"')
-      expect(pay_at).to be < danger_at
+      tickets_at = response.body.index('data-index="7"')
+      danger_at = response.body.index('data-index="8"')
+      expect(pay_at).to be < tickets_at
+      expect(tickets_at).to be < danger_at
+      expect(response.body[tickets_at, 200]).to include("Tickets")
       expect(response.body[danger_at, 200]).to include("Danger Zone")
     end
 
