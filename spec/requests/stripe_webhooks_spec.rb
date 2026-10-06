@@ -255,6 +255,41 @@ RSpec.describe "StripeWebhooksController", type: :request do
     end
   end
 
+  describe "a usage bill Stripe just drafted" do
+    it "is corrected to the people CocoScout paid that month, before Stripe charges it" do
+      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      month = Date.new(2026, 10, 1)
+      3.times { StaffActivation.record!(organization: org, person: create(:person), month: month) }
+      7.times { PerformerActivation.record!(organization: org, person: create(:person), month: month) }
+      draft = Stripe::Invoice.construct_from(
+        id: "in_oct", object: "invoice", customer: "cus_sg", status: "draft", amount_due: 8_100, amount_paid: 0, amount_remaining: 8_100,
+        period_start: Time.zone.local(2026, 9, 30).to_i, period_end: Time.zone.local(2026, 10, 30).to_i,
+        parent: { subscription_details: { subscription: "sub_usage" } },
+        lines: { data: [ { description: "12 × active staff member", quantity: 12, amount: 6_000 },
+                         { description: "7 × active performer", quantity: 7, amount: 2_100 } ] }
+      )
+      expect(Stripe::InvoiceItem).to receive(:create)
+        .with(hash_including(customer: "cus_sg", invoice: "in_oct", amount: -4_500, description: a_string_including("3 staff and 7 performers", "October 2026")),
+              hash_including(idempotency_key: "usage-correction-in_oct--4500"))
+      deliver("invoice.created", draft)
+      expect(response).to have_http_status(:ok)
+      expect(BillingInvoice.find_by(stripe_invoice_id: "in_oct").kind).to eq("usage")
+    end
+
+    it "leaves a bill that already matches alone" do
+      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      StaffActivation.record!(organization: org, person: create(:person), month: Date.new(2026, 10, 1))
+      draft = Stripe::Invoice.construct_from(
+        id: "in_ok", object: "invoice", customer: "cus_sg", status: "draft", amount_due: 500,
+        period_start: Time.zone.local(2026, 10, 1).to_i, period_end: Time.zone.local(2026, 11, 1).to_i,
+        parent: { subscription_details: { subscription: "sub_usage" } },
+        lines: { data: [ { description: "1 × active staff member", quantity: 1, amount: 500 } ] }
+      )
+      expect(Stripe::InvoiceItem).not_to receive(:create)
+      deliver("invoice.created", draft)
+    end
+  end
+
   describe "payment_intent.payment_failed — the funding debit bounced" do
     it "marks the run failed and tells somebody" do
       funding = org.payout_batches.create!(kind: "staff_pay", status: "funding", trigger: "manual",

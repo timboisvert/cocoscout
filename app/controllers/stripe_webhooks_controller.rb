@@ -242,13 +242,19 @@ class StripeWebhooksController < ApplicationController
   # carries no payments, so a paid one is fetched with them (that's how its
   # charge is matched later).
   def record_invoice(invoice, event_type)
-    if event_type == "invoice.paid"
-      invoice = Stripe::Invoice.retrieve({ id: invoice.id, expand: [ "payments" ] })
+    record = begin
+      if event_type == "invoice.paid"
+        invoice = Stripe::Invoice.retrieve({ id: invoice.id, expand: [ "payments" ] })
+      end
+      event_type == "invoice.payment_failed" ? BillingInvoiceSync.payment_failed!(invoice) : BillingInvoiceSync.sync!(invoice)
+    rescue Stripe::StripeError => e
+      Rails.logger.warn("[StripeWebhooks] couldn't fetch invoice #{invoice.id}: #{e.message}")
+      BillingInvoiceSync.sync!(invoice)
     end
-    event_type == "invoice.payment_failed" ? BillingInvoiceSync.payment_failed!(invoice) : BillingInvoiceSync.sync!(invoice)
-  rescue Stripe::StripeError => e
-    Rails.logger.warn("[StripeWebhooks] couldn't fetch invoice #{invoice.id}: #{e.message}")
-    BillingInvoiceSync.sync!(invoice)
+    # A usage bill Stripe just drafted is corrected to the people CocoScout
+    # paid, before Stripe finalizes and charges it. A Stripe error here
+    # answers 500, and Stripe keeps the draft until it goes through.
+    UsageInvoiceCorrection.apply!(record) if event_type == "invoice.created"
   end
 
   def handle_invoice_event(invoice)
