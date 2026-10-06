@@ -29,6 +29,12 @@ class Ticket < ApplicationRecord
 
   scope :sold, -> { where(status: SOLD_STATUSES) }
 
+  # What a guest list or the door calls it: "General", or "General (Twilight
+  # Double Feature pass)" when it came with a pass.
+  def type_label
+    ticket_pass ? "#{ticket_tier.name} (#{ticket_pass.name} pass)" : ticket_tier.name
+  end
+
   def checked_in?
     status == "checked_in"
   end

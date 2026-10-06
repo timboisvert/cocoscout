@@ -195,7 +195,7 @@ module Manage
     # The show's orders for the guest list, narrowed by a filter and a search.
     def guest_orders(filter, query)
       orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID)
-                       .includes(:ticket_order_items, tickets: :ticket_tier).order(:buyer_name, :id).to_a
+                       .includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass]).order(:buyer_name, :id).to_a
       if query.present?
         q = query.downcase
         orders = orders.select { |o| [ o.buyer_name, o.buyer_email, o.code ].compact.any? { |v| v.downcase.include?(q) } }

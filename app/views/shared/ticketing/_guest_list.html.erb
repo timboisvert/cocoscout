@@ -13,7 +13,7 @@
     <% orders.each do |order| %>
       <% held = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
       <% inside = held.count(&:checked_in?) %>
-      <% by_tier = held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} × #{tier.name}" }.join(", ") %>
+      <% by_tier = held.group_by(&:type_label).map { |label, ts| "#{ts.size} × #{label}" }.join(", ") %>
       <% items = order.ticket_order_items.select(&:sold?) %>
       <% badge = channel_badges[order.channel] %>
       <% undone = held.empty? %>
@@ -36,7 +36,7 @@
           <% end %>
         </div>
         <div class="text-sm text-gray-700">
-          <%= by_tier.presence || order.tickets.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} × #{tier.name}" }.join(", ") %>
+          <%= by_tier.presence || order.tickets.group_by(&:type_label).map { |label, ts| "#{ts.size} × #{label}" }.join(", ") %>
           <% items.each do |item| %>
             <span class="ml-1 inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= item.fulfilled? ? 'bg-gray-100 text-gray-600' : 'bg-pink-100 text-pink-700' %>"><%= item.label %></span>
           <% end %>

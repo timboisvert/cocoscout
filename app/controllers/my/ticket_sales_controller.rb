@@ -24,7 +24,7 @@ module My
       @show_my_sidebar = true
       @listing = TicketSalesAccess.listings_for(Current.user).includes(:organization, :production, show: :location).find(params[:id])
       @stats = Ticketing::ListingStats.of(@listing)
-      @guest_orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(:ticket_order_items, tickets: :ticket_tier)
+      @guest_orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass])
                               .order(:buyer_name, :id).to_a.select { |o| o.tickets.any? { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
     end
 

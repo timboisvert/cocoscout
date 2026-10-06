@@ -63,6 +63,10 @@ RSpec.describe "Ticket passes", type: :request do
       order = TicketCheckout.start_pass!(pass: pass, quantity: 1)
       TicketPurchaseSettlement.settle!(order.ticket_purchase, payment_intent_id: "pi_review")
 
+      order.update!(buyer_name: "Bella Swan", buyer_email: "bella@example.com")
+      get manage_ticket_listing_path(part_one)
+      expect(response.body).to include("General (Twilight Double Feature pass)")
+
       get manage_ticket_order_refund_path(order.id, ticket_ids: order.tickets.pluck(:id), item_ids: [ "" ])
       expect(response.body).to include("at its regular price", "Refund the full share instead")
 

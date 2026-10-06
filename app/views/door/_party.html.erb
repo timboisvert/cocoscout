@@ -6,7 +6,7 @@
   waiting = tickets.size - inside
   items = order.ticket_order_items.select(&:sold?)
   state = inside.zero? ? "out" : (waiting.zero? ? "in" : "some")
-  by_type = tickets.group_by { |t| t.ticket_tier.name }.map { |name, rows| "#{rows.size} #{name}" }.join(", ")
+  by_type = tickets.group_by(&:type_label).map { |name, rows| "#{rows.size} #{name}" }.join(", ")
   how = if order.channel == "comp" then "Comp"
   elsif order.channel.to_s.start_with?("door") then "Door"
   end
