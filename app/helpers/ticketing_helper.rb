@@ -89,7 +89,10 @@ module TicketingHelper
   def ticket_summary_lines(order)
     tickets = order.tickets.to_a
     items = order.ticket_order_items.to_a
-    lines = tickets.group_by(&:ticket_tier).map { |tier, rows| [ "#{rows.size} × #{tier.name}", rows.sum(&:price_cents), false ] }
+    lines = tickets.group_by(&:ticket_tier).map do |tier, rows|
+      count = rows.size / [ tier.admits.to_i, 1 ].max
+      [ "#{count} × #{tier.name}#{" (admits #{tier.admits})" if tier.bundle?}", rows.sum(&:price_cents), false ]
+    end
     items.each { |item| lines << [ "#{item.quantity} × #{item.name}", item.price_cents, false ] }
     if order.discount_cents.positive?
       lines << [ "Discount#{" (#{order.ticket_discount_code.code})" if order.ticket_discount_code}", -order.discount_cents, true ]
@@ -106,16 +109,17 @@ module TicketingHelper
   # price shown (TicketPricing's own math). One row means there's nothing to
   # break down.
   def ticket_price_breakdown(listing, tier)
-    tax = TaxCalculator.for_ticket(listing, tier, tier.price_cents)
-    taxed = tax.lines.reject(&:exempt)
+    # A type admitting several people is taxed and priced ticket by ticket.
+    taxes = tier.seat_prices.map { |cents| TaxCalculator.for_ticket(listing, tier, cents) }
+    taxed = taxes.flat_map(&:lines).reject(&:exempt)
     label = ticket_tax_label(taxed, rate: false)
     included = taxed.select(&:included).sum(&:tax_cents)
-    added = tax.added_cents
+    added = taxes.sum(&:added_cents)
     total = TicketPricing.all_in_price_cents(listing, tier)
     fees = total - tier.price_cents - added
 
     # Tax inside the price is shown apart too, so the rows always add up.
-    rows = [ [ "Ticket", tier.price_cents - included ] ]
+    rows = [ [ tier.bundle? ? "#{tier.admits} tickets" : "Ticket", tier.price_cents - included ] ]
     rows << [ "Fees", fees ] if fees.positive?
     rows << [ label, included + added ] if (included + added).positive?
     PriceBreakdown.new(rows: rows, total_cents: total)

@@ -37,12 +37,14 @@ export default class extends Controller {
             const n = Number(row.querySelector("[data-door-sell-target='input']").value)
             const price = Number(row.dataset.price)
             const product = row.dataset.product === "1"
+            // A 4-pack admits four: four tickets, four 50¢ fees.
+            const admits = Number(row.dataset.admits || 1)
             // A product (a bottle) adds its price and tax, never our 50¢, and
             // only goes with a ticket.
             if (product) products += n
-            else count += n
+            else count += n * admits
             base += n * (price + Number(row.dataset.tax))
-            if (price > 0 && !product) paid += n
+            if (price > 0 && !product) paid += n * admits
             row.querySelector("[data-door-sell-target='count']").textContent = n
             row.querySelector("[data-door-sell-target='minus']").disabled = n === 0
             row.querySelector("[data-door-sell-target='plus']").disabled = n >= Number(row.dataset.max)

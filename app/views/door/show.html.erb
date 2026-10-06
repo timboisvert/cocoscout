@@ -112,13 +112,14 @@
       </div>
       <ul class="mt-2 divide-y divide-gray-100">
         <% @tiers.each do |tier| %>
-          <% left = @listing.inventory.remaining(tier: tier) %>
-          <% most = [ left || max_per_order, max_per_order ].min %>
-          <% added_tax = TaxCalculator.for_ticket(@listing, tier, tier.price_cents).added_cents %>
+          <%# Counts are purchases: a 4-pack is four seats and four tickets. %>
+          <% left = tier.units_for(@listing.inventory.remaining(tier: tier)) %>
+          <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
+          <% added_tax = tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(@listing, tier, cents).added_cents } %>
           <li class="flex items-center gap-3 py-3" data-door-sell-target="row"
-              data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>">
+              data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>" data-admits="<%= tier.admits %>">
             <div class="min-w-0 flex-1">
-              <div class="font-medium text-gray-900"><%= tier.name %></div>
+              <div class="font-medium text-gray-900"><%= tier.name %><% if tier.bundle? %> <span class="text-sm font-normal text-gray-500">· admits <%= tier.admits %></span><% end %></div>
               <div class="text-sm text-gray-500"><%= ticket_price(tier.price_cents) %><%= " · #{left} left" if left && left <= @listing.effective_low_stock_threshold %></div>
             </div>
             <%= hidden_field_tag "quantities[#{tier.id}]", 0, id: nil, data: { door_sell_target: "input" } %>

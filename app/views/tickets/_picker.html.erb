@@ -47,15 +47,17 @@
       <%= render "tickets/bot_trap", id: "event_website" %>
       <ul class="divide-y divide-gray-100">
         <% tiers.each do |tier| %>
-          <% left = inventory.remaining(tier: tier) %>
-          <% most = [ left || max_per_order, max_per_order ].min %>
-          <% added_tax = tax_added ? TaxCalculator.for_ticket(listing, tier, tier.price_cents).added_cents : 0 %>
+          <%# Counts are purchases: a 4-pack takes four of the seats left and
+              four of the order's limit. %>
+          <% left = tier.units_for(inventory.remaining(tier: tier)) %>
+          <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
+          <% added_tax = tax_added ? tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(listing, tier, cents).added_cents } : 0 %>
           <% breakdown = tier.free? ? nil : ticket_price_breakdown(listing, tier) %>
           <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>" data-tier-id="<%= tier.id %>"
               data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
-              data-left="<%= left %>" data-per-order="<%= max_per_order %>">
+              data-admits="<%= tier.admits %>" data-left="<%= left %>" data-per-order="<%= tier.units_for(max_per_order) %>">
             <div class="min-w-0 flex-1">
-              <div class="font-semibold text-gray-900"><%= tier.name %></div>
+              <div class="font-semibold text-gray-900"><%= tier.name %><% if tier.bundle? %> <span class="text-sm font-normal text-gray-600">· admits <%= tier.admits %></span><% end %></div>
               <% if tier.description.present? %><div class="text-sm text-gray-600"><%= tier.description %></div><% end %>
               <% if breakdown && breakdown.rows.size > 1 %>
                 <details class="mt-0.5">
@@ -68,7 +70,7 @@
                       <div class="flex justify-between gap-4"><dt><%= label %></dt><dd class="tabular-nums"><%= number_to_currency(cents / 100.0) %></dd></div>
                     <% end %>
                     <div class="flex justify-between gap-4 pt-1 border-t border-gray-200 font-semibold text-gray-900">
-                      <dt>One ticket</dt><dd class="tabular-nums"><%= number_to_currency(breakdown.total_cents / 100.0) %></dd>
+                      <dt><%= tier.bundle? ? "One #{tier.name}" : "One ticket" %></dt><dd class="tabular-nums"><%= number_to_currency(breakdown.total_cents / 100.0) %></dd>
                     </div>
                   </dl>
                 </details>

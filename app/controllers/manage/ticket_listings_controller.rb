@@ -252,7 +252,7 @@ module Manage
       permitted = params.require(:ticket_listing).permit(
         :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode, :low_stock_threshold,
         :door_note, :age_note, :accessibility_note, :sell_products,
-        ticket_tiers_attributes: %i[id name price quantity description position _destroy]
+        ticket_tiers_attributes: %i[id name price quantity admits description position _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
@@ -271,6 +271,7 @@ module Manage
         price = row.delete("price").to_s.delete("$,").strip
         row["price_cents"] = price.empty? ? 0 : (BigDecimal(price) * 100).round.to_i
         row["quantity"] = row["quantity"].presence
+        row["admits"] = row["admits"].presence || 1 if row.key?("admits")
         if row["_destroy"] == "1" && row["id"].present? && @listing.tickets.where(ticket_tier_id: row["id"]).exists?
           row.delete("_destroy")
           row["archived_at"] = Time.current

@@ -127,11 +127,13 @@ export default class extends Controller {
             const input = row.querySelector("[data-ticket-picker-target='input']")
             const n = Number(input.value)
             const price = Number(row.dataset.price)
-            count += n
+            // A 4-pack admits four: four tickets, four 50¢ fees.
+            const admits = Number(row.dataset.admits || 1)
+            count += n * admits
             face += n * price
             tax += n * Number(row.dataset.tax)
             base += n * (price + Number(row.dataset.tax))
-            if (price > 0) paid += n
+            if (price > 0) paid += n * admits
             if (n > 0) lines.push([`${n} × ${row.dataset.name}`, n * price])
             // A sold-out type has no steppers.
             const counter = row.querySelector("[data-ticket-picker-target='count']")

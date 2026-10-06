@@ -19,6 +19,8 @@ class TicketTier < ApplicationRecord
   validates :name, presence: true, length: { maximum: 80 }
   validates :price_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :quantity, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+  # People one purchase admits: 1 for a ticket, 4 for "4 tickets for $70".
+  validates :admits, numericality: { only_integer: true, in: 1..20 }
   validates :min_per_order, numericality: { only_integer: true, greater_than: 0 }
   validates :max_per_order, numericality: { only_integer: true, greater_than_or_equal_to: :min_per_order }, allow_nil: true
   validates :unlock_code, presence: true, if: :hidden?
@@ -26,6 +28,28 @@ class TicketTier < ApplicationRecord
   validate :one_owner
 
   scope :active, -> { where(archived_at: nil) }
+
+  # A ticket type that admits several people for one price.
+  def bundle?
+    admits.to_i > 1
+  end
+
+  # One purchase's price split into one ticket per person: $70 for 4 is
+  # [1750, 1750, 1750, 1750]; any odd cents go to the first tickets, so they
+  # always add up to the price.
+  def seat_prices(cents = price_cents)
+    self.class.split(cents, admits.to_i.clamp(1, 20))
+  end
+
+  def self.split(cents, parts)
+    base, extra = cents.to_i.divmod(parts)
+    Array.new(parts) { |i| base + (i < extra ? 1 : 0) }
+  end
+
+  # How many of this type's purchases fit in `seats` seats.
+  def units_for(seats)
+    seats.nil? ? nil : seats / admits.to_i.clamp(1, 20)
+  end
 
   def free?
     price_cents.zero?

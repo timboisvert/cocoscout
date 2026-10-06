@@ -13,7 +13,8 @@
 class TicketCheckout
   class Error < StandardError; end
 
-  # quantities: { tier_id => count }. code: a discount code, or the code that
+  # quantities: { tier_id => count } (a count of purchases: a 4-pack counts
+  # once and becomes four tickets). code: a discount code, or the code that
   # unlocks a hidden tier. replacing: the token of this buyer's live hold.
   # at_door: the door selling to someone in front of them, which works after
   # online sales close and with any ticket type still on the show. via: the
@@ -28,8 +29,9 @@ class TicketCheckout
 
     code = code.to_s.strip.upcase.presence
     requests = requested_tiers(listing, quantities, code, at_door: at_door)
+    seats = seat_requests(requests)
     max = listing.effective_max_per_order
-    raise Error, "You can buy up to #{max} tickets at a time." if requests.values.sum > max
+    raise Error, "You can buy up to #{max} tickets at a time." if seats.values.sum > max
 
     discount = code && find_discount(listing, code)
     raise Error, "That code doesn't work for this show." if code && discount.nil? && requests.keys.none?(&:hidden?)
@@ -43,13 +45,13 @@ class TicketCheckout
       # Expiring it now frees its seats for the new hold (Inventory ignores a
       # lapsed hold); a SoldOut below rolls this back too.
       held&.update!(status: "expired", expires_at: Time.current)
-      Ticketing::Inventory.reserve!(listing, requests) do
+      Ticketing::Inventory.reserve!(listing, seats) do
         order = TicketOrder.create!(organization: listing.organization, ticket_listing: listing, status: "pending",
                                     channel: channel, money_path: "cocoscout", fee_mode: listing.effective_fee_mode,
                                     expires_at: TicketOrder::HOLD.from_now, ticket_discount_code: discount,
                                     client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
                                     short_link: short_link, utm: short_link ? { "via" => short_link.code } : {})
-        requests.each { |tier, count| count.times { add_ticket(order, tier, discount) } }
+        requests.each { |tier, count| count.times { add_purchase(order, tier, discount) } }
         # Products added on the old hold come along to the new one.
         set_items!(order, held_item_quantities(held), reprice: false) if held
         price!(order)
@@ -60,9 +62,16 @@ class TicketCheckout
     raise Error, "Sorry, there aren't enough seats left for that. Try fewer tickets."
   end
 
-  # A live hold's tickets by type: { tier_id => count }.
+  # A live hold's purchases by type: { tier_id => count } (a held 4-pack is
+  # four tickets and counts once), as the show's page steppers count them.
   def self.held_quantities(order)
-    order.tickets.group(:ticket_tier_id).count
+    admits = TicketTier.where(id: order.tickets.select(:ticket_tier_id)).pluck(:id, :admits).to_h
+    order.tickets.group(:ticket_tier_id).count.to_h { |tier_id, tickets| [ tier_id, tickets / [ admits[tier_id].to_i, 1 ].max ] }
+  end
+
+  # Seats a request takes: { tier => people }.
+  def self.seat_requests(requests)
+    requests.to_h { |tier, count| [ tier, count * tier.admits.to_i.clamp(1, 20) ] }
   end
 
   def self.same_request?(order, requests, discount)
@@ -169,15 +178,21 @@ class TicketCheckout
     requests
   end
 
-  # One held ticket, its discount, and its tax — recorded now so the price the
-  # buyer is quoted is the price they pay, even if the theater changes its tax
-  # rate while they're checking out.
-  def self.add_ticket(order, tier, discount)
+  # One purchase held: one ticket per person it admits (a 4-pack is four
+  # tickets sharing its price and its discount), each with its tax, recorded
+  # now so the price the buyer is quoted is the price they pay, even if the
+  # theater changes its tax rate while they're checking out.
+  def self.add_purchase(order, tier, discount)
     listing = order.ticket_listing
     off = discount&.applies_to?(listing, tier) ? discount.discount_cents_for(tier.price_cents) : 0
+    tier.seat_prices.zip(tier.seat_prices(off)).each { |price, seat_off| add_ticket(order, tier, price, seat_off) }
+  end
+
+  def self.add_ticket(order, tier, price_cents, off)
+    listing = order.ticket_listing
     ticket = order.tickets.create!(ticket_tier: tier, ticket_listing: listing, status: "reserved",
-                                   price_cents: tier.price_cents, discount_cents: off)
-    tax = TaxCalculator.for_ticket(listing, tier, tier.price_cents - off)
+                                   price_cents: price_cents, discount_cents: off)
+    tax = TaxCalculator.for_ticket(listing, tier, price_cents - off)
     tax.lines.each do |line|
       TaxLine.create!(organization_id: order.organization_id, taxable: ticket, tax_rate: line.tax_rate,
                       name: line.name, rate_bps: line.rate_bps, jurisdiction: line.jurisdiction, remitter: line.remitter,
@@ -188,5 +203,5 @@ class TicketCheckout
     ticket.update_columns(tax_cents: tax.tax_cents)
   end
 
-  private_class_method :requested_tiers, :add_ticket, :same_request?, :held_item_quantities
+  private_class_method :requested_tiers, :add_purchase, :add_ticket, :same_request?, :held_item_quantities
 end

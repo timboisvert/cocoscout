@@ -68,10 +68,13 @@ class TicketPricing
   # can only cost less per ticket (processing's 30¢ is charged once), so the
   # total at checkout is never more than the prices added up. (The FTC rule
   # requires fees in the price; including tax as well means no surprise.)
+  # A type that admits several people (a 4-pack) is priced as its tickets
+  # together: 50¢ for each person, processing once.
   def self.all_in_price_cents(listing, tier)
-    tax = TaxCalculator.for_ticket(listing, tier, tier.price_cents).added_cents
-    quote(items: [ { price_cents: tier.price_cents, discount_cents: 0, tax_cents: tax } ],
-          fee_mode: listing.effective_fee_mode).total_cents
+    items = tier.seat_prices.map do |cents|
+      { price_cents: cents, discount_cents: 0, tax_cents: TaxCalculator.for_ticket(listing, tier, cents).added_cents }
+    end
+    quote(items: items, fee_mode: listing.effective_fee_mode).total_cents
   end
 
   # What one product really adds for a buyer, fees and tax in, by the same

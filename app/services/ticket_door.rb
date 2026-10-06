@@ -88,16 +88,20 @@ class TicketDoor
     raise TicketCheckout::Error, "Pick at least one ticket." if requests.empty?
 
     order = nil
-    Ticketing::Inventory.reserve!(@listing, requests) do
+    seats = requests.to_h { |tier, count| [ tier, count * tier.admits.to_i.clamp(1, 20) ] }
+    Ticketing::Inventory.reserve!(@listing, seats) do
       order = TicketOrder.create!(organization: @listing.organization, ticket_listing: @listing, status: "paid", paid_at: Time.current,
                                   channel: kind == "cash" ? "door_cash" : "comp", money_path: kind == "cash" ? "cash" : "none",
                                   fee_mode: @listing.effective_fee_mode, buyer_name: buyer_name.to_s.squish.presence)
+      # A 4-pack sold at the door is four tickets, everyone checked in.
       requests.each do |tier, count|
         count.times do
-          ticket = order.tickets.create!(ticket_tier: tier, ticket_listing: @listing, status: "checked_in",
-                                         checked_in_at: Time.current, checked_in_by: @user, price_cents: tier.price_cents,
-                                         discount_cents: kind == "comp" ? tier.price_cents : 0)
-          record_tax(order, ticket) if kind == "cash"
+          tier.seat_prices.each do |cents|
+            ticket = order.tickets.create!(ticket_tier: tier, ticket_listing: @listing, status: "checked_in",
+                                           checked_in_at: Time.current, checked_in_by: @user, price_cents: cents,
+                                           discount_cents: kind == "comp" ? cents : 0)
+            record_tax(order, ticket) if kind == "cash"
+          end
         end
       end
       if kind == "cash" && products.present?
