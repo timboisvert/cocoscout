@@ -105,12 +105,13 @@ RSpec.describe "Manage ticketing settings", type: :request do
       expect(response).to have_http_status(:unprocessable_content)
     end
 
-    it "explains the fee switch with a real $20 ticket, and sets the refund policy's fees with a toggle" do
+    it "explains the fee switch with a real $20 ticket; the refund policy's fees are a toggle on its own tab" do
       get manage_ticketing_settings_section_path(section: "box_office")
       expect(response.body).to include("$21.42").and include("$18.62")
+      expect(response.body).not_to include("refunds_after_show", "refund_fees")
       # Saved settings are toggles, never plain checkboxes (Tim, 2026-10-06).
+      get manage_ticketing_settings_section_path(section: "refunds")
       expect(response.body).to match(/name="ticketing_profile\[refund_fees\]"[^>]*class="sr-only peer"|class="sr-only peer"[^>]*name="ticketing_profile\[refund_fees\]"/)
-      expect(response.body).not_to include("refunds_after_show")
     end
 
     it "keeps an old address working and reserved after the theater changes it" do

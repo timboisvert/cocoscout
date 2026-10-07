@@ -35,19 +35,24 @@ RSpec.describe "Refund policy", type: :request do
     order.reload
   end
 
-  it "defaults to 24 hours before, fees kept, and the box office can change it" do
+  it "defaults to 24 hours before, fees kept, and the box office's Refunds tab changes it" do
     expect(RefundPolicy.for(listing)).to have_attributes(kind: "window", hours: 24, fees: false)
     sign_in
 
     get manage_ticketing_settings_section_path(section: "box_office")
+    expect(response.body).to include(manage_ticketing_settings_section_path(section: "refunds"))
+    expect(response.body).not_to include("Up to 24 hours before")
+
+    get manage_ticketing_settings_section_path(section: "refunds")
     expect(response.body).to include("Refund policy", "Up to 24 hours before", "No refunds", "Case by case",
                                      "Buyers see:</span> Refunds up to 24 hours before the show. Fees aren&#39;t refunded.")
 
-    patch manage_ticketing_settings_path, params: { ticketing_profile: { refund_choice: "custom", refund_days: "10", refund_fees: "1", refund_policy_note: "Exchanges welcome." } }
+    patch manage_ticketing_settings_refunds_path, params: { ticketing_profile: { refund_choice: "custom", refund_days: "10", refund_fees: "1", refund_policy_note: "Exchanges welcome." } }
+    expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "refunds"))
     expect(profile.reload).to have_attributes(refund_policy: "window", refund_window_hours: 240, refund_fees: true, refund_policy_note: "Exchanges welcome.")
     expect(RefundPolicy.for(listing.reload).words).to eq("Refunds up to 10 days before the show. Fees are refunded too. If a show is canceled, you get everything back. Exchanges welcome.")
 
-    patch manage_ticketing_settings_path, params: { ticketing_profile: { refund_choice: "none", refund_fees: "0", refund_policy_note: "x" * 501 } }
+    patch manage_ticketing_settings_refunds_path, params: { ticketing_profile: { refund_choice: "none", refund_fees: "0", refund_policy_note: "x" * 501 } }
     expect(response).to have_http_status(:unprocessable_content)
   end
 
@@ -56,14 +61,20 @@ RSpec.describe "Refund policy", type: :request do
     sign_in
 
     get manage_edit_production_ticketing_path(production, section: "sales")
+    expect(response.body).to include(manage_edit_production_ticketing_path(production, section: "refunds"))
+    expect(response.body).not_to include("follows your box office")
+
+    get manage_edit_production_ticketing_path(production, section: "refunds")
     expect(response.body).to include("Refund policy", "Boylesque follows your box office's: refunds up to 24 hours before the show")
 
-    patch manage_update_production_ticketing_path(production, section: "sales"),
+    patch manage_update_production_ticketing_path(production, section: "refunds"),
           params: { production_ticketing: { own_refund_policy: "1", refund_choice: "none", refund_fees: "0" } }
+    expect(flash[:notice]).to eq("Saved. Boylesque has its own refund policy.")
     expect(setup.reload.refund_policy).to eq("none")
     expect(RefundPolicy.for(TicketListing.find(listing.id)).kind).to eq("none")
 
-    patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { own_refund_policy: "0" } }
+    patch manage_update_production_ticketing_path(production, section: "refunds"), params: { production_ticketing: { own_refund_policy: "0" } }
+    expect(flash[:notice]).to eq("Saved. Boylesque follows your box office's refund policy.")
     expect(setup.reload.refund_policy).to be_nil
     expect(RefundPolicy.for(TicketListing.find(listing.id)).kind).to eq("window")
   end

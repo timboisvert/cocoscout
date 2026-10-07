@@ -1,0 +1,27 @@
+<%# This production's own refund policy, or (switch off) the box office's;
+    its dates follow it (RefundPolicy.of_setup). Locals: setup, production. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  own = setup.refund_policy.present?
+  box_office_policy = ticketing_profile.refund_policy_object
+  policy = RefundPolicy.of_setup(setup, ticketing_profile)
+%>
+<%= form_with url: manage_update_production_ticketing_path(production, section: "refunds"), method: :patch, class: "space-y-6" do %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4" data-controller="fieldset-toggle radio-card">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h3 class="font-semibold text-gray-900">Refund policy</h3>
+        <p class="text-sm text-gray-600 mt-1">Off, <%= production.name %> follows your box office's: <%= box_office_policy.short_words.downcase_first %>. On, its dates follow the policy you set here.</p>
+      </div>
+      <%= render "shared/toggle_switch", name: "production_ticketing[own_refund_policy]", checked: own, hidden_false: true,
+            id: "production_ticketing_own_refund_policy", aria_label: "Set a refund policy for #{production.name} only",
+            data: { fieldset_toggle_target: "switch", action: "change->fieldset-toggle#toggle" } %>
+    </div>
+    <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields" class="space-y-3 disabled:opacity-50">
+      <%= render "manage/ticketing_settings/refund_policy_fields", scope: "production_ticketing", policy: policy, input_class: input_class %>
+    </fieldset>
+    <p class="text-sm text-gray-600 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"><span class="font-medium text-gray-900">Buyers see:</span> <%= policy.words %></p>
+  </div>
+
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>

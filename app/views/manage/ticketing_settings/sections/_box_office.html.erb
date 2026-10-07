@@ -69,16 +69,6 @@
         <%= f.number_field :default_max_per_order, min: 1, max: 100, class: "#{input_class} max-w-[8rem]" %>
       </div>
 
-      <%# The refund policy buyers see at checkout and in their emails; a
-          refund outside it takes the manager's Refund anyway (RefundPolicy). %>
-      <div class="space-y-3" data-controller="radio-card">
-        <div>
-          <div class="block text-sm font-medium text-gray-700">Refund policy</div>
-          <p class="text-xs text-gray-500 mt-0.5">Buyers see it on the ticket page, at checkout and in their emails. A production can set its own on its Sales & page settings. You can always refund outside it.</p>
-        </div>
-        <%= render "manage/ticketing_settings/refund_policy_fields", scope: "ticketing_profile", policy: profile.refund_policy_object, input_class: input_class %>
-        <p class="text-sm text-gray-600 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"><span class="font-medium text-gray-900">Buyers see:</span> <%= profile.refund_policy_object.words %></p>
-      </div>
 
       <div>
         <label for="ticketing_profile_reminder_days_before" class="block text-sm font-medium text-gray-700 mb-1.5">Reminder email</label>

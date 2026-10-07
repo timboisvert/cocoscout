@@ -9,6 +9,8 @@
   current: @section
 } do %>
   <% case @section %>
+  <% when "refunds" %>
+    <%= render "manage/ticketing_settings/sections/refunds" %>
   <% when "tax" %>
     <%= render "manage/ticketing_settings/sections/tax" %>
   <% when "notifications" %>

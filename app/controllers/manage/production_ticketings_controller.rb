@@ -7,7 +7,8 @@ module Manage
   # Which dates are included works the way sign-ups' repeating events do: all
   # performances, some event types, or dates picked by hand.
   class ProductionTicketingsController < Manage::TicketingBaseController
-    SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales & page", "codes" => "Discount codes" }.freeze
+    SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales & page", "refunds" => "Refunds",
+                 "codes" => "Discount codes" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -53,6 +54,7 @@ module Manage
       when "dates" then update_dates
       when "tickets" then update_tickets
       when "sales" then update_sales
+      when "refunds" then update_refunds
       when "products" then update_products
       else redirect_to section_path("codes")
       end
@@ -127,19 +129,23 @@ module Manage
     def update_sales
       permitted = params.require(:production_ticketing).permit(:max_per_order, :fee_mode, :low_stock_threshold, :title, :description,
                                                                :door_note, :age_note, :accessibility_note)
-      @setup.update!(permitted.to_h.transform_values(&:presence).merge(refund_policy_attributes))
+      @setup.update!(permitted.to_h.transform_values(&:presence))
       redirect_to section_path("sales"), notice: "Saved. Dates without their own settings use these."
     end
 
-    # Its own refund policy (the switch on), or the box office's (off: every
-    # field cleared). Nothing sent, nothing changed.
-    def refund_policy_attributes
+    # The Refunds tab: its own refund policy (the switch on), or the box
+    # office's (off: every field cleared).
+    def update_refunds
       raw = params.require(:production_ticketing)
-      return {} unless raw.key?(:own_refund_policy)
-      return { refund_policy: nil, refund_window_hours: nil, refund_fees: nil, refund_policy_note: nil } unless raw[:own_refund_policy] == "1"
-
-      chosen = RefundPolicy.attributes_for(raw[:refund_choice], raw[:refund_days]) || {}
-      chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
+      attrs = if raw[:own_refund_policy] == "1"
+        chosen = RefundPolicy.attributes_for(raw[:refund_choice], raw[:refund_days]) || {}
+        chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
+      else
+        { refund_policy: nil, refund_window_hours: nil, refund_fees: nil, refund_policy_note: nil }
+      end
+      @setup.update!(attrs)
+      notice = @setup.refund_policy.present? ? "Saved. #{@production.name} has its own refund policy." : "Saved. #{@production.name} follows your box office's refund policy."
+      redirect_to section_path("refunds"), notice: notice
     end
 
     # Which of the org's products this production upsells, and (with the

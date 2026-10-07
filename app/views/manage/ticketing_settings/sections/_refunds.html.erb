@@ -1,0 +1,20 @@
+<%# The refund policy buyers see on the ticket page, at checkout and in their
+    emails, for every production that doesn't set its own; a refund outside
+    it takes the manager's Refund anyway (RefundPolicy). %>
+<%
+  profile = ticketing_profile
+  policy = profile.refund_policy_object
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+%>
+<%= form_with url: manage_ticketing_settings_refunds_path, method: :patch, class: "space-y-6" do %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4" data-controller="radio-card">
+    <div>
+      <h3 class="font-semibold text-gray-900">Refund policy</h3>
+      <p class="text-sm text-gray-600 mt-1">Buyers see it on the ticket page, at checkout and in their emails. A production can set its own on its Refunds settings. You can always refund outside it.</p>
+    </div>
+    <%= render "manage/ticketing_settings/refund_policy_fields", scope: "ticketing_profile", policy: policy, input_class: input_class %>
+    <p class="text-sm text-gray-600 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"><span class="font-medium text-gray-900">Buyers see:</span> <%= policy.words %></p>
+  </div>
+
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>

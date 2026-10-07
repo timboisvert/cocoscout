@@ -1281,6 +1281,7 @@ Rails.application.routes.draw do
     get   "ticketing/settings",                   to: "ticketing_settings#show",         as: "ticketing_settings"
     patch "ticketing/settings",                   to: "ticketing_settings#update"
     patch "ticketing/settings/tax",               to: "ticketing_settings#update_tax",   as: "ticketing_settings_tax"
+    patch "ticketing/settings/refunds",           to: "ticketing_settings#update_refunds", as: "ticketing_settings_refunds"
     post  "ticketing/settings/open",              to: "ticketing_settings#open_box_office", as: "ticketing_open_box_office"
     patch "ticketing/settings/notifications",     to: "ticketing_settings#update_notifications", as: "ticketing_settings_notifications"
     get   "ticketing/settings/:section",          to: "ticketing_settings#show",         as: "ticketing_settings_section"

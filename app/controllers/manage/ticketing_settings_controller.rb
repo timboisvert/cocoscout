@@ -6,8 +6,8 @@ module Manage
   # on tickets, who can work the door, and the code for selling on the
   # theater's own website. No branding in v1 — every org gets the same pages.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office tax notifications door embed].freeze
-    SECTION_LABELS = { "box_office" => "Box office", "tax" => "Tax", "notifications" => "Notifications",
+    SECTIONS = %w[box_office refunds tax notifications door embed].freeze
+    SECTION_LABELS = { "box_office" => "Box office", "refunds" => "Refunds", "tax" => "Tax", "notifications" => "Notifications",
                        "door" => "Door access", "embed" => "Your website" }.freeze
     DEFAULT_SECTION = "box_office"
 
@@ -35,6 +35,22 @@ module Manage
     # on course and contract money collected online joins the CocoScout
     # balance (CocoScoutBalance.pooled?). Closing it again is a superadmin's
     # call, on the same tab.
+    # The Refunds tab: the policy buyers see, for every production that
+    # doesn't set its own (RefundPolicy).
+    def update_refunds
+      raw = params.require(:ticketing_profile).permit(:refund_choice, :refund_days, :refund_fees, :refund_policy_note)
+      attrs = { refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence }
+      attrs.merge!(RefundPolicy.attributes_for(raw[:refund_choice], raw[:refund_days]) || {})
+
+      if ticketing_profile.update(attrs)
+        redirect_to section_path("refunds"), notice: "Refund policy saved."
+      else
+        @section = "refunds"
+        flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
+        render :show, status: :unprocessable_content
+      end
+    end
+
     def open_box_office
       ticketing_profile.update!(enabled: true)
       redirect_to manage_ticketing_path, notice: "Your box office is open. Buyers can find your shows at your box office link."
@@ -43,10 +59,7 @@ module Manage
     def update
       attrs = params.require(:ticketing_profile)
                     .permit(:slug, :support_email, :default_fee_mode, :default_max_per_order,
-                            :reminder_days_before, :enabled, :refund_choice, :refund_days, :refund_fees, :refund_policy_note)
-      refund_choice = attrs.delete(:refund_choice)
-      refund_days = attrs.delete(:refund_days)
-      attrs.merge!(RefundPolicy.attributes_for(refund_choice, refund_days) || {}) if refund_choice
+                            :reminder_days_before, :enabled)
       # Closing a box office (or reopening it from here) is a superadmin's call;
       # managers open theirs with open_box_office.
       attrs.delete(:enabled) unless Current.user.superadmin?
