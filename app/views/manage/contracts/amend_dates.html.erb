@@ -15,6 +15,7 @@
             payments = @contract.contract_payments.select { |p| p.show_id == show&.id || p.due_date == rental.starts_at.to_date }
             # Ask the service, so the warning matches what removing actually does.
             settled = ContractDateChanges.settled_for?(contract: @contract, rental: rental, shows: [ show ].compact)
+            ticketed = ContractDateChanges.tickets_held?([ show ].compact)
             pending = payments.select { |p| p.status_pending? && !p.in_payout_run? }
             past = rental.starts_at < Time.current
           %>
@@ -30,7 +31,11 @@
                   <% if past %><span class="text-gray-400">· already happened</span><% end %>
                 </p>
 
-                <% if settled %>
+                <% if ticketed %>
+                  <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 inline-block">
+                    People hold tickets for this night. Removing it cancels the show and frees the room; refund them from its ticketing page. To change its time, use Move: they keep their tickets.
+                  </p>
+                <% elsif settled %>
                   <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 inline-block">
                     Already settled — removing this cancels the show and frees the room, but leaves the money that already moved alone.
                   </p>
@@ -56,7 +61,7 @@
                 <label class="flex items-center gap-1.5 text-sm cursor-pointer">
                   <input type="radio" name="dates[<%= rental.id %>][action]" value="remove"
                          class="accent-pink-500" data-action="change->amend-date#modeChanged">
-                  <span class="text-gray-700"><%= settled ? "Cancel" : "Remove" %></span>
+                  <span class="text-gray-700"><%= settled || ticketed ? "Cancel" : "Remove" %></span>
                 </label>
               </div>
             </div>
@@ -67,7 +72,7 @@
               <input type="datetime-local" name="dates[<%= rental.id %>][starts_at]"
                      value="<%= rental.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
                      class="block w-full sm:w-72 px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <p class="text-xs text-gray-500 mt-1">The show keeps its cast and staffing — they move with it.</p>
+              <p class="text-xs text-gray-500 mt-1">The show keeps its ticket buyers, cast and staffing; they move with it.</p>
             </div>
           </div>
         <% end %>

@@ -44,9 +44,21 @@ class TicketListing < ApplicationRecord
   before_validation :take_production_and_organization_from_show, on: :create
   before_validation :default_slug, on: :create
   before_validation :default_off_sale_at, on: :create
-  # A draft with no sales can go with its show; once anyone has bought, the
+  # A date with nothing sold can go with its show, taking its abandoned
+  # checkouts and given-back comps along; once anyone has really bought, the
   # show has to be cancelled (and refunded) instead.
   before_destroy :keep_listings_with_orders, prepend: true
+
+  # The orders that make this date worth keeping (TicketOrder#disposable?
+  # says which don't): the one test for "did anything sell here?" wherever a
+  # date can be removed.
+  def orders_worth_keeping
+    ticket_orders.includes(:tickets, :ticket_order_items, :ticket_purchase).reject(&:disposable?)
+  end
+
+  def worth_keeping?
+    orders_worth_keeping.any?
+  end
 
   scope :on_sale_now, ->(at = Time.current) {
     where(status: "on_sale")
@@ -181,9 +193,16 @@ class TicketListing < ApplicationRecord
   end
 
   def keep_listings_with_orders
-    return unless ticket_orders.exists?
+    if worth_keeping?
+      errors.add(:base, "People hold tickets for this show. Cancel it and refund buyers instead.")
+      throw :abort
+    end
+    if TicketPassShow.where(ticket_listing_id: id).exists? || TicketOffer.where(trigger_listing_id: id).exists?
+      errors.add(:base, "A pass or a deal includes this show. Take it out of those first.")
+      throw :abort
+    end
 
-    errors.add(:base, "This show has ticket orders. Cancel it and refund buyers instead.")
-    throw :abort
+    ticket_orders.reload.each(&:destroy!)
+    ticket_orders.reset # so restrict_with_error sees them gone
   end
 end

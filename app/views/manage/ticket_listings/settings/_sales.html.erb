@@ -50,7 +50,7 @@
   <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
 <% end %>
 
-<% if listing.status == "draft" && !listing.ticket_orders.exists? %>
+<% if listing.status == "draft" && !listing.worth_keeping? %>
   <div class="rounded-lg border border-gray-200 bg-gray-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
     <p class="text-sm text-gray-600">Nobody has bought for this date. Removing it takes it out of Ticketing; the show stays on your calendar.</p>
     <%= render "shared/button", text: "Remove from Ticketing", variant: "secondary", size: "small", type: :button,

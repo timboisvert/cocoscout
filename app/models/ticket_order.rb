@@ -85,6 +85,22 @@ class TicketOrder < ApplicationRecord
     pending? && expires_at.present? && expires_at <= at
   end
 
+  # Nothing a date has to be kept for: a comp whose tickets were all given
+  # back, or a checkout nobody paid for and that never reached Stripe. An
+  # order that took money (even if since refunded: the books and the Stripe
+  # check point at it), a ticket still good, or a payment that could still
+  # land, keeps the date: it's canceled instead, so buyers are refunded.
+  def disposable?
+    if money_path == "none"
+      return tickets.none? { |t| t.status.in?(Ticket::SOLD_STATUSES) } &&
+             ticket_order_items.none? { |i| i.status.in?(TicketOrderItem::SOLD_STATUSES) }
+    end
+
+    never_paid = status.in?(%w[expired canceled]) || hold_expired?
+    never_paid && paid_at.nil? && stripe_payment_intent_id.blank? &&
+      (ticket_purchase.nil? || ticket_purchase.stripe_payment_intent_id.blank?)
+  end
+
   def to_param
     token
   end

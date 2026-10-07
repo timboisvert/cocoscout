@@ -452,7 +452,8 @@ module Manage
         case change["action"]
         when "remove"
           show = shows_by_rental[rental.id]
-          settled = ContractDateChanges.settled_for?(contract: @contract, rental: rental, shows: [ show ].compact)
+          settled = ContractDateChanges.settled_for?(contract: @contract, rental: rental, shows: [ show ].compact) ||
+                    ContractDateChanges.tickets_held?([ show ].compact)
           payments = @contract.contract_payments.select { |p| p.show_id == show&.id || p.due_date == rental.starts_at.to_date }
           pending = payments.select { |p| p.status_pending? && !p.in_payout_run? }
           { rental: rental, action: settled ? :cancel : :remove, pending: pending }
@@ -565,7 +566,8 @@ module Manage
       parts << "financials" if @amend_data.key?("payment_structure") || @amend_data.key?("payment_config")
       parts << "ticketing" if @amend_data.key?("ticketing")
       parts << "services" if @amend_data.key?("services")
-      parts << "dates" if (@amend_data["new_bookings"] || []).any? || (@amend_data["removed_rental_ids"] || []).any?
+      parts << "dates" if (@amend_data["new_bookings"] || []).any? || (@amend_data["removed_rental_ids"] || []).any? ||
+                          (@amend_data["moved_rentals"] || {}).any?
       parts.any? ? "Amended #{parts.to_sentence}" : "Amended"
     end
 
@@ -574,7 +576,7 @@ module Manage
       parts = []
       parts << "Removed #{removed.to_sentence}" if removed.any?
       parts << "Moved #{moved.to_sentence}" if moved.any?
-      parts << "Cancelled #{kept_paid.to_sentence} and released the room — that date was already settled, so its payment stays" if kept_paid.any?
+      parts << "Cancelled #{kept_paid.to_sentence} and released the room — it was already settled or has ticket buyers, so it stays on the calendar as cancelled" if kept_paid.any?
       parts.any? ? "#{parts.join('. ')}." : "No date changes to make."
     end
     helper_method :date_change_notice
@@ -610,6 +612,7 @@ module Manage
       Rails.logger.info "[AMEND] parsed booking_rules: #{booking_rules}"
 
       removed_rental_ids = params[:removed_rental_ids].present? ? JSON.parse(params[:removed_rental_ids]) : []
+      moved_rentals = submitted_moves(removed_rental_ids)
 
       # Generate new bookings from rules
       new_bookings = generate_bookings_from_rules(booking_rules)
@@ -623,6 +626,7 @@ module Manage
         "booking_rules" => booking_rules,
         "new_bookings" => new_bookings,
         "removed_rental_ids" => removed_rental_ids,
+        "moved_rentals" => moved_rentals,
         "production_name" => params[:production_name].to_s.strip
       ))
 
@@ -642,13 +646,14 @@ module Manage
       # Separate existing rentals into kept and removed
       @rentals_to_remove = @existing_rentals.select { |r| @removed_rental_ids.include?(r.id) }
       @remaining_rentals = @existing_rentals.reject { |r| @removed_rental_ids.include?(r.id) }
+      @moves = staged_moves(@amend_data, @existing_rentals)
 
       @locations = Current.organization.locations.includes(:location_spaces)
       @locations_map = @locations.index_by(&:id)
       @spaces_map = @locations.flat_map(&:location_spaces).index_by(&:id)
 
       # Build a unified list of all events for display
-      @all_events_after = build_unified_event_list(@remaining_rentals, @new_bookings, @locations_map, @spaces_map)
+      @all_events_after = build_unified_event_list(@remaining_rentals, @new_bookings, @locations_map, @spaces_map, @moves)
     end
 
     # Step 3: The deal — the same Financials editor as the create wizard (who
@@ -747,6 +752,7 @@ module Manage
 
       # Calculate summary
       @rentals_to_remove = @existing_rentals.select { |r| @removed_rental_ids.include?(r.id) }
+      @moves = staged_moves(@amend_data, @existing_rentals)
 
       # Financials: the deal config and/or payment list changed. Staged only if
       # the user visited that step; compared against the contract's live values.
@@ -771,7 +777,7 @@ module Manage
       @production_name_changed = staged_name.present? && staged_name != @contract.production_name.to_s
       @new_production_name = staged_name if @production_name_changed
 
-      @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @financials_changed ||
+      @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @moves.any? || @financials_changed ||
                      @ticketing_changed || @services_changed || @production_name_changed
     end
 
@@ -800,6 +806,9 @@ module Manage
       end
     rescue Contract::TicketsSoldError => e
       redirect_to amend_review_manage_contract_path(@contract), alert: e.message
+    rescue ActiveRecord::RecordNotDestroyed => e
+      redirect_to amend_review_manage_contract_path(@contract),
+                  alert: "Couldn't remove one of the nights, so nothing changed: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
     rescue ActiveRecord::RecordInvalid => e
       redirect_to amend_review_manage_contract_path(@contract), alert: "Could not apply amendments: #{e.message}"
     end
@@ -1266,21 +1275,56 @@ module Manage
       end
     end
 
-    def build_unified_event_list(remaining_rentals, new_bookings, locations_map, spaces_map)
+    # { rental_id => new start } from the bookings step's "Change time" fields:
+    # only this contract's nights, only real changes, never one being removed.
+    def submitted_moves(removed_rental_ids)
+      raw = params[:moved].is_a?(ActionController::Parameters) ? params[:moved].to_unsafe_h : {}
+      removed = removed_rental_ids.map(&:to_i)
+      rentals = @contract.space_rentals.where(id: raw.keys).index_by { |r| r.id.to_s }
+
+      raw.each_with_object({}) do |(id, value), out|
+        rental = rentals[id.to_s]
+        starts_at = (Time.zone.parse(value.to_s) rescue nil)
+        next unless rental && starts_at && starts_at != rental.starts_at && !removed.include?(rental.id)
+
+        out[rental.id.to_s] = starts_at.iso8601
+      end
+    end
+
+    # The staged moves, read back against the nights as they are now.
+    def staged_moves(amend_data, rentals)
+      removed = (amend_data["removed_rental_ids"] || []).map(&:to_i)
+      by_id = rentals.index_by(&:id)
+
+      (amend_data["moved_rentals"] || {}).filter_map do |id, value|
+        rental = by_id[id.to_i]
+        starts_at = (Time.zone.parse(value.to_s) rescue nil)
+        next unless rental && starts_at && starts_at != rental.starts_at && !removed.include?(rental.id)
+
+        { rental: rental, new_starts_at: starts_at, new_ends_at: starts_at + (rental.ends_at - rental.starts_at) }
+      end.sort_by { |move| move[:rental].starts_at }
+    end
+
+    def build_unified_event_list(remaining_rentals, new_bookings, locations_map, spaces_map, moves = [])
       events = []
+      moves_by_rental = moves.index_by { |move| move[:rental].id }
 
       # Add existing (kept) rentals. If the show runs at a different time within
-      # the booked slot, surface that alternate window for display.
+      # the booked slot, surface that alternate window for display. A night
+      # changing time shows where it's going, and where it was.
       remaining_rentals.each do |rental|
+        move = moves_by_rental[rental.id]
+        offset = move ? move[:new_starts_at] - rental.starts_at : 0
         events << {
           type: :existing,
-          starts_at: rental.starts_at,
-          ends_at: rental.ends_at,
+          starts_at: rental.starts_at + offset,
+          ends_at: rental.ends_at + offset,
+          moved_from: (rental.starts_at if move),
           location_name: rental.location&.name,
           space_name: rental.location_space&.name,
           duration: ((rental.ends_at - rental.starts_at) / 1.hour).round(1),
-          event_starts_at: rental.has_separate_event_time? ? rental.effective_event_starts_at : nil,
-          event_ends_at: rental.has_separate_event_time? ? rental.effective_event_ends_at : nil
+          event_starts_at: rental.has_separate_event_time? ? rental.effective_event_starts_at + offset : nil,
+          event_ends_at: rental.has_separate_event_time? ? rental.effective_event_ends_at + offset : nil
         }
       end
 

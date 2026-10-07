@@ -1031,20 +1031,40 @@ class Contract < ApplicationRecord
       production&.update!(name: staged_name)
     end
 
+    # A night only changing time moves in place ("Change time" on the bookings
+    # step), so its show keeps its ticket buyers, cast, staffing and payments.
+    # Removing it and adding another would throw all of that away.
+    (amend["moved_rentals"] || {}).each do |rental_id, starts_at|
+      next if removed_rental_ids.map(&:to_i).include?(rental_id.to_i)
+
+      rental = space_rentals.find_by(id: rental_id)
+      new_start = (Time.zone.parse(starts_at.to_s) rescue nil)
+      next unless rental && new_start && new_start != rental.starts_at
+
+      ContractDateChanges.move!(contract: self, rental: rental, starts_at: new_start,
+                                ends_at: new_start + (rental.ends_at - rental.starts_at))
+    end
+
     if removed_rental_ids.any?
       removed_show_ids = Show.where(space_rental_id: removed_rental_ids).pluck(:id)
       # A night that sold tickets can't just vanish with its buyers' orders:
       # cancel it in Shows & Events instead, where the buyers are refunded.
-      sold = TicketListing.where(show_id: removed_show_ids).joins(:ticket_orders).merge(TicketOrder.paid_like).distinct.count
-      raise TicketsSoldError, "Tickets were sold for #{sold == 1 ? 'one of the nights' : "#{sold} of the nights"} being removed. Cancel #{sold == 1 ? 'it' : 'them'} in Shows & Events first, so the buyers are refunded." if sold.positive?
+      # Abandoned checkouts and comps given back don't count (they go with it).
+      sold = TicketListing.where(show_id: removed_show_ids).count(&:worth_keeping?)
+      raise TicketsSoldError, "Tickets were sold for #{sold == 1 ? 'one of the nights' : "#{sold} of the nights"} being removed. " \
+                              "To change a time, use Change time on the night instead, so its buyers keep their tickets. " \
+                              "To drop #{sold == 1 ? 'it' : 'them'}, cancel #{sold == 1 ? 'it' : 'them'} in Shows & Events first, so the buyers are refunded." if sold.positive?
 
       # Unlink referencing payments first — contract_payments.show_id has a FK
       # that blocks deleting a referenced show — and suppress the per-show
       # payment sync, which re-links a payment to the show being deleted
       # (same treatment as cancel! and ContractDateChanges).
       ContractPayment.where(show_id: removed_show_ids).update_all(show_id: nil) if removed_show_ids.any?
-      Show.without_contract_payment_sync { Show.where(id: removed_show_ids).destroy_all }
-      space_rentals.where(id: removed_rental_ids).destroy_all
+      # destroy!, never destroy_all: a show that won't go must stop the
+      # amendment. destroy_all returned false quietly, the booking went
+      # anyway, and the show lived on, cut loose from its contract.
+      Show.without_contract_payment_sync { Show.where(id: removed_show_ids).find_each(&:destroy!) }
+      space_rentals.where(id: removed_rental_ids).find_each(&:destroy!)
     end
 
     # The contract's own event type is the fallback; a booking added by this

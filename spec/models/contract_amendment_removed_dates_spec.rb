@@ -48,7 +48,7 @@ RSpec.describe Contract, "#apply_amendment! removing booked dates" do
 
     expect {
       contract.transaction { contract.apply_amendment!({ "removed_rental_ids" => [ rental.id ] }) }
-    }.to raise_error(Contract::TicketsSoldError, /Cancel it in Shows & Events first/)
+    }.to raise_error(Contract::TicketsSoldError, /cancel it in Shows & Events first/)
     expect(Show.exists?(show.id)).to be(true)
   end
 end

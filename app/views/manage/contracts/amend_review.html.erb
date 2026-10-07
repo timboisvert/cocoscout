@@ -35,6 +35,34 @@
           </div>
         <% end %>
 
+        <% if @moves.any? %>
+          <div>
+            <h4 class="text-sm font-medium text-pink-600 mb-2 flex items-center gap-2">
+              <%= icon("clock", class: "w-4 h-4") %>
+              Events to Move (<%= @moves.count %>)
+            </h4>
+            <div class="space-y-2">
+              <% @moves.each do |move| %>
+                <% rental = move[:rental] %>
+                <div class="flex items-center gap-3 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+                  <div class="flex-shrink-0 w-12 flex items-center gap-1">
+                    <span class="text-lg leading-none font-bold text-gray-900"><%= move[:new_starts_at].strftime("%-d") %></span>
+                    <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= move[:new_starts_at].strftime("%b") %></span>
+                  </div>
+                  <div>
+                    <div class="font-medium text-gray-900"><%= rental.space_name %></div>
+                    <div class="text-sm text-gray-500">
+                      <span class="line-through"><%= rental.starts_at.strftime("%a %b %-d, %-l:%M %p") %></span>
+                      → <%= move[:new_starts_at].strftime("%a %b %-d, %-l:%M %p") %> - <%= move[:new_ends_at].strftime("%-l:%M %p") %>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-0.5">The same event: its tickets, cast and staffing move with it.</div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
         <% if @new_bookings.any? %>
           <div>
             <h4 class="text-sm font-medium text-green-600 mb-2 flex items-center gap-2">
@@ -65,7 +93,7 @@
           </div>
         <% end %>
 
-        <% if @removed_rental_ids.empty? && @new_bookings.empty? %>
+        <% if @removed_rental_ids.empty? && @new_bookings.empty? && @moves.empty? %>
           <p class="text-sm text-gray-500">No changes to events.</p>
         <% end %>
       </div>
@@ -195,9 +223,9 @@
         <div>
           <span class="text-pink-700">Events:</span>
           <span class="font-medium text-pink-900">
-            <% if @removed_rental_ids.any? %>-<%= @removed_rental_ids.count %><% end %>
-            <% if @new_bookings.any? %><%= @removed_rental_ids.any? ? ', ' : '' %>+<%= @new_bookings.count %><% end %>
-            <% if @removed_rental_ids.empty? && @new_bookings.empty? %>No changes<% end %>
+            <%= [ ("-#{@removed_rental_ids.count}" if @removed_rental_ids.any?),
+                  ("+#{@new_bookings.count}" if @new_bookings.any?),
+                  ("#{@moves.count} moved" if @moves.any?) ].compact.join(", ").presence || "No changes" %>
           </span>
         </div>
         <div>

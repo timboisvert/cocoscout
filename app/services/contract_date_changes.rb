@@ -13,7 +13,9 @@ class ContractDateChanges
     # that already moved stays put, and only still-pending payments drop off.
     def remove!(contract:, rental:)
       shows = shows_for(contract, rental)
-      settled = settled_for?(contract: contract, rental: rental, shows: shows)
+      # A night people hold tickets for is kept the same way, cancelled: its
+      # buyers are refunded from Ticketing, which flags it.
+      settled = settled_for?(contract: contract, rental: rental, shows: shows) || tickets_held?(shows)
       label = rental.starts_at.strftime("%b %-d")
 
       dropped = drop_pending_payments!(contract, rental, shows)
@@ -137,6 +139,12 @@ class ContractDateChanges
 
       payments.any? { |p| p.status_paid? || p.in_payout_run? } ||
         shows.any? { |s| financials_settled?(s) }
+    end
+
+    # Someone holds a ticket for one of these shows, or paid for one (an
+    # abandoned checkout or a comp given back doesn't count).
+    def tickets_held?(shows)
+      TicketListing.where(show_id: shows.map(&:id)).any?(&:worth_keeping?)
     end
 
     private

@@ -41,10 +41,14 @@
     <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
       <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
         <h3 class="text-sm font-semibold text-gray-700">Current Events (<%= @existing_rentals.count %>)</h3>
+        <p class="text-xs text-gray-500 mt-0.5">Changing a time? Use Change time on the event, so it keeps its tickets, cast and staffing. Removing it and adding another starts over.</p>
       </div>
       <div class="p-4 space-y-2" id="existing-rentals-list">
+        <% staged_moves = @amend_data["moved_rentals"] || {} %>
         <% @existing_rentals.each do |rental| %>
-          <div class="existing-rental flex items-center justify-between p-3 bg-gray-50 rounded-lg" data-rental-id="<%= rental.id %>">
+          <% staged = (Time.zone.parse(staged_moves[rental.id.to_s].to_s) rescue nil) %>
+          <div class="existing-rental p-3 bg-gray-50 rounded-lg" data-rental-id="<%= rental.id %>">
+          <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="flex-shrink-0 w-12 flex items-center gap-1">
                 <span class="text-lg leading-none font-bold text-gray-900"><%= rental.starts_at.strftime("%-d") %></span>
@@ -62,6 +66,19 @@
             <button type="button" onclick="toggleRemoveRental(<%= rental.id %>)" class="remove-rental-btn text-gray-400 hover:text-red-500 transition-colors p-2" title="Remove this event">
               <%= icon("x", class: "w-5 h-5") %>
             </button>
+          </div>
+          <%# Moves the night in place (ContractDateChanges.move!): the same show, so
+              its ticket buyers, cast, staffing and payments go with it. %>
+          <details class="mt-2 ml-15" <%= "open" if staged %>>
+            <summary class="text-sm text-pink-600 hover:text-pink-700 cursor-pointer select-none">Change time</summary>
+            <div class="mt-2">
+              <label for="moved_<%= rental.id %>" class="block text-xs font-medium text-gray-600 mb-1">New start</label>
+              <input type="datetime-local" name="moved[<%= rental.id %>]" id="moved_<%= rental.id %>"
+                     value="<%= (staged || rental.starts_at).strftime("%Y-%m-%dT%H:%M") %>"
+                     class="block w-full sm:w-72 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+              <p class="text-xs text-gray-500 mt-1">Everything on this night moves by the same amount<% if rental.has_separate_event_time? %>, including the show (now <%= rental.effective_event_starts_at.strftime("%-l:%M %p") %>)<% end %>. Its ticket buyers keep their tickets, and Ticketing asks you to tell them.</p>
+            </div>
+          </details>
           </div>
         <% end %>
       </div>

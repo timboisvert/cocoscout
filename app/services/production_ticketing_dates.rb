@@ -45,7 +45,7 @@ class ProductionTicketingDates
                         .joins(:show).where("shows.date_and_time > ?", Time.current).includes(:show).find_each do |listing|
       next if matching_ids.include?(listing.show_id)
 
-      if listing.ticket_orders.exists?
+      if listing.worth_keeping?
         kept << listing
       else
         listing.destroy!

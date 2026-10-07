@@ -83,6 +83,9 @@ class Show < ApplicationRecord
     tickets_mode.present?
   end
   has_one :ticket_listing, dependent: :destroy
+  # A date picked by hand for its production's ticketing (every contracted
+  # night selling on CocoScout is one): the pick goes with the show.
+  has_many :production_ticketing_shows, dependent: :delete_all
   has_one :show_payout, dependent: :destroy
   has_many :production_expense_allocations, dependent: :destroy
 
