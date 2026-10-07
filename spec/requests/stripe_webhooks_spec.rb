@@ -159,7 +159,7 @@ RSpec.describe "StripeWebhooksController", type: :request do
       allow_any_instance_of(CourseRegistration).to receive(:record_stripe_fee!)
 
       session = Stripe::Checkout::Session.construct_from(
-        id: "cs_1", payment_intent: "pi_course",
+        id: "cs_1", payment_intent: "pi_course", payment_status: "paid",
         metadata: { "course_offering_id" => offering.id.to_s, "person_id" => student.id.to_s,
                     "amount_cents" => "4000", "tax_cents" => "410", "currency" => "usd" }
       )
@@ -177,6 +177,47 @@ RSpec.describe "StripeWebhooksController", type: :request do
       # The hourly fee backfill later restates the same row, not a second one.
       registration.update!(stripe_fee_cents: 146)
       expect(OrgCashEntry.where(source: registration, entry_type: "course_registration").count).to eq(1)
+    end
+  end
+
+  # A contract paid on Stripe's hosted page. A bank debit completes checkout
+  # before its money arrives; it must not be marked paid, credited to the
+  # organization or remitted until Stripe says it's paid.
+  describe "checkout.session — a contract payment" do
+    let(:production) { create(:production, organization: org, production_type: "third_party") }
+    let(:contract) { create(:contract, :active, organization: org, production: production) }
+    let(:payment) do
+      create(:contract_payment, contract: contract, direction: "incoming", status: "pending",
+                                amount: 250, amount_tbd: false, due_date: Date.current, description: "Rental fee")
+    end
+
+    before { allow(ContractPaymentCollection).to receive(:record_stripe_fee!) }
+
+    def session(payment_status)
+      Stripe::Checkout::Session.construct_from(id: "cs_contract", payment_intent: "pi_contract", payment_status: payment_status,
+                                               metadata: { "contract_payment_id" => payment.id.to_s })
+    end
+
+    it "waits for a bank debit's money, then settles when it arrives" do
+      deliver("checkout.session.completed", session("unpaid"))
+      expect(payment.reload).to be_status_pending
+      expect(OrgCashEntry.where(source: payment)).to be_empty
+
+      deliver("checkout.session.async_payment_succeeded", session("paid"))
+      expect(payment.reload).to be_status_paid
+    end
+
+    it "leaves a bounced bank debit unpaid" do
+      deliver("checkout.session.completed", session("unpaid"))
+      deliver("checkout.session.async_payment_failed", session("unpaid"))
+
+      expect(response).to have_http_status(:ok)
+      expect(payment.reload).to be_status_pending
+    end
+
+    it "settles a card or wallet payment at completion" do
+      deliver("checkout.session.completed", session("paid"))
+      expect(payment.reload).to be_status_paid
     end
   end
 

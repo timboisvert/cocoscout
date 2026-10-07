@@ -36,8 +36,10 @@ class StripeWebhooksController < ApplicationController
 
   def handle_event(event)
     case event.type
-    when "checkout.session.completed"
+    when "checkout.session.completed", "checkout.session.async_payment_succeeded"
       handle_checkout_completed(event.data.object)
+    when "checkout.session.async_payment_failed"
+      handle_checkout_async_failed(event.data.object)
     when "charge.refunded"
       handle_charge_refunded(event.data.object)
     when "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"
@@ -310,6 +312,15 @@ class StripeWebhooksController < ApplicationController
   def handle_checkout_completed(session)
     metadata = session.metadata
 
+    # A bank debit finishes checkout days before its money arrives
+    # (payment_status "unpaid"). Nothing is marked paid, credited or remitted
+    # until Stripe says it's paid: on checkout.session.async_payment_succeeded
+    # for those, at completion for cards and wallets.
+    unless session.payment_status.to_s.in?(%w[paid no_payment_required])
+      Rails.logger.info("[StripeWebhooks] checkout #{session.id} completed unpaid (#{session.payment_status}); waiting for the money")
+      return
+    end
+
     # A contractor paying us under a contract (see ContractPaymentCheckout).
     if metadata["contract_payment_id"].present?
       handle_contract_payment_completed(session, metadata)
@@ -356,6 +367,13 @@ class StripeWebhooksController < ApplicationController
   rescue ActiveRecord::RecordNotUnique
     # Success page beat us to it — that's fine, it's already confirmed
     Rails.logger.info "Course registration already created for session #{session.id}"
+  end
+
+  # A bank debit that bounced: nothing was settled for it, so the payment
+  # simply stays due and the payer can pay again.
+  def handle_checkout_async_failed(session)
+    Rails.logger.warn("[StripeWebhooks] checkout #{session.id} bank payment failed; " \
+                      "contract_payment_id=#{session.metadata["contract_payment_id"].inspect} stays unpaid")
   end
 
   # A course paid on our own checkout page (My::CourseCheckoutsController).
