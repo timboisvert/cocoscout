@@ -1,6 +1,17 @@
 # frozen_string_literal: true
 
 namespace :stripe do
+  desc "Where Apple Pay, Google Pay and the rest stand: registered domains, what checkout offers, how people paid (read-only)"
+  task wallets: :environment do
+    StripeWalletCheck.report
+  end
+
+  desc "Register cocoscout.com and www.cocoscout.com for Apple Pay, Google Pay and Link (DOMAINS=a.com,b.com for others)"
+  task register_payment_domains: :environment do
+    domains = ENV["DOMAINS"].to_s.split(",").map(&:strip).reject(&:empty?).presence || StripeWalletCheck::DOMAINS
+    StripeWalletCheck.register!(domains: domains)
+  end
+
   desc "Create the CocoScout Pro subscription product + monthly/annual prices in Stripe (run once per environment)"
   task setup_subscription_prices: :environment do
     product = Stripe::Product.create(
