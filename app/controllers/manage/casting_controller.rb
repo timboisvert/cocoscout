@@ -1795,6 +1795,11 @@ module Manage
       # follows what this person was actually given.
       unit = assignments.any? { |a| a[:role]&.act?(show: a[:show]) } ? "act" : "role"
 
+      # Where their friends buy (TicketLink), for a template that shares it;
+      # blank when there's nothing to link. Worked out before the hash: the
+      # communications check reads `word:` inside it as template variables.
+      ticket_link = shows.first ? TicketLink.for(shows.first, public: true).url.to_s : ""
+
       variables = {
         "production_name" => @production.name,
         "show_dates" => show_dates,
@@ -1803,8 +1808,7 @@ module Manage
         "role_names" => role_names.join(", "),
         "casting_unit" => unit,
         "casting_units" => unit.pluralize,
-        # Where their friends buy (TicketLink), for a template that shares it; blank when there's nothing to link.
-        "ticket_link" => (shows.first && TicketLink.for(shows.first, public: true).url).to_s
+        "ticket_link" => ticket_link
       }
 
       # Interpolate {{placeholders}} in the body and subject
