@@ -967,6 +967,10 @@ module Manage
                     notice: "#{event_label} was successfully deleted#{cancellation_money_note(dropped)}",
                     status: :see_other
       end
+    rescue ActiveRecord::RecordNotDestroyed => e
+      redirect_to manage_cancel_show_form_path(@production, @show),
+                  alert: "Couldn't delete it, so nothing changed: #{e.record.try(:destroy_refusal_message).presence || e.message}",
+                  status: :see_other
     end
 
     # Deleting a show under a revenue-share contract mirrors cancelling one:
@@ -977,10 +981,14 @@ module Manage
     # cascade fires it mid-destroy and it re-links a payment to the very show
     # being deleted (see Show.without_contract_payment_sync).
     def destroy_shows(shows)
-      dropped = drop_contract_payments_for(shows)
-      ContractPayment.where(show_id: shows.map(&:id)).update_all(show_id: nil)
-      Show.without_contract_payment_sync { shows.each(&:destroy!) }
-      dropped
+      # All or nothing: a show that refuses (its listing found a payment that
+      # went through) leaves every date, and its payments, as they were.
+      ActiveRecord::Base.transaction do
+        dropped = drop_contract_payments_for(shows)
+        ContractPayment.where(show_id: shows.map(&:id)).update_all(show_id: nil)
+        Show.without_contract_payment_sync { shows.each(&:destroy!) }
+        dropped
+      end
     end
 
     def uncancel

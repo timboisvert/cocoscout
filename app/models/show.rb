@@ -86,6 +86,13 @@ class Show < ApplicationRecord
   # A date picked by hand for its production's ticketing (every contracted
   # night selling on CocoScout is one): the pick goes with the show.
   has_many :production_ticketing_shows, dependent: :delete_all
+
+  # Why destroy! refused, in words: the show's own errors, or its ticket
+  # listing's (a payment that went through, a pass that includes it).
+  def destroy_refusal_message
+    listing_errors = association(:ticket_listing).loaded? ? ticket_listing&.errors&.full_messages.to_a : []
+    (errors.full_messages + listing_errors).uniq.to_sentence
+  end
   has_one :show_payout, dependent: :destroy
   has_many :production_expense_allocations, dependent: :destroy
 

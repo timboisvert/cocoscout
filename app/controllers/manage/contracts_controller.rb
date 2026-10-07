@@ -500,6 +500,9 @@ module Manage
       end
 
       redirect_to manage_contract_path(@contract), notice: date_change_notice(removed, moved, kept_paid)
+    rescue ActiveRecord::RecordNotDestroyed => e
+      redirect_to amend_dates_manage_contract_path(@contract),
+                  alert: "Couldn't remove that date, so nothing changed: #{e.record.try(:destroy_refusal_message).presence || e.message}"
     rescue ActiveRecord::RecordInvalid => e
       redirect_to amend_dates_manage_contract_path(@contract), alert: "Couldn't change those dates: #{e.message}"
     end
@@ -808,7 +811,7 @@ module Manage
       redirect_to amend_review_manage_contract_path(@contract), alert: e.message
     rescue ActiveRecord::RecordNotDestroyed => e
       redirect_to amend_review_manage_contract_path(@contract),
-                  alert: "Couldn't remove one of the nights, so nothing changed: #{e.record.errors.full_messages.to_sentence.presence || e.message}"
+                  alert: "Couldn't remove one of the nights, so nothing changed: #{e.record.try(:destroy_refusal_message).presence || e.message}"
     rescue ActiveRecord::RecordInvalid => e
       redirect_to amend_review_manage_contract_path(@contract), alert: "Could not apply amendments: #{e.message}"
     end

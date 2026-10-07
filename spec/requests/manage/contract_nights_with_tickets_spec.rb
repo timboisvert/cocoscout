@@ -153,6 +153,43 @@ RSpec.describe "Contract nights that sold tickets", type: :request do
     end
   end
 
+  # Tim's night: three checkouts abandoned at the payment step, each with a
+  # PaymentIntent. Deleting the date cancels them at Stripe first, so a late
+  # payment can't land on an order that's gone.
+  describe "abandoned checkouts that reached Stripe" do
+    def checkout_with_intent!(id)
+      order = abandoned_checkout!
+      order.update!(stripe_payment_intent_id: id)
+      order
+    end
+
+    it "cancels their PaymentIntents and deletes the date" do
+      checkout_with_intent!("pi_abandoned_1")
+      checkout_with_intent!("pi_abandoned_2")
+      allow(Stripe::PaymentIntent).to receive(:retrieve) { |id| Stripe::PaymentIntent.construct_from(id: id, status: "requires_payment_method") }
+      allow(Stripe::PaymentIntent).to receive(:cancel)
+
+      delete manage_delete_show_path(production, show)
+
+      expect(Stripe::PaymentIntent).to have_received(:cancel).with("pi_abandoned_1")
+      expect(Stripe::PaymentIntent).to have_received(:cancel).with("pi_abandoned_2")
+      expect(Show.exists?(show.id)).to be(false)
+      expect(TicketListing.exists?(listing.id)).to be(false)
+    end
+
+    it "keeps the date when one went through after all, and says so" do
+      order = checkout_with_intent!("pi_late")
+      allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(Stripe::PaymentIntent.construct_from(id: "pi_late", status: "succeeded"))
+      allow(Stripe::PaymentIntent).to receive(:cancel)
+
+      delete manage_delete_show_path(production, show)
+
+      expect(flash[:alert]).to include("A payment for order #{order.code} went through")
+      expect(Stripe::PaymentIntent).not_to have_received(:cancel)
+      expect([ Show.exists?(show.id), TicketListing.exists?(listing.id), TicketOrder.exists?(order.id) ]).to eq([ true, true, true ])
+    end
+  end
+
   it "lets Shows & Events delete a date whose only order is a comp given back" do
     comp_given_back!
 

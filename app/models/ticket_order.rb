@@ -86,19 +86,34 @@ class TicketOrder < ApplicationRecord
   end
 
   # Nothing a date has to be kept for: a comp whose tickets were all given
-  # back, or a checkout nobody paid for and that never reached Stripe. An
-  # order that took money (even if since refunded: the books and the Stripe
-  # check point at it), a ticket still good, or a payment that could still
-  # land, keeps the date: it's canceled instead, so buyers are refunded.
+  # back, or a checkout nobody paid for. An order that took money (even if
+  # since refunded: the books and the Stripe check point at it) or a ticket
+  # still good keeps the date: it's canceled instead, so buyers are refunded.
   def disposable?
     if money_path == "none"
       return tickets.none? { |t| t.status.in?(Ticket::SOLD_STATUSES) } &&
              ticket_order_items.none? { |i| i.status.in?(TicketOrderItem::SOLD_STATUSES) }
     end
 
-    never_paid = status.in?(%w[expired canceled]) || hold_expired?
-    never_paid && paid_at.nil? && stripe_payment_intent_id.blank? &&
-      (ticket_purchase.nil? || ticket_purchase.stripe_payment_intent_id.blank?)
+    (status.in?(%w[expired canceled]) || hold_expired?) && paid_at.nil?
+  end
+
+  # Before an abandoned checkout is deleted with its date: a PaymentIntent it
+  # reached is canceled at Stripe, so a late payment can't land on an order
+  # that's gone. Returns false (and says why) when one went through after all.
+  def release_payment_intents!
+    ids = [ stripe_payment_intent_id, ticket_purchase&.stripe_payment_intent_id ].compact_blank.uniq
+    ids.each do |id|
+      intent = Stripe::PaymentIntent.retrieve(id)
+      next if intent.status == "canceled"
+
+      if intent.status.in?(%w[succeeded processing requires_capture])
+        errors.add(:base, "A payment for order #{code} went through. Refresh and cancel the show instead, so it's refunded.")
+        return false
+      end
+      Stripe::PaymentIntent.cancel(id)
+    end
+    true
   end
 
   def to_param

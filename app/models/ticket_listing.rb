@@ -202,7 +202,15 @@ class TicketListing < ApplicationRecord
       throw :abort
     end
 
-    ticket_orders.reload.each(&:destroy!)
+    orders = ticket_orders.reload.to_a
+    if (live = orders.find { |order| order.money_path != "none" && !order.release_payment_intents! })
+      errors.add(:base, live.errors.full_messages.to_sentence)
+      throw :abort
+    end
+    orders.each(&:destroy!)
     ticket_orders.reset # so restrict_with_error sees them gone
+  rescue Stripe::StripeError => e
+    errors.add(:base, "Couldn't reach Stripe to close an abandoned checkout (#{e.message}). Try again.")
+    throw :abort
   end
 end
