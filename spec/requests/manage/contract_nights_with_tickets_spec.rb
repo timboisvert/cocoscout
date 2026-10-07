@@ -97,11 +97,13 @@ RSpec.describe "Contract nights that sold tickets", type: :request do
   it "moves a night to a new time in place from Change the deal, keeping its buyers" do
     order = paid_order!
     get amend_bookings_manage_contract_path(contract)
-    expect(response.body).to include("Change time", %(name="moved[#{rental.id}]"))
+    expect(response.body).to include("Change time", %(name="moved[#{rental.id}][starts_at]"), %(name="moved[#{rental.id}][event_starts_at]"))
 
     post save_amend_bookings_manage_contract_path(contract), params: {
       booking_mode: "multiple", booking_rules_json: "[]", removed_rental_ids: "[]",
-      moved: { rental.id.to_s => (rental.starts_at + 30.minutes).strftime("%Y-%m-%dT%H:%M") }
+      moved: { rental.id.to_s => { starts_at: (rental.starts_at + 30.minutes).strftime("%Y-%m-%dT%H:%M"), duration: "3",
+                                   separate_event_time: "1", event_starts_at: (nine + 30.minutes).strftime("%Y-%m-%dT%H:%M"),
+                                   event_ends_at: (nine + 120.minutes).strftime("%Y-%m-%dT%H:%M") } }
     }
     expect(contract.reload.amend_data["moved_rentals"].keys).to eq([ rental.id.to_s ])
 
@@ -124,9 +126,73 @@ RSpec.describe "Contract nights that sold tickets", type: :request do
   it "ignores a move on a night that's also being removed" do
     post save_amend_bookings_manage_contract_path(contract), params: {
       booking_mode: "multiple", booking_rules_json: "[]", removed_rental_ids: [ rental.id ].to_json,
-      moved: { rental.id.to_s => (rental.starts_at + 30.minutes).strftime("%Y-%m-%dT%H:%M") }
+      moved: { rental.id.to_s => { starts_at: (rental.starts_at + 30.minutes).strftime("%Y-%m-%dT%H:%M"), duration: "3" } }
     }
     expect(contract.reload.amend_data["moved_rentals"]).to eq({})
+  end
+
+  # Tim's actual case: the room was right at 9:00, the show is at 9:30.
+  # The booking stays; only the show inside it moves.
+  describe "the booking and the show have their own times" do
+    let(:times) do
+      { starts_at: rental.starts_at.strftime("%Y-%m-%dT%H:%M"), duration: "3", separate_event_time: "1",
+        event_starts_at: (nine + 30.minutes).strftime("%Y-%m-%dT%H:%M"), event_ends_at: (nine + 2.hours).strftime("%Y-%m-%dT%H:%M") }
+    end
+
+    it "moves just the show from Change the dates, keeping the booking and the buyers" do
+      order = paid_order!
+      get amend_dates_manage_contract_path(contract)
+      expect(response.body).to include("Booking starts", "Event runs at different times than rental", "Show starts", %(name="dates[#{rental.id}][event_starts_at]"))
+
+      get review_amend_dates_manage_contract_path(contract), params: { dates: { rental.id.to_s => times.merge(action: "move") } }
+      expect(response.body).to include("show 9:30 PM–11:00 PM", %(name="dates[#{rental.id}][event_starts_at]"))
+
+      post apply_amend_dates_manage_contract_path(contract), params: { dates: { rental.id.to_s => times.merge(action: "move") } }
+
+      expect(rental.reload.attributes.values_at("starts_at", "ends_at")).to eq([ nine - 1.hour, nine + 2.hours ])
+      expect([ rental.event_starts_at, rental.event_ends_at ]).to eq([ nine + 30.minutes, nine + 2.hours ])
+      expect(show.reload.date_and_time).to eq(nine + 30.minutes)
+      expect(show.duration_minutes).to eq(90)
+      expect(order.reload.status).to eq("paid")
+      expect(TicketShowChange.pending?(listing.reload)).to be(true)
+    end
+
+    it "moves just the show from Change the deal" do
+      post save_amend_bookings_manage_contract_path(contract), params: {
+        booking_mode: "multiple", booking_rules_json: "[]", removed_rental_ids: "[]", moved: { rental.id.to_s => times }
+      }
+      get amend_review_manage_contract_path(contract)
+      expect(response.body).to include("Events to Move (1)", "show 9:30 PM–11:00 PM")
+
+      post apply_amendments_manage_contract_path(contract)
+
+      expect(rental.reload.starts_at).to eq(nine - 1.hour)
+      expect(show.reload.date_and_time).to eq(nine + 30.minutes)
+    end
+
+    it "lets the show run the whole booking again" do
+      post apply_amend_dates_manage_contract_path(contract), params: {
+        dates: { rental.id.to_s => { action: "move", starts_at: rental.starts_at.strftime("%Y-%m-%dT%H:%M"), duration: "3" } }
+      }
+
+      expect([ rental.reload.event_starts_at, rental.event_ends_at ]).to eq([ nil, nil ])
+      expect(show.reload.date_and_time).to eq(nine - 1.hour)
+      expect(show.duration_minutes).to eq(180)
+    end
+
+    it "leaves an untouched night alone, whatever its length" do
+      rental.update!(ends_at: rental.starts_at + 170.minutes, event_ends_at: nil, event_starts_at: nil)
+      expect(ContractDateChanges.times_from(rental, { starts_at: rental.starts_at.strftime("%Y-%m-%dT%H:%M"), duration: "2.83" })).to be_nil
+    end
+
+    it "refuses a show that starts before its booking, and changes nothing" do
+      post apply_amend_dates_manage_contract_path(contract), params: {
+        dates: { rental.id.to_s => times.merge(action: "move", event_starts_at: (nine - 2.hours).strftime("%Y-%m-%dT%H:%M")) }
+      }
+
+      expect(flash[:alert]).to include("cannot be before rental start time")
+      expect(show.reload.date_and_time).to eq(nine)
+    end
   end
 
   describe "Change the dates → Remove" do

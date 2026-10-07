@@ -458,11 +458,10 @@ module Manage
           pending = payments.select { |p| p.status_pending? && !p.in_payout_run? }
           { rental: rental, action: settled ? :cancel : :remove, pending: pending }
         when "move"
-          starts_at = Time.zone.parse(change["starts_at"].to_s) rescue nil
-          next if starts_at.nil? || starts_at == rental.starts_at
+          times = ContractDateChanges.times_from(rental, change)
+          next unless times
 
-          { rental: rental, action: :move, new_starts_at: starts_at,
-            new_ends_at: starts_at + (rental.ends_at - rental.starts_at) }
+          { rental: rental, action: :move, times: times, new_starts_at: times[:starts_at], new_ends_at: times[:ends_at] }
         end
       end
 
@@ -487,12 +486,10 @@ module Manage
             result = ContractDateChanges.remove!(contract: @contract, rental: rental)
             result[:settled] ? kept_paid << result[:label] : removed << result[:label]
           when "move"
-            starts_at = Time.zone.parse(change["starts_at"].to_s) rescue nil
-            next unless starts_at
+            times = ContractDateChanges.times_from(rental, change)
+            next unless times
 
-            duration = rental.ends_at - rental.starts_at
-            moved << ContractDateChanges.move!(contract: @contract, rental: rental,
-                                               starts_at: starts_at, ends_at: starts_at + duration)
+            moved << ContractDateChanges.retime!(contract: @contract, rental: rental, **times)
           end
         end
 
@@ -1278,19 +1275,20 @@ module Manage
       end
     end
 
-    # { rental_id => new start } from the bookings step's "Change time" fields:
-    # only this contract's nights, only real changes, never one being removed.
+    # { rental_id => its four times } from the bookings step's "Change time"
+    # fields: only this contract's nights, only real changes, never one being
+    # removed.
     def submitted_moves(removed_rental_ids)
       raw = params[:moved].is_a?(ActionController::Parameters) ? params[:moved].to_unsafe_h : {}
       removed = removed_rental_ids.map(&:to_i)
       rentals = @contract.space_rentals.where(id: raw.keys).index_by { |r| r.id.to_s }
 
-      raw.each_with_object({}) do |(id, value), out|
+      raw.each_with_object({}) do |(id, fields), out|
         rental = rentals[id.to_s]
-        starts_at = (Time.zone.parse(value.to_s) rescue nil)
-        next unless rental && starts_at && starts_at != rental.starts_at && !removed.include?(rental.id)
+        next unless rental && fields.is_a?(Hash) && !removed.include?(rental.id)
 
-        out[rental.id.to_s] = starts_at.iso8601
+        times = ContractDateChanges.times_from(rental, fields)
+        out[rental.id.to_s] = times.transform_keys(&:to_s).transform_values { |at| at&.iso8601 } if times
       end
     end
 
@@ -1301,10 +1299,12 @@ module Manage
 
       (amend_data["moved_rentals"] || {}).filter_map do |id, value|
         rental = by_id[id.to_i]
-        starts_at = (Time.zone.parse(value.to_s) rescue nil)
-        next unless rental && starts_at && starts_at != rental.starts_at && !removed.include?(rental.id)
+        next unless rental && !removed.include?(rental.id)
 
-        { rental: rental, new_starts_at: starts_at, new_ends_at: starts_at + (rental.ends_at - rental.starts_at) }
+        times = ContractDateChanges.staged_times(rental, value)
+        next unless times
+
+        { rental: rental, times: times, new_starts_at: times[:starts_at], new_ends_at: times[:ends_at] }
       end.sort_by { |move| move[:rental].starts_at }
     end
 
@@ -1316,18 +1316,21 @@ module Manage
       # the booked slot, surface that alternate window for display. A night
       # changing time shows where it's going, and where it was.
       remaining_rentals.each do |rental|
-        move = moves_by_rental[rental.id]
-        offset = move ? move[:new_starts_at] - rental.starts_at : 0
+        times = moves_by_rental[rental.id]&.dig(:times) ||
+                { starts_at: rental.starts_at, ends_at: rental.ends_at, event_starts_at: rental.event_starts_at, event_ends_at: rental.event_ends_at }
+        show_start = times[:event_starts_at] || times[:starts_at]
+        show_end = times[:event_ends_at] || times[:ends_at]
+        separate = show_start != times[:starts_at] || show_end != times[:ends_at]
         events << {
           type: :existing,
-          starts_at: rental.starts_at + offset,
-          ends_at: rental.ends_at + offset,
-          moved_from: (rental.starts_at if move),
+          starts_at: times[:starts_at],
+          ends_at: times[:ends_at],
+          moved_from: (rental if moves_by_rental[rental.id]),
           location_name: rental.location&.name,
           space_name: rental.location_space&.name,
-          duration: ((rental.ends_at - rental.starts_at) / 1.hour).round(1),
-          event_starts_at: rental.has_separate_event_time? ? rental.effective_event_starts_at + offset : nil,
-          event_ends_at: rental.has_separate_event_time? ? rental.effective_event_ends_at + offset : nil
+          duration: ((times[:ends_at] - times[:starts_at]) / 1.hour).round(1),
+          event_starts_at: (show_start if separate),
+          event_ends_at: (show_end if separate)
         }
       end
 

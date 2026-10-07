@@ -47,17 +47,33 @@ class ContractDateChanges
       { label: label, settled: settled, dropped: dropped }
     end
 
-    # Reschedule in place: the show keeps its identity, so its cast, its
-    # staffing shifts and its payment all follow it rather than being rebuilt.
+    # Reschedule in place, everything by the same amount: the show keeps its
+    # identity, so its cast, its staffing shifts and its payment all follow it
+    # rather than being rebuilt.
     def move!(contract:, rental:, starts_at:, ends_at:)
-      shows = shows_for(contract, rental)
       offset = starts_at - rental.starts_at
+      retime!(contract: contract, rental: rental, starts_at: starts_at, ends_at: ends_at,
+                                  event_starts_at: rental.event_starts_at && rental.event_starts_at + offset,
+                                  event_ends_at: rental.event_ends_at && rental.event_ends_at + offset)
+    end
 
-      rental.update!(starts_at: starts_at, ends_at: ends_at,
-                     event_starts_at: rental.event_starts_at ? rental.event_starts_at + offset : nil,
-                     event_ends_at: rental.event_ends_at ? rental.event_ends_at + offset : nil)
+    # A night has two times: the booking (when the room is held) and the show
+    # inside it (when the curtain goes up), which may be its own. Set any of
+    # the four; the same show moves to the new show time, so its ticket
+    # buyers, cast, staffing and payments stay with it. Nil event times mean
+    # the show runs the whole booking.
+    def retime!(contract:, rental:, starts_at:, ends_at:, event_starts_at: nil, event_ends_at: nil)
+      shows = shows_for(contract, rental)
+      was_show_start = rental.effective_event_starts_at
 
-      shows.each { |show| show.update!(date_and_time: show.date_and_time + offset) }
+      rental.update!(starts_at: starts_at, ends_at: ends_at, event_starts_at: event_starts_at, event_ends_at: event_ends_at)
+
+      offset = rental.effective_event_starts_at - was_show_start
+      shows.each do |show|
+        changes = { date_and_time: show.date_and_time + offset }
+        changes[:duration_minutes] = rental.effective_duration_minutes if shows.one?
+        show.update!(changes)
+      end
 
       # Pending payments tied to those shows move with them; paid ones are
       # history and keep the date they were actually settled on.
@@ -66,6 +82,59 @@ class ContractDateChanges
       end
 
       starts_at.strftime("%b %-d")
+    end
+
+    # The four times from a night's fields (shared/_night_times_fields): the
+    # booking's start and length, and the show's own start and end when
+    # "Event runs at different times than rental" is on. Nil when nothing
+    # would change.
+    def times_from(rental, fields)
+      fields = fields.respond_to?(:to_unsafe_h) ? fields.to_unsafe_h : (fields || {}).to_h
+      fields = fields.stringify_keys
+      starts_at = parse_time(fields["starts_at"]) || rental.starts_at
+      hours = fields["duration"].to_s.strip.presence&.to_f
+      # Whole minutes: the duration picker sends hours as a decimal (2.83 for
+      # 2h 50m), and a few seconds off would read as a change nobody made.
+      ends_at = hours&.positive? ? starts_at + (hours * 60).round.minutes : starts_at + (rental.ends_at - rental.starts_at)
+      separate = fields["separate_event_time"].to_s == "1"
+      times = { starts_at: starts_at, ends_at: ends_at,
+                event_starts_at: (parse_time(fields["event_starts_at"]) if separate),
+                event_ends_at: (parse_time(fields["event_ends_at"]) if separate) }
+      changed?(rental, times) ? times : nil
+    end
+
+    # A move staged by Change the deal: the four times as stored, or the start
+    # alone (moves staged before a night's show time could be set), which
+    # shifts everything by the same amount.
+    def staged_times(rental, value)
+      if value.is_a?(Hash)
+        times = value.to_h.stringify_keys.slice("starts_at", "ends_at", "event_starts_at", "event_ends_at")
+                     .to_h { |key, at| [ key.to_sym, parse_time(at) ] }
+        return nil unless times[:starts_at] && times[:ends_at]
+      else
+        starts_at = parse_time(value)
+        return nil unless starts_at
+
+        offset = starts_at - rental.starts_at
+        times = { starts_at: starts_at, ends_at: rental.ends_at + offset,
+                  event_starts_at: rental.event_starts_at && rental.event_starts_at + offset,
+                  event_ends_at: rental.event_ends_at && rental.event_ends_at + offset }
+      end
+      changed?(rental, times) ? times : nil
+    end
+
+    def changed?(rental, times)
+      times[:starts_at] != rental.starts_at || times[:ends_at] != rental.ends_at ||
+        (times[:event_starts_at] || times[:starts_at]) != rental.effective_event_starts_at ||
+        (times[:event_ends_at] || times[:ends_at]) != rental.effective_event_ends_at
+    end
+
+    def parse_time(value)
+      return value if value.is_a?(Time) || value.is_a?(ActiveSupport::TimeWithZone)
+
+      Time.zone.parse(value.to_s) if value.present?
+    rescue ArgumentError
+      nil
     end
 
     # Same night, different room. The contract names the venue, not the space —

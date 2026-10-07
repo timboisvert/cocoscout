@@ -1,0 +1,64 @@
+<%#
+  A night's times, as the contract wizard asks them: when the booking starts
+  and how long it runs, and, when the show runs at its own time inside it,
+  the show's start and end. Read by ContractDateChanges.times_from.
+
+  Locals:
+    rental - the SpaceRental being changed
+    prefix - field name prefix, e.g. "dates[12]" or "moved[12]"
+    times  - optional { starts_at:, ends_at:, event_starts_at:, event_ends_at: }
+             to show instead of the rental's own (a staged change)
+%>
+<%
+  times = local_assigns[:times] || {}
+  starts_at = times[:starts_at] || rental.starts_at
+  ends_at = times[:ends_at] || rental.ends_at
+  if times.any?
+    event_starts_at = times[:event_starts_at]
+    event_ends_at = times[:event_ends_at]
+  else
+    event_starts_at = rental.event_starts_at
+    event_ends_at = rental.event_ends_at
+  end
+  separate = (event_starts_at.present? && event_starts_at != starts_at) || (event_ends_at.present? && event_ends_at != ends_at)
+  input_class = "w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  fmt = "%Y-%m-%dT%H:%M"
+  dom = prefix.parameterize(separator: "_")
+%>
+<div class="space-y-4" data-controller="toggle-section">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <label for="<%= dom %>_starts_at" class="block text-sm font-medium text-gray-700 mb-1.5">Booking starts</label>
+      <input type="datetime-local" name="<%= prefix %>[starts_at]" id="<%= dom %>_starts_at" value="<%= starts_at.strftime(fmt) %>" class="<%= input_class %>">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration</label>
+      <%= render "shared/duration_field", unit: :hours, value: ((ends_at - starts_at) / 1.hour).round(2), max_hours: 24,
+            name: "#{prefix}[duration]" %>
+    </div>
+  </div>
+
+  <div>
+    <label class="inline-flex items-center cursor-pointer">
+      <input type="checkbox" name="<%= prefix %>[separate_event_time]" value="1" <%= "checked" if separate %>
+             data-toggle-section-target="toggle" data-action="change->toggle-section#toggle" class="sr-only peer">
+      <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+      <span class="ms-3 text-sm text-gray-600">Event runs at different times than rental</span>
+    </label>
+    <div data-toggle-section-target="content" class="<%= "hidden" unless separate %> mt-3">
+      <p class="text-xs text-gray-500 mb-3">The booking includes setup and teardown; the show itself runs during these hours. Ticket buyers are told the show's time.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="<%= dom %>_event_starts_at" class="block text-sm font-medium text-gray-700 mb-1.5">Show starts</label>
+          <input type="datetime-local" name="<%= prefix %>[event_starts_at]" id="<%= dom %>_event_starts_at"
+                 value="<%= (event_starts_at || starts_at).strftime(fmt) %>" class="<%= input_class %>">
+        </div>
+        <div>
+          <label for="<%= dom %>_event_ends_at" class="block text-sm font-medium text-gray-700 mb-1.5">Show ends</label>
+          <input type="datetime-local" name="<%= prefix %>[event_ends_at]" id="<%= dom %>_event_ends_at"
+                 value="<%= (event_ends_at || ends_at).strftime(fmt) %>" class="<%= input_class %>">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

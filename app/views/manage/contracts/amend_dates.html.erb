@@ -25,6 +25,9 @@
                 <p class="font-medium text-gray-900">
                   <%= rental.starts_at.strftime("%A, %b %-d, %Y") %>
                   <span class="text-gray-400 font-normal">· <%= rental.starts_at.strftime("%-l:%M %p") %>–<%= rental.ends_at.strftime("%-l:%M %p") %></span>
+                  <% if rental.has_separate_event_time? %>
+                    <span class="text-pink-600 font-normal text-sm">· show <%= rental.effective_event_starts_at.strftime("%-l:%M %p") %>–<%= rental.effective_event_ends_at.strftime("%-l:%M %p") %></span>
+                  <% end %>
                 </p>
                 <p class="text-xs text-gray-500 mt-0.5">
                   <%= rental.location_space&.name || "Entire Venue" %> at <%= rental.location&.name %>
@@ -66,13 +69,11 @@
               </div>
             </div>
 
-            <%# Moving keeps the show itself, so its cast and staffing follow. %>
+            <%# Moving keeps the show itself, so its buyers, cast and staffing follow.
+                The booking and the show inside it each have their own times. %>
             <div data-amend-date-target="moveFields" class="hidden mt-3 pt-3 border-t border-gray-100">
-              <label class="block text-xs font-medium text-gray-600 mb-1">New date and time</label>
-              <input type="datetime-local" name="dates[<%= rental.id %>][starts_at]"
-                     value="<%= rental.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
-                     class="block w-full sm:w-72 px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-              <p class="text-xs text-gray-500 mt-1">The show keeps its ticket buyers, cast and staffing; they move with it.</p>
+              <%= render "manage/contracts/night_times_fields", rental: rental, prefix: "dates[#{rental.id}]" %>
+              <p class="text-xs text-gray-500 mt-3">The show keeps its ticket buyers, cast and staffing; they move with it.</p>
             </div>
           </div>
         <% end %>

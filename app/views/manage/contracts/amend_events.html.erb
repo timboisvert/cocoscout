@@ -72,7 +72,8 @@
                   <%= event[:space_name] || event[:location_name] || "Location" %>
                   <% if event[:moved_from] %>
                     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-100 text-pink-800">Moved</span>
-                    <span class="ml-1 text-xs font-normal text-gray-500">was <%= event[:moved_from].strftime("%a %b %-d, %-l:%M %p") %></span>
+                    <% was = event[:moved_from] %>
+                    <span class="ml-1 text-xs font-normal text-gray-500">was <%= night_times_words(starts_at: was.starts_at, ends_at: was.ends_at, event_starts_at: was.event_starts_at, event_ends_at: was.event_ends_at) %></span>
                   <% end %>
                   <% if event[:type] == :new %>
                     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">New</span>

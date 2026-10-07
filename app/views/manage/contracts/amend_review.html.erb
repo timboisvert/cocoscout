@@ -52,9 +52,9 @@
                   <div>
                     <div class="font-medium text-gray-900"><%= rental.space_name %></div>
                     <div class="text-sm text-gray-500">
-                      <span class="line-through"><%= rental.starts_at.strftime("%a %b %-d, %-l:%M %p") %></span>
-                      → <%= move[:new_starts_at].strftime("%a %b %-d, %-l:%M %p") %> - <%= move[:new_ends_at].strftime("%-l:%M %p") %>
+                      <span class="line-through"><%= night_times_words(starts_at: rental.starts_at, ends_at: rental.ends_at, event_starts_at: rental.event_starts_at, event_ends_at: rental.event_ends_at) %></span>
                     </div>
+                    <div class="text-sm text-gray-900">→ <%= night_times_words(**move[:times]) %></div>
                     <div class="text-xs text-gray-500 mt-0.5">The same event: its tickets, cast and staffing move with it.</div>
                   </div>
                 </div>

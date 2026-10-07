@@ -1034,15 +1034,12 @@ class Contract < ApplicationRecord
     # A night only changing time moves in place ("Change time" on the bookings
     # step), so its show keeps its ticket buyers, cast, staffing and payments.
     # Removing it and adding another would throw all of that away.
-    (amend["moved_rentals"] || {}).each do |rental_id, starts_at|
+    (amend["moved_rentals"] || {}).each do |rental_id, staged|
       next if removed_rental_ids.map(&:to_i).include?(rental_id.to_i)
 
       rental = space_rentals.find_by(id: rental_id)
-      new_start = (Time.zone.parse(starts_at.to_s) rescue nil)
-      next unless rental && new_start && new_start != rental.starts_at
-
-      ContractDateChanges.move!(contract: self, rental: rental, starts_at: new_start,
-                                ends_at: new_start + (rental.ends_at - rental.starts_at))
+      times = rental && ContractDateChanges.staged_times(rental, staged)
+      ContractDateChanges.retime!(contract: self, rental: rental, **times) if times
     end
 
     if removed_rental_ids.any?
