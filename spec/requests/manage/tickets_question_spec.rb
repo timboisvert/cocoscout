@@ -58,6 +58,31 @@ RSpec.describe "The Tickets question", type: :request do
     expect(show.reload.ticket_listing).to have_attributes(status: "on_sale")
   end
 
+  # Tim, 2026-10-07: the link box sat full width under the count. Like the
+  # Money box's tiles: the count on the left, the link on the right.
+  it "lays the show page's Tickets box out in halves: the count, then the link" do
+    TicketsAnswer.apply!(production, mode: "cocoscout", tiers: [ { "name" => "General", "price" => "20", "seats" => "60" } ])
+
+    get manage_production_show_path(production, show)
+    box = response.body[%r{>Tickets</h3>.*?Scan for tickets}m]
+    expect(box).to include("sm:grid-cols-2", "On CocoScout", "Ticket link", "Visit", "Copy", "QR")
+    expect(box.index("On CocoScout")).to be < box.index("Ticket link")
+    expect(box).to match(%r{truncate" title="https?://[^"]+/t/[^"]+">(?!https?://)[^<]+/t/})
+    expect(box).not_to include("Door", "sm:row-span-2")
+  end
+
+  it "puts the Door tile under the count on the day, the link beside both" do
+    travel_to Time.zone.local(2026, 11, 6, 12) do
+      tonight = create(:show, production: production, date_and_time: Time.zone.local(2026, 11, 6, 19, 30))
+      TicketsAnswer.apply!(production, mode: "cocoscout", tiers: [ { "name" => "General", "price" => "20", "seats" => "60" } ])
+
+      get manage_production_show_path(production, tonight)
+      box = response.body[%r{>Tickets</h3>.*?Tonight: check people in}m]
+      expect(box).to include("On CocoScout", "Ticket link", "sm:row-span-2", door_path(tonight.reload.ticket_listing))
+      expect(box.index("Ticket link")).to be < box.index(">Door<")
+    end
+  end
+
   it "shows someone on the production who isn't an organization manager the numbers, without the link into Ticketing" do
     TicketsAnswer.apply!(production, mode: "cocoscout", tiers: [ { "name" => "General", "price" => "20", "seats" => "60" } ])
     viewer = create(:user, email_address: "viewer@sg.example", password: password)
