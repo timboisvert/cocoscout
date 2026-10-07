@@ -102,7 +102,9 @@
 
       <div class="flex flex-wrap gap-2">
         <% if @missing_payment_info.any? %>
-          <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "small", icon: "mail", data: { action: "click->modal#open", "modal-id": "notify-modal" } %>
+          <%# Opens the draft: who gets it and what it says, before anything goes. %>
+          <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "payment-reminders-modal" } %>
         <% end %>
         <%= render "shared/button", text: "QR Code", variant: "secondary", size: "small", icon: "qr-code", data: { action: "click->qr-code#open" } %>
       </div>
@@ -169,63 +171,20 @@
       </div>
     </div>
 
-    <%# Notify Modal %>
-    <div id="notify-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center overflow-y-auto py-8" data-action="click->modal#closeOnBackdrop keydown.esc@window->modal#close">
-      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4" data-action="click->modal#stopPropagation">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Send Payment Setup Reminder</h3>
-          <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="p-6">
-          <%# Recipients Summary %>
-          <div class="mb-4 pb-4 border-b border-gray-100">
-            <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
-              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-              <span><strong><%= @missing_payment_info.count %></strong> <%= "recipient".pluralize(@missing_payment_info.count) %></span>
-            </div>
-            <div class="flex flex-wrap gap-1.5">
-              <% @missing_payment_info.first(8).each do |person| %>
-                <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                  <%= person.name %>
-                </span>
-              <% end %>
-              <% if @missing_payment_info.count > 8 %>
-                <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">
-                  +<%= @missing_payment_info.count - 8 %> more
-                </span>
-              <% end %>
-            </div>
-          </div>
-
-          <%= form_with url: manage_send_payment_setup_reminders_money_payouts_path(@production), method: :post, local: true, class: "space-y-4" do %>
-            <%# Email Editor %>
-            <%= fields_for :email_draft, @payment_reminder_email_draft do |email_form| %>
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
-                  <%= email_form.text_field :title, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm", placeholder: "Email subject..." %>
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 mb-1">Message</label>
-                  <%= email_form.rich_text_area :body, class: "w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-transparent" %>
-                </div>
-              </div>
-            <% end %>
-
-            <div class="flex items-center justify-end gap-3 pt-2">
-              <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button, data: { action: "click->modal#close" } %>
-              <%= render "shared/button", text: "Send Reminders", variant: "primary", size: "medium", type: :submit, icon: "paper-airplane" %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </div>
+    <%# Send Reminders: who gets it and the draft, before anything goes. %>
+    <% if @missing_payment_info.any? %>
+      <% reachable, unreachable = @missing_payment_info.partition { |person| person.user.present? } %>
+      <%= render "shared/send_draft_modal",
+            id: "payment-reminders-modal", title: "Remind them to set up payment", submit_text: "Send reminders",
+            url: manage_send_payment_setup_reminders_money_payouts_path(@production),
+            recipients: reachable.map { |person| { id: person.id, name: person.name, email: person.user&.email_address.presence || person.email } },
+            unreachable: (if unreachable.any?
+                            "#{unreachable.map(&:name).to_sentence} #{unreachable.one? ? "doesn't" : "don't"} have a CocoScout login yet, " \
+                              "so a reminder can't reach them. Share the setup link or the QR code with them instead."
+                          end),
+            draft: @payment_reminder_draft,
+            hint: "Add {{first_name}} to greet each person by their first name. It arrives as a CocoScout message from you." %>
+    <% end %>
 
     <% else %>
       <%# Performer pay is off. Anything already worked out stays visible as history. %>

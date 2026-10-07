@@ -14,11 +14,8 @@ module Manage
         load_all_productions
       end
 
-      # Set up email draft for payment setup reminder modal
-      @payment_reminder_email_draft = EmailDraft.new(
-        title: default_payment_reminder_subject,
-        body: default_payment_reminder_body
-      )
+      # The draft the Send Reminders modal opens with (one production's page).
+      @payment_reminder_draft = payment_reminder_draft if @production
     end
 
     # The full every-production payout grid, moved off the index so the main
@@ -28,50 +25,46 @@ module Manage
       @production_summaries = @productions.map { |p| build_payout_summary(p) }
     end
 
+    # Sends the draft from the Send Reminders modal: the manager's edited
+    # subject and message, filled in per person, to the people still ticked.
     def send_payment_setup_reminders
+      back = manage_money_production_payouts_path(@production)
       missing_people = people_missing_payment_info
-
       if missing_people.empty?
-        redirect_to manage_money_production_payouts_path(@production),
-                    alert: "No people missing payment information."
+        redirect_to back, alert: "No people missing payment information."
         return
       end
 
-      # Get the email content from the form
-      subject = params.dig(:email_draft, :title)
-      body_html = params.dig(:email_draft, :body)
+      chosen_ids = Array(params[:person_ids]).map(&:to_i)
+      chosen = missing_people.select { |person| person.user.present? && chosen_ids.include?(person.id) }
+      subject = params[:subject].to_s.strip
+      body = params[:body].to_s.strip
 
-      if subject.blank? || body_html.blank?
-        redirect_to manage_money_production_payouts_path(@production),
-                    alert: "Subject and message are required."
+      if chosen.empty?
+        redirect_to back, alert: "Nobody was ticked, so nothing was sent."
+        return
+      end
+      if subject.blank? || body.blank?
+        redirect_to back, alert: "The reminder needs a subject and a message."
         return
       end
 
-      # Send reminder messages to each person (message-only, no email)
-      sent_count = 0
-      missing_people.each do |person|
-        next unless person.user.present?
-
-        rendered = ContentTemplateService.render("payment_setup_reminder", {
-          person_name: person.first_name || "there",
-          organization_name: Current.organization.name,
-          custom_message: body_html
-        })
-
+      chosen.each do |person|
+        variables = payment_reminder_variables.merge(
+          "first_name" => person.name.to_s.split(/\s+/).first.presence || "there",
+          "person_name" => person.name.to_s
+        )
         MessageService.send_direct(
           sender: Current.user,
           recipient_person: person,
-          subject: rendered[:subject],
-          body: rendered[:body],
+          subject: ContentTemplate.interpolate(subject, variables),
+          body: ContentTemplate.interpolate(body, variables),
           production: @production,
           organization: Current.organization
         )
-
-        sent_count += 1
       end
 
-      redirect_to manage_money_production_payouts_path(@production),
-                  notice: "Payment setup reminders sent to #{sent_count} #{"person".pluralize(sent_count)}."
+      redirect_to back, notice: "Payment setup reminders sent to #{helpers.pluralize(chosen.size, 'person')}."
     end
 
     # Slim inline list of a production's shows + their payout status, loaded lazily
@@ -311,17 +304,17 @@ module Manage
             .reject(&:can_receive_payouts?)
     end
 
-    def default_payment_reminder_subject
-      ContentTemplateService.render_subject("payment_setup_reminder", {
-        production_name: Current.organization.name
-      })
+    # payment_setup_reminder with this production's words filled in;
+    # {{first_name}} (or {{person_name}}) is left for each person.
+    def payment_reminder_draft
+      rendered = ContentTemplateService.render("payment_setup_reminder", payment_reminder_variables)
+      { subject: rendered[:subject], body: rendered[:body] }
     end
 
-    def default_payment_reminder_body
-      ContentTemplateService.render_body("payment_setup_reminder", {
-        production_name: Current.organization.name,
-        payment_setup_url: my_payments_setup_url
-      })
+    def payment_reminder_variables
+      { "production_name" => @production&.name || Current.organization.name,
+        "organization_name" => Current.organization.name,
+        "payment_setup_url" => my_payments_setup_url }
     end
   end
 end

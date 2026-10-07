@@ -34,7 +34,8 @@ RSpec.describe "Show payouts: payment setup reminders", type: :request do
     expect(body).to include("Remind them to set up payment", "Sending to 2 people", "Ollie Owed", "ollie@example.com", "$120.00", "$45.50")
     expect(body).to include("You have {{amount}} ready to be paid by Stars &amp; Garters", "{{recipient_name}}")
     expect(body).to include("Nolan Nologin", "have a CocoScout login yet")
-    expect(body).not_to include(%(id="setup-remind-#{nolan.id}"))
+    expect(body).to include(%(id="setup-reminders-modal-person-#{ollie.id}"))
+    expect(body).not_to include(%(id="setup-reminders-modal-person-#{nolan.id}"))
     expect(body).to include(%(data-modal-id="setup-reminders-modal"), %(id="setup-reminders-modal"))
     expect(body.scan(%r{action="[^"]*send_payment_reminders"}).size).to eq(1) # only the modal's form posts
     expect(body).not_to match(/<form[^>]*send_payment_reminders[^>]*>(?:(?!<\/form>).)*<form/m)
