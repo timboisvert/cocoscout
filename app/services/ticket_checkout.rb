@@ -352,7 +352,7 @@ class TicketCheckout
   end
 
   def self.requested_tiers(listing, quantities, code, at_door: false)
-    tiers = listing.ticket_tiers.active.select { |tier| at_door || tier.selling? }.index_by(&:id)
+    tiers = listing.ticket_tiers.active.select { |tier| at_door ? tier.available? : tier.selling? }.index_by(&:id)
     requests = {}
     quantities.to_h.each do |tier_id, count|
       count = count.to_i

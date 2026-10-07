@@ -74,12 +74,16 @@ module Ticketing
       [ overall, own ].compact.min
     end
 
+    # No seats left, or none left in a type anyone can buy: every type is
+    # full, or marked sold out or hidden for this date (TicketTier#available?).
     def sold_out?
-      left = remaining
-      return left.zero? unless left.nil?
+      return true if remaining&.zero?
 
       selling = @listing.ticket_tiers.active.reject(&:hidden).reject(&:bundle?)
-      selling.any? && selling.all? { |tier| remaining(tier: tier)&.zero? }
+      return false if selling.empty?
+
+      open = selling.select(&:available?)
+      open.empty? || open.all? { |tier| remaining(tier: tier)&.zero? }
     end
 
     # Would this many of each tier fit right now? requests: { tier => quantity }.

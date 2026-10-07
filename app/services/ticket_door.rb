@@ -79,7 +79,8 @@ class TicketDoor
     raise ArgumentError, "kind must be cash or comp" unless %w[cash comp].include?(kind)
     raise TicketCheckout::Error, "This show was canceled." if @listing.status == "canceled" || @listing.show.canceled
 
-    tiers = @listing.ticket_tiers.active.index_by(&:id)
+    # A type marked sold out or hidden for this date isn't sold at the door either.
+    tiers = @listing.ticket_tiers.active.select(&:available?).index_by(&:id)
     requests = quantities.to_h.filter_map { |tier_id, count|
       tier = tiers[tier_id.to_i]
       count = count.to_i

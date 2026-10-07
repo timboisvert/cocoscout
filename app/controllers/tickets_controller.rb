@@ -33,7 +33,7 @@ class TicketsController < ApplicationController
     end
 
     check_code(@listing)
-    @tiers = @listing.ticket_tiers.active.select(&:selling?).reject { |t| t.hidden? && t.unlock_code != @code }
+    @tiers = @listing.ticket_tiers.active.select(&:listed?).reject { |t| t.hidden? && t.unlock_code != @code }
     @inventory = @listing.inventory
     @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
     @passes = selling_passes.select do |pass|
@@ -63,7 +63,7 @@ class TicketsController < ApplicationController
                @listings.find { |l| l.selling? && !l.inventory.sold_out? } || @listings.first
     check_code(@listing)
     if @listing
-      @tiers = @listing.ticket_tiers.active.select(&:selling?).reject { |t| t.hidden? && t.unlock_code != @code }
+      @tiers = @listing.ticket_tiers.active.select(&:listed?).reject { |t| t.hidden? && t.unlock_code != @code }
       @inventory = @listing.inventory
       @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
     end

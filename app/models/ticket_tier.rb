@@ -41,6 +41,38 @@ class TicketTier < ApplicationRecord
 
   scope :active, -> { where(archived_at: nil) }
 
+  # A date's own say over one ticket type (Tim, 2026-10-07), from the ⋯ menu
+  # on its ticketing page: on sale; marked sold out (still on the ticket
+  # page, greyed, nobody can buy it, though managers can still give it as a
+  # comp); or unlisted ("Hidden": gone from the ticket page). Never copied
+  # down from the production (ProductionTicketingSync leaves it alone), so a
+  # date keeps following the production's prices while saying this for
+  # itself. Not to be confused with `hidden`, the code-unlocked type.
+  AVAILABILITIES = %w[on_sale sold_out unlisted].freeze
+  AVAILABILITY_LABELS = { "on_sale" => "On sale", "sold_out" => "Sold out", "unlisted" => "Hidden" }.freeze
+  validates :availability, inclusion: { in: AVAILABILITIES }
+
+  # What buyers get: the type's own say, or a bundle following its type (a
+  # "4 × General" can't sell General's seats once General is sold out or
+  # hidden).
+  def effective_availability
+    return availability unless availability == "on_sale" && bundle? && bundle_of
+
+    bundle_of.availability
+  end
+
+  def available?
+    effective_availability == "on_sale"
+  end
+
+  def marked_sold_out?
+    effective_availability == "sold_out"
+  end
+
+  def unlisted?
+    effective_availability == "unlisted"
+  end
+
   # A ticket type that admits several people of another type for one price.
   def bundle?
     bundle_of_tier_id.present?
@@ -92,7 +124,17 @@ class TicketTier < ApplicationRecord
     end
   end
 
+  # Can be bought online right now.
   def selling?(at = Time.current)
+    available? && in_sales_window?(at)
+  end
+
+  # On the ticket page: buyable, or marked sold out (shown, greyed).
+  def listed?(at = Time.current)
+    !unlisted? && in_sales_window?(at)
+  end
+
+  def in_sales_window?(at = Time.current)
     archived_at.nil? &&
       (sales_start_at.nil? || sales_start_at <= at) &&
       (sales_end_at.nil? || at < sales_end_at)

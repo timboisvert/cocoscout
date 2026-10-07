@@ -49,7 +49,7 @@
         <% tiers.each do |tier| %>
           <%# Counts are purchases: a 4-pack takes four of the seats left and
               four of the order's limit. %>
-          <% left = tier.units_for(inventory.remaining(tier: tier)) %>
+          <% left = tier.marked_sold_out? ? 0 : tier.units_for(inventory.remaining(tier: tier)) %>
           <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
           <% added_tax = tax_added ? tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents } : 0 %>
           <% breakdown = tier.free? ? nil : ticket_price_breakdown(listing, tier) %>

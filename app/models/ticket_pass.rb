@@ -115,7 +115,8 @@ class TicketPass < ApplicationRecord
     status == "on_sale" && for_rows.size >= 2 &&
       (sales_start_at.nil? || sales_start_at <= at) &&
       (closes_at(for_rows).nil? || at < closes_at(for_rows)) &&
-      for_rows.none? { |row| row.ticket_listing.status.in?(%w[canceled closed]) || row.ticket_listing.show.canceled }
+      for_rows.none? { |row| row.ticket_listing.status.in?(%w[canceled closed]) || row.ticket_listing.show.canceled } &&
+      for_rows.all? { |row| row.ticket_tier.nil? || row.ticket_tier.available? }
   end
 
   # People who bought it (each has a ticket at every show; count the first).

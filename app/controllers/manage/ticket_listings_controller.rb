@@ -17,7 +17,7 @@ module Manage
     SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
-                                           change_review tell_change mark_change_told outside_sales]
+                                           change_review tell_change mark_change_told outside_sales tier_availability]
     before_action :set_settings_section, only: %i[edit update]
 
     # Productions first: every production selling tickets, by its next date.
@@ -82,6 +82,21 @@ module Manage
     # (Ticketing::Inventory#outside), and each site's Show Financials row is
     # fed from them (TicketOutsideSales), so settlement already has the
     # numbers. A new site becomes a ticket source for the whole organization.
+    # The ⋯ menu on a ticket type's row: on sale, marked sold out, or hidden,
+    # for this date only (TicketTier#availability).
+    def tier_availability
+      tier = @listing.ticket_tiers.active.find(params[:tier_id])
+      availability = params[:availability].to_s
+      unless TicketTier::AVAILABILITIES.include?(availability)
+        redirect_to manage_ticket_listing_path(@listing), alert: "Pick on sale, sold out or hidden."
+        return
+      end
+
+      tier.update!(availability: availability)
+      words = { "on_sale" => "is back on sale", "sold_out" => "is marked sold out", "unlisted" => "is hidden from the ticket page" }
+      redirect_to manage_ticket_listing_path(@listing), notice: "#{tier.name} #{words[availability]} for this date."
+    end
+
     def outside_sales
       org = Current.organization
       rows = params.fetch(:sales, {}).to_unsafe_h

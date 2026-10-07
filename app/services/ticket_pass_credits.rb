@@ -98,6 +98,7 @@ class TicketPassCredits
 
     tier = coverage.tier_at(listing)
     raise Error, "That show has no tickets to use a credit on." unless tier
+    raise Error, "#{tier.name} isn't available for that show." unless tier.available?
 
     value = holding.credit_value_cents
     order = nil
@@ -137,7 +138,8 @@ class TicketPassCredits
     holding.organization.ticket_listings.joins(:show).includes(:production, :ticket_tiers, show: :location)
            .where(production_id: pass.coverages.select(:production_id), status: "on_sale", shows: { canceled: false })
            .where(shows: { date_and_time: Time.current..holding.ends_on.end_of_day })
-           .where.not(id: used).order("shows.date_and_time").to_a.select(&:selling?)
+           .where.not(id: used).order("shows.date_and_time").to_a
+           .select { |listing| listing.selling? && pass.coverages.find { |c| c.production_id == listing.production_id }&.tier_at(listing)&.available? }
   end
 
   # A pass nobody has used yet, refunded in full: what they paid comes back,
