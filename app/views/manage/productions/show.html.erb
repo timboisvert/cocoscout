@@ -414,7 +414,7 @@
             <p class="text-sm text-gray-500">
               No description yet.
               <% if current_user_can_manage?(@production) %>
-                <%= link_to "Add one", edit_manage_production_path(@production), class: "text-pink-500 hover:text-pink-600 underline" %>
+                <%= link_to "Add one", production_basics_path(@production), class: "text-pink-500 hover:text-pink-600 underline" %>
               <% end %>
             </p>
           <% end %>

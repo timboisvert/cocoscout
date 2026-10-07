@@ -1,0 +1,48 @@
+<% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Change the basic info" } do %>
+    <h2 class="text-2xl coustard-regular text-gray-900 mb-1">Change the basic info</h2>
+    <p class="text-gray-600 mb-6">
+      What the production is called and how it's described. The dates, the money and the signed
+      contract stay exactly as they are, so there's nothing to re-sign.
+    </p>
+
+    <% if @error.present? %>
+      <p class="text-sm text-pink-600 mb-4"><%= @error %></p>
+    <% end %>
+
+    <%= form_with url: apply_amend_basics_manage_contract_path(@contract), method: :post, local: true do %>
+      <div class="space-y-5">
+        <div>
+          <label for="production_name" class="block text-sm font-medium text-gray-900 mb-1.5">Production name</label>
+          <input type="text" name="production_name" id="production_name" value="<%= @production_name %>" required
+                 placeholder="e.g. Music & Improv Show" class="<%= input_class %>">
+          <p class="mt-1.5 text-xs text-gray-500">Shown on the contract, the calendar and the ticket page.</p>
+        </div>
+
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-900 mb-1.5">
+            Description
+            <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <textarea name="description" id="description" rows="5"
+                    placeholder="A few lines about the show for people buying tickets"
+                    class="<%= input_class %>"><%= @description %></textarea>
+          <p class="mt-1.5 text-xs text-gray-500">Shown on its ticket page and public listing.</p>
+        </div>
+
+        <% production = @contract.production %>
+        <% if production %>
+          <p class="text-sm text-gray-500">
+            Its poster and wide image are in
+            <%= link_to "the production's Visual Assets", edit_manage_production_path(production, tab: 1), class: "text-pink-600 hover:text-pink-700 underline" %>.
+          </p>
+        <% end %>
+      </div>
+
+      <div class="flex items-center justify-between gap-3 mt-8 flex-wrap">
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left",
+              path: amend_choose_manage_contract_path(@contract) %>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+<% end %>

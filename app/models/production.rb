@@ -62,6 +62,15 @@ class Production < ApplicationRecord
     end
   end
 
+  # The running contract a third-party production's name and description are
+  # changed through (Amend → Change the basic info), so the two never drift
+  # apart. Nil for in-house productions and once its contracts are done.
+  def basics_contract
+    return nil unless type_third_party?
+
+    contracts.status_active.order(:created_at, :id).last
+  end
+
   include HasWideImage
 
   # Ticketing set up for the whole production, and each show's listing.

@@ -52,20 +52,44 @@
 
     <!-- Tab 1: Basic Information -->
     <div data-tabs-target="panel">
+      <% basics_contract = production_basics_contract(@production) %>
       <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
         <!-- Production Details Card -->
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
           <%= render "shared/card_header", title: "Production Details" %>
           <div class="p-6 space-y-6">
-            <div>
-              <%= form.label :name, "Production Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
-              <%= form.text_field :name, class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:name].none?, "border-pink-500": @production.errors[:name].any?}], placeholder: "Enter production name" %>
-              <% if @production.errors[:name].any? %>
-                <p class="mt-1 text-sm text-pink-600"><%= @production.errors[:name].first %></p>
-              <% end %>
-            </div>
+            <% if basics_contract %>
+              <%# A running contract owns these: Amend → Change the basic info. %>
+              <div>
+                <p class="block text-sm font-medium text-gray-700 mb-1">Production Name</p>
+                <p class="text-gray-900"><%= @production.name %></p>
+              </div>
+              <div>
+                <p class="block text-sm font-medium text-gray-700 mb-1">Description</p>
+                <% if @production.description.present? %>
+                  <p class="text-sm text-gray-600 whitespace-pre-line"><%= @production.description %></p>
+                <% else %>
+                  <p class="text-sm text-gray-500">No description yet.</p>
+                <% end %>
+              </div>
+              <div class="flex items-center justify-between gap-3 flex-wrap pt-4 border-t border-gray-100">
+                <% if can_amend_production_basics?(@production) %>
+                  <p class="text-sm text-gray-500">These change through the contract with <%= basics_contract.contractor_name %>, with nothing to re-sign.</p>
+                  <%= render "shared/button", text: "Change in the contract", variant: "secondary", size: "small", icon: "pencil",
+                        path: amend_basics_manage_contract_path(basics_contract) %>
+                <% else %>
+                  <p class="text-sm text-gray-500">These change through the contract with <%= basics_contract.contractor_name %>, which your organization's managers look after.</p>
+                <% end %>
+              </div>
+            <% else %>
+              <div>
+                <%= form.label :name, "Production Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= form.text_field :name, class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:name].none?, "border-pink-500": @production.errors[:name].any?}], placeholder: "Enter production name" %>
+                <% if @production.errors[:name].any? %>
+                  <p class="mt-1 text-sm text-pink-600"><%= @production.errors[:name].first %></p>
+                <% end %>
+              </div>
 
-            <% unless @production.type_third_party? %>
               <div>
                 <%= form.label :description, "Description", class: "block text-sm font-medium text-gray-700 mb-1" %>
                 <p class="text-xs text-gray-500 mb-2">A brief description of your production shown on public listings</p>
@@ -92,12 +116,15 @@
                       <% end %>
                     </p>
                   </div>
-                  <% contracts_ok = @production.organization.feature_available?(:contracts) %>
-                  <span class="inline-flex items-center gap-1.5">
-                    <%= render "shared/pro_marker", kind: (contracts_ok ? :pill : :lock) %>
-                    <%= render "shared/button", text: "View Contract", variant: "secondary", size: "small", path: manage_contract_path(@production.contract),
-                          data: (contracts_ok ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
-                  </span>
+                  <%# Contracts are the organization's managers'; nobody else gets the link. %>
+                  <% if Current.user&.superadmin? || @production.organization.manageable_by?(Current.user) %>
+                    <% contracts_ok = @production.organization.feature_available?(:contracts) %>
+                    <span class="inline-flex items-center gap-1.5">
+                      <%= render "shared/pro_marker", kind: (contracts_ok ? :pill : :lock) %>
+                      <%= render "shared/button", text: "View Contract", variant: "secondary", size: "small", path: manage_contract_path(@production.contract),
+                            data: (contracts_ok ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
+                    </span>
+                  <% end %>
                 </div>
               <% else %>
                 <p class="text-sm text-gray-500">This production was created from a third-party contract.</p>
@@ -121,10 +148,13 @@
           </div>
         <% end %>
 
-        <!-- Save Button -->
-        <div class="flex justify-end">
-          <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
-        </div>
+        <%# A contracted production's tab has nothing to save here. %>
+        <% unless basics_contract %>
+          <!-- Save Button -->
+          <div class="flex justify-end">
+            <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
       <% end %>
     </div>
 

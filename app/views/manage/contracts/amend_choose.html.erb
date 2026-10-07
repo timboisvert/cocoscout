@@ -1,8 +1,26 @@
 <%= render layout: "manage/contracts/amend_layout", locals: { step_name: "What are you changing?" } do %>
     <h2 class="text-2xl coustard-regular text-gray-900 mb-1">What are you changing?</h2>
-    <p class="text-gray-600 mb-6">Changing when they're playing is a different job from changing the deal — so they're kept apart.</p>
+    <p class="text-gray-600 mb-6">Each kind of change is its own job, so the small ones never touch the deal.</p>
 
     <div class="space-y-3">
+      <%# The smallest change of all: what the production is called and how it's
+          described. Nothing on the signed contract moves. %>
+      <%= link_to amend_basics_manage_contract_path(@contract),
+            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
+        <div class="flex items-start gap-4">
+          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+            <%= icon("pencil", class: "w-5 h-5") %>
+          </span>
+          <div>
+            <p class="font-semibold text-gray-900">Change the basic info</p>
+            <p class="text-sm text-gray-600 mt-0.5">
+              The production's name and description. The dates, the money and the paperwork stay exactly
+              as they are.
+            </p>
+          </div>
+        </div>
+      <% end %>
+
       <%# The common case, and the safe one: nothing about the money is
           regenerated, so a settled date can't sprout a second payment. %>
       <%= link_to amend_dates_manage_contract_path(@contract),

@@ -1681,6 +1681,10 @@ Rails.application.routes.draw do
         post :process_cancel
         # Amend contract flow with nested paths
         get "amend", action: :amend_choose, as: :amend_choose
+        # The production's name and description: what it's called and how its
+        # ticket page describes it. No dates, no money, no new paper.
+        get "amend/basics", action: :amend_basics, as: :amend_basics
+        post "amend/basics", action: :apply_amend_basics, as: :apply_amend_basics
         # Changing dates is its own job — no financial regeneration at all.
         # The form GETs review (a preview, no side effects — and a POST that
         # renders 200 HTML would be ignored by Turbo); confirming posts the

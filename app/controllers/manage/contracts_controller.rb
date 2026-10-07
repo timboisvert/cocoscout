@@ -380,6 +380,60 @@ module Manage
     def amend_choose
     end
 
+    # Name and description only: what the production is called and how its
+    # ticket page and public listing describe it. The contract's dates, money
+    # and signed paperwork stay as they are, so there's nothing to re-sign.
+    def amend_basics
+      return redirect_to(manage_contract_path(@contract), alert: "This contract has no production yet.") unless @contract.production
+
+      @production_name = @contract.production.name
+      @description = @contract.production.description.to_s
+    end
+
+    def apply_amend_basics
+      production = @contract.production
+      return redirect_to(manage_contract_path(@contract), alert: "This contract has no production yet.") unless production
+
+      @production_name = params[:production_name].to_s.strip
+      @description = params[:description].to_s.strip
+
+      if @production_name.blank?
+        @error = "Give the production a name."
+        return render :amend_basics, status: :unprocessable_content
+      end
+
+      old_name = production.name
+      renamed = @production_name != old_name
+      described = @description != production.description.to_s.strip
+
+      unless renamed || described
+        redirect_to manage_contract_path(@contract), notice: "Nothing to change."
+        return
+      end
+
+      @contract.transaction do
+        production.update!(name: @production_name, description: @description.presence)
+        if renamed
+          @contract.update!(production_name: @production_name)
+          # Its other contracts that still carry the old name follow it.
+          production.contracts.where.not(id: @contract.id).where(production_name: old_name)
+                    .update_all(production_name: @production_name, updated_at: Time.current)
+        end
+      end
+
+      notice = if renamed && described
+        "Renamed to #{@production_name}, with its new description."
+      elsif renamed
+        "Renamed to #{@production_name}."
+      else
+        "Updated the description."
+      end
+      redirect_to manage_contract_path(@contract), notice: notice
+    rescue ActiveRecord::RecordInvalid => e
+      @error = e.record.errors.full_messages.to_sentence
+      render :amend_basics, status: :unprocessable_content
+    end
+
     # Dates only: add, remove or move events. The deal is not touched.
     def amend_dates
       @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
