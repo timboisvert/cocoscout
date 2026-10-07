@@ -39,6 +39,11 @@ class ProductionTicketing < ApplicationRecord
   validates :schedule_mode, inclusion: { in: SCHEDULE_MODES }
   validates :opens_days_before, numericality: { only_integer: true, in: 1..365 }
   validates :online_close_minutes, numericality: { only_integer: true, in: 0..1440 }
+  # Its own refund policy, or (blank) the box office's (RefundPolicy.for).
+  normalizes :refund_policy, with: ->(value) { value.to_s.strip.presence }
+  validates :refund_policy, inclusion: { in: RefundPolicy::KINDS }, allow_nil: true
+  validates :refund_window_hours, numericality: { only_integer: true, in: 0..RefundPolicy::MAX_HOURS }, allow_nil: true
+  validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   validate :production_belongs_to_organization

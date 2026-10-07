@@ -42,8 +42,11 @@ module Manage
 
     def update
       attrs = params.require(:ticketing_profile)
-                    .permit(:slug, :support_email, :default_fee_mode, :default_max_per_order, :refunds_after_show,
-                            :reminder_days_before, :enabled)
+                    .permit(:slug, :support_email, :default_fee_mode, :default_max_per_order,
+                            :reminder_days_before, :enabled, :refund_choice, :refund_days, :refund_fees, :refund_policy_note)
+      refund_choice = attrs.delete(:refund_choice)
+      refund_days = attrs.delete(:refund_days)
+      attrs.merge!(RefundPolicy.attributes_for(refund_choice, refund_days) || {}) if refund_choice
       # Closing a box office (or reopening it from here) is a superadmin's call;
       # managers open theirs with open_box_office.
       attrs.delete(:enabled) unless Current.user.superadmin?

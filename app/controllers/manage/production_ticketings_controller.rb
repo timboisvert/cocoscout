@@ -127,8 +127,19 @@ module Manage
     def update_sales
       permitted = params.require(:production_ticketing).permit(:max_per_order, :fee_mode, :low_stock_threshold, :title, :description,
                                                                :door_note, :age_note, :accessibility_note)
-      @setup.update!(permitted.to_h.transform_values(&:presence))
+      @setup.update!(permitted.to_h.transform_values(&:presence).merge(refund_policy_attributes))
       redirect_to section_path("sales"), notice: "Saved. Dates without their own settings use these."
+    end
+
+    # Its own refund policy (the switch on), or the box office's (off: every
+    # field cleared). Nothing sent, nothing changed.
+    def refund_policy_attributes
+      raw = params.require(:production_ticketing)
+      return {} unless raw.key?(:own_refund_policy)
+      return { refund_policy: nil, refund_window_hours: nil, refund_fees: nil, refund_policy_note: nil } unless raw[:own_refund_policy] == "1"
+
+      chosen = RefundPolicy.attributes_for(raw[:refund_choice], raw[:refund_days]) || {}
+      chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
     end
 
     # Which of the org's products this production upsells, and (with the

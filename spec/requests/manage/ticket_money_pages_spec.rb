@@ -48,7 +48,7 @@ RSpec.describe "Manage ticketing money", type: :request do
       order = sold(2)
       ids = order.tickets.pluck(:id)
 
-      get manage_ticket_order_refund_path(order.id), params: { ticket_ids: ids }
+      get manage_ticket_order_refund_path(order.id), params: { ticket_ids: ids, keep_fees: "0" }
       expect(response.body).to include("Refund $42.53 to Dana Scully", "your balance gives up $41.53")
 
       post manage_ticket_order_refund_path(order.id), params: { ticket_ids: ids, keep_fees: "0", reason: "Asked by email" }
@@ -68,20 +68,27 @@ RSpec.describe "Manage ticketing money", type: :request do
       expect(response.body).not_to include("Refund $21.42</span>")
     end
 
-    it "hides refunds after the show unless the theater allows them" do
+    # Round 10: after the show is simply outside the refund policy; a
+    # manager can still refund, with Refund anyway and a reason.
+    it "refunds after the show only with Refund anyway and a reason" do
       order = sold(1)
       listing.show.update!(date_and_time: 1.hour.ago)
+      ids = order.tickets.pluck(:id)
 
       get manage_ticket_order_path(order.id)
-      expect(response.body).to include("refunds after the show are off")
-      expect(response.body).not_to include("Review refund")
-      get manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id) }
-      expect(response).to redirect_to(manage_ticket_order_path(order.id))
+      expect(response.body).to include("Outside the refund policy", "The show has happened", "Review refund")
+      get manage_ticket_order_refund_path(order.id), params: { ticket_ids: ids }
+      expect(response.body).to include("Refund anyway", 'name="outside_policy"')
 
-      patch manage_ticketing_settings_path, params: { ticketing_profile: { refunds_after_show: "1" } }
-      expect(TicketingProfile.find_by!(organization: org).refunds_after_show).to be(true)
-      get manage_ticket_order_path(order.id)
-      expect(response.body).to include("Review refund")
+      post manage_ticket_order_refund_path(order.id), params: { ticket_ids: ids, keep_fees: "0" }
+      expect(flash[:alert]).to eq("This refund is outside the refund policy. Turn on Refund anyway to make it.")
+      post manage_ticket_order_refund_path(order.id), params: { ticket_ids: ids, keep_fees: "0", outside_policy: "1" }
+      expect(flash[:alert]).to eq("Say why you're refunding outside the policy.")
+      expect(order.reload.status).to eq("paid")
+
+      post manage_ticket_order_refund_path(order.id), params: { ticket_ids: ids, keep_fees: "0", outside_policy: "1", reason: "Stuck in traffic" }
+      expect(order.reload.status).to eq("refunded")
+      expect(order.ticket_refunds.sole).to have_attributes(outside_policy: true, reason: "Stuck in traffic")
     end
 
     it "won't refund buyers for a show that has started, or one that isn't canceled" do
@@ -100,7 +107,7 @@ RSpec.describe "Manage ticketing money", type: :request do
       listing.update!(released_at: 3.days.ago)
       BalanceWithdrawal.create!(organization: org, amount_cents: 2_000, status: "sent")
 
-      get manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id) }
+      get manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id), keep_fees: "0" }
       expect(response.body).to include("Add $20.92 and refund")
 
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_top", status: "succeeded"))

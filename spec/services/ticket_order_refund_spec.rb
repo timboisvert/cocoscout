@@ -104,20 +104,17 @@ RSpec.describe TicketOrderRefund do
     expect(order.tickets.pluck(:status)).to eq([ "valid" ])
   end
 
-  it "after the show, refunds only when the theater allows them" do
+  it "after the show, refunds only as an exception to the policy, and says so" do
     order = sold(1)
-    second = sold(1, intent: "pi_second")
     listing.show.update!(date_and_time: 2.hours.ago)
 
-    expect(described_class.allowed?(order)).to be(false)
-    expect { described_class.issue!(order) }.to raise_error(described_class::Error, /Refunds after the show are off/)
+    expect(described_class.policy_check(order)).to have_attributes(within: false, reason: "The show has happened")
+    expect { described_class.issue!(order) }.to raise_error(described_class::Error, "The show has happened, so this is outside the refund policy. Turn on Refund anyway to refund it.")
     expect(Stripe::Refund).not_to have_received(:create)
 
-    # Canceling a show (started before showtime) isn't stopped by the setting.
-    expect(described_class.issue!(order, allow_after_show: true).status).to eq("succeeded")
-
-    TicketingProfile.for(org).update!(refunds_after_show: true)
-    expect(described_class.issue!(second).status).to eq("succeeded")
+    refund = described_class.issue!(order, outside_policy: true, reason: "Snowstorm")
+    expect(refund).to have_attributes(status: "succeeded", outside_policy: true)
+    expect(refund.policy_words).to start_with("Refunds up to 24 hours before the show.")
   end
 
   it "hands cash back from the box, with no Stripe and no balance" do

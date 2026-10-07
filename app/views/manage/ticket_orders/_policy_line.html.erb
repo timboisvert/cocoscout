@@ -1,0 +1,13 @@
+<%# Where a refund stands against the refund policy (TicketOrderRefund.policy_check):
+    green within it, amber outside, gray when the policy is case by case.
+    Locals: check. %>
+<% policy = check.policy %>
+<% if !check.within %>
+  <p class="text-sm text-amber-800"><span class="font-medium">Outside the refund policy:</span> <%= check.reason %>.</p>
+<% elsif policy.kind == "case_by_case" %>
+  <p class="text-sm text-gray-600"><span class="font-medium">Refund policy: case by case.</span> It's your call.</p>
+<% elsif check.deadline %>
+  <p class="text-sm text-green-700"><span class="font-medium">Within the refund policy</span> until <%= check.deadline.strftime("%a, %b %-d, %-l:%M %p") %>.</p>
+<% else %>
+  <p class="text-sm text-green-700"><span class="font-medium">Within the refund policy.</span></p>
+<% end %>

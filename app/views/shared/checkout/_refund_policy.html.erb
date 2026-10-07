@@ -1,0 +1,16 @@
+<%# The refund policy, where the buyer pays (RefundPolicy): one line per
+    policy, each show's title when a checkout holds shows with different ones.
+    Locals: policies ([[title, RefundPolicy], ...]). %>
+<% distinct = policies.uniq { |_, policy| policy.words } %>
+<div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+  <% if distinct.size == 1 %>
+    <span class="font-medium text-gray-900">Refund policy:</span> <%= distinct.first.last.words %>
+  <% else %>
+    <div class="font-medium text-gray-900 mb-1">Refund policy</div>
+    <ul class="space-y-1">
+      <% distinct.each do |title, policy| %>
+        <li><span class="font-medium text-gray-800"><%= title %>:</span> <%= policy.words %></li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

@@ -161,28 +161,28 @@
           <%# Present even when nothing is ticked, so "no products" never reads as "all products". %>
           <%= hidden_field_tag "item_ids[]", "", id: nil %>
         <% end %>
-        <% if (@refundable_ids.any? || @refundable_item_ids.any?) && !@refunds_allowed %>
-          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 text-sm text-gray-600">
-            This show has happened, and refunds after the show are off.
-            <%= link_to "Change that in Ticketing settings", manage_ticketing_settings_section_path(section: "box_office"), class: "font-medium text-pink-600 hover:text-pink-700" %>
-          </div>
-        <% elsif (@refundable_ids.any? || @refundable_item_ids.any?) && @order.money_path == "none" %>
+        <% if (@refundable_ids.any? || @refundable_item_ids.any?) && @order.money_path == "none" %>
           <%# Comps: no money to give back, the tickets just stop working and the seats come free. %>
           <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
             <span class="text-sm text-gray-600">Not coming after all? Cancel <%= choosing ? "the ticked tickets" : "the ticket" %> and the seat<%= "s" if @refundable_ids.size > 1 %> come<%= "s" unless @refundable_ids.size > 1 %> free.</span>
             <%= render "shared/button", text: "Cancel tickets", variant: "secondary", size: "small", type: :submit %>
           </div>
         <% elsif (@refundable_ids.any? || @refundable_item_ids.any?) && @order.total_cents.positive? %>
-          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
-            <% if @order.buyer_fee_cents.positive? %>
-              <label class="flex items-center gap-2 text-sm text-gray-700">
-                <%= check_box_tag :keep_fees, "1", false, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-                Keep the fees (refund the price and tax only)
-              </label>
-            <% else %>
-              <span></span>
-            <% end %>
-            <%= render "shared/button", text: "Review refund", variant: "secondary", size: "small", type: :submit %>
+          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 space-y-3">
+            <%= render "manage/ticket_orders/policy_line", check: @policy_check %>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <% if @order.buyer_fee_cents.positive? %>
+                <%# Starts from the policy: by default fees aren't refunded. %>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                  <%= hidden_field_tag :keep_fees, "0", id: nil %>
+                  <%= check_box_tag :keep_fees, "1", !@policy_check.policy.fees, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+                  Keep the fees (refund the price and tax only)
+                </label>
+              <% else %>
+                <span></span>
+              <% end %>
+              <%= render "shared/button", text: "Review refund", variant: "secondary", size: "small", type: :submit %>
+            </div>
           </div>
         <% end %>
       </div>
@@ -256,7 +256,7 @@
                 <span class="text-gray-500"><%= refund.created_at.strftime("%b %-d, %-l:%M %p") %></span>
               </div>
               <div class="text-xs text-gray-500 mt-0.5">
-                <%= refund.status == "failed" ? "Didn't go through: #{refund.error}" : [ refund.reason, refund.refunded_by&.person&.name ].compact_blank.join(" · ").presence || (@order.money_path == "none" ? "Canceled" : "Refunded") %>
+                <%= refund.status == "failed" ? "Didn't go through: #{refund.error}" : [ ("Outside the refund policy" if refund.outside_policy), refund.reason, refund.refunded_by&.person&.name ].compact_blank.join(" · ").presence || (@order.money_path == "none" ? "Canceled" : "Refunded") %>
               </div>
             </li>
           <% end %>

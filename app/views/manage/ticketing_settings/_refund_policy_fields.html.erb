@@ -1,0 +1,32 @@
+<%# The refund policy's fields, shared by the box office and a production
+    that sets its own (RefundPolicy). Inside the caller's form, which carries
+    data-controller="radio-card" for the custom-days reveal.
+    Locals: scope (the param prefix), policy (a RefundPolicy), input_class. %>
+<% choice = RefundPolicy.choice_for(policy.kind, policy.hours) %>
+<div class="space-y-2">
+  <% RefundPolicy::CHOICES.each do |value, title, hint| %>
+    <%= render layout: "shared/choice_card", locals: { name: "#{scope}[refund_choice]", value: value, selected: choice, title: title, hint: hint } do %>
+      <% if value == "custom" %>
+        <div class="flex items-center gap-2">
+          <%= number_field_tag "#{scope}[refund_days]", (choice == "custom" ? policy.hours / 24 : 3), min: 1, max: 365,
+                id: "#{scope}_refund_days", class: "#{input_class} max-w-[6rem]", "aria-label": "Days before the show" %>
+          <span class="text-sm text-gray-600">days before the show</span>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>
+
+<div class="flex items-center justify-between gap-4 pt-2">
+  <div>
+    <div class="text-sm font-medium text-gray-900">Refund the fees too</div>
+    <div class="text-xs text-gray-600 mt-0.5">Off: within the policy, buyers get the ticket price and tax back, and the fees they paid aren't refunded. A show you cancel always refunds everything.</div>
+  </div>
+  <%= render "shared/toggle_switch", name: "#{scope}[refund_fees]", checked: policy.fees, hidden_false: true, id: "#{scope}_refund_fees", aria_label: "Refund the fees too" %>
+</div>
+
+<div>
+  <label for="<%= scope %>_refund_policy_note" class="block text-sm font-medium text-gray-700 mb-1.5">Anything else buyers should know <span class="font-normal text-gray-500">(optional)</span></label>
+  <%= text_area_tag "#{scope}[refund_policy_note]", policy.note, id: "#{scope}_refund_policy_note", rows: 2, maxlength: RefundPolicy::NOTE_LIMIT,
+        placeholder: "Exchanges to another date are welcome up to 24 hours before.", class: input_class %>
+</div>

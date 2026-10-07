@@ -116,6 +116,15 @@
       </div>
     <% end %>
 
+    <%# The policy they bought under, and how to ask. %>
+    <% if (refund_words = @order.refund_policy_words) %>
+      <div class="mt-6 rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-700">
+        <div class="font-semibold text-gray-900">Refund policy</div>
+        <p class="mt-1"><%= refund_words %></p>
+        <p class="mt-2 text-gray-600">To ask for a refund, reply to your confirmation email.</p>
+      </div>
+    <% end %>
+
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
       <span>Order <%= @order.code %> · <%= number_to_currency(@order.total_cents / 100.0) %></span>
       <%= render "shared/button", text: "Email my tickets again", variant: "secondary", size: "small",

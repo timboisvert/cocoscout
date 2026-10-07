@@ -36,11 +36,13 @@ module Manage
       @refunds = @order.ticket_refunds.order(:created_at).includes(:refunded_by).to_a
       @refundable_ids = TicketOrderRefund.refundable(@order).pluck(:id)
       @refundable_item_ids = TicketOrderRefund.refundable_items(@order).pluck(:id)
-      @refunds_allowed = TicketOrderRefund.allowed?(@order)
+      # Refunds are always reviewable; the policy says whether one is within
+      # it, and outside it the review asks for Refund anyway.
+      @policy_check = TicketOrderRefund.policy_check(@order)
+      @refunds_allowed = true
       @disputed = TicketDispute.open?(@order)
       @exchanges_out = @order.exchanges_out.includes(to_order: { ticket_listing: :show }).order(:id).to_a
-      @movable = @order.paid? && @order.money_path.in?(%w[cocoscout none]) && @refunds_allowed &&
-                 TicketOrderExchange.movable(@order).exists?
+      @movable = @order.paid? && @order.money_path.in?(%w[cocoscout none]) && TicketOrderExchange.movable(@order).exists?
     end
 
     # Moving tickets to another date of the same production: the date, the
@@ -59,10 +61,12 @@ module Manage
       @tier_map = @target ? TicketOrderExchange.tier_map(chosen, @target, tier_params) : {}
       return unless @target
 
+      # A show that has happened can still move, with Move anyway.
+      @after_show = @order.ticket_listing.show.date_and_time <= Time.current
       if chosen.empty?
         @problem = "Choose the tickets to move."
       else
-        @plan = TicketOrderExchange.plan(@order, target: @target, ticket_ids: @ticket_ids, chosen_tiers: tier_params)
+        @plan = TicketOrderExchange.plan(@order, target: @target, ticket_ids: @ticket_ids, chosen_tiers: tier_params, outside_policy: true)
       end
     rescue TicketOrderExchange::Error => e
       @problem = e.message
@@ -74,7 +78,8 @@ module Manage
       raise TicketOrderExchange::Error, "Choose the tickets to move." if ticket_ids.empty?
 
       exchange = TicketOrderExchange.exchange!(@order, target: target, ticket_ids: ticket_ids, chosen_tiers: tier_params,
-                                                       by: Current.user, email_them: params[:email_them] == "1")
+                                                       by: Current.user, email_them: params[:email_them] == "1",
+                                                       outside_policy: params[:outside_policy] == "1")
       moved = helpers.pluralize(exchange.ticket_ids.size, "ticket")
       notice = "Moved #{moved} to #{target.show.date_and_time.strftime('%A, %B %-d')}."
       notice += " Refunded the #{helpers.number_to_currency(exchange.difference_cents / 100.0)} difference." if exchange.ticket_refund
@@ -86,11 +91,9 @@ module Manage
 
     # What a refund of the chosen tickets gives back, before it happens.
     def refund_review
-      unless TicketOrderRefund.allowed?(@order)
-        redirect_to manage_ticket_order_path(@order.id), alert: "Refunds after the show are off. You can turn them on in Ticketing settings." and return
-      end
-
-      @keep_fees = params[:keep_fees] == "1"
+      @check = TicketOrderRefund.policy_check(@order)
+      # Whether the fees come back starts from the policy; the manager can change it.
+      @keep_fees = params.key?(:keep_fees) ? params[:keep_fees] == "1" : !@check.policy.fees
       @reprice = reprice?
       @quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: @keep_fees, reprice: @reprice)
       if @quote.empty?
@@ -104,8 +107,10 @@ module Manage
     end
 
     def refund
+      outside_policy = exception_allowed!
       refund = TicketOrderRefund.issue!(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: params[:keep_fees] == "1",
-                                                by: Current.user, reason: params[:reason].presence, reprice: reprice?)
+                                                by: Current.user, reason: params[:reason].presence, reprice: reprice?,
+                                                outside_policy: outside_policy)
       notice = if @order.money_path == "none"
         "Canceled #{helpers.pluralize(refund.ticket_ids.size, 'ticket')} for #{@order.buyer_name.presence || 'the guest'}. The seats are free again."
       elsif @order.money_path == "cash"
@@ -122,6 +127,7 @@ module Manage
     # from the bank, and the refund goes out the moment it lands (at once
     # by card; in a few days by bank debit).
     def refund_top_up
+      outside_policy = exception_allowed!
       keep_fees = params[:keep_fees] == "1"
       quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: keep_fees, reprice: reprice?)
       short = CocoScoutBalance.shortfall_cents(Current.organization, quote.org_debit_cents)
@@ -131,7 +137,7 @@ module Manage
 
       top_up = BalanceTopUpService.start!(Current.organization, amount_cents: short, by: Current.user, refund_request: {
         "order_id" => @order.id, "ticket_ids" => quote.tickets.map(&:id), "item_ids" => quote.items.map(&:id), "keep_fees" => keep_fees,
-        "reprice" => reprice?,
+        "reprice" => reprice?, "outside_policy" => outside_policy,
         "reason" => params[:reason].presence, "user_id" => Current.user.id
       })
       notice = if top_up.status == "succeeded"
@@ -140,7 +146,7 @@ module Manage
         "Adding #{helpers.number_to_currency(short / 100.0)} from your bank. The refund goes out when it lands, in 2 to 4 business days."
       end
       redirect_to manage_ticket_order_path(@order.id), notice: notice
-    rescue BalanceTopUpService::Error => e
+    rescue BalanceTopUpService::Error, TicketOrderRefund::Error => e
       redirect_to manage_ticket_order_path(@order.id), alert: e.message
     end
 
@@ -159,6 +165,16 @@ module Manage
     # manager chose to refund the full share (reprice=0).
     def reprice?
       params[:reprice] != "0"
+    end
+
+    # Refund anyway: a refund outside the policy needs the toggle on, and a
+    # reason the order will show. Returns whether this is one.
+    def exception_allowed!
+      return false if TicketOrderRefund.policy_check(@order).within
+      raise TicketOrderRefund::Error, "This refund is outside the refund policy. Turn on Refund anyway to make it." unless params[:outside_policy] == "1"
+      raise TicketOrderRefund::Error, "Say why you're refunding outside the policy." if params[:reason].blank?
+
+      true
     end
 
     # { old ticket type id => chosen new one } from the move form.

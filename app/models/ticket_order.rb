@@ -81,6 +81,15 @@ class TicketOrder < ApplicationRecord
     stripe_payment_intent_id || ticket_purchase&.stripe_payment_intent_id || exchanged_from&.payment_intent_id
   end
 
+  # The refund policy this order was sold under (or the date's today, for an
+  # order from before policies), in buyers' words; nil for a comp or a free
+  # order, which have nothing to refund.
+  def refund_policy_words
+    return nil if money_path == "none" || total_cents.to_i.zero?
+
+    (RefundPolicy.from_snapshot(refund_policy) || RefundPolicy.for(ticket_listing)).words
+  end
+
   def hold_expired?(at = Time.current)
     pending? && expires_at.present? && expires_at <= at
   end

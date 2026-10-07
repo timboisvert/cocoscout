@@ -65,7 +65,8 @@ class TicketOrderMailer < ApplicationMailer
       what: pass&.name || shows.to_sentence,
       show_count: ActionController::Base.helpers.pluralize(@orders.size, "show"),
       show_list: shows.to_sentence,
-      pass_name: pass&.name.to_s
+      pass_name: pass&.name.to_s,
+      refund_policy: purchase_refund_words(@orders)
     })
     @intro_html = words[:body_html]
     @sections = @orders.map do |order|
@@ -135,7 +136,8 @@ class TicketOrderMailer < ApplicationMailer
       ticket_count: ActionController::Base.helpers.pluralize(count, "ticket"),
       ticket_count_verb: count == 1 ? "is" : "are",
       order_code: order.code,
-      order_url: routes.tickets_order_url(token: order.token, **url_options)
+      order_url: routes.tickets_order_url(token: order.token, **url_options),
+      refund_policy: order.refund_policy_words.to_s
     }
   end
 
@@ -217,6 +219,14 @@ class TicketOrderMailer < ApplicationMailer
   end
 
   private
+
+  # One policy for the whole purchase, or each show's when they differ.
+  def purchase_refund_words(orders)
+    words = orders.to_h { |order| [ order.ticket_listing.display_title, order.refund_policy_words ] }.compact
+    return words.values.first.to_s if words.values.uniq.size <= 1
+
+    words.map { |title, text| "#{title}: #{text}" }.join(" ")
+  end
 
   # An email with the order's tickets in it: the words, the show's when and
   # where, then one QR code per ticket, attached inline so the door can scan

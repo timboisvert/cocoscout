@@ -84,10 +84,11 @@ RSpec.describe "Balance extras" do
       org.update!(funding_payment_method_type: "us_bank_account")
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_ach", status: "processing"))
       allow(Stripe::Refund).to receive(:create).and_return(double("refund", id: "re_1"))
-      TicketingProfile.for(org).update!(refunds_after_show: true)
-
+      # After the show, so outside the refund policy: the waiting refund
+      # carries the manager's Refund anyway.
       top_up = BalanceTopUpService.start!(org, amount_cents: 2_092, refund_request: {
-        "order_id" => order.id, "ticket_ids" => order.tickets.pluck(:id), "keep_fees" => false, "reason" => "Asked", "user_id" => nil
+        "order_id" => order.id, "ticket_ids" => order.tickets.pluck(:id), "keep_fees" => false, "reason" => "Asked", "user_id" => nil,
+        "outside_policy" => true
       })
       expect(top_up.status).to eq("pending")
       expect(order.reload.status).to eq("paid")

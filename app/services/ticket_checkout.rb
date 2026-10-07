@@ -49,8 +49,9 @@ class TicketCheckout
       Ticketing::Inventory.reserve!(listing, seats) do
         expires_at = TicketOrder::HOLD.from_now
         purchase = TicketPurchase.create!(organization: listing.organization, channel: channel, expires_at: expires_at)
+        # The refund policy the buyer sees is the one this order keeps.
         order = TicketOrder.create!(organization: listing.organization, ticket_listing: listing, status: "pending",
-                                    ticket_purchase: purchase,
+                                    ticket_purchase: purchase, refund_policy: RefundPolicy.for(listing).to_snapshot,
                                     channel: channel, money_path: "cocoscout", fee_mode: listing.effective_fee_mode,
                                     expires_at: expires_at, ticket_discount_code: discount,
                                     client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
@@ -93,6 +94,7 @@ class TicketCheckout
         purchase = TicketPurchase.create!(organization: pass.organization, channel: "online", expires_at: expires_at)
         rows.each_with_index do |row, index|
           order = TicketOrder.create!(organization: pass.organization, ticket_listing: row.ticket_listing, ticket_purchase: purchase,
+                                      refund_policy: RefundPolicy.for(row.ticket_listing).to_snapshot,
                                       status: "pending", channel: "online", money_path: "cocoscout", fee_mode: fee_mode,
                                       expires_at: expires_at, client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
                                       short_link: short_link, utm: short_link ? { "via" => short_link.code } : {})
@@ -243,6 +245,7 @@ class TicketCheckout
         purchase = TicketPurchase.create!(organization: order.organization, channel: "online", expires_at: expires_at,
                                           earned_by_purchase: order.ticket_purchase)
         new_order = TicketOrder.create!(organization: order.organization, ticket_listing: listing, ticket_purchase: purchase,
+                                        refund_policy: RefundPolicy.for(listing).to_snapshot,
                                         status: "pending", channel: "online", money_path: "cocoscout", fee_mode: listing.effective_fee_mode,
                                         expires_at: expires_at, buyer_name: order.buyer_name, buyer_email: order.buyer_email,
                                         buyer_phone: order.buyer_phone)
@@ -282,6 +285,7 @@ class TicketCheckout
         else
           Ticketing::Inventory.reserve!(listing, { tier => wanted }) do
             deal_order = existing || TicketOrder.create!(organization: order.organization, ticket_listing: listing, ticket_purchase: purchase,
+                                                         refund_policy: RefundPolicy.for(listing).to_snapshot,
                                                          status: "pending", channel: order.channel, money_path: "cocoscout",
                                                          fee_mode: order.fee_mode, expires_at: order.expires_at, client_ip: order.client_ip)
             price = offer.deal_price_cents(tier)

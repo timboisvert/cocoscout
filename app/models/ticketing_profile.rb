@@ -29,6 +29,14 @@ class TicketingProfile < ApplicationRecord
   validates :support_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_nil: true
   # Days before a show that buyers get their reminder; nil sends none.
   validates :reminder_days_before, numericality: { only_integer: true, in: 1..30 }, allow_nil: true
+  # The refund policy buyers see at checkout (RefundPolicy).
+  validates :refund_policy, inclusion: { in: RefundPolicy::KINDS }
+  validates :refund_window_hours, numericality: { only_integer: true, in: 0..RefundPolicy::MAX_HOURS }
+  validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
+
+  def refund_policy_object
+    RefundPolicy.of_profile(self)
+  end
 
   before_validation :default_slug, on: :create
   # The address it's leaving keeps working (a redirect) and stays its own.

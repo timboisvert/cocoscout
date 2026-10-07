@@ -85,7 +85,8 @@
       <% if @problem %>
         <%= render "shared/alert_panel", eyebrow: "Can't move these", headline: "Not this way", body: @problem, tone: :amber %>
       <% elsif p %>
-        <%= form_with url: manage_ticket_order_exchange_path(@order.id), method: :post, class: "bg-white border border-gray-200 rounded-xl px-6 py-5 space-y-4" do %>
+        <%= form_with url: manage_ticket_order_exchange_path(@order.id), method: :post, class: "bg-white border border-gray-200 rounded-xl px-6 py-5 space-y-4",
+              data: (@after_show ? { controller: "fieldset-toggle" } : {}) do %>
           <%= hidden_field_tag :to_listing_id, @target.id %>
           <% p.tickets.each do |ticket| %><%= hidden_field_tag "ticket_ids[]", ticket.id, id: nil %><% end %>
           <% @tier_map.each do |old_tier_id, new_tier_id| %><%= hidden_field_tag "tiers[#{old_tier_id}]", new_tier_id, id: nil %><% end %>
@@ -105,10 +106,21 @@
               Email <%= @order.buyer_email %> their new tickets
             </label>
           <% end %>
-          <div class="flex flex-wrap gap-2">
+          <%# A show that has happened is outside the refund policy: moving its tickets takes Move anyway. %>
+          <% if @after_show %>
+            <div class="flex items-start justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <div>
+                <p class="text-sm font-medium text-amber-900">Move anyway</p>
+                <p class="text-xs text-amber-800 mt-0.5">This show has happened, so moving its tickets is outside your refund policy.</p>
+              </div>
+              <%= render "shared/toggle_switch", name: "outside_policy", checked: false, id: "move_anyway", aria_label: "Move anyway",
+                    data: { fieldset_toggle_target: "switch", action: "change->fieldset-toggle#toggle" } %>
+            </div>
+          <% end %>
+          <fieldset <%= "disabled" if @after_show %> data-fieldset-toggle-target="fields" class="flex flex-wrap gap-2 disabled:opacity-50">
             <%= render "shared/button", text: "Move #{pluralize(p.rows.size, 'ticket')}", variant: "primary", size: "medium", type: :submit %>
             <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_ticket_order_path(@order.id) %>
-          </div>
+          </fieldset>
         <% end %>
       <% end %>
     <% end %>

@@ -30,6 +30,25 @@
     </p>
   </div>
 
+  <%# Its own refund policy, or the box office's (RefundPolicy.for); off sends nothing. %>
+  <% own_refunds = setup.refund_policy.present? %>
+  <% box_office_policy = ticketing_profile.refund_policy_object %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4" data-controller="fieldset-toggle radio-card">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h3 class="font-semibold text-gray-900">Refund policy</h3>
+        <p class="text-sm text-gray-600 mt-1">Off, <%= production.name %> follows your box office's: <%= box_office_policy.short_words.downcase_first %>.</p>
+      </div>
+      <%= render "shared/toggle_switch", name: "production_ticketing[own_refund_policy]", checked: own_refunds, hidden_false: true,
+            id: "production_ticketing_own_refund_policy", aria_label: "Set a refund policy for #{production.name} only",
+            data: { fieldset_toggle_target: "switch", action: "change->fieldset-toggle#toggle" } %>
+    </div>
+    <fieldset <%= "disabled" unless own_refunds %> data-fieldset-toggle-target="fields" class="space-y-3 disabled:opacity-50">
+      <%= render "manage/ticketing_settings/refund_policy_fields", scope: "production_ticketing",
+            policy: RefundPolicy.of_setup(setup, ticketing_profile), input_class: input_class %>
+    </fieldset>
+  </div>
+
   <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
     <div>
       <h3 class="font-semibold text-gray-900">The ticket page</h3>

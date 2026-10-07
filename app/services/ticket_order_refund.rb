@@ -31,10 +31,37 @@ class TicketOrderRefund
     end
   end
 
-  # Once a show has started, refunds need the theater's say-so: the
-  # "refunds after the show" setting is off by default.
-  def self.allowed?(order)
-    order.ticket_listing.show.date_and_time > Time.current || TicketingProfile.for(order.organization).refunds_after_show
+  # Is a refund within the refund policy right now (RefundPolicy)? The order
+  # is held to the more generous of the policy it was sold under and today's.
+  # A comp, or a show the organization canceled, always is; a show that has
+  # happened never is. Outside the policy a manager can still refund, with
+  # Refund anyway (issue!'s outside_policy:), and the refund says so.
+  Check = Data.define(:within, :deadline, :reason, :policy) do
+    def words
+      policy.words
+    end
+  end
+
+  def self.policy_check(order, at: Time.current)
+    listing = order.ticket_listing
+    show = listing.show
+    policy = RefundPolicy.more_generous(RefundPolicy.from_snapshot(order.refund_policy), RefundPolicy.for(listing))
+    within = ->(deadline = nil) { Check.new(within: true, deadline: deadline, reason: nil, policy: policy) }
+    outside = ->(reason, deadline = nil) { Check.new(within: false, deadline: deadline, reason: reason, policy: policy) }
+
+    return within.call if order.money_path == "none" || show.canceled || listing.status == "canceled"
+    return outside.call("The show has happened") if show.date_and_time <= at
+
+    case policy.kind
+    when "none" then outside.call("All sales are final")
+    when "case_by_case" then within.call
+    else
+      deadline = policy.deadline(show)
+      return within.call(deadline) if at < deadline
+
+      when_words = deadline.strftime("%a, %b %-d, %-l:%M %p")
+      outside.call("Refunds ended #{when_words}#{" (#{policy.window_phrase} before the show)" if policy.window_phrase}", deadline)
+    end
   end
 
   def self.refundable(order)
@@ -87,19 +114,22 @@ class TicketOrderRefund
     [ order.tickets.where("price_cents > discount_cents").count, 1 ].max
   end
 
-  # allow_after_show: the show-cancellation job, which only ever starts before
-  # showtime, isn't stopped by the setting if it finishes after.
-  def self.issue!(order, ticket_ids: nil, item_ids: nil, keep_fees: false, by: nil, reason: nil, notify: true, allow_after_show: false, reprice: true)
+  # outside_policy: a manager's Refund anyway, or a show the organization
+  # canceled (its cancellation refunds everyone, whatever the policy says).
+  # Without it, a refund outside the policy is refused.
+  def self.issue!(order, ticket_ids: nil, item_ids: nil, keep_fees: false, by: nil, reason: nil, notify: true, outside_policy: false, reprice: true)
     raise Error, "Only a paid order can be refunded." unless order.paid?
     raise Error, "These tickets used a pass's credits, which were paid for with the pass. Refund the pass instead." if order.channel.in?(%w[pass door_pass])
-    unless allow_after_show || allowed?(order)
-      raise Error, "Refunds after the show are off. You can turn them on in Ticketing settings."
+    check = policy_check(order)
+    unless check.within || outside_policy
+      raise Error, "#{check.reason}, so this is outside the refund policy. Turn on Refund anyway to refund it."
     end
 
     quote = quote(order, ticket_ids: ticket_ids, item_ids: item_ids, keep_fees: keep_fees, reprice: reprice)
     raise Error, "Those tickets were already refunded." if quote.empty?
 
-    process!(order, quote, keep_fees: keep_fees, by: by, reason: reason, notify: notify)
+    process!(order, quote, keep_fees: keep_fees, by: by, reason: reason, notify: notify,
+                           outside_policy: !check.within, policy_words: check.words)
   end
 
   # Part of what the buyer paid, their tickets kept: the difference when
@@ -113,12 +143,13 @@ class TicketOrderRefund
     process!(order, quote, keep_fees: true, by: by, reason: reason, notify: false)
   end
 
-  def self.process!(order, quote, keep_fees:, by:, reason:, notify:)
+  def self.process!(order, quote, keep_fees:, by:, reason:, notify:, outside_policy: false, policy_words: nil)
     listing = order.ticket_listing
     refund = nil
     OrgCashEntry.with_org_lock(order.organization) do
       refund = order.ticket_refunds.create!(
         organization: order.organization, refunded_by: by, reason: reason, keep_fees: keep_fees,
+        outside_policy: outside_policy, policy_words: policy_words,
         ticket_ids: quote.tickets.map(&:id), item_ids: quote.items.map(&:id), amount_cents: quote.amount_cents,
         face_cents: quote.face_cents, product_cents: quote.product_cents, tax_cents: quote.tax_cents, fees_cents: quote.fees_cents,
         platform_fee_waived_cents: quote.platform_fee_waived_cents, org_debit_cents: quote.org_debit_cents,

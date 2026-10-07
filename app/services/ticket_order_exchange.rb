@@ -61,9 +61,14 @@ class TicketOrderExchange
     end
   end
 
-  def self.plan(order, target:, ticket_ids: nil, chosen_tiers: {})
+  # outside_policy: the manager's Move anyway, for a show that has happened.
+  # Moving to another date isn't held to the refund window; that's the usual
+  # allowance a theater makes.
+  def self.plan(order, target:, ticket_ids: nil, chosen_tiers: {}, outside_policy: false)
     raise Error, "Only a paid order's tickets can move." unless order.paid? && order.money_path.in?(%w[cocoscout none])
-    raise Error, "This show has started, and refunds after the show are off, so its tickets can't move." unless TicketOrderRefund.allowed?(order)
+    if order.ticket_listing.show.date_and_time <= Time.current && !outside_policy
+      raise Error, "The show has happened, so moving its tickets is outside the refund policy. Turn on Move anyway to move them."
+    end
     raise Error, "Choose another date to move them to." unless target && targets(order).exists?(id: target.id)
 
     tickets = movable(order).to_a
@@ -106,14 +111,14 @@ class TicketOrderExchange
     (order.org_net_cents * old_rows.sum(&:amount_cents)) / whole
   end
 
-  def self.exchange!(order, target:, ticket_ids: nil, chosen_tiers: {}, by: nil, email_them: true)
+  def self.exchange!(order, target:, ticket_ids: nil, chosen_tiers: {}, by: nil, email_them: true, outside_policy: false)
     organization = order.organization
     listing = order.ticket_listing
     exchange = nil
     plan = nil
     OrgCashEntry.with_org_lock(organization) do
       order.with_lock do
-        plan = plan(order, target: target, ticket_ids: ticket_ids, chosen_tiers: chosen_tiers)
+        plan = plan(order, target: target, ticket_ids: ticket_ids, chosen_tiers: chosen_tiers, outside_policy: outside_policy)
         if listing.released_at.present? && plan.moved_cents > CocoScoutBalance.available_cents(organization)
           raise Error, "This show's money was already spent or withdrawn, so its tickets can't move to a show still to come."
         end

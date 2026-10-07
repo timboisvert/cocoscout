@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_151000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2052,6 +2052,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_140000) do
     t.boolean "own_product_prices", default: false, null: false
     t.bigint "production_id", null: false
     t.boolean "products_at_door", default: false, null: false
+    t.boolean "refund_fees"
+    t.string "refund_policy"
+    t.text "refund_policy_note"
+    t.integer "refund_window_hours"
     t.string "schedule_mode", default: "immediate", null: false
     t.string "title"
     t.datetime "updated_at", null: false
@@ -3473,6 +3477,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_140000) do
     t.integer "platform_fee_cents", default: 0, null: false
     t.integer "processing_cents", default: 0, null: false
     t.string "referrer"
+    t.jsonb "refund_policy"
     t.datetime "refunded_at"
     t.integer "refunded_cents", default: 0, null: false
     t.datetime "reminded_at"
@@ -3662,7 +3667,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_140000) do
     t.boolean "keep_fees", default: false, null: false
     t.integer "org_debit_cents", default: 0, null: false
     t.bigint "organization_id", null: false
+    t.boolean "outside_policy", default: false, null: false
     t.integer "platform_fee_waived_cents", default: 0, null: false
+    t.string "policy_words"
     t.integer "product_cents", default: 0, null: false
     t.string "reason"
     t.bigint "refunded_by_id"
@@ -3801,6 +3808,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_140000) do
     t.jsonb "notification_rules", default: {}, null: false
     t.bigint "organization_id", null: false
     t.jsonb "previous_slugs", default: [], null: false
+    t.boolean "refund_fees", default: false, null: false
+    t.string "refund_policy", default: "window", null: false
+    t.text "refund_policy_note"
+    t.integer "refund_window_hours", default: 24, null: false
     t.boolean "refunds_after_show", default: false, null: false
     t.integer "reminder_days_before", default: 2
     t.string "slug", null: false
