@@ -83,7 +83,7 @@ RSpec.describe "Manage a show's tickets", type: :request do
 
     post manage_ticket_listing_comps_path(listing), params: { name: "Too Many", quantity: "50", tier_id: general.id }
     expect(response).to redirect_to(manage_ticket_listing_path(listing, anchor: "guests"))
-    expect(flash[:alert]).to include("more than the seats left")
+    expect(flash[:alert]).to match(/\AGeneral has only \d+ seats? left\.\z/)
   end
 
   it "goes back where it came from after a status change" do

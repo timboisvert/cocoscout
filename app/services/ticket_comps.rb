@@ -56,6 +56,20 @@ class TicketComps
     TicketingAfterSaleJob.perform_later(orders.last.id)
     orders
   rescue Ticketing::Inventory::SoldOut
-    raise Error, "That's more than the seats left. Raise the seats on the show if the room has space."
+    raise Error, sold_out_message(listing, requests)
+  end
+
+  # Which type ran short, and where its seats went: "Front Row VIP has no
+  # seats left: 3 sold here, 9 on Ticket Tailor."
+  def self.sold_out_message(listing, requests)
+    inventory = Ticketing::Inventory.new(listing)
+    tier, = (requests || {}).find { |t, seats| (left = inventory.remaining(tier: t)) && left < seats }
+    return "That's more than the seats left. Raise the seats on the show if the room has space." unless tier
+
+    left = inventory.remaining(tier: tier)
+    return "#{tier.name} has only #{left} #{left == 1 ? 'seat' : 'seats'} left." if left.positive?
+
+    where = [ ("#{inventory.sold(tier: tier)} sold here" if inventory.sold(tier: tier).positive?), inventory.outside_words(tier: tier).presence ].compact
+    "#{tier.name} has no seats left#{": #{where.to_sentence}" if where.any?}. Raise its seats if the room has space."
   end
 end

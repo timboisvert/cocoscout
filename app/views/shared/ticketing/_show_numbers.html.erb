@@ -74,18 +74,22 @@
           <%# A type no longer sold shows only while someone holds a ticket on it. %>
           <% stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }.each do |row| %>
             <%# The row wears its state (Tim: colors, not badges): gray when it's
-                hidden or no longer sold, red when it's marked sold out. %>
+                hidden or no longer sold; red when it's sold out, marked so or
+                out of seats (sold here, sold elsewhere and comps all count). %>
             <%
+              out_of_seats = row.tier.archived_at.nil? && row.remaining == 0
               tone = if row.tier.archived_at || row.tier.unlisted? then "text-gray-400"
-                     elsif row.tier.marked_sold_out? then "text-red-700"
+                     elsif row.tier.marked_sold_out? || out_of_seats then "text-red-700"
                      end
+              state = if row.tier.archived_at then nil
+                      elsif row.tier.unlisted? then "Hidden"
+                      elsif row.tier.marked_sold_out? || out_of_seats then "Sold out"
+                      end
             %>
             <tr class="whitespace-nowrap <%= tone %>">
               <td class="px-5 py-2.5 <%= tone || 'text-gray-900' %>">
                 <%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %>
-                <% if row.tier.archived_at.nil? && !row.tier.available? %>
-                  <span class="ml-1 text-xs font-medium">· <%= TicketTier::AVAILABILITY_LABELS[row.tier.effective_availability] %></span>
-                <% end %>
+                <% if state %><span class="ml-1 text-xs font-medium">· <%= state %></span><% end %>
               </td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= ticket_price(row.tier.price_cents) %></td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= row.sold %><%= " of #{row.seats}" if row.seats %></td>

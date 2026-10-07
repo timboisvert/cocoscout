@@ -4,8 +4,21 @@
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   tiers = listing.ticket_tiers.active.reject(&:bundle?)
-  default_tier = (tiers.find { |t| t.price_cents.zero? } || tiers.first)&.id
-  remaining = listing.inventory.remaining
+  inventory = listing.inventory
+  remaining = inventory.remaining
+  # Seats left per type: sold here, sold elsewhere and comps all take them.
+  left_of = tiers.to_h { |t| [ t.id, inventory.remaining(tier: t) ] }
+  full_ids = left_of.select { |_, left| left == 0 }.keys
+  open_tiers = tiers.reject { |t| full_ids.include?(t.id) }
+  default_tier = (open_tiers.find { |t| t.price_cents.zero? } || open_tiers.first)&.id
+  tier_label = lambda do |t|
+    left = left_of[t.id]
+    note = if left == 0 then "no seats left"
+           elsif !t.available? then "#{TicketTier::AVAILABILITY_LABELS[t.effective_availability].downcase} here#{", #{left} left" if left}"
+           elsif left then "#{left} left"
+           end
+    "#{t.name} (#{ticket_price(t.price_cents)})#{" · #{note}" if note}"
+  end
 %>
 <div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
      data-controller="modal" data-action="click->modal#closeOnBackdrop">
@@ -38,7 +51,7 @@
           </div>
           <div>
             <label for="comp_tier_id" class="block text-sm font-medium text-gray-700 mb-1.5">Ticket type</label>
-            <%= select_tag :tier_id, options_for_select(tiers.map { |t| [ "#{t.name} (#{ticket_price(t.price_cents)})#{" · #{TicketTier::AVAILABILITY_LABELS[t.effective_availability].downcase} here" unless t.available?}", t.id ] }, default_tier), id: "comp_tier_id", class: input_class %>
+            <%= select_tag :tier_id, options_for_select(tiers.map { |t| [ tier_label.call(t), t.id ] }, selected: default_tier, disabled: full_ids), id: "comp_tier_id", class: input_class %>
             <p class="text-xs text-gray-500 mt-1">They pay nothing whichever you pick; it's what their ticket says.</p>
           </div>
         </div>

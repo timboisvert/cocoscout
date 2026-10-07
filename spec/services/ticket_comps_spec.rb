@@ -45,7 +45,7 @@ RSpec.describe TicketComps do
 
   it "gives all of them or none" do
     guests = described_class.parse("A, 3\nB, 3", listing: listing, default_tier: general)
-    expect { described_class.give!(listing, guests, by: manager) }.to raise_error(described_class::Error, /more than the seats left/)
+    expect { described_class.give!(listing, guests, by: manager) }.to raise_error(described_class::Error, /\AGeneral has only \d+ seats? left\.\z/)
     expect(TicketOrder.count).to eq(0)
   end
 

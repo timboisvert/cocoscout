@@ -76,6 +76,29 @@ RSpec.describe "Ticket type availability on one date", type: :request do
     expect { buy(vip) }.to change(TicketOrder, :count).by(1)
   end
 
+  # Tim's case: 12 VIP, 3 sold here, 9 recorded as sold on Ticket Tailor.
+  it "treats a type out of seats as sold out everywhere, sold elsewhere and comps included" do
+    vip.update!(quantity: 12)
+    3.times do
+      order = TicketCheckout.start!(listing: listing, quantities: { vip.id.to_s => "1" })
+      TicketOrderSettlement.settle!(order, payment_intent_id: "pi_#{SecureRandom.hex(4)}")
+    end
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    TicketOutsideSales.record!(listing, { tailor.id.to_s => { vip.id.to_s => { "tickets" => "9" } } })
+
+    get manage_ticket_listing_path(listing)
+    expect(response.body).to match(%r{<tr class="whitespace-nowrap text-red-700">\s*<td class="px-5 py-2.5 text-red-700">\s*Front Row VIP\s*<span class="ml-1 text-xs font-medium">· Sold out</span>})
+    expect(response.body).to match(%r{<option disabled="disabled" value="#{vip.id}">Front Row VIP \(\$40\.00\) · no seats left</option>})
+    expect(response.body).to include("General ($20.00) · 60 left")
+
+    expect {
+      TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Walter", email: nil, tier: vip, quantity: 1) ], by: owner, email_them: false)
+    }.to raise_error(TicketComps::Error, "Front Row VIP has no seats left: 3 sold here and 9 on Ticket Tailor. Raise its seats if the room has space.")
+
+    get tickets_event_path(org: "starsandgarters", event: listing.slug)
+    expect(response.body).to match(/data-name="Front Row VIP"[^>]*data-max="0"/)
+  end
+
   it "reads the date as sold out once nothing left can be bought, though seats remain" do
     expect(listing.inventory.sold_out?).to be(false)
     vip.update!(availability: "sold_out")
