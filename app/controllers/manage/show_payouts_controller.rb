@@ -393,54 +393,31 @@ module Manage
     # only (no email), all copy via ContentTemplateService. People without a
     # CocoScout login can't receive an in-app message — they're skipped (share the
     # QR / setup link with them instead).
+    # Sends the draft from the Send reminders modal: the manager's edited
+    # subject and message, to the people they left ticked. Never a bare send.
     def send_payment_reminders
-      line_items_needing_setup = @show_payout.line_items.not_already_paid.select do |li|
-        li.payee.respond_to?(:can_receive_payouts?) && !li.payee.can_receive_payouts?
-      end
-
-      if line_items_needing_setup.empty?
+      recipients = PayoutSetupReminders.recipients(@show_payout)
+      if recipients.empty?
         redirect_to manage_money_show_payout_path(@show), notice: "Everyone has connected a bank!"
         return
       end
 
-      org = Current.organization
-      sent = 0
-      skipped_no_login = 0
+      chosen_ids = Array(params[:person_ids]).map(&:to_i)
+      chosen = recipients.select { |recipient| recipient.reachable? && chosen_ids.include?(recipient.person.id) }
+      subject = params[:reminder_subject].to_s.strip
+      body = params[:reminder_body].to_s.strip
 
-      line_items_needing_setup.group_by(&:payee).each do |payee, items|
-        unless payee.is_a?(Person) && payee.user
-          skipped_no_login += 1
-          next
-        end
-        cents = items.sum { |li| (li.amount.to_d * 100).round }
-        next if cents <= 0
-
-        ContentTemplateService.deliver(
-          template_key: "payout_setup_reminder",
-          variables: {
-            recipient_name: payee.name.to_s.split(/\s+/).first.presence || payee.name.to_s,
-            organization_name: org.name,
-            amount: helpers.number_to_currency(cents / 100.0),
-            setup_link: my_payments_setup_url
-          },
-          sender: nil,
-          recipients: [ payee ],
-          organization: org,
-          message_type: :system,
-          visibility: :personal
-        )
-        sent += 1
+      if chosen.empty?
+        redirect_to manage_money_show_payout_path(@show), alert: "Nobody was ticked, so nothing was sent."
+        return
+      end
+      if subject.blank? || body.blank?
+        redirect_to manage_money_show_payout_path(@show), alert: "The reminder needs a subject and a message."
+        return
       end
 
-      notice =
-        if sent.zero?
-          "No reminders sent — the people who still need to set up payment don't have a CocoScout login yet. Share the QR code or setup link with them instead."
-        else
-          msg = "Sent #{sent} payment-setup reminder#{"s" unless sent == 1}."
-          msg += " #{skipped_no_login} without a login #{skipped_no_login == 1 ? "was" : "were"} skipped — share the setup link with them." if skipped_no_login.positive?
-          msg
-        end
-      redirect_to manage_money_show_payout_path(@show), notice: notice
+      sent = PayoutSetupReminders.send!(organization: Current.organization, recipients: chosen, subject: subject, body: body)
+      redirect_to manage_money_show_payout_path(@show), notice: "Sent #{helpers.pluralize(sent, 'payment-setup reminder')}."
     end
 
     def close_as_non_paying

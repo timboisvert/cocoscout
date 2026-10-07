@@ -174,12 +174,13 @@ class ContentTemplateService
                 production: nil, show: nil, organization: nil,
                 message_type: :system, visibility: :personal,
                 mailer_class: nil, mailer_method: nil, email_batch: nil,
-                subject_override: nil, system_generated: nil)
+                subject_override: nil, body_override: nil, system_generated: nil)
       result = render(template_key, variables)
       channel = result[:channel]
-      # A caller-supplied subject (e.g. a manager's edited notification subject)
-      # wins over the template's; the body/structure still comes from the template.
+      # A caller-supplied subject or body (a manager's edited draft) wins over
+      # the template's; the channel still comes from the template.
       subject = subject_override.presence || result[:subject]
+      result = result.merge(body: body_override) if body_override.present?
 
       delivery_result = {
         messages: [],

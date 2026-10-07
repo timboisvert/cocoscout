@@ -58,6 +58,7 @@ def seed_content_templates
     { key: "removed_from_cast_notification", name: "Removed from Cast", subject: "Removed", body: "Removed", category: "casting", channel: "message" },
     { key: "casting_table_notification", name: "Casting Table", subject: "Casting", body: "Casting info", category: "casting", channel: "message" },
     { key: "payment_setup_reminder", name: "Payment Reminder", subject: "Payment", body: "Set up payment", category: "payments", channel: "message" },
+    { key: "payout_setup_reminder", name: "Payout Setup Reminder", subject: "You have {{amount}} ready to be paid by {{organization_name}}", body: "<p>Hi {{recipient_name}},</p><p>You have <strong>{{amount}}</strong> from {{organization_name}} ready to be paid out.</p><p><a href=\"{{setup_link}}\">Set up your payment details</a></p>", category: "payments", channel: "message" },
     { key: "payout_sent_to_payee", name: "Payout Sent — on its way (payee)",
       subject: "{{amount}} is on its way from {{organization_name}}",
       body: "<p>Hi {{recipient_name}},</p><p>{{organization_name}} just sent you {{amount}}.</p>" \
