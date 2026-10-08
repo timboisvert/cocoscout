@@ -93,6 +93,21 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).to include("Every scene turns into an animal.")
       expect(response.body).not_to include("Our Halloween special", "Doors at 7")
     end
+
+    it "leads with a date's own title, the production's name under the place" do
+      later = create(:show, production: production, date_and_time: 12.days.from_now.change(hour: 19, min: 30))
+      later_listing = TicketListing.create!(show: later, status: "on_sale", title: "Twilight: Breaking Dawn Part 2")
+      later_listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 10)
+
+      get tickets_event_path(org: "starsandgarters", event: production.public_key, date: later_listing.slug)
+      expect(response.body).to include(%(coustard-regular text-gray-900">Twilight: Breaking Dawn Part 2</h1>),
+                                       %(<p class="text-sm text-gray-600">Improvised Animorphs</p>),
+                                       "<title>Twilight: Breaking Dawn Part 2 · Stars &amp; Garters</title>")
+
+      get tickets_event_path(org: "starsandgarters", event: production.public_key)
+      expect(response.body).to include(%(coustard-regular text-gray-900">Improvised Animorphs</h1>))
+      expect(response.body).not_to include("Twilight")
+    end
   end
 
   describe "a show's page" do

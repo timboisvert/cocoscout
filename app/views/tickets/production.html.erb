@@ -2,6 +2,13 @@
   setup = @production.production_ticketing
   selected = @listing
   title = setup&.title.presence || @production.name
+  # A date with a title of its own (set on its ticketing Page tab, or a name
+  # given to the show that isn't just the suggested one) leads with it, and
+  # the production's name goes under the place (Tim, 2026-10-08).
+  own_title = selected && (selected.title.presence || (selected.show.name_subtitle.presence if setup&.title.blank?))
+  own_title = nil if own_title == title
+  heading = own_title || title
+  share_title = params[:date].present? ? heading : title
   # The chosen date's words and notes (its own, else the production's), so a
   # date with its own description says it on its page.
   description = selected ? selected.effective_description.presence : (setup&.description.presence || @production.description.presence)
@@ -34,10 +41,10 @@
   # A chip's one word about the date: nothing while it's simply on sale.
   chip_note = ->(listing) { public_listing_note(listing) }
 %>
-<% content_for :title, "#{title} · #{@organization.name}" %>
+<% content_for :title, "#{share_title} · #{@organization.name}" %>
 <% content_for :head do %>
   <meta name="description" content="<%= share_description.to_s.truncate(160) %>">
-  <meta property="og:title" content="<%= title %> · <%= @organization.name %>">
+  <meta property="og:title" content="<%= share_title %> · <%= @organization.name %>">
   <meta property="og:description" content="<%= share_description.to_s.truncate(200) %>">
   <meta property="og:type" content="website">
   <meta property="og:url" content="<%= page_url %>">
@@ -56,7 +63,7 @@
   <% end %>
 
   <div class="text-center space-y-1.5">
-    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= title %></h1>
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= heading %></h1>
     <% if ages %><p class="text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
     <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
   </div>
@@ -90,7 +97,7 @@
           <% if map_url %> · <%= link_to "Directions", map_url, target: "_blank", rel: "noopener", class: "text-pink-700 hover:text-pink-800" %><% end %>
         </p>
       <% end %>
-      <% if selected.display_title != title %><p class="text-sm text-gray-600"><%= selected.display_title %></p><% end %>
+      <% if own_title %><p class="text-sm text-gray-600"><%= title %></p><% end %>
     </div>
 
     <%= render "tickets/picker", listing: selected, tiers: @tiers, inventory: @inventory, tax: @tax, code: @code, preview: @preview,
