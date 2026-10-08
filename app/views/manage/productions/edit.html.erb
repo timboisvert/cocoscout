@@ -56,8 +56,8 @@
       <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
         <!-- Production Details Card -->
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-          <%= render "shared/card_header", title: "Production Details" %>
-          <div class="p-6 space-y-6">
+          <%= render "shared/section_heading", title: "Production details" %>
+          <div class="p-6 pt-4 space-y-6">
             <% if basics_contract %>
               <%# A running contract owns these: Amend → Change the basic info. %>
               <div>
@@ -102,8 +102,8 @@
         <% if @production.type_third_party? %>
           <%# Third-Party Contract Info %>
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-            <%= render "shared/card_header", title: "Contract Information" %>
-            <div class="p-6">
+            <%= render "shared/section_heading", title: "Contract information" %>
+            <div class="p-6 pt-4">
               <% if @production.contract.present? %>
                 <div class="flex items-center justify-between">
                   <div>
@@ -134,8 +134,8 @@
         <% else %>
           <!-- Contact Settings Card -->
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-            <%= render "shared/card_header", title: "Contact Settings" %>
-            <div class="p-6">
+            <%= render "shared/section_heading", title: "Contact settings" %>
+            <div class="p-6 pt-4">
               <div>
                 <%= form.label :contact_email, "Contact Email", class: "block text-sm font-medium text-gray-700 mb-1" %>
                 <p class="text-xs text-gray-500 mb-2">Used for automated emails and public inquiries</p>
@@ -199,8 +199,8 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <%# The poster %>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col">
-          <%= render "shared/card_header", title: "Poster (3:4)" %>
-          <div class="p-6 flex-1 flex flex-col">
+          <%= render "shared/section_heading", title: "Poster (3:4)" %>
+          <div class="p-6 pt-4 flex-1 flex flex-col">
             <div class="flex-1 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-200 min-h-[18rem] p-4">
               <% if primary_variant %>
                 <%= image_tag primary_variant, alt: "#{@production.name} poster", class: "max-h-80 w-auto h-auto rounded shadow-sm" %>
@@ -257,8 +257,8 @@
 
         <%# The wide image %>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col">
-          <%= render "shared/card_header", title: "Wide image (16:9)" %>
-          <div class="p-6 flex-1 flex flex-col" data-controller="image-crops">
+          <%= render "shared/section_heading", title: "Wide image (16:9)" %>
+          <div class="p-6 pt-4 flex-1 flex flex-col" data-controller="image-crops">
             <div class="flex-1 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-200 min-h-[18rem] p-4">
               <div class="w-full <%= 'hidden' unless wide_url %>" data-image-crops-target="preview">
                 <img src="<%= wide_url %>" alt="" class="w-full h-auto rounded shadow-sm" data-image-crops-target="frame">
@@ -365,7 +365,7 @@
     <div data-tabs-target="panel" class="hidden">
       <% production_documents = @production.applied_documents.includes(:shares).ordered %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Documents" do %>
+        <%= render "shared/section_heading", title: "Documents" do %>
           <%= link_to manage_production_documents_path(@production) do %>
             <%= render "shared/button", text: "All documents", variant: "primary", size: "small" %>
           <% end %>
@@ -373,7 +373,7 @@
             <%= render "shared/button", text: "New document", variant: "primary", size: "small", icon: "plus" %>
           <% end %>
         <% end %>
-        <div class="p-6">
+        <div class="p-6 pt-4">
           <% if production_documents.any? %>
             <div class="space-y-2">
               <% production_documents.each do |doc| %>
@@ -416,10 +416,10 @@
             locked treatment inside it when the plan doesn't include agreements. %>
         <% unless @production.organization.feature_available?(:agreements) %>
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-            <%= render "shared/card_header", title: "Performer agreements" do %>
+            <%= render "shared/section_heading", title: "Performer agreements" do %>
               <%= render "shared/pro_marker", kind: :header %>
             <% end %>
-            <div class="p-6">
+            <div class="p-6 pt-4">
               <%= render "shared/pro_locked_card", feature: :agreements,
                     title: "Performers sign an agreement for this production",
                     description: "Pro feature — reusable agreement templates, in-app e-signatures, and a signed / awaiting / not-sent roster, sent by hand or automatically when someone joins your talent pool." %>
@@ -429,10 +429,10 @@
 
         <!-- Agreement Settings Card -->
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-          <%= render "shared/card_header", title: "Agreement Settings" do %>
+          <%= render "shared/section_heading", title: "Agreement settings" do %>
             <%= render "shared/pro_marker", kind: :header %>
           <% end %>
-          <div class="p-6">
+          <div class="p-6 pt-4">
             <%= form_with(model: [:manage, @production], url: manage_production_path(@production), method: :patch) do |f| %>
               <% if templates.any? %>
                 <div class="space-y-5">
@@ -533,8 +533,8 @@
 
           <!-- Signature Status Card -->
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Signature Status" %>
-            <div class="p-6">
+            <%= render "shared/section_heading", title: "Signature status" %>
+            <div class="p-6 pt-4">
               <% if counts[:total].zero? %>
                 <div class="text-center py-4 mb-4">
                   <p class="text-sm text-gray-500">No performers in the talent pool yet.</p>
@@ -567,8 +567,8 @@
       <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "Public Listing" %>
-        <div class="p-6">
+        <%= render "shared/section_heading", title: "Public listing" %>
+        <div class="p-6 pt-4">
           <div class="space-y-4">
             <!-- Enable/Disable Toggle -->
             <%= form_with(model: [:manage, @production], url: manage_production_path(@production), method: :patch, data: { turbo: true, profile_visibility_target: "form" }) do |f| %>

@@ -23,10 +23,10 @@
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-pay-tab>
-  <%= render "shared/card_header", title: "Performer pay" do %>
+  <%= render "shared/section_heading", title: "Performer pay" do %>
     <%= render "shared/pro_marker", kind: :header %>
   <% end %>
-  <div class="p-6">
+  <div class="p-6 pt-4">
     <% if money_available %>
       <%= form_with url: update_pay_manage_production_path(production), method: :patch, local: true,
             data: { controller: "toggle-section" } do |form| %>

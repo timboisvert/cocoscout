@@ -1,11 +1,10 @@
-<%# One card on an event's settings, drawn the way the production's
-    settings draw theirs: a header bar with the title, then the fields (the
-    block), with an optional line on what they're for. Locals: title, intro
-    (optional), classes (optional, for the outer box). %>
-<div class="bg-white border border-gray-200 rounded-lg overflow-hidden <%= local_assigns[:classes] %>">
-  <%= render "shared/card_header", title: title %>
-  <div class="p-6 space-y-5">
-    <% if local_assigns[:intro].present? %><p class="text-sm text-gray-600 -mt-1"><%= intro %></p><% end %>
+<%# One card on an event's settings, drawn the way the production's and
+    the ticketing settings draw theirs: the light heading (title, and an
+    optional line on what it's for), then the fields (the block).
+    Locals: title, intro (optional), classes (optional, for the outer box). %>
+<div class="bg-white border border-gray-200 rounded-lg <%= local_assigns[:classes] %>">
+  <%= render "shared/section_heading", title: title, intro: local_assigns[:intro] %>
+  <div class="p-6 pt-4 space-y-5">
     <%= yield %>
   </div>
 </div>

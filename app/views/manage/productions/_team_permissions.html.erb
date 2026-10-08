@@ -120,8 +120,8 @@
   <!-- Notifications -->
   <div class="mt-8">
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Notifications" %>
-      <div class="p-4">
+      <%= render "shared/section_heading", title: "Notifications", padding: "px-4 pt-4" %>
+      <div class="p-4 pt-3">
         <p class="text-sm text-gray-600 mb-4">Choose who receives notifications for this production (audition submissions, show updates, and other activity).</p>
         <%
           ProductionNotificationSetting.ensure_settings_for(@production)

@@ -167,7 +167,7 @@ RSpec.describe "Manage paid-feature gate", type: :request do
       body = response.body
       expect(body).to include(">Pro</span>")
       expect(body).not_to include('aria-label="Pro feature"><path') # no lock in the tab strip
-      expect(body).to include("Agreement Settings")
+      expect(body).to include("Agreement settings")
 
       get section_manage_organization_path(organization, section: "agreements")
       expect(response.body).to match(/Agreements\s*<span[^>]*>Pro<\/span>/m)

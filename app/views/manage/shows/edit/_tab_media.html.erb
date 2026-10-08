@@ -29,30 +29,46 @@
       img_class: "w-full h-auto rounded shadow-sm" }
   ]
 %>
-<%# What these are for, said the way the production's tab says it. %>
+<%# What these are for, said the way the production's tab says it, with
+    the same two shapes. %>
 <div class="bg-white border border-gray-200 rounded-lg p-6">
   <h2 class="text-lg font-semibold text-gray-900">How this <%= kind %> looks</h2>
   <p class="text-sm text-gray-600 mt-1 max-w-3xl">
     It uses <%= name %> poster and wide image unless you give it its own here, for a special guest night, say.
-    The poster is what people see while browsing; the wide image leads this date's ticket page and shows when its link is shared.
-    Both are always shown whole, never cropped.
   </p>
-  <p class="text-sm mt-3">
-    <%= link_to "Change #{name} images in its Visual Assets", edit_manage_production_path(production, tab: 1), class: "font-medium text-pink-600 hover:text-pink-700" %>
-  </p>
+  <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+    <div class="flex gap-3">
+      <div class="w-9 h-12 flex-shrink-0 rounded border-2 border-pink-300 bg-pink-50"></div>
+      <div>
+        <div class="font-medium text-gray-900">Poster · 3:4, tall</div>
+        <div class="text-gray-600 mt-0.5">What people see while browsing: show lists, sign-ups, casting, messages and the public listing.</div>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <div class="w-16 h-9 flex-shrink-0 rounded border-2 border-pink-300 bg-pink-50 mt-1.5"></div>
+      <div>
+        <div class="font-medium text-gray-900">Wide image · 16:9</div>
+        <div class="text-gray-600 mt-0.5">The banner across the top of this date's ticket page, and the preview when its link is shared.</div>
+      </div>
+    </div>
+  </div>
+  <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+    <p class="text-xs text-gray-500">Both are always shown whole, never cropped. Without a wide image, the ticket page uses the poster.</p>
+    <%= link_to "Change #{name} images in its Visual Assets", edit_manage_production_path(production, tab: 1), class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+  </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
   <% cards.each do |card| %>
     <% inherited_words = card[:inherited_url] ? "Goes back to #{name} #{card[:noun]}" : "Goes back to no #{card[:noun]}" %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col"
+    <div class="bg-white border border-gray-200 rounded-lg flex flex-col"
          data-controller="event-image"
          data-event-image-inherited-src-value="<%= card[:inherited_url] %>"
          data-event-image-inherited-words-value="<%= inherited_words %>"
          data-event-image-min-width-value="<%= card[:min][0] %>"
          data-event-image-min-height-value="<%= card[:min][1] %>">
-      <%= render "shared/card_header", title: card[:title] %>
-      <div class="p-6 flex-1 flex flex-col">
+      <%= render "shared/section_heading", title: card[:title] %>
+      <div class="p-6 pt-4 flex-1 flex flex-col">
         <div class="flex-1 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-200 min-h-[18rem] p-4">
           <img src="<%= card[:url] %>" alt="" class="<%= card[:img_class] %> <%= 'hidden' unless card[:url] %>" data-event-image-target="frame">
           <p class="text-sm text-amber-700 text-center <%= 'hidden' if card[:url] %>" data-event-image-target="empty"><%= card[:empty] %></p>

@@ -1,0 +1,25 @@
+<%#
+  The light heading a settings card opens with, the way the ticketing
+  settings draw theirs: the title in bold, an optional line under it, and
+  anything for the right side (buttons, a Pro pill) in the block. It sits
+  inside the card above the card's body, in place of shared/card_header's
+  gray bar.
+
+    render "shared/section_heading", title: "Production details"
+    render "shared/section_heading", title: "Documents" do
+      ...buttons...
+    end
+
+  Locals: title, intro (optional), padding (optional, default "px-6 pt-6",
+  to line up with the body's own padding).
+%>
+<% right = block_given? ? capture { yield } : nil %>
+<div class="<%= local_assigns[:padding] || 'px-6 pt-6' %> flex flex-wrap items-start justify-between gap-3">
+  <div class="min-w-0">
+    <h3 class="font-semibold text-gray-900"><%= title %></h3>
+    <% if local_assigns[:intro].present? %><p class="text-sm text-gray-600 mt-1"><%= intro %></p><% end %>
+  </div>
+  <% if right.present? && right.strip.present? %>
+    <div class="flex flex-wrap items-center gap-2"><%= right %></div>
+  <% end %>
+</div>
