@@ -19,6 +19,21 @@ RSpec.describe "Manage ticket listings", type: :request do
     get manage_path
   end
 
+  it "lists every production as a card: its next date, the next few in a drawer, then those with none coming" do
+    dates = (1..8).map do |n|
+      TicketListing.create!(show: create(:show, production: production, date_and_time: (n * 3).days.from_now.change(hour: 20)), status: "on_sale")
+    end
+    quiet = create(:production, organization: org, name: "Last Season")
+    ProductionTicketing.for(quiet)
+
+    get manage_ticket_listings_path
+    body = response.body
+    expect(body).to include("8 upcoming dates", "7 more dates", "All 8 dates of Improvised Animorphs",
+                            manage_ticket_listing_path(dates.first), manage_ticket_listing_path(dates[5]), "No dates coming up", "Last Season")
+    expect(body).not_to include(manage_ticket_listing_path(dates[6]))
+    expect(body.index("Improvised Animorphs")).to be < body.index("Last Season")
+  end
+
   describe "running a date" do
     let!(:listing) { TicketListing.create!(show: friday) }
     let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60) }

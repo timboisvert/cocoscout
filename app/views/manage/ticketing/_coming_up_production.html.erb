@@ -1,6 +1,8 @@
-<%# One production in Coming up (TicketingDashboard::ProductionDates): its
-    next date as a show row, and a drawer hanging under it with the few dates
-    after that, and the production's page when it has more. Locals: row. %>
+<%# One production's coming dates (Ticketing::ComingUp::ProductionDates):
+    its next date as a show row, and a drawer hanging under it with the few
+    dates after that, and the production's page when it has more. Ticketing's
+    home page and its Productions page both use it. Locals: row,
+    show_production (optional, default true: the row names the production). %>
 <%
   later = row.later
   more = row.total - 1
@@ -8,7 +10,7 @@
   glance = later.first(3).map { |listing, _| listing.show.date_and_time.strftime("%a %b %-d") }
 %>
 <div>
-  <%= render "shared/show_row", show: row.next_listing.show, link_path: manage_ticket_listing_path(row.next_listing), show_production: true,
+  <%= render "shared/show_row", show: row.next_listing.show, link_path: manage_ticket_listing_path(row.next_listing), show_production: local_assigns.fetch(:show_production, true),
         show_canceled: true, right_panel: :ticket_sales, ticket_listing: row.next_listing, ticket_stats: row.next_stats %>
   <% if later.any? %>
     <details class="group mx-3">

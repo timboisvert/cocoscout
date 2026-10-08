@@ -24,14 +24,14 @@ module Manage
     def index
       org = Current.organization
       ids = org.ticket_listings.distinct.pluck(:production_id) | ProductionTicketing.where(organization: org).pluck(:production_id)
-      upcoming = org.ticket_listings.joins(:show).where.not(status: "canceled").where(shows: { canceled: false })
-                    .where("shows.date_and_time >= ?", Time.current)
+      upcoming = Ticketing::ComingUp.new(org).upcoming
       @next_dates = upcoming.group(:production_id).minimum("shows.date_and_time")
-      @date_counts = upcoming.group(:production_id).count
       @sold_this_week = Ticket.joins(:ticket_order, :ticket_listing).where(ticket_listing_id: upcoming.select(:id), status: Ticket::SOLD_STATUSES)
                               .where(ticket_orders: { paid_at: 7.days.ago.. }).group("ticket_listings.production_id").count
       @productions = org.productions.where(id: ids).includes(:production_ticketing, posters: { image_attachment: :blob }).to_a
                         .sort_by { |production| [ @next_dates[production.id] ? 0 : 1, @next_dates[production.id] || Time.current, production.name ] }
+      # Each production's next date and the few after it, as on Ticketing's home page.
+      @coming_up = Ticketing::ComingUp.by_production(org).index_by { |row| row.production.id }
     end
 
     # One show's tickets: the numbers (Ticketing::ListingStats), the guest
