@@ -51,6 +51,7 @@
     <div class="mt-1 text-lg font-semibold text-gray-900"><%= @listing.display_title %></div>
     <div class="mt-1 text-gray-700"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></div>
     <% if place.present? %><div class="text-sm text-gray-500"><%= place %></div><% end %>
+    <% if (ages = @listing.age_words) %><div class="mt-1 text-sm font-semibold text-gray-900"><%= ages %></div><% end %>
     <% if @order.paid? %>
       <div class="mt-3 flex flex-wrap gap-3 text-sm">
         <%= link_to "Add to calendar", tickets_order_calendar_path(token: @order.token), class: "text-pink-600 hover:text-pink-700" %>

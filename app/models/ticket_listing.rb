@@ -39,6 +39,8 @@ class TicketListing < ApplicationRecord
                    format: { with: /\A[a-z0-9][a-z0-9-]*\z/ }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
+  # Blank follows the production; 0 is all ages for this date (AgeLimit).
+  validates :minimum_age, numericality: { only_integer: true, in: 0..AgeLimit::AGES.max }, allow_nil: true
   validate :show_belongs_to_organization
 
   before_validation :take_production_and_organization_from_show, on: :create
@@ -95,6 +97,20 @@ class TicketListing < ApplicationRecord
 
   def effective_accessibility_note
     accessibility_note.presence || production_ticketing&.accessibility_note.presence
+  end
+
+  # The youngest anyone at this date can be, or nil for all ages: its own,
+  # else its production's.
+  def effective_minimum_age
+    age = minimum_age.nil? ? production_ticketing&.minimum_age : minimum_age
+    age if age.to_i.positive?
+  end
+
+  # "Ages 21 and over", with any note about ages after it; nil for all ages
+  # and no note. label: true leaves off "Ages" for a spot already labeled.
+  def age_words(label: false)
+    age = effective_minimum_age
+    [ label ? AgeLimit.label(age) : AgeLimit.words(age), effective_age_note ].compact_blank.join(" · ").presence
   end
 
   # Products a buyer can add at this date's checkout: the production's,

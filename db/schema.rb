@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_151000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2046,6 +2046,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_151000) do
     t.string "fee_mode"
     t.integer "low_stock_threshold"
     t.integer "max_per_order"
+    t.integer "minimum_age"
     t.integer "online_close_minutes", default: 0, null: false
     t.integer "opens_days_before", default: 30, null: false
     t.bigint "organization_id", null: false
@@ -3377,6 +3378,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_151000) do
     t.boolean "inherits_tiers", default: false, null: false
     t.integer "low_stock_threshold"
     t.integer "max_per_order"
+    t.integer "minimum_age"
     t.datetime "off_sale_at"
     t.datetime "on_sale_at"
     t.bigint "organization_id", null: false

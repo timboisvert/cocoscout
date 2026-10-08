@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module Ticketing
-  # The one description of a listing: what the show is, when and where, and
-  # what each ticket costs all-in. The public page's search-engine data reads
-  # from it today; other ticket sites will get the same description later, so
-  # every place a show appears says the same thing.
+  # The one description of a listing: what the show is, when and where, who
+  # can come, and what each ticket costs all-in. The public page's
+  # search-engine data reads from it today; other ticket sites will get the
+  # same description later, so every place a show appears says the same thing.
   class ListingPayload
     def self.for(listing)
       new(listing).to_h
@@ -27,6 +27,7 @@ module Ticketing
         selling: @listing.selling?,
         sold_out: inventory.sold_out?,
         online: @show.is_online,
+        minimum_age: @listing.effective_minimum_age,
         venue: venue,
         currency: "usd",
         fee_mode: @listing.effective_fee_mode,

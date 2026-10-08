@@ -13,7 +13,7 @@
     <div class="text-base font-semibold text-gray-900 leading-tight truncate"><%= @listing.display_title %></div>
     <div class="text-xs text-gray-500 truncate">
       <%= show.date_and_time.to_date == Date.current ? "Tonight" : show.date_and_time.strftime("%a %b %-d") %>
-      · <%= show.date_and_time.strftime("%-l:%M %p") %> · <%= @listing.organization.name %>
+      · <%= show.date_and_time.strftime("%-l:%M %p") %><% if (age = AgeLimit.short(@listing.effective_minimum_age)) %> · <span class="font-semibold text-gray-900">Ages <%= age %></span><% end %> · <%= @listing.organization.name %>
     </div>
   </div>
 <% end %>

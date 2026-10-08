@@ -142,11 +142,12 @@ class TicketOrderMailer < ApplicationMailer
   end
 
   # Everything a buyer needs to turn up: the time, the place, directions,
-  # the door note. Rendered as its own block under an email's words
-  # (shared/mailer/_when_where).
+  # who can come, the door note. Rendered as its own block under an email's
+  # words (shared/mailer/_when_where), so the confirmation, the reminder and
+  # every other email with tickets says the same.
   def self.when_where(listing)
-    Ticketing::WhenWhere.for(listing.show, door_note: listing.effective_door_note,
-                             notes: [ listing.effective_age_note, listing.effective_accessibility_note ].compact_blank.join(" · "))
+    Ticketing::WhenWhere.for(listing.show, door_note: listing.effective_door_note, ages: listing.age_words(label: true),
+                             notes: listing.effective_accessibility_note)
   end
 
   # "tomorrow", "on Friday", or "on Friday, October 10" for further off.

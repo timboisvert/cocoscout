@@ -2,13 +2,15 @@
   setup = @production.production_ticketing
   title = setup&.title.presence || @production.name
   description = setup&.description.presence || @production.description.presence
-  notes = setup ? [ setup.door_note, setup.age_note, setup.accessibility_note ].compact_blank : []
+  notes = setup ? [ setup.door_note, setup.accessibility_note ].compact_blank : []
   wide = @production.wide_image.attached? ? @production.safe_wide_image_variant : nil
   poster = wide ? nil : @production.safe_poster_variant(:large) || @production.safe_poster_variant(:small)
   image_url = (wide || poster) && url_for(wide || poster)
   page_url = ticket_production_url(@ticketing_profile, @production)
   date_path = ->(listing) { tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: listing.slug, code: @code, **embed_params) }
   selected = @listing
+  # The chosen date's ages, which can differ from the production's.
+  ages = selected ? selected.age_words : setup&.age_words
   show = selected&.show
   venue = show && [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
   address = show&.location && [ show.location.address1, show.location.city, show.location.state ].compact_blank.join(", ")
@@ -40,6 +42,7 @@
   <div class="text-center space-y-1.5">
     <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= title %></h1>
     <p class="text-sm text-gray-600"><%= @organization.name %></p>
+    <% if ages %><p class="text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
     <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
   </div>
 

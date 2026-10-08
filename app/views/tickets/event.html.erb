@@ -9,7 +9,8 @@
   image, page_image = ticket_page_image(@listing)
   image_url = image && url_for(image)
   description = @listing.effective_description
-  notes = [ @listing.effective_door_note, @listing.effective_age_note, @listing.effective_accessibility_note ].compact_blank
+  notes = [ @listing.effective_door_note, @listing.effective_accessibility_note ].compact_blank
+  ages = @listing.age_words
   # Search engines read this to list the show (schema.org Event with all-in offers).
   structured = {
     "@context" => "https://schema.org",
@@ -21,6 +22,7 @@
     "eventAttendanceMode" => show.is_online ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
     "description" => description.to_s.truncate(500).presence,
     "image" => image_url,
+    "typicalAgeRange" => (@listing.effective_minimum_age && "#{@listing.effective_minimum_age}-"),
     "organizer" => { "@type" => "Organization", "name" => @organization.name, "url" => tickets_box_office_url(org: @ticketing_profile.slug) },
     "location" => venue && { "@type" => "Place", "name" => venue[:name],
                              "address" => { "@type" => "PostalAddress", "streetAddress" => venue[:address1], "addressLocality" => venue[:city],
@@ -71,6 +73,7 @@
         <% if map_url %> · <%= link_to "Directions", map_url, target: "_blank", rel: "noopener", class: "text-pink-700 hover:text-pink-800" %><% end %>
       </p>
     <% end %>
+    <% if ages %><p class="text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
     <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
     <p class="text-sm">
       <%= link_to "Other dates", ticket_production_path(@ticketing_profile, @listing.production, **embed_params),

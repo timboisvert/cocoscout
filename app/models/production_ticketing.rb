@@ -46,6 +46,8 @@ class ProductionTicketing < ApplicationRecord
   validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
+  # Blank is all ages (AgeLimit).
+  validates :minimum_age, numericality: { only_integer: true, in: AgeLimit::AGES }, allow_nil: true
   validate :production_belongs_to_organization
 
   before_validation { self.organization ||= production&.organization }
@@ -64,6 +66,11 @@ class ProductionTicketing < ApplicationRecord
   # this production sells them (TicketProductOffer). Archived products drop out.
   def product_offers
     production_ticketing_products.includes(:ticket_product).select { |row| row.ticket_product.archived_at.nil? }.map(&:offer)
+  end
+
+  # "Ages 21 and over", with any note about ages after it; nil for all ages.
+  def age_words
+    [ AgeLimit.words(minimum_age), age_note ].compact_blank.join(" · ").presence
   end
 
   # Every show of the production that has a listing.

@@ -1,0 +1,18 @@
+<%# Who can come, where the buyer pays (AgeLimit): one line, or one per show
+    when a checkout holds shows with different ages. Locals: limits
+    ([[title, words], ...], words nil for all ages). %>
+<% distinct = limits.uniq(&:last) %>
+<% if distinct.any? { |_, words| words } %>
+  <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+    <% if distinct.size == 1 %>
+      <span class="font-medium text-gray-900"><%= distinct.first.last %></span>
+    <% else %>
+      <div class="font-medium text-gray-900 mb-1">Ages</div>
+      <ul class="space-y-1">
+        <% distinct.each do |title, words| %>
+          <li><span class="font-medium text-gray-800"><%= title %>:</span> <%= words || "All ages" %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+<% end %>

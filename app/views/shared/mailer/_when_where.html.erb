@@ -1,6 +1,6 @@
 <%# When and where, as one block a buyer can find at a glance: the date and
     time big, the venue and address, directions and a calendar link, the
-    door note. Locals: w (Ticketing::WhenWhere.for), calendar_url. %>
+    ages when there's a limit, the door note. Locals: w (Ticketing::WhenWhere.for), calendar_url. %>
 <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; margin: 20px 0; border: 1px solid #fbcfe8; border-radius: 12px; background: #fdf2f8;">
   <tr>
     <td style="padding: 16px 20px;">
@@ -22,6 +22,11 @@
         <% if w[:directions_url] %><a href="<%= w[:directions_url] %>" style="color: #be185d; font-weight: 600;">Directions</a> &nbsp;·&nbsp; <% end %>
         <a href="<%= calendar_url %>" style="color: #be185d; font-weight: 600;">Add to calendar</a>
       </div>
+
+      <% if w[:ages] %>
+        <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #be185d; margin-top: 14px;">Ages</div>
+        <div style="font-size: 16px; font-weight: 600; color: #111827;"><%= w[:ages] %></div>
+      <% end %>
 
       <% if w[:door_note] || w[:notes] %>
         <div style="font-size: 13px; color: #4b5563; margin-top: 12px; padding-top: 10px; border-top: 1px solid #fbcfe8;">

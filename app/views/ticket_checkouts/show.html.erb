@@ -81,8 +81,11 @@
       <%= render "shared/checkout/payment" unless free %>
 
       <%# What they're agreeing to, before they pay (not at the door: the show's on). %>
-      <% unless free || at_door %>
+      <% unless at_door %>
         <% policy_orders = @order.ticket_purchase ? @order.ticket_purchase.ticket_orders.includes(:ticket_listing).to_a : [ @order ] %>
+        <%= render "shared/checkout/age_limit", limits: policy_orders.map { |o| [ o.ticket_listing.display_title, o.ticket_listing.age_words ] } %>
+      <% end %>
+      <% unless free || at_door %>
         <%= render "shared/checkout/refund_policy",
               policies: policy_orders.map { |o| [ o.ticket_listing.display_title, RefundPolicy.from_snapshot(o.refund_policy) || RefundPolicy.for(o.ticket_listing) ] } %>
       <% end %>

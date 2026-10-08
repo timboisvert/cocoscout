@@ -132,6 +132,10 @@ module Manage
         end
       end
 
+      if attrs[:minimum_age] == :invalid
+        return redirect_to(settings_path(@section), alert: "Type an age from 1 to 99.")
+      end
+
       if @listing.update(attrs)
         redirect_to settings_path(@section), notice: notice
       else
@@ -298,6 +302,10 @@ module Manage
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
       permitted[:low_stock_threshold] = permitted[:low_stock_threshold].presence if permitted.key?(:low_stock_threshold)
+      # The Page tab's ages: the production's, all ages here, or an age.
+      if (choice = params.dig(:ticket_listing, :age_choice))
+        permitted[:minimum_age] = AgeLimit.value_for(choice, params.dig(:ticket_listing, :age_other), inherit: true)
+      end
       if permitted[:ticket_tiers_attributes]
         permitted[:ticket_tiers_attributes] = tier_attributes(permitted[:ticket_tiers_attributes])
       end

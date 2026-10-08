@@ -84,9 +84,9 @@ RSpec.describe "Ticket products", type: :request do
                     products: { bottle.id.to_s => { offered: "1" }, program.id.to_s => { offered: "1" } } }
     expect(setup.reload.product_offers.map { |o| [ o.price_cents, o.counts_toward_ticket_revenue ] }).to eq([ [ 4_500, false ], [ 500, true ] ])
 
-    # The production's page points at the tab, naming what's offered.
+    # The production's one Settings link leads to the tab.
     get manage_production_ticketing_path(production)
-    expect(response.body).to include("Champagne bottle and Program", manage_edit_production_ticketing_path(production, section: "products"))
+    expect(response.body).to include("products", manage_edit_production_ticketing_path(production))
 
     # A date of the production offers what the production does; a removed
     # product that was never bought simply goes.

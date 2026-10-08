@@ -1,5 +1,5 @@
-<%# Seats, limits and fees, and what the page says — for every date that
-    doesn't have its own. Locals: setup, production. %>
+<%# Seats, limits and fees, what the page says, and ages — for every date
+    that doesn't have its own. Locals: setup, production. %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   default_fee_words = ticketing_profile.default_fee_mode == "buyer" ? "Buyers pay" : "You absorb"
@@ -43,14 +43,10 @@
       <label for="production_ticketing_description" class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
       <%= f.text_area :description, rows: 5, placeholder: production.description.to_s.truncate(200), class: input_class %>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label for="production_ticketing_door_note" class="block text-sm font-medium text-gray-700 mb-1.5">Doors</label>
         <%= f.text_field :door_note, placeholder: "Doors 30 min before", class: input_class %>
-      </div>
-      <div>
-        <label for="production_ticketing_age_note" class="block text-sm font-medium text-gray-700 mb-1.5">Ages</label>
-        <%= f.text_field :age_note, placeholder: "18+", class: input_class %>
       </div>
       <div>
         <label for="production_ticketing_accessibility_note" class="block text-sm font-medium text-gray-700 mb-1.5">Accessibility</label>
@@ -65,6 +61,8 @@
       </p>
     </div>
   </div>
+
+  <%= render "manage/production_ticketings/age_limit_fields", scope: "production_ticketing", age: setup.minimum_age, note: setup.age_note, input_class: input_class %>
 
   <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
 <% end %>
