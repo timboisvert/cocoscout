@@ -5,6 +5,7 @@
   event_type_default = @production.event_type_publicly_visible?(@show.event_type)
   will_be_visible = @show.public_profile_visible.nil? ? event_type_default : @show.public_profile_visible
 %>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 <%= render layout: "manage/shows/edit/card", locals: { title: "Casting" } do %>
   <div class="flex items-start justify-between gap-4">
     <div>
@@ -49,3 +50,4 @@
     </p>
   <% end %>
 <% end %>
+</div>

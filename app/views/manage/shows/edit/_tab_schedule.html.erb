@@ -2,6 +2,7 @@
     to know about arriving. A series' own schedule changes through the guided
     "Change series schedule" modal (extend, reschedule, change the pattern).
     Locals: form, input_class. %>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 <%= render layout: "manage/shows/edit/card", locals: { title: "When", intro: (@show.recurring? ? "This event's own date and time. The series' schedule changes from the button below." : nil) } do %>
   <% if @show.recurring? %>
     <%
@@ -65,3 +66,4 @@
     <%= render "shared/toggle_switch", form: form, field: :attendance_enabled %>
   </div>
 <% end %>
+</div>

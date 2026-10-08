@@ -128,11 +128,6 @@ RSpec.describe Show, type: :model do
       expect(show).to respond_to(:roles)
     end
 
-    it 'has many show_links' do
-      show = create(:show)
-      expect(show).to respond_to(:show_links)
-    end
-
     it 'has many show_availabilities' do
       show = create(:show)
       expect(show).to respond_to(:show_availabilities)

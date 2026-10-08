@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2570,15 +2570,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
     t.index ["show_id"], name: "index_show_financials_on_show_id", unique: true
   end
 
-  create_table "show_links", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.bigint "show_id", null: false
-    t.string "text"
-    t.datetime "updated_at", null: false
-    t.string "url", null: false
-    t.index ["show_id"], name: "index_show_links_on_show_id"
-  end
-
   create_table "show_payout_line_items", force: :cascade do |t|
     t.decimal "advance_deduction", precision: 10, scale: 2, default: "0.0"
     t.decimal "amount", precision: 10, scale: 2, null: false
@@ -4214,7 +4205,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
   add_foreign_key "show_cast_notifications", "roles"
   add_foreign_key "show_cast_notifications", "shows"
   add_foreign_key "show_financials", "shows"
-  add_foreign_key "show_links", "shows"
   add_foreign_key "show_payout_line_items", "show_payouts"
   add_foreign_key "show_payout_line_items", "users", column: "manually_paid_by_id"
   add_foreign_key "show_payouts", "payout_schemes"

@@ -38,9 +38,6 @@ class Show < ApplicationRecord
   # Show-specific roles (roles where show_id = this show's id)
   has_many :custom_roles, -> { where.not(show_id: nil) }, class_name: "Role", dependent: :destroy
 
-  has_many :show_links, dependent: :destroy
-  accepts_nested_attributes_for :show_links, allow_destroy: true
-
   include HasWideImage
 
   has_one_attached :poster, dependent: :purge_later do |attachable|

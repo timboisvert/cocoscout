@@ -1731,8 +1731,7 @@ module Manage
                                                :event_frequency, :recurrence_pattern, :recurrence_end_date, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :casting_mode, :is_online, :online_location_info,
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,
-                                               :tickets_override, :tickets_mode, :tickets_url,
-                                               show_links_attributes: %i[id url text _destroy])
+                                               :tickets_override, :tickets_mode, :tickets_url)
 
       # The Tickets tab: off, the date follows the production (nothing of its
       # own); on, its own answer, with a link only when it points somewhere.

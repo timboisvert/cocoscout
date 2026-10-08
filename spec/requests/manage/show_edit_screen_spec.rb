@@ -22,13 +22,13 @@ RSpec.describe "Edit-show screen", type: :request do
     get edit_manage_production_show_path(production, show)
 
     expect(response).to have_http_status(:ok)
-    %w[Details Schedule Location].each { |t| expect(response.body).to include(t) }
+    [ "Basic Information", "Schedule", "Location", "Visual Assets" ].each { |t| expect(response.body).to include(t) }
     expect(response.body).to include("Casting &amp; Visibility")
-    expect(response.body).to include("Images, Links &amp; Notes")
+    expect(response.body).not_to include("Images, Links", "show_links")
     expect(response.body).to include("Danger Zone")
     # Event type is now a radio-card grid, not a <select>.
     expect(response.body).to include('name="show[event_type]"')
-    expect(response.body).to include(">Save<")
+    expect(response.body).to include("Save Changes")
   end
 
   it "renders for a recurring show without error" do

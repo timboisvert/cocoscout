@@ -7,11 +7,11 @@
   # Each tab, and whether it has fields to save (Linked Events and the Danger
   # Zone act through their own buttons and modals).
   edit_tabs = [
-    { label: "Details", partial: "tab_details" },
+    { label: "Basic Information", partial: "tab_details" },
     { label: "Schedule", partial: "tab_schedule" },
     { label: "Location", partial: "tab_location" },
     { label: "Casting & Visibility", partial: "tab_visibility" },
-    { label: "Images, Links & Notes", partial: "tab_media" },
+    { label: "Visual Assets", partial: "tab_media" },
     { label: "Tickets", partial: "tab_tickets", pro: true },
     { label: "Linked Events", partial: "tab_linked", save: false },
     { label: "Danger Zone", partial: "tab_danger", danger: true, save: false }
@@ -36,7 +36,7 @@
         switch that sends a save to all of them. %>
     <% if @show.recurring? %>
       <% series = @show.recurrence_group.order(:date_and_time) %>
-      <div class="mb-5 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3 max-w-3xl">
+      <div class="mb-5 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div class="text-sm text-pink-900">
           <span class="font-semibold">One of <%= pluralize(series.count, "event") %> in a series</span>,
           <%= series.first.date_and_time.strftime("%b %-d") %> to <%= series.last.date_and_time.strftime("%b %-d, %Y") %>.
@@ -72,16 +72,16 @@
       <% end %>
     </nav>
 
-    <div class="max-w-3xl">
-      <% edit_tabs.each_with_index do |tab, i| %>
-        <div data-tabs-target="panel" class="space-y-6 <%= 'hidden' unless i.zero? %>">
-          <%= render "manage/shows/edit/#{tab[:partial]}", form: form, input_class: input_class, location_spaces_map: location_spaces_map %>
-          <% unless tab[:save] == false || (tab[:pro] && ticketing_locked) %>
-            <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
+    <% edit_tabs.each_with_index do |tab, i| %>
+      <div data-tabs-target="panel" class="space-y-6 <%= 'hidden' unless i.zero? %>">
+        <%= render "manage/shows/edit/#{tab[:partial]}", form: form, input_class: input_class, location_spaces_map: location_spaces_map %>
+        <% unless tab[:save] == false || (tab[:pro] && ticketing_locked) %>
+          <div class="flex justify-end">
+            <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
   <% end %>
 
   <%= render "manage/shows/edit/move_modal" %>

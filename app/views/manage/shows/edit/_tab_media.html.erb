@@ -1,99 +1,82 @@
-<%# Images, Links & Notes: this event's own poster and wide image (when it
-    doesn't use the production's), its links, and notes for the people in
-    it. Locals: form, input_class. %>
+<%# Visual Assets: this event's poster and wide image, drawn the way the
+    production's Visual Assets tab draws its own. Each shows the picture in
+    use, the event's own or the production's it falls back to (the order
+    ticket pages use, Show#ticket_page_image). A new one, or going back to
+    the production's, takes effect on Save Changes. Locals: form. %>
 <%
-  file_class = "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:text-white file:bg-pink-500 hover:file:bg-pink-600"
+  kind = @show.event_type.titleize.downcase
+  production = @show.production
+  name = possessive(production.name)
+  file_class = "block w-full sm:w-auto text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-pink-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-pink-700 hover:file:bg-pink-100"
+  production_poster = production.primary_poster
+  production_poster_variant = production_poster&.safe_image_variant(:large) || production_poster&.safe_image_variant(:small)
+  production_poster_url = production_poster_variant && url_for(production_poster_variant)
+  production_wide_url = production.wide_image.attached? ? url_for(production.safe_wide_image_variant || production.wide_image) : nil
   own_poster = @show.poster.attached? && @show.poster.blob&.persisted?
   own_wide = @show.wide_image.attached? && @show.wide_image.blob&.persisted?
-  production_wide = @show.production&.wide_image&.attached?
-  wide_src = own_wide ? url_for(@show.safe_wide_image_variant || @show.wide_image) : (production_wide ? url_for(@show.production.safe_wide_image_variant || @show.production.wide_image) : nil)
+  cards = [
+    { field: :poster, remove: "remove_poster", title: "Poster (3:4)", own: own_poster,
+      url: own_poster ? url_for(@show.safe_poster_variant(:large) || @show.poster) : production_poster_url,
+      inherited_url: production_poster_url, noun: "poster",
+      empty: "No poster yet, here or on #{production.name}.",
+      accept: "image/jpeg,image/png", spec: "3:4, ideally 1200×1600. JPG or PNG.", min: [ 0, 0 ],
+      img_class: "max-h-80 w-auto h-auto rounded shadow-sm" },
+    { field: :wide_image, remove: "remove_wide_image", title: "Wide image (16:9)", own: own_wide,
+      url: own_wide ? url_for(@show.safe_wide_image_variant || @show.wide_image) : production_wide_url,
+      inherited_url: production_wide_url, noun: "wide image",
+      empty: "No wide image yet, here or on #{production.name}. Ticket pages and shared links use the poster.",
+      accept: "image/jpeg,image/png,image/webp", spec: "16:9, ideally 1920×1080 (at least 1200×675). JPG, PNG or WebP up to 10 MB.", min: [ 1200, 675 ],
+      img_class: "w-full h-auto rounded shadow-sm" }
+  ]
 %>
-<%= render layout: "manage/shows/edit/card", locals: { title: "Images", intro: "Pictures for this event only. Without them it uses the production's, from its Visual Assets." } do %>
-  <%# Poster (3:4) %>
-  <div class="poster-container">
-    <div class="flex items-center gap-3 mb-1.5">
-      <p class="text-sm font-medium text-gray-700">Poster</p>
-      <% if own_poster %>
-        <%= render "shared/button", text: "Remove", variant: "secondary", size: "xs", type: :button, data: { action: "click->show-edit#removePoster" } %>
-      <% end %>
-    </div>
-    <% if own_poster %>
-      <div class="mb-3 poster-image">
-        <div class="w-full max-w-48 aspect-[3/4] rounded-lg overflow-hidden border border-gray-200 bg-white">
-          <%= image_tag url_for(@show.poster), class: "w-full h-full object-cover" %>
+<%# What these are for, said the way the production's tab says it. %>
+<div class="bg-white border border-gray-200 rounded-lg p-6">
+  <h2 class="text-lg font-semibold text-gray-900">How this <%= kind %> looks</h2>
+  <p class="text-sm text-gray-600 mt-1 max-w-3xl">
+    It uses <%= name %> poster and wide image unless you give it its own here, for a special guest night, say.
+    The poster is what people see while browsing; the wide image leads this date's ticket page and shows when its link is shared.
+    Both are always shown whole, never cropped.
+  </p>
+  <p class="text-sm mt-3">
+    <%= link_to "Change #{name} images in its Visual Assets", edit_manage_production_path(production, tab: 1), class: "font-medium text-pink-600 hover:text-pink-700" %>
+  </p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <% cards.each do |card| %>
+    <% inherited_words = card[:inherited_url] ? "Goes back to #{name} #{card[:noun]}" : "Goes back to no #{card[:noun]}" %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col"
+         data-controller="event-image"
+         data-event-image-inherited-src-value="<%= card[:inherited_url] %>"
+         data-event-image-inherited-words-value="<%= inherited_words %>"
+         data-event-image-min-width-value="<%= card[:min][0] %>"
+         data-event-image-min-height-value="<%= card[:min][1] %>">
+      <%= render "shared/card_header", title: card[:title] %>
+      <div class="p-6 flex-1 flex flex-col">
+        <div class="flex-1 flex items-center justify-center rounded-lg bg-gray-50 border border-gray-200 min-h-[18rem] p-4">
+          <img src="<%= card[:url] %>" alt="" class="<%= card[:img_class] %> <%= 'hidden' unless card[:url] %>" data-event-image-target="frame">
+          <p class="text-sm text-amber-700 text-center <%= 'hidden' if card[:url] %>" data-event-image-target="empty"><%= card[:empty] %></p>
         </div>
+        <p class="text-xs text-gray-500 mt-2">
+          <% if card[:own] %>
+            This <%= kind %>'s own <%= card[:noun] %>.
+          <% elsif card[:url] %>
+            <%= name %> <%= card[:noun] %>, until this <%= kind %> has its own.
+          <% end %>
+        </p>
+        <%= hidden_field_tag "show[#{card[:remove]}]", "0", id: nil, data: { event_image_target: "removeFlag" } %>
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <%= form.file_field card[:field], accept: card[:accept], class: file_class,
+                data: { event_image_target: "input", action: "change->event-image#choose" } %>
+          <% if card[:own] %>
+            <%= render "shared/button", text: "Use #{name} instead", variant: "secondary", size: "small", type: :button,
+                  data: { event_image_target: "useProduction", action: "click->event-image#useProduction" } %>
+          <% end %>
+        </div>
+        <p class="hidden text-xs font-medium text-pink-700 mt-2" data-event-image-target="status"></p>
+        <p class="hidden text-xs text-amber-700 mt-2" data-event-image-target="warning"></p>
+        <p class="text-xs text-gray-500 mt-2"><%= card[:spec] %></p>
       </div>
-      <%= form.hidden_field :remove_poster, value: "0", class: "remove-poster-hidden" %>
-    <% end %>
-    <div class="block w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2.5 shadow-sm">
-      <%= form.file_field :poster, class: file_class %>
     </div>
-    <p class="text-xs text-gray-500 mt-1">JPG or PNG.</p>
-  </div>
-
-  <%# Wide image (16:9): shown whole, never cropped. %>
-  <div class="pt-4 border-t border-gray-100" data-controller="image-crops">
-    <div class="flex items-center gap-3 mb-1.5">
-      <p class="text-sm font-medium text-gray-700">Wide image (16:9)</p>
-      <% if own_wide %>
-        <label class="inline-flex items-center gap-1.5 text-xs text-gray-600">
-          <%= form.check_box :remove_wide_image, { class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" }, "1", "0" %>
-          Remove this event's wide image
-        </label>
-      <% end %>
-    </div>
-    <p class="text-xs text-gray-500 mb-2">
-      <% if own_wide %>
-        This event uses its own wide image.
-      <% elsif production_wide %>
-        Using the production's. Upload one to use a different picture for this date.
-      <% else %>
-        None yet. Add one here for this date, or for every date in the production's Visual Assets.
-      <% end %>
-    </p>
-    <div class="mb-3 max-w-md <%= 'hidden' unless wide_src %>" data-image-crops-target="preview">
-      <img src="<%= wide_src %>" alt="" class="w-full h-auto rounded-lg border border-gray-200 bg-gray-50" data-image-crops-target="frame">
-    </div>
-    <div class="block w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2.5 shadow-sm">
-      <%= form.file_field :wide_image, accept: "image/jpeg,image/png,image/webp",
-            data: { image_crops_target: "input", action: "change->image-crops#choose" }, class: file_class %>
-    </div>
-    <p class="hidden text-xs text-amber-700 mt-2" data-image-crops-target="warning"></p>
-    <p class="text-xs text-gray-500 mt-1">Ideally 1920×1080. JPG, PNG or WebP up to 10 MB.</p>
-  </div>
-<% end %>
-
-<%= render layout: "manage/shows/edit/card", locals: { title: "Links", intro: "Pages about this event, like a social post or a press listing. They show on its public page and to the cast." } do %>
-  <div data-controller="show-links" class="space-y-2">
-    <div id="show-links-fields" class="space-y-2" data-show-links-target="list">
-      <%= form.fields_for :show_links do |show_link_form| %>
-        <div class="flex items-start gap-2 show-links-fields-row" data-show-links-target="row">
-          <%= show_link_form.hidden_field :id %>
-          <%= show_link_form.hidden_field :_destroy, value: 0, class: "destroy-flag" %>
-          <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <%= show_link_form.text_field :text, placeholder: "What it says, like Press release", class: input_class %>
-            <%= show_link_form.text_field :url, placeholder: "https://…", class: input_class %>
-          </div>
-          <%= link_to "Remove", "#", class: "remove-show-link mt-2.5 text-sm font-medium text-pink-600 hover:text-pink-700 whitespace-nowrap", data: { action: "show-links#remove" } %>
-        </div>
-      <% end %>
-    </div>
-    <%= link_to "Add a link", "#", class: "inline-block text-sm font-medium text-pink-600 hover:text-pink-700", data: { action: "show-links#add" } %>
-    <template data-show-links-target="template">
-      <div class="flex items-start gap-2 show-links-fields-row" data-show-links-target="row">
-        <input type="hidden" name="show[show_links_attributes][new_show_links][id]" />
-        <input type="hidden" name="show[show_links_attributes][new_show_links][_destroy]" value="0" class="destroy-flag" />
-        <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <input type="text" name="show[show_links_attributes][new_show_links][text]" placeholder="What it says, like Press release" class="<%= input_class %>" />
-          <input type="text" name="show[show_links_attributes][new_show_links][url]" placeholder="https://…" class="<%= input_class %>" />
-        </div>
-        <a href="#" class="remove-show-link mt-2.5 text-sm font-medium text-pink-600 hover:text-pink-700 whitespace-nowrap" data-action="show-links#remove">Remove</a>
-      </div>
-    </template>
-  </div>
-<% end %>
-
-<%= render layout: "manage/shows/edit/card", locals: { title: "Notes", intro: "For the cast and the production team, on this event's page. The public never sees them." } do %>
-  <%= form.label :notes, "Notes", class: "sr-only" %>
-  <%= form.text_area :notes, placeholder: "A family is celebrating a birthday in the audience. Bring your own water.", rows: 5, class: input_class %>
-<% end %>
+  <% end %>
+</div>

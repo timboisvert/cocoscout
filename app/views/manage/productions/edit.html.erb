@@ -289,11 +289,11 @@
       <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
         <h3 class="font-semibold text-gray-900">Shows and events with their own images</h3>
         <% if own_images.empty? %>
-          <p class="text-sm text-gray-600 mt-1">None. Every show and event uses the two images above. To give one its own (a special guest night, say), open it and use its Images, Links &amp; Notes tab.</p>
+          <p class="text-sm text-gray-600 mt-1">None. Every show and event uses the two images above. To give one its own (a special guest night, say), open it and use its Visual Assets tab.</p>
         <% else %>
           <p class="text-sm text-gray-600 mt-1">
             <%= own_images.one? ? "1 show or event uses its own poster or wide image" : "#{own_images.size} shows and events use their own posters or wide images" %> instead of these<%= " (#{upcoming_own.size} still to come)" if upcoming_own.size != own_images.size %>.
-            You change them on each one's Images, Links &amp; Notes tab.
+            You change them on each one's Visual Assets tab.
           </p>
           <details class="mt-3">
             <summary class="cursor-pointer text-sm font-medium text-pink-600 hover:text-pink-700">See which ones</summary>

@@ -104,27 +104,6 @@
       </div>
     <% end %>
 
-    <%# Show Links Section %>
-    <% if @show.show_links.any? %>
-      <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
-        <div class="px-6 py-4 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-900">Links</h2>
-        </div>
-        <div class="p-4">
-          <div class="flex flex-wrap gap-3">
-            <% @show.show_links.each do |link| %>
-              <%= link_to link.url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-2 px-4 py-2 bg-pink-50 text-pink-700 rounded-lg hover:bg-pink-100 transition-colors" do %>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                </svg>
-                <span><%= link.text.presence || "Link" %></span>
-              <% end %>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    <% end %>
-
     <%# Location Section with Map %>
     <% if @show.location.present? %>
       <% loc = @show.location %>
