@@ -1,11 +1,18 @@
 <%
   setup = @production.production_ticketing
+  selected = @listing
   title = setup&.title.presence || @production.name
-  description = setup&.description.presence || @production.description.presence
-  notes = setup ? [ setup.door_note, setup.accessibility_note ].compact_blank : []
+  # The chosen date's words and notes (its own, else the production's), so a
+  # date with its own description says it on its page.
+  description = selected ? selected.effective_description.presence : (setup&.description.presence || @production.description.presence)
+  notes = if selected then [ selected.effective_door_note, selected.effective_accessibility_note ].compact_blank
+  elsif setup then [ setup.door_note, setup.accessibility_note ].compact_blank
+  else []
+  end
+  # A link to the production describes the production; one to a date, that date.
+  share_description = params[:date].present? ? description : (setup&.description.presence || @production.description.presence || description)
   page_url = ticket_production_url(@ticketing_profile, @production)
   date_path = ->(listing) { tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: listing.slug, code: @code, **embed_params) }
-  selected = @listing
   # The picture is the chosen date's (Show#ticket_page_image: its own wide
   # image, its own poster, then the production's), so each date's page
   # shows that date's art; with no date to show, the production's.
@@ -29,9 +36,9 @@
 %>
 <% content_for :title, "#{title} · #{@organization.name}" %>
 <% content_for :head do %>
-  <meta name="description" content="<%= description.to_s.truncate(160) %>">
+  <meta name="description" content="<%= share_description.to_s.truncate(160) %>">
   <meta property="og:title" content="<%= title %> · <%= @organization.name %>">
-  <meta property="og:description" content="<%= description.to_s.truncate(200) %>">
+  <meta property="og:description" content="<%= share_description.to_s.truncate(200) %>">
   <meta property="og:type" content="website">
   <meta property="og:url" content="<%= page_url %>">
   <% if share_image_url %>

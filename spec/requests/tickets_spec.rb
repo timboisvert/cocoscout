@@ -77,6 +77,22 @@ RSpec.describe "Public ticketing", type: :request do
       get tickets_event_path(org: "starsandgarters", event: production.public_key)
       expect(response.body).to include(%(class="flex flex-wrap justify-center gap-2 hidden" aria-label="Pick a date"), "Continue to checkout")
     end
+
+    it "says a date's own description and notes on its page (Tim, 2026-10-08)" do
+      later = create(:show, production: production, date_and_time: 12.days.from_now.change(hour: 19, min: 30))
+      later_listing = TicketListing.create!(show: later, status: "on_sale", description: "Our Halloween special, in costume.",
+                                            door_note: "Doors at 7")
+      later_listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 10)
+
+      get tickets_event_path(org: "starsandgarters", event: production.public_key, date: later_listing.slug)
+      expect(response.body).to include("Our Halloween special, in costume.", "Doors at 7")
+      expect(response.body).not_to include("Every scene turns into an animal.")
+
+      # The next date has none of its own, so it says the production's.
+      get tickets_event_path(org: "starsandgarters", event: production.public_key)
+      expect(response.body).to include("Every scene turns into an animal.")
+      expect(response.body).not_to include("Our Halloween special", "Doors at 7")
+    end
   end
 
   describe "a show's page" do
