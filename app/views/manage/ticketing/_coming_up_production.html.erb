@@ -27,8 +27,8 @@
             label, badge_classes = ticket_listing_status_badge(listing, inventory)
           %>
           <%= link_to manage_ticket_listing_path(listing), class: "flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors" do %>
-            <span class="w-24 flex-shrink-0 text-sm text-gray-900 tabular-nums"><%= listing.show.date_and_time.strftime("%a %b %-d") %></span>
-            <span class="w-16 flex-shrink-0 text-sm text-gray-600 tabular-nums"><%= listing.show.date_and_time.strftime("%-l:%M %p") %></span>
+            <span class="w-24 flex-shrink-0 text-sm text-gray-900 tabular-nums whitespace-nowrap"><%= listing.show.date_and_time.strftime("%a %b %-d") %></span>
+            <span class="w-20 flex-shrink-0 text-sm text-gray-600 tabular-nums whitespace-nowrap"><%= listing.show.date_and_time.strftime("%-l:%M %p") %></span>
             <span class="hidden sm:block flex-1 min-w-0">
               <% if percent %>
                 <span class="block h-1.5 w-full max-w-[10rem] rounded-full bg-gray-100"><span class="block h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></span></span>
