@@ -84,7 +84,7 @@ RSpec.describe "Production ticketing", type: :request do
     expect(response.body).to include("Dates, ticket prices, products, sales, refunds and codes", %(href="#{manage_edit_production_ticketing_path(production)}"))
     expect(response.body).not_to include("Select dates", "Tickets and prices")
     get manage_ticket_listings_path
-    expect(response.body).to include("Rising Stars", "Selling", "2 upcoming dates")
+    expect(response.body).to include("Rising Stars", "2 dates")
   end
 
   it "pauses every date when switched off, and resumes them when switched on" do

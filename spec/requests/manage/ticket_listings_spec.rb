@@ -19,7 +19,7 @@ RSpec.describe "Manage ticket listings", type: :request do
     get manage_path
   end
 
-  it "lists every production as a card: its next date, the next few in a drawer, then those with none coming" do
+  it "lists every production in a slim line: its next date, the next few in a drawer, then those with none coming" do
     dates = (1..8).map do |n|
       TicketListing.create!(show: create(:show, production: production, date_and_time: (n * 3).days.from_now.change(hour: 20)), status: "on_sale")
     end
@@ -28,9 +28,9 @@ RSpec.describe "Manage ticket listings", type: :request do
 
     get manage_ticket_listings_path
     body = response.body
-    expect(body).to include("8 upcoming dates", "7 more dates", "All 8 dates of Improvised Animorphs",
+    expect(body).to include("8 dates", "7 more dates", "All 8 dates of Improvised Animorphs",
                             manage_ticket_listing_path(dates.first), manage_ticket_listing_path(dates[5]), "No dates coming up", "Last Season")
-    expect(body).not_to include(manage_ticket_listing_path(dates[6]))
+    expect(body).not_to include(manage_ticket_listing_path(dates[6]), "this week")
     expect(body.index("Improvised Animorphs")).to be < body.index("Last Season")
   end
 
@@ -59,7 +59,7 @@ RSpec.describe "Manage ticket listings", type: :request do
 
     it "lists its production on Shows, and the date on the production's page, draft then on sale" do
       get manage_ticket_listings_path
-      expect(response.body).to include("Improvised Animorphs", manage_production_ticketing_path(production), "1 upcoming date")
+      expect(response.body).to include("Improvised Animorphs", manage_production_ticketing_path(production), "1 date")
 
       get manage_production_ticketing_path(production)
       expect(response.body).to include(manage_ticket_listing_path(listing), "Draft", "Not set up")

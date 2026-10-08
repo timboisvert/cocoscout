@@ -1,0 +1,42 @@
+<%# One production on Ticketing's Productions page, in one slim line: its
+    picture and name (opening the production), then its next date (opening
+    the date), with the dates after it in a drawer underneath.
+    Locals: production, row (Ticketing::ComingUp::ProductionDates). %>
+<%
+  setup = production.production_ticketing
+  later = row.later
+  more = row.total - 1
+  glance = later.first(3).map { |listing, _| listing.show.date_and_time.strftime("%a %b %-d") }
+%>
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <div class="flex flex-col sm:flex-row sm:items-center">
+    <%= link_to manage_production_ticketing_path(production), class: "group flex items-center gap-3 px-3 py-2 sm:w-72 sm:flex-shrink-0 min-w-0 hover:bg-gray-50 transition-colors sm:border-r border-gray-100" do %>
+      <%= render "shared/production_image", production: production, width: "w-8", initials_class: "text-[10px]" %>
+      <span class="min-w-0">
+        <span class="block text-sm font-semibold text-gray-900 truncate group-hover:text-pink-600 transition-colors"><%= production.name %></span>
+        <span class="block text-xs text-gray-500">
+          <%= pluralize(row.total, "date") %><% if setup && !setup.enabled? %> · <span class="text-gray-600 font-medium">Off</span><% end %>
+        </span>
+      </span>
+    <% end %>
+    <%= render "manage/ticketing/date_line", listing: row.next_listing, stats: row.next_stats %>
+  </div>
+  <% if later.any? %>
+    <details class="group border-t border-gray-100">
+      <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center gap-2 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 transition-colors">
+        <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <span class="font-medium text-gray-800 flex-shrink-0"><%= pluralize(more, "more date") %></span>
+        <span class="min-w-0 truncate group-open:hidden">· <%= glance.join(", ") %><%= ", …" if more > glance.size %></span>
+      </summary>
+      <div class="divide-y divide-gray-100 border-t border-gray-100 sm:pl-72">
+        <% later.each do |listing, stats| %>
+          <%= render "manage/ticketing/date_line", listing: listing, stats: stats %>
+        <% end %>
+        <% if row.total > row.dates.size %>
+          <%= link_to "All #{row.total} dates of #{production.name} →", manage_production_ticketing_path(production),
+                class: "block px-3 py-2 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-gray-50" %>
+        <% end %>
+      </div>
+    </details>
+  <% end %>
+</div>

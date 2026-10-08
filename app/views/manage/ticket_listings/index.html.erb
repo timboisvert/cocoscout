@@ -8,59 +8,30 @@
     links: [ { text: "Sell tickets for a production", path: manage_new_production_ticketing_path } ]
   } %>
 
-  <%# Every production that sells, soonest next date first: each as a card
-      with its picture, its next date and how it's selling, and its later
-      dates in the drawer under it (as Ticketing's home page shows the first
-      few). Productions with no dates coming follow, one line each. %>
+  <%# Every production that sells, soonest next date first: one slim line
+      each, its picture and name, then its next date and how it's selling,
+      the dates after it in a drawer underneath. Productions with no dates
+      coming follow. %>
   <% if @productions.any? %>
     <% selling, quiet = @productions.partition { |production| @coming_up[production.id] } %>
-    <div class="space-y-4">
+    <div class="space-y-1.5">
       <% selling.each do |production| %>
-        <% row = @coming_up[production.id] %>
-        <% setup = production.production_ticketing %>
-        <div class="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-          <%= link_to manage_production_ticketing_path(production), class: "group flex items-center gap-4" do %>
-            <%= render "shared/production_image", production: production, width: "w-12" %>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="font-semibold text-gray-900 truncate group-hover:text-pink-600 transition-colors"><%= production.name %></span>
-                <% if setup&.enabled? %>
-                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium bg-green-100 text-green-700">Selling</span>
-                <% elsif setup %>
-                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600">Off</span>
-                <% end %>
-              </div>
-              <div class="text-sm text-gray-600">
-                <%= pluralize(row.total, "upcoming date") %>
-                <% if (week = @sold_this_week[production.id].to_i).positive? %><span class="text-green-700 font-medium"> · +<%= week %> sold this week</span><% end %>
-              </div>
-            </div>
-            <svg class="w-5 h-5 text-gray-400 group-hover:text-pink-500 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          <% end %>
-          <%= render "manage/ticketing/coming_up_production", row: row, show_production: false %>
-        </div>
+        <%= render "manage/ticket_listings/production_row", production: production, row: @coming_up[production.id] %>
       <% end %>
     </div>
 
     <% if quiet.any? %>
       <h2 class="mt-8 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">No dates coming up</h2>
-      <div class="space-y-2">
+      <div class="space-y-1.5">
         <% quiet.each do |production| %>
           <% setup = production.production_ticketing %>
-          <%= link_to manage_production_ticketing_path(production), class: "flex items-center gap-4 bg-white rounded-lg border border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors" do %>
-            <%= render "shared/production_image", production: production, width: "w-10" %>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="font-semibold text-gray-900 truncate"><%= production.name %></span>
-                <% if setup&.enabled? %>
-                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium bg-green-100 text-green-700">Selling</span>
-                <% elsif setup %>
-                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600">Off</span>
-                <% end %>
-              </div>
-              <div class="text-sm text-gray-600">No upcoming dates</div>
-            </div>
-            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <%= link_to manage_production_ticketing_path(production), class: "group flex items-center gap-3 bg-white rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50 transition-colors" do %>
+            <%= render "shared/production_image", production: production, width: "w-8", initials_class: "text-[10px]" %>
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-semibold text-gray-900 truncate group-hover:text-pink-600 transition-colors"><%= production.name %></span>
+              <span class="block text-xs text-gray-500">No upcoming dates<% if setup && !setup.enabled? %> · Off<% end %></span>
+            </span>
+            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           <% end %>
         <% end %>
       </div>
