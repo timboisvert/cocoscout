@@ -2,8 +2,9 @@
 
 require "rails_helper"
 
-# Ticketing's home: sales for a period, what needs the theater, upcoming
-# shows with how each is selling, the latest orders and what just played.
+# Ticketing's home: sales for a period, what needs the theater, each
+# production's next date with how it's selling (its later dates in a
+# drawer), and what just played.
 RSpec.describe "Ticketing dashboard", type: :request do
   let(:password) { "Password123!" }
   let(:superadmin) { create(:user, email_address: "boisvert@gmail.com", password: password) }
@@ -32,7 +33,7 @@ RSpec.describe "Ticketing dashboard", type: :request do
     end
   end
 
-  it "shows sales, upcoming shows with their numbers, the latest orders and what just played" do
+  it "shows sales, upcoming shows with their numbers, and what just played" do
     upcoming = listing_at(5.days.from_now.change(hour: 19, min: 30))
     played = listing_at(3.days.ago.change(hour: 19, min: 30))
     buy(played, 4, "Fox Mulder", at: 6.days.ago)
@@ -41,8 +42,30 @@ RSpec.describe "Ticketing dashboard", type: :request do
     get manage_ticketing_path(period: "all_time")
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Tickets sold", "Ticket sales", "$140.00", "Coming up", "of 50", "· $60",
-                                      "+3 this week", "Latest orders", "Dana Scully", "Just played", "4 sold", "/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}", "Taxes collected", "Embed on your website")
+                                      "+3 this week", "Just played", "4 sold", "/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}", "Taxes collected", "Embed on your website")
     expect(response.body).to include(manage_ticket_listing_path(upcoming), manage_ticket_listing_path(played))
+    expect(response.body).not_to include("Latest orders")
+  end
+
+  it "shows each production once, at its next date, soonest first, with its later dates behind a drawer" do
+    later_production = create(:production, organization: org, name: "Laugh Along Live")
+    first = (1..8).map { |n| listing_at((n * 2).days.from_now.change(hour: 19, min: 30)) }
+    other = TicketListing.create!(show: create(:show, production: later_production, date_and_time: 3.days.from_now.change(hour: 21)), status: "on_sale")
+    other.ticket_tiers.create!(name: "General", price_cents: 1_500, quantity: 40)
+
+    rows = TicketingDashboard.new(org).coming_up
+    expect(rows.map { |row| row.production.name }).to eq([ "Improvised Animorphs", "Laugh Along Live" ])
+    expect(rows.first.next_listing).to eq(first.first)
+    expect(rows.first.dates.size).to eq(TicketingDashboard::DATES_PER_PRODUCTION)
+    expect(rows.first.total).to eq(8)
+    expect(rows.last.later).to be_empty
+
+    get manage_ticketing_path
+    body = response.body
+    expect(body).to include("2 productions, 9 dates", "7 more dates", "All 8 dates of Improvised Animorphs",
+                            manage_production_ticketing_path(production), manage_ticket_listing_path(first[5]))
+    expect(body).not_to include(manage_ticket_listing_path(first[6]))
+    expect(body.index("Improvised Animorphs")).to be < body.index("Laugh Along Live")
   end
 
   it "counts only the period chosen" do

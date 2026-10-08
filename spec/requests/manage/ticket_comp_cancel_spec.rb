@@ -46,8 +46,6 @@ RSpec.describe "Canceling a comp", type: :request do
     expect(response.body).to include("These tickets were canceled")
 
     # Everywhere the order is listed, it reads as canceled: struck through, with a chip.
-    get manage_ticketing_path
-    expect(response.body).to include("line-through", ">Canceled<")
     get manage_ticket_orders_path
     expect(response.body).to include("line-through", ">Canceled<")
     get manage_ticket_listing_path(listing, guests: "refunded")

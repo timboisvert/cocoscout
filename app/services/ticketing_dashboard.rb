@@ -6,14 +6,23 @@
 # Show-level numbers come from Ticketing::ListingStats, so the home page and
 # each show's page always agree.
 class TicketingDashboard
-  UPCOMING_ROWS = 10
-  RECENT_ORDERS = 8
+  # Coming up shows each production once, at its next date, with this many
+  # dates in all behind its drawer.
+  DATES_PER_PRODUCTION = 6
+  PRODUCTIONS = 20
   JUST_PLAYED = 5
   # Drafts for shows this close are worth a nudge.
   DRAFT_HORIZON = 14.days
   SOLD_STATUSES = TicketOrder::WAS_PAID
 
   Summary = Data.define(:tickets, :gross_cents, :net_cents, :refunded_cents)
+  # One production in Coming up: its dates in order (listing, stats), the
+  # first being the next, and how many upcoming dates it has in all.
+  ProductionDates = Data.define(:production, :dates, :total) do
+    def next_listing = dates.first.first
+    def next_stats = dates.first.last
+    def later = dates.drop(1)
+  end
   Alert = Data.define(:eyebrow, :headline, :body, :actions, :tone)
 
   attr_reader :period
@@ -60,28 +69,39 @@ class TicketingDashboard
     (from..to).to_h { |day| [ day.iso8601, counts[day] ] }
   end
 
+  # Every production with upcoming dates, soonest next date first: its next
+  # date and the few after it (Tim, 2026-10-07: "only the next one for each
+  # production", the rest a click away).
   def coming_up
-    @coming_up ||= with_stats(listings.where.not(status: "canceled").where(shows: { canceled: false })
-                                      .where("shows.date_and_time >= ?", Time.current.beginning_of_day)
-                                      .order("shows.date_and_time").limit(UPCOMING_ROWS))
+    @coming_up ||= begin
+      ranked = upcoming.select("ticket_listings.id, ROW_NUMBER() OVER (PARTITION BY ticket_listings.production_id ORDER BY shows.date_and_time, ticket_listings.id) AS place")
+      ids = TicketListing.from(ranked, :ranked).where("ranked.place <= ?", DATES_PER_PRODUCTION).pluck("ranked.id")
+      totals = upcoming.group("ticket_listings.production_id").count
+      rows = with_stats(listings.where(id: ids).order("shows.date_and_time", :id))
+      rows.group_by { |listing, _| listing.production_id }.values
+          .map { |dates| ProductionDates.new(production: dates.first.first.production, dates: dates, total: totals.fetch(dates.first.first.production_id, dates.size)) }
+          .first(PRODUCTIONS)
+    end
   end
 
   def upcoming_count
-    listings.where.not(status: "canceled").where("shows.date_and_time >= ?", Time.current.beginning_of_day).count
+    @upcoming_count ||= upcoming.count
+  end
+
+  def upcoming_production_count
+    @upcoming_production_count ||= upcoming.distinct.count("ticket_listings.production_id")
   end
 
   def tonight
-    coming_up.select { |listing, _| listing.show.date_and_time.to_date == Date.current && listing.status != "draft" }
+    @tonight ||= with_stats(listings.where.not(status: %w[canceled draft]).where(shows: { canceled: false })
+                                    .where(shows: { date_and_time: Time.current.beginning_of_day..Time.current.end_of_day })
+                                    .order("shows.date_and_time"))
   end
 
   def just_played
     @just_played ||= with_stats(listings.where.not(status: %w[canceled draft])
                                         .where("shows.date_and_time < ?", Time.current.beginning_of_day)
                                         .order("shows.date_and_time DESC").limit(JUST_PLAYED))
-  end
-
-  def recent_orders
-    paid_orders.includes(:tickets, ticket_listing: %i[show production]).order(paid_at: :desc).limit(RECENT_ORDERS)
   end
 
   def drafts_soon
@@ -150,6 +170,13 @@ class TicketingDashboard
 
   def listings
     @organization.ticket_listings.joins(:show).includes(:production, show: %i[location location_space])
+  end
+
+  # Dates still to come that aren't canceled, without eager loading, so it
+  # can be counted and ranked.
+  def upcoming
+    @organization.ticket_listings.joins(:show).where.not(status: "canceled").where(shows: { canceled: false })
+                 .where("shows.date_and_time >= ?", Time.current.beginning_of_day)
   end
 
   def paid_orders

@@ -1,0 +1,48 @@
+<%# One production in Coming up (TicketingDashboard::ProductionDates): its
+    next date as a show row, and a drawer hanging under it with the few dates
+    after that, and the production's page when it has more. Locals: row. %>
+<%
+  later = row.later
+  more = row.total - 1
+  # The drawer's closed line names the next few days, so a glance is enough.
+  glance = later.first(3).map { |listing, _| listing.show.date_and_time.strftime("%a %b %-d") }
+%>
+<div>
+  <%= render "shared/show_row", show: row.next_listing.show, link_path: manage_ticket_listing_path(row.next_listing), show_production: true,
+        show_canceled: true, right_panel: :ticket_sales, ticket_listing: row.next_listing, ticket_stats: row.next_stats %>
+  <% if later.any? %>
+    <details class="group mx-3">
+      <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center gap-2 rounded-b-lg group-open:rounded-none border border-t-0 border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 transition-colors">
+        <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <span class="font-medium text-gray-800 flex-shrink-0"><%= pluralize(more, "more date") %></span>
+        <span class="min-w-0 truncate group-open:hidden">· <%= glance.join(", ") %><%= ", …" if more > glance.size %></span>
+      </summary>
+      <div class="border border-t-0 border-gray-200 rounded-b-lg bg-white divide-y divide-gray-100">
+        <% later.each do |listing, stats| %>
+          <%
+            inventory = stats.inventory
+            sold = stats.sold + inventory.outside_sold
+            capacity = inventory.capacity
+            percent = capacity.to_i.positive? ? [ (sold * 100.0 / capacity).round, 100 ].min : nil
+            label, badge_classes = ticket_listing_status_badge(listing, inventory)
+          %>
+          <%= link_to manage_ticket_listing_path(listing), class: "flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors" do %>
+            <span class="w-24 flex-shrink-0 text-sm text-gray-900 tabular-nums"><%= listing.show.date_and_time.strftime("%a %b %-d") %></span>
+            <span class="w-16 flex-shrink-0 text-sm text-gray-600 tabular-nums"><%= listing.show.date_and_time.strftime("%-l:%M %p") %></span>
+            <span class="hidden sm:block flex-1 min-w-0">
+              <% if percent %>
+                <span class="block h-1.5 w-full max-w-[10rem] rounded-full bg-gray-100"><span class="block h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></span></span>
+              <% end %>
+            </span>
+            <span class="ml-auto text-sm text-gray-700 tabular-nums whitespace-nowrap"><span class="font-semibold text-gray-900"><%= sold %></span><%= " of #{capacity}" if capacity %></span>
+            <span class="w-24 flex-shrink-0 text-right text-xs font-medium <%= badge_classes[/text-\S+/] %>"><%= label %></span>
+          <% end %>
+        <% end %>
+        <% if row.total > row.dates.size %>
+          <%= link_to "All #{row.total} dates of #{row.production.name} →", manage_production_ticketing_path(row.production),
+                class: "block px-3 py-2 text-sm font-medium text-pink-600 hover:text-pink-700 hover:bg-gray-50" %>
+        <% end %>
+      </div>
+    </details>
+  <% end %>
+</div>

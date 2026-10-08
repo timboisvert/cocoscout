@@ -8,7 +8,6 @@
   box_office_url = short_link_url(code: ShortLink.canonical_for!(profile).code)
   coming_up = d.coming_up
   just_played = d.just_played
-  recent = d.recent_orders.to_a
 %>
 
 <div class="w-full mb-10">
@@ -66,20 +65,22 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">
     <div class="space-y-6 min-w-0">
-      <%# Coming up: every upcoming date, how it's selling, a click away. %>
+      <%# Coming up: each production once, at its next date, soonest first;
+          its next few dates open under it, and the rest on its own page. %>
       <section>
         <div class="flex items-baseline justify-between mb-2">
-          <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Coming up <span class="font-normal">(<%= d.upcoming_count %>)</span></h2>
+          <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Coming up <span class="font-normal normal-case tracking-normal"><%= "· #{pluralize(d.upcoming_production_count, 'production')}, #{pluralize(d.upcoming_count, 'date')}" if coming_up.any? %></span>
+          </h2>
           <%= link_to "Sell tickets for a production", manage_new_production_ticketing_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
         </div>
         <% if coming_up.any? %>
-          <div class="space-y-2">
-            <% coming_up.each do |listing, stats| %>
-              <%= render "shared/show_row", show: listing.show, link_path: manage_ticket_listing_path(listing), show_production: true,
-                    show_canceled: true, right_panel: :ticket_sales, ticket_listing: listing, ticket_stats: stats %>
+          <div class="space-y-3">
+            <% coming_up.each do |row| %>
+              <%= render "manage/ticketing/coming_up_production", row: row %>
             <% end %>
           </div>
-          <% if d.upcoming_count > coming_up.size %>
+          <% if d.upcoming_production_count > coming_up.size %>
             <%= link_to "All productions →", manage_ticket_listings_path, class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
           <% end %>
         <% else %>
@@ -88,35 +89,6 @@
             No upcoming shows are selling yet. Set a production up to sell its dates.
           </div>
         <% end %>
-      </section>
-
-      <section>
-        <div class="flex items-baseline justify-between mb-2">
-          <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Latest orders</h2>
-          <%= link_to "All orders →", manage_ticket_orders_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
-        </div>
-        <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
-          <% if recent.any? %>
-            <% recent.each do |order| %>
-              <% count = order.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
-              <%# An order since refunded or canceled: struck through, with its chip. %>
-              <% undone = order.status == "refunded" %>
-              <% struck = "line-through decoration-gray-300" if undone %>
-              <%= link_to manage_ticket_order_path(order.id), class: "flex flex-wrap items-center gap-x-4 gap-y-0.5 px-5 py-2.5 hover:bg-gray-50 #{'text-gray-500' if undone}" do %>
-                <span class="min-w-[10rem] flex-1 text-sm <%= undone ? 'text-gray-500' : 'text-gray-900' %> truncate">
-                  <span class="<%= struck %>"><%= order.buyer_name.presence || "No name" %></span>
-                  <% if undone %><span class="ml-1 inline-block"><%= render "manage/ticket_orders/status_badge", order: order %></span><% end %>
-                </span>
-                <span class="min-w-[10rem] flex-1 text-sm text-gray-600 truncate <%= struck %>"><%= order.ticket_listing.show.date_and_time.strftime("%b %-d") %> · <%= order.ticket_listing.display_title %></span>
-                <span class="text-sm text-gray-700 tabular-nums <%= struck %>"><%= pluralize(undone ? order.tickets.size : count, "ticket") %></span>
-                <span class="w-20 text-right text-sm font-medium <%= undone ? 'text-gray-500' : 'text-gray-900' %> tabular-nums <%= struck %>"><%= order.channel == "comp" ? "Comp" : ticket_price(order.total_cents) %></span>
-                <span class="w-24 text-right text-xs text-gray-500"><%= time_ago_in_words(order.paid_at) %> ago</span>
-              <% end %>
-            <% end %>
-          <% else %>
-            <p class="px-5 py-6 text-sm text-gray-600">No orders yet.</p>
-          <% end %>
-        </div>
       </section>
 
       <% if just_played.any? %>
