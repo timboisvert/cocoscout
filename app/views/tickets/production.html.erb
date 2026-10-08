@@ -41,7 +41,6 @@
 
   <div class="text-center space-y-1.5">
     <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= title %></h1>
-    <p class="text-sm text-gray-600"><%= @organization.name %></p>
     <% if ages %><p class="text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
     <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
   </div>
