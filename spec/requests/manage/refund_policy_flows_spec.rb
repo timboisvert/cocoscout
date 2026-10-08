@@ -178,7 +178,10 @@ RSpec.describe "Refund policy", type: :request do
     it "see the policy on the ticket page, at checkout, on their order and in their email" do
       travel_to(show_at - 3.days) do
         get tickets_event_path(org: "starsandgarters", event: listing.slug)
-        expect(response.body).to include("Refunds up to 24 hours before the show</summary>")
+        # Its own box at the foot of the page, after the checkout button and About.
+        body = response.body
+        expect(body).to include("Refund policy</h2>", "Refunds up to 24 hours before the show. Fees aren&#39;t refunded.")
+        expect(body.index("Refund policy</h2>")).to be > body.index("Continue to checkout")
 
         post tickets_start_checkout_path(org: "starsandgarters", event: listing.slug), params: { quantities: { general.id => 1 } }
         order = TicketOrder.order(:id).last

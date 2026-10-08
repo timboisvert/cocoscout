@@ -88,4 +88,6 @@
       <div class="mt-2 text-gray-700 space-y-3 leading-relaxed"><%= simple_format(description) %></div>
     </div>
   <% end %>
+
+  <% if selected %><%= render "tickets/refund_policy", listing: selected, tiers: @tiers %><% end %>
 </div>

@@ -1,0 +1,9 @@
+<%# The refund policy, its own small box at the foot of a ticket page, under
+    About (RefundPolicy). Nothing for a date whose tickets are all free.
+    Locals: listing, tiers. %>
+<% if tiers.any? && !tiers.all?(&:free?) %>
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm">
+    <h2 class="font-semibold text-gray-900">Refund policy</h2>
+    <p class="mt-1 text-gray-700"><%= RefundPolicy.for(listing).words %></p>
+  </div>
+<% end %>

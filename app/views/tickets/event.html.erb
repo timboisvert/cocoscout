@@ -94,4 +94,6 @@
       <div class="mt-2 text-gray-700 space-y-3 leading-relaxed"><%= simple_format(description) %></div>
     </div>
   <% end %>
+
+  <%= render "tickets/refund_policy", listing: @listing, tiers: @tiers %>
 </div>
