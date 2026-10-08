@@ -83,7 +83,7 @@ RSpec.describe "Wide images", type: :request do
     expect(show.reload.wide_image).to be_attached
 
     get manage_edit_show_path(production, show)
-    expect(response.body).to include("This show uses its own wide image")
+    expect(response.body).to include("This event uses its own wide image")
 
     patch manage_show_path(production, show), params: { show: { remove_wide_image: "1" } }
     expect(show.reload.wide_image).not_to be_attached

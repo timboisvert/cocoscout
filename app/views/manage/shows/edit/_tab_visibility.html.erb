@@ -1,68 +1,51 @@
-<%# Casting & Visibility tab — casting toggle + public listing. %>
+<%# Casting & Visibility: whether this event is cast and how, and whether
+    the public sees it. Locals: form, input_class. %>
 <%
+  kind = @show.event_type.titleize.downcase
   event_type_default = @production.event_type_publicly_visible?(@show.event_type)
   will_be_visible = @show.public_profile_visible.nil? ? event_type_default : @show.public_profile_visible
 %>
-<div class="space-y-6">
-  <%# Casting %>
+<%= render layout: "manage/shows/edit/card", locals: { title: "Casting" } do %>
   <div class="flex items-start justify-between gap-4">
-    <div class="flex-1">
-      <h4 class="text-sm font-semibold text-gray-900">Enable casting for this <%= @show.event_type.titleize.downcase %></h4>
-      <p class="text-xs text-gray-500 mt-1">
-        When enabled, you can assign cast members to roles for this event.
-        Shows, classes, and workshops default to on; rehearsals and meetings default to off.
-      </p>
+    <div>
+      <div class="text-sm font-medium text-gray-900">Cast this <%= kind %></div>
+      <div class="text-xs text-gray-600 mt-0.5">On, you can assign people to its roles. Shows, classes and workshops start on; rehearsals and meetings start off.</div>
     </div>
     <%= render "shared/toggle_switch", form: form, field: :casting_enabled %>
   </div>
 
-  <%# Casting style override (roles vs acts) — blank inherits the production's %>
-  <div class="border-t border-gray-200 pt-6">
-    <%= form.label :casting_mode, "Casting style", class: "block text-sm font-semibold text-gray-900 mb-1" %>
-    <p class="text-xs text-gray-500 mb-3">
-      <%= @production.name %> casts by <strong><%= @production.act_based? ? "acts" : "roles" %></strong>.
-      Choose a different style for this event only. Switching only changes how casting is presented and how per-act pay counts acts; assignments are kept.
-    </p>
+  <div class="pt-4 border-t border-gray-100">
+    <%= form.label :casting_mode, "Casting style", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
     <%= form.select :casting_mode,
           options_for_select([
-            [ "Same as production (#{@production.act_based? ? 'Acts' : 'Roles'})", "" ],
+            [ "Same as the production (#{@production.act_based? ? 'acts' : 'roles'})", "" ],
             [ "Roles", "role_based" ],
             [ "Acts", "act_based" ]
           ], @show.casting_mode.to_s),
-          {},
-          { class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" } %>
+          {}, { class: input_class } %>
+    <p class="text-xs text-gray-500 mt-1"><%= @production.name %> casts by <%= @production.act_based? ? "acts" : "roles" %>. A different style here changes how this <%= kind %>'s casting looks and how per-act pay counts acts; assignments are kept.</p>
   </div>
+<% end %>
 
-  <%# Public listing %>
-  <div class="border-t border-gray-200 pt-6">
-    <div class="flex items-start justify-between gap-4">
-      <div class="flex-1">
-        <h4 class="text-sm font-semibold text-gray-900">Show on <%= @production.name %>'s public listing</h4>
-        <p class="text-xs text-gray-500 mt-1">
-          When enabled, this event is visible to anyone viewing your public profile.
-          By default, <strong><%= @show.event_type %></strong> events are <strong><%= event_type_default ? "visible" : "hidden" %></strong>.
-        </p>
-      </div>
-      <label class="relative inline-flex items-center cursor-pointer">
-        <%= form.hidden_field :public_profile_visible, value: "false", id: "public_profile_visible_hidden" %>
-        <%= form.check_box :public_profile_visible,
-              { checked: will_be_visible, class: "sr-only peer",
-                data: { show_edit_target: "publicProfileCheckbox", action: "change->show-edit#publicProfileToggled" } },
-              true, false %>
-        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-      </label>
+<%= render layout: "manage/shows/edit/card", locals: { title: "Public listing" } do %>
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <div class="text-sm font-medium text-gray-900">Show it on <%= possessive(@production.name) %> public listing</div>
+      <div class="text-xs text-gray-600 mt-0.5">On, anyone viewing the public listing sees it. <%= @show.event_type.titleize.pluralize %> are <%= event_type_default ? "shown" : "hidden" %> unless you say otherwise here.</div>
     </div>
-
-    <% if @production.public_profile_enabled && @production.public_key.present? %>
-      <div class="mt-4 <%= 'hidden' unless will_be_visible %>" data-show-edit-target="publicProfileContent">
-        <%= render "shared/copy_url", url: public_profile_show_url(@production.public_key, @show), label: "This event's public listing URL:" %>
-      </div>
-    <% else %>
-      <p class="mt-4 text-sm text-gray-500">
-        Public listing is not enabled for <%= @production.name %>.
-        <a href="<%= edit_manage_production_path(@production) %>#tab-2" class="text-pink-500 hover:text-pink-600 underline">Enable it in production settings</a>
-        to share your schedule publicly.
-      </p>
-    <% end %>
+    <%= render "shared/toggle_switch", form: form, field: :public_profile_visible, checked: will_be_visible, checked_value: "true", unchecked_value: "false",
+          data: { show_edit_target: "publicProfileCheckbox", action: "change->show-edit#publicProfileToggled" } %>
   </div>
-</div>
+
+  <% if @production.public_profile_enabled && @production.public_key.present? %>
+    <div class="<%= 'hidden' unless will_be_visible %>" data-show-edit-target="publicProfileContent">
+      <%= render "shared/copy_url", url: public_profile_show_url(@production.public_key, @show), label: "This #{kind}'s public page" %>
+    </div>
+  <% elsif !@production.type_third_party? %>
+    <p class="text-sm text-gray-600">
+      <%= possessive(@production.name) %> public listing is off.
+      <%= link_to "Turn it on in the production's settings", edit_manage_production_path(@production, tab: 5), class: "font-medium text-pink-600 hover:text-pink-700" %>
+      to share its schedule.
+    </p>
+  <% end %>
+<% end %>

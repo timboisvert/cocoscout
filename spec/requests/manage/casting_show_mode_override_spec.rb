@@ -361,7 +361,7 @@ RSpec.describe "Manage::Casting per-show casting-mode override", type: :request 
     it "offers the casting-style select on the edit screen and saves it" do
       get edit_manage_production_show_path(production, plain_night)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Same as production (Roles)")
+      expect(response.body).to match(/Same as the production \((roles|acts)\)/)
       expect(response.body).to include('name="show[casting_mode]"')
 
       patch manage_show_path(production, plain_night),

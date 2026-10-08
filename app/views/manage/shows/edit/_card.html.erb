@@ -1,0 +1,10 @@
+<%# One card on an event's settings, the way the ticketing settings draw
+    theirs: a heading, a line on what it's for, then the fields (the block).
+    Locals: title, intro (optional), tone (optional: :danger for a red edge). %>
+<div class="bg-white border <%= local_assigns[:tone] == :danger ? 'border-red-200' : 'border-gray-200' %> rounded-lg p-5 space-y-4">
+  <div>
+    <h3 class="font-semibold text-gray-900"><%= title %></h3>
+    <% if local_assigns[:intro].present? %><p class="text-sm text-gray-600 mt-1"><%= intro %></p><% end %>
+  </div>
+  <%= yield %>
+</div>

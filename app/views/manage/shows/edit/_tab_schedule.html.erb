@@ -1,102 +1,67 @@
-<%# Schedule tab — read-first. This occurrence's date/time is always inline;
-   series-wide schedule changes go through the guided "Change series schedule"
-   modal (extend / reschedule / change pattern). %>
-<div class="space-y-6">
+<%# Schedule: this event's date, time and length, and what the cast needs
+    to know about arriving. A series' own schedule changes through the guided
+    "Change series schedule" modal (extend, reschedule, change the pattern).
+    Locals: form, input_class. %>
+<%= render layout: "manage/shows/edit/card", locals: { title: "When", intro: (@show.recurring? ? "This event's own date and time. The series' schedule changes from the button below." : nil) } do %>
   <% if @show.recurring? %>
     <%
       series = @show.recurrence_group.order(:date_and_time)
-      series_count = series.count
-      first_show = series.first
-      last_show = series.last
       pattern_label = @show.recurrence_pattern.present? ? @show.recurrence_pattern.tr("_", " ").titleize : "Recurring"
     %>
-    <%# Series summary + single entry point to the guided flow %>
-    <div class="rounded-lg bg-pink-50 border border-pink-200 p-4">
-      <div class="flex items-start justify-between gap-4">
-        <div class="flex items-start gap-2">
-          <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-          </svg>
-          <div>
-            <p class="text-sm font-medium text-pink-900"><%= pattern_label %> series · <%= pluralize(series_count, "event") %></p>
-            <p class="text-sm text-pink-700 mt-0.5">
-              <%= first_show.date_and_time.strftime("%b %-d, %Y") %> – <%= last_show.date_and_time.strftime("%b %-d, %Y") %>
-              at <%= @show.date_and_time.strftime("%-l:%M %p") %>
-            </p>
-          </div>
+    <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-start gap-2 min-w-0">
+        <svg class="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        <div>
+          <p class="text-sm font-medium text-gray-900"><%= pattern_label %> series · <%= pluralize(series.count, "event") %></p>
+          <p class="text-sm text-gray-600">
+            <%= series.first.date_and_time.strftime("%b %-d, %Y") %> to <%= series.last.date_and_time.strftime("%b %-d, %Y") %>
+            at <%= @show.date_and_time.strftime("%-l:%M %p") %>
+          </p>
         </div>
-        <%= render "shared/button",
-              text: "Change series schedule",
-              variant: "outline",
-              size: "small",
-              path: recurring_series_manage_production_shows_path(@production, recurrence_group_id: @show.recurrence_group_id),
-              data: { turbo_frame: "recurring_series_modal" } %>
       </div>
+      <%= render "shared/button", text: "Change series schedule", variant: "secondary", size: "small",
+            path: recurring_series_manage_production_shows_path(@production, recurrence_group_id: @show.recurrence_group_id),
+            data: { turbo_frame: "recurring_series_modal" } %>
     </div>
   <% end %>
 
-  <%# This occurrence's date/time + duration %>
-  <div>
-    <% if @show.recurring? %>
-      <h4 class="text-sm font-semibold text-gray-900 mb-3">This occurrence</h4>
-    <% end %>
-    <div class="flex flex-wrap gap-4">
-      <div>
-        <%= form.label :date_and_time, "Date and time", class: "block text-sm font-medium text-gray-700 mb-2" %>
-        <%= form.datetime_field :date_and_time,
-              class: "block w-full sm:w-64 rounded-lg border px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500 #{@show.errors[:date_and_time].any? ? 'border-pink-500' : 'border-gray-300'}" %>
-      </div>
-      <div>
-        <%= form.label :duration_minutes, "Duration", class: "block text-sm font-medium text-gray-700 mb-2" %>
-        <%= render "shared/duration_field",
-              name: "#{form.object_name}[duration_minutes]",
-              value: @show.duration_minutes || Show::DEFAULT_DURATION_MINUTES,
-              max_hours: 24 %>
-      </div>
+  <div class="flex flex-wrap gap-4">
+    <div>
+      <%= form.label :date_and_time, "Date and time", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+      <%= form.datetime_field :date_and_time, class: "#{input_class} sm:w-64 #{'!border-pink-500' if @show.errors[:date_and_time].any?}" %>
+    </div>
+    <div>
+      <p class="block text-sm font-medium text-gray-700 mb-1.5">How long</p>
+      <%= render "shared/duration_field", name: "#{form.object_name}[duration_minutes]",
+            value: @show.duration_minutes || Show::DEFAULT_DURATION_MINUTES, max_hours: 24 %>
     </div>
   </div>
+<% end %>
 
-  <%# Call time %>
-  <div class="border-t border-gray-200 pt-6" data-controller="call-time">
+<%= render layout: "manage/shows/edit/card", locals: { title: "For the cast" } do %>
+  <div data-controller="call-time">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h4 class="text-sm font-semibold text-gray-900">Call time</h4>
-        <p class="text-xs text-gray-500 mt-1">Set a separate arrival time for cast before the event starts.</p>
+        <div class="text-sm font-medium text-gray-900">Call time</div>
+        <div class="text-xs text-gray-600 mt-0.5">A separate arrival time for the cast, before the event starts.</div>
       </div>
       <%= render "shared/toggle_switch", form: form, field: :call_time_enabled,
             data: { call_time_target: "enabledToggle", action: "change->call-time#toggleEnabled" } %>
     </div>
-    <div data-call-time-target="callTimeFields" class="mt-3 <%= @show.call_time_enabled? ? '' : 'hidden' %>">
-      <%= form.label :call_time, "When should cast arrive?", class: "block text-sm font-medium text-gray-700 mb-2" %>
-      <%= form.time_field :call_time, value: @show.call_time&.strftime("%H:%M"),
-            class: "block w-full sm:w-48 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500",
+    <div data-call-time-target="callTimeFields" class="mt-3 <%= 'hidden' unless @show.call_time_enabled? %>">
+      <%= form.label :call_time, "When should the cast arrive?", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+      <%= form.time_field :call_time, value: @show.call_time&.strftime("%H:%M"), class: "#{input_class} sm:w-48",
             data: { call_time_target: "callTimeField" } %>
     </div>
   </div>
 
-  <%# Attendance %>
-  <div class="border-t border-gray-200 pt-6">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h4 class="text-sm font-semibold text-gray-900">Attendance tracking</h4>
-        <p class="text-xs text-gray-500 mt-1">Track who attended this event and record walk-ins.</p>
-      </div>
-      <%= render "shared/toggle_switch", form: form, field: :attendance_enabled %>
+  <div class="pt-4 border-t border-gray-100 flex items-start justify-between gap-4">
+    <div>
+      <div class="text-sm font-medium text-gray-900">Attendance</div>
+      <div class="text-xs text-gray-600 mt-0.5">Track who came, and record walk-ins.</div>
     </div>
+    <%= render "shared/toggle_switch", form: form, field: :attendance_enabled %>
   </div>
-
-  <% if @show.recurring? %>
-    <%# Bulk-apply the non-schedule changes on this form to the whole series.
-        Schedule/date changes are never bulk-applied here — those go through the
-        Change series schedule modal. %>
-    <div class="border-t border-gray-200 pt-6">
-      <label class="flex items-start gap-2">
-        <%= form.check_box :recurrence_edit_scope, { class: "mt-0.5 h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 accent-pink-500" }, "all", "this" %>
-        <span class="text-sm text-gray-700">
-          <span class="block font-medium text-gray-900">Apply my changes to all <%= series_count %> events in the series</span>
-          <span class="block text-xs text-gray-500 mt-0.5">Applies the Details, Location, Casting &amp; Visibility, and media changes to every event. Date, time, and recurrence are changed from “Change series schedule” above.</span>
-        </span>
-      </label>
-    </div>
-  <% end %>
-</div>
+<% end %>

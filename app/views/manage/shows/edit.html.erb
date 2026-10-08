@@ -1,70 +1,87 @@
-<% content_for :title, "Edit #{ @show.event_type.titleize }: #{@show.date_and_time.strftime("%A, %B %-d, %Y")}" %>
+<% content_for :title, "#{@show.display_name} · #{@show.date_and_time.strftime("%a, %b %-d")} · Settings" %>
 
-<% location_spaces_map = Current.organization.locations.includes(:location_spaces).each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } } %>
-<div class="w-full mb-10" data-controller="location-modal tabs" data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>" data-location-modal-spaces-value="<%= location_spaces_map.to_json %>">
-  <%= render partial: "shared/notice", locals: { notice: notice } %>
+<%
+  location_spaces_map = Current.organization.locations.includes(:location_spaces).each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } }
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  when_words = @show.date_and_time.strftime("%a, %b %-d · %-l:%M %p")
+  # Each tab, and whether it has fields to save (Linked Events and the Danger
+  # Zone act through their own buttons and modals).
+  edit_tabs = [
+    { label: "Details", partial: "tab_details" },
+    { label: "Schedule", partial: "tab_schedule" },
+    { label: "Location", partial: "tab_location" },
+    { label: "Casting & Visibility", partial: "tab_visibility" },
+    { label: "Images, Links & Notes", partial: "tab_media" },
+    { label: "Tickets", partial: "tab_tickets", pro: true },
+    { label: "Linked Events", partial: "tab_linked", save: false },
+    { label: "Danger Zone", partial: "tab_danger", danger: true, save: false }
+  ]
+  ticketing_locked = !@production.organization.feature_available?(:ticketing)
+%>
+<div class="w-full mb-10" data-controller="location-modal tabs" data-tabs-plain-value="true"
+     data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>" data-location-modal-spaces-value="<%= location_spaces_map.to_json %>">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      ["Shows & Events", manage_shows_path],
-      [@production.name, manage_production_shows_path(@production)]
+      [ "Shows & Events", manage_shows_path ],
+      [ @production.name, manage_production_shows_path(@production) ],
+      [ when_words, manage_show_path(@production, @show) ]
     ],
-    text: @show.date_and_time.strftime("%A, %B %-d, %Y"),
+    text: "Settings",
     links: []
   } %>
 
-  <%
-    edit_tabs = [
-      { label: "Details" },
-      { label: "Schedule" },
-      { label: "Location" },
-      { label: "Casting & Visibility" },
-      { label: "Images, Links & Notes" },
-      { label: "Tickets", pro: true },
-      { label: "Linked Events" },
-      { label: "Danger Zone", danger: true }
-    ]
-  %>
-
-  <%# Mobile: tab dropdown %>
-  <div class="sm:hidden mt-6">
-    <select data-tabs-target="menu" data-action="change->tabs#selectMenu"
-            class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500">
-      <% edit_tabs.each_with_index do |tab, i| %>
-        <option value="<%= i %>"><%= tab[:label] %></option>
-      <% end %>
-    </select>
-  </div>
-
-  <%# Desktop: tab strip %>
-  <nav class="hidden sm:flex space-x-1 border-b border-gray-200 mt-6 mb-6 overflow-x-auto">
-    <% edit_tabs.each_with_index do |tab, i| %>
-      <button type="button" data-tabs-target="tab" data-index="<%= i %>" data-action="tabs#select"
-              class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap <%= tab[:pro] ? 'inline-flex items-center gap-1' : '' %> <%= tab[:danger] ? 'text-red-500' : '' %> <%= i.zero? ? 'border-pink-500 text-pink-600 bg-white' : 'border-transparent text-gray-500 bg-gray-50' %>">
-        <%= tab[:label] %>
-        <% if tab[:pro] %>
-          <%= render "shared/pro_marker" %>
-          <%= render "shared/pro_marker", kind: :lock unless @production.organization.feature_available?(:ticketing) %>
-        <% end %>
-      </button>
+  <%= form_with(model: [ :manage, @production, @show ], class: "contents", data: { controller: "show-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
+    <%# One event of a series: say so once, above every tab, with the one
+        switch that sends a save to all of them. %>
+    <% if @show.recurring? %>
+      <% series = @show.recurrence_group.order(:date_and_time) %>
+      <div class="mb-5 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3 max-w-3xl">
+        <div class="text-sm text-pink-900">
+          <span class="font-semibold">One of <%= pluralize(series.count, "event") %> in a series</span>,
+          <%= series.first.date_and_time.strftime("%b %-d") %> to <%= series.last.date_and_time.strftime("%b %-d, %Y") %>.
+          Saving changes only this one unless you switch this on.
+        </div>
+        <div class="flex items-center gap-2 text-sm font-medium text-pink-900">
+          <span>Save to all <%= series.count %></span>
+          <%= render "shared/toggle_switch", form: form, field: :recurrence_edit_scope, checked: false, checked_value: "all", unchecked_value: "this" %>
+        </div>
+      </div>
     <% end %>
-  </nav>
 
-  <%= form_with(model: [:manage, @production, @show], class: "contents", data: { controller: "show-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
-
-    <div data-tabs-target="panel"><%= render "manage/shows/edit/tab_details", form: form %></div>
-    <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_schedule", form: form %></div>
-    <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_location", form: form, location_spaces_map: location_spaces_map %></div>
-    <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_visibility", form: form %></div>
-    <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_media", form: form %></div>
-    <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_tickets", form: form %></div>
-    <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/linked_events", show: @show, production: @production %></div>
-    <div data-tabs-target="panel" class="hidden"><%= render "manage/shows/edit/tab_danger", form: form %></div>
-
-    <div class="border-t border-gray-200 pt-5 mt-8 flex items-center gap-2">
-      <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
-      <%= render "shared/button", text: "Back", variant: "ghost-cancel", size: "medium", path: "javascript:history.back()", type: :button %>
+    <%# Mobile: the tabs as a menu. %>
+    <div class="sm:hidden mb-5">
+      <select data-tabs-target="menu" data-action="change->tabs#selectMenu" aria-label="Settings section" class="<%= input_class %>">
+        <% edit_tabs.each_with_index do |tab, i| %>
+          <option value="<%= i %>"><%= tab[:label] %></option>
+        <% end %>
+      </select>
     </div>
 
+    <%# Desktop: the tab strip, drawn as the settings pages draw theirs. %>
+    <nav class="hidden sm:flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" aria-label="Settings sections">
+      <% edit_tabs.each_with_index do |tab, i| %>
+        <button type="button" data-tabs-target="tab" data-index="<%= i %>" data-action="tabs#select"
+                class="inline-flex items-center gap-1 px-4 py-2 -mb-px text-sm font-medium whitespace-nowrap border-b-2 transition-colors cursor-pointer hover:text-gray-700 <%= i.zero? ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500' %> <%= 'text-red-500' if tab[:danger] %>">
+          <%= tab[:label] %>
+          <% if tab[:pro] %>
+            <%= render "shared/pro_marker" %>
+            <%= render "shared/pro_marker", kind: :lock if ticketing_locked %>
+          <% end %>
+        </button>
+      <% end %>
+    </nav>
+
+    <div class="max-w-3xl">
+      <% edit_tabs.each_with_index do |tab, i| %>
+        <div data-tabs-target="panel" class="space-y-6 <%= 'hidden' unless i.zero? %>">
+          <%= render "manage/shows/edit/#{tab[:partial]}", form: form, input_class: input_class, location_spaces_map: location_spaces_map %>
+          <% unless tab[:save] == false || (tab[:pro] && ticketing_locked) %>
+            <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
   <% end %>
 
   <%= render "manage/shows/edit/move_modal" %>

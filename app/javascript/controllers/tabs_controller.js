@@ -2,7 +2,9 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["tab", "panel", "hiddenField", "reviewCheckbox", "sendSection", "menu"]
-    static values = { initialTab: { type: Number, default: 0 }, selectKey: String }
+    // plain: tabs drawn the settings-page way (no gray fill on the inactive
+    // ones), as shared/settings_layout draws its strip.
+    static values = { initialTab: { type: Number, default: 0 }, selectKey: String, plain: Boolean }
 
     connect() {
         let initialTab = this.initialTabValue;
@@ -102,13 +104,15 @@ export default class extends Controller {
     show(idx) {
         // Keep the mobile dropdown in sync when tabs change via any path.
         if (this.hasMenuTarget) this.menuTarget.value = String(idx);
+        const fill = this.plainValue ? [] : ["bg-white"]
+        const unfilled = this.plainValue ? [] : ["bg-gray-50"]
         this.tabTargets.forEach((tab, i) => {
             if (i === idx) {
-                tab.classList.add("border-pink-500", "text-pink-600", "bg-white");
-                tab.classList.remove("border-transparent", "text-gray-500", "bg-gray-50");
+                tab.classList.add("border-pink-500", "text-pink-600", ...fill);
+                tab.classList.remove("border-transparent", "text-gray-500", ...unfilled);
             } else {
-                tab.classList.remove("border-pink-500", "text-pink-600", "bg-white");
-                tab.classList.add("border-transparent", "text-gray-500", "bg-gray-50");
+                tab.classList.remove("border-pink-500", "text-pink-600", ...fill);
+                tab.classList.add("border-transparent", "text-gray-500", ...unfilled);
             }
         });
         this.panelTargets.forEach((panel, i) => {

@@ -1,0 +1,6 @@
+<%# Linked Events: this event joined with others (a show and its
+    rehearsal, say) so they're managed together. Saves through its own
+    modal. Locals: form. %>
+<%= render layout: "manage/shows/edit/card", locals: { title: "Linked events" } do %>
+  <%= render "manage/shows/linked_events", show: @show, production: @production %>
+<% end %>

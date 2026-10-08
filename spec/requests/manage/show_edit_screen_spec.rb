@@ -28,7 +28,7 @@ RSpec.describe "Edit-show screen", type: :request do
     expect(response.body).to include("Danger Zone")
     # Event type is now a radio-card grid, not a <select>.
     expect(response.body).to include('name="show[event_type]"')
-    expect(response.body).to include("Save Changes")
+    expect(response.body).to include(">Save<")
   end
 
   it "renders for a recurring show without error" do

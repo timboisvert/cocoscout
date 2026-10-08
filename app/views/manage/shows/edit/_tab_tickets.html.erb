@@ -9,7 +9,6 @@
   listing = @show.ticket_listing
   listing = nil if listing&.status == "canceled"
   own = @show.tickets_override?
-  input_class = "block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
   inherited = case production.tickets_mode
               when "cocoscout" then "Sold on CocoScout#{listing ? ': this date is listed' : ''}"
               when "elsewhere" then "Sold on #{TicketLink.recognize(production.tickets_url)&.dig(:name) || 'another site'}"
@@ -19,7 +18,8 @@
   mode = @show.tickets_mode.presence || "elsewhere"
 %>
 <% if organization.feature_available?(:ticketing) %>
-  <div class="space-y-6" data-controller="fieldset-toggle">
+  <%= render layout: "manage/shows/edit/card", locals: { title: "Tickets", intro: "Where people get tickets for this date." } do %>
+  <div class="space-y-5" data-controller="fieldset-toggle">
     <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
       <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">The production's answer</div>
       <div class="mt-1 text-sm font-medium text-gray-900"><%= inherited %></div>
@@ -32,7 +32,7 @@
       </p>
     </div>
 
-    <div class="pb-5 border-b border-gray-200 flex items-center justify-between gap-4">
+    <div class="flex items-center justify-between gap-4">
       <div>
         <div class="text-sm font-medium text-gray-900">Set tickets for this date only</div>
         <div class="text-xs text-gray-600 mt-0.5">
@@ -63,6 +63,7 @@
       </label>
     </fieldset>
   </div>
+  <% end %>
 <% else %>
   <%= render "manage/billing/upgrade", paywall: Manage::PaidFeatureGate::FEATURE_DETAILS[:ticketing], feature: :ticketing %>
 <% end %>

@@ -10,6 +10,7 @@
     checked         - force checked state (optional; omit to use the model value)
     data            - data attributes for the checkbox (optional)
     unchecked_value - paired hidden-field false value (optional)
+    checked_value   - the value sent when on (optional, default "1")
 
   Or a bare checkbox (no form builder):
     name         - the input's name (optional: a JS-only switch can have none)
@@ -21,7 +22,7 @@
   cb_options = { class: "sr-only peer" }
   cb_options[:checked] = local_assigns[:checked] if local_assigns.key?(:checked)
   cb_options[:data] = local_assigns[:data] if local_assigns[:data].present?
-  checked_value = "1"
+  checked_value = local_assigns[:checked_value] || "1"
   unchecked_value = local_assigns[:unchecked_value]
   form = local_assigns[:form]
 %>

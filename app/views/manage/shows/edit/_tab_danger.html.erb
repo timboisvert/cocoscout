@@ -1,13 +1,13 @@
-<%# Danger Zone tab — triggers only. The form-bearing modals are rendered
+<%# Danger Zone tab, triggers only. The form-bearing modals are rendered
    outside the edit form (see edit/_danger_modals), opened here by id. %>
 <% event_label = @show.event_type.titleize %>
 <div class="space-y-4">
   <%# Move %>
-  <div class="bg-white border border-gray-200 rounded-lg p-6">
+  <div class="bg-white border border-gray-200 rounded-lg p-5">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h3 class="text-sm font-semibold text-gray-900">Move to another production</h3>
-        <p class="text-sm text-gray-500 mt-1">Move this <%= @show.event_type %> to a different production you have access to. Assignments and vacancies move with it.</p>
+        <h3 class="font-semibold text-gray-900">Move to another production</h3>
+        <p class="text-sm text-gray-600 mt-1">Move this <%= @show.event_type %> to a different production you have access to. Assignments and vacancies move with it.</p>
       </div>
       <%= render "shared/button", text: "Move #{event_label}", variant: "secondary", size: "small", type: :button,
             data: { action: "show-edit#openMoveModal" } %>
@@ -16,11 +16,11 @@
 
   <% if @show.canceled %>
     <%# Restore %>
-    <div class="bg-white border border-gray-200 rounded-lg p-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-5">
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h3 class="text-sm font-semibold text-gray-900">Restore this <%= @show.event_type %></h3>
-          <p class="text-sm text-gray-500 mt-1">This event is canceled. Restore it to the calendar.</p>
+          <h3 class="font-semibold text-gray-900">Restore this <%= @show.event_type %></h3>
+          <p class="text-sm text-gray-600 mt-1">This event is canceled. Restore it to the calendar.</p>
         </div>
         <%= render "shared/button", text: "Uncancel", variant: "secondary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: "danger-uncancel-modal" } %>
@@ -28,11 +28,11 @@
     </div>
   <% else %>
     <%# Cancel %>
-    <div class="bg-white border border-red-200 rounded-lg p-6">
+    <div class="bg-white border border-red-200 rounded-lg p-5">
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h3 class="text-sm font-semibold text-gray-900">Cancel this <%= @show.event_type %></h3>
-          <p class="text-sm text-gray-500 mt-1">Mark it canceled but keep it on the calendar (preserves history). You can uncancel later.</p>
+          <h3 class="font-semibold text-gray-900">Cancel this <%= @show.event_type %></h3>
+          <p class="text-sm text-gray-600 mt-1">Mark it canceled but keep it on the calendar (preserves history). You can uncancel later.</p>
         </div>
         <%= render "shared/button", text: "Cancel #{event_label}", variant: "primary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: "danger-cancel-modal" } %>
@@ -41,11 +41,11 @@
   <% end %>
 
   <%# Delete %>
-  <div class="bg-white border border-red-200 rounded-lg p-6">
+  <div class="bg-white border border-red-200 rounded-lg p-5">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h3 class="text-sm font-semibold text-gray-900">Permanently delete</h3>
-        <p class="text-sm text-gray-500 mt-1">Remove this <%= @show.event_type %> and all its data. This can't be undone.</p>
+        <h3 class="font-semibold text-gray-900">Permanently delete</h3>
+        <p class="text-sm text-gray-600 mt-1">Remove this <%= @show.event_type %> and all its data. This can't be undone.</p>
       </div>
       <%= render "shared/button", text: "Delete #{event_label}", variant: "primary", size: "small", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: "danger-delete-modal" } %>
