@@ -3,12 +3,21 @@
   title = setup&.title.presence || @production.name
   description = setup&.description.presence || @production.description.presence
   notes = setup ? [ setup.door_note, setup.accessibility_note ].compact_blank : []
-  wide = @production.wide_image.attached? ? @production.safe_wide_image_variant : nil
-  poster = wide ? nil : @production.safe_poster_variant(:large) || @production.safe_poster_variant(:small)
-  image_url = (wide || poster) && url_for(wide || poster)
   page_url = ticket_production_url(@ticketing_profile, @production)
   date_path = ->(listing) { tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: listing.slug, code: @code, **embed_params) }
   selected = @listing
+  # The picture is the chosen date's (Show#ticket_page_image: its own wide
+  # image, its own poster, then the production's), so each date's page
+  # shows that date's art; with no date to show, the production's.
+  production_wide = @production.wide_image.attached? ? @production.safe_wide_image_variant : nil
+  production_image = production_wide || @production.safe_poster_variant(:large) || @production.safe_poster_variant(:small)
+  date_image, date_page_image = selected && ticket_page_image(selected)
+  image = date_image || production_image
+  wide = date_image ? date_page_image.wide? : production_wide.present?
+  image_url = image && url_for(image)
+  # A shared link to the production shows the production's picture; one to a
+  # date shows that date's.
+  share_image_url = params[:date].present? ? image_url : (production_image && url_for(production_image)) || image_url
   # The chosen date's ages, which can differ from the production's.
   ages = selected ? selected.age_words : setup&.age_words
   show = selected&.show
@@ -25,8 +34,8 @@
   <meta property="og:description" content="<%= description.to_s.truncate(200) %>">
   <meta property="og:type" content="website">
   <meta property="og:url" content="<%= page_url %>">
-  <% if image_url %>
-    <meta property="og:image" content="<%= image_url %>">
+  <% if share_image_url %>
+    <meta property="og:image" content="<%= share_image_url %>">
     <meta name="twitter:card" content="summary_large_image">
   <% end %>
 <% end %>

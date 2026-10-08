@@ -126,5 +126,24 @@ RSpec.describe "Wide images", type: :request do
       expect(response.body).to include("w-full h-auto rounded-2xl")
       expect(response.body).not_to include("object-cover")
     end
+
+    it "leads the production's page with the chosen date's own picture (Tim, 2026-10-08)" do
+      production.wide_image.attach(picture)
+      later = create(:show, production: production, date_and_time: 12.days.from_now)
+      TicketListing.create!(show: later, status: "on_sale").ticket_tiers.create!(name: "General", price_cents: 2_000)
+      later.wide_image.attach(picture)
+      date_art = later.reload.wide_image.blob.signed_id
+      production_art = production.reload.wide_image.blob.signed_id
+
+      get tickets_event_path(org: "starsandgarters", event: production.public_key, date: later.ticket_listing.slug)
+      expect(response.body).to include(date_art)
+      expect(response.body).to match(/og:image" content="[^"]*#{date_art}/)
+
+      # The first date has no art of its own, so it shows the production's;
+      # a link to the production shares the production's picture.
+      get tickets_event_path(org: "starsandgarters", event: production.public_key)
+      expect(response.body).not_to include(date_art)
+      expect(response.body).to match(/og:image" content="[^"]*#{production_art}/)
+    end
   end
 end
