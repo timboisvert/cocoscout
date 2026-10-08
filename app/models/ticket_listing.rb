@@ -76,6 +76,15 @@ class TicketListing < ApplicationRecord
     title.presence || production_ticketing&.title.presence || show.secondary_name.presence || production&.name || show.display_name
   end
 
+  # A title this date has of its own, or nil: one set on its ticketing Page
+  # tab, or a name given to the show that isn't just the suggested one (when
+  # the production's ticketing doesn't title every date). Its ticket page
+  # leads with it, and its manager page says it.
+  def own_title
+    mine = title.presence || (show&.name_subtitle.presence if production_ticketing&.title.blank?)
+    mine unless mine == (production_ticketing&.title.presence || production&.name)
+  end
+
   # The production's ticketing setup, when it has one.
   def production_ticketing
     return @production_ticketing if defined?(@production_ticketing)

@@ -5,8 +5,7 @@
   # A date with a title of its own (set on its ticketing Page tab, or a name
   # given to the show that isn't just the suggested one) leads with it, and
   # the production's name goes under the place (Tim, 2026-10-08).
-  own_title = selected && (selected.title.presence || (selected.show.name_subtitle.presence if setup&.title.blank?))
-  own_title = nil if own_title == title
+  own_title = selected&.own_title
   heading = own_title || title
   share_title = params[:date].present? ? heading : title
   # The chosen date's words and notes (its own, else the production's), so a

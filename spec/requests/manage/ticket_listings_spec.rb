@@ -23,6 +23,25 @@ RSpec.describe "Manage ticket listings", type: :request do
     let!(:listing) { TicketListing.create!(show: friday) }
     let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60) }
 
+    it "says a title of its own on its page, and only one of its own" do
+      get manage_ticket_listing_path(listing)
+      expect(response.body).not_to include("This date's own title")
+
+      listing.update!(title: "Twilight: Breaking Dawn Part 2")
+      get manage_ticket_listing_path(listing)
+      expect(response.body).to include("This date's own title", "Twilight: Breaking Dawn Part 2",
+                                       manage_edit_ticket_listing_path(listing, section: "page"))
+
+      # The suggested show name, or the production's own, isn't a title of its own.
+      listing.update!(title: nil)
+      friday.update!(secondary_name: friday.suggested_name)
+      expect(TicketListing.find(listing.id).own_title).to be_nil
+      friday.update!(secondary_name: "Opening Night")
+      expect(TicketListing.find(listing.id).own_title).to eq("Opening Night")
+      listing.update!(title: "Improvised Animorphs")
+      expect(TicketListing.find(listing.id).own_title).to be_nil
+    end
+
     it "lists its production on Shows, and the date on the production's page, draft then on sale" do
       get manage_ticket_listings_path
       expect(response.body).to include("Improvised Animorphs", manage_production_ticketing_path(production), "1 upcoming date")
