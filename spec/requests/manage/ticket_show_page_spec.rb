@@ -34,6 +34,9 @@ RSpec.describe "Manage a show's tickets", type: :request do
     get manage_ticket_listing_path(listing)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("3 of 40", "$60.00", "By ticket type", "Guest list", "Dana Scully", "Fox Mulder", "1 of 2 in")
+    # By ticket type: what it's listed at, then sold, comped, remaining.
+    expect(response.body).to include(">Price</th>", ">Listed</th>", ">Sold</th>", ">Comps</th>", ">Remaining</th>", "$20.00 · 40 listed · 3 sold · 37 remaining")
+    expect(response.body).not_to include("In checkout")
 
     get manage_ticket_listing_path(listing, guests: "in")
     expect(response.body).to include("Dana Scully")

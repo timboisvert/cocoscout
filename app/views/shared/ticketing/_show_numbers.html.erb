@@ -62,12 +62,10 @@
       so or out of seats (sold here, sold elsewhere and comps all count). A
       type no longer sold shows only while someone holds a ticket on it. %>
   <%
-    # Under a type's Sold: where they sold when some sold elsewhere, then its
-    # comps, a line each so the column stays narrow.
+    # Under a type's Sold, when some sold elsewhere: how many here, then each
+    # other site, a line each so the column stays narrow.
     type_notes = lambda do |row|
-      lines = row.outside.positive? ? [ "#{row.sold_here} here", *stats.outside_lines(tier: row.tier) ] : []
-      lines << "#{pluralize(row.comps, 'comp')} set aside" if row.comps.positive?
-      lines
+      row.outside.positive? ? [ "#{row.sold_here} here", *stats.outside_lines(tier: row.tier) ] : []
     end
     type_rows = stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }.map do |row|
       out_of_seats = row.tier.archived_at.nil? && row.remaining == 0
@@ -96,7 +94,7 @@
               <% if r[:state] %><span class="text-xs font-medium">· <%= r[:state] %></span><% end %>
             </div>
             <div class="mt-0.5 text-xs tabular-nums <%= r[:tone] || 'text-gray-600' %>">
-              <%= ticket_price(row.tier.price_cents) %> · <%= row.sold_anywhere %><%= " of #{row.seats_to_sell}" if row.seats_to_sell %> sold · <%= row.remaining.nil? ? "no limit" : "#{row.remaining} remaining" %><%= " · #{row.held} in checkout" if row.held.positive? %>
+              <%= ticket_price(row.tier.price_cents) %> · <%= row.seats ? "#{row.seats} listed" : "no limit" %> · <%= row.sold_anywhere %> sold<%= " · #{pluralize(row.comps, 'comp')}" if row.comps.positive? %><%= " · #{row.remaining} remaining" unless row.remaining.nil? %>
             </div>
             <% type_notes.call(row).each do |line| %><div class="text-xs text-gray-500"><%= line %></div><% end %>
           </div>
@@ -113,9 +111,12 @@
             <th class="px-5 py-2 text-left font-medium">Ticket</th>
             <%# Left-aligned under their headings, except Sales: the money lines
                 up on the right (Tim, 2026-10-09). %>
+            <%# What it's listed at and how many, then what became of them: sold
+                (here or elsewhere), comped, remaining (Tim, 2026-10-09). %>
             <th class="px-3 py-2 text-left font-medium">Price</th>
+            <th class="px-3 py-2 text-left font-medium">Listed</th>
             <th class="px-3 py-2 text-left font-medium">Sold</th>
-            <th class="px-3 py-2 text-left font-medium">In checkout</th>
+            <th class="px-3 py-2 text-left font-medium">Comps</th>
             <th class="px-3 py-2 text-left font-medium">Remaining</th>
             <th class="px-5 py-2 text-right font-medium">Sales</th>
             <% unless read_only %><th class="w-10"><span class="sr-only">Actions</span></th><% end %>
@@ -124,19 +125,18 @@
         <tbody class="divide-y divide-gray-100">
           <% type_rows.each do |r| %>
             <% row = r[:row] %>
-            <tr class="whitespace-nowrap <%= r[:tone] %>">
+            <tr class="whitespace-nowrap align-top <%= r[:tone] %>">
               <td class="px-5 py-2.5 <%= r[:tone] || 'text-gray-900' %>">
                 <%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %>
                 <% if r[:state] %><span class="ml-1 text-xs font-medium">· <%= r[:state] %></span><% end %>
               </td>
               <td class="px-3 py-2.5 tabular-nums"><%= ticket_price(row.tier.price_cents) %></td>
-              <%# Sold anywhere, of the seats once comps are set aside, as the Sold
-                  tile says it; where they sold and the comps under it, a line each. %>
+              <td class="px-3 py-2.5 tabular-nums"><%= row.seats || "No limit" %></td>
               <td class="px-3 py-2.5 tabular-nums">
-                <%= row.sold_anywhere %><%= " of #{row.seats_to_sell}" if row.seats_to_sell %>
+                <%= row.sold_anywhere %>
                 <% type_notes.call(row).each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %>
               </td>
-              <td class="px-3 py-2.5 tabular-nums"><%= row.held %></td>
+              <td class="px-3 py-2.5 tabular-nums"><%= row.comps %></td>
               <td class="px-3 py-2.5 tabular-nums"><%= row.remaining.nil? ? "No limit" : row.remaining %></td>
               <td class="px-5 py-2.5 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
               <% unless read_only %><td class="pr-3 py-1.5 text-right"><%= r[:menu] %></td><% end %>
