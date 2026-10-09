@@ -22,7 +22,7 @@ class RefundPolicy
   # The settings form's cards: [value, title, hint].
   CHOICES = [
     [ "window_0", "Until the show starts", "Any time before showtime." ],
-    [ "window_24", "Up to 24 hours before", "A common window for theaters." ],
+    [ "window_24", "Up to 24 hours before", "The usual window." ],
     [ "window_48", "Up to 48 hours before", nil ],
     [ "window_168", "Up to 7 days before", nil ],
     [ "window_720", "Up to 30 days before", nil ],

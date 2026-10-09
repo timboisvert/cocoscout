@@ -1,0 +1,23 @@
+<%# A new discount code's fields, each with its label, shared by a
+    production's and a date's Discount codes tabs. On a phone the code has
+    its own line, then the kind and amount, then the most uses.
+    Locals: cf (the form builder), input_class. %>
+<% label_class = "block text-xs font-medium text-gray-600 mb-1" %>
+<div class="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_7rem] gap-x-2 gap-y-3">
+  <div class="col-span-2 sm:col-span-1">
+    <%= cf.label :code, "Code", class: label_class %>
+    <%= cf.text_field :code, placeholder: "FRIENDS", class: "#{input_class} uppercase" %>
+  </div>
+  <div>
+    <%= cf.label :kind, "Kind", class: label_class %>
+    <%= cf.select :kind, options_for_select([ [ "$ off", "fixed" ], [ "% off", "percent" ] ]), {}, class: input_class %>
+  </div>
+  <div>
+    <%= cf.label :amount, "Amount", class: label_class %>
+    <%= cf.text_field :amount, inputmode: "decimal", placeholder: "5", class: input_class %>
+  </div>
+  <div class="col-span-2 sm:col-span-1">
+    <%= cf.label :max_uses, "Most uses", class: label_class %>
+    <%= cf.number_field :max_uses, min: 1, placeholder: "No limit", class: input_class %>
+  </div>
+</div>

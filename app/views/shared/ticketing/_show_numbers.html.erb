@@ -55,9 +55,49 @@
     </div>
   <% end %>
 
+  <%# By ticket type. Each row wears its state (Tim: colors, not badges):
+      gray when it's hidden or no longer sold; red when it's sold out, marked
+      so or out of seats (sold here, sold elsewhere and comps all count). A
+      type no longer sold shows only while someone holds a ticket on it. %>
+  <%
+    type_rows = stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }.map do |row|
+      out_of_seats = row.tier.archived_at.nil? && row.remaining == 0
+      tone = if row.tier.archived_at || row.tier.unlisted? then "text-gray-400"
+             elsif row.tier.marked_sold_out? || out_of_seats then "text-red-700"
+             end
+      state = if row.tier.archived_at then nil
+              elsif row.tier.unlisted? then "Hidden"
+              elsif row.tier.marked_sold_out? || out_of_seats then "Sold out"
+              end
+      menu = (render("shared/ticketing/tier_menu", listing: listing, row: row) unless read_only || row.tier.archived_at)
+      { row: row, tone: tone, state: state, menu: menu }
+    end
+  %>
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <div class="px-5 py-3 border-b border-gray-200"><h2 class="text-sm font-semibold text-gray-900">By ticket type</h2></div>
-    <div class="overflow-x-auto">
+    <div class="px-4 sm:px-5 py-3 border-b border-gray-200"><h2 class="text-sm font-semibold text-gray-900">By ticket type</h2></div>
+
+    <%# A phone: one block per type, every number on it, nothing to scroll. %>
+    <ul class="sm:hidden divide-y divide-gray-100">
+      <% type_rows.each do |r| %>
+        <% row = r[:row] %>
+        <li class="px-4 py-3 flex items-start gap-3 <%= r[:tone] %>">
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-medium <%= r[:tone] || 'text-gray-900' %>">
+              <%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %>
+              <% if r[:state] %><span class="text-xs font-medium">· <%= r[:state] %></span><% end %>
+            </div>
+            <div class="mt-0.5 text-xs tabular-nums <%= r[:tone] || 'text-gray-600' %>">
+              <%= ticket_price(row.tier.price_cents) %> · <%= row.sold %><%= " of #{row.seats}" if row.seats %> sold · <%= row.remaining.nil? ? "no limit" : "#{row.remaining} left" %><%= " · #{row.held} in checkout" if row.held.positive? %>
+            </div>
+            <% if row.outside.positive? %><div class="text-xs text-gray-500"><%= stats.outside_words(tier: row.tier) %></div><% end %>
+          </div>
+          <div class="text-sm font-semibold tabular-nums <%= r[:tone] || 'text-gray-900' %>"><%= money.call(row.gross_cents) %></div>
+          <% if r[:menu] %><div class="-my-1"><%= r[:menu] %></div><% end %>
+        </li>
+      <% end %>
+    </ul>
+
+    <div class="hidden sm:block overflow-x-auto">
       <table class="min-w-full text-sm">
         <thead class="bg-gray-50 text-xs text-gray-500">
           <tr>
@@ -71,25 +111,12 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          <%# A type no longer sold shows only while someone holds a ticket on it. %>
-          <% stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }.each do |row| %>
-            <%# The row wears its state (Tim: colors, not badges): gray when it's
-                hidden or no longer sold; red when it's sold out, marked so or
-                out of seats (sold here, sold elsewhere and comps all count). %>
-            <%
-              out_of_seats = row.tier.archived_at.nil? && row.remaining == 0
-              tone = if row.tier.archived_at || row.tier.unlisted? then "text-gray-400"
-                     elsif row.tier.marked_sold_out? || out_of_seats then "text-red-700"
-                     end
-              state = if row.tier.archived_at then nil
-                      elsif row.tier.unlisted? then "Hidden"
-                      elsif row.tier.marked_sold_out? || out_of_seats then "Sold out"
-                      end
-            %>
-            <tr class="whitespace-nowrap <%= tone %>">
-              <td class="px-5 py-2.5 <%= tone || 'text-gray-900' %>">
+          <% type_rows.each do |r| %>
+            <% row = r[:row] %>
+            <tr class="whitespace-nowrap <%= r[:tone] %>">
+              <td class="px-5 py-2.5 <%= r[:tone] || 'text-gray-900' %>">
                 <%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %>
-                <% if state %><span class="ml-1 text-xs font-medium">· <%= state %></span><% end %>
+                <% if r[:state] %><span class="ml-1 text-xs font-medium">· <%= r[:state] %></span><% end %>
               </td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= ticket_price(row.tier.price_cents) %></td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= row.sold %><%= " of #{row.seats}" if row.seats %></td>
@@ -99,32 +126,7 @@
                 <% if row.outside.positive? %><div class="text-xs font-normal text-gray-500 whitespace-normal"><%= stats.outside_words(tier: row.tier) %></div><% end %>
               </td>
               <td class="px-5 py-2.5 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
-              <% unless read_only %>
-                <td class="pr-3 py-1.5 text-right">
-                  <%# This type on this date only: on sale, marked sold out, or hidden. %>
-                  <% if row.tier.archived_at.nil? %>
-                    <% menu_item = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left" %>
-                    <%# Floats over the page (fixed): the table's scrolling box would clip it. %>
-                    <div class="relative inline-block" data-controller="dropdown" data-dropdown-fixed-value="true">
-                      <button type="button" data-action="click->dropdown#toggle" title="<%= row.tier.name %>: on sale, sold out or hidden"
-                              aria-label="Change <%= row.tier.name %>"
-                              class="p-1.5 text-gray-400 hover:text-gray-600 rounded-md border border-gray-200 hover:border-gray-400 bg-white transition-colors cursor-pointer">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
-                      </button>
-                      <div data-dropdown-target="menu" class="hidden absolute right-0 top-full w-60 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 text-left whitespace-normal">
-                        <% [ [ "on_sale", "Put back on sale", "check-circle" ], [ "sold_out", "Mark sold out", "x-circle" ], [ "unlisted", "Hide from the ticket page", "eye" ] ].each do |value, label, glyph| %>
-                          <% next if row.tier.availability == value %>
-                          <%= button_to manage_ticket_listing_tier_availability_path(listing, row.tier), method: :patch, params: { availability: value },
-                                class: menu_item, form: { class: "block" } do %>
-                            <%= icon(glyph, class: "w-4 h-4 text-gray-400") %> <%= label %>
-                          <% end %>
-                        <% end %>
-                        <p class="px-3 pt-1.5 pb-1 text-[11px] text-gray-400 border-t border-gray-100 mt-1">For this date only.<%= " Bundles of it follow it." if listing.ticket_tiers.any? { |t| t.bundle_of_tier_id == row.tier.id } %></p>
-                      </div>
-                    </div>
-                  <% end %>
-                </td>
-              <% end %>
+              <% unless read_only %><td class="pr-3 py-1.5 text-right"><%= r[:menu] %></td><% end %>
             </tr>
           <% end %>
         </tbody>
@@ -150,7 +152,7 @@
               <td class="px-5 py-2.5 text-gray-900"><%= row.name %></td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= row.sold %></td>
               <td class="px-3 py-2.5 text-right tabular-nums"><%= row.handed_over %></td>
-              <td class="px-5 py-2.5 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
+              <td class="px-3 sm:px-5 py-2.5 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
             </tr>
           <% end %>
         </tbody>

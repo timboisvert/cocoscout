@@ -25,46 +25,50 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
-            <th class="px-4 py-3 font-medium">Link</th>
-            <th class="px-4 py-3 font-medium">Opens</th>
-            <th class="px-4 py-3 font-medium text-right">Clicks</th>
-            <th class="px-4 py-3 font-medium text-right">Orders</th>
-            <th class="px-4 py-3 font-medium text-right">Tickets</th>
-            <th class="px-4 py-3 font-medium text-right">Sales</th>
-            <th class="px-4 py-3"></th>
+            <%# On a phone: the link, its clicks and sales, its buttons under it. %>
+            <th class="px-3 sm:px-4 py-3 font-medium">Link</th>
+            <th class="hidden sm:table-cell px-3 sm:px-4 py-3 font-medium">Opens</th>
+            <th class="px-3 sm:px-4 py-3 font-medium text-right">Clicks</th>
+            <th class="hidden sm:table-cell px-3 sm:px-4 py-3 font-medium text-right">Orders</th>
+            <th class="hidden sm:table-cell px-3 sm:px-4 py-3 font-medium text-right">Tickets</th>
+            <th class="px-3 sm:px-4 py-3 font-medium text-right">Sales</th>
+            <th class="hidden sm:table-cell px-3 sm:px-4 py-3"></th>
           </tr>
         </thead>
         <tbody>
           <% rows.each do |link| %>
             <% url = short_link_url(code: link.code) %>
             <% stats = link.stats %>
+            <% buttons = capture do %>
+              <span data-copy-url-target="button" data-url="<%= url %>">
+                <%= render "shared/button", text: "Copy", variant: "outline-pink", size: "xs", type: :button, icon: "clipboard",
+                      data: { action: "click->copy-url#copy" } %>
+              </span>
+              <%= render "shared/button", text: "QR", variant: "outline-pink", size: "xs", type: :button, icon: "qr-code",
+                    data: { action: "click->qr-code#open" } %>
+              <% unless link.canonical? %>
+                <%= render "shared/button", text: "Archive", variant: "ghost", size: "xs", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-link-#{link.id}" } %>
+              <% end %>
+            <% end %>
             <tr class="border-b border-gray-100" data-controller="copy-url qr-code" data-qr-code-url-value="<%= url %>">
-              <td class="px-4 py-3">
-                <div class="font-mono text-gray-900"><%= "cocoscout.com#{link.short_path}" %></div>
+              <td class="px-3 sm:px-4 py-3">
+                <div class="font-mono text-gray-900"><span class="hidden sm:inline">cocoscout.com</span><%= link.short_path %></div>
                 <div class="text-xs text-gray-500"><%= link.canonical? ? "The production's link" : link.label %></div>
+                <div class="sm:hidden text-xs text-gray-500"><%= link.points_to %></div>
+                <div class="sm:hidden mt-2 flex flex-wrap items-center gap-1"><%= buttons %></div>
+                <%= render "shared/qr_modal", url: url, title: "Scan for tickets" %>
               </td>
-              <td class="px-4 py-3 text-gray-700">
+              <td class="hidden sm:table-cell px-3 sm:px-4 py-3 text-gray-700">
                 <%= link.points_to %>
                 <% if link.query["code"].present? %><div class="text-xs text-gray-500">with code <%= link.query["code"] %></div><% end %>
               </td>
-              <td class="px-4 py-3 text-right tabular-nums text-gray-900"><%= number_with_delimiter(link.clicks_count) %></td>
-              <td class="px-4 py-3 text-right tabular-nums text-gray-900"><%= stats[:orders] %></td>
-              <td class="px-4 py-3 text-right tabular-nums text-gray-900"><%= stats[:tickets] %></td>
-              <td class="px-4 py-3 text-right tabular-nums text-gray-900"><%= money.call(stats[:cents]) %></td>
-              <td class="px-4 py-3">
-                <div class="flex items-center justify-end gap-1">
-                  <span data-copy-url-target="button" data-url="<%= url %>">
-                    <%= render "shared/button", text: "Copy", variant: "outline-pink", size: "xs", type: :button, icon: "clipboard",
-                          data: { action: "click->copy-url#copy" } %>
-                  </span>
-                  <%= render "shared/button", text: "QR", variant: "outline-pink", size: "xs", type: :button, icon: "qr-code",
-                        data: { action: "click->qr-code#open" } %>
-                  <% unless link.canonical? %>
-                    <%= render "shared/button", text: "Archive", variant: "ghost", size: "xs", type: :button,
-                          data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-link-#{link.id}" } %>
-                  <% end %>
-                </div>
-                <%= render "shared/qr_modal", url: url, title: "Scan for tickets" %>
+              <td class="px-3 sm:px-4 py-3 text-right tabular-nums text-gray-900"><%= number_with_delimiter(link.clicks_count) %></td>
+              <td class="hidden sm:table-cell px-3 sm:px-4 py-3 text-right tabular-nums text-gray-900"><%= stats[:orders] %></td>
+              <td class="hidden sm:table-cell px-3 sm:px-4 py-3 text-right tabular-nums text-gray-900"><%= stats[:tickets] %></td>
+              <td class="px-3 sm:px-4 py-3 text-right tabular-nums text-gray-900"><%= money.call(stats[:cents]) %></td>
+              <td class="hidden sm:table-cell px-3 sm:px-4 py-3">
+                <div class="flex items-center justify-end gap-1"><%= buttons %></div>
               </td>
             </tr>
           <% end %>

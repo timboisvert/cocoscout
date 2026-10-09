@@ -31,8 +31,9 @@
           <span class="text-gray-500">One price for several people of a ticket type, using its seats; each person gets their own ticket.</span>
         </div>
       <% end %>
-      <div class="grid <%= bundle ? 'grid-cols-[minmax(0,1fr)_6.5rem_5rem_minmax(0,9rem)]' : 'grid-cols-[minmax(0,1fr)_7rem_6rem]' %> gap-2">
-        <%= tf.text_field :name, placeholder: (bundle ? "Bundle, like 4-pack" : "Ticket type, like General"), "aria-label": (bundle ? "Bundle name" : "Ticket name"), class: input_class %>
+      <%# On a phone the name has its own line, the price and seats under it. %>
+      <div class="grid grid-cols-2 <%= bundle ? 'sm:grid-cols-[minmax(0,1fr)_6.5rem_5rem_minmax(0,9rem)]' : 'sm:grid-cols-[minmax(0,1fr)_7rem_6rem]' %> gap-2">
+        <%= tf.text_field :name, placeholder: (bundle ? "Bundle, like 4-pack" : "Ticket type, like General"), "aria-label": (bundle ? "Bundle name" : "Ticket name"), class: "#{input_class} col-span-2 sm:col-span-1" %>
         <div class="relative">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
           <%= tf.text_field :price, value: (tier.persisted? || tier.name.present? ? format("%.2f", tier.price_cents / 100.0) : nil), inputmode: "decimal", placeholder: "0.00", "aria-label": "Price", class: "#{input_class} pl-7" %>
@@ -41,7 +42,7 @@
           <%= tf.number_field :admits, min: 2, max: 20, value: (tier.admits.to_i > 1 ? tier.admits : nil), placeholder: "People", required: true,
                 title: "How many people the bundle admits", "aria-label": "People the bundle admits", class: input_class %>
           <%= tf.select :bundle_of_tier_id, options_for_select(bases, tier.bundle_of_tier_id), { prompt: (bases.any? ? "of which ticket?" : "Save a ticket type first") },
-                required: true, "aria-label": "Which ticket type it admits", class: input_class %>
+                required: true, "aria-label": "Which ticket type it admits", class: "#{input_class} col-span-2 sm:col-span-1" %>
         <% else %>
           <%= tf.number_field :quantity, min: 1, placeholder: "Seats", "aria-label": "Seats", class: input_class %>
         <% end %>

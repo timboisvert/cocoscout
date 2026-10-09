@@ -1,14 +1,13 @@
 <%# Right panel for shared/show_row (right_panel: :ticket_sales): how a show
     on CocoScout Ticketing is selling — sold of capacity, a thin bar, and
     where its sales stand. Locals: listing (TicketListing), and optionally
-    stats (Ticketing::ListingStats) to add sales and this week's pace. %>
+    stats (Ticketing::ListingStats) to add sales. %>
 <%
   stats = local_assigns[:stats]
   inventory = stats ? stats.inventory : listing.inventory
   sold = stats ? stats.sold : inventory.sold
   outside = inventory.outside_sold
   capacity = inventory.capacity
-  this_week = stats&.sold_since(7.days.ago).to_i
   percent = capacity.to_i.positive? ? [ ((sold + outside) * 100.0 / capacity).round, 100 ].min : nil
   label, badge_classes = ticket_listing_status_badge(listing, inventory)
 %>
@@ -18,7 +17,6 @@
       <span class="font-semibold tabular-nums"><%= sold %></span><% if capacity %> <span class="text-gray-500">of <%= capacity %></span><% end %> sold<% if outside.positive? %> <span class="text-gray-500">· <%= outside %> elsewhere</span><% end %>
       <% if stats %>
         <span class="text-gray-500">· <%= number_to_currency(stats.gross_cents / 100.0, precision: 0) %></span>
-        <% if this_week.positive? %><span class="text-green-700 text-xs font-medium">+<%= this_week %> this week</span><% end %>
       <% end %>
     </div>
     <% if percent %>

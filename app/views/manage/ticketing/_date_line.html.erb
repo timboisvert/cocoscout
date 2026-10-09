@@ -8,14 +8,15 @@
   percent = capacity.to_i.positive? ? [ (sold * 100.0 / capacity).round, 100 ].min : nil
   label, badge_classes = ticket_listing_status_badge(listing, inventory)
 %>
-<%= link_to manage_ticket_listing_path(listing), class: "flex flex-1 min-w-0 items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors" do %>
-  <span class="w-24 flex-shrink-0 text-sm text-gray-900 tabular-nums whitespace-nowrap"><%= listing.show.date_and_time.strftime("%a %b %-d") %></span>
-  <span class="w-20 flex-shrink-0 text-sm text-gray-600 tabular-nums whitespace-nowrap"><%= listing.show.date_and_time.strftime("%-l:%M %p") %></span>
+<%# Narrower columns on a phone, so the status still fits on the line. %>
+<%= link_to manage_ticket_listing_path(listing), class: "flex flex-1 min-w-0 items-center gap-2 sm:gap-3 px-3 py-2 hover:bg-gray-50 transition-colors" do %>
+  <span class="w-[5.25rem] sm:w-24 flex-shrink-0 text-sm text-gray-900 tabular-nums whitespace-nowrap"><%= listing.show.date_and_time.strftime("%a %b %-d") %></span>
+  <span class="w-16 sm:w-20 flex-shrink-0 text-sm text-gray-600 tabular-nums whitespace-nowrap"><%= listing.show.date_and_time.strftime("%-l:%M %p") %></span>
   <span class="hidden sm:block flex-1 min-w-0">
     <% if percent %>
       <span class="block h-1.5 w-full max-w-[10rem] rounded-full bg-gray-100"><span class="block h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></span></span>
     <% end %>
   </span>
   <span class="ml-auto text-sm text-gray-700 tabular-nums whitespace-nowrap"><span class="font-semibold text-gray-900"><%= sold %></span><%= " of #{capacity}" if capacity %></span>
-  <span class="w-24 flex-shrink-0 text-right text-xs font-medium <%= badge_classes[/text-\S+/] %>"><%= label %></span>
+  <span class="sm:w-24 flex-shrink-0 text-right text-xs font-medium whitespace-nowrap <%= badge_classes[/text-\S+/] %>"><%= label %></span>
 <% end %>

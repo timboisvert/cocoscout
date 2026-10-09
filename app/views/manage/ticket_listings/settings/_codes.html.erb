@@ -24,12 +24,7 @@
     </div>
   <% end %>
   <%= form_with scope: :ticket_discount_code, url: manage_ticket_listing_codes_path(listing), method: :post, class: "pt-5" do |cf| %>
-    <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem] gap-2">
-      <%= cf.text_field :code, placeholder: "FRIENDS", "aria-label": "Code", class: "#{input_class} uppercase" %>
-      <%= cf.select :kind, options_for_select([ [ "$ off", "fixed" ], [ "% off", "percent" ] ]), {}, "aria-label": "Kind", class: input_class %>
-      <%= cf.text_field :amount, inputmode: "decimal", placeholder: "5", "aria-label": "Amount", class: input_class %>
-      <%= cf.number_field :max_uses, min: 1, placeholder: "Uses", "aria-label": "Most uses", class: input_class %>
-    </div>
+    <%= render "manage/ticketing/code_fields", cf: cf, input_class: input_class %>
     <div class="mt-3">
       <%= render "shared/button", text: "Add code", variant: "secondary", size: "small", type: :submit %>
     </div>

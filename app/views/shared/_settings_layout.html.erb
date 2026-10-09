@@ -51,7 +51,16 @@
   <% end %>
 
   <% if sections.size > 1 || (show_single_tab && sections.any?) %>
-    <nav class="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" aria-label="Settings sections">
+    <%# On a phone the sections are a menu, so none hides off the edge. %>
+    <div class="sm:hidden mb-5">
+      <select aria-label="Settings section" onchange="window.location.href = this.value"
+              class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+        <% sections.each do |section| %>
+          <option value="<%= section[:path] %>" <%= "selected" if section[:key].to_s == current.to_s %>><%= section[:label] %><%= " (Pro)" if section[:feature].present? %><%= " (#{section[:badge]})" if section[:badge].to_i.positive? %></option>
+        <% end %>
+      </select>
+    </div>
+    <nav class="hidden sm:flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" aria-label="Settings sections">
       <% sections.each do |section| %>
         <% active = section[:key].to_s == current.to_s %>
         <%= link_to section[:path],

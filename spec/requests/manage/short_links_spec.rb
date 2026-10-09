@@ -36,9 +36,9 @@ RSpec.describe "Ticketing links", type: :request do
 
     sign_in_manager
     get manage_production_ticketing_links_path(production)
-    expect(response.body).to include("cocoscout.com/t/#{code}", "The production&#39;s link", "cocoscout.com/t/#{poster.code}", "Poster",
+    expect(response.body).to include("cocoscout.com</span>/t/#{code}", "The production&#39;s link", "cocoscout.com</span>/t/#{poster.code}", "Poster",
                                      "Improvised Animorphs · oct-17", "$40.00")
-    expect(response.body).to include(%(<td class="px-4 py-3 text-right tabular-nums text-gray-900">2</td>))
+    expect(response.body).to include(%(<td class="hidden sm:table-cell px-3 sm:px-4 py-3 text-right tabular-nums text-gray-900">2</td>))
 
     get manage_production_ticketing_path(production)
     expect(response.body).to include("2 links · 1 click")
@@ -63,7 +63,7 @@ RSpec.describe "Ticketing links", type: :request do
     get "/t/#{link.code}"
     expect(response).to have_http_status(:not_found)
     get manage_production_ticketing_links_path(production)
-    expect(response.body).not_to include("cocoscout.com/t/#{link.code}")
+    expect(response.body).not_to include("cocoscout.com</span>/t/#{link.code}")
   end
 
   it "doesn't attribute an order to another theater's link" do

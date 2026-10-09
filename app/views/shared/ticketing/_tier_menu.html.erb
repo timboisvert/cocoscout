@@ -1,0 +1,22 @@
+<%# One ticket type's menu on one date (shared/ticketing/show_numbers): on
+    sale, marked sold out, or hidden, for this date only. Floats over the
+    page (fixed) so a table's scrolling box can't clip it.
+    Locals: listing, row (Ticketing::ListingStats::TierRow). %>
+<% menu_item = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left" %>
+<div class="relative inline-block" data-controller="dropdown" data-dropdown-fixed-value="true">
+  <button type="button" data-action="click->dropdown#toggle" title="<%= row.tier.name %>: on sale, sold out or hidden"
+          aria-label="Change <%= row.tier.name %>"
+          class="p-1.5 text-gray-400 hover:text-gray-600 rounded-md border border-gray-200 hover:border-gray-400 bg-white transition-colors cursor-pointer">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+  </button>
+  <div data-dropdown-target="menu" class="hidden absolute right-0 top-full w-60 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 text-left whitespace-normal">
+    <% [ [ "on_sale", "Put back on sale", "check-circle" ], [ "sold_out", "Mark sold out", "x-circle" ], [ "unlisted", "Hide from the ticket page", "eye" ] ].each do |value, label, glyph| %>
+      <% next if row.tier.availability == value %>
+      <%= button_to manage_ticket_listing_tier_availability_path(listing, row.tier), method: :patch, params: { availability: value },
+            class: menu_item, form: { class: "block" } do %>
+        <%= icon(glyph, class: "w-4 h-4 text-gray-400") %> <%= label %>
+      <% end %>
+    <% end %>
+    <p class="px-3 pt-1.5 pb-1 text-[11px] text-gray-400 border-t border-gray-100 mt-1">For this date only.<%= " Bundles of it follow it." if listing.ticket_tiers.any? { |t| t.bundle_of_tier_id == row.tier.id } %></p>
+  </div>
+</div>

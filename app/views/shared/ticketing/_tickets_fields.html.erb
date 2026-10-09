@@ -25,8 +25,9 @@
   tier_row = lambda do |index, row|
     capture do
 %>
-      <div class="grid grid-cols-[minmax(0,1fr)_7rem_6rem_auto] gap-x-2 items-center">
-        <%= text_field_tag "tickets[tiers][#{index}][name]", row["name"], placeholder: "General", "aria-label": "Ticket type", class: input_class %>
+      <%# On a phone the name has its own line, the price, seats and Remove under it. %>
+      <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_7rem_6rem_auto] gap-2 items-center">
+        <%= text_field_tag "tickets[tiers][#{index}][name]", row["name"], placeholder: "General", "aria-label": "Ticket type", class: "#{input_class} col-span-3 sm:col-span-1" %>
         <div class="relative">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
           <%= text_field_tag "tickets[tiers][#{index}][price]", row["price"], inputmode: "decimal", placeholder: "20.00", "aria-label": "Price", class: "#{input_class} pl-7" %>
@@ -52,7 +53,7 @@
         <p class="text-sm text-gray-700"><%= name %> already has its ticket types: <%= setup.ticket_tiers.active.map { |t| "#{t.name} #{number_to_currency(t.price_cents / 100.0)}" }.to_sentence %>. Change them in Ticketing.</p>
       <% else %>
         <div data-controller="nested-form" class="space-y-2">
-          <div class="grid grid-cols-[minmax(0,1fr)_7rem_6rem_auto] gap-x-2 text-xs font-medium text-gray-500"><span>Ticket type</span><span>Price</span><span>Seats</span><span></span></div>
+          <div class="hidden sm:grid grid-cols-[minmax(0,1fr)_7rem_6rem_auto] gap-x-2 text-xs font-medium text-gray-500"><span>Ticket type</span><span>Price</span><span>Seats</span><span></span></div>
           <div class="space-y-2" data-nested-form-target="children"><% rows.each_with_index { |row, i| concat tier_row.call(i, row) } %></div>
           <template data-nested-form-target="template"><%= tier_row.call("NEW_CHILD_RECORD", {}) %></template>
           <%= render "shared/button", text: "Add a ticket type", variant: "secondary", size: "xs", type: :button, icon: "plus", data: { action: "nested-form#add" } %>
