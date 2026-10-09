@@ -62,6 +62,13 @@
       so or out of seats (sold here, sold elsewhere and comps all count). A
       type no longer sold shows only while someone holds a ticket on it. %>
   <%
+    # Under a type's Sold: where they sold when some sold elsewhere, then its
+    # comps, a line each so the column stays narrow.
+    type_notes = lambda do |row|
+      lines = row.outside.positive? ? [ "#{row.sold_here} here", *stats.outside_lines(tier: row.tier) ] : []
+      lines << "#{pluralize(row.comps, 'comp')} set aside" if row.comps.positive?
+      lines
+    end
     type_rows = stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }.map do |row|
       out_of_seats = row.tier.archived_at.nil? && row.remaining == 0
       tone = if row.tier.archived_at || row.tier.unlisted? then "text-gray-400"
@@ -89,9 +96,9 @@
               <% if r[:state] %><span class="text-xs font-medium">· <%= r[:state] %></span><% end %>
             </div>
             <div class="mt-0.5 text-xs tabular-nums <%= r[:tone] || 'text-gray-600' %>">
-              <%= ticket_price(row.tier.price_cents) %> · <%= row.sold %><%= " of #{row.seats}" if row.seats %> sold · <%= row.remaining.nil? ? "no limit" : "#{row.remaining} remaining" %><%= " · #{row.held} in checkout" if row.held.positive? %>
+              <%= ticket_price(row.tier.price_cents) %> · <%= row.sold_anywhere %><%= " of #{row.seats_to_sell}" if row.seats_to_sell %> sold · <%= row.remaining.nil? ? "no limit" : "#{row.remaining} remaining" %><%= " · #{row.held} in checkout" if row.held.positive? %>
             </div>
-            <% if row.outside.positive? %><% stats.outside_lines(tier: row.tier).each do |line| %><div class="text-xs text-gray-500"><%= line %></div><% end %><% end %>
+            <% type_notes.call(row).each do |line| %><div class="text-xs text-gray-500"><%= line %></div><% end %>
           </div>
           <div class="text-sm font-semibold tabular-nums <%= r[:tone] || 'text-gray-900' %>"><%= money.call(row.gross_cents) %></div>
           <% if r[:menu] %><div class="-my-1"><%= r[:menu] %></div><% end %>
@@ -123,13 +130,14 @@
                 <% if r[:state] %><span class="ml-1 text-xs font-medium">· <%= r[:state] %></span><% end %>
               </td>
               <td class="px-3 py-2.5 tabular-nums"><%= ticket_price(row.tier.price_cents) %></td>
-              <td class="px-3 py-2.5 tabular-nums"><%= row.sold %><%= " of #{row.seats}" if row.seats %></td>
-              <td class="px-3 py-2.5 tabular-nums"><%= row.held %></td>
+              <%# Sold anywhere, of the seats once comps are set aside, as the Sold
+                  tile says it; where they sold and the comps under it, a line each. %>
               <td class="px-3 py-2.5 tabular-nums">
-                <%= row.remaining.nil? ? "No limit" : row.remaining %>
-                <%# One site a line, so the column stays narrow. %>
-                <% if row.outside.positive? %><% stats.outside_lines(tier: row.tier).each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %><% end %>
+                <%= row.sold_anywhere %><%= " of #{row.seats_to_sell}" if row.seats_to_sell %>
+                <% type_notes.call(row).each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %>
               </td>
+              <td class="px-3 py-2.5 tabular-nums"><%= row.held %></td>
+              <td class="px-3 py-2.5 tabular-nums"><%= row.remaining.nil? ? "No limit" : row.remaining %></td>
               <td class="px-5 py-2.5 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
               <% unless read_only %><td class="pr-3 py-1.5 text-right"><%= r[:menu] %></td><% end %>
             </tr>

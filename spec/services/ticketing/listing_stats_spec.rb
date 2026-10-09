@@ -64,6 +64,9 @@ RSpec.describe Ticketing::ListingStats do
     expect([ stats.sold_anywhere, stats.seats_to_sell, stats.comps, stats.capacity ]).to eq([ 7, 57, 3, 60 ])
     # Seats left either way: 57 - 7 = 60 - 2 - 3 - 5.
     expect(stats.seats_to_sell - stats.sold_anywhere).to eq(stats.remaining)
+    # Each type reads the same way: 7 of 47 General, 40 remaining.
+    row = stats.by_tier.find { |r| r.tier == general }
+    expect([ row.sold_here, row.outside, row.comps, row.sold_anywhere, row.seats_to_sell, row.remaining ]).to eq([ 2, 5, 3, 7, 47, 40 ])
 
     html = ApplicationController.render(partial: "shared/ticket_sales_panel", locals: { listing: stats.listing, stats: stats })
     expect(html).to include(%(<span class="font-semibold tabular-nums">7</span> <span class="text-gray-500">of 57</span> sold), "· 3 comps")

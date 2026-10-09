@@ -17,7 +17,14 @@ module Ticketing
   #
   # Build many at once with .for(listings): a handful of queries in all.
   class ListingStats
-    TierRow = Data.define(:tier, :sold, :seats, :held, :remaining, :gross_cents, :outside)
+    # One ticket type on this date. sold is every ticket held here, comps
+    # included; sold_anywhere and seats_to_sell read it the way the Sold tile
+    # does: sold here or elsewhere, of the seats left once comps are set aside.
+    TierRow = Data.define(:tier, :sold, :seats, :held, :remaining, :gross_cents, :outside, :comps) do
+      def sold_here = sold - comps
+      def sold_anywhere = sold_here + outside
+      def seats_to_sell = seats && [ seats - comps, 0 ].max
+    end
     ProductRow = Data.define(:name, :sold, :gross_cents, :handed_over)
     CHANNELS = { "online" => "Online", "embed" => "Your website", "door_cash" => "Cash at the door",
                  "door_card" => "Card at the door", "comp" => "Comps", "pass" => "Pass credits", "door_pass" => "Pass credits at the door" }.freeze
@@ -174,11 +181,13 @@ module Ticketing
           mine = held_tickets.select { |t| t.bundle_tier_id == tier.id }
           admits = [ tier.admits.to_i, 1 ].max
           TierRow.new(tier: tier, sold: mine.size / admits, seats: nil, held: inventory.held(tier: tier) / admits,
-                      remaining: tier.units_for(inventory.remaining(tier: tier)), gross_cents: mine.sum { |t| face_cents(t) }, outside: 0)
+                      remaining: tier.units_for(inventory.remaining(tier: tier)), gross_cents: mine.sum { |t| face_cents(t) }, outside: 0,
+                      comps: mine.count { |t| t.order_channel == "comp" } / admits)
         else
           mine = held_tickets.select { |t| t.ticket_tier_id == tier.id }
           TierRow.new(tier: tier, sold: mine.size, seats: tier.quantity, held: inventory.held(tier: tier),
-                      remaining: inventory.remaining(tier: tier), gross_cents: mine.sum { |t| face_cents(t) }, outside: inventory.outside(tier: tier))
+                      remaining: inventory.remaining(tier: tier), gross_cents: mine.sum { |t| face_cents(t) }, outside: inventory.outside(tier: tier),
+                      comps: mine.count { |t| t.order_channel == "comp" })
         end
       end
     end
