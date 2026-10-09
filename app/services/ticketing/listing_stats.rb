@@ -111,6 +111,18 @@ module Ticketing
       sold - comps
     end
 
+    # A date the way a manager reads it at a glance (Tim, 2026-10-09):
+    # every ticket sold, here or on another site, of the seats there are to
+    # sell once comps are set aside: "7 of 37 sold · 3 comps". Where a
+    # ticket sold matters less here than how many seats are left.
+    def sold_anywhere
+      paid_sold + outside_sold
+    end
+
+    def seats_to_sell
+      capacity && [ capacity - comps, 0 ].max
+    end
+
     def checked_in
       held_tickets.count(&:checked_in?)
     end

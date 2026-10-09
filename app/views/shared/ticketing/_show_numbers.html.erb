@@ -11,14 +11,16 @@
   money = ->(cents) { number_to_currency(cents / 100.0) }
   started = listing.show.date_and_time <= Time.current
   outside = stats.outside_sold
-  sold_note = if stats.capacity.to_i.positive?
-    "#{((stats.sold + outside) * 100.0 / stats.capacity).round}% full#{', with sales elsewhere' if outside.positive?}"
-  else
-    "No seat limit"
-  end
+  # Sold is every ticket sold, here or elsewhere, of the seats there are to
+  # sell once comps are set aside, as the lists say it (Tim, 2026-10-09).
+  seats = stats.seats_to_sell
+  sold_note = [
+    (outside.positive? ? "#{stats.paid_sold} here, #{outside} elsewhere" : nil),
+    (stats.comps.positive? ? pluralize(stats.comps, "comp") + " set aside" : nil)
+  ].compact.join(" · ").presence || (seats.to_i.positive? ? "#{(stats.sold_anywhere * 100.0 / seats).round}% full" : (seats ? "Full" : "No seat limit"))
   # [label, value, note, tint, modal it opens]
   tiles = [
-    [ "Sold", stats.capacity ? "#{stats.sold} of #{stats.capacity}" : stats.sold.to_s, sold_note, nil ],
+    [ "Sold", seats ? "#{stats.sold_anywhere} of #{seats}" : stats.sold_anywhere.to_s, sold_note, nil ],
     [ "Ticket sales", money.call(stats.gross_cents), "Before fees and tax", nil ],
     (read_only ? nil : [ "You keep", money.call(stats.net_cents), stats.tax_cents.positive? ? "Plus #{money.call(stats.tax_cents)} tax to pay" : "After fees and refunds", nil ]),
     (started ? [ "Checked in", "#{stats.checked_in} of #{stats.sold}", stats.no_shows.to_i.positive? ? "#{stats.no_shows} didn't come" : "Everyone came", nil ] : nil),
@@ -87,7 +89,7 @@
               <% if r[:state] %><span class="text-xs font-medium">· <%= r[:state] %></span><% end %>
             </div>
             <div class="mt-0.5 text-xs tabular-nums <%= r[:tone] || 'text-gray-600' %>">
-              <%= ticket_price(row.tier.price_cents) %> · <%= row.sold %><%= " of #{row.seats}" if row.seats %> sold · <%= row.remaining.nil? ? "no limit" : "#{row.remaining} left" %><%= " · #{row.held} in checkout" if row.held.positive? %>
+              <%= ticket_price(row.tier.price_cents) %> · <%= row.sold %><%= " of #{row.seats}" if row.seats %> sold · <%= row.remaining.nil? ? "no limit" : "#{row.remaining} remaining" %><%= " · #{row.held} in checkout" if row.held.positive? %>
             </div>
             <% if row.outside.positive? %><div class="text-xs text-gray-500"><%= stats.outside_words(tier: row.tier) %></div><% end %>
           </div>
@@ -105,7 +107,7 @@
             <th class="px-3 py-2 text-right font-medium">Price</th>
             <th class="px-3 py-2 text-right font-medium">Sold</th>
             <th class="px-3 py-2 text-right font-medium">In checkout</th>
-            <th class="px-3 py-2 text-right font-medium">Left</th>
+            <th class="px-3 py-2 text-right font-medium">Remaining</th>
             <th class="px-5 py-2 text-right font-medium">Sales</th>
             <% unless read_only %><th class="w-10"><span class="sr-only">Actions</span></th><% end %>
           </tr>

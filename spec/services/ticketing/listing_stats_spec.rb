@@ -54,6 +54,21 @@ RSpec.describe Ticketing::ListingStats do
     expect(described_class.of(listing).no_shows).to eq(4)
   end
 
+  it "reads at a glance: sold anywhere, of the seats left once comps are set aside (Tim, 2026-10-09)" do
+    buy({ general => 2 })
+    door.sell({ general.id.to_s => "3" }, kind: "comp")
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    TicketOutsideSales.record!(listing, { tailor.id.to_s => { general.id.to_s => { "tickets" => "5" } } })
+
+    stats = described_class.of(TicketListing.find(listing.id))
+    expect([ stats.sold_anywhere, stats.seats_to_sell, stats.comps, stats.capacity ]).to eq([ 7, 57, 3, 60 ])
+    # Seats left either way: 57 - 7 = 60 - 2 - 3 - 5.
+    expect(stats.seats_to_sell - stats.sold_anywhere).to eq(stats.remaining)
+
+    html = ApplicationController.render(partial: "shared/ticket_sales_panel", locals: { listing: stats.listing, stats: stats })
+    expect(html).to include(%(<span class="font-semibold tabular-nums">7</span> <span class="text-gray-500">of 57</span> sold), "· 3 comps")
+  end
+
   it "builds many shows at once, matching one at a time" do
     other = create(:ticket_listing, organization: org)
     other_tier = other.ticket_tiers.create!(name: "General", price_cents: 1_000)

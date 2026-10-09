@@ -1,12 +1,13 @@
-<%# One date in a slim list: day, time, a sold bar, sold of seats and where
-    its sales stand, the whole line opening the date. Used in the coming-up
-    drawers and the Productions page. Locals: listing, stats. %>
+<%# One date in a slim list: day, time, a sold bar, sold of seats (and its
+    comps) and where its sales stand, the whole line opening the date. Used
+    in the coming-up drawers and the Productions page. Locals: listing, stats. %>
 <%
-  inventory = stats.inventory
-  sold = stats.sold + inventory.outside_sold
-  capacity = inventory.capacity
-  percent = capacity.to_i.positive? ? [ (sold * 100.0 / capacity).round, 100 ].min : nil
-  label, badge_classes = ticket_listing_status_badge(listing, inventory)
+  # Sold anywhere, of the seats left to sell once comps are set aside
+  # (Ticketing::ListingStats#sold_anywhere, the way the show rows say it).
+  sold = stats.sold_anywhere
+  seats = stats.seats_to_sell
+  percent = seats.to_i.positive? ? [ (sold * 100.0 / seats).round, 100 ].min : (seats&.zero? ? 100 : nil)
+  label, badge_classes = ticket_listing_status_badge(listing, stats.inventory)
 %>
 <%# Narrower columns on a phone, so the status still fits on the line. %>
 <%= link_to manage_ticket_listing_path(listing), class: "flex flex-1 min-w-0 items-center gap-2 sm:gap-3 px-3 py-2 hover:bg-gray-50 transition-colors" do %>
@@ -17,6 +18,6 @@
       <span class="block h-1.5 w-full max-w-[10rem] rounded-full bg-gray-100"><span class="block h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></span></span>
     <% end %>
   </span>
-  <span class="ml-auto text-sm text-gray-700 tabular-nums whitespace-nowrap"><span class="font-semibold text-gray-900"><%= sold %></span><%= " of #{capacity}" if capacity %></span>
+  <span class="ml-auto text-sm text-gray-700 tabular-nums whitespace-nowrap"><span class="font-semibold text-gray-900"><%= sold %></span><%= " of #{seats}" if seats %><% if stats.comps.positive? %><span class="hidden sm:inline text-gray-500"> · <%= pluralize(stats.comps, "comp") %></span><% end %></span>
   <span class="sm:w-24 flex-shrink-0 text-right text-xs font-medium whitespace-nowrap <%= badge_classes[/text-\S+/] %>"><%= label %></span>
 <% end %>

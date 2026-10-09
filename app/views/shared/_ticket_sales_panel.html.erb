@@ -1,23 +1,21 @@
 <%# Right panel for shared/show_row (right_panel: :ticket_sales): how a show
-    on CocoScout Ticketing is selling — sold of capacity, a thin bar, and
-    where its sales stand. Locals: listing (TicketListing), and optionally
-    stats (Ticketing::ListingStats) to add sales. %>
+    on CocoScout Ticketing is selling, the way a manager reads it at a
+    glance: every ticket sold, here or on another site, of the seats there
+    are to sell once comps are set aside ("7 of 37 sold · 3 comps"), a thin
+    bar, the money, and where its sales stand (Ticketing::ListingStats).
+    Locals: listing (TicketListing), stats (optional: worked out if not given). %>
 <%
-  stats = local_assigns[:stats]
-  inventory = stats ? stats.inventory : listing.inventory
-  sold = stats ? stats.sold : inventory.sold
-  outside = inventory.outside_sold
-  capacity = inventory.capacity
-  percent = capacity.to_i.positive? ? [ ((sold + outside) * 100.0 / capacity).round, 100 ].min : nil
-  label, badge_classes = ticket_listing_status_badge(listing, inventory)
+  stats = local_assigns[:stats] || Ticketing::ListingStats.of(listing)
+  sold = stats.sold_anywhere
+  seats = stats.seats_to_sell
+  percent = seats.to_i.positive? ? [ (sold * 100.0 / seats).round, 100 ].min : (seats&.zero? ? 100 : nil)
+  label, badge_classes = ticket_listing_status_badge(listing, stats.inventory)
 %>
 <div class="w-full md:w-1/2 md:border-l border-gray-200 md:pl-4 flex items-center justify-between gap-3 border-t md:border-t-0 mt-2 md:mt-0 pt-2 md:pt-0">
   <div class="min-w-0 flex-1">
     <div class="text-sm text-gray-900">
-      <span class="font-semibold tabular-nums"><%= sold %></span><% if capacity %> <span class="text-gray-500">of <%= capacity %></span><% end %> sold<% if outside.positive? %> <span class="text-gray-500">· <%= outside %> elsewhere</span><% end %>
-      <% if stats %>
-        <span class="text-gray-500">· <%= number_to_currency(stats.gross_cents / 100.0, precision: 0) %></span>
-      <% end %>
+      <span class="font-semibold tabular-nums"><%= sold %></span><% if seats %> <span class="text-gray-500">of <%= seats %></span><% end %> sold<% if stats.comps.positive? %> <span class="text-gray-500">· <%= pluralize(stats.comps, "comp") %></span><% end %>
+      <span class="text-gray-500">· <%= number_to_currency(stats.gross_cents / 100.0, precision: 0) %></span>
     </div>
     <% if percent %>
       <div class="mt-1.5 h-1.5 w-full max-w-[12rem] rounded-full bg-gray-100">
