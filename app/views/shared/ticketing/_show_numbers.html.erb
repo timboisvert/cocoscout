@@ -104,10 +104,12 @@
         <thead class="bg-gray-50 text-xs text-gray-500">
           <tr>
             <th class="px-5 py-2 text-left font-medium">Ticket</th>
-            <th class="px-3 py-2 text-right font-medium">Price</th>
-            <th class="px-3 py-2 text-right font-medium">Sold</th>
-            <th class="px-3 py-2 text-right font-medium">In checkout</th>
-            <th class="px-3 py-2 text-right font-medium">Remaining</th>
+            <%# Left-aligned under their headings, except Sales: the money lines
+                up on the right (Tim, 2026-10-09). %>
+            <th class="px-3 py-2 text-left font-medium">Price</th>
+            <th class="px-3 py-2 text-left font-medium">Sold</th>
+            <th class="px-3 py-2 text-left font-medium">In checkout</th>
+            <th class="px-3 py-2 text-left font-medium">Remaining</th>
             <th class="px-5 py-2 text-right font-medium">Sales</th>
             <% unless read_only %><th class="w-10"><span class="sr-only">Actions</span></th><% end %>
           </tr>
@@ -120,10 +122,10 @@
                 <%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %>
                 <% if r[:state] %><span class="ml-1 text-xs font-medium">· <%= r[:state] %></span><% end %>
               </td>
-              <td class="px-3 py-2.5 text-right tabular-nums"><%= ticket_price(row.tier.price_cents) %></td>
-              <td class="px-3 py-2.5 text-right tabular-nums"><%= row.sold %><%= " of #{row.seats}" if row.seats %></td>
-              <td class="px-3 py-2.5 text-right tabular-nums"><%= row.held %></td>
-              <td class="px-3 py-2.5 text-right tabular-nums">
+              <td class="px-3 py-2.5 tabular-nums"><%= ticket_price(row.tier.price_cents) %></td>
+              <td class="px-3 py-2.5 tabular-nums"><%= row.sold %><%= " of #{row.seats}" if row.seats %></td>
+              <td class="px-3 py-2.5 tabular-nums"><%= row.held %></td>
+              <td class="px-3 py-2.5 tabular-nums">
                 <%= row.remaining.nil? ? "No limit" : row.remaining %>
                 <%# One site a line, so the column stays narrow. %>
                 <% if row.outside.positive? %><% stats.outside_lines(tier: row.tier).each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %><% end %>
