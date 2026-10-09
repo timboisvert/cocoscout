@@ -79,7 +79,7 @@ RSpec.describe "Ticketing dashboard", type: :request do
     expect(TicketingDashboard.new(org, period: :nonsense).period).to eq(:last_30_days)
   end
 
-  it "nudges about tonight, drafts coming up, and a canceled show with ticket holders" do
+  it "nudges about drafts coming up and a canceled show with ticket holders; tonight is only the Door's count" do
     tonight = listing_at(Time.current.end_of_day - 1.hour)
     buy(tonight, 2, "Tonight Guest")
     listing_at(6.days.from_now, status: "draft")
@@ -88,7 +88,9 @@ RSpec.describe "Ticketing dashboard", type: :request do
     canceled.show.update!(canceled: true)
 
     get manage_ticketing_path
-    expect(response.body).to include("Tonight", "2 of 50 sold", "Open the door", door_path(tonight))
+    # No box for tonight (Tim, 2026-10-09): the Door section's badge counts it.
+    expect(response.body).not_to include("Open the door", "Sell tickets for a production")
+    expect(TicketingDashboard.new(org).tonight.map(&:first)).to eq([ tonight ])
     expect(response.body).to include("is canceled but people hold tickets")
     expect(response.body).to include("1 show in the next two weeks isn&#39;t on sale")
   end

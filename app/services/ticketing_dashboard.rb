@@ -103,12 +103,6 @@ class TicketingDashboard
                         body: "Set your shows up and preview their pages as you like; buyers see nothing until you open it.",
                         actions: [ { text: "Open your box office", path: routes.manage_ticketing_settings_section_path(section: "box_office") } ], tone: :pink)
     end
-    tonight.each do |listing, stats|
-      list << Alert.new(eyebrow: "Tonight", headline: "#{listing.display_title} at #{listing.show.date_and_time.strftime('%-l:%M %p')}: #{stats.sold}#{" of #{stats.capacity}" if stats.capacity} sold",
-                        body: "#{stats.comps.positive? ? "Including #{stats.comps} comps. " : ''}Open the door on a phone to scan tickets and sell at the door.",
-                        actions: [ { text: "Open the door", path: routes.door_path(listing) }, { text: "Guest list", path: routes.manage_ticket_listing_path(listing) } ],
-                        tone: :pink)
-    end
     canceled_with_holders = listings.where(shows: { canceled: true }).where.not(status: "canceled")
                                     .where("shows.date_and_time > ?", Time.current)
                                     .where(id: TicketOrder.paid_like.select(:ticket_listing_id))

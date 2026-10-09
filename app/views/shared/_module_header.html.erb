@@ -31,9 +31,24 @@
     </div>
   <% end %>
 
-  <%# Action buttons in 4-column grid %>
+  <%# Action buttons in a grid. On a phone they fold under "Sections", so
+      the page itself starts near the top (Tim, 2026-10-09: an experiment);
+      a count on the fold adds up the badges inside it. %>
   <% if actions.any? %>
-    <div class="mt-6"><%= render "shared/module_actions", actions: actions %></div>
+    <% waiting = actions.sum { |action| action[:badge].to_i } %>
+    <details class="group sm:hidden mt-5 rounded-lg border border-gray-200 bg-white">
+      <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-gray-900">
+        <span class="flex items-center gap-2">
+          Sections
+          <% if waiting.positive? %>
+            <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-pink-600 text-white text-[11px] font-semibold leading-none"><%= waiting %></span>
+          <% end %>
+        </span>
+        <svg class="w-4 h-4 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </summary>
+      <div class="px-3 pb-3"><%= render "shared/module_actions", actions: actions %></div>
+    </details>
+    <div class="hidden sm:block mt-6"><%= render "shared/module_actions", actions: actions %></div>
   <% end %>
 </div>
 
