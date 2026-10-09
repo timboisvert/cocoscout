@@ -76,17 +76,15 @@
       type no longer sold shows only while someone holds a ticket on it. %>
   <%
     # Under a type's Sold, when some sold elsewhere: how many here, then each
-    # other site, a line each. Under its Sales, the money for those same
-    # lines, row for row, so you read straight across (Tim, 2026-10-09); on a
-    # phone, where they sit apart, each money line says whose it is.
+    # other site, a line each. Under its Sales, the money, each line saying
+    # whose it is ("$450 on HotTix"), for the sites with an amount typed.
     breakdown = lambda do |row|
       sites = row.tier.bundle? ? [] : stats.outside_by_site(tier: row.tier)
-      return { sold: [], money: [], labeled: [], total: row.gross_cents } if sites.empty?
+      return { sold: [], labeled: [], total: row.gross_cents } if sites.empty?
 
       priced = sites.any? { |_, _, cents| cents.positive? }
       {
         sold: [ "#{row.sold_here} here", *sites.map { |name, n, _| "#{n} on #{name}" } ],
-        money: priced ? [ brief.call(row.gross_cents), *sites.map { |_, _, cents| cents.positive? ? brief.call(cents) : "—" } ] : [],
         labeled: priced ? [ "#{brief.call(row.gross_cents)} here", *sites.select { |_, _, cents| cents.positive? }.map { |name, _, cents| "#{brief.call(cents)} on #{name}" } ] : [],
         total: row.gross_cents + sites.sum { |_, _, cents| cents }
       }
@@ -136,17 +134,17 @@
       <table class="min-w-full text-sm">
         <thead class="bg-gray-50 text-xs text-gray-500">
           <tr>
-            <th class="pl-4 sm:pl-5 pr-2.5 py-2 text-left font-medium">Ticket</th>
+            <th class="pl-4 pr-2 py-2 text-left font-medium">Ticket</th>
             <%# Left-aligned under their headings, except Sales: the money lines
                 up on the right (Tim, 2026-10-09). %>
             <%# What it's listed at and how many, then what became of them: sold
                 (here or elsewhere), comped, remaining (Tim, 2026-10-09). %>
-            <th class="px-2.5 py-2 text-left font-medium">Price</th>
-            <th class="px-2.5 py-2 text-left font-medium">Listed</th>
-            <th class="px-2.5 py-2 text-left font-medium">Sold</th>
-            <th class="px-2.5 py-2 text-left font-medium">Comps</th>
-            <th class="px-2.5 py-2 text-left font-medium">Remaining</th>
-            <th class="px-4 py-2 text-right font-medium">Sales</th>
+            <th class="px-2 py-2 text-left font-medium">Price</th>
+            <th class="px-2 py-2 text-left font-medium">Listed</th>
+            <th class="px-2 py-2 text-left font-medium">Sold</th>
+            <th class="px-2 py-2 text-left font-medium">Comps</th>
+            <th class="px-2 py-2 text-left font-medium">Remaining</th>
+            <th class="pl-2 pr-3 py-2 text-right font-medium">Sales</th>
             <% unless read_only %><th class="w-10"><span class="sr-only">Actions</span></th><% end %>
           </tr>
         </thead>
@@ -154,24 +152,24 @@
           <% type_rows.each do |r| %>
             <% row = r[:row] %>
             <tr class="align-top <%= r[:tone] %>">
-              <td class="pl-4 sm:pl-5 pr-2.5 py-2.5 <%= r[:tone] || 'text-gray-900' %>">
+              <td class="pl-4 pr-2 py-2.5 <%= r[:tone] || 'text-gray-900' %>">
                 <%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %>
                 <% if r[:state] %><span class="ml-1 text-xs font-medium">· <%= r[:state] %></span><% end %>
               </td>
-              <td class="px-2.5 py-2.5 tabular-nums whitespace-nowrap"><%= ticket_price(row.tier.price_cents) %></td>
-              <td class="px-2.5 py-2.5 tabular-nums whitespace-nowrap"><%= row.seats || "No limit" %></td>
+              <td class="px-2 py-2.5 tabular-nums whitespace-nowrap"><%= ticket_price(row.tier.price_cents) %></td>
+              <td class="px-2 py-2.5 tabular-nums whitespace-nowrap"><%= row.seats || "No limit" %></td>
               <% b = breakdown.call(row) %>
-              <td class="px-2.5 py-2.5 tabular-nums">
+              <td class="px-2 py-2.5 tabular-nums">
                 <%= row.sold_anywhere %>
                 <% b[:sold].each do |line| %><div class="text-xs font-normal text-gray-500 whitespace-nowrap"><%= line %></div><% end %>
               </td>
-              <td class="px-2.5 py-2.5 tabular-nums"><%= row.comps %></td>
-              <td class="px-2.5 py-2.5 tabular-nums whitespace-nowrap"><%= row.remaining.nil? ? "No limit" : row.remaining %></td>
-              <td class="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
+              <td class="px-2 py-2.5 tabular-nums"><%= row.comps %></td>
+              <td class="px-2 py-2.5 tabular-nums whitespace-nowrap"><%= row.remaining.nil? ? "No limit" : row.remaining %></td>
+              <td class="pl-2 pr-3 py-2.5 text-right tabular-nums whitespace-nowrap">
                 <%= money.call(b[:total]) %>
-                <% b[:money].each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %>
+                <% b[:labeled].each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %>
               </td>
-              <% unless read_only %><td class="pr-3 py-1.5 text-right"><%= r[:menu] %></td><% end %>
+              <% unless read_only %><td class="pr-2 py-1.5 text-right"><%= r[:menu] %></td><% end %>
             </tr>
           <% end %>
         </tbody>

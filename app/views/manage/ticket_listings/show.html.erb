@@ -58,7 +58,7 @@
     <%= render "shared/copy_url", url: short_url, show_qr: true, qr_title: "Scan for tickets" %>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-6">
     <div class="space-y-6 min-w-0">
       <% if show.canceled && @listing.status != "canceled" && upcoming && @listing.ticket_orders.paid_like.exists? %>
         <%= render "shared/alert_panel",
