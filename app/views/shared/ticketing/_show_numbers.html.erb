@@ -9,26 +9,39 @@
   outside_modal = local_assigns[:outside_modal]
   listing = stats.listing
   money = ->(cents) { number_to_currency(cents / 100.0) }
+  # For the small lines under a number: whole dollars without the cents.
+  brief = ->(cents) { number_to_currency(cents / 100.0, precision: (cents % 100).zero? ? 0 : 2) }
   started = listing.show.date_and_time <= Time.current
   outside = stats.outside_sold
-  # Sold is every ticket sold, here or elsewhere, of the seats there are to
-  # sell once comps are set aside, as the lists say it (Tim, 2026-10-09).
+  elsewhere_cents = stats.outside_cents
   seats = stats.seats_to_sell
-  sold_note = [
-    (outside.positive? ? "#{stats.paid_sold} here, #{outside} elsewhere" : nil),
-    (stats.comps.positive? ? pluralize(stats.comps, "comp") + " set aside" : nil)
-  ].compact.join(" · ").presence || (seats.to_i.positive? ? "#{(stats.sold_anywhere * 100.0 / seats).round}% full" : (seats ? "Full" : "No seat limit"))
-  # [label, value, note, tint, modal it opens]
+  elsewhere = outside_modal || outside.positive? || elsewhere_cents.positive?
+  amounts = stats.outside_amounts
+  # The tiles, two rows (Tim, 2026-10-09): what sold here and its money, then
+  # refunds; under them what sold elsewhere and its money, then comps. The
+  # whole picture ("14 of 49 sold in all") rides under Sold here, what you
+  # keep under Ticket sales here.
+  # On a phone they pair up two by two instead: here, elsewhere, then
+  # refunds and comps (the order classes; literal, so Tailwind sees them).
+  # [label, value, note, tint, modal it opens, order]
   tiles = [
-    [ "Sold", seats ? "#{stats.sold_anywhere} of #{seats}" : stats.sold_anywhere.to_s, sold_note, nil ],
-    [ "Ticket sales", money.call(stats.gross_cents), "Before fees and tax", nil ],
-    (read_only ? nil : [ "You keep", money.call(stats.net_cents), stats.tax_cents.positive? ? "Plus #{money.call(stats.tax_cents)} tax to pay" : "After fees and refunds", nil ]),
-    (started ? [ "Checked in", "#{stats.checked_in} of #{stats.sold}", stats.no_shows.to_i.positive? ? "#{stats.no_shows} didn't come" : "Everyone came", nil ] : nil),
-    (stats.products_sold.positive? ? [ "Products", stats.products_sold.to_s, "#{money.call(stats.product_cents)} before tax", "bg-pink-50 border-pink-200" ] : nil),
-    [ "Comps", stats.comps.to_s, comps_modal ? "Given away free · give tickets" : "Given away free", stats.comps.positive? ? "bg-blue-50 border-blue-200" : nil, comps_modal ],
-    (outside_modal || outside.positive? ? [ "Sold elsewhere", outside.to_s, outside.positive? ? stats.outside_words : "On other sites, off these seats",
-                                            outside.positive? ? "bg-violet-50 border-violet-200" : nil, outside_modal ] : nil),
-    [ "Refunded", stats.refunded_tickets.to_s, stats.refunded_cents.positive? ? "#{money.call(stats.refunded_cents)} back" : "None", stats.refunded_tickets.positive? ? "bg-amber-50 border-amber-200" : nil ]
+    [ "Sold here", stats.paid_sold.to_s,
+      seats ? "#{stats.sold_anywhere} of #{seats} sold in all" : (stats.sold_anywhere == stats.paid_sold ? "No seat limit" : "#{stats.sold_anywhere} sold in all"), nil, nil, "order-1" ],
+    [ "Ticket sales here", money.call(stats.gross_cents),
+      read_only ? "Before fees and tax" : "You keep #{money.call(stats.net_cents)}#{stats.tax_cents.positive? ? ", plus #{money.call(stats.tax_cents)} tax to pay" : ' after fees'}", nil, nil, "order-2" ],
+    [ "Refunded", stats.refunded_tickets.to_s, stats.refunded_cents.positive? ? "#{money.call(stats.refunded_cents)} back" : "None",
+      stats.refunded_tickets.positive? ? "bg-amber-50 border-amber-200" : nil, nil, "order-5 lg:order-3" ],
+    (elsewhere ? [ "Sold elsewhere", outside.to_s, outside.positive? ? stats.outside_words : "On other sites, off these seats",
+                   outside.positive? ? "bg-violet-50 border-violet-200" : nil, outside_modal, "order-3 lg:order-4" ] : nil),
+    (elsewhere ? [ "Ticket sales elsewhere", money.call(elsewhere_cents),
+                   if amounts.any? then amounts.map { |name, cents| "#{brief.call(cents)} on #{name}" }.to_sentence
+                   elsif outside.positive? then "Add the amounts in Sold elsewhere"
+                   else "What other sites took, as you enter it"
+                   end,
+                   elsewhere_cents.positive? ? "bg-violet-50 border-violet-200" : nil, outside_modal, "order-4 lg:order-5" ] : nil),
+    [ "Comps", stats.comps.to_s, comps_modal ? "Given away free · give tickets" : "Given away free", stats.comps.positive? ? "bg-blue-50 border-blue-200" : nil, comps_modal, "order-6" ],
+    (started ? [ "Checked in", "#{stats.checked_in} of #{stats.sold}", stats.no_shows.to_i.positive? ? "#{stats.no_shows} didn't come" : "Everyone came", nil, nil, "order-7" ] : nil),
+    (stats.products_sold.positive? ? [ "Products", stats.products_sold.to_s, "#{money.call(stats.product_cents)} before tax", "bg-pink-50 border-pink-200", nil, "order-8" ] : nil)
   ].compact
   codes = stats.discount_uses
 %>
@@ -36,7 +49,7 @@
   <%# Four tiles sit in one row; five or six go three to a row (3+2, 3+3), so
       none of them is squeezed. Literal class names, so Tailwind sees each. %>
   <div class="grid grid-cols-2 <%= tiles.size == 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3' %> gap-3">
-    <% tiles.each do |label, value, note, tint, modal| %>
+    <% tiles.each do |label, value, note, tint, modal, order| %>
       <% inner = capture do %>
         <div class="text-xs text-gray-500"><%= label %></div>
         <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= value %></div>
@@ -44,10 +57,10 @@
       <% end %>
       <% if modal %>
         <%# A tile that opens its modal: the thing to do is right where the number is. %>
-        <%= link_to "#", class: "block rounded-lg border px-4 py-3 text-left hover:border-pink-400 transition-colors #{tint || 'bg-white border-gray-200'}",
+        <%= link_to "#", class: "block rounded-lg border px-4 py-3 text-left hover:border-pink-400 transition-colors #{order} #{tint || 'bg-white border-gray-200'}",
               data: { controller: "modal", action: "click->modal#open", modal_id: modal } do %><%= inner %><% end %>
       <% else %>
-        <div class="rounded-lg border px-4 py-3 <%= tint || 'bg-white border-gray-200' %>"><%= inner %></div>
+        <div class="rounded-lg border px-4 py-3 <%= order %> <%= tint || 'bg-white border-gray-200' %>"><%= inner %></div>
       <% end %>
     <% end %>
   </div>
@@ -63,9 +76,20 @@
       type no longer sold shows only while someone holds a ticket on it. %>
   <%
     # Under a type's Sold, when some sold elsewhere: how many here, then each
-    # other site, a line each so the column stays narrow.
-    type_notes = lambda do |row|
-      row.outside.positive? ? [ "#{row.sold_here} here", *stats.outside_lines(tier: row.tier) ] : []
+    # other site, a line each. Under its Sales, the money for those same
+    # lines, row for row, so you read straight across (Tim, 2026-10-09); on a
+    # phone, where they sit apart, each money line says whose it is.
+    breakdown = lambda do |row|
+      sites = row.tier.bundle? ? [] : stats.outside_by_site(tier: row.tier)
+      return { sold: [], money: [], labeled: [], total: row.gross_cents } if sites.empty?
+
+      priced = sites.any? { |_, _, cents| cents.positive? }
+      {
+        sold: [ "#{row.sold_here} here", *sites.map { |name, n, _| "#{n} on #{name}" } ],
+        money: priced ? [ brief.call(row.gross_cents), *sites.map { |_, _, cents| cents.positive? ? brief.call(cents) : "—" } ] : [],
+        labeled: priced ? [ "#{brief.call(row.gross_cents)} here", *sites.select { |_, _, cents| cents.positive? }.map { |name, _, cents| "#{brief.call(cents)} on #{name}" } ] : [],
+        total: row.gross_cents + sites.sum { |_, _, cents| cents }
+      }
     end
     type_rows = stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }.map do |row|
       out_of_seats = row.tier.archived_at.nil? && row.remaining == 0
@@ -96,9 +120,13 @@
             <div class="mt-0.5 text-xs tabular-nums <%= r[:tone] || 'text-gray-600' %>">
               <%= ticket_price(row.tier.price_cents) %> · <%= row.seats ? "#{row.seats} listed" : "no limit" %> · <%= row.sold_anywhere %> sold<%= " · #{pluralize(row.comps, 'comp')}" if row.comps.positive? %><%= " · #{row.remaining} remaining" unless row.remaining.nil? %>
             </div>
-            <% type_notes.call(row).each do |line| %><div class="text-xs text-gray-500"><%= line %></div><% end %>
+            <% b = breakdown.call(row) %>
+            <% b[:sold].each do |line| %><div class="text-xs text-gray-500"><%= line %></div><% end %>
           </div>
-          <div class="text-sm font-semibold tabular-nums <%= r[:tone] || 'text-gray-900' %>"><%= money.call(row.gross_cents) %></div>
+          <div class="text-right">
+            <div class="text-sm font-semibold tabular-nums <%= r[:tone] || 'text-gray-900' %>"><%= money.call(b[:total]) %></div>
+            <% b[:labeled].each do |line| %><div class="text-xs text-gray-500 whitespace-nowrap"><%= line %></div><% end %>
+          </div>
           <% if r[:menu] %><div class="-my-1"><%= r[:menu] %></div><% end %>
         </li>
       <% end %>
@@ -108,37 +136,41 @@
       <table class="min-w-full text-sm">
         <thead class="bg-gray-50 text-xs text-gray-500">
           <tr>
-            <th class="px-5 py-2 text-left font-medium">Ticket</th>
+            <th class="pl-4 sm:pl-5 pr-2.5 py-2 text-left font-medium">Ticket</th>
             <%# Left-aligned under their headings, except Sales: the money lines
                 up on the right (Tim, 2026-10-09). %>
             <%# What it's listed at and how many, then what became of them: sold
                 (here or elsewhere), comped, remaining (Tim, 2026-10-09). %>
-            <th class="px-3 py-2 text-left font-medium">Price</th>
-            <th class="px-3 py-2 text-left font-medium">Listed</th>
-            <th class="px-3 py-2 text-left font-medium">Sold</th>
-            <th class="px-3 py-2 text-left font-medium">Comps</th>
-            <th class="px-3 py-2 text-left font-medium">Remaining</th>
-            <th class="px-5 py-2 text-right font-medium">Sales</th>
+            <th class="px-2.5 py-2 text-left font-medium">Price</th>
+            <th class="px-2.5 py-2 text-left font-medium">Listed</th>
+            <th class="px-2.5 py-2 text-left font-medium">Sold</th>
+            <th class="px-2.5 py-2 text-left font-medium">Comps</th>
+            <th class="px-2.5 py-2 text-left font-medium">Remaining</th>
+            <th class="px-4 py-2 text-right font-medium">Sales</th>
             <% unless read_only %><th class="w-10"><span class="sr-only">Actions</span></th><% end %>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           <% type_rows.each do |r| %>
             <% row = r[:row] %>
-            <tr class="whitespace-nowrap align-top <%= r[:tone] %>">
-              <td class="px-5 py-2.5 <%= r[:tone] || 'text-gray-900' %>">
+            <tr class="align-top <%= r[:tone] %>">
+              <td class="pl-4 sm:pl-5 pr-2.5 py-2.5 <%= r[:tone] || 'text-gray-900' %>">
                 <%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %>
                 <% if r[:state] %><span class="ml-1 text-xs font-medium">· <%= r[:state] %></span><% end %>
               </td>
-              <td class="px-3 py-2.5 tabular-nums"><%= ticket_price(row.tier.price_cents) %></td>
-              <td class="px-3 py-2.5 tabular-nums"><%= row.seats || "No limit" %></td>
-              <td class="px-3 py-2.5 tabular-nums">
+              <td class="px-2.5 py-2.5 tabular-nums whitespace-nowrap"><%= ticket_price(row.tier.price_cents) %></td>
+              <td class="px-2.5 py-2.5 tabular-nums whitespace-nowrap"><%= row.seats || "No limit" %></td>
+              <% b = breakdown.call(row) %>
+              <td class="px-2.5 py-2.5 tabular-nums">
                 <%= row.sold_anywhere %>
-                <% type_notes.call(row).each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %>
+                <% b[:sold].each do |line| %><div class="text-xs font-normal text-gray-500 whitespace-nowrap"><%= line %></div><% end %>
               </td>
-              <td class="px-3 py-2.5 tabular-nums"><%= row.comps %></td>
-              <td class="px-3 py-2.5 tabular-nums"><%= row.remaining.nil? ? "No limit" : row.remaining %></td>
-              <td class="px-5 py-2.5 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
+              <td class="px-2.5 py-2.5 tabular-nums"><%= row.comps %></td>
+              <td class="px-2.5 py-2.5 tabular-nums whitespace-nowrap"><%= row.remaining.nil? ? "No limit" : row.remaining %></td>
+              <td class="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
+                <%= money.call(b[:total]) %>
+                <% b[:money].each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %>
+              </td>
               <% unless read_only %><td class="pr-3 py-1.5 text-right"><%= r[:menu] %></td><% end %>
             </tr>
           <% end %>

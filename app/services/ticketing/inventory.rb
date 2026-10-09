@@ -59,10 +59,27 @@ module Ticketing
 
     # The same, one site a line: ["10 on Ticket Tailor", "2 on Eventbrite"].
     def outside_lines(tier: nil)
-      rows = TicketOutsideSale.where(ticket_listing_id: @listing.id)
-      rows = rows.where(ticket_tier_id: (tier.bundle? ? tier.base_tier : tier).id) if tier
-      rows.joins(:ticket_source).group("ticket_sources.name").sum(:tickets_sold)
-          .select { |_, n| n.positive? }.sort_by { |name, n| [ -n, name ] }.map { |name, n| "#{n} on #{name}" }
+      outside_by_site(tier: tier).select { |_, n, _| n.positive? }.map { |name, n, _| "#{n} on #{name}" }
+    end
+
+    # Each other site's tickets and money, most tickets first:
+    # [["HotTix", 5, 45_000], ["Ticket Tailor", 3, 2_700]].
+    def outside_by_site(tier: nil)
+      outside_rows(tier).joins(:ticket_source).group("ticket_sources.name").pluck("ticket_sources.name", Arel.sql("SUM(tickets_sold)"), Arel.sql("SUM(amount_cents)"))
+                        .map { |name, n, cents| [ name, n.to_i, cents.to_i ] }.reject { |_, n, cents| n.zero? && cents.zero? }
+                        .sort_by { |name, n, cents| [ -n, -cents, name ] }
+    end
+
+    # The money other sites took, as typed on the show's page, by site:
+    # [["HotTix", 45_000], ["Ticket Tailor", 2_700]], biggest first, only
+    # sites with an amount. Not CocoScout's money: never in the balance.
+    def outside_amounts(tier: nil)
+      outside_rows(tier).joins(:ticket_source).group("ticket_sources.name").sum(:amount_cents)
+                        .select { |_, cents| cents.positive? }.sort_by { |name, cents| [ -cents, name ] }
+    end
+
+    def outside_cents(tier: nil)
+      outside_rows(tier).sum(:amount_cents)
     end
 
     def taken(tier: nil)
@@ -117,6 +134,12 @@ module Ticketing
     end
 
     private
+
+    # A bundle's sales elsewhere are its type's.
+    def outside_rows(tier)
+      rows = TicketOutsideSale.where(ticket_listing_id: @listing.id)
+      tier ? rows.where(ticket_tier_id: (tier.bundle? ? tier.base_tier : tier).id) : rows
+    end
 
     # A bundle's tickets are its type's, remembering the bundle.
     def scope(tier)

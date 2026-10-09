@@ -106,6 +106,18 @@ module Ticketing
       inventory.outside_lines(tier: tier)
     end
 
+    def outside_amounts(tier: nil)
+      inventory.outside_amounts(tier: tier)
+    end
+
+    def outside_by_site(tier: nil)
+      inventory.outside_by_site(tier: tier)
+    end
+
+    def outside_cents(tier: nil)
+      inventory.outside_cents(tier: tier)
+    end
+
     def held_tickets
       @tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     end
