@@ -71,7 +71,7 @@ RSpec.describe "Manage a show's tickets", type: :request do
 
     get manage_ticket_listing_path(listing)
     body = response.body
-    expect(body).to include("incl. 4 in 4-pack", "4 tickets, in General", "in General</td>", "$20.00 · 40 listed · 4 sold")
+    expect(body).to include("incl. 4 in bundles", "incl. $70 in bundles", "4 tickets, counted above", "counted above</td>", "$20.00 · 40 listed · 4 sold")
     expect(body).not_to include("$140.00") # never the 4-pack's money twice
   end
 
