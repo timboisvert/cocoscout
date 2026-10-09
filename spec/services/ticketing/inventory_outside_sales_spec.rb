@@ -20,7 +20,9 @@ RSpec.describe Ticketing::Inventory, "with tickets sold elsewhere" do
 
     inventory = listing.inventory
     expect([ inventory.outside_sold, inventory.remaining, inventory.remaining(tier: general), inventory.remaining(tier: vip) ]).to eq([ 19, 41, 35, 6 ])
-    expect(inventory.outside_words(tier: general)).to eq("5 on Eventbrite and 10 on Ticket Tailor")
+    # The biggest site first; one site a line where they're listed.
+    expect(inventory.outside_words(tier: general)).to eq("10 on Ticket Tailor and 5 on Eventbrite")
+    expect(inventory.outside_lines(tier: general)).to eq([ "10 on Ticket Tailor", "5 on Eventbrite" ])
     expect(inventory.fits?({ vip => 6 })).to be(true)
     expect(inventory.fits?({ vip => 7 })).to be(false)
 

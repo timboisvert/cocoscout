@@ -54,9 +54,15 @@ module Ticketing
 
     # "10 on Ticket Tailor and 2 on Eventbrite", for one type or the show.
     def outside_words(tier: nil)
+      outside_lines(tier: tier).to_sentence
+    end
+
+    # The same, one site a line: ["10 on Ticket Tailor", "2 on Eventbrite"].
+    def outside_lines(tier: nil)
       rows = TicketOutsideSale.where(ticket_listing_id: @listing.id)
       rows = rows.where(ticket_tier_id: (tier.bundle? ? tier.base_tier : tier).id) if tier
-      rows.joins(:ticket_source).group("ticket_sources.name").sum(:tickets_sold).map { |name, n| "#{n} on #{name}" }.to_sentence
+      rows.joins(:ticket_source).group("ticket_sources.name").sum(:tickets_sold)
+          .select { |_, n| n.positive? }.sort_by { |name, n| [ -n, name ] }.map { |name, n| "#{n} on #{name}" }
     end
 
     def taken(tier: nil)

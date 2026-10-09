@@ -95,6 +95,10 @@ module Ticketing
       inventory.outside_words(tier: tier)
     end
 
+    def outside_lines(tier: nil)
+      inventory.outside_lines(tier: tier)
+    end
+
     def held_tickets
       @tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     end

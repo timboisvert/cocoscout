@@ -91,7 +91,7 @@
             <div class="mt-0.5 text-xs tabular-nums <%= r[:tone] || 'text-gray-600' %>">
               <%= ticket_price(row.tier.price_cents) %> · <%= row.sold %><%= " of #{row.seats}" if row.seats %> sold · <%= row.remaining.nil? ? "no limit" : "#{row.remaining} remaining" %><%= " · #{row.held} in checkout" if row.held.positive? %>
             </div>
-            <% if row.outside.positive? %><div class="text-xs text-gray-500"><%= stats.outside_words(tier: row.tier) %></div><% end %>
+            <% if row.outside.positive? %><% stats.outside_lines(tier: row.tier).each do |line| %><div class="text-xs text-gray-500"><%= line %></div><% end %><% end %>
           </div>
           <div class="text-sm font-semibold tabular-nums <%= r[:tone] || 'text-gray-900' %>"><%= money.call(row.gross_cents) %></div>
           <% if r[:menu] %><div class="-my-1"><%= r[:menu] %></div><% end %>
@@ -125,7 +125,8 @@
               <td class="px-3 py-2.5 text-right tabular-nums"><%= row.held %></td>
               <td class="px-3 py-2.5 text-right tabular-nums">
                 <%= row.remaining.nil? ? "No limit" : row.remaining %>
-                <% if row.outside.positive? %><div class="text-xs font-normal text-gray-500 whitespace-normal"><%= stats.outside_words(tier: row.tier) %></div><% end %>
+                <%# One site a line, so the column stays narrow. %>
+                <% if row.outside.positive? %><% stats.outside_lines(tier: row.tier).each do |line| %><div class="text-xs font-normal text-gray-500"><%= line %></div><% end %><% end %>
               </td>
               <td class="px-5 py-2.5 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
               <% unless read_only %><td class="pr-3 py-1.5 text-right"><%= r[:menu] %></td><% end %>
