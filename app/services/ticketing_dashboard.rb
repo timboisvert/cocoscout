@@ -68,10 +68,6 @@ class TicketingDashboard
     @coming_up ||= Ticketing::ComingUp.by_production(@organization).first(PRODUCTIONS)
   end
 
-  def upcoming_count
-    @upcoming_count ||= upcoming.count
-  end
-
   def upcoming_production_count
     @upcoming_production_count ||= upcoming.distinct.count("ticket_listings.production_id")
   end

@@ -62,7 +62,8 @@ RSpec.describe "Ticketing dashboard", type: :request do
 
     get manage_ticketing_path
     body = response.body
-    expect(body).to include("2 productions, 9 dates", "7 more dates", "All 8 dates of Improvised Animorphs",
+    expect(body).not_to include("2 productions, 9 dates")
+    expect(body).to include("7 more dates", "All 8 dates of Improvised Animorphs",
                             manage_production_ticketing_path(production), manage_ticket_listing_path(first[5]))
     expect(body).not_to include(manage_ticket_listing_path(first[6]))
     expect(body.index("Improvised Animorphs")).to be < body.index("Laugh Along Live")
