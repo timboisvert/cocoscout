@@ -65,6 +65,14 @@ RSpec.describe "Manage a show's tickets", type: :request do
     get manage_ticket_listing_path(listing)
     expect(response.body).to include('data-modal-id="comps-modal"', 'id="comps-modal"', 'name="name"', 'name="quantity"')
     expect(response.body).not_to include("One person per line")
+    # One ticket type: said, not chosen. Emailing asks for their email, and needs it.
+    expect(response.body).to include(%(type="hidden" name="tier_id" id="comp_tier_id" value="#{general.id}"), "General ($20.00) · 40 left",
+                                     "Email them their tickets", 'name="email_them"')
+    expect(response.body).to match(/id="comp_email"[^>]*required="required"/)
+    expect(response.body).not_to include('<select name="tier_id"')
+    listing.ticket_tiers.create!(name: "VIP", price_cents: 3_500, quantity: 10)
+    get manage_ticket_listing_path(listing)
+    expect(response.body).to include('<select name="tier_id" id="comp_tier_id"')
     get manage_new_ticket_listing_comps_path(listing)
     expect(response).to redirect_to(manage_ticket_listing_path(listing, anchor: "guests"))
 
@@ -76,8 +84,14 @@ RSpec.describe "Manage a show's tickets", type: :request do
     expect(flash[:notice]).to start_with("Gave 2 tickets to Walter Skinner.")
 
     expect {
-      post manage_ticket_listing_comps_path(listing), params: { name: "Monica Reyes", quantity: "1", tier_id: general.id, email_them: "1" }
-    }.not_to have_enqueued_job(TicketOrderConfirmationJob) # no email to send to
+      post manage_ticket_listing_comps_path(listing), params: { name: "Monica Reyes", quantity: "1", tier_id: general.id, email_them: "0" }
+    }.not_to have_enqueued_job(TicketOrderConfirmationJob) # handed over in person
+
+    # Email them, with nowhere to send: refused, nothing given.
+    expect {
+      post manage_ticket_listing_comps_path(listing), params: { name: "No Address", quantity: "1", tier_id: general.id, email_them: "1", email: "" }
+    }.not_to change { listing.ticket_orders.where(channel: "comp").count }
+    expect(flash[:alert]).to eq("Add their email to send their tickets, or switch off Email them their tickets.")
     get manage_ticket_listing_path(listing, guests: "comps")
     expect(response.body).to include("Walter Skinner", "Monica Reyes", "Comp")
 

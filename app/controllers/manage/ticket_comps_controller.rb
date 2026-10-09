@@ -2,8 +2,8 @@
 
 module Manage
   # Giving tickets away from a show's page (TicketComps): one person at a
-  # time — name, email, how many, which ticket type — and they get their
-  # tickets. The form is the Comps modal on the show's page (Tim,
+  # time — name, how many, which ticket type, and their email when they're
+  # to get their tickets by email. The form is the Comps modal on the show's page (Tim,
   # 2026-10-06). (A pasted list can come back if a theater asks for it.)
   class TicketCompsController < Manage::TicketingBaseController
     before_action :set_listing
@@ -15,9 +15,16 @@ module Manage
 
     def create
       tier = @tiers.find { |t| t.id == params[:tier_id].to_i }
-      guest = TicketComps::Guest.new(name: params[:name].to_s.squish, email: params[:email].to_s.strip.downcase.presence,
-                                     tier: tier, quantity: params[:quantity].to_i)
-      order = TicketComps.give!(@listing, [ guest ], by: Current.user, note: params[:note], email_them: params[:email_them] == "1").sole
+      email = params[:email].to_s.strip.downcase.presence
+      email_them = params[:email_them] == "1"
+      # Emailing their tickets needs somewhere to send them.
+      if email_them && email.blank?
+        return redirect_to(manage_ticket_listing_path(@listing, anchor: "guests"),
+                           alert: "Add their email to send their tickets, or switch off Email them their tickets.")
+      end
+
+      guest = TicketComps::Guest.new(name: params[:name].to_s.squish, email: email, tier: tier, quantity: params[:quantity].to_i)
+      order = TicketComps.give!(@listing, [ guest ], by: Current.user, note: params[:note], email_them: email_them).sole
       redirect_to manage_ticket_listing_path(@listing, anchor: "guests"),
                   notice: "Gave #{helpers.pluralize(order.tickets.size, 'ticket')} to #{guest.name}. They're on the guest list."
     rescue TicketComps::Error => e
