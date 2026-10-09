@@ -46,11 +46,11 @@ RSpec.describe "Ticket type availability on one date", type: :request do
     expect(vip.quantity).to eq(10)
 
     get manage_ticket_listing_path(listing)
-    expect(response.body).to match(%r{<tr class="whitespace-nowrap text-red-700">\s*<td class="px-5 py-2.5 text-red-700">\s*Front Row VIP\s*<span class="ml-1 text-xs font-medium">· Sold out</span>})
+    expect(response.body).to match(%r{<tr class="whitespace-nowrap align-top text-red-700">\s*<td class="px-5 py-2.5 text-red-700">\s*Front Row VIP\s*<span class="ml-1 text-xs font-medium">· Sold out</span>})
     expect(response.body).to include("Put back on sale")
 
     set(general, "unlisted")
-    expect(response.body).to match(%r{<tr class="whitespace-nowrap text-gray-400">\s*<td class="px-5 py-2.5 text-gray-400">\s*General\s*<span class="ml-1 text-xs font-medium">· Hidden</span>})
+    expect(response.body).to match(%r{<tr class="whitespace-nowrap align-top text-gray-400">\s*<td class="px-5 py-2.5 text-gray-400">\s*General\s*<span class="ml-1 text-xs font-medium">· Hidden</span>})
     set(general, "on_sale")
 
     get tickets_event_path(org: "starsandgarters", event: listing.slug)
@@ -87,7 +87,7 @@ RSpec.describe "Ticket type availability on one date", type: :request do
     TicketOutsideSales.record!(listing, { tailor.id.to_s => { vip.id.to_s => { "tickets" => "9" } } })
 
     get manage_ticket_listing_path(listing)
-    expect(response.body).to match(%r{<tr class="whitespace-nowrap text-red-700">\s*<td class="px-5 py-2.5 text-red-700">\s*Front Row VIP\s*<span class="ml-1 text-xs font-medium">· Sold out</span>})
+    expect(response.body).to match(%r{<tr class="whitespace-nowrap align-top text-red-700">\s*<td class="px-5 py-2.5 text-red-700">\s*Front Row VIP\s*<span class="ml-1 text-xs font-medium">· Sold out</span>})
     expect(response.body).to match(%r{<option disabled="disabled" value="#{vip.id}">Front Row VIP \(\$40\.00\) · no seats left</option>})
     expect(response.body).to include("General ($20.00) · 60 left")
 
