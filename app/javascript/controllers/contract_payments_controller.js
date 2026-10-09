@@ -2,6 +2,8 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = [
+        // The link to where they sell, shown only when they sell
+        "theySellLink",
         "description", "amount", "direction", "dueDate", "list", "paymentsJson", "structureJson", "configJson",
         "summary", "summaryDetails", "totalIncoming", "totalOutgoing", "netAmount",
         // Flat fee targets
@@ -37,6 +39,7 @@ export default class extends Controller {
     }
 
     connect() {
+        this.syncTheySellLink()
         this.payments = this.existingValue || []
         this.currentStructure = this.existingStructureValue || "flat_fee"
         // Custom is gone as a choice; treat any leftover as a flat fee.
@@ -170,11 +173,18 @@ export default class extends Controller {
     // Ticketing is its own step, and only when WE sell — so what comes next
     // changes with this answer. Keep the button honest about where it goes.
     onWhoSellsChange() {
+        this.syncTheySellLink()
         this.updateNextLabel()
         this.syncRevenueShareAvailability()
         // Who holds the ticket money flips the revenue-share direction and can
         // change the structure, so re-render the generated preview + totals.
         this.updateSummary()
+    }
+
+    // "Where people buy" only matters when they sell the tickets.
+    syncTheySellLink() {
+        if (!this.hasTheySellLinkTarget) return
+        this.theySellLinkTarget.classList.toggle("hidden", this.whoSellsTickets !== "contractor")
     }
 
     updateNextLabel() {

@@ -28,6 +28,22 @@ RSpec.describe "Manage::ContractWizard payments (v2 direction)", type: :request 
     expect(contract.draft_payments.map { |p| p["direction"] }).to all(eq("outgoing"))
   end
 
+  it "keeps where they sell only when they sell, and asks for it only then" do
+    post manage_payments_contract_wizard_path(contract), params: { payments: [].to_json, payment_structure: "flat_fee", payment_config: {}.to_json,
+                                                                  who_sells_tickets: "contractor", contractor_tickets_url: "https://www.eventbrite.com/e/123" }
+    expect(contract.reload.draft_payment_config["contractor_tickets_url"]).to eq("https://www.eventbrite.com/e/123")
+
+    get manage_payments_contract_wizard_path(contract)
+    expect(response.body).to match(/<div class="mt-3 " data-contract-payments-target="theySellLink">/)
+
+    post manage_payments_contract_wizard_path(contract), params: { payments: [].to_json, payment_structure: "flat_fee", payment_config: {}.to_json,
+                                                                  who_sells_tickets: "org", contractor_tickets_url: "https://www.eventbrite.com/e/123" }
+    expect(contract.reload.draft_payment_config["contractor_tickets_url"]).to be_nil
+
+    get manage_payments_contract_wizard_path(contract)
+    expect(response.body).to include(%(<div class="mt-3 hidden" data-contract-payments-target="theySellLink">))
+  end
+
   it "Case 2 — revenue share, they sell → payments stamped incoming" do
     save_payments(structure: "revenue_share", config: { "revenue_our_share" => 30 }, who_sells: "contractor")
     expect(contract.draft_payments.map { |p| p["direction"] }).to all(eq("incoming"))

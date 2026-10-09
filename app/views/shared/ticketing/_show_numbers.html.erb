@@ -78,18 +78,33 @@
     # Under a type's Sold, when some sold elsewhere: how many here, then each
     # other site, a line each. Under its Sales, the money, each line saying
     # whose it is ("$450 on HotTix"), for the sites with an amount typed.
+    shown = stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }
+    # Bundles that sold, by the type they use: "4-Pack".
+    bundle_names = shown.select { |r| r.tier.bundle? && r.sold.positive? }.group_by { |r| r.tier.bundle_of_tier_id }
+                        .transform_values { |rs| rs.map { |r| r.tier.name }.to_sentence }
     breakdown = lambda do |row|
       sites = row.tier.bundle? ? [] : stats.outside_by_site(tier: row.tier)
-      return { sold: [], labeled: [], total: row.gross_cents } if sites.empty?
-
-      priced = sites.any? { |_, _, cents| cents.positive? }
-      {
-        sold: [ "#{row.sold_here} here", *sites.map { |name, n, _| "#{n} on #{name}" } ],
-        labeled: priced ? [ "#{brief.call(row.gross_cents)} here", *sites.select { |_, _, cents| cents.positive? }.map { |name, _, cents| "#{brief.call(cents)} on #{name}" } ] : [],
-        total: row.gross_cents + sites.sum { |_, _, cents| cents }
-      }
+      sold = []
+      labeled = []
+      if sites.any?
+        sold.push("#{row.sold_here} here", *sites.map { |name, n, _| "#{n} on #{name}" })
+        if sites.any? { |_, _, cents| cents.positive? }
+          labeled.push("#{brief.call(row.gross_cents)} here", *sites.select { |_, _, cents| cents.positive? }.map { |name, _, cents| "#{brief.call(cents)} on #{name}" })
+        end
+      end
+      # Its tickets sold in a bundle are already in its count and its money; say so.
+      if row.in_bundles.positive?
+        sold << "incl. #{row.in_bundles} in #{bundle_names[row.tier.id] || 'bundles'}"
+        labeled << "incl. #{brief.call(row.bundle_cents)} in #{bundle_names[row.tier.id] || 'bundles'}"
+      end
+      { sold: sold, labeled: labeled, total: row.gross_cents + sites.sum { |_, _, cents| cents } }
     end
-    type_rows = stats.by_tier.reject { |row| row.tier.archived_at && row.sold.zero? }.map do |row|
+    # A bundle sits under the type it uses, counting purchases; its tickets
+    # and money are the type's, so it adds nothing to the columns' totals.
+    bases = shown.reject { |r| r.tier.bundle? }
+    ordered = bases.flat_map { |b| [ b, *shown.select { |r| r.tier.bundle? && r.tier.bundle_of_tier_id == b.tier.id } ] }
+    ordered += shown - ordered
+    type_rows = ordered.map do |row|
       out_of_seats = row.tier.archived_at.nil? && row.remaining == 0
       tone = if row.tier.archived_at || row.tier.unlisted? then "text-gray-400"
              elsif row.tier.marked_sold_out? || out_of_seats then "text-red-700"
@@ -109,6 +124,21 @@
     <ul class="sm:hidden divide-y divide-gray-100">
       <% type_rows.each do |r| %>
         <% row = r[:row] %>
+        <% if row.tier.bundle? %>
+          <%# A bundle, under its type: purchases, its tickets in the type's count. %>
+          <li class="pl-8 pr-4 py-2.5 flex items-start gap-3 <%= r[:tone] %>">
+            <div class="min-w-0 flex-1">
+              <div class="text-sm <%= r[:tone] || 'text-gray-700' %>">
+                <%= row.tier.name %><% if r[:state] %><span class="text-xs font-medium"> · <%= r[:state] %></span><% end %>
+              </div>
+              <div class="mt-0.5 text-xs tabular-nums text-gray-500">
+                <%= ticket_price(row.tier.price_cents) %> · <%= row.sold %> sold<% if row.sold.positive? %>, <%= pluralize(row.sold * [ row.tier.admits.to_i, 1 ].max, "ticket") %> in <%= row.tier.bundle_of&.name %><% end %><%= " · #{row.remaining} remaining" unless row.remaining.nil? %>
+              </div>
+            </div>
+            <% if r[:menu] %><div class="-my-1"><%= r[:menu] %></div><% end %>
+          </li>
+          <% next %>
+        <% end %>
         <li class="px-4 py-3 flex items-start gap-3 <%= r[:tone] %>">
           <div class="min-w-0 flex-1">
             <div class="text-sm font-medium <%= r[:tone] || 'text-gray-900' %>">
@@ -151,6 +181,26 @@
         <tbody class="divide-y divide-gray-100">
           <% type_rows.each do |r| %>
             <% row = r[:row] %>
+            <% if row.tier.bundle? %>
+              <%# A bundle, under its type: purchases; its tickets and money are
+                  already in the type's row, so nothing here adds to the totals. %>
+              <tr class="align-top <%= r[:tone] %>">
+                <td class="pl-8 pr-2 py-2 <%= r[:tone] || 'text-gray-700' %>">
+                  <%= row.tier.name %><% if r[:state] %><span class="ml-1 text-xs font-medium">· <%= r[:state] %></span><% end %>
+                </td>
+                <td class="px-2 py-2 tabular-nums whitespace-nowrap"><%= ticket_price(row.tier.price_cents) %></td>
+                <td class="px-2 py-2 text-gray-400">—</td>
+                <td class="px-2 py-2 tabular-nums">
+                  <%= row.sold %>
+                  <% if row.sold.positive? %><div class="text-xs font-normal text-gray-500 whitespace-nowrap"><%= pluralize(row.sold * [ row.tier.admits.to_i, 1 ].max, "ticket") %>, in <%= row.tier.bundle_of&.name %></div><% end %>
+                </td>
+                <td class="px-2 py-2 text-gray-400">—</td>
+                <td class="px-2 py-2 tabular-nums whitespace-nowrap"><%= row.remaining.nil? ? "No limit" : row.remaining %></td>
+                <td class="pl-2 pr-3 py-2 text-right text-xs text-gray-400 whitespace-nowrap">in <%= row.tier.bundle_of&.name %></td>
+                <% unless read_only %><td class="pr-2 py-1.5 text-right"><%= r[:menu] %></td><% end %>
+              </tr>
+              <% next %>
+            <% end %>
             <tr class="align-top <%= r[:tone] %>">
               <td class="pl-4 pr-2 py-2.5 <%= r[:tone] || 'text-gray-900' %>">
                 <%= row.tier.name %><%= " (no longer sold)" if row.tier.archived_at %>

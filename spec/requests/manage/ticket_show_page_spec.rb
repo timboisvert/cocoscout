@@ -62,6 +62,19 @@ RSpec.describe "Manage a show's tickets", type: :request do
     expect(response.body.index("Fox Mulder")).to be < response.body.index("Dana Scully")
   end
 
+  # Tim (2026-10-09): one 4-pack is four tickets, counted once.
+  it "counts a bundle's tickets once: in its type's row, the bundle under it" do
+    pack = listing.ticket_tiers.create!(name: "4-pack", price_cents: 7_000, admits: 4, bundle_of: general, position: 1)
+    order = TicketCheckout.start!(listing: listing, quantities: { pack.id.to_s => "1" })
+    order.update!(buyer_name: "Dana Scully", buyer_email: "dana@example.com")
+    TicketOrderSettlement.settle!(order, payment_intent_id: "pi_pack")
+
+    get manage_ticket_listing_path(listing)
+    body = response.body
+    expect(body).to include("incl. 4 in 4-pack", "4 tickets, in General", "in General</td>", "$20.00 · 40 listed · 4 sold")
+    expect(body).not_to include("$140.00") # never the 4-pack's money twice
+  end
+
   # Tim (2026-10-02): one person at a time, no pasted list. Tim (2026-10-06):
   # the form is a modal behind the Comps tile, not its own page.
   it "gives tickets away one person at a time, from the Comps tile, and says so" do

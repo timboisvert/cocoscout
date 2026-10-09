@@ -20,7 +20,10 @@ module Ticketing
     # One ticket type on this date. sold is every ticket held here, comps
     # included; sold_anywhere and seats_to_sell read it the way the Sold tile
     # does: sold here or elsewhere, of the seats left once comps are set aside.
-    TierRow = Data.define(:tier, :sold, :seats, :held, :remaining, :gross_cents, :outside, :comps) do
+    # A plain type's sold and money take in its tickets sold in bundles
+    # (in_bundles, bundle_cents), since they use its seats; a bundle's row
+    # counts purchases of it, and its tickets are the type's.
+    TierRow = Data.define(:tier, :sold, :seats, :held, :remaining, :gross_cents, :outside, :comps, :in_bundles, :bundle_cents) do
       def sold_here = sold - comps
       def sold_anywhere = sold_here + outside
       def seats_to_sell = seats && [ seats - comps, 0 ].max
@@ -194,12 +197,13 @@ module Ticketing
           admits = [ tier.admits.to_i, 1 ].max
           TierRow.new(tier: tier, sold: mine.size / admits, seats: nil, held: inventory.held(tier: tier) / admits,
                       remaining: tier.units_for(inventory.remaining(tier: tier)), gross_cents: mine.sum { |t| face_cents(t) }, outside: 0,
-                      comps: mine.count { |t| t.order_channel == "comp" } / admits)
+                      comps: mine.count { |t| t.order_channel == "comp" } / admits, in_bundles: 0, bundle_cents: 0)
         else
           mine = held_tickets.select { |t| t.ticket_tier_id == tier.id }
           TierRow.new(tier: tier, sold: mine.size, seats: tier.quantity, held: inventory.held(tier: tier),
                       remaining: inventory.remaining(tier: tier), gross_cents: mine.sum { |t| face_cents(t) }, outside: inventory.outside(tier: tier),
-                      comps: mine.count { |t| t.order_channel == "comp" })
+                      comps: mine.count { |t| t.order_channel == "comp" },
+                      in_bundles: mine.count { |t| t.bundle_tier_id.present? }, bundle_cents: mine.select { |t| t.bundle_tier_id.present? }.sum { |t| face_cents(t) })
         end
       end
     end
