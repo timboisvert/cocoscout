@@ -93,6 +93,14 @@ RSpec.describe "Credit passes", type: :request do
       holding.update!(holder_name: "Bella Swan", holder_email: "bella@example.com")
       TicketPassCredits.settle!(holding, paid_at: Time.current)
 
+      # The door page's filter box asks for pass holders, since they aren't
+      # on its list.
+      get door_path(listing)
+      expect(response.body).to include(door_search_path(listing, passes_only: 1).gsub("&", "&amp;"))
+      get door_search_path(listing, q: "bella", passes_only: 1)
+      expect(response.body).to include("Pass holders", "Bella Swan", "5 credits left")
+      expect(response.body).not_to include("Nobody matching")
+
       get door_search_path(listing, q: "bella")
       expect(response.body).to include("Pass holders", "Bella Swan", "5 credits left")
 

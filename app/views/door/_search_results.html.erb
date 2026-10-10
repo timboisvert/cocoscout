@@ -1,8 +1,11 @@
 <%# Orders matching a door search (the same rows as the list), and pass
     holders who can use a credit on this show. Locals: orders, query,
-    listing, holdings. %>
+    listing, holdings, passes_only (just the pass holders, under the list's
+    own filter). %>
 <% holdings = local_assigns[:holdings] || [] %>
-<% if query.length < 2 %>
+<% if local_assigns[:passes_only] %>
+  <%# The list shows its own matches. %>
+<% elsif query.length < 2 %>
   <%# Nothing typed yet. %>
 <% elsif orders.empty? && holdings.empty? %>
   <p class="text-sm text-gray-500">Nobody matching “<%= query %>”.</p>

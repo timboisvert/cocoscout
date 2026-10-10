@@ -9,8 +9,9 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["video", "viewport", "startButton", "stopButton", "banner", "checkedIn", "sold", "deliveries",
                       "modeButton", "listPanel", "scanPanel", "filterInput", "filterChip", "deliverChip", "results", "party", "nobody",
-                      "sellButton", "sellPanel"]
-    static values = { checkInUrl: String, statsUrl: String, listUrl: String, undoUrl: String, deliveriesUrl: String, listingId: Number }
+                      "sellButton", "sellPanel", "passHolders"]
+    static values = { checkInUrl: String, statsUrl: String, listUrl: String, undoUrl: String, deliveriesUrl: String, listingId: Number,
+                      passesUrl: String }
 
     static BANNER_CLASSES = {
         admitted: "bg-green-600 text-white",
@@ -257,10 +258,31 @@ export default class extends Controller {
         if (navigator.vibrate) navigator.vibrate(tone === "admitted" ? 60 : [120, 80, 120])
     }
 
-    // The list filters as you type, on the rows already on the page.
+    // The list filters as you type, on the rows already on the page. Pass
+    // holders aren't on it, so their matches come from the server.
     filter() {
         clearTimeout(this.filterTimer)
-        this.filterTimer = setTimeout(() => this.applyFilter(), 120)
+        this.filterTimer = setTimeout(() => {
+            this.applyFilter()
+            this.findPassHolders()
+        }, 120)
+    }
+
+    async findPassHolders() {
+        if (!this.passesUrlValue || !this.hasPassHoldersTarget) return
+        const query = this.filterInputTarget.value.trim()
+        this.passQuery = query
+        if (query.length < 2) {
+            this.passHoldersTarget.innerHTML = ""
+            return
+        }
+        try {
+            const url = new URL(this.passesUrlValue, window.location.origin)
+            url.searchParams.set("q", query)
+            const response = await fetch(url, { headers: { Accept: "text/html" }, credentials: "same-origin" })
+            if (!response.ok || this.passQuery !== query) return
+            this.passHoldersTarget.innerHTML = await response.text()
+        } catch { /* the next keystroke tries again */ }
     }
 
     chip(event) {

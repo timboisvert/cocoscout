@@ -27,6 +27,7 @@ class DoorController < ApplicationController
     @tiers = @listing.ticket_tiers.active.select(&:available?)
     @offers = @listing.product_offers(at_door: true)
     @orders = parties
+    @pass_holders_searchable = pass_holdings_for_show.exists?
   end
 
   # Everyone with a ticket, one row per party, for the list to refresh.
@@ -66,9 +67,12 @@ class DoorController < ApplicationController
     render json: { ok: ok, message: ok ? "Check-in undone" : "That can't be undone from here", counts: door.counts }
   end
 
+  # The door list filters on the page; pass holders aren't on it, so the
+  # filter box asks here for them alone (passes_only).
   def search
     q = params[:q].to_s.strip
-    @orders = if q.length < 2
+    passes_only = params[:passes_only].present?
+    @orders = if q.length < 2 || passes_only
       []
     else
       scope = @listing.ticket_orders.paid_like.includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass]).order(:buyer_name)
@@ -78,7 +82,7 @@ class DoorController < ApplicationController
            .limit(20).to_a
     end
     @holdings = q.length < 2 ? [] : pass_holders(q)
-    render partial: "door/search_results", locals: { orders: @orders, query: q, listing: @listing, holdings: @holdings }
+    render partial: "door/search_results", locals: { orders: @orders, query: q, listing: @listing, holdings: @holdings, passes_only: passes_only }
   end
 
   # Someone with a punch card or season pass at the door: a credit becomes
@@ -89,15 +93,6 @@ class DoorController < ApplicationController
     redirect_to door_path(@listing), notice: "#{holding.holder_name.presence || 'Pass holder'}: #{helpers.pluralize(order.tickets.size, 'ticket')} from their pass, checked in."
   rescue TicketPassCredits::Error => e
     redirect_to door_path(@listing), alert: e.message
-  end
-
-  # Live credit passes covering this show whose holder matches a search.
-  def pass_holders(query)
-    like = "%#{TicketPassHolding.sanitize_sql_like(query)}%"
-    TicketPassHolding.active.joins(ticket_pass: :coverages).includes(:ticket_pass)
-                     .where(organization_id: @listing.organization_id, ticket_pass_coverages: { production_id: @listing.production_id })
-                     .where("ticket_pass_holdings.holder_name ILIKE :q OR ticket_pass_holdings.holder_email ILIKE :q", q: like)
-                     .where(ends_on: @listing.show.date_and_time.to_date..).limit(10).to_a.select(&:usable?)
   end
 
   def stats
@@ -151,6 +146,20 @@ class DoorController < ApplicationController
   end
 
   private
+
+  # Live credit passes covering this show whose holder matches a search.
+  def pass_holders(query)
+    like = "%#{TicketPassHolding.sanitize_sql_like(query)}%"
+    pass_holdings_for_show.includes(:ticket_pass)
+                          .where("ticket_pass_holdings.holder_name ILIKE :q OR ticket_pass_holdings.holder_email ILIKE :q", q: like)
+                          .limit(10).to_a.select(&:usable?)
+  end
+
+  def pass_holdings_for_show
+    TicketPassHolding.active.joins(ticket_pass: :coverages)
+                     .where(organization_id: @listing.organization_id, ticket_pass_coverages: { production_id: @listing.production_id })
+                     .where(ends_on: @listing.show.date_and_time.to_date..)
+  end
 
   # Alphabetical by name; nameless (a door sale) at the end by order code.
   def parties

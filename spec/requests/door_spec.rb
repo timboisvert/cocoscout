@@ -46,6 +46,8 @@ RSpec.describe "Door", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Filter by name", ">List<", ">Scan<")
       expect(response.body).not_to include("At the door")
+      # No credit pass covers this show, so the filter never asks for holders.
+      expect(response.body).not_to include("passes_only")
     end
 
     it "shows door sales to box office and managers" do

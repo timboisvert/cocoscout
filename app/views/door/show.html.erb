@@ -27,7 +27,8 @@
      data-door-list-url-value="<%= door_list_path(@listing) %>"
      data-door-deliveries-url-value="<%= door_deliveries_path(@listing) %>"
      data-door-undo-url-value="<%= door_undo_path(@listing) %>"
-     data-door-listing-id-value="<%= @listing.id %>">
+     data-door-listing-id-value="<%= @listing.id %>"
+     data-door-passes-url-value="<%= door_search_path(@listing, passes_only: 1) if @pass_holders_searchable %>">
 
   <%# The numbers that matter tonight; refreshed every few seconds. %>
   <div class="grid grid-cols-3 gap-2 text-center">
@@ -74,6 +75,8 @@
     <% deliveries = render("door/deliveries", listing: @listing) %>
     <div class="mt-3 text-sm <%= 'hidden' if deliveries.blank? %>" data-door-target="deliveries"><%= deliveries %></div>
     <div class="mt-2" data-door-target="results"><%= render "door/list", orders: @orders, listing: @listing %></div>
+    <%# Pass holders matching the filter, who can use a credit on this show. %>
+    <div data-door-target="passHolders"></div>
   </section>
 
   <%# The camera. %>
