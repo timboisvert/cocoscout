@@ -14,184 +14,149 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <%# Main column: what you're owed / paid, then the full history. %>
     <div class="lg:col-span-2 space-y-6">
+      <%
+        summary = @summary
+        groups = summary.coming_groups
+        coming = summary.coming_total_cents
+        pending_cents = groups.flat_map(&:lines).select { |l| l.tag.present? }.sum(&:cents)
+        payments = summary.payments
+        group_titles = { on_its_way: "On its way", queued: "In the next payout run", owed: "Not in a payout run yet" }
+      %>
+      <%# Two numbers: what's coming, and what's been paid this year. %>
       <div class="grid grid-cols-2 gap-4">
         <div class="bg-white rounded-lg border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">To be paid</div>
-          <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@to_be_paid_cents / 100.0) %></div>
-          <% if @pending_total_cents.to_i.positive? %>
-            <div class="text-[11px] text-amber-600 mt-0.5">incl. <%= number_to_currency(@pending_total_cents / 100.0) %> awaiting approval</div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Coming to you</div>
+          <div class="text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(coming / 100.0) %></div>
+          <% if pending_cents.positive? %>
+            <div class="text-[11px] text-amber-600 mt-0.5">incl. <%= number_to_currency(pending_cents / 100.0) %> awaiting approval</div>
           <% end %>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total received</div>
-          <div class="text-2xl font-semibold text-gray-900"><%= number_to_currency(@total_received) %></div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Paid in <%= Date.current.year %></div>
+          <div class="text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(summary.paid_this_year_cents / 100.0) %></div>
+          <% if summary.paid_total_cents != summary.paid_this_year_cents %>
+            <div class="text-[11px] text-gray-500 mt-0.5"><%= number_to_currency(summary.paid_total_cents / 100.0) %> all time</div>
+          <% end %>
         </div>
       </div>
 
-      <%# Money the orgs have already put in motion — the payee should never
-          think nobody's tried to pay them when a run is submitted or staged. %>
-      <% if @submitted_run_items.any? || @queued_run_items.any? %>
-        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-200">
-            <h3 class="font-semibold text-gray-900">On its way</h3>
+      <%# Coming to you: only what hasn't been paid, by where it stands, each
+          group its line items. %>
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Coming to you</h2>
+        <% if !@person.can_receive_payouts? && coming.positive? %>
+          <%# The money is real and waiting: say exactly what unlocks it. %>
+          <div class="mb-3 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-amber-900">This is what you'll be paid once you add your payment info. It's ready and waiting on your bank details.</p>
+            <%= render "shared/button", text: "Add payment info", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
           </div>
-          <div class="divide-y divide-gray-100">
-            <% @submitted_run_items.each do |item| %>
-              <% batch = item.payout_batch %>
-              <% earliest, latest = batch.expected_deposit_range %>
-              <div class="px-5 py-3 flex items-center justify-between gap-4">
-                <div class="min-w-0 flex items-start gap-2.5">
-                  <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>
-                  </div>
-                  <div class="min-w-0">
-                    <div class="text-sm font-medium text-gray-900">
-                      Payout run submitted<% if batch.payday %> <%= batch.payday.strftime("%b %-d") %><% end %>
+        <% end %>
+        <% if groups.any? %>
+          <div class="space-y-3">
+            <% groups.each do |group| %>
+              <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div class="px-5 py-3 border-b border-gray-100 flex items-start justify-between gap-4">
+                  <div class="min-w-0 flex items-start gap-2.5">
+                    <% if group.kind == :on_its_way %>
+                      <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19V5m0 0l-6 6m6-6l6 6"/></svg>
+                      </div>
+                    <% else %>
+                      <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      </div>
+                    <% end %>
+                    <div class="min-w-0">
+                      <div class="text-sm font-semibold text-gray-900"><%= group_titles[group.kind] %></div>
+                      <% sub = [ group.org, group.when_text ].compact.join(" · ") %>
+                      <% sub = "Owed to you. It goes out when it's added to a payout run." if sub.blank? && group.kind == :owed %>
+                      <div class="text-xs text-gray-500"><%= sub %></div>
                     </div>
-                    <div class="text-xs text-gray-500">
-                      <%= batch.organization&.name %> · expect it in your bank
-                      <span class="font-medium text-gray-700"><%= earliest.strftime("%b %-d") %>–<%= latest.strftime("%b %-d") %></span>
-                    </div>
-                    <%= render "my/payments/taken_out_note", item: item %>
                   </div>
+                  <div class="text-sm font-bold text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(group.total_cents / 100.0) %></div>
                 </div>
-                <div class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(item.amount_cents / 100.0) %></div>
+                <%= render "my/payments/lines", lines: group.lines %>
               </div>
-            <% end %>
-            <% @queued_run_items.each do |item| %>
-              <% batch = item.payout_batch %>
-              <div class="px-5 py-3 flex items-center justify-between gap-4">
-                <div class="min-w-0 flex items-start gap-2.5">
-                  <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  </div>
-                  <div class="min-w-0">
-                    <div class="text-sm font-medium text-gray-900">Queued for a payout run</div>
-                    <div class="text-xs text-gray-500">
-                      <%= batch.organization&.name %><% if batch.payday %> · planned for <%= batch.payday.strftime("%b %-d") %><% end %>
-                    </div>
-                    <%= render "my/payments/taken_out_note", item: item %>
-                  </div>
-                </div>
-                <div class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(item.amount_cents / 100.0) %></div>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
-
-      <%# What makes up "To be paid" — confirmed lines plus anything awaiting approval. %>
-      <% if @owed_lines.any? || @pending_lines.any? %>
-        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-200">
-            <h3 class="font-semibold text-gray-900">What you're being paid for</h3>
-          </div>
-          <%# No bank yet: the money is real and waiting — say exactly what
-              unlocks it rather than leaving the impression nothing's happening. %>
-          <% if !@person.can_receive_payouts? && @to_be_paid_cents.to_i.positive? %>
-            <div class="px-5 py-3 bg-amber-50 border-b border-amber-200 flex flex-wrap items-center justify-between gap-3">
-              <p class="text-sm text-amber-900">This is what you'll be paid once you add your payment info — it's ready and waiting on your bank details.</p>
-              <%= render "shared/button", text: "Add payment info", variant: "primary", size: "small", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } %>
-            </div>
-          <% end %>
-          <div class="divide-y divide-gray-100">
-            <% @owed_lines.each do |line| %>
-              <div>
-              <div class="px-5 py-3 flex items-center justify-between gap-4">
-                <div class="min-w-0">
-                  <div class="text-sm text-gray-900 truncate"><%= line[:label] %></div>
-                  <% detail = [ line[:org].presence, work_dates_text(line[:date]) ].compact.join(" · ") %>
-                  <% if detail.present? %><div class="text-xs text-gray-400 truncate"><%= detail %></div><% end %>
-                </div>
-                <div class="text-sm font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(line[:cents] / 100.0) %></div>
-              </div>
-              <% if line[:deductions].present? %>
-                <%# What came out of this share (a rehearsal, a service they
-                    owed), and what's left of it. %>
-                <div class="px-5 pb-3 -mt-1 space-y-1">
-                  <div class="text-[11px] font-medium uppercase tracking-wide text-purple-700">Taken out of your share</div>
-                  <% line[:deductions].each do |d| %>
-                    <div class="flex items-center justify-between gap-4 text-sm text-gray-600">
-                      <span class="min-w-0 truncate"><%= d[:label] %></span>
-                      <span class="tabular-nums flex-shrink-0">−<%= number_to_currency(d[:cents].abs / 100.0) %></span>
-                    </div>
-                  <% end %>
-                  <div class="flex items-center justify-between gap-4 text-sm font-medium text-gray-900 border-t border-gray-100 pt-1">
-                    <span>You get</span>
-                    <span class="tabular-nums flex-shrink-0"><%= number_to_currency((line[:cents] + line[:deductions].sum { |d| d[:cents] }) / 100.0) %></span>
-                  </div>
-                </div>
-              <% end %>
-              </div>
-            <% end %>
-            <% if @already_paid_out_cents.to_i.positive? %>
-              <div class="px-5 py-3 flex items-center justify-between gap-4">
-                <div class="text-sm text-gray-400">Already paid out</div>
-                <div class="text-sm text-gray-400 tabular-nums flex-shrink-0">−<%= number_to_currency(@already_paid_out_cents / 100.0) %></div>
-              </div>
-            <% end %>
-            <% @pending_lines.each do |line| %>
-              <div class="px-5 py-3 flex items-center justify-between gap-4">
-                <div class="min-w-0">
-                  <div class="text-sm text-gray-900 truncate flex items-center gap-2">
-                    <span class="truncate"><%= line[:label] %></span>
-                    <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 flex-shrink-0">Awaiting approval</span>
-                  </div>
-                  <% detail = [ line[:org].presence, work_dates_text(line[:date]) ].compact.join(" · ") %>
-                  <% if detail.present? %><div class="text-xs text-gray-400 truncate"><%= detail %></div><% end %>
-                </div>
-                <div class="text-sm font-medium text-gray-500 tabular-nums flex-shrink-0"><%= number_to_currency(line[:cents] / 100.0) %></div>
-              </div>
-            <% end %>
-          </div>
-          <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-            <span class="text-sm font-medium text-gray-700">To be paid</span>
-            <span class="text-sm font-bold text-gray-900 tabular-nums"><%= number_to_currency(@to_be_paid_cents / 100.0) %></span>
-          </div>
-        </div>
-      <% end %>
-
-      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-200">
-          <h3 class="font-semibold text-gray-900">Payment history</h3>
-        </div>
-
-        <% if @payment_history.any? %>
-          <div class="divide-y divide-gray-100">
-            <%# Each row is one actual payment — click through for its receipt
-                (everything that deposit or hand-payment covered). %>
-            <% @payment_history.each do |payment| %>
-              <%= link_to my_payment_receipt_path(kind: payment[:kind], id: payment[:id]),
-                    class: "px-5 py-4 flex items-center justify-between gap-4 hover:bg-gray-50 transition-colors" do %>
-                <div class="min-w-0">
-                  <div class="font-medium text-gray-900 truncate"><%= payment[:title] %></div>
-                  <div class="text-sm text-gray-500 truncate">
-                    <% bits = [payment[:org], payment[:subtitle]].compact %>
-                    <%= bits.join(" · ") %>
-                  </div>
-                </div>
-                <div class="text-right flex-shrink-0">
-                  <% if payment[:kind] == "offset" %>
-                    <div class="font-semibold text-purple-700"><%= number_to_currency(payment[:offset_cents] / 100.0) %></div>
-                    <div class="text-xs text-gray-500">Settled<%= " #{payment[:paid_at].strftime('%b %-d, %Y')}" if payment[:paid_at] %> · went toward what you owe</div>
-                  <% else %>
-                    <div class="font-semibold text-green-600"><%= number_to_currency(payment[:cents] / 100.0) %></div>
-                    <div class="text-xs text-gray-500"><%= paid_with_phrase(payment[:paid_at], payment[:method]) %></div>
-                  <% end %>
-                </div>
-              <% end %>
             <% end %>
           </div>
         <% else %>
-          <div class="text-center py-12 text-gray-500">
-            <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <p>No payments yet.</p>
-            <p class="text-sm mt-1">Payments from shows will appear here once they're processed.</p>
-          </div>
+          <div class="bg-white rounded-lg border border-gray-200 px-5 py-6 text-sm text-gray-500 text-center">Nothing waiting right now. New pay shows up here as soon as it's worked out.</div>
         <% end %>
-      </div>
+      </section>
+
+      <%# Paid: each payment says what it was for and opens to its lines,
+          grouped by month so months of weekly pay stay readable. %>
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Paid</h2>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <% if payments.any? %>
+            <% payments.group_by { |p| p.paid_at&.to_date&.beginning_of_month }.each do |month, in_month| %>
+              <div class="px-5 py-2 bg-gray-50 border-y border-gray-100 first:border-t-0 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <span><%= month ? month.strftime("%B %Y") : "Undated" %></span>
+                <span class="tabular-nums"><%= number_to_currency(in_month.sum(&:cents) / 100.0) %></span>
+              </div>
+              <div class="divide-y divide-gray-100">
+                <% in_month.each do |payment| %>
+                  <%
+                    # Only a payment with more to it than its own line opens:
+                    # several lines, or something taken out. One plain line
+                    # goes straight to its receipt.
+                    opens = payment.lines.size > 1 || payment.lines.any? { |l| l.deductions.any? }
+                    row_class = "px-5 py-3 flex items-center justify-between gap-4 hover:bg-gray-50 transition-colors"
+                  %>
+                  <% row = capture do %>
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium text-gray-900 truncate">
+                        <%= payment.title %><% if payment.more_count.positive? %> <span class="font-normal text-gray-500">and <%= pluralize(payment.more_count, "more") %></span><% end %>
+                      </div>
+                      <div class="text-xs text-gray-500 truncate">
+                        <% if payment.kind == "offset" %>
+                          <%= [ payment.org, "Settled #{payment.paid_at&.strftime('%b %-d, %Y')}", "went toward what you owe" ].compact.join(" · ") %>
+                        <% else %>
+                          <%= [ payment.org, paid_with_phrase(payment.paid_at, payment.method) ].compact.join(" · ") %>
+                        <% end %>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                      <% if payment.kind == "offset" %>
+                        <span class="text-sm font-semibold text-purple-700 tabular-nums"><%= number_to_currency(payment.offset_cents / 100.0) %></span>
+                      <% else %>
+                        <span class="text-sm font-semibold text-green-600 tabular-nums"><%= number_to_currency(payment.cents / 100.0) %></span>
+                      <% end %>
+                      <% if opens %>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                      <% else %>
+                        <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <% if opens %>
+                    <details class="group">
+                      <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer <%= row_class %>"><%= row %></summary>
+                      <div class="bg-gray-50/60 border-t border-gray-100">
+                        <%= render "my/payments/lines", lines: payment.lines %>
+                        <div class="px-5 pb-3 text-right">
+                          <%= link_to "Receipt", my_payment_receipt_path(kind: payment.kind, id: payment.id), class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+                        </div>
+                      </div>
+                    </details>
+                  <% else %>
+                    <%= link_to row, my_payment_receipt_path(kind: payment.kind, id: payment.id), class: row_class %>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="text-center py-12 text-gray-500">
+              <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <p>No payments yet.</p>
+              <p class="text-sm mt-1">Payments from shows will appear here once they're processed.</p>
+            </div>
+          <% end %>
+        </div>
+      </section>
     </div>
 
     <%# Right column: actions (money-section style). %>

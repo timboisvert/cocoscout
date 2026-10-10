@@ -2,19 +2,19 @@
 
 require "rails_helper"
 
-# Tim, 2026-10-10: when a share has something taken out of it (a rehearsal,
-# a service they owed), My Payments shows the working: the share, what came
-# out, what they get. A share that went wholly toward what they owed shows
-# too, though nothing was deposited.
-RSpec.describe "My Payments: what came out of a share", type: :request do
+# My Payments, rebuilt (Tim, 2026-10-10): "Coming to you" is only what hasn't
+# been paid, by where it stands, line by line, with anything taken out of a
+# share listed under it; "Paid" is each payment saying what it was for. No
+# list of everything ever earned minus "Already paid out".
+RSpec.describe "My Payments", type: :request do
   let(:password) { "Password123!" }
   let(:user) { create(:user, password: password) }
   let!(:person) do
     create(:person, user: user, stripe_account_id: "acct_me", payouts_enabled: true).tap { |p| user.update!(default_person: p) }
   end
   let(:org) { create(:organization, :pro, name: "Stars & Garters") }
-  let(:production) { create(:production, organization: org, production_type: "third_party", name: "Improvised Animorphs") }
-  let(:contractor) { create(:contractor, organization: org, person: person, name: "Animorphs Co") }
+  let(:production) { create(:production, organization: org, production_type: "third_party", name: "Inevitable") }
+  let(:contractor) { create(:contractor, organization: org, person: person, name: "Dan's Magic") }
   let(:contract) do
     create(:contract, :active, organization: org, production: production, contractor: contractor, contractor_name: contractor.name)
   end
@@ -39,24 +39,28 @@ RSpec.describe "My Payments: what came out of a share", type: :request do
       PayoutBatchItem.find_by!(payee: person)
     end
 
-    it "lists the charge under the share while it's owed and on its way" do
-      expect(item.amount_cents).to eq(20_750)
-
+    it "shows the run's lines under Coming to you, the charge under its share" do
       get my_payments_path
       html = text(response.body)
 
-      expect(html).to include("Taken out of your share", "Booth Tech — Aug 9, 2026", "−$50.00")
+      expect(html).to match(/Coming to you<\/div> <div[^>]*>\$207\.50/)
+      expect(html).to include("In the next payout run")
+      expect(html).to include("Dan&#39;s Magic — Aug 9 — your 50% share", "$257.50", "Booth Tech — Aug 9, 2026", "−$50.00")
       expect(html).to match(/You get<\/span> <span[^>]*>\$207\.50/)
-      # A deduction isn't a payout already made.
+      expect(html).not_to include("to them")
       expect(html).not_to include("Already paid out")
-      expect(html).to include("Your share $257.50, less $50.00 taken out for what you owe")
     end
 
-    it "shows the working on the deposit and its receipt" do
+    it "moves it to Paid once deposited, saying what it was for" do
       item.mark_paid!(transfer_id: "tr_me")
 
       get my_payments_path
-      expect(text(response.body)).to include("after $50.00 taken out")
+      html = text(response.body)
+      expect(html).to include("Nothing waiting right now")
+      expect(html).to match(/Paid in #{Date.current.year}<\/div> <div[^>]*>\$207\.50/)
+      expect(html).to include(Time.current.strftime("%B %Y"))
+      expect(html).to include("Dan&#39;s Magic — Aug 9 — your 50% share", "Booth Tech — Aug 9, 2026")
+      expect(html).not_to include("bank deposit")
 
       get my_payment_receipt_path(kind: "run", id: item.id)
       html = text(response.body)
@@ -64,6 +68,21 @@ RSpec.describe "My Payments: what came out of a share", type: :request do
       expect(html).to match(/You got<\/span> <span[^>]*>\$207\.50/)
       expect(html).to match(/Deposited to your bank<\/span> <span[^>]*>\$207\.50/)
     end
+  end
+
+  it "lists a show payout that's worked out but not in a run yet, and nets an advance" do
+    show_production = create(:production, organization: org, name: "Bright Star Circus")
+    show = create(:show, production: show_production, date_and_time: Time.zone.local(2026, 10, 3, 19))
+    payout = ShowPayout.create!(show: show, status: "awaiting_payout", calculated_at: Time.current, total_payout: 50)
+    ShowPayoutLineItem.create!(show_payout: payout, payee: person, amount: 50).sync_earning_ledger_entry!
+    PayoutLedgerEntry.create!(organization: org, payee: person, entry_type: "advance", category: "performer",
+                              amount_cents: -2_000, occurred_at: Time.current)
+
+    get my_payments_path
+    html = text(response.body)
+    expect(html).to include("Not in a payout run yet", "Bright Star Circus", "October 3, 2026", "$50.00")
+    expect(html).to include("Advances to repay", "−$20.00")
+    expect(html).to match(/Coming to you<\/div> <div[^>]*>\$30\.00/)
   end
 
   describe "a share that went wholly toward what they owed" do
@@ -79,18 +98,18 @@ RSpec.describe "My Payments: what came out of a share", type: :request do
       ContractorPayoutRunService.add_contract_payment!(share)
     end
 
-    it "lists it as settled, with a receipt of what it paid down and what's still to come out" do
+    it "lists it as settled with what it paid down, and a receipt of what's still to come out" do
       expect(share.reload.payment_method).to eq("offset")
 
       get my_payments_path
       html = text(response.body)
-      expect(html).to include("Oct 8 — 40% to them", "$18.00", "went toward what you owe")
-      expect(html).to match(/Total received<\/div> <div[^>]*>\$0\.00/)
+      expect(html).to include("Dan&#39;s Magic — Oct 8 — your 40% share", "$18.00", "went toward what you owe")
+      expect(html).to include("Rehearsal balance — Aug 26, 2026", "−$6.00", "Rehearsal — Sep 6, 2026", "−$12.00")
+      expect(html).to match(/Paid in #{Date.current.year}<\/div> <div[^>]*>\$0\.00/)
 
       get my_payment_receipt_path(kind: "offset", id: share.id)
       html = text(response.body)
       expect(html).to include("Your share: Oct 8 — 40% to them", "Went toward what you owe")
-      expect(html).to include("Rehearsal balance — Aug 26, 2026", "−$6.00", "Rehearsal — Sep 6, 2026", "−$12.00")
       expect(html).to include("Still to come out of your next share", "Rehearsal balance — Sep 6, 2026", "$48.00", "Rehearsal — Sep 13, 2026", "$60.00")
       expect(html).to match(/Deposited to your bank<\/span> <span[^>]*>\$0\.00/)
     end
