@@ -197,5 +197,19 @@ RSpec.describe "Manage ticketing settings", type: :request do
       patch manage_ticketing_settings_notifications_path, params: { updating: "1", emails: "nope" }
       expect(flash[:alert]).to eq("nope isn't an email address.")
     end
+
+    it "has smart controls, and saves nothing ticked as nobody (Tim, 2026-10-10)" do
+      get manage_ticketing_settings_section_path(section: "notifications")
+      body = response.body
+      expect(body).to include('data-controller="check-matrix"', "Select all", "Select none", "Back to the usual",
+                              'data-check-matrix-target="column"', 'data-check-matrix-target="groupColumn"', 'data-check-matrix-target="row"', ">Everyone</th>")
+      # The usual: managers get the notices that are on by default.
+      expect(body).to match(/name="rules\[daily_summary\]\[\]"[^>]*data-usual="true"/)
+      expect(body).to match(/name="rules\[sale\]\[\]"[^>]*data-usual="false"/)
+
+      patch manage_ticketing_settings_notifications_path, params: { updating: "1", emails: "" }
+      notifications = TicketingNotifications.new(org)
+      expect(TicketingNotifications::KEYS.map { |key| notifications.emails_for(key) }).to all(be_empty)
+    end
   end
 end
