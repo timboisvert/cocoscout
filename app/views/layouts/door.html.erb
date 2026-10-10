@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <title><%= content_for(:title) || "Door" %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <%# Full-bleed in a browser; inside the app its bars keep the page in the safe area. %>
+    <meta name="viewport" content="width=device-width,initial-scale=1<%= ",viewport-fit=cover" unless turbo_native_app? %>">
     <meta name="robots" content="noindex">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
@@ -22,7 +23,14 @@
   <% person = Current.user&.person %>
   <% headshot = person&.safe_headshot_variant(:thumb) %>
   <body class="inter-regular text-slate-700 bg-gray-50">
-    <header class="sticky top-0 z-10 border-b border-gray-200 bg-white" style="padding-top: env(safe-area-inset-top)">
+    <%# In the app the native nav bar holds the title and the way back, so the
+        header only appears to say which show (and doesn't stick). %>
+    <% native = turbo_native_app? %>
+    <% if native %>
+      <header class="border-b border-gray-200 bg-white <%= "hidden" unless content_for?(:door_header) %>">
+    <% else %>
+      <header class="sticky top-0 z-10 border-b border-gray-200 bg-white" style="padding-top: env(safe-area-inset-top)">
+    <% end %>
       <div class="mx-auto max-w-2xl px-4 py-2.5 flex items-center gap-3 min-h-[3.5rem]">
         <% if content_for?(:door_header) %>
           <%= yield :door_header %>
@@ -48,5 +56,6 @@
       <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
       <%= yield %>
     </main>
+    <%= render "shared/native/bridge" %>
   </body>
 </html>

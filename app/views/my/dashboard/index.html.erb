@@ -30,16 +30,22 @@
       </p>
     HTML
   %>
+  <%
+    talent_welcome_cards = [
+      { icon: "users", text: "Set up your profile", description: "Headshots, resume, and skills, so producers know who they're booking", path: profile_path },
+      { icon: "clipboard-list", text: "Find an audition", description: "Browse open auditions and throw your hat in", path: my_auditions_directory_path }
+    ]
+    # The app doesn't pitch producing (that's Pro, sold on the web).
+    unless turbo_native_app?
+      talent_welcome_cards << { icon: "calendar", text: "Producing your own shows?", description: "Set up your production and run it on CocoScout", path: manage_producer_setup_path }
+    end
+  %>
   <%= render "shared/intro_guide",
         guide_key: "talent_welcome",
         variant: "welcome",
         title: "Welcome to CocoScout!",
         body: talent_welcome_body,
-        cards: [
-          { icon: "users", text: "Set up your profile", description: "Headshots, resume, and skills, so producers know who they're booking", path: profile_path },
-          { icon: "clipboard-list", text: "Find an audition", description: "Browse open auditions and throw your hat in", path: my_auditions_directory_path },
-          { icon: "calendar", text: "Producing your own shows?", description: "Set up your production and run it on CocoScout", path: manage_producer_setup_path }
-        ] %>
+        cards: talent_welcome_cards %>
   <% end %>
 
   <%= render "my/payments/payout_summary" %>

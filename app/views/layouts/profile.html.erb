@@ -31,7 +31,8 @@
 
     <div class="flex min-h-screen">
 
-        <% unless @hide_sidebar %>
+        <% hide_nav = @hide_sidebar || turbo_native_app? %>
+        <% unless hide_nav %>
           <% if @show_group_sidebar %>
             <%= render "shared/navigation/profile_group_mobile" %>
             <%= render "shared/navigation/profile_group_header" %>
@@ -41,9 +42,10 @@
             <%= render "shared/navigation/profile_person" %>
           <% end %>
         <% end %>
-        <main class="flex-1 <%= @hide_sidebar ? '' : "px-5 pt-14 lg:ml-64 #{@show_group_sidebar ? 'lg:pt-20' : 'lg:pt-6'}" %> overflow-x-hidden">
+        <main class="flex-1 <%= if turbo_native_app? then "px-4 pt-4 pb-8" elsif @hide_sidebar then "" else "px-5 pt-14 lg:ml-64 #{@show_group_sidebar ? 'lg:pt-20' : 'lg:pt-6'}" end %> overflow-x-hidden">
             <%= yield %>
         </main>
+        <%= render "shared/native/bridge" %>
 
     </div>
   </body>

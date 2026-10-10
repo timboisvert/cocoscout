@@ -55,8 +55,13 @@
     <footer class="border-t border-gray-100">
       <div class="mx-auto max-w-4xl px-4 sm:px-6 py-6 text-xs text-gray-400 flex flex-wrap items-center justify-between gap-2">
         <span><%= storefront_sold_line %></span>
-        <%= link_to storefront_brand, root_url, class: "hover:text-gray-600" %>
+        <% if turbo_native_app? %>
+          <span><%= storefront_brand %></span>
+        <% else %>
+          <%= link_to storefront_brand, root_url, class: "hover:text-gray-600" %>
+        <% end %>
       </div>
     </footer>
+    <%= render "shared/native/bridge" %>
   </body>
 </html>

@@ -108,7 +108,8 @@ class AuthController < ApplicationController
   def signout
     # Cookie [:last_dashboard] persists automatically across sign-outs
     terminate_session
-    redirect_to root_path
+    # The app goes back to its sign-in screen, not the marketing site.
+    redirect_to turbo_native_app? ? signin_path : root_path
   end
 
   def password

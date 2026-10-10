@@ -63,8 +63,10 @@ module Authentication
 
     last_dashboard_prefs = cookies.encrypted[:last_dashboard]
     last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
+    # The app has no /manage (it opens in Safari), so it always lands on My.
+    native_app = request.user_agent.to_s.include?("Turbo Native")
     case last_dashboard_prefs[user.id.to_s]
-    when "manage" then manage_path
+    when "manage" then native_app ? my_dashboard_path : manage_path
     else my_dashboard_path
     end
   end

@@ -1,12 +1,5 @@
 {
-  "settings": {
-    "tabs": [
-      { "title": "Dashboard", "path": "/my", "icon": "house" },
-      { "title": "Shows", "path": "/my/shows", "icon": "calendar" },
-      { "title": "Messages", "path": "/my/messages", "icon": "envelope" },
-      { "title": "Requests", "path": "/my/requests", "icon": "bell" }
-    ]
-  },
+  "settings": {},
   "rules": [
     {
       "patterns": [".*"],
@@ -24,10 +17,12 @@
     },
     {
       "patterns": [
-        "/my/messages/[0-9]+/reply",
-        "/my/direct_messages/new",
-        "/my/groups/new",
-        "/my/profiles/new"
+        "/my/signups/[^/]+/form$",
+        "/my/auditions/[^/]+/form$",
+        "/my/questionnaires/[^/]+/form$",
+        "/my/courses/[^/]+/register$",
+        "/my/profiles/new$",
+        "/groups/new$"
       ],
       "properties": {
         "context": "modal",
@@ -35,15 +30,16 @@
       }
     },
     {
-      "patterns": [
-        "/my/sign_ups/.*/form$",
-        "/my/questionnaires/.*/form$",
-        "/my/submit_audition_request/.*/form$",
-        "/my/course_registrations/.*/entry$",
-        "/my/course_registrations/.*/register$"
-      ],
+      "patterns": ["/door/[0-9]+/card/"],
       "properties": {
         "context": "modal",
+        "modal_style": "full",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": ["/door/[0-9]+$"],
+      "properties": {
         "pull_to_refresh_enabled": false
       }
     },
@@ -51,8 +47,26 @@
       "patterns": ["/signin$", "/signup$", "/password$", "/reset/"],
       "properties": {
         "context": "default",
-        "pull_to_refresh_enabled": false,
-        "presentation": "replace_root"
+        "presentation": "replace_root",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": ["^/manage", "^/superadmin", "^/select/"],
+      "properties": {
+        "open_in": "safari"
+      }
+    },
+    {
+      "patterns": [
+        "/tax-forms/[0-9]+/w9/copy$",
+        "/tax-forms/[0-9]+/1099/[0-9]+$",
+        "/pay/contract/[^/]+/invoice$",
+        "/my/courses/[^/]+/calendar$",
+        "/tickets/orders/[^/]+/calendar$"
+      ],
+      "properties": {
+        "open_in": "document"
       }
     }
   ]

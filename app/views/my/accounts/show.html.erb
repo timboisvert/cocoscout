@@ -1,46 +1,50 @@
-<% content_for :title, "Account" %>
+<% content_for :title, "More" %>
 
-<div class="max-w-md mx-auto py-6">
+<%# The app's More tab: who you are, everything in My that isn't a tab, your
+    email notifications, and signing out. The list comes from
+    NativeAppHelper#native_more_items, built on the web nav's own rules. %>
+<div class="max-w-md mx-auto py-2">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%# Identity section — avatar / name / email, read-only %>
-  <div class="bg-white border border-gray-200 rounded-lg p-5 mb-4">
-    <div class="flex items-center gap-4">
-      <% if @person&.headshot&.attached? %>
-        <%= image_tag @person.headshot, class: "w-16 h-16 rounded-lg object-cover flex-shrink-0" %>
-      <% else %>
-        <div class="w-16 h-16 rounded-lg bg-pink-100 text-pink-500 flex items-center justify-center text-xl font-bold flex-shrink-0">
-          <%= @person&.name&.split&.map(&:first)&.join&.upcase || @user.email_address[0].upcase %>
-        </div>
-      <% end %>
-      <div class="min-w-0 flex-1">
-        <div class="text-lg font-semibold text-gray-900 truncate"><%= @person&.name || @user.email_address %></div>
-        <div class="text-sm text-gray-500 truncate"><%= @user.email_address %></div>
+  <%# Who you are: opens your profile. %>
+  <% headshot_variant = @person&.safe_headshot_variant(:thumb) %>
+  <%= link_to profile_path, class: "flex items-center gap-4 bg-white border border-gray-200 rounded-lg p-4 mb-4 hover:border-pink-300 transition" do %>
+    <% if headshot_variant %>
+      <%= image_tag headshot_variant, alt: @person.name, class: "w-14 h-14 rounded-lg object-cover flex-shrink-0" %>
+    <% else %>
+      <div class="w-14 h-14 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold flex-shrink-0">
+        <%= @person&.initials || @user.email_address[0].upcase %>
       </div>
+    <% end %>
+    <div class="min-w-0 flex-1">
+      <div class="text-base font-semibold text-gray-900 truncate"><%= @person&.name || @user.email_address %></div>
+      <div class="text-sm text-gray-500 truncate"><%= @user.email_address %></div>
     </div>
-  </div>
+    <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+  <% end %>
 
-  <%# Sign out — clearly separated, primary action %>
-  <div class="mb-6">
-    <%= render "shared/button",
-          text: "Sign out",
-          path: signout_path,
-          variant: "primary",
-          size: "large",
-          classes: "w-full",
-          data: { turbo_prefetch: false } %>
-  </div>
+  <%# Everything else in My. %>
+  <nav class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100 mb-4" aria-label="More">
+    <% native_more_items.each do |item| %>
+      <%= link_to item[:path], class: "flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition" do %>
+        <svg class="w-6 h-6 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="<%= nav_icon_path(item[:icon]) %>"/>
+        </svg>
+        <span class="flex-1 text-sm font-medium text-gray-900"><%= item[:label] %></span>
+        <% if item[:badge].to_i > 0 %>
+          <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full"><%= item[:badge] > 99 ? "99+" : item[:badge] %></span>
+        <% end %>
+        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+      <% end %>
+    <% end %>
+  </nav>
 
-  <%# Notification preferences — same form as /account/notifications, posts to the same endpoint and comes back here. %>
-  <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }) do |f| %>
+  <%# Email notifications — same endpoint as /account/notifications; saving comes back here. %>
+  <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }, class: "mb-4") do |f| %>
     <%= hidden_field_tag :return_to, my_account_path %>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <%= render "shared/card_header", title: "Email notifications" %>
       <div class="p-5">
-        <p class="text-sm text-gray-600 mb-4">
-          Control which emails CocoScout sends you.
-        </p>
-
         <div class="space-y-1">
           <% [
             { key: :vacancy_invitations,  title: "Open vacancy invitations", subtitle: "Get notified when you're invited to fill an open vacancy" },
@@ -69,4 +73,12 @@
       </div>
     </div>
   <% end %>
+
+  <%= render "shared/button",
+        text: "Sign out",
+        path: signout_path,
+        variant: "secondary",
+        size: "large",
+        classes: "w-full justify-center",
+        data: { turbo_prefetch: false } %>
 </div>

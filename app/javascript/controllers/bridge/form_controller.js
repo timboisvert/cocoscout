@@ -1,21 +1,17 @@
 import { BridgeComponent } from "@hotwired/hotwire-native-bridge"
 
-// Bridge Component: shows a native submit button in the iOS nav bar on form pages.
-// Activates automatically on any page that has a visible submit button.
+// Bridge Component: puts a page's main form button in the app's nav bar.
+// Only for pages that ask: mark the one button with data-bridge-title="Save"
+// (or any label). Every other page leaves the nav bar alone.
 export default class extends BridgeComponent {
   static component = "form"
 
   connect() {
     super.connect()
-    const button = this.#findSubmitButton()
+    const button = document.querySelector("[data-bridge-title]")
     if (!button) return
 
-    const title = button.dataset.bridgeTitle
-      || button.value
-      || button.textContent.trim()
-      || "Save"
-
-    this.send("connect", { title }, () => {
+    this.send("connect", { title: button.dataset.bridgeTitle }, () => {
       button.click()
     })
   }
@@ -23,14 +19,5 @@ export default class extends BridgeComponent {
   disconnect() {
     super.disconnect()
     this.send("disconnect")
-  }
-
-  #findSubmitButton() {
-    return (
-      document.querySelector("[data-bridge-title]") ||
-      document.querySelector("form button[type='submit']") ||
-      document.querySelector("form input[type='submit']") ||
-      document.querySelector("button[type='submit']")
-    )
   }
 }
