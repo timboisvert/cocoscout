@@ -100,6 +100,15 @@
     else
       payment.status_paid? ? "We paid them" : "We pay them"
     end
+  # A wash: they owe as much as this share or more, so nothing moves. The share
+  # pays down what they owe and the rest comes out of their next share
+  # (ContractorPayoutRunService.settle_as_wash!). Never "We pay them −$108".
+  wash = !is_incoming && payment.status_pending? && amount_set && !awaiting_amount &&
+    pending_deductions.any? && net_to_hand_over <= 0
+  still_owed = wash ? (pending_deduction_total - payment.amount.to_f).round(2) : 0
+  share_label = folded_items.one? ? folded_items.first.first : payment.display_name
+  # A share that went toward what they owed: settled, but no money moved.
+  settled_by_offset = !is_incoming && payment.status_paid? && payment.payment_method == "offset"
 %>
 
 <div data-controller="payment-modal">
@@ -148,11 +157,15 @@
     <%# Right Section: Amount & Actions %>
     <div class="w-full md:w-1/2 flex items-center justify-between border-t border-gray-100 md:border-t-0 md:border-l md:border-gray-200 mt-2 md:mt-0 pt-2 md:pt-0 md:pl-4">
       <div class="flex-1">
-        <div class="text-2xl font-bold <%= is_cancelled ? 'text-gray-400 line-through' : (is_incoming || our_take) ? 'text-green-600' : 'text-red-600' %>">
+        <div class="text-2xl font-bold <%= is_cancelled ? 'text-gray-400 line-through' : (wash || settled_by_offset) ? 'text-purple-700' : (is_incoming || our_take) ? 'text-green-600' : 'text-red-600' %>">
           <% if our_take %>
             <%= number_to_currency(our_take) %>
           <% elsif awaiting_amount %>
             TBD
+          <% elsif wash || settled_by_offset %>
+            <%# Nothing moves: the number is their share, which goes toward
+                what they owe. The working is listed below. %>
+            <%= number_to_currency(payment.amount) %>
           <% elsif deductions.any? %>
             <%# The number that matters is what actually moves: the share net of
                 the services deducted from it. The working is listed below. %>
@@ -175,6 +188,14 @@
           <div class="text-xs text-gray-500">
             Ticket sales covered the fee exactly — nothing to hand back
           </div>
+        <% elsif wash %>
+          <div class="text-xs text-purple-700">
+            Pays down what they owe<%= still_owed.positive? ? " · #{number_to_currency(still_owed)} left" : " in full" %>
+          </div>
+        <% elsif settled_by_offset %>
+          <div class="text-xs text-purple-700">
+            Went toward what they owed — no money moved
+          </div>
         <% elsif is_late %>
           <div class="text-xs text-pink-600">
             <%= distance_of_time_in_words(payment.due_date, Date.current) %> overdue
@@ -194,7 +215,7 @@
         <div class="flex items-center gap-2">
           <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
             <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
-            Paid<%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %>
+            <%= settled_by_offset ? "Settled" : "Paid" %><%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %>
           </span>
           <% if show_actions && payment.invoiceable? %>
             <%= link_to "Receipt", pay_contract_invoice_path(token: payment.payment_token!, format: :pdf), target: "_blank", rel: "noopener",
@@ -271,23 +292,28 @@
             <%= render "shared/button", text: "Set amount", variant: "secondary", size: "xs",
                   icon: "pencil", type: :button, data: { action: "click->payment-modal#open" } %>
           <% elsif payable %>
+            <%# A wash never joins a run (nothing moves, no bank needed), so the
+                button says what actually happens: the share settles as an
+                offset against what they owe. %>
             <% add_to_run_cid = "confirm-add-to-payout-run-#{payment.id}" %>
-            <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "xs",
-                  icon: "banknotes", type: :button,
+            <%= render "shared/button", text: (wash ? "Settle by offset" : "Add to payout run"), variant: "primary", size: "xs",
+                  icon: (wash ? "check-circle" : "banknotes"), type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: add_to_run_cid } %>
             <%# confirm_modal renders `message` as HTML, so the name is escaped here. %>
             <%= render "shared/confirm_modal", id: add_to_run_cid,
-                  title: "Add to payout run?",
-                  message: if net_to_hand_over <= 0
-                    # A wash: their charges cover the share, so nothing moves
-                    # and no bank is needed.
-                    "What #{h(contractor&.name)} owes covers this whole share, so no money moves: it settles as an offset, and any balance left comes out of their next share."
+                  title: (wash ? "Settle by offset?" : "Add to payout run?"),
+                  message: if wash
+                    "#{h(contractor&.name)}'s #{number_to_currency(payment.amount)} share goes toward the " \
+                    "#{number_to_currency(pending_deduction_total)} they owe, so no money moves. " +
+                    (still_owed.positive? ?
+                      "They'll still owe #{number_to_currency(still_owed)}, which comes out of their next share." :
+                      "That pays it off exactly.")
                   elsif has_bank
                     "Add this payment to your payout run?"
                   else
                     "Add this payment to your payout run? #{h(contractor&.name)} hasn't connected a bank yet, so their share waits on the run until they do."
                   end,
-                  confirm_text: "Add to payout run",
+                  confirm_text: (wash ? "Settle by offset" : "Add to payout run"),
                   url: add_to_payout_run_manage_contract_contract_payment_path(contract, payment),
                   method: :post %>
           <% else %>
@@ -400,6 +426,26 @@
           <dt class="font-medium text-gray-900">We keep</dt>
           <dd class="text-right tabular-nums font-semibold text-gray-900"><%= number_to_currency(our_take) %></dd>
           <dd class="col-span-2 text-xs text-gray-500">The rest of ticket sales goes back to them.</dd>
+        <% elsif wash %>
+          <%# They owe more than this share: what they owed going in, the
+              share taking it down, and what's left. Nothing moves. %>
+          <dt class="col-span-2 text-xs font-medium text-purple-700">What they owe</dt>
+          <% pending_deductions.each do |charge| %>
+            <dt class="min-w-0 text-gray-600"><%= charge.description %></dt>
+            <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(charge.amount) %></dd>
+          <% end %>
+          <% if pending_deductions.many? %>
+            <dt class="text-gray-900 border-t border-gray-100 pt-1">Owed going in</dt>
+            <dd class="text-right tabular-nums text-gray-900 border-t border-gray-100 pt-1"><%= number_to_currency(pending_deduction_total) %></dd>
+          <% end %>
+          <dt class="min-w-0 text-gray-600">Their share: <%= share_label %></dt>
+          <dd class="text-right tabular-nums text-gray-900">−<%= number_to_currency(payment.amount) %></dd>
+          <div class="col-span-2 border-t border-gray-200 my-0.5" aria-hidden="true"></div>
+          <dt class="font-medium text-gray-900">They still owe</dt>
+          <dd class="text-right tabular-nums font-semibold text-gray-900"><%= number_to_currency(still_owed) %></dd>
+          <dd class="col-span-2 text-xs text-gray-500">
+            No money moves: their share pays down what they owe<%= ", and the rest comes out of their next share" if still_owed.positive? %>.
+          </dd>
         <% else %>
           <% (folded_items.presence || [ [ payment.display_name, payment.amount.to_f ] ]).each do |label, amount| %>
             <dt class="min-w-0 text-gray-600"><%= label %></dt>
@@ -408,7 +454,7 @@
             </dd>
           <% end %>
           <% if deductions.any? %>
-            <dt class="col-span-2 pt-1 text-xs font-medium text-purple-700">Taken out of their share</dt>
+            <dt class="col-span-2 pt-1 text-xs font-medium text-purple-700"><%= settled_by_offset ? "Went toward what they owed" : "Taken out of their share" %></dt>
             <% deductions.each do |charge| %>
               <dt class="min-w-0 text-gray-600"><%= charge.description %></dt>
               <dd class="text-right tabular-nums text-gray-900">−<%= number_to_currency(charge.amount) %></dd>
@@ -419,6 +465,9 @@
           <dd class="text-right tabular-nums font-semibold text-gray-900">
             <% if awaiting_amount %><%= deductions.any? ? "TBD − #{number_to_currency(deduction_total)}" : "TBD" %><% else %><%= number_to_currency(payment.amount.to_f - deduction_total) %><% end %>
           </dd>
+          <% if settled_by_offset %>
+            <dd class="col-span-2 text-xs text-gray-500">Settled by offset: their share paid down what they owed, so no money moved.</dd>
+          <% end %>
         <% end %>
       </dl>
     </div>

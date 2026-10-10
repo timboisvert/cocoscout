@@ -88,6 +88,34 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(html).not_to include("<details")
     end
 
+    # Contract 92 (Tim, 2026-10-10): an $18 share against $126 of rehearsals
+    # read "We pay them -$108.00". Nothing moves: the share pays down what
+    # they owe, and the row says what they owed going in and what's left.
+    it "shows a share smaller than what they owe as paying it down, never a negative payment" do
+      contract = contract_for(payable_person)
+      create(:contract_payment, :outgoing, contract: contract, description: "Oct 8 — 40% to them",
+                                           amount: 18, due_date: Date.new(2026, 10, 8))
+      [ [ "Rehearsal balance — Aug 26, 2026", 6, Date.new(2026, 8, 26) ],
+        [ "Rehearsal — Sep 6, 2026", 60, Date.new(2026, 9, 6) ],
+        [ "Rehearsal — Sep 13, 2026", 60, Date.new(2026, 9, 13) ] ].each do |description, amount, due|
+        create(:contract_payment, contract: contract, direction: "incoming", description: description, amount: amount,
+                                  settlement_method: "payout_deduction", due_date: due)
+      end
+
+      get manage_contract_path(contract)
+
+      html = response.body.gsub(/\s+/, " ")
+      expect(html).not_to match(/[-−]\$108/)
+      expect(html).not_to include("We pay them")
+      expect(html).to include("What they owe")
+      expect(html).to match(%r{Owed going in</dt> <dd[^>]*>\$126\.00</dd>})
+      expect(html).to match(%r{Their share: Oct 8 — 40% to them</dt> <dd[^>]*>−\$18\.00</dd>})
+      expect(html).to match(%r{They still owe</dt> <dd[^>]*>\$108\.00</dd>})
+      expect(html).to include("Pays down what they owe · $108.00 left")
+      expect(html).to include("Settle by offset")
+      expect(html).not_to include("Add to payout run")
+    end
+
     it "says an unsettled ticket-linked payment is waiting on sales" do
       contract = contract_for(payable_person)
       create(:contract_payment, contract: contract, direction: "outgoing", description: "Revenue share",
@@ -235,6 +263,13 @@ RSpec.describe "Manage contract payment actions", type: :request do
       expect(share.reload).to have_attributes(status: "paid", payment_method: "offset")
       expect(contract.contract_payments.find_by(description: "Rehearsal balance — Oct 8, 2026"))
         .to have_attributes(status: "pending", settlement_method: "payout_deduction")
+
+      # Afterwards the share reads as settled, and what it paid down is listed.
+      get manage_contract_path(contract)
+      html = response.body.gsub(/\s+/, " ")
+      expect(html).to include("Settled #{Date.current.strftime('%b %-d')}")
+      expect(html).to include("Went toward what they owed")
+      expect(html).to include("Settled by offset: their share paid down what they owed")
     end
   end
 
