@@ -164,7 +164,12 @@ module My
 
     def show
       @audition = find_audition
-      return redirect_to my_auditions_path, alert: "Audition not found" unless @audition
+      unless @audition
+        # A token can be all digits, so it lands here rather than on the redirect.
+        return redirect_to submit_audition_request_path(params[:id]) if AuditionCycle.exists?(token: params[:id])
+
+        return redirect_to my_auditions_path, alert: "Audition not found"
+      end
 
       @session = @audition.audition_session
       @cycle = @audition.audition_request.audition_cycle

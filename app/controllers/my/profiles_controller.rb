@@ -4,8 +4,9 @@ module My
   class ProfilesController < ApplicationController
     before_action :require_authentication
 
+    # Profiles are listed under Account; this path is only the form's home.
     def index
-      @profiles = Current.user.people.order(:name)
+      redirect_to account_profiles_path
     end
 
     def new

@@ -1,0 +1,11 @@
+<%# Under a run item on My Payments: when charges they owed came out of
+    their share, say so with the numbers. Locals: item (PayoutBatchItem). %>
+<%
+  payable = item.payout_contributions.reject(&:excluded_from_payout)
+  taken_out = payable.select(&:deduction?).sum(&:amount_cents).abs
+%>
+<% if taken_out.positive? %>
+  <div class="text-xs text-purple-700">
+    Your share <%= number_to_currency((item.amount_cents + taken_out) / 100.0) %>, less <%= number_to_currency(taken_out / 100.0) %> taken out for what you owe
+  </div>
+<% end %>

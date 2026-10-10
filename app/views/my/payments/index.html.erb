@@ -52,6 +52,7 @@
                       <%= batch.organization&.name %> · expect it in your bank
                       <span class="font-medium text-gray-700"><%= earliest.strftime("%b %-d") %>–<%= latest.strftime("%b %-d") %></span>
                     </div>
+                    <%= render "my/payments/taken_out_note", item: item %>
                   </div>
                 </div>
                 <div class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(item.amount_cents / 100.0) %></div>
@@ -69,6 +70,7 @@
                     <div class="text-xs text-gray-500">
                       <%= batch.organization&.name %><% if batch.payday %> · planned for <%= batch.payday.strftime("%b %-d") %><% end %>
                     </div>
+                    <%= render "my/payments/taken_out_note", item: item %>
                   </div>
                 </div>
                 <div class="text-sm font-semibold text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(item.amount_cents / 100.0) %></div>
@@ -94,6 +96,7 @@
           <% end %>
           <div class="divide-y divide-gray-100">
             <% @owed_lines.each do |line| %>
+              <div>
               <div class="px-5 py-3 flex items-center justify-between gap-4">
                 <div class="min-w-0">
                   <div class="text-sm text-gray-900 truncate"><%= line[:label] %></div>
@@ -101,6 +104,24 @@
                   <% if detail.present? %><div class="text-xs text-gray-400 truncate"><%= detail %></div><% end %>
                 </div>
                 <div class="text-sm font-medium text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(line[:cents] / 100.0) %></div>
+              </div>
+              <% if line[:deductions].present? %>
+                <%# What came out of this share (a rehearsal, a service they
+                    owed), and what's left of it. %>
+                <div class="px-5 pb-3 -mt-1 space-y-1">
+                  <div class="text-[11px] font-medium uppercase tracking-wide text-purple-700">Taken out of your share</div>
+                  <% line[:deductions].each do |d| %>
+                    <div class="flex items-center justify-between gap-4 text-sm text-gray-600">
+                      <span class="min-w-0 truncate"><%= d[:label] %></span>
+                      <span class="tabular-nums flex-shrink-0">−<%= number_to_currency(d[:cents].abs / 100.0) %></span>
+                    </div>
+                  <% end %>
+                  <div class="flex items-center justify-between gap-4 text-sm font-medium text-gray-900 border-t border-gray-100 pt-1">
+                    <span>You get</span>
+                    <span class="tabular-nums flex-shrink-0"><%= number_to_currency((line[:cents] + line[:deductions].sum { |d| d[:cents] }) / 100.0) %></span>
+                  </div>
+                </div>
+              <% end %>
               </div>
             <% end %>
             <% if @already_paid_out_cents.to_i.positive? %>
@@ -150,8 +171,13 @@
                   </div>
                 </div>
                 <div class="text-right flex-shrink-0">
-                  <div class="font-semibold text-green-600"><%= number_to_currency(payment[:cents] / 100.0) %></div>
-                  <div class="text-xs text-gray-500"><%= paid_with_phrase(payment[:paid_at], payment[:method]) %></div>
+                  <% if payment[:kind] == "offset" %>
+                    <div class="font-semibold text-purple-700"><%= number_to_currency(payment[:offset_cents] / 100.0) %></div>
+                    <div class="text-xs text-gray-500">Settled<%= " #{payment[:paid_at].strftime('%b %-d, %Y')}" if payment[:paid_at] %> · went toward what you owe</div>
+                  <% else %>
+                    <div class="font-semibold text-green-600"><%= number_to_currency(payment[:cents] / 100.0) %></div>
+                    <div class="text-xs text-gray-500"><%= paid_with_phrase(payment[:paid_at], payment[:method]) %></div>
+                  <% end %>
                 </div>
               <% end %>
             <% end %>

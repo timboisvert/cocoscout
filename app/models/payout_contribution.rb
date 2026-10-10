@@ -60,6 +60,30 @@ class PayoutContribution < ApplicationRecord
     :show
   end
 
+  # A charge they owed (a rehearsal, a service) netted out of their share on
+  # this run: a negative line whose source is the incoming contract payment.
+  def deduction?
+    amount_cents.negative? && source_type == "ContractPayment" && source&.direction_incoming?
+  end
+
+  # What a deduction was for, without the run's "(deducted)" suffix.
+  def deduction_label
+    source.respond_to?(:display_name) ? source.display_name : label.to_s.delete_suffix(" (deducted)")
+  end
+
+  # Shares with the deductions taken out of each, for a payee's own pages:
+  # [[contribution, [deductions]]]. A deduction sits under the share from its
+  # own contract on the same item, else the first line it can.
+  def self.with_deductions(contributions)
+    deductions, lines = contributions.partition(&:deduction?)
+    taken = Hash.new { |h, k| h[k] = [] }
+    deductions.each do |d|
+      host = lines.find { |c| c.source_type == "ContractPayment" && c.source&.contract_id == d.source.contract_id } || lines.first
+      host ? taken[host.id] << d : lines << d
+    end
+    lines.map { |c| [ c, taken[c.id] ] }
+  end
+
   def worksheet_entries
     Array(worksheet)
   end

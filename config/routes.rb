@@ -517,7 +517,9 @@ Rails.application.routes.draw do
     patch "/audition_availability/:session_id", to: "availability#update_audition_session", as: "update_audition_availability"
     get   "/auditions",                     to: "auditions#index",          as: "auditions"
     get   "/auditions/directory",           to: "auditions#directory",      as: "auditions_directory"
-    get   "/auditions/:id",                 to: "auditions#show",           as: "audition"
+    # An audition's id is a number; anything else after /auditions/ is an
+    # audition link's token (the redirect to /a/:token below).
+    get   "/auditions/:id",                 to: "auditions#show",           as: "audition", constraints: { id: /\d+/ }
     post  "/auditions/:id/accept",          to: "auditions#accept",         as: "accept_audition"
     post  "/auditions/:id/decline",         to: "auditions#decline",        as: "decline_audition"
     get   "/signups",                       to: redirect("/my/tasks"), as: "sign_ups"

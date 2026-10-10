@@ -34,11 +34,17 @@ module My
       net_cents = @person.payout_balance_cents
       earnings = PayoutLedgerEntry.where(payee: @person, entry_type: "earning")
                                   .includes(:organization, :source).order(occurred_at: :desc).to_a
+      # Charges netted out of a share (a rehearsal, a service) sit under the
+      # share they came out of, so the calculation shows: share, what was taken
+      # out, what they get (Tim, 2026-10-10).
+      taken = deductions_by_earning(earnings)
       @owed_lines = earnings.reject { |e| e.amount_cents.zero? }.map do |e|
-        { label: earning_label(e), org: e.organization&.name, cents: e.amount_cents, date: earning_date(e) }
+        { label: earning_label(e), org: e.organization&.name, cents: e.amount_cents, date: earning_date(e),
+          deductions: taken[e.id].map { |d| { label: d.deduction_label, cents: d.amount_cents } } }
       end
-      # payouts + advances already netted against those earnings.
-      @already_paid_out_cents = earnings.sum(&:amount_cents) - net_cents
+      # payouts + advances already netted against those earnings (the
+      # deductions listed under their shares aren't payouts).
+      @already_paid_out_cents = earnings.sum(&:amount_cents) + taken.values.flatten.sum(&:amount_cents) - net_cents
 
       # Hours still awaiting a manager's approval — estimated at their rate,
       # included in the total but clearly flagged as not yet approved.
@@ -75,7 +81,7 @@ module My
       run_items = PayoutBatchItem.where(payee: @person, status: %w[pending failed])
                                  .joins(:payout_batch)
                                  .where(payout_batches: { status: PayoutBatchService::UNSETTLED_BATCH_STATUSES })
-                                 .includes(payout_batch: :organization)
+                                 .includes(payout_contributions: :source, payout_batch: :organization)
                                  .order("payout_batches.created_at DESC")
       @submitted_run_items = run_items.select { |i| i.payout_batch.in_flight? }
       @queued_run_items = run_items.select { |i| i.payout_batch.open? }
@@ -88,10 +94,15 @@ module My
       when "run"
         @item = PayoutBatchItem.where(payee: @person, status: "paid")
                                .includes(payout_batch: :organization).find(params[:id])
-        @contributions = @item.payout_contributions.order(:created_at).to_a
+        @contributions = @item.payout_contributions.includes(:source).order(:created_at).to_a
       when "show"
         @line_item = ShowPayoutLineItem.where(payee: @person, manually_paid: true)
                                        .includes(show_payout: { show: :production }).find(params[:id])
+      when "offset"
+        @share = offset_shares.find(params[:id])
+        @paid_down = offset_paid_down(@share)
+        @still_owed = @share.contract.contract_payments.status_pending.direction_incoming
+                            .where(settlement_method: "payout_deduction").to_a
       when "hours"
         @entry = StaffTimeEntry.where(person_id: @person.id).where.not(offline_paid_at: nil)
                                .includes(:organization, shift_assignment: { shift: :house_role }).find(params[:id])
@@ -151,14 +162,29 @@ module My
       rows = []
 
       PayoutBatchItem.where(payee: @person, status: "paid")
-                     .includes(:payout_contributions, payout_batch: :organization)
+                     .includes(payout_contributions: :source, payout_batch: :organization)
                      .find_each do |item|
         batch = item.payout_batch
-        line_count = item.payout_contributions.reject(&:excluded_from_payout).size
+        payable = item.payout_contributions.reject(&:excluded_from_payout)
+        deductions = payable.select(&:deduction?)
+        line_count = payable.size - deductions.size
+        taken_out = deductions.sum(&:amount_cents).abs
+        subtitle = [ ("#{line_count} items in this deposit" if line_count > 1),
+                     ("after #{helpers.number_to_currency(taken_out / 100.0)} taken out" if taken_out.positive?) ].compact.join(", ")
         rows << { kind: "run", id: item.id, org: batch.organization&.name,
                   title: "#{batch.kind_label} · bank deposit",
-                  subtitle: line_count > 1 ? "#{line_count} items in this deposit" : nil,
+                  subtitle: subtitle.presence,
                   cents: item.amount_cents, paid_at: item.paid_at, method: "stripe" }
+      end
+
+      # A share that went wholly toward what they owed: nothing was deposited,
+      # but it's a payment all the same, and its receipt shows the working.
+      offset_shares.includes(contract: :organization).find_each do |share|
+        rows << { kind: "offset", id: share.id, org: share.contract.organization&.name,
+                  title: share.contract.production_name.presence || share.contract.contractor_name,
+                  subtitle: share.display_name,
+                  cents: 0, offset_cents: (share.amount.to_d * 100).round,
+                  paid_at: share.paid_date, method: "offset" }
       end
 
       # Hand-paid show lines only — lines settled through a payout run are
@@ -197,9 +223,48 @@ module My
 
       # Zero-dollar rows ($0 "mark done" lines, rate-less hours) are noise in a
       # payment log — nothing was received, so nothing to list.
-      rows.reject! { |r| r[:cents].to_i <= 0 }
+      rows.reject! { |r| r[:cents].to_i <= 0 && r[:offset_cents].to_i <= 0 }
 
       rows.sort_by { |r| r[:paid_at]&.to_time || Time.at(0) }.reverse.first(100)
+    end
+
+    # Shares this person's contracts settled by offset: their charges ate the
+    # whole share, so nothing was deposited (ContractorPayoutRunService
+    # .settle_as_wash!).
+    def offset_shares
+      ContractPayment.joins(contract: :contractor).where(contractors: { person_id: @person.id })
+                     .direction_outgoing.status_paid.where(payment_method: "offset")
+    end
+
+    # The charges an offset share paid down: settled by deduction on the same
+    # run (the share's reference names it).
+    def offset_paid_down(share)
+      run_id = share.reference_number.to_s[/run #(\d+)/, 1]
+      return [] unless run_id
+
+      share.contract.contract_payments.direction_incoming.status_paid
+           .where(payment_method: "payout_deduction", reference_number: "offset_run_#{run_id}").order(:due_date, :id).to_a
+    end
+
+    # Deduction ledger lines (a charge netted out of a share on a run), keyed
+    # by the earning line of the share they came out of.
+    def deductions_by_earning(earnings)
+      by_item = PayoutLedgerEntry.where(payee: @person, entry_type: "adjustment", source_type: "PayoutContribution")
+                                 .includes(source: :source).to_a.select { |a| a.source&.deduction? }
+                                 .group_by { |a| a.source.payout_batch_item_id }
+      taken = Hash.new { |h, k| h[k] = [] }
+      return taken if by_item.empty?
+
+      shares = earnings.select { |e| e.source.is_a?(PayoutContribution) }.group_by { |e| e.source.payout_batch_item_id }
+      by_item.each do |item_id, lines|
+        candidates = shares[item_id] || []
+        lines.each do |line|
+          contract_id = line.source.source.contract_id
+          host = candidates.find { |e| e.source.source.is_a?(ContractPayment) && e.source.source.contract_id == contract_id } || candidates.first
+          taken[host.id] << line.source if host
+        end
+      end
+      taken
     end
 
     # When the work behind an earning line happened: the show's date for show

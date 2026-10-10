@@ -28,7 +28,9 @@
         <%# Everything bundled into this one transfer. %>
         <div class="divide-y divide-gray-100">
           <% if @contributions.any? %>
-            <% @contributions.each do |c| %>
+            <%# A charge they owed that came out of a share is listed under
+                that share, with what's left of it. %>
+            <% PayoutContribution.with_deductions(@contributions).each do |c, taken| %>
               <div class="px-5 py-3">
                 <div class="flex items-center justify-between gap-4">
                   <div class="min-w-0">
@@ -56,6 +58,21 @@
                     <% end %>
                   </div>
                 <% end %>
+                <% if taken.any? %>
+                  <div class="mt-2 ml-3 space-y-1">
+                    <div class="text-[11px] font-medium uppercase tracking-wide text-purple-700">Taken out of your share</div>
+                    <% taken.each do |d| %>
+                      <div class="flex items-center justify-between gap-4 text-sm text-gray-600">
+                        <span class="min-w-0 truncate"><%= d.deduction_label %></span>
+                        <span class="tabular-nums flex-shrink-0">−<%= number_to_currency(d.amount_cents.abs / 100.0) %></span>
+                      </div>
+                    <% end %>
+                    <div class="flex items-center justify-between gap-4 text-sm font-medium text-gray-900 border-t border-gray-100 pt-1">
+                      <span>You got</span>
+                      <span class="tabular-nums flex-shrink-0"><%= number_to_currency((c.amount_cents + taken.sum(&:amount_cents)) / 100.0) %></span>
+                    </div>
+                  </div>
+                <% end %>
               </div>
             <% end %>
           <% else %>
@@ -71,6 +88,55 @@
           <span class="text-sm font-bold text-gray-900 tabular-nums"><%= number_to_currency(@item.amount_cents / 100.0) %></span>
         </div>
       </div>
+
+    <% elsif @kind == "offset" %>
+      <%# Their share went wholly toward what they owed: nothing deposited.
+          The receipt shows what it paid down and what's still to come out. %>
+      <% contract = @share.contract %>
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-start justify-between gap-4">
+          <div>
+            <h3 class="font-semibold text-gray-900"><%= contract.production_name.presence || contract.contractor_name %></h3>
+            <p class="text-sm text-gray-500 mt-0.5">
+              <%= contract.organization&.name %><% if @share.paid_date %> · settled <%= @share.paid_date.strftime("%B %-d, %Y") %><% end %>
+            </p>
+          </div>
+          <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 flex-shrink-0">Settled</span>
+        </div>
+
+        <div class="px-5 py-3 space-y-1">
+          <div class="flex items-center justify-between gap-4 text-sm text-gray-900">
+            <span class="min-w-0">Your share: <%= @share.display_name %></span>
+            <span class="tabular-nums flex-shrink-0"><%= number_to_currency(@share.amount) %></span>
+          </div>
+          <% if @paid_down.any? %>
+            <div class="pt-2 text-[11px] font-medium uppercase tracking-wide text-purple-700">Went toward what you owe</div>
+            <% @paid_down.each do |charge| %>
+              <div class="flex items-center justify-between gap-4 text-sm text-gray-600">
+                <span class="min-w-0 truncate"><%= charge.display_name %></span>
+                <span class="tabular-nums flex-shrink-0">−<%= number_to_currency(charge.amount) %></span>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+        <% if @still_owed.any? %>
+          <div class="px-5 py-3 border-t border-gray-100 space-y-1">
+            <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Still to come out of your next share</div>
+            <% @still_owed.each do |charge| %>
+              <div class="flex items-center justify-between gap-4 text-sm text-gray-600">
+                <span class="min-w-0 truncate"><%= charge.display_name %></span>
+                <span class="tabular-nums flex-shrink-0"><%= number_to_currency(charge.amount) %></span>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-700">Deposited to your bank</span>
+          <span class="text-sm font-bold text-gray-900 tabular-nums"><%= number_to_currency(0) %></span>
+        </div>
+      </div>
+      <p class="mt-3 text-sm text-gray-500">What you owed was more than (or all of) this share, so no money moved: the share paid it down.</p>
 
     <% elsif @kind == "show" %>
       <% show = @line_item.show_payout&.show %>
