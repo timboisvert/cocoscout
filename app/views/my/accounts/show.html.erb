@@ -31,8 +31,9 @@
           data: { turbo_prefetch: false } %>
   </div>
 
-  <%# Notification preferences — same form as /account/notifications, posts to the same endpoint. %>
+  <%# Notification preferences — same form as /account/notifications, posts to the same endpoint and comes back here. %>
   <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }) do |f| %>
+    <%= hidden_field_tag :return_to, my_account_path %>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <%= render "shared/card_header", title: "Email notifications" %>
       <div class="p-5">
@@ -44,9 +45,8 @@
           <% [
             { key: :vacancy_invitations,  title: "Open vacancy invitations", subtitle: "Get notified when you're invited to fill an open vacancy" },
             { key: :audition_invitations, title: "Audition invitations",     subtitle: "Get notified when you're invited to audition" },
-            { key: :cast_notifications,   title: "Cast notifications",       subtitle: "Get notified when you're cast in a show" },
-            { key: :show_reminders,       title: "Show reminders",           subtitle: "Reminders the day before a show you're in" },
-            { key: :message_digest,       title: "Message digest",           subtitle: "Daily digest of unread messages" }
+            { key: :group_invitations,    title: "Group invitations",        subtitle: "Get notified when you're invited to join a group" },
+            { key: :message_digest,       title: "Message digest",           subtitle: "Reminders about unread messages" }
           ].each do |pref| %>
             <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
               <div class="flex-1 pr-4">

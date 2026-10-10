@@ -109,10 +109,15 @@ class AccountController < ApplicationController
   def notifications
   end
 
+  # Email notification preferences. Only the keys a form sends change, so a
+  # form showing some of them (the app's /my/account) never switches the rest
+  # off. Each toggle sends a hidden "0" before its checkbox, so an unchecked
+  # box still arrives.
   def update_notifications
-    # Handle email notification preferences only
     notification_params = params[:notifications] || {}
     User::NOTIFICATION_PREFERENCE_KEYS.each do |key|
+      next unless notification_params.key?(key)
+
       if key == "message_digest"
         # message_digest is a direct column, not in notification_preferences
         Current.user.message_digest_enabled = (notification_params[key] == "1")
@@ -122,10 +127,11 @@ class AccountController < ApplicationController
       end
     end
 
+    back = params[:return_to] == my_account_path ? my_account_path : account_notifications_path
     if Current.user.save
-      redirect_to account_notifications_path, notice: "Email notification preferences updated."
+      redirect_to back, notice: "Email notification preferences updated."
     else
-      redirect_to account_notifications_path, alert: "Failed to update notification preferences."
+      redirect_to back, alert: "Failed to update notification preferences."
     end
   end
 
