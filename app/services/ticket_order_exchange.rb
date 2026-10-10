@@ -19,8 +19,10 @@
 class TicketOrderExchange
   class Error < StandardError; end
 
-  # One ticket and what it becomes.
-  Row = Data.define(:ticket, :tier, :price_cents, :discount_cents, :tax_lines) do
+  # One ticket and what it becomes. bundle_tier: the bundle it's in on the new
+  # date ("4 × General for $70"), when it came from one.
+  Row = Data.define(:ticket, :tier, :price_cents, :discount_cents, :tax_lines, :bundle_tier) do
+    def initialize(bundle_tier: nil, **rest) = super(bundle_tier:, **rest)
     def paid_cents = price_cents - discount_cents
     def tax_cents = tax_lines.sum(&:tax_cents)
     def added_tax_cents = tax_lines.reject(&:included).sum(&:tax_cents)
@@ -163,7 +165,7 @@ class TicketOrderExchange
       buyer_fee_cents: plan.fees_cents, total_cents: plan.old_amount_cents + plan.fees_cents, org_net_cents: plan.moved_cents
     )
     plan.rows.each do |row|
-      ticket = new_order.tickets.create!(ticket_tier: row.tier, ticket_listing: plan.target, status: "valid",
+      ticket = new_order.tickets.create!(ticket_tier: row.tier, bundle_tier: row.bundle_tier, ticket_listing: plan.target, status: "valid",
                                          holder_name: row.ticket.holder_name, price_cents: row.price_cents,
                                          discount_cents: row.discount_cents, tax_cents: row.tax_cents)
       row.tax_lines.each do |line|
@@ -251,6 +253,11 @@ class TicketOrderExchange
   # (up to its price) and is taxed as the new date taxes it.
   def self.row_for(ticket, tier, target)
     raise Error, "Choose what #{ticket.ticket_tier.name} tickets become on the new date." unless tier
+    bundle = bundle_for(ticket, tier)
+    return bundle_row(ticket, bundle, target) if bundle
+    if tier.bundle?
+      raise Error, "#{tier.name} is a bundle. Choose a ticket type for #{ticket.ticket_tier.name} tickets."
+    end
     if tier.price_cents > ticket.price_cents
       raise Error, "#{tier.name} costs #{money(tier.price_cents)} on #{target.show.date_and_time.strftime('%a %b %-d')}, " \
                    "more than their #{money(ticket.price_cents)} ticket. Refund them instead and let them buy again."
@@ -260,6 +267,44 @@ class TicketOrderExchange
     discount = [ ticket.discount_cents, tier.price_cents ].min
     tax = TaxCalculator.for_ticket(target, tier, tier.price_cents - discount)
     Row.new(ticket: ticket, tier: tier, price_cents: tier.price_cents, discount_cents: discount, tax_lines: tax.lines)
+  end
+
+  # A ticket bought in a bundle ("4 × General for $70", each ticket $17.50)
+  # moves into the new date's same bundle: the one the manager picked, else
+  # the bundle of the same size over the type it maps to (the same name
+  # first). Nil when it wasn't from a bundle or the new date has none.
+  def self.bundle_for(ticket, tier)
+    return nil unless ticket.bundle_tier
+    return tier if tier.bundle?
+
+    size = ticket.bundle_tier.admits
+    bundles = tier.bundles.reject { |b| b.archived_at || b.admits != size }
+    bundles.find { |b| b.name.casecmp?(ticket.bundle_tier.name) } || bundles.first
+  end
+
+  # Compared by the bundle's price, never one ticket's (Tim, 2026-10-10: a
+  # 4-pack wouldn't move because $20 for one, or $70 for four, beat $17.50).
+  # The same bundle price keeps everything; a cheaper one is the new share,
+  # with the difference refunded; a pricier one is refused.
+  def self.bundle_row(ticket, bundle, target)
+    size = bundle.admits
+    was = ticket.price_cents * size
+    base = bundle.bundle_of
+    # A bundle that split unevenly (3 for $50: $16.67, $16.67, $16.66) is
+    # still the same price.
+    if (bundle.price_cents - was).abs < size
+      return Row.new(ticket: ticket, tier: base, price_cents: ticket.price_cents, discount_cents: ticket.discount_cents,
+                     tax_lines: original_tax(ticket), bundle_tier: bundle)
+    end
+    if bundle.price_cents > was
+      raise Error, "#{bundle.name} costs #{money(bundle.price_cents)} on #{target.show.date_and_time.strftime('%a %b %-d')}, " \
+                   "more than the #{money(was)} they paid for theirs. Refund them instead and let them buy again."
+    end
+
+    price = TicketTier.split(bundle.price_cents, size).max
+    discount = [ ticket.discount_cents, price ].min
+    tax = TaxCalculator.for_ticket(target, base, price - discount)
+    Row.new(ticket: ticket, tier: base, price_cents: price, discount_cents: discount, tax_lines: tax.lines, bundle_tier: bundle)
   end
 
   # The tax recorded when the ticket was bought (not refund reversals).
@@ -276,5 +321,5 @@ class TicketOrderExchange
   end
 
   private_class_method :moved_cents, :create_order!, :retire_old_tickets!, :move_products!, :post_money!, :refund_difference!,
-                       :row_for, :original_tax, :share, :money
+                       :row_for, :bundle_for, :bundle_row, :original_tax, :share, :money
 end

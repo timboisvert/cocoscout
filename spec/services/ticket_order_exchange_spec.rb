@@ -155,4 +155,45 @@ RSpec.describe TicketOrderExchange do
     result = TicketDoor.new(friday, manager).check_in(order.tickets.sole.code)
     expect(result.message).to eq("This ticket moved to another date")
   end
+  # Kelly's 4-pack (2026-10-10): each ticket is $17.50, its share of $70, so
+  # comparing it to one $20 ticket, or to the whole $70 pack, refused the move.
+  describe "tickets bought in a bundle" do
+    let!(:four_pack) { friday.ticket_tiers.create!(name: "General for 4", price_cents: 7_000, admits: 4, bundle_of_tier_id: general.id) }
+    let!(:saturday_four_pack) do
+      saturday.ticket_tiers.create!(name: "General for 4", price_cents: 7_000, admits: 4, bundle_of_tier_id: saturday_general.id)
+    end
+
+    it "moves into the new date's same bundle, compared by the bundle's price" do
+      order = sold(1, tier: four_pack)
+      expect(order.tickets.pluck(:price_cents)).to eq([ 1_750 ] * 4)
+
+      exchange = described_class.exchange!(order, target: saturday, by: manager)
+      moved = exchange.to_order.tickets
+
+      expect(moved.pluck(:ticket_tier_id, :bundle_tier_id, :price_cents)).to all(eq([ saturday_general.id, saturday_four_pack.id, 1_750 ]))
+      expect(exchange.difference_cents).to eq(0)
+      expect(Stripe::Refund).not_to have_received(:create)
+      expect(saturday.inventory.sold).to eq(4)
+      expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+    end
+
+    it "takes the bundle the manager picks, refunds a cheaper one and refuses a pricier one" do
+      order = sold(1, tier: four_pack)
+
+      saturday_four_pack.update!(price_cents: 8_000)
+      expect { described_class.plan(order, target: saturday, chosen_tiers: { general.id => saturday_four_pack.id }) }
+        .to raise_error(described_class::Error, /\$80\.00 on .*more than the \$70\.00 they paid/)
+
+      saturday_four_pack.update!(price_cents: 6_000)
+      plan = described_class.plan(order, target: saturday, chosen_tiers: { general.id => saturday_four_pack.id })
+      expect(plan.rows.map { |r| [ r.tier, r.bundle_tier, r.price_cents ] }).to all(eq([ saturday_general, saturday_four_pack, 1_500 ]))
+      expect(plan.difference_cents).to be_positive
+    end
+
+    it "won't put a single ticket into a bundle" do
+      order = sold(1)
+      expect { described_class.plan(order, target: saturday, chosen_tiers: { general.id => saturday_four_pack.id }) }
+        .to raise_error(described_class::Error, /is a bundle/)
+    end
+  end
 end
