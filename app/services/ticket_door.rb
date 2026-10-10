@@ -35,6 +35,10 @@ class TicketDoor
   def admit(ticket)
     if ticket.ticket_listing_id != @listing.id
       other = ticket.ticket_listing
+      # Another theater's ticket says nothing about it — not the show, not the
+      # buyer — so the result carries no ticket.
+      return result(:wrong_show, nil, "This ticket isn't for this theater") if other.organization_id != @listing.organization_id
+
       return result(:wrong_show, ticket, "This ticket is for #{other.display_title}, #{other.starts_at&.strftime('%a %b %-d, %-l:%M %p')}")
     end
 

@@ -53,6 +53,20 @@ RSpec.describe TicketDoor do
       expect(other.tickets.sole.reload.status).to eq("valid")
     end
 
+    it "says nothing about another theater's ticket" do
+      other_org = create(:organization, :pro)
+      other_listing = create(:ticket_listing, organization: other_org)
+      other_tier = other_listing.ticket_tiers.create!(name: "General", price_cents: 1_000)
+      other = TicketCheckout.start!(listing: other_listing, quantities: { other_tier.id.to_s => "1" })
+      TicketOrderSettlement.settle!(other)
+
+      result = door.check_in(other.tickets.sole.code)
+      expect(result.kind).to eq(:wrong_show)
+      expect(result.ticket).to be_nil
+      expect(result.message).to eq("This ticket isn't for this theater")
+      expect(other.tickets.sole.reload.status).to eq("valid")
+    end
+
     it "never admits one ticket twice, even from two phones at once" do
       ticket = sold_order(1).tickets.sole
       phone_a = described_class.new(listing, door_person)

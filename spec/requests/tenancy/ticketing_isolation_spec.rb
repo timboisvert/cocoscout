@@ -96,4 +96,23 @@ RSpec.describe "Cross-org isolation (ticketing)", type: :request do
     expect(response).to have_http_status(:not_found)
     expect(grant.reload.attributes.slice("access_level", "revoked_at")).to eq("access_level" => "check_in", "revoked_at" => nil)
   end
+
+  # Ticket codes are global, so a scan at your own door can land on another
+  # theater's ticket: it must stay unadmitted and say nothing about it.
+  it "learns nothing from scanning another theater's ticket at its own door" do
+    TicketingProfile.for(org).update!(enabled: true)
+    own_listing = create(:ticket_listing, organization: org)
+    victim_order.update!(buyer_name: "Dana Scully")
+    ticket = victim_order.tickets.sole
+
+    post door_check_in_path(own_listing), params: { code: "https://cocoscout.com/tickets/v/#{ticket.code}" }, as: :json
+
+    body = response.parsed_body
+    expect(body["kind"]).to eq("wrong_show")
+    expect(body["message"]).to eq("This ticket isn't for this theater")
+    expect(body.values_at("holder", "order_code", "ticket_id", "party")).to all(be_nil)
+    expect(body["items"]).to eq([])
+    expect(response.body).not_to include("Dana", victim_order.code, victim_listing.display_title)
+    expect(ticket.reload.status).to eq("valid")
+  end
 end
