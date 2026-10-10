@@ -1,0 +1,31 @@
+import UIKit
+
+/// Where the app points and how it looks.
+///
+/// Debug builds talk to the Rails server on this Mac (the Simulator reaches it
+/// at localhost); release builds talk to cocoscout.com. Either can be pointed
+/// elsewhere for a run with a launch argument:
+///
+///     xcrun simctl launch booted com.cocoscout.app -BaseURL https://cocoscout.com
+enum AppConfig {
+    static let baseURL: URL = {
+        if let override = UserDefaults.standard.string(forKey: "BaseURL"),
+           let url = URL(string: override) {
+            return url
+        }
+        #if DEBUG
+        return URL(string: "http://localhost:3000")!
+        #else
+        return URL(string: "https://cocoscout.com")!
+        #endif
+    }()
+
+    static let pathConfigurationURL = baseURL.appendingPathComponent("hotwire-native/path-configuration.json")
+
+    static func url(_ path: String) -> URL {
+        URL(string: path, relativeTo: baseURL)!.absoluteURL
+    }
+
+    /// CocoScout pink (Tailwind pink-500).
+    static let pink = UIColor(red: 236 / 255, green: 72 / 255, blue: 153 / 255, alpha: 1)
+}

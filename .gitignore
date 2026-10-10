@@ -47,3 +47,8 @@
 /config/credentials/production.key
 
 .DS_Store
+
+# iOS app (ios/): per-user Xcode state and local builds.
+/ios/**/xcuserdata/
+/ios/build/
+/ios/DerivedData/

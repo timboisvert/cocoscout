@@ -49,3 +49,7 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# The native apps aren't part of the server image.
+/ios/
+/android/
