@@ -45,7 +45,7 @@ RSpec.describe "The Tickets question", type: :request do
 
     # The show page shows where the tickets are, small, for reading only.
     get manage_production_show_path(production, show)
-    expect(response.body).to include("On CocoScout", "of 70", manage_ticket_listing_path(show.ticket_listing))
+    expect(response.body).to include("Tickets sold", "of 70", manage_ticket_listing_path(show.ticket_listing))
     expect(response.body).not_to include("Give tickets", "Where do people get tickets")
 
     # A date answering for itself leaves the production's CocoScout sales; following it again rejoins.
@@ -65,8 +65,8 @@ RSpec.describe "The Tickets question", type: :request do
 
     get manage_production_show_path(production, show)
     box = response.body[%r{>Tickets</h3>.*?Scan for tickets}m]
-    expect(box).to include("sm:grid-cols-2", "On CocoScout", "Ticket link", "Visit", "Copy", "QR")
-    expect(box.index("On CocoScout")).to be < box.index("Ticket link")
+    expect(box).to include("sm:grid-cols-2", "Tickets sold", "Ticket link", "Visit", "Copy", "QR")
+    expect(box.index("Tickets sold")).to be < box.index("Ticket link")
     expect(box).to match(%r{truncate" title="https?://[^"]+/t/[^"]+">(?!https?://)[^<]+/t/})
     expect(box).not_to include("Door", "sm:row-span-2")
   end
@@ -78,7 +78,7 @@ RSpec.describe "The Tickets question", type: :request do
 
       get manage_production_show_path(production, tonight)
       box = response.body[%r{>Tickets</h3>.*?Tonight: check people in}m]
-      expect(box).to include("On CocoScout", "Ticket link", "sm:row-span-2", door_path(tonight.reload.ticket_listing))
+      expect(box).to include("Tickets sold", "Ticket link", "sm:row-span-2", door_path(tonight.reload.ticket_listing))
       expect(box.index("Ticket link")).to be < box.index(">Door<")
     end
   end
@@ -93,8 +93,41 @@ RSpec.describe "The Tickets question", type: :request do
 
     get manage_production_show_path(production, show)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("On CocoScout", "of 60")
+    expect(response.body).to include("Tickets sold", "of 60")
     expect(response.body).not_to include(manage_ticket_listing_path(show.ticket_listing))
+  end
+
+  # Tim, 2026-10-10: Clay, a co-producer, saw only CocoScout's count and a
+  # Door tile he has no use for. Every ticket sold, where it sold, and comps;
+  # the Door tile only for people who can open the door.
+  it "shows a producer every ticket sold and where, without the Door tile, on the day" do
+    travel_to Time.zone.local(2026, 11, 6, 12) do
+      tonight = create(:show, production: production, date_and_time: Time.zone.local(2026, 11, 6, 19, 30))
+      TicketsAnswer.apply!(production, mode: "cocoscout", tiers: [ { "name" => "General", "price" => "20", "seats" => "60" } ])
+      listing = tonight.reload.ticket_listing
+      general = listing.ticket_tiers.first
+      order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "2" })
+      TicketOrderSettlement.settle!(order, payment_intent_id: "pi_clay")
+      TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Guest", email: nil, tier: general, quantity: 3) ], by: nil, email_them: false)
+      tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+      domore = org.ticket_sources.create!(name: "DoMore")
+      TicketOutsideSales.record!(listing, { tailor.id.to_s => { general.id.to_s => { "tickets" => "7", "amount" => "$140" } },
+                                            domore.id.to_s => { general.id.to_s => { "tickets" => "3", "amount" => "" } } })
+
+      viewer = create(:user, email_address: "clay@sg.example", password: password)
+      create(:organization_role, user: viewer, organization: org, company_role: "viewer")
+      get signout_path
+      post handle_signin_path, params: { email_address: viewer.email_address, password: password }
+      post set_organization_path(id: org.id)
+
+      get manage_production_show_path(production, tonight)
+      box = response.body[%r{>Tickets</h3>.*?Scan for tickets}m].gsub(/\s+/, " ")
+      # 2 here + 7 + 3 elsewhere = 12 sold, of the 57 seats left to sell once 3 comps are set aside.
+      expect(box).to include("Tickets sold", "12 <span class=\"text-sm font-normal text-gray-500\">of 57</span> sold", "3 comps")
+      expect(box).to include("2 on CocoScout", "7 on Ticket Tailor", "$140.00", "3 on DoMore")
+      expect(box).to include("in sales")
+      expect(box).not_to include(">Door<", "check people in", "sm:row-span-2")
+    end
   end
 
   it "takes a pasted link, names the site and adds it to the ticket sources; a date can point somewhere else" do

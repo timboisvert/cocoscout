@@ -29,7 +29,7 @@ RSpec.describe "Pro modules are for managers", type: :request do
     sign_in(producer)
     get manage_production_show_path(production, show)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("On CocoScout")
+    expect(response.body).to include("Tickets sold")
     expect(response.body).not_to include(manage_money_show_financials_path(show), manage_money_index_path, manage_contracts_path, manage_reports_path, manage_staffing_index_path, manage_ticketing_path)
     expect(response.body).not_to include('tracking-wider text-gray-400">Pro</div>') # no Pro heading in the nav either
 
