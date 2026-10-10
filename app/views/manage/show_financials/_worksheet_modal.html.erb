@@ -139,10 +139,14 @@
                   <span>Sold through</span><span class="text-right">Tickets</span><span class="text-right">Amount</span>
                 </div>
                 <div class="divide-y divide-gray-100" data-financials-form-target="ticketLines">
+                  <%# These rows come from the show's ticketing page, so they link
+                      there: one click to change them (Tim, 2026-10-10). %>
+                  <% ticketing_listing = @show_financials.show.ticket_listing if built_in_lines.any? %>
                   <% built_in_lines.each do |fixed| %>
+                    <% fed_from = fixed.ticket_source.built_in? ? "from ticket sales" : "imported from the ticketing page" %>
                     <div class="grid grid-cols-[minmax(0,1fr)_6rem_8rem] sm:grid-cols-[minmax(0,1fr)_7rem_9rem] items-center gap-2 px-3 py-2.5 bg-pink-50/40"
                          data-ticket-line data-fixed-tickets="<%= fixed.tickets_sold %>" data-fixed-amount="<%= fixed.amount.to_f %>">
-                      <span class="min-w-0 truncate text-sm font-medium text-gray-900"><%= fixed.ticket_source.name %> <span class="font-normal text-xs text-gray-500">· <%= fixed.ticket_source.built_in? ? "from ticket sales" : "typed on the ticketing page" %></span></span>
+                      <span class="min-w-0 truncate text-sm font-medium text-gray-900"><%= fixed.ticket_source.name %> <span class="font-normal text-xs text-gray-500">· <% if ticketing_listing %><%= link_to fed_from, manage_ticket_listing_path(ticketing_listing), class: "text-pink-600 hover:text-pink-700 hover:underline", data: { turbo_frame: "_top" } %><% else %><%= fed_from %><% end %></span></span>
                       <span class="text-sm text-right tabular-nums text-gray-900"><%= fixed.tickets_sold %></span>
                       <span class="text-sm text-right tabular-nums text-gray-900"><%= number_to_currency(fixed.amount) %></span>
                     </div>
