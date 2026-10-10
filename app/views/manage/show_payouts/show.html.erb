@@ -96,6 +96,20 @@
     <%= render partial: "manage/payouts/money_show_row", locals: { show: @show, production: @production } %>
   </div>
 
+  <% if @financials_unconfirmed %>
+    <%# The numbers are in but not marked final: say so above everything, and
+        open the worksheet right here; saving it comes back to this page. %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Financials",
+          headline: "Not marked complete yet",
+          body: "This show's numbers are in, but nobody has ticked “The data entered is complete and ready for payout” on its worksheet, so it still counts as needing financials.",
+          actions: [
+            { text: "Open the worksheet", type: :button, onclick: "document.getElementById('financialWorksheet').classList.remove('hidden')" },
+            { text: "Financials page", path: manage_money_show_financials_path(@show) }
+          ] %>
+    <%= render "manage/show_financials/worksheet_modal", return_to: manage_money_show_payout_path(@show) %>
+  <% end %>
+
   <% if @contract&.revenue_share? %>
     <!-- Revenue-share contractor payout — display only; settled on the contract -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

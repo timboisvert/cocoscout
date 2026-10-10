@@ -33,9 +33,11 @@ module Manage
         # this show, and skipped minus-fee deals entirely.
         ContractPaymentSyncService.new(@show).call
 
+        # The worksheet opened on the payout page returns there.
+        back = params[:return_to] == manage_money_show_payout_path(@show) ? params[:return_to] : manage_money_show_financials_path(@show)
         respond_to do |format|
-          format.html { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }
-          format.turbo_stream { redirect_to manage_money_show_financials_path(@show), notice: "Financial data saved successfully." }
+          format.html { redirect_to back, notice: "Financial data saved successfully." }
+          format.turbo_stream { redirect_to back, notice: "Financial data saved successfully." }
         end
       else
         render :edit, status: :unprocessable_content

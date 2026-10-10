@@ -34,6 +34,7 @@
 
       <!-- Form Content -->
       <%= form_with model: @show_financials, url: manage_update_money_show_financials_path(@show), method: :patch, data: { turbo: false, financials_form_target: "form" } do |form| %>
+        <%= hidden_field_tag :return_to, local_assigns[:return_to] if local_assigns[:return_to] %>
         <%# Sentinels: JS sets these to "1" when all items are removed so the server knows to clear the field %>
         <input type="hidden" name="show_financials[other_revenue_details_cleared]" value="0"
                data-financials-form-target="otherRevenueClearedInput">
@@ -400,7 +401,7 @@
           <label class="flex items-center gap-2 cursor-pointer select-none"
                  title="Check when the financials above are correct — even if revenue is $0. Required before payouts can be calculated.">
             <%= form.check_box :data_confirmed, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-            <span class="text-sm font-medium text-gray-900">The data entered is complete and accurate</span>
+            <span class="text-sm font-medium text-gray-900">The data entered is complete and ready for payout</span>
           </label>
           <div class="flex items-center gap-3">
             <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->financials-form#closeWorksheet" } %>

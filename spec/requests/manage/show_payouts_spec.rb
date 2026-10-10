@@ -30,6 +30,40 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
     expect(response.body).to include("$60.00")      # what's already been paid
   end
 
+  # Tim, 2026-10-10: numbers entered but not ticked as complete left the
+  # payout and contract pages looking empty, with no hint why.
+  describe "financials not marked complete" do
+    before { financials.update!(data_confirmed: false) }
+
+    it "says so and opens the worksheet right here, which comes back here on save" do
+      get manage_money_show_payout_path(show)
+
+      expect(response.body).to include("Not marked complete yet", "Open the worksheet", 'id="financialWorksheet"')
+      expect(response.body).to include("The data entered is complete and ready for payout")
+      expect(response.body).to match(/name="return_to"[^>]*value="#{Regexp.escape(manage_money_show_payout_path(show))}"/)
+
+      patch manage_update_money_show_financials_path(show),
+            params: { return_to: manage_money_show_payout_path(show), show_financials: { data_confirmed: "1" } }
+      expect(response).to redirect_to(manage_money_show_payout_path(show))
+      expect(financials.reload.data_confirmed).to be(true)
+
+      get manage_money_show_payout_path(show)
+      expect(response.body).not_to include("Not marked complete yet")
+    end
+
+    it "sends any other return address to the financials page" do
+      patch manage_update_money_show_financials_path(show),
+            params: { return_to: "https://evil.example/", show_financials: { data_confirmed: "1" } }
+      expect(response).to redirect_to(manage_money_show_financials_path(show))
+    end
+  end
+
+  it "doesn't nag when the financials are marked complete" do
+    get manage_money_show_payout_path(show)
+    expect(response.body).not_to include("Not marked complete yet")
+    expect(response.body).not_to include('id="financialWorksheet"')
+  end
+
   it "offers an add-to-run preview modal instead of a confirm alert" do
     get manage_money_show_payout_path(show)
     expect(response.body).to include("add-to-run-modal")

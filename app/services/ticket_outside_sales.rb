@@ -34,6 +34,10 @@ class TicketOutsideSales
         sync_source!(listing, source)
       end
     end
+    # A contract settling off this show's sales (a revenue share, a minus-fee
+    # deal) follows what sold elsewhere too, as it does every CocoScout sale
+    # (TicketSalesSync); before, it waited for a worksheet save.
+    ContractPaymentSyncService.new(listing.show).call unless Show.skip_contract_payment_sync?
   end
 
   # A site's Show Financials row is what it sold here, every type added up:

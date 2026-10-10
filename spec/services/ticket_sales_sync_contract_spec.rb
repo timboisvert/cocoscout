@@ -22,4 +22,14 @@ RSpec.describe TicketSalesSync, "and contract settlement" do
     expect(show.show_financials.reload.ticket_revenue).to eq(40.to_d)
     expect(payment.reload.attributes.values_at("amount", "amount_tbd")).to eq([ 8.to_d, false ])
   end
+
+  # Tim, 2026-10-10: sales typed on the show's page (Sold elsewhere) only
+  # reached the contract when someone saved the worksheet.
+  it "moves the share when tickets sold elsewhere are typed on the show's page" do
+    hot_tix = organization.ticket_sources.create!(name: "Hot Tix")
+    TicketOutsideSales.record!(listing, { hot_tix.id.to_s => { general.id.to_s => { "tickets" => "5", "amount" => "$100" } } })
+
+    expect(show.show_financials.reload.ticket_revenue).to eq(100.to_d)
+    expect(payment.reload.attributes.values_at("amount", "amount_tbd")).to eq([ 20.to_d, false ])
+  end
 end

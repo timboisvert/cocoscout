@@ -35,6 +35,7 @@ module Manage
       else
         setup_performer_payout
       end
+      load_unconfirmed_worksheet
     end
 
     def update
@@ -651,6 +652,20 @@ module Manage
     # A contract show whose money is a set of logged contract payments. Show what
     # we owe (outgoing → payable via the payout run) and what's owed to us
     # (incoming → expected income), instead of the casting calculation.
+    # Numbers entered, but nobody ticked "complete and ready for payout": the
+    # page says so and opens the worksheet right here (Tim, 2026-10-10: the
+    # payout and contract pages looked empty with no hint why).
+    def load_unconfirmed_worksheet
+      financials = @show.show_financials
+      return unless @show.revenue_event? && !@show.canceled? && financials&.has_data? && !financials.data_confirmed?
+
+      @show_financials ||= financials
+      @show_financials.expense_items.load
+      @show_financials.ticket_sales_lines.load
+      @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
+      @financials_unconfirmed = true
+    end
+
     def setup_contract_payout
       @contract_payout = true
       @outgoing_payments = @show_contract_payments.select(&:direction_outgoing?)
