@@ -71,15 +71,16 @@ RSpec.describe "The Tickets question", type: :request do
     expect(box).not_to include("Door", "sm:row-span-2")
   end
 
-  it "puts the Door tile under the count on the day, the link beside both" do
+  # Tim, 2026-10-10: no Door tile on the show page, for anyone, even on the day.
+  it "never puts a Door tile on the show page, even on the day for a manager" do
     travel_to Time.zone.local(2026, 11, 6, 12) do
       tonight = create(:show, production: production, date_and_time: Time.zone.local(2026, 11, 6, 19, 30))
       TicketsAnswer.apply!(production, mode: "cocoscout", tiers: [ { "name" => "General", "price" => "20", "seats" => "60" } ])
 
       get manage_production_show_path(production, tonight)
-      box = response.body[%r{>Tickets</h3>.*?Tonight: check people in}m]
-      expect(box).to include("Tickets sold", "Ticket link", "sm:row-span-2", door_path(tonight.reload.ticket_listing))
-      expect(box.index("Ticket link")).to be < box.index(">Door<")
+      box = response.body[%r{>Tickets</h3>.*?Scan for tickets}m]
+      expect(box).to include("Tickets sold", "Ticket link")
+      expect(box).not_to include(">Door<", "check people in", "sm:row-span-2", door_path(tonight.reload.ticket_listing))
     end
   end
 
