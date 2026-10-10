@@ -2123,32 +2123,16 @@ class Contract < ApplicationRecord
     contract_payments.where(direction: "incoming", status: "pending").sum(:amount)
   end
 
-  # Sync paid course offering payouts to contract payments
+  # Course runs already paid settle the contract's share for them (heals
+  # runs paid before CourseOfferingPayout#settle_contract_payments! ran on
+  # payment). Only pending payments are touched, so it's safe on every view.
   def sync_course_payouts_to_payments
     return if course_offerings.empty?
 
-    # Find all paid line items from course offering payouts
-    paid_items = CourseOfferingPayoutLineItem
-      .joins(course_offering_payout: :course_offering)
-      .where(course_offering_payout: { course_offering_id: course_offerings.ids })
-      .where(payee_type: "Contractor", payee_id: contractor_id)
-      .where(manually_paid: true)
-
-    paid_items.each do |item|
-      # Find matching pending ContractPayment (outgoing, for this contractor)
-      payments_to_sync = contract_payments
-        .where(direction: "outgoing", status: "pending")
-        .select { |p| p.description&.downcase&.include?("revenue share") }
-
-      payments_to_sync.each do |payment|
-        payment.mark_paid!(
-          paid_on: item.paid_at.to_date,
-          method: item.payment_method,
-          reference: "Course offering payout",
-          amount: item.amount_cents / 100.0
-        )
-      end
-    end
+    CourseOfferingPayoutLineItem.joins(:course_offering_payout)
+                                .where(course_offering_payouts: { course_offering_id: course_offerings.select(:id) })
+                                .where(manually_paid: true).includes(course_offering_payout: :course_offering)
+                                .find_each { |item| item.course_offering_payout.settle_contract_payments!(item) }
   end
 
   private

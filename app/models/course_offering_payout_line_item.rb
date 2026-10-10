@@ -27,8 +27,8 @@ class CourseOfferingPayoutLineItem < ApplicationRecord
       payment_notes: notes
     )
 
-    # Sync to related ContractPayment if this line item is for a contract
-    sync_to_contract_payment(user, method, notes)
+    # A contract's share for this course is paid with this line.
+    course_offering_payout.settle_contract_payments!(self)
   end
 
   # Called when the payout run carrying this line pays out (PayoutBatchService.
@@ -41,6 +41,7 @@ class CourseOfferingPayoutLineItem < ApplicationRecord
                      paid_at: Time.current, payment_method: "stripe")
     end
     course_offering_payout.settle_if_fully_paid!
+    course_offering_payout.settle_contract_payments!(self)
   end
 
   # The run that paid this line came back — only undoes a Stripe-run payment,
@@ -66,39 +67,5 @@ class CourseOfferingPayoutLineItem < ApplicationRecord
   def payee_name
     return label if payee.nil?
     payee.respond_to?(:name) ? payee.name : label
-  end
-
-  private
-
-  def sync_to_contract_payment(user, method, notes)
-    contract = course_offering&.contract
-    return unless contract && payee_type == "Contractor"
-
-    # Find matching outgoing ContractPayments for this contractor
-    contract.contract_payments.where(
-      direction: "outgoing",
-      status: "pending"
-    ).each do |payment|
-      # Match by contractor name or ID if we can
-      next unless payment_matches_contractor?(payment)
-
-      payment.mark_paid!(
-        paid_on: paid_at.to_date,
-        method: method,
-        reference: "Course offering payout",
-        amount: amount_cents / 100.0
-      )
-    end
-  end
-
-  def payment_matches_contractor?(payment)
-    # Payment description might contain contractor name
-    return false unless payment.description
-
-    contractor_name = payee.name if payee.is_a?(Contractor)
-    return false unless contractor_name
-
-    payment.description.downcase.include?(contractor_name.downcase) ||
-      payment.contract.contractor_name.downcase.include?(contractor_name.downcase)
   end
 end

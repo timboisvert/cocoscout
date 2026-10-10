@@ -59,6 +59,10 @@
   # Ticket-linked amounts land on their own once show financials are in.
   awaits_financials = payment.amount_tbd? &&
     (payment.revenue_share? || contract.revenue_share? || contract.ticket_revenue_minus_fee?)
+  # A course's share settles in its course payout, never from ticket sales
+  # (CourseOfferingPayout#settle_contract_payments!).
+  course_offering = contract.course_offerings.first if awaits_financials && !is_incoming
+  awaits_financials = false if course_offering
   # A minus-fee settlement waiting on ticket sales isn't a mystery: our fee is
   # ours whatever the night sells (a night that sells under it becomes a
   # shortfall they owe us), and so is anything deducted from the payout. Only
@@ -215,7 +219,7 @@
         <div class="flex items-center gap-2">
           <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
             <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
-            <%= settled_by_offset ? "Settled" : "Paid" %><%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %>
+            <%= settled_by_offset ? "Settled" : "Paid" %><%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %><%= " · Course payout" if payment.payment_method == "course_payout" %>
           </span>
           <% if show_actions && payment.invoiceable? %>
             <%= link_to "Receipt", pay_contract_invoice_path(token: payment.payment_token!, format: :pdf), target: "_blank", rel: "noopener",
@@ -279,6 +283,10 @@
             <%= link_to manage_money_incoming_payment_path(payment) do %>
               <%= render "shared/button", text: "Collect", variant: "primary", size: "xs", icon: "banknotes" %>
             <% end %>
+          <% elsif course_offering && !amount_set %>
+            <%= link_to "Settles with the course payout", manage_course_offering_payout_path(course_offering),
+                  class: "inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors",
+                  title: "This course's share is worked out and paid in its course payout." %>
           <% elsif awaits_financials && !amount_set %>
             <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500"
                   title="This settles once you enter ticket sales for the shows on this contract.">
