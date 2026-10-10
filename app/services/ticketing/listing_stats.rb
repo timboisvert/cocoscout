@@ -149,6 +149,18 @@ module Ticketing
       capacity && [ capacity - comps, 0 ].max
     end
 
+    # The same, in words for a chip or a row: "12 of 57 sold", or "12 sold"
+    # with no seat limit. Wherever a count of sold tickets is shown, it's this
+    # one, never CocoScout's alone (Tim, 2026-10-10).
+    def sold_words
+      seats_to_sell ? "#{sold_anywhere} of #{seats_to_sell} sold" : "#{sold_anywhere} sold"
+    end
+
+    # Ticket money here and on other sites (what they typed for those).
+    def sales_anywhere_cents
+      gross_cents + outside_cents
+    end
+
     def checked_in
       held_tickets.count(&:checked_in?)
     end

@@ -15,8 +15,8 @@
         concat content_tag(:div, "#{show.date_and_time.strftime('%-l:%M %p')} · #{listing.organization.name}", class: "text-sm text-gray-600 truncate")
       })
       concat(content_tag(:div, class: "text-right flex-shrink-0") {
-        concat content_tag(:div, stats.capacity ? "#{stats.sold} of #{stats.capacity}" : stats.sold.to_s, class: "text-sm font-semibold tabular-nums text-gray-900")
-        concat content_tag(:div, "#{money.call(stats.gross_cents)} in sales", class: "text-xs text-gray-500")
+        concat content_tag(:div, stats.sold_words, class: "text-sm font-semibold tabular-nums text-gray-900")
+        concat content_tag(:div, "#{money.call(stats.sales_anywhere_cents)} in sales", class: "text-xs text-gray-500")
       })
     end
   end

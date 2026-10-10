@@ -120,7 +120,7 @@
                       path: ticket_link.url, target: "_blank", rel: "noopener" %>
                 <% if ticket_link.cocoscout? && (listing = @show.ticket_listing) %>
                   <% stats = Ticketing::ListingStats.of(listing) %>
-                  <span class="text-xs text-gray-600"><%= stats.sold %><% if stats.capacity %> of <%= stats.capacity %><% end %> sold</span>
+                  <span class="text-xs text-gray-600"><%= stats.sold_words %></span>
                 <% end %>
                 <span class="text-xs text-gray-500 truncate max-w-xs" title="<%= ticket_link.url %>"><%= ticket_link.url.sub(%r{\Ahttps?://}, "") %></span>
               </div>

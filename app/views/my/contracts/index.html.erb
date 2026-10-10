@@ -98,13 +98,14 @@
               </div>
             </div>
 
-            <%# Ticket sales on CocoScout for the contract's coming dates, a tap away. %>
+            <%# Ticket sales for the contract's coming dates, here and on other
+                sites, a tap away. %>
             <% sales = @ticket_sales.fetch(contract.id, []) %>
             <% if sales.any? %>
               <div class="mt-2 flex flex-wrap gap-1.5">
                 <% sales.each do |listing, stats| %>
                   <%= link_to my_ticket_sale_path(listing), class: "inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-0.5 text-xs font-medium text-pink-700 hover:bg-pink-100" do %>
-                    <%= listing.show.date_and_time.strftime("%b %-d") %> · <%= stats.capacity ? "#{stats.sold} of #{stats.capacity} sold" : "#{stats.sold} sold" %>
+                    <%= listing.show.date_and_time.strftime("%b %-d") %> · <%= stats.sold_words %>
                   <% end %>
                 <% end %>
               </div>

@@ -99,6 +99,15 @@ RSpec.describe "Ticket sales viewers", type: :request do
     get my_contracts_path
     expect(response.body).to include("2 of 60 sold", my_ticket_sale_path(listing))
 
+    # Tickets sold on other sites count too (Tim, 2026-10-10: the chips said
+    # 0 of 60 while another site had sold).
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    TicketOutsideSales.record!(listing, { tailor.id.to_s => { listing.ticket_tiers.first.id.to_s => { "tickets" => "5", "amount" => "$100" } } })
+    get my_contracts_path
+    expect(response.body).to include("7 of 60 sold")
+    get my_ticket_sales_path
+    expect(response.body).to include("7 of 60 sold")
+
     sign_in(superadmin)
     get manage_path
     get manage_ticket_listing_visibility_path(listing)
