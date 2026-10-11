@@ -42,6 +42,25 @@ RSpec.describe "Production ticketing", type: :request do
                     selected_show_ids: attrs[:selected_show_ids] }
   end
 
+  # Tim, 2026-10-11: the X on a saved ticket type looked like it did nothing
+  # (a hidden checkbox). It's a button that dims the row and says it goes on
+  # save, with Undo; saving removes it.
+  it "removes a saved ticket type with its X, on save, with Undo before then" do
+    save_tickets("0" => { name: "General", price: "20", quantity: "60", position: "0" },
+                 "1" => { name: "Student", price: "15", quantity: "", position: "1" })
+    student = production.reload.production_ticketing.ticket_tiers.find_by!(name: "Student")
+
+    get manage_edit_production_ticketing_path(production, section: "tickets")
+    rows = response.body.split('data-nested-form-target="template"').first
+    expect(rows.scan('data-action="nested-form#toggleRemove"').size).to eq(4) # X and Undo on each saved row
+    expect(rows).to include("Removed when you save.", 'class="hidden" data-removal-note')
+    expect(rows).not_to include('type="checkbox" value="1" name="production_ticketing[ticket_tiers_attributes]')
+
+    save_tickets("0" => { id: student.production_ticketing.ticket_tiers.find_by!(name: "General").id, name: "General", price: "20", quantity: "60", position: "0", _destroy: "0" },
+                 "1" => { id: student.id, name: "Student", price: "15", quantity: "", position: "1", _destroy: "1" })
+    expect(production.reload.production_ticketing.ticket_tiers.map(&:name)).to eq([ "General" ])
+  end
+
   it "goes straight to the production when there's only one, and asks which when there are several" do
     get manage_new_production_ticketing_path
     expect(response).to redirect_to(manage_production_ticketing_path(production))

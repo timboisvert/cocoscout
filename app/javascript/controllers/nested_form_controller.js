@@ -26,4 +26,16 @@ export default class extends Controller {
     item.querySelector("input[name*='_destroy']").value = "1"
     item.style.display = "none"
   }
+
+  // A saved row goes when the form is saved: mark it, dim it and say so,
+  // with Undo. Clicking again (or Undo) keeps it.
+  toggleRemove(event) {
+    event.preventDefault()
+    const item = event.target.closest(".nested-fields")
+    const destroy = item.querySelector("input[name*='_destroy']")
+    const removing = destroy.value !== "1"
+    destroy.value = removing ? "1" : "0"
+    item.querySelector("[data-removal-note]")?.classList.toggle("hidden", !removing)
+    item.querySelector("[data-removal-fields]")?.classList.toggle("opacity-40", removing)
+  }
 }

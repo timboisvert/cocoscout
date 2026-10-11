@@ -25,6 +25,7 @@
             classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveDown" } %>
     </div>
     <div class="flex-1 min-w-0 space-y-2">
+      <div class="space-y-2 transition-opacity" data-removal-fields>
       <% if bundle %>
         <div class="flex items-center gap-2 text-xs">
           <span class="inline-flex rounded-full bg-pink-50 border border-pink-200 px-2 py-0.5 font-semibold text-pink-700">Bundle</span>
@@ -49,12 +50,22 @@
       </div>
       <%= tf.text_field :description, placeholder: "Short description (optional), like “Front row and a drink”", "aria-label": "Description", class: input_class %>
       <% if sold.positive? %><p class="text-xs text-gray-500"><%= sold %> sold</p><% end %>
+      </div>
+      <% if tier.persisted? %>
+        <%# A saved type goes when the form is saved: the X dims the row and says
+            so, with Undo (Tim, 2026-10-11: the X looked like it did nothing). %>
+        <div class="hidden" data-removal-note>
+          <div class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-pink-200 bg-pink-50 px-3 py-2">
+            <span class="text-sm text-pink-800">Removed when you save. Any tickets already sold for it stay good.</span>
+            <%= render "shared/button", text: "Undo", variant: "secondary", size: "xs", type: :button, data: { action: "nested-form#toggleRemove" } %>
+          </div>
+        </div>
+      <% end %>
     </div>
     <% if tier.persisted? %>
-      <label class="flex h-10 items-center justify-center cursor-pointer text-gray-400 hover:text-pink-600" title="Remove this ticket type">
-        <%= tf.check_box :_destroy, class: "sr-only peer" %>
-        <svg class="w-5 h-5 peer-checked:text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </label>
+      <%= tf.hidden_field :_destroy, value: "0" %>
+      <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Remove this ticket type", icon: "x-mark",
+            classes: "!p-2 text-gray-400 hover:text-pink-600", data: { action: "nested-form#toggleRemove" } %>
     <% else %>
       <%= tf.hidden_field :_destroy, value: "0" %>
       <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Remove this row", icon: "x-mark",
