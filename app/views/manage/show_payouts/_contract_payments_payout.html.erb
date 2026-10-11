@@ -5,8 +5,10 @@
   payments = @show_contract_payments || []
   groups = @contract ? @contract.payment_schedule_groups(payments) : payments.map { |p| { payment: p, deductions: [] } }
   waiting = groups.select { |g| g[:payment].status_pending? && !g[:payment].amount_tbd? }
+  # What a settlement hands over: its amount less every charge netted out of
+  # it, whether still waiting or already taken out on its run.
   net_out = waiting.select { |g| g[:payment].direction_outgoing? }.sum do |g|
-    g[:payment].amount.to_f - g[:deductions].select { |d| d.status_pending? && d.deduct_from_payout? }.sum { |d| d.amount.to_f }
+    g[:payment].amount.to_f - g[:deductions].sum { |d| d.amount.to_f }
   end
   owed_total = [ net_out, 0 ].max
   due_to_us_total = waiting.select { |g| g[:payment].direction_incoming? }.sum { |g| g[:payment].amount.to_f } + [ -net_out, 0 ].max

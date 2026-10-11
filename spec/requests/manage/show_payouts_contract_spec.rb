@@ -107,4 +107,48 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
     expect(html).to match(%r{Still to pay for this show</div> <div[^>]*>\$345\.00</div>})
     expect(html).not_to include("Expected income", "Collect this payment", "Still owed to you")
   end
+
+  # Contract 116 as it really was (Tim, 2026-10-11): the settlement matched to
+  # the night by its date, not linked; Booth Tech linked to the show; the
+  # settlement already on a payout run. The page showed Booth Tech alone and
+  # "Ready to Calculate". It shows the working: $695 sold, our $300 fee,
+  # Booth Tech $50, $345 to them.
+  it "shows a minus-fee night's settlement and its working, however the settlement is linked" do
+    travel_to Time.zone.local(2026, 10, 12, 12) do
+      contractor = create(:contractor, organization: org, person: payable_person, name: "Windy City Witches")
+      contract = create(:contract, :active, organization: org, production: production, contractor: contractor,
+                                             contractor_name: contractor.name, draft_data: {
+                                               "payment_structure" => "flat_fee",
+                                               "payment_config" => { "flat_fee_direction" => "ticket_revenue_minus_fee", "flat_fee_amount" => 300,
+                                                                     "flat_fee_basis" => "per_show", "flat_fee_settlement" => "per_event" }
+                                             })
+      night = Time.zone.local(2026, 10, 11, 17)
+      rental = create(:space_rental, contract: contract, starts_at: night)
+      witches = create(:show, production: production, space_rental: rental, date_and_time: night)
+      create(:show_financials, show: witches, ticket_revenue: 695, data_confirmed: true)
+      settlement = create(:contract_payment, contract: contract, direction: "outgoing", amount: 395, amount_tbd: false,
+                                             description: "Ticket revenue less $300.00 fee — Oct 11, 2026", due_date: night.to_date,
+                                             notes: "Auto-calculated from show financials:")
+      create(:contract_payment, contract: contract, show: witches, direction: "incoming", amount: 50,
+                                description: "Booth Tech — Oct 11, 2026", settlement_method: "payout_deduction", due_date: night.to_date)
+      settlement.update_column(:show_id, nil)
+      ContractorPayoutRunService.add_contract_payment!(settlement)
+
+      get manage_money_show_payout_path(witches)
+      html = response.body.gsub(/\s+/, " ")
+
+      expect(html).to match(%r{Ticket sales — Oct 11</dt> <dd[^>]*> \$695\.00 </dd>})
+      expect(html).to match(%r{Our fee</dt> <dd[^>]*> −\$300\.00 </dd>})
+      expect(html).to include("Taken out of their share", "Booth Tech — Oct 11, 2026", "−$50.00")
+      expect(html).to match(%r{We pay them</dt> <dd[^>]*> \$345\.00 </dd>})
+      expect(html).to include("In payout run", "In a payout run", "Settled on the contract with Windy City Witches")
+      expect(html).to match(%r{Still to pay for this show</div> <div[^>]*>\$345\.00</div>})
+      expect(html).not_to include("Ready to Calculate", "(they pay us)", "overdue")
+
+      # Money → Payouts counts the same $345 for it, not $395.
+      get manage_money_payouts_path
+      expect(response.body).to include("$345.00")
+      expect(response.body).not_to include("$395.00")
+    end
+  end
 end

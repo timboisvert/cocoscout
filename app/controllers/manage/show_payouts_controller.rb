@@ -681,11 +681,17 @@ module Manage
     # The payments this show settles on. Prefers the ones explicitly linked to
     # it; a per-event deal that never wrote that link still settles on the
     # payment falling due the night of the show.
+    # The settlement may not carry the show link (matched by its date, or a
+    # period's settlement) while a charge that day does (Booth Tech), so the
+    # page showed the charge alone (Tim, 2026-10-11): take the linked rows,
+    # this show's settlement however it's found, and anything due that day.
     def contract_payments_for_show
       linked = @show.contract_payments.includes(contract: :contractor).order(:due_date).to_a
-      return linked if linked.any?
+      return linked unless @contract
 
-      @contract ? @contract.payments_covering_show(@show) : []
+      settlement = @contract.find_payment_for_show(@show)
+      same_day = @show.date_and_time ? @contract.contract_payments.where(show_id: nil, due_date: @show.date_and_time.to_date).to_a : []
+      (linked + [ settlement ].compact + same_day).uniq(&:id).sort_by { |p| [ p.due_date, p.id ] }
     end
 
     def setup_performer_payout

@@ -46,6 +46,25 @@
     payout_label = "Awaiting Calculation"
     payout_class = "text-pink-600"
   end
+
+  # A show settled on a contract has no payout calculation: the panel says
+  # where its contract settlement stands (Tim, 2026-10-11: it read "Ready to
+  # Calculate" for a contract night). This partial is for one show's pages.
+  settled_on = show.space_rental&.contract || (show.production&.contract if show.production&.third_party?)
+  settlement = settled_on&.find_payment_for_show(show)
+  contract_amount = nil
+  if settled_on
+    payout_class = "text-pink-600"
+    payout_status, payout_label =
+      if settlement.nil? then [ :contract, "On the contract" ]
+      elsif settlement.status_paid? then [ :paid, "Paid" ]
+      elsif settlement.in_payout_run? then [ :awaiting_payout, "In a payout run" ]
+      elsif settlement.settles_after_show? then [ :contract, "After the show" ]
+      elsif settlement.awaiting_amount? then [ :contract, "Awaiting ticket sales" ]
+      else [ :contract, settlement.direction_incoming? ? "They pay us" : "To pay" ]
+      end
+    payout_class = "text-gray-600" if payout_status == :contract && payout_label != "To pay"
+  end
 %>
 
 <div class="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all <%= is_revenue_event ? '' : 'opacity-60' %> <%= 'opacity-60' if is_canceled %>"
@@ -127,7 +146,9 @@
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium <%= payout_class %>"><%= payout_label %></span>
         </div>
-        <% if payout&.total_payout && payout.total_payout > 0 %>
+        <% if settled_on %>
+          <div class="text-xs text-gray-500 truncate">Settled on the contract with <%= settled_on.contractor_name %></div>
+        <% elsif payout&.total_payout && payout.total_payout > 0 %>
           <div class="text-xs text-gray-500"><%= number_to_currency(payout.total_payout) %> total</div>
         <% end %>
       <% end %>

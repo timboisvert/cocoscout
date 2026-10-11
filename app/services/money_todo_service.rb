@@ -361,8 +361,10 @@ class MoneyTodoService
       # out of it (deduct-from-payout charges) come off before any money moves,
       # so a "$70 minus $50 services" settlement is $20 owed here, not $70 —
       # the same number its contract page shows.
+      # Every charge netted out of a settlement counts, whether still waiting
+      # or already taken out when it joined a run (a run's $345, not $395).
       net_of_deductions = contract.payment_schedule_groups(contract.contract_payments.sort_by(&:due_date))
-                                  .to_h { |g| [ g[:payment].id, [ g[:payment].amount.to_f - g[:deductions].select(&:status_pending?).sum { |d| d.amount.to_f }, 0.0 ].max ] }
+                                  .to_h { |g| [ g[:payment].id, [ g[:payment].amount.to_f - g[:deductions].sum { |d| d.amount.to_f }, 0.0 ].max ] }
       net = ->(p) { net_of_deductions.fetch(p.id, p.amount.to_f) }
 
       amount = pending.sum { |p| net.call(p) }
@@ -373,7 +375,7 @@ class MoneyTodoService
       by_col = pending.group_by { |p| self.class.payout_bucket(p.payout_contribution&.payout_batch, paid: false) }
       paid_payments = outgoing.select(&:status_paid?)
       amounts = by_col.transform_values { |ps| ps.sum { |p| net.call(p) } }
-      amounts[:paid] = paid_payments.sum { |p| p.amount.to_f }
+      amounts[:paid] = paid_payments.sum { |p| net.call(p) }
       # Of the untouched money, only what's due inside the horizon (or carries
       # no date at all) is due now — a payment for a show next spring is owed,
       # not overdue.

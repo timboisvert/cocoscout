@@ -25,7 +25,8 @@
   deduction_total = deductions.sum { |d| d.amount.to_f }
   contract = payment.contract
   contractor = contract.contractor
-  is_late = payment.late?
+  # Already in a payout run: the money's on its way, so not "overdue".
+  is_late = payment.late? && !payment.in_payout_run?
   is_incoming = payment.direction_incoming?
   is_cancelled = payment.status_cancelled?
   # A settlement that came to exactly nothing — covered to the penny.
@@ -97,7 +98,20 @@
   # taken out of it) shows its working as a short itemized list under the
   # row, always open, so the row itself stays one clean line.
   folded_items = payment.breakdown_items
-  itemized = deductions.any? || folded_items.any?
+  # A minus-fee settlement says how it got there: what the night sold, less
+  # our fee (Tim, 2026-10-11: "We sold $695, subtracted their $300 and $50
+  # for a booth tech").
+  fee_working = nil
+  if !is_incoming && contract.ticket_revenue_minus_fee? && !awaiting_amount && folded_items.empty? && payment.amount.to_f.positive?
+    working_shows = contract.shows_for_payment(payment)
+    sold = working_shows.sum { |s| s.show_financials&.total_revenue.to_f }
+    fee_taken = (sold - payment.amount.to_f).round(2)
+    if fee_taken.positive?
+      sold_label = working_shows.one? ? "Ticket sales — #{working_shows.first.date_and_time.strftime('%b %-d')}" : "Ticket sales"
+      fee_working = [ [ sold_label, sold ], [ "Our fee", -fee_taken ] ]
+    end
+  end
+  itemized = deductions.any? || folded_items.any? || fee_working.present?
   moved_label =
     if is_incoming
       payment.status_paid? ? "They paid us" : "They pay us"
@@ -461,10 +475,10 @@
             No money moves: their share pays down what they owe<%= ", and the rest comes out of their next share" if still_owed.positive? %>.
           </dd>
         <% else %>
-          <% (folded_items.presence || [ [ payment.display_name, payment.amount.to_f ] ]).each do |label, amount| %>
+          <% (folded_items.presence || fee_working || [ [ payment.display_name, payment.amount.to_f ] ]).each do |label, amount| %>
             <dt class="min-w-0 text-gray-600"><%= label %></dt>
             <dd class="text-right tabular-nums <%= awaiting_amount ? 'text-gray-400' : 'text-gray-900' %>">
-              <%= awaiting_amount ? "TBD" : number_to_currency(amount) %>
+              <%= awaiting_amount ? "TBD" : (amount.negative? ? "−#{number_to_currency(amount.abs)}" : number_to_currency(amount)) %>
             </dd>
           <% end %>
           <% if deductions.any? %>
