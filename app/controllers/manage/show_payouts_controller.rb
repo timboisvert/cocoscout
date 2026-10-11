@@ -668,8 +668,6 @@ module Manage
 
     def setup_contract_payout
       @contract_payout = true
-      @outgoing_payments = @show_contract_payments.select(&:direction_outgoing?)
-      @incoming_payments = @show_contract_payments.select(&:direction_incoming?)
     end
 
     # A show's contract, resolved however it's linked: through a booked space

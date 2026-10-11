@@ -59,14 +59,14 @@ RSpec.describe "Manage::Contracts settlement amount before ticket sales", type: 
     expect(html).to include("The rest of ticket sales goes back to them.")
   end
 
-  it "says what comes off first on the show payout page, where the figure is what we owe" do
+  # The show's payout page draws the contract page's rows (Tim, 2026-10-10),
+  # so it says the same thing the same way.
+  it "says the same on the show payout page as on the contract page" do
     get manage_money_show_payout_path(show)
 
     body = response.body
-    # The number there is money OUT — the fee can't be the headline, but it can
-    # say what the remainder is waiting behind.
-    expect(body).to include("TBD")
-    expect(body).to include("after our $300.00 fee")
+    expect(body).to include("$300.00", "the rest of ticket sales goes back to them", "Awaiting ticket sales")
+    expect(body).not_to include("TBD")
   end
 
   it "tells the contractor what comes off their remainder" do

@@ -29,7 +29,7 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
     get manage_money_show_payout_path(show)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Contract payout")
+    expect(response.body).to include("Contract payments for this show")
     expect(response.body).to include("Lighting Co")
     expect(response.body).to include("Add to payout run")
     # Not the casting flow.
@@ -53,7 +53,7 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
 
     get manage_money_show_payout_path(show)
 
-    expect(response.body).to include("Contract payout")
+    expect(response.body).to include("Contract payments for this show")
     expect(response.body).to include("Event 2 Fee")
     expect(response.body).not_to include("Payout Scheme")
   end
@@ -67,7 +67,7 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
 
     get manage_money_show_payout_path(show)
 
-    expect(response.body).to include("Contract payout")
+    expect(response.body).to include("Contract payments for this show")
     expect(response.body).to include("Add to payout run")
     expect(response.body).not_to include("Needs a person")
   end
@@ -81,8 +81,30 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
 
     get manage_money_show_payout_path(show)
 
-    expect(response.body).to include("Contract payout")
+    expect(response.body).to include("Contract payments for this show")
     expect(response.body).to include("Needs a person")
     expect(response.body).not_to include("Add to payout run")
+  end
+
+  # Tim, 2026-10-10: the show's payout page listed Booth Tech as "Expected
+  # income · Collect this payment" while the contract page had it taken out of
+  # their share. Both pages draw the same rows now.
+  it "draws the contract page's rows: a charge taken out of their share, never one to collect" do
+    contractor = create(:contractor, organization: org, person: payable_person, name: "Windy City Witches")
+    contract = create(:contract, :active, organization: org, production: production,
+                                           contractor: contractor, contractor_name: contractor.name)
+    day = show.date_and_time.to_date
+    create(:contract_payment, contract: contract, show: show, direction: "outgoing", status: "pending", amount: 395,
+                              description: "Ticket revenue less $300.00 fee — #{day.strftime('%b %-d, %Y')}", due_date: day)
+    create(:contract_payment, contract: contract, show: show, direction: "incoming", status: "pending", amount: 50,
+                              description: "Booth Tech — #{day.strftime('%b %-d, %Y')}", settlement_method: "payout_deduction", due_date: day)
+
+    get manage_money_show_payout_path(show)
+    html = response.body.gsub(/\s+/, " ")
+
+    expect(html).to include("Taken out of their share", "Booth Tech", "−$50.00", "Add to payout run")
+    expect(html).to match(%r{We pay them</dt> <dd[^>]*> \$345\.00 </dd>})
+    expect(html).to match(%r{Still to pay for this show</div> <div[^>]*>\$345\.00</div>})
+    expect(html).not_to include("Expected income", "Collect this payment", "Still owed to you")
   end
 end
