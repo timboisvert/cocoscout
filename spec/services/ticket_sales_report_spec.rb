@@ -34,7 +34,9 @@ RSpec.describe TicketSalesReport do
     door = TicketDoor.new(listing, create(:user))
     travel_to((this_month + 4.days).change(hour: 20)) { door.sell({ general.id.to_s => "1" }, kind: "cash") }
     allow(Stripe::Refund).to receive(:create).and_return(double(id: "re_1"))
-    TicketOrderRefund.issue!(early, ticket_ids: [ early.tickets.first.id ])
+    # Refund anyway: the show is on the 11th, so from the 10th of the month on
+    # the refund policy would refuse it, and this is about the report.
+    TicketOrderRefund.issue!(early, ticket_ids: [ early.tickets.first.id ], outside_policy: true)
 
     report = described_class.new(org, from: this_month.to_date, to: this_month.end_of_month.to_date)
     s = report.summary

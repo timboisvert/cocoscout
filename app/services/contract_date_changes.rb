@@ -75,10 +75,13 @@ class ContractDateChanges
         show.update!(changes)
       end
 
-      # Pending payments tied to those shows move with them; paid ones are
-      # history and keep the date they were actually settled on.
+      # Pending payments tied to those shows move with them, by the calendar
+      # days the show moved (seconds across a clock change, Nov 1 to Nov 3,
+      # came to a day short); paid ones are history and keep the date they
+      # were actually settled on.
+      day_shift = (rental.effective_event_starts_at.to_date - was_show_start.to_date).to_i
       contract.contract_payments.status_pending.where(show_id: shows.map(&:id)).find_each do |payment|
-        payment.update!(due_date: (payment.due_date + offset.seconds.to_i.seconds).to_date)
+        payment.update!(due_date: payment.due_date + day_shift)
       end
 
       starts_at.strftime("%b %-d")

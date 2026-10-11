@@ -133,6 +133,23 @@ RSpec.describe "Contracts — change dates", type: :request do
       expect(show.show_person_role_assignments.count).to eq(1)
       expect(payment.reload.due_date).to eq(new_time.to_date)
     end
+
+    # The clocks go back on Nov 1: a shift worked out in seconds came to a
+    # day short, so the payment landed Nov 2 for a show on Nov 3.
+    it "moves the payment by calendar days across a clock change" do
+      travel_to Time.zone.local(2026, 10, 11, 12) do
+        nov1 = Time.zone.local(2026, 11, 1, 20)
+        rental, show = booked_date!(nov1)
+        payment = contract.contract_payments.create!(description: "Rent", amount: 200, direction: "incoming",
+                                                     due_date: nov1.to_date, show_id: show.id)
+
+        post apply_amend_dates_manage_contract_path(contract),
+             params: { dates: { rental.id.to_s => { action: "move", starts_at: "2026-11-03T20:00" } } }
+
+        expect(show.reload.date_and_time.to_date).to eq(Date.new(2026, 11, 3))
+        expect(payment.reload.due_date).to eq(Date.new(2026, 11, 3))
+      end
+    end
   end
 
   describe "a date left alone" do
