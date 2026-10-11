@@ -272,6 +272,18 @@ class ContractPayment < ApplicationRecord
       (contract.ticket_revenue_minus_fee? || contract.revenue_share?)
   end
 
+  # A settlement worked out from ticket sales for a show still to come: its
+  # amount is sales so far, which can still change or be refunded before the
+  # night, so it isn't owed yet (Tim, 2026-10-11: It Left The Group Chat's
+  # advance sales sat in Payouts' To pay). It's payable once the show is over.
+  def settles_after_show?
+    return false unless direction_outgoing? && status_pending?
+    return false unless amount_tbd? || notes.to_s.include?("Auto-calculated from show financials")
+    return false unless contract&.revenue_share? || contract&.ticket_revenue_minus_fee?
+
+    show ? show.date_and_time > Time.current : (due_date.present? && due_date > Date.current)
+  end
+
   # Whether this payment has been added to a payout run.
   def in_payout_run?
     payout_contribution.present?

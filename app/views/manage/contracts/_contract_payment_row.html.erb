@@ -296,6 +296,12 @@
             <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
               Settled
             </span>
+          <% elsif payment.settles_after_show? %>
+            <%# Sales so far for a show still to come: not owed until the night is over. %>
+            <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500"
+                  title="This is their share of ticket sales so far. It's paid once the show is over.">
+              Settles after the show
+            </span>
           <% elsif !amount_set %>
             <%= render "shared/button", text: "Set amount", variant: "secondary", size: "xs",
                   icon: "pencil", type: :button, data: { action: "click->payment-modal#open" } %>

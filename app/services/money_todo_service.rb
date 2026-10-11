@@ -351,9 +351,11 @@ class MoneyTodoService
   def contract_payout_items
     items = []
     organization.contracts
-                .includes({ contract_payments: { payout_contribution: :payout_batch } }, :contractor).each do |contract|
+                .includes({ contract_payments: [ :show, { payout_contribution: :payout_batch } ] }, :contractor).each do |contract|
       outgoing = contract.contract_payments.select(&:direction_outgoing?)
-      pending = outgoing.select(&:status_pending?)
+      # A settlement from a show's ticket sales isn't owed until the show is
+      # over: before then it's sales so far (ContractPayment#settles_after_show?).
+      pending = outgoing.select(&:status_pending?).reject { |p| p.settles_after_show? && !p.in_payout_run? }
 
       # What a settlement actually hands over: services they owe us that net
       # out of it (deduct-from-payout charges) come off before any money moves,
