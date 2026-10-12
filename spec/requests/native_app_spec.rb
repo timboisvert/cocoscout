@@ -183,6 +183,19 @@ RSpec.describe "The iOS app's web side", type: :request do
     expect(response.body).to include("maximum-scale=5")
   end
 
+  it "tells iPhones which links open in the app, signed out and without a redirect" do
+    get "/.well-known/apple-app-site-association"
+    expect(response).to have_http_status(:ok)
+    expect(response.media_type).to eq("application/json")
+
+    json = JSON.parse(response.body)
+    details = json.dig("applinks", "details").sole
+    expect(details["appIDs"]).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
+    expect(details["components"].map { |c| c["/"] }).to include("/my/*", "/door/*", "/claim/*", "/vacancy/*")
+    expect(details["components"].map { |c| c["/"] }).not_to include("/manage/*")
+    expect(json.dig("webcredentials", "apps")).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
+  end
+
   it "serves page rules the app can read" do
     rules = JSON.parse(Rails.public_path.join("hotwire-native/path-configuration.json").read)["rules"]
     open_in = rules.select { |rule| rule["properties"]["open_in"] }.to_h { |rule| [ rule["properties"]["open_in"], rule["patterns"] ] }

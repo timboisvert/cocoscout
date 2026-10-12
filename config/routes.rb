@@ -1935,6 +1935,9 @@ Rails.application.routes.draw do
   get "/wp-admin/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/wp-include/*", to: proc { [ 200, {}, [ "" ] ] }
   get "/.well-known/appspecific/*path", to: proc { [ 204, {}, [] ] }
+  # Which links open in the iOS app (universal links).
+  get "/.well-known/apple-app-site-association", to: "apple_app_site_associations#show", format: false,
+                                                 defaults: { format: :json }
 
   # Vacancy flow (cast member can't make it to a show)
   scope "/vacancy/:show_id" do

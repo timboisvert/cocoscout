@@ -21,6 +21,29 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.tintColor = AppConfig.pink
         window?.rootViewController = shell.tabBarController
         window?.makeKeyAndVisible()
+
+        // A cocoscout.com link that launched the app (universal link).
+        if let activity = connectionOptions.userActivities.first(where: { $0.activityType == NSUserActivityTypeBrowsingWeb }) {
+            openUniversalLink(activity)
+        }
+    }
+
+    /// A cocoscout.com link tapped while the app was already running.
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb else { return }
+        openUniversalLink(userActivity)
+    }
+
+    /// The links the site says open here (AppleAppSiteAssociationsController):
+    /// the page, on top of whatever's showing, at the app's own server.
+    private func openUniversalLink(_ activity: NSUserActivity) {
+        guard let url = activity.webpageURL,
+              var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+        components.scheme = nil
+        components.host = nil
+        components.port = nil
+        let path = components.string ?? "/my"
+        AppShell.shared.open(path: path.hasPrefix("/") ? path : "/my")
     }
 
     private func configureHotwire() {
