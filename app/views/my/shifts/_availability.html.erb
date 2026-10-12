@@ -8,13 +8,9 @@
   upcoming = picture ? picture.exceptions.first(3) : []
 %>
 <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-  <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
-    <div class="flex items-center gap-2 min-w-0">
-      <svg class="w-5 h-5 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      <h2 class="text-base font-semibold text-gray-900 truncate">Work availability</h2>
-    </div>
+  <%= render "shared/section_heading", padding: "px-5 py-4", title: "Work availability" do %>
     <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: my_work_availability_path %>
-  </div>
+  <% end %>
 
   <div class="p-5 space-y-4">
     <% if picture.nil? || !picture.anything_said? %>

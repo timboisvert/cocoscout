@@ -17,18 +17,16 @@
     <div class="lg:col-span-2 space-y-4">
       <!-- Message Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden <%= @message.deleted? ? 'ring-2 ring-red-300' : '' %>">
-        <%= render "shared/section_heading", padding: "px-4 py-3", title: @message.subject,
-              icon: (@message.deleted? ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">DELETED</span>' : nil) do %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: @message.subject do %>
           <% if @message.deleted? %>
-            <%= button_to message_restore_path(@message), method: :post, class: "px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium" do %>
-              Restore Message
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Deleted</span>
+            <%= form_with url: message_restore_path(@message), method: :post do %>
+              <%= render "shared/button", text: "Restore message", variant: "secondary", size: "small", type: :submit %>
             <% end %>
           <% else %>
             <% cid = "confirm-delete-message" %>
-            <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
-                    class="px-3 py-1.5 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 font-medium cursor-pointer">
-              Delete Message
-            </button>
+            <%= render "shared/button", text: "Delete message", variant: "primary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
             <%= render "shared/confirm_modal", id: cid,
                   title: "Delete message?",
                   message: "Are you sure you want to delete this message?",
