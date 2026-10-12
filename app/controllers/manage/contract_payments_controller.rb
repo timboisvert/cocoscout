@@ -3,7 +3,7 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run settlement combine split]
+    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run remove_from_payout_run settlement combine split]
 
     def create
       @payment = @contract.contract_payments.build(payment_params)
@@ -123,6 +123,19 @@ module Manage
         redirect_to manage_payout_batch_path(result.batch), notice: "This payment is already in a payout run."
       else
         redirect_back fallback_location: manage_contract_path(@contract), alert: result.error
+      end
+    end
+
+    # Take it back out of a draft run, caught up with sales since; add it
+    # again from the contract.
+    def remove_from_payout_run
+      result = ContractorPayoutRunService.remove_contract_payment!(@payment)
+      if result.error
+        redirect_back fallback_location: manage_contract_path(@contract), alert: result.error
+      else
+        amount = @payment.reload.amount_tbd? ? "its amount is waiting on ticket sales" : "it's now #{helpers.number_to_currency(@payment.amount)}"
+        redirect_back fallback_location: manage_contract_path(@contract),
+                      notice: "Took #{@payment.display_name} out of the payout run; #{amount}. Add it again when it's right."
       end
     end
 

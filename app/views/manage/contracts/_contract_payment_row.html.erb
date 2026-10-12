@@ -276,8 +276,11 @@
           can_record = is_incoming && !is_deduct && offline_allowed
           can_deduct = is_incoming && !is_deduct && contract.contractor.present? && contract.outgoing_settlement?
           can_edit_amount = !is_incoming && amount_set && !in_run
-          menu_any = !in_run && (can_copy_link || can_record || can_deduct || is_deduct ||
-                                 combine_candidates.any? || can_split || can_edit_amount || can_pay_offline)
+          # A draft run can give it back (a ticket sold after it went in).
+          run_contribution = in_run ? payment.payout_contribution : nil
+          can_take_out = run_contribution.present? && run_contribution.payout_batch.open? && !run_contribution.payout_batch_item&.paid?
+          menu_any = can_take_out || (!in_run && (can_copy_link || can_record || can_deduct || is_deduct ||
+                                                  combine_candidates.any? || can_split || can_edit_amount || can_pay_offline))
           menu_item_classes = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left"
         %>
         <div class="flex items-center gap-1.5">
@@ -366,6 +369,13 @@
               </button>
               <div data-dropdown-target="menu"
                    class="hidden absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <% if can_take_out %>
+                  <%= button_to remove_from_payout_run_manage_contract_contract_payment_path(contract, payment),
+                        method: :delete, form_class: "w-full", class: menu_item_classes,
+                        title: "Take it back out of the draft run; it catches up with ticket sales since, and you can add it again." do %>
+                    <%= icon("arrow-up-right", class: "w-4 h-4 text-gray-400") %><span>Take out of the payout run</span>
+                  <% end %>
+                <% end %>
                 <% if can_copy_link %>
                   <%# One pay link, no login needed to pay it. %>
                   <div data-controller="clipboard">

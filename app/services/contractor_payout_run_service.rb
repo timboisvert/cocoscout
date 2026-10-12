@@ -70,6 +70,35 @@ class ContractorPayoutRunService
       Result.new(batch: batch, added: true, washed: contract_payment.status_paid?)
     end
 
+    # Take a contract payment back out of a draft run (Tim, 2026-10-11: Pavlov
+    # sold another ticket after their $240 share went in, and there was no way
+    # to take it out). Its line goes, and so do the charges netted out of it on
+    # that run, which go back to owed (PayoutContribution#undo_contract_deduction);
+    # their ledger lines go with their contributions. Then the payment catches
+    # up with ticket sales since, which a payment in a run never does.
+    def remove_contract_payment!(contract_payment)
+      contribution = contract_payment.payout_contribution
+      return failure("This payment isn't in a payout run.") unless contribution
+      batch = contribution.payout_batch
+      unless batch.open? && !contribution.payout_batch_item&.paid?
+        return failure("This payout run has been sent, so its payments can't come out.")
+      end
+
+      ActiveRecord::Base.transaction do
+        netted = PayoutContribution.where(payout_batch_item_id: contribution.payout_batch_item_id, source_type: "ContractPayment")
+                                   .where("amount_cents < 0").includes(:source)
+                                   .select { |c| c.source&.contract_id == contract_payment.contract_id }
+        # The charges first, so the item never sits below zero while the share goes.
+        netted.each(&:destroy!)
+        contribution.reload.destroy!
+        batch.reload.recalculate_total! if PayoutBatch.exists?(batch.id)
+      end
+
+      contract = contract_payment.contract
+      contract.shows_for_payment(contract_payment.reload).each { |show| ContractPaymentSyncService.new(show).call }
+      Result.new(batch: batch, added: false)
+    end
+
     # Net the contract's deduct-from-payout services against the share that just
     # joined this run. Per Tim's design: the deduction hits at settlement,
     # capped at the share — and any remainder a share can't cover stays a

@@ -217,6 +217,21 @@ module Manage
     # pulled in go back to the approved-unpaid pool, and the earning ledger
     # entries it posted are reversed. Only a draft (never-funded) run can be
     # discarded — once funding starts, the money is moving.
+    # Take one thing back out of a draft run, whatever kind of money it is
+    # (PayoutRunRemoval undoes each the way it went in).
+    def remove_line
+      batch = organization.payout_batches.find(params[:id])
+      contribution = batch.payout_contributions.find(params[:contribution_id])
+      result = PayoutRunRemoval.remove!(contribution)
+      if result.error
+        redirect_to manage_payout_batch_path(batch), alert: result.error
+      elsif PayoutBatch.exists?(batch.id)
+        redirect_to manage_payout_batch_path(batch), notice: result.notice
+      else
+        redirect_to manage_payout_batches_path, notice: result.notice
+      end
+    end
+
     def destroy
       batch = organization.payout_batches.find(params[:id])
       unless batch.status == "draft"

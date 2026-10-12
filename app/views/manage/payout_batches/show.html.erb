@@ -451,8 +451,23 @@
                           <% else %>
                             <span class="text-gray-800 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
                           <% end %>
+                          <%# Anything can come back out of a draft, the same way whatever
+                              it is (PayoutRunRemoval); staff pay comes out per person, below. %>
+                          <% if c.category != "staffing" && PayoutRunRemoval.removable?(c) %>
+                            <%= render "shared/button", text: "Take out", variant: "secondary", size: "xs",
+                                  path: manage_remove_line_payout_batch_path(@batch, c), method: :delete,
+                                  title: "Take this back out of the draft. It's still owed, and you can add it again." %>
+                          <% end %>
                         </div>
                       </div>
+                    </div>
+                  <% end %>
+                  <% staff_line = contributions.find { |c| c.category == "staffing" } %>
+                  <% if staff_line && PayoutRunRemoval.removable?(staff_line) %>
+                    <div class="py-1.5 flex justify-end">
+                      <%= render "shared/button", text: "Take #{item.payee&.name}'s staff pay out", variant: "secondary", size: "xs",
+                            path: manage_remove_line_payout_batch_path(@batch, staff_line), method: :delete,
+                            title: "Their hours go back to waiting, and their bonus, reimbursement and tips back into Pay People." %>
                     </div>
                   <% end %>
                 </div>

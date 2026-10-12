@@ -113,43 +113,70 @@ class PayoutBatchService
     members_by_person = org.organization_staff_members.index_by(&:person_id)
     entries_by_person = batch.staff_time_entries.group_by(&:person_id)
 
-    dollars = ->(cents) { format("%.2f", cents / 100.0) }
-    sheet = ->(worksheet_entries) { worksheet_entries.map { |w| "#{w['date']}|#{dollars.call(w['amount_cents'].to_i)}" } }
-
     lines = {}
     batch.items.includes(:payee, :payout_contributions).each do |item|
-      next unless item.payee.is_a?(Person)
-
-      member = members_by_person[item.payee_id]
-      next unless member
-
-      line = Hash.new { |h, k| h[k] = 0 }
-      arrays = Hash.new { |h, k| h[k] = [] }
-      item.payout_contributions.select { |c| c.category == "staffing" }.each do |c|
-        case c.label
-        when /\AWorked hours/
-          arrays["adhoc"].concat(Array(c.details&.dig("adhoc")))
-        when "Bonus" then line["bonus"] += c.amount_cents
-        when "Reimbursement" then line["reimbursement"] += c.amount_cents
-        when "Tips"
-          line["tips"] += c.amount_cents
-          arrays["tips_sheet"].concat(sheet.call(c.worksheet_entries))
-        when "Cash tips (recorded)"
-          line["cash_tips"] += c.amount_cents
-          arrays["cash_tips_sheet"].concat(sheet.call(c.worksheet_entries))
-        end
-      end
-
-      draft_line = line.transform_values { |cents| dollars.call(cents) }
-      arrays.each { |k, v| draft_line[k] = v if v.any? }
-      entry_ids = entries_by_person[item.payee_id]&.map { |e| e.id.to_s }
-      draft_line["time_entry_ids"] = entry_ids if entry_ids&.any?
-
-      lines[member.id.to_s] = draft_line if draft_line.any?
+      member, draft_line = staff_draft_line(item, members_by_person, entries_by_person)
+      lines[member.id.to_s] = draft_line if draft_line.present?
     end
     return if lines.empty?
 
     PayDraft.write(org, JSON.generate({ "funding_method" => "ach", "lines" => lines }))
+  end
+
+  # One person's staff pay taken out of a draft run goes back into the Pay
+  # People draft, added to whatever that draft already holds for them, and
+  # nobody else's line is touched (PayoutRunRemoval).
+  def self.return_staff_pay_to_draft!(batch, item)
+    org = batch.organization
+    member, draft_line = staff_draft_line(item, org.organization_staff_members.index_by(&:person_id),
+                                          batch.staff_time_entries.group_by(&:person_id))
+    return if draft_line.blank?
+
+    blob = (JSON.parse(PayDraft.read(org).presence || "{}") rescue {})
+    blob["funding_method"] ||= "ach"
+    lines = (blob["lines"] ||= {})
+    existing = lines[member.id.to_s] || {}
+    lines[member.id.to_s] = existing.merge(draft_line) do |_key, old, new|
+      if old.is_a?(Array) || new.is_a?(Array) then (Array(old) + Array(new)).uniq
+      else format("%.2f", old.to_f + new.to_f)
+      end
+    end
+    PayDraft.write(org, JSON.generate(blob))
+  end
+
+  # [member, line] for one item: its staff lines in the Pay People draft's
+  # shape. Only "staffing" lines count — a performer line that happens to be
+  # labeled "Bonus" is not staff pay. No member or no staff lines: no line.
+  def self.staff_draft_line(item, members_by_person, entries_by_person)
+    return [ nil, nil ] unless item.payee.is_a?(Person)
+
+    member = members_by_person[item.payee_id]
+    return [ nil, nil ] unless member
+
+    dollars = ->(cents) { format("%.2f", cents / 100.0) }
+    sheet = ->(worksheet_entries) { worksheet_entries.map { |w| "#{w['date']}|#{dollars.call(w['amount_cents'].to_i)}" } }
+    line = Hash.new { |h, k| h[k] = 0 }
+    arrays = Hash.new { |h, k| h[k] = [] }
+    item.payout_contributions.select { |c| c.category == "staffing" }.each do |c|
+      case c.label
+      when /\AWorked hours/
+        arrays["adhoc"].concat(Array(c.details&.dig("adhoc")))
+      when "Bonus" then line["bonus"] += c.amount_cents
+      when "Reimbursement" then line["reimbursement"] += c.amount_cents
+      when "Tips"
+        line["tips"] += c.amount_cents
+        arrays["tips_sheet"].concat(sheet.call(c.worksheet_entries))
+      when "Cash tips (recorded)"
+        line["cash_tips"] += c.amount_cents
+        arrays["cash_tips_sheet"].concat(sheet.call(c.worksheet_entries))
+      end
+    end
+
+    draft_line = line.transform_values { |cents| dollars.call(cents) }
+    arrays.each { |k, v| draft_line[k] = v if v.any? }
+    entry_ids = entries_by_person[item.payee_id]&.map { |e| e.id.to_s }
+    draft_line["time_entry_ids"] = entry_ids if entry_ids&.any?
+    [ member, draft_line.presence ]
   end
 
   FUNDING_METHODS = %w[ach card].freeze
