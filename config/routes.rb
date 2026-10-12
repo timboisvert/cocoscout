@@ -1032,7 +1032,6 @@ Rails.application.routes.draw do
     post "/casting/:production_id/vacancies/:id/send_invitations", to: "vacancies#send_invitations", as: "send_invitations_casting_vacancy"
     post "/casting/:production_id/vacancies/:id/cancel", to: "vacancies#cancel", as: "cancel_casting_vacancy"
     post "/casting/:production_id/vacancies/:id/reclaim", to: "vacancies#reclaim", as: "reclaim_casting_vacancy"
-    post "/casting/:production_id/vacancies/:id/fill", to: "vacancies#fill", as: "fill_casting_vacancy"
     post "/casting/:production_id/vacancies/:id/invitations/:invitation_id/resend", to: "vacancy_invitations#resend", as: "resend_casting_vacancy_invitation"
 
     # Email Groups (used for casting email notifications)

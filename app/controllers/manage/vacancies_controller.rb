@@ -4,7 +4,7 @@ module Manage
   class VacanciesController < Manage::ManageController
     before_action :set_production
     before_action :check_production_access
-    before_action :set_vacancy, only: %i[show send_invitations cancel reclaim fill]
+    before_action :set_vacancy, only: %i[show send_invitations cancel reclaim]
 
     def show
       @invitations = @vacancy.invitations.includes(:person).order(created_at: :desc)
@@ -206,17 +206,6 @@ module Manage
         redirect_to manage_casting_vacancy_path(@production, @vacancy),
                     alert: "Unable to reclaim this vacancy. It may already be filled or cancelled."
       end
-    end
-
-    def fill
-      person_id = params[:person_id]
-      person = Current.organization.people.find(person_id)
-
-      # The fill! method handles removing old assignment, creating new assignment, and updating vacancy status
-      @vacancy.fill!(person, by: Current.person)
-
-      redirect_to manage_production_path(@production),
-                  notice: "Vacancy filled by #{person.name}."
     end
 
     private

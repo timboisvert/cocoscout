@@ -146,18 +146,6 @@ RSpec.describe "Cross-org isolation: indirect lookups (manage)", type: :request 
     end
   end
 
-  describe "vacancy fill" do
-    let!(:role) { create(:role, production: production) }
-    let!(:vacancy) { create(:role_vacancy, show: my_show, role: role) }
-
-    it "404s filling my vacancy with a foreign org's person" do
-      post manage_fill_casting_vacancy_path(production, vacancy), params: { person_id: victim_person.id }
-
-      expect(response).to have_http_status(:not_found)
-      expect(vacancy.reload.status).to eq("open")
-    end
-  end
-
   describe "casting table wizard, members chosen by hand" do
     before { my_show.update!(casting_enabled: true) }
 
