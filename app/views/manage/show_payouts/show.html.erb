@@ -1152,7 +1152,7 @@
                                     (paid_another_way && paid_another_way.merge(title: "Record an offline payment. This also takes them off the payout run; already-funded money becomes credit for your next run.")),
                                     qr_entry
                                   ],
-                                  extra: safe_join([ remove_modal, qr_modal ].compact), qr_url: (my_payments_setup_url if needs_bank) %>
+                                  extra: safe_join([ remove_modal, qr_modal ].compact), qr_link: (my_payments_setup_url if needs_bank) %>
                           </div>
                         <% elsif item.auto_payout? %>
                           <%# Bank connected but not yet added — adding to a run is a manual step. %>
@@ -1173,7 +1173,7 @@
                             <div class="flex items-center justify-end gap-2">
                               <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700"><%= item.is_guest? ? "Guest — unpaid" : "Needs payment setup" %></span>
                               <%= render "manage/show_payouts/row_menu", entries: [ qr_entry, paid_another_way ],
-                                    extra: qr_modal, qr_url: (my_payments_setup_url if needs_bank) %>
+                                    extra: qr_modal, qr_link: (my_payments_setup_url if needs_bank) %>
                             </div>
                             <% unless offline_ok || needs_bank %>
                               <div class="text-xs text-gray-400 mt-0.5">not payable yet</div>
