@@ -83,6 +83,16 @@ RSpec.describe "Pro modules are for managers", type: :request do
     expect(response.body).not_to include("Set tickets for this date only")
   end
 
+  # Email bodies carry contract signing and pay links; the page has no
+  # links into it any more, but any role could open it by id.
+  it "keeps a producer out of the organization's sent email" do
+    log = create(:email_log, organization: org, user: owner, subject: "Sign your contract")
+    sign_in(producer)
+
+    get manage_contacts_email_path(log)
+    expect(response).to redirect_to(manage_path)
+  end
+
   it "lets a manager in everywhere" do
     sign_in(owner)
     [ manage_money_index_path, manage_money_show_financials_path(show), manage_contracts_path, manage_reports_path, manage_ticketing_path ].each do |path|
