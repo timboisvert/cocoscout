@@ -1016,7 +1016,10 @@ class Contract < ApplicationRecord
   # no contract-payment syncs.
   def apply_amendment!(amend = amend_data, force_overlap: false)
     new_bookings = amend["new_bookings"] || []
-    removed_rental_ids = amend["removed_rental_ids"] || []
+    # This contract's own nights only: the ids come from the amend form, and
+    # the shows below are found by rental id, so a foreign id took another
+    # contract's show (any organization's) with it.
+    removed_rental_ids = space_rentals.where(id: Array(amend["removed_rental_ids"])).pluck(:id)
     staged_name = amend["production_name"].to_s.strip
 
     # The deal config first, so payments derive the right direction.
