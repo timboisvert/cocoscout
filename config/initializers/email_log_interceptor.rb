@@ -4,4 +4,6 @@
 # Using after_initialize instead of to_prepare to avoid multiple registrations on code reload
 Rails.application.config.after_initialize do
   ActionMailer::Base.register_interceptor(EmailLogInterceptor)
+  # A plain-text version beside every HTML email (PlainTextAlternativeInterceptor).
+  ActionMailer::Base.register_interceptor(PlainTextAlternativeInterceptor)
 end

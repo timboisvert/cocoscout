@@ -14,7 +14,7 @@ RSpec.describe "Taking a line out of a draft payout run", type: :request do
   let(:contractor) { create(:contractor, organization: org, person: person, name: "Pavlov") }
   let(:contract) { create(:contract, :active, organization: org, production: production, contractor: contractor, contractor_name: "Pavlov") }
   let!(:share) do
-    create(:contract_payment, :outgoing, contract: contract, description: "Oct 11 — 50% to them", amount: 240, due_date: Date.current)
+    create(:contract_payment, :outgoing, contract: contract, description: "Oct 11 — 50% to them", amount: 240, due_date: Date.new(2026, 10, 11))
   end
 
   before do
