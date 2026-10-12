@@ -183,4 +183,21 @@ RSpec.describe "Ticket sales viewers", type: :request do
     expect(viewer.user).to eq(producer)
     expect(viewer.daily_email).to be(true)
   end
+
+  # That row only holds the email choice. It used to count as a share of the
+  # whole production, so a contractor kept seeing sales after the theater
+  # switched their contract's view off (and saw dates outside their contract).
+  it "doesn't let the morning-note row outlast the contract's view" do
+    contractor = create(:contractor, organization: org, person: producer_person, email: producer_person.email)
+    contract = create(:contract, organization: org, production: production, contractor: contractor, status: :active, shares_ticket_sales: true)
+    sign_in(producer)
+    patch my_ticket_sales_daily_email_path, params: { daily_email: "1" }
+    expect(TicketSalesAccess.can_see?(producer, listing)).to be(true)
+
+    contract.update!(shares_ticket_sales: false)
+    expect(TicketSalesAccess.can_see?(producer, listing)).to be(false)
+    get my_ticket_sale_path(listing)
+    expect(response).to have_http_status(:not_found)
+    expect(TicketSalesAccess.viewers_for(listing)).to be_empty
+  end
 end

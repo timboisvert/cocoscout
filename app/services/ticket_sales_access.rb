@@ -11,7 +11,7 @@ class TicketSalesAccess
   def self.listings_for(user)
     return TicketListing.none unless user
 
-    direct = TicketSalesViewer.active.where(user_id: user.id)
+    direct = granted(TicketSalesViewer.active.where(user_id: user.id))
     listing_ids = direct.where(scope_type: "TicketListing").pluck(:scope_id)
     production_ids = direct.where(scope_type: "Production").pluck(:scope_id)
     show_ids = contract_show_ids(user)
@@ -42,7 +42,7 @@ class TicketSalesAccess
   # Everyone a production was shared with: every date, or any one of its dates.
   def self.viewers_for_production(production)
     listing_ids = TicketListing.where(production_id: production.id).select(:id)
-    TicketSalesViewer.active.where(organization_id: production.organization_id)
+    granted(TicketSalesViewer.active).where(organization_id: production.organization_id)
                      .where("(scope_type = 'TicketListing' AND scope_id IN (:l)) OR (scope_type = 'Production' AND scope_id = :p)",
                             l: listing_ids, p: production.id)
                      .preload(:user).order(:created_at)
@@ -50,7 +50,7 @@ class TicketSalesAccess
 
   # Everyone the show was shared with, directly or through its production.
   def self.viewers_for(listing)
-    TicketSalesViewer.active.where(organization_id: listing.organization_id)
+    granted(TicketSalesViewer.active).where(organization_id: listing.organization_id)
                      .where("(scope_type = 'TicketListing' AND scope_id = :l) OR (scope_type = 'Production' AND scope_id = :p)",
                             l: listing.id, p: listing.production_id)
                      .preload(:user).order(:created_at)
@@ -65,6 +65,15 @@ class TicketSalesAccess
     Contract.joins(:contractor).where(contractors: { person_id: people_ids }).where(shares_ticket_sales: true)
             .where.not(status: %w[draft cancelled]).includes(:production).filter_map(&:production).uniq
   end
+
+  # Shares the theater made (a manager's grant or invitation). The row
+  # My::TicketSalesController#daily_email makes for a contract-only producer
+  # has no granter: it holds their email choice and shares nothing — a
+  # contractor sees only their contract's shows, and only while it says so.
+  def self.granted(viewers)
+    viewers.where.not(granted_by_id: nil)
+  end
+  private_class_method :granted
 
   def self.contract_show_ids(user)
     people_ids = user.people.select(:id)
