@@ -2,61 +2,46 @@
 
 require "rails_helper"
 
-# What the iOS app gets from the web app: its tabs and badges (per person,
-# from the web nav's rules), the More screen, where signing in and out lands,
-# and pages that drop web-only chrome inside the app.
+# What the iOS app gets from the web app: its menu and badges (per person,
+# from the web nav's rules) and who's signed in, where signing in and out
+# lands, and pages that drop web-only chrome inside the app.
 RSpec.describe "The iOS app's web side", type: :request do
-  let(:in_app) { { "User-Agent" => "Mozilla/5.0 (iPhone) Hotwire Native iOS; Turbo Native iOS; bridge-components: [form tabs];" } }
+  let(:in_app) { { "User-Agent" => "Mozilla/5.0 (iPhone) Hotwire Native iOS; Turbo Native iOS; bridge-components: [form menu];" } }
   let(:password) { "Password123!" }
   let(:user) { create(:user, password: password) }
-  let!(:person) { create(:person, user: user).tap { |p| user.update!(default_person: p) } }
+  let!(:person) { create(:person, user: user, name: "Ida Performer").tap { |p| user.update!(default_person: p) } }
   let(:org) { create(:organization, :pro) }
 
   def sign_in(as = user)
     post handle_signin_path, params: { email_address: as.email_address, password: password }, headers: in_app
   end
 
-  def tabs = bridge_value("tabs")
   def menu = bridge_value("menu")
+  def person_card = bridge_value("person")
 
   def bridge_value(name)
-    json = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--tabs']")&.[]("data-bridge--tabs-#{name}-value")
-    json && JSON.parse(json)
+    json = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--menu']")&.[]("data-bridge--menu-#{name}-value")
+    json.presence && JSON.parse(json)
   end
 
-  def performs!
-    pool = create(:talent_pool, production: create(:production, organization: org))
-    TalentPoolMembership.create!(talent_pool: pool, member: person)
-  end
-
-  describe "tabs" do
-    it "gives a performer Home, Tasks, Messages and More, with badges" do
-      performs!
+  describe "the menu" do
+    it "lists everything in My with short titles, icons and badges, and who's signed in" do
       sign_in
       get my_dashboard_path, headers: in_app
 
-      expect(tabs.map { |tab| tab["id"] }).to eq(%w[home tasks messages more])
-      expect(tabs.find { |tab| tab["id"] == "messages" }).to include("path" => my_messages_path, "icon" => "envelope", "badge" => 0)
+      expect(menu.map { |item| item["id"] }).to eq(%w[home messages tasks shows courses auditions documents payments productions profile settings])
+      expect(menu.find { |item| item["id"] == "messages" }).to include("title" => "Messages", "path" => my_messages_path, "icon" => "envelope", "badge" => 0)
+      expect(person_card).to include("name" => "Ida Performer", "email" => user.email_address, "initials" => "IP")
     end
 
-    it "adds the Door for someone who works a door" do
-      TicketingProfile.for(org).update!(enabled: true)
-      org.ticketing_access_grants.create!(user: user, access_level: "check_in")
-      sign_in
-      get my_dashboard_path, headers: in_app
-
-      expect(tabs.map { |tab| tab["id"] }).to eq(%w[home tasks messages door more])
-      expect(tabs.find { |tab| tab["id"] == "door" }["path"]).to eq(door_index_path)
-    end
-
-    it "sends the full menu too, with the Door for anyone who can work one" do
+    it "adds the Door for anyone who can work one, managers included" do
       TicketingProfile.for(org).update!(enabled: true)
       create(:organization_role, :manager, user: user, organization: org)
       sign_in
       get my_dashboard_path, headers: in_app
 
       expect(menu.map { |item| item["id"] }).to eq(%w[home messages tasks shows door courses auditions documents payments productions profile settings])
-      expect(menu.find { |item| item["id"] == "payments" }).to include("title" => "Payments", "path" => my_payments_path, "icon" => "dollarsign.circle")
+      expect(menu.find { |item| item["id"] == "door" }["path"]).to eq(door_index_path)
     end
 
     it "offers Groups only to someone in one" do
@@ -71,30 +56,23 @@ RSpec.describe "The iOS app's web side", type: :request do
       expect(response.body).to include("My Groups")
     end
 
-    it "gives house staff who don't perform Shifts in place of Tasks" do
-      create(:organization_staff_member, organization: org, person: person)
-      sign_in
-      get my_dashboard_path, headers: in_app
-
-      expect(tabs.map { |tab| tab["id"] }).to eq(%w[home shifts messages more])
-    end
-
-    it "sends no tabs to a signed-out app, and none to a browser" do
+    it "sends an empty menu and nobody to a signed-out app, and nothing to a browser" do
       get signin_path, headers: in_app
-      expect(tabs).to eq([])
+      expect(menu).to eq([])
+      expect(person_card).to be_nil
 
       sign_in
       get my_dashboard_path
-      expect(tabs).to be_nil
+      expect(menu).to be_nil
     end
 
     # The password page is open to everyone, so it doesn't load the session
     # on its own; it must still tell the app you're signed in, or the app
     # resets to its sign-in screen (Reset password "did nothing").
-    it "keeps a signed-in person's tabs on pages open to everyone" do
+    it "keeps a signed-in person's menu on pages open to everyone" do
       sign_in
       get password_path, headers: in_app
-      expect(tabs.map { |tab| tab["id"] }).to include("home", "more")
+      expect(menu.map { |item| item["id"] }).to include("home", "settings")
     end
   end
 
@@ -119,16 +97,23 @@ RSpec.describe "The iOS app's web side", type: :request do
     end
   end
 
-  it "lists everything that isn't a tab on the More screen" do
-    TicketingProfile.for(org).update!(enabled: true)
-    org.ticketing_access_grants.create!(user: user, access_level: "check_in")
+  it "gives Account settings rows for the pages its web sidebar would link, in the app only" do
+    sign_in
+    get account_path, headers: in_app
+    links = Nokogiri::HTML(response.body).css("nav[aria-label='Account'] a").map { |a| a["href"] }
+    expect(links).to eq([ account_notifications_path, account_profiles_path, account_organizations_path ])
+
+    get account_path
+    expect(response.body).not_to include('aria-label="Account"')
+  end
+
+  it "lists everything but Home on /my/account" do
     sign_in
     get my_account_path, headers: in_app
 
-    page = Nokogiri::HTML(response.body)
-    links = page.css("nav[aria-label='More'] a").map { |a| a["href"] }
-    expect(links).to include(my_shows_path, my_payments_path, profile_path, account_path)
-    expect(links).not_to include(my_dashboard_path, my_messages_path, my_tasks_path, door_index_path)
+    links = Nokogiri::HTML(response.body).css("nav[aria-label='More'] a").map { |a| a["href"] }
+    expect(links).to include(my_messages_path, my_shows_path, my_payments_path, profile_path, account_path)
+    expect(links).not_to include(my_dashboard_path)
   end
 
   it "doesn't pitch producing inside the app" do
@@ -147,7 +132,7 @@ RSpec.describe "The iOS app's web side", type: :request do
 
     get profile_path, headers: in_app
     expect(response.body).not_to include("href=\"#basic-info\"")
-    expect(response.body).to include("bridge--tabs")
+    expect(response.body).to include("bridge--menu")
   end
 
   it "serves page rules the app can read" do

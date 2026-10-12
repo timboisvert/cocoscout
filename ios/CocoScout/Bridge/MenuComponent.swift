@@ -1,0 +1,22 @@
+import HotwireNative
+import UIKit
+
+/// The menu (with badges) and who's signed in, sent by every page
+/// (bridge/menu_controller.js). An empty menu means signed out.
+final class MenuComponent: BridgeComponent {
+    nonisolated override class var name: String { "menu" }
+
+    override func onReceive(message: Message) {
+        guard message.event == "update", let data: MenuData = message.data() else { return }
+        // Rebuilding the screen can tear down the page that sent this, so let
+        // the message finish first.
+        DispatchQueue.main.async {
+            AppShell.shared.update(menu: data.menu, person: data.person)
+        }
+    }
+}
+
+private struct MenuData: Decodable {
+    let menu: [MenuItem]
+    let person: MenuPerson?
+}

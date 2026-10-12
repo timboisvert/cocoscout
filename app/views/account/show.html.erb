@@ -12,6 +12,26 @@
 
   <%# Each setting is one row: what it is, a line about it, and its button. %>
   <% row_class = "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6" %>
+
+  <%# The app hides the Account sidebar, so its other pages are rows here. %>
+  <% if turbo_native_app? %>
+    <nav class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6 divide-y divide-gray-100" aria-label="Account">
+      <% [
+        [ "Email notifications", "Which emails CocoScout sends you", account_notifications_path ],
+        [ "Profiles", "Your profiles and which one is the default", account_profiles_path ],
+        [ "Organizations", "The organizations you're part of", account_organizations_path ]
+      ].each do |label, line, path| %>
+        <%= link_to path, class: "#{row_class} hover:bg-gray-50 transition-colors" do %>
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-gray-900"><%= label %></div>
+            <div class="text-sm text-gray-600"><%= line %></div>
+          </div>
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        <% end %>
+      <% end %>
+    </nav>
+  <% end %>
+
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
     <%= render "shared/section_heading", title: "Sign-in and help", padding: "px-4 py-3 sm:px-6 sm:py-4" %>
     <div class="divide-y divide-gray-100">

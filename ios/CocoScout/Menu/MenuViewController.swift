@@ -1,18 +1,18 @@
 import SwiftUI
 import UIKit
 
-/// The full-screen menu (one-button and mix styles): every My item as a tile,
-/// with badges, then Sign out. The items come from the server
-/// (NativeAppHelper#native_menu), so who sees what matches the website.
+/// The full-screen menu the pink button opens: a pink card on top (CocoScout,
+/// who's signed in, Sign out, and the close X), then every My item as a tile
+/// with its badge. The items come from the server (NativeAppHelper), so who
+/// sees what matches the website.
 final class MenuViewController: UIHostingController<MenuView> {
     enum Action {
-        case open(TabSpec)
+        case open(MenuItem)
         case signOut
-        case style(NavStyle)
     }
 
-    init(items: [TabSpec], style: NavStyle, onAction: @escaping (Action) -> Void) {
-        super.init(rootView: MenuView(items: items, style: style, onAction: onAction))
+    init(items: [MenuItem], person: MenuPerson?, onAction: @escaping (Action) -> Void) {
+        super.init(rootView: MenuView(items: items, person: person, onAction: onAction))
         modalPresentationStyle = .pageSheet
         if let sheet = sheetPresentationController {
             sheet.detents = [.large()]
@@ -22,23 +22,28 @@ final class MenuViewController: UIHostingController<MenuView> {
 
     @available(*, unavailable)
     @MainActor required dynamic init?(coder aDecoder: NSCoder) {
-        fatalError("Use init(items:style:onAction:)")
+        fatalError("Use init(items:person:onAction:)")
     }
 }
 
 struct MenuView: View {
-    let items: [TabSpec]
-    @State var style: NavStyle
-    @State private var transition = MenuTransition.current
+    let items: [MenuItem]
+    let person: MenuPerson?
     let onAction: (MenuViewController.Action) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
     private let pink = Color(AppConfig.pink)
+    /// Tailwind pink-500 → pink-600, the gradient every CocoScout modal header uses.
+    private let headerGradient = LinearGradient(
+        colors: [Color(red: 236 / 255, green: 72 / 255, blue: 153 / 255), Color(red: 219 / 255, green: 39 / 255, blue: 119 / 255)],
+        startPoint: .leading, endPoint: .trailing
+    )
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            header
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(items) { item in
@@ -47,50 +52,100 @@ struct MenuView: View {
                     }
                 }
                 .padding(16)
-
-                Button { onAction(.signOut) } label: {
-                    Text("Sign out")
-                        .font(.body.weight(.medium))
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemBackground)))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(.separator)))
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 16)
-
-                #if DEBUG
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Navigation (trying out)").font(.footnote).foregroundStyle(.secondary)
-                    Picker("Navigation", selection: $style) {
-                        ForEach(NavStyle.allCases) { Text($0.label).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: style) { _, newStyle in onAction(.style(newStyle)) }
-
-                    Text("Switching pages from the menu").font(.footnote).foregroundStyle(.secondary).padding(.top, 8)
-                    Picker("Switching pages", selection: $transition) {
-                        ForEach(MenuTransition.allCases) { Text($0.label).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: transition) { _, newTransition in AppShell.shared.setMenuTransition(newTransition) }
-                }
-                .padding(16)
-                #endif
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("CocoScout")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Close")
-                }
             }
         }
-        .tint(pink)
+        .background(Color(.systemGroupedBackground))
     }
 
-    private func tile(_ item: TabSpec) -> some View {
+    // MARK: The pink card
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Image("LaunchLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .padding(3)
+                    .frame(width: 40, height: 40)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(.white))
+                Text("CocoScout")
+                    .font(Font(AppConfig.coustard(26)))
+                    .foregroundStyle(.white)
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(.white.opacity(0.2)))
+                }
+                .accessibilityLabel("Close")
+            }
+
+            if let person {
+                HStack(spacing: 12) {
+                    avatar(person)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Signed in as")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.8))
+                        Text(person.name)
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Text(person.email)
+                            .font(.footnote)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    Spacer(minLength: 8)
+                    Button { onAction(.signOut) } label: {
+                        Text("Sign out")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(pink)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(.white))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 14).fill(.white.opacity(0.15)))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 24)
+        .padding(.bottom, 16)
+        .background(headerGradient)
+    }
+
+    private func avatar(_ person: MenuPerson) -> some View {
+        let initials = Text(person.initials)
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(width: 48, height: 48)
+            .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.25)))
+        return Group {
+            if let url = person.headshotURL {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else {
+                        initials
+                    }
+                }
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                initials
+            }
+        }
+    }
+
+    // MARK: Tiles
+
+    private func tile(_ item: MenuItem) -> some View {
         VStack(spacing: 8) {
             Image(systemName: item.icon)
                 .font(.system(size: 26, weight: .regular))

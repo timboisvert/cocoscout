@@ -14,11 +14,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         shell.start()
         shell.tabBarController.view.backgroundColor = .white
 
-        #if DEBUG
-        window = ShakeWindow(windowScene: windowScene)
-        #else
         window = UIWindow(windowScene: windowScene)
-        #endif
         // Launch screen and web views are white; keep the window white too so
         // there's no flash between them.
         window?.backgroundColor = .white
@@ -29,7 +25,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     private func configureHotwire() {
         Hotwire.loadPathConfiguration(from: [.server(AppConfig.pathConfigurationURL)])
-        Hotwire.registerBridgeComponents([FormComponent.self, TabsComponent.self])
+        Hotwire.registerBridgeComponents([FormComponent.self, MenuComponent.self])
         Hotwire.registerRouteDecisionHandlers([
             OpenInSafariRouteDecisionHandler(),
             OpenAsDocumentRouteDecisionHandler(),
@@ -49,11 +45,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Opaque bars so iOS places web content below them.
         let navBar = UINavigationBarAppearance()
         navBar.configureWithOpaqueBackground()
-        // Titles iOS draws itself (the menu sheet) in Coustard too; web pages
-        // put theirs on the left (WebViewController).
+        // Any title iOS draws itself in Coustard too; web pages put theirs on
+        // the left (WebViewController).
         navBar.titleTextAttributes = [.font: AppConfig.coustard(18), .foregroundColor: UIColor.label]
         UINavigationBar.appearance().standardAppearance = navBar
         UINavigationBar.appearance().scrollEdgeAppearance = navBar
-        UITabBar.appearance().tintColor = AppConfig.pink
     }
 }
