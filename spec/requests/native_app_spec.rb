@@ -16,8 +16,11 @@ RSpec.describe "The iOS app's web side", type: :request do
     post handle_signin_path, params: { email_address: as.email_address, password: password }, headers: in_app
   end
 
-  def tabs
-    json = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--tabs']")&.[]("data-bridge--tabs-tabs-value")
+  def tabs = bridge_value("tabs")
+  def menu = bridge_value("menu")
+
+  def bridge_value(name)
+    json = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--tabs']")&.[]("data-bridge--tabs-#{name}-value")
     json && JSON.parse(json)
   end
 
@@ -44,6 +47,16 @@ RSpec.describe "The iOS app's web side", type: :request do
 
       expect(tabs.map { |tab| tab["id"] }).to eq(%w[home tasks messages door more])
       expect(tabs.find { |tab| tab["id"] == "door" }["path"]).to eq(door_index_path)
+    end
+
+    it "sends the full menu too, with the Door for anyone who can work one" do
+      TicketingProfile.for(org).update!(enabled: true)
+      create(:organization_role, :manager, user: user, organization: org)
+      sign_in
+      get my_dashboard_path, headers: in_app
+
+      expect(menu.map { |item| item["id"] }).to eq(%w[home messages tasks shows door courses auditions documents payments productions profile groups settings])
+      expect(menu.find { |item| item["id"] == "payments" }).to include("title" => "Payments", "path" => my_payments_path, "icon" => "dollarsign.circle")
     end
 
     it "gives house staff who don't perform Shifts in place of Tasks" do

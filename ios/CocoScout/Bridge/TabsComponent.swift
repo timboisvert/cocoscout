@@ -1,8 +1,8 @@
 import HotwireNative
 import UIKit
 
-/// The tabs and badges for the signed-in person, sent by every page
-/// (bridge/tabs_controller.js). An empty list means signed out.
+/// The tabs, menu and badges for the signed-in person, sent by every page
+/// (bridge/tabs_controller.js). An empty tab list means signed out.
 final class TabsComponent: BridgeComponent {
     nonisolated override class var name: String { "tabs" }
 
@@ -11,11 +11,12 @@ final class TabsComponent: BridgeComponent {
         // Rebuilding the tab bar can tear down the page that sent this, so
         // let the message finish first.
         DispatchQueue.main.async {
-            AppShell.shared.update(data.tabs)
+            AppShell.shared.update(tabs: data.tabs, menu: data.menu ?? [])
         }
     }
 }
 
 private struct TabsData: Decodable {
     let tabs: [TabSpec]
+    let menu: [TabSpec]?
 }
