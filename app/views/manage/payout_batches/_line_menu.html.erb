@@ -1,0 +1,42 @@
+<%# The ⋮ menu on one line of a payee's payout in a draft run: take it out
+    (PayoutRunRemoval undoes each kind the way it went in), and for a contract
+    payment whose ticket sales moved on since it went in, update it to the new
+    amount. Staff pay comes out per person. Nothing when there's nothing to do.
+    Locals: batch, contribution, item. %>
+<%
+  c = contribution
+  removable = PayoutRunRemoval.removable?(c)
+  contract_share = c.source_type == "ContractPayment" && c.amount_cents.positive? && c.source
+  sales_now = removable && contract_share ? ContractPaymentSyncService.current_amount(c.source) : nil
+  sales_moved = sales_now && (sales_now - c.source.amount.to_f).abs >= 0.005
+  menu_item_classes = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left"
+%>
+<% if removable %>
+  <div class="relative" data-controller="dropdown">
+    <button type="button" data-action="click->dropdown#toggle" title="More actions" aria-label="More actions for <%= c.label %>"
+            class="p-1 text-gray-400 hover:text-gray-600 rounded-md border border-transparent hover:border-gray-300 bg-transparent transition-colors cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+      </svg>
+    </button>
+    <div data-dropdown-target="menu" class="hidden absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+      <% if sales_moved %>
+        <%= button_to manage_refresh_line_payout_batch_path(batch, c), method: :post, form_class: "w-full", class: menu_item_classes,
+              title: "Ticket sales have changed since it went in: take it out and put it back at the new amount." do %>
+          <%= icon("currency-dollar", class: "w-4 h-4 text-gray-400") %><span>Update to <%= number_to_currency(sales_now) %></span>
+        <% end %>
+      <% end %>
+      <% if c.category == "staffing" %>
+        <%= button_to manage_remove_line_payout_batch_path(batch, c), method: :delete, form_class: "w-full", class: menu_item_classes,
+              title: "Their hours go back to waiting, and their bonus, reimbursement and tips back into Pay People." do %>
+          <%= icon("x-mark", class: "w-4 h-4 text-gray-400") %><span>Take <%= item.payee&.name %>'s staff pay out</span>
+        <% end %>
+      <% else %>
+        <%= button_to manage_remove_line_payout_batch_path(batch, c), method: :delete, form_class: "w-full", class: menu_item_classes,
+              title: "Take it back out of this draft. It's still owed, and you can add it again." do %>
+          <%= icon("x-mark", class: "w-4 h-4 text-gray-400") %><span>Take out of this run</span>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

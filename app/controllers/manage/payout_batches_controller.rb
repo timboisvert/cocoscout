@@ -232,6 +232,26 @@ module Manage
       end
     end
 
+    # A contract payment whose ticket sales moved on since it went in: out and
+    # back in at the new amount.
+    def refresh_line
+      batch = organization.payout_batches.find(params[:id])
+      contribution = batch.payout_contributions.find(params[:contribution_id])
+      payment = contribution.source
+      unless contribution.source_type == "ContractPayment" && payment && PayoutRunRemoval.removable?(contribution)
+        redirect_to manage_payout_batch_path(batch), alert: "Only a contract payment in a draft run can be updated." and return
+      end
+
+      was = payment.amount
+      result = ContractorPayoutRunService.refresh_contract_payment!(payment)
+      target = result.batch && PayoutBatch.exists?(result.batch.id) ? manage_payout_batch_path(result.batch) : manage_payout_batches_path
+      if result.error
+        redirect_to target, alert: result.error
+      else
+        redirect_to target, notice: "Updated #{payment.display_name}: #{helpers.number_to_currency(was)} → #{helpers.number_to_currency(payment.reload.amount)}."
+      end
+    end
+
     def destroy
       batch = organization.payout_batches.find(params[:id])
       unless batch.status == "draft"

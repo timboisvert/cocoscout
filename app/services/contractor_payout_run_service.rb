@@ -99,6 +99,16 @@ class ContractorPayoutRunService
       Result.new(batch: batch, added: false)
     end
 
+    # Bring a payment in a draft run up to date with ticket sales: out and back
+    # in, so its line, its netted charges and its ledger all match the new
+    # amount.
+    def refresh_contract_payment!(contract_payment)
+      removed = remove_contract_payment!(contract_payment)
+      return removed if removed.error
+
+      add_contract_payment!(contract_payment.reload)
+    end
+
     # Net the contract's deduct-from-payout services against the share that just
     # joined this run. Per Tim's design: the deduction hits at settlement,
     # capped at the share — and any remainder a share can't cover stays a

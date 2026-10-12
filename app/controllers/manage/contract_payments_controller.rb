@@ -3,7 +3,7 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run remove_from_payout_run settlement combine split]
+    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run remove_from_payout_run refresh_in_payout_run settlement combine split]
 
     def create
       @payment = @contract.contract_payments.build(payment_params)
@@ -136,6 +136,19 @@ module Manage
         amount = @payment.reload.amount_tbd? ? "its amount is waiting on ticket sales" : "it's now #{helpers.number_to_currency(@payment.amount)}"
         redirect_back fallback_location: manage_contract_path(@contract),
                       notice: "Took #{@payment.display_name} out of the payout run; #{amount}. Add it again when it's right."
+      end
+    end
+
+    # Sales moved on since it went into a draft run: out and back in at the
+    # new amount, in one go.
+    def refresh_in_payout_run
+      was = @payment.amount
+      result = ContractorPayoutRunService.refresh_contract_payment!(@payment)
+      if result.error
+        redirect_back fallback_location: manage_contract_path(@contract), alert: result.error
+      else
+        redirect_back fallback_location: manage_contract_path(@contract),
+                      notice: "Updated #{@payment.display_name} in the payout run: #{helpers.number_to_currency(was)} → #{helpers.number_to_currency(@payment.reload.amount)}."
       end
     end
 

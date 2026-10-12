@@ -1539,6 +1539,7 @@ Rails.application.routes.draw do
     post "money/payout-runs/:id/simulate-funding", to: "payout_batches#simulate_funding", as: "simulate_funding_payout_batch"
     delete "money/payout-runs/:id", to: "payout_batches#destroy"
     delete "money/payout-runs/:id/lines/:contribution_id", to: "payout_batches#remove_line", as: "remove_line_payout_batch"
+    post "money/payout-runs/:id/lines/:contribution_id/refresh", to: "payout_batches#refresh_line", as: "refresh_line_payout_batch"
 
     # Incoming payments: the receivables mirror of Payouts. Money owed TO the org,
     # almost all of it from contracts. Detail route before :production_id so the
@@ -1722,6 +1723,7 @@ Rails.application.routes.draw do
           post :pay_offline
           post :add_to_payout_run
           delete :remove_from_payout_run
+          post :refresh_in_payout_run
           post :combine
           post :split
           patch :settlement

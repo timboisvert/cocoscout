@@ -7,12 +7,27 @@
 # this service finds the matching ContractPayment (by settlement period)
 # and updates it with the calculated contractor share.
 class ContractPaymentSyncService
-  def initialize(show)
+  def initialize(show, contract: nil)
     @show = show
     @production = show.production
     # The contract that applies to THIS show is the one that booked its space rental
     # (a production can carry several contracts). Fall back to the production's latest.
-    @contract = show.space_rental&.contract || @production&.contract
+    @contract = contract || show.space_rental&.contract || @production&.contract
+  end
+
+  # What a settlement worked out from ticket sales would come to now, or nil
+  # when its amount isn't from sales. A payment in a draft run is never
+  # rewritten, so this is how its row says sales have moved on since it went
+  # in ("Update to $247.50"; Tim, 2026-10-11).
+  def self.current_amount(payment)
+    contract = payment.contract
+    return nil unless contract && (contract.revenue_share? || contract.ticket_revenue_minus_fee?)
+    return nil unless payment.notes.to_s.include?("Auto-calculated from show financials")
+
+    shows = contract.shows_for_payment(payment).select { |s| s.show_financials&.has_data? }
+    return nil if shows.empty?
+
+    new(shows.first, contract: contract).send(:settled_amount_for, shows).abs
   end
 
   def call

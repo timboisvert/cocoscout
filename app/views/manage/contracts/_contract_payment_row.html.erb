@@ -34,6 +34,12 @@
   contractor_person = contractor&.person
   amount_set = !payment.amount_tbd? && payment.amount.to_f.positive?
   in_run = payment.in_payout_run?
+  # In a draft run, it can come back out, and say when ticket sales have moved
+  # on since it went in (it's never rewritten while it's there).
+  run_contribution = in_run ? payment.payout_contribution : nil
+  can_take_out = run_contribution.present? && run_contribution.payout_batch.open? && !run_contribution.payout_batch_item&.paid?
+  sales_now = can_take_out ? ContractPaymentSyncService.current_amount(payment) : nil
+  sales_moved = sales_now && (sales_now - payment.amount.to_f).abs >= 0.005
   has_bank = contractor_person&.can_receive_payouts?
   # A contractor rides the payout run exactly like a performer: the moment
   # there's a Person to pay, the money can be staged. The run parks them on
@@ -206,6 +212,10 @@
           <div class="text-xs text-gray-500">
             Ticket sales covered the fee exactly — nothing to hand back
           </div>
+        <% elsif sales_moved %>
+          <div class="text-xs text-amber-700">
+            Now <%= number_to_currency(sales_now) %> with sales since
+          </div>
         <% elsif wash %>
           <div class="text-xs text-purple-700">
             Pays down what they owe<%= still_owed.positive? ? " · #{number_to_currency(still_owed)} left" : " in full" %>
@@ -276,9 +286,6 @@
           can_record = is_incoming && !is_deduct && offline_allowed
           can_deduct = is_incoming && !is_deduct && contract.contractor.present? && contract.outgoing_settlement?
           can_edit_amount = !is_incoming && amount_set && !in_run
-          # A draft run can give it back (a ticket sold after it went in).
-          run_contribution = in_run ? payment.payout_contribution : nil
-          can_take_out = run_contribution.present? && run_contribution.payout_batch.open? && !run_contribution.payout_batch_item&.paid?
           menu_any = can_take_out || (!in_run && (can_copy_link || can_record || can_deduct || is_deduct ||
                                                   combine_candidates.any? || can_split || can_edit_amount || can_pay_offline))
           menu_item_classes = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left"
@@ -370,10 +377,20 @@
               <div data-dropdown-target="menu"
                    class="hidden absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                 <% if can_take_out %>
+                  <%= link_to manage_payout_batch_path(run_contribution.payout_batch), class: menu_item_classes do %>
+                    <%= icon("banknotes", class: "w-4 h-4 text-gray-400") %> View in the payout run
+                  <% end %>
+                  <% if sales_moved %>
+                    <%= button_to refresh_in_payout_run_manage_contract_contract_payment_path(contract, payment),
+                          method: :post, form_class: "w-full", class: menu_item_classes,
+                          title: "Ticket sales have changed since it went in: take it out and put it back at the new amount." do %>
+                      <%= icon("currency-dollar", class: "w-4 h-4 text-gray-400") %><span>Update to <%= number_to_currency(sales_now) %></span>
+                    <% end %>
+                  <% end %>
                   <%= button_to remove_from_payout_run_manage_contract_contract_payment_path(contract, payment),
                         method: :delete, form_class: "w-full", class: menu_item_classes,
                         title: "Take it back out of the draft run; it catches up with ticket sales since, and you can add it again." do %>
-                    <%= icon("arrow-up-right", class: "w-4 h-4 text-gray-400") %><span>Take out of the payout run</span>
+                    <%= icon("x-mark", class: "w-4 h-4 text-gray-400") %><span>Take out of the payout run</span>
                   <% end %>
                 <% end %>
                 <% if can_copy_link %>
