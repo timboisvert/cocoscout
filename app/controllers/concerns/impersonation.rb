@@ -14,17 +14,14 @@ module Impersonation
 
   private
 
-  # The session row is authoritative: it is found via the *permanent* signed
+  # The session row is the only source: it is found via the *permanent* signed
   # :session_id cookie, so it lives exactly as long as the impersonated login
-  # does. The Rails session and the signed :impersonator_user_id cookie are
-  # browser-session cookies — mobile browsers discard them on force-quit or
-  # memory pressure while the permanent login cookie survives, which is how the
-  # banner used to disappear mid-impersonation. They stay here only as a
-  # fallback for impersonations that were already running before this change.
+  # does, and a new sign-in starts a row without one. The old browser-cookie
+  # copies (a signed :impersonator_user_id cookie, the Rails session) outlived
+  # a sign-out, so whoever signed in next on that browser got a Stop button
+  # that signed them in as the superadmin. Never read them again.
   def impersonator_user_id
-    Current.session&.impersonator_user_id ||
-      cookies.signed[:impersonator_user_id].presence ||
-      session[:user_doing_the_impersonating].presence
+    Current.session&.impersonator_user_id
   end
 
   def impersonating?
