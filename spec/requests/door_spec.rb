@@ -58,7 +58,7 @@ RSpec.describe "Door", type: :request do
       # Sell sits beside List and Scan, and its form above the list, so a long
       # night's list never pushes it out of reach (Tim, 2026-10-11).
       body = response.body
-      expect(body.index('data-door-target="sellButton"')).to be < body.index('data-door-target="listPanel"')
+      expect(body.index('data-mode="sell"')).to be < body.index('data-door-target="listPanel"')
       expect(body.index('data-door-target="sellPanel"')).to be < body.index('data-door-target="listPanel"')
     end
 

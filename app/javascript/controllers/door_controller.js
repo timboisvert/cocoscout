@@ -9,7 +9,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["video", "viewport", "startButton", "stopButton", "banner", "checkedIn", "sold", "deliveries",
                       "modeButton", "listPanel", "scanPanel", "filterInput", "filterChip", "deliverChip", "results", "party", "nobody",
-                      "sellButton", "sellPanel", "passHolders"]
+                      "sellPanel", "passHolders"]
     static values = { checkInUrl: String, statsUrl: String, listUrl: String, undoUrl: String, deliveriesUrl: String, listingId: Number,
                       passesUrl: String }
 
@@ -37,14 +37,17 @@ export default class extends Controller {
         this.stopScanning()
     }
 
-    // List or Scan. The choice sticks on this phone. Scan starts the camera
-    // at once; leaving Scan stops it.
+    // List, Scan or Sell: one lit at a time, each showing its own panel.
+    // List or Scan sticks on this phone (Sell doesn't: after a sale the page
+    // comes back to the list). Scan starts the camera at once; leaving it
+    // stops it.
     setMode(event) {
         this.applyMode(event.currentTarget.dataset.mode)
     }
 
     applyMode(mode) {
-        this.mode = mode === "scan" ? "scan" : "list"
+        const sellable = this.hasSellPanelTarget
+        this.mode = mode === "scan" ? "scan" : (mode === "sell" && sellable ? "sell" : "list")
         this.modeButtonTargets.forEach((button) => {
             const on = button.dataset.mode === this.mode
             button.setAttribute("aria-pressed", on)
@@ -52,7 +55,10 @@ export default class extends Controller {
         })
         this.listPanelTarget.classList.toggle("hidden", this.mode !== "list")
         this.scanPanelTarget.classList.toggle("hidden", this.mode !== "scan")
-        try { window.localStorage.setItem(this.modeKey(), this.mode) } catch (_e) { /* fine without */ }
+        if (sellable) this.sellPanelTarget.classList.toggle("hidden", this.mode !== "sell")
+        if (this.mode !== "sell") {
+            try { window.localStorage.setItem(this.modeKey(), this.mode) } catch (_e) { /* fine without */ }
+        }
         if (this.mode === "scan") this.startScanning()
         else this.stopScanning()
     }
@@ -335,17 +341,6 @@ export default class extends Controller {
     updateCounts(counts) {
         this.checkedInTarget.textContent = counts.checked_in
         this.soldTarget.textContent = counts.sold
-    }
-
-    // Sell sits beside List and Scan; it opens the sale form under them and
-    // shows pressed while it's open. Pressing it (or Close) again shuts it.
-    toggleSell() {
-        const open = !this.sellPanelTarget.classList.toggle("hidden")
-        if (this.hasSellButtonTarget) {
-            this.sellButtonTarget.setAttribute("aria-pressed", open)
-            this.constructor.ACTIVE.forEach((c) => this.sellButtonTarget.classList.toggle(c, open))
-        }
-        if (open) this.sellPanelTarget.scrollIntoView({ block: "nearest", behavior: "smooth" })
     }
 
     async post(url, body) {
