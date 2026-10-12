@@ -255,14 +255,12 @@
                 </div>
               <% end %>
             <% end %>
-            <div class="flex-1">
+            <div class="flex-1 min-w-0">
               <%= rich_text_area_tag :body, nil, class: "w-full min-h-[80px] text-sm", placeholder: "Write a reply to #{reply.sender_name}...", data: { reply_form_target: "body", action: "trix-change->reply-form#typing" } %>
             </div>
           </div>
           <div class="flex justify-end gap-2">
-            <button type="button" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->reply-form#cancel">
-              Cancel
-            </button>
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->reply-form#cancel" } %>
             <%= render "shared/button", text: "Reply", variant: "primary", size: "small", type: :submit %>
           </div>
         <% end %>

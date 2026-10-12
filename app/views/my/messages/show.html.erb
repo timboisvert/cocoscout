@@ -74,27 +74,28 @@
           <% current_person = Current.user.person %>
           <% if current_person %>
             <% headshot_variant = current_person.safe_headshot_variant(:thumb) %>
+            <%# The headshot only where there's room for it beside the editor. %>
             <% if headshot_variant %>
-              <%= image_tag headshot_variant, alt: current_person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+              <%= image_tag headshot_variant, alt: current_person.name, class: "hidden sm:block w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
             <% else %>
-              <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
+              <div class="hidden sm:flex w-10 h-10 rounded-lg bg-gray-200 items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
                 <%= current_person.initials %>
               </div>
           <% end %>
         <% end %>
 
-        <div class="flex-1">
+        <div class="flex-1 min-w-0">
           <%= form_with url: reply_my_message_path(@root_message), method: :post, multipart: true, data: { turbo: false } do %>
             <%= rich_text_area_tag :body, nil, class: "w-full min-h-[100px]", placeholder: "Write a comment...", data: { action: "trix-change->message-thread#userTyping", "message-thread-target": "commentBody" } %>
 
             <div data-controller="image-dropzone">
               <input type="file" name="images[]" multiple accept="image/*" data-image-dropzone-target="input" data-action="change->image-dropzone#filesSelected" class="hidden">
-              <div class="flex items-center justify-between mt-2">
+              <div class="flex flex-wrap items-center justify-between gap-2 mt-2">
                 <div data-image-dropzone-target="toggleButton">
                   <%= render "shared/button", text: "Add image(s)", variant: "ghost", size: "small", icon: "photo", type: :button, data: { action: "click->image-dropzone#toggle" } %>
                 </div>
-                <div class="flex items-center gap-2">
-                  <button type="button" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 cursor-pointer" data-action="click->message-thread#hideCommentForm">Cancel</button>
+                <div class="flex items-center gap-2 ml-auto">
+                  <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->message-thread#hideCommentForm" } %>
                   <%= render "shared/button", text: "Post Comment", variant: "primary", size: "small", type: :submit %>
                 </div>
               </div>

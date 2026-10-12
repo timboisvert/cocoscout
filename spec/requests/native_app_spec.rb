@@ -172,6 +172,17 @@ RSpec.describe "The iOS app's web side", type: :request do
     expect(page.at_css("title").text).to eq("Door · #{listing.display_title}")
   end
 
+  # iPhone zooms in on small text boxes, and in the app the zoom stuck to
+  # every page after (Tim, 2026-10-12). Browsers keep pinch-zoom.
+  it "never lets an app page zoom" do
+    sign_in
+    get my_dashboard_path, headers: in_app
+    expect(response.body).to include('content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1"')
+
+    get my_dashboard_path
+    expect(response.body).to include("maximum-scale=5")
+  end
+
   it "serves page rules the app can read" do
     rules = JSON.parse(Rails.public_path.join("hotwire-native/path-configuration.json").read)["rules"]
     open_in = rules.select { |rule| rule["properties"]["open_in"] }.to_h { |rule| [ rule["properties"]["open_in"], rule["patterns"] ] }

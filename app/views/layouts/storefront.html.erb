@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <title><%= content_for(:title) || "Tickets" %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5">
+    <meta name="viewport" content="<%= native_viewport %>">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 

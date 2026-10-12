@@ -1,5 +1,6 @@
 import HotwireNative
 import UIKit
+import WebKit
 
 /// Every web screen. The page's title sits on the left of the nav bar in
 /// Coustard, next to the back button, instead of small and centered.
@@ -32,6 +33,12 @@ final class WebViewController: HotwireWebViewController {
     /// show it in the left-hand label instead.
     override func visitableDidRender() {
         super.visitableDidRender()
+        // App pages never zoom (their viewport says so). The app keeps one web
+        // view for every page, so undo any zoom left over from before.
+        if let scrollView = visitableView.webView?.scrollView, scrollView.zoomScale != 1 {
+            scrollView.setZoomScale(1, animated: false)
+            scrollView.contentOffset.x = 0
+        }
         titleLabel.text = navigationItem.title
         // Narrower beside a back button: a title too wide for the bar gets
         // tucked into iOS's "more" menu instead of truncating.

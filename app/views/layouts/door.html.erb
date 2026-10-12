@@ -3,7 +3,7 @@
   <head>
     <title><%= content_for(:title) || "Door" %></title>
     <%# Full-bleed in a browser; inside the app its bars keep the page in the safe area. %>
-    <meta name="viewport" content="width=device-width,initial-scale=1<%= ",viewport-fit=cover" unless turbo_native_app? %>">
+    <meta name="viewport" content="<%= native_viewport(cover: true) %>">
     <meta name="robots" content="noindex">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>

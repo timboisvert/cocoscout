@@ -104,6 +104,10 @@ trix-toolbar {
   border-bottom: none;
   border-radius: 0.5rem 0.5rem 0 0;
   margin-bottom: -1px;
+  /* Never wider than its box: on a phone the row of buttons scrolls inside
+     the toolbar instead of pushing the whole form (and page) wider. */
+  max-width: 100%;
+  contain: inline-size;
 }
 
 trix-toolbar+trix-editor {

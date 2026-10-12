@@ -3,8 +3,11 @@
   <head>
     <title><%= content_for(:title) || "CocoScout" %></title>
     <%# No viewport-fit=cover: the app's opaque nav and tab bars already keep
-        pages inside the safe area, and cover would slide content under them. %>
-    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5">
+        pages inside the safe area, and cover would slide content under them.
+        maximum-scale=1: an app page never zooms. iPhone zooms in on any text
+        box smaller than 16px when it's tapped, and in the app that zoom
+        stuck to every page after (Tim, 2026-10-12). %>
+    <meta name="viewport" content="<%= native_viewport %>">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 

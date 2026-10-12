@@ -6,6 +6,18 @@
 # (NavigationHelper#talent_nav_sections), so the app and the website never
 # disagree about who sees what.
 module NativeAppHelper
+  # The viewport for every page the app shows. App pages never zoom: iPhone
+  # zooms in on any text box under 16px when it's tapped, and since the app
+  # keeps one web view, the zoom stuck to every page after. Browsers keep
+  # pinch-zoom. cover: the door's own header handles the notch in a browser.
+  def native_viewport(cover: false)
+    if turbo_native_app?
+      "width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1"
+    else
+      "width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5#{',viewport-fit=cover' if cover}"
+    end
+  end
+
   # Everything in My, as the menu's tiles: the web nav's items with short
   # titles and SF Symbols, the Door for anyone who can work one, then
   # profile, groups (only for someone in one) and settings. badge is a count.
