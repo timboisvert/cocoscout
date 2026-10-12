@@ -128,7 +128,7 @@ class StripeWebhooksController < ApplicationController
     order = TicketOrder.find_by(id: intent.metadata["ticket_order_id"])
     return unless order && order.stripe_payment_intent_id.in?([ nil, intent.id ])
 
-    TicketOrderSettlement.settle!(order, payment_intent_id: intent.id, charge_id: intent.latest_charge)
+    TicketOrderSettlement.settle!(order, payment_intent_id: intent.id, charge_id: intent.latest_charge, amount_cents: intent.amount)
   end
 
   # A checkout's payment (one or several shows). Success settles every order
@@ -139,7 +139,7 @@ class StripeWebhooksController < ApplicationController
     purchase = TicketPurchase.find_by(id: intent.metadata["ticket_purchase_id"])
     return unless purchase && purchase.stripe_payment_intent_id.in?([ nil, intent.id ])
 
-    TicketPurchaseSettlement.settle!(purchase, payment_intent_id: intent.id, charge_id: intent.latest_charge)
+    TicketPurchaseSettlement.settle!(purchase, payment_intent_id: intent.id, charge_id: intent.latest_charge, amount_cents: intent.amount)
   end
 
   # Money a theater added to its CocoScout balance from its bank landed (or
