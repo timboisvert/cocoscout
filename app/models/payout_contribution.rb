@@ -8,6 +8,9 @@ class PayoutContribution < ApplicationRecord
   belongs_to :payout_batch_item
   belongs_to :payee, polymorphic: true
   belongs_to :source, polymorphic: true, optional: true
+  # The run this line was first on, when a close-out moved it to the
+  # "Waiting on bank info" run (PayoutRunCloseOut).
+  belongs_to :moved_from_batch, class_name: "PayoutBatch", optional: true, inverse_of: :moved_out_contributions
 
   # Earning ledger entries a staff contribution posts (performer contributions
   # post none — their earning lives on the ShowPayoutLineItem). dependent:

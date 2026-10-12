@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1681,6 +1681,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
 
   create_table "payout_batches", force: :cascade do |t|
     t.integer "balance_applied_cents", default: 0, null: false
+    t.datetime "closed_out_at"
+    t.bigint "closed_out_by_id"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.bigint "created_by_id"
@@ -1695,6 +1697,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.bigint "total_cents", default: 0, null: false
     t.string "trigger", default: "manual", null: false
     t.datetime "updated_at", null: false
+    t.boolean "waiting_on_banks", default: false, null: false
     t.index ["created_by_id"], name: "index_payout_batches_on_created_by_id"
     t.index ["organization_id", "status"], name: "idx_payout_batches_org_status"
     t.index ["organization_id"], name: "idx_payout_batches_one_open_run_per_org", unique: true, where: "(((status)::text = 'draft'::text) AND ((kind)::text <> 'course'::text))"
@@ -1709,6 +1712,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.jsonb "details"
     t.boolean "excluded_from_payout", default: false, null: false
     t.string "label", null: false
+    t.datetime "moved_at"
+    t.bigint "moved_from_batch_id"
     t.bigint "payee_id", null: false
     t.string "payee_type", null: false
     t.bigint "payout_batch_id", null: false
@@ -1717,6 +1722,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.string "source_type"
     t.datetime "updated_at", null: false
     t.jsonb "worksheet"
+    t.index ["moved_from_batch_id"], name: "index_payout_contributions_on_moved_from_batch_id"
     t.index ["payee_type", "payee_id"], name: "index_payout_contributions_on_payee"
     t.index ["payout_batch_id"], name: "index_payout_contributions_on_payout_batch_id"
     t.index ["payout_batch_item_id"], name: "index_payout_contributions_on_payout_batch_item_id"
@@ -4125,9 +4131,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_batch_items", "payout_batches"
   add_foreign_key "payout_batches", "organizations"
+  add_foreign_key "payout_batches", "users", column: "closed_out_by_id"
   add_foreign_key "payout_batches", "users", column: "created_by_id"
   add_foreign_key "payout_contributions", "payout_batch_items"
   add_foreign_key "payout_contributions", "payout_batches"
+  add_foreign_key "payout_contributions", "payout_batches", column: "moved_from_batch_id"
   add_foreign_key "payout_funding_credits", "organizations"
   add_foreign_key "payout_ledger_entries", "organizations"
   add_foreign_key "payout_scheme_defaults", "payout_schemes"

@@ -217,6 +217,18 @@ module Manage
     # pulled in go back to the approved-unpaid pool, and the earning ledger
     # entries it posted are reversed. Only a draft (never-funded) run can be
     # discarded — once funding starts, the money is moving.
+    # Close out a run paid except for people with no bank: they move to the
+    # standing "Waiting on bank info" run (PayoutRunCloseOut).
+    def close_out
+      batch = organization.payout_batches.find(params[:id])
+      result = PayoutRunCloseOut.close!(batch, by: Current.user)
+      names = result.moved.map { |m| m[:payee]&.name }.compact.to_sentence
+      redirect_to manage_payout_batch_path(batch),
+                  notice: "Closed out. #{names.presence || 'The waiting payees'} moved to the Waiting on bank info run; they're paid the moment they connect a bank."
+    rescue PayoutRunCloseOut::Error => e
+      redirect_to manage_payout_batch_path(batch), alert: e.message
+    end
+
     # Take one thing back out of a draft run, whatever kind of money it is
     # (PayoutRunRemoval undoes each the way it went in).
     def remove_line

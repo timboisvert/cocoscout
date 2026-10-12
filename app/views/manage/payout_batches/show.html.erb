@@ -126,6 +126,30 @@
               <% if next_try_text %>We check automatically every morning — next <%= next_try_text %> — and the moment anyone connects a bank.<% end %>
             </p>
           <% end %>
+          <% if PayoutRunCloseOut.closable?(@batch) %>
+            <%# Everyone else is paid: move the people waiting on a bank to the
+                standing waiting run and close this one (PayoutRunCloseOut). %>
+            <% waiting = PayoutRunCloseOut.waiting_items(@batch) %>
+            <% waiting_names = waiting.map { |i| i.payee&.name }.compact.to_sentence %>
+            <% waiting_amount = number_to_currency(waiting.sum(&:amount_cents) / 100.0) %>
+            <div class="mt-4 pt-4 border-t border-pink-200">
+              <p class="text-sm text-gray-800">
+                <span class="font-medium">Everyone else is paid.</span>
+                Close this run out: <%= waiting_names %> move<%= "s" if waiting.one? %> to the Waiting on bank info run with <%= waiting_amount %>, and this run is done.
+              </p>
+              <div class="mt-3">
+                <% close_out_cid = "confirm-close-out" %>
+                <%= render "shared/button", text: "Close this run", variant: "primary", size: "medium", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: close_out_cid } %>
+                <%= render "shared/confirm_modal", id: close_out_cid,
+                      title: "Close this run out?",
+                      message: "#{h(waiting_names)} #{waiting.one? ? 'moves' : 'move'} to your Waiting on bank info run with #{waiting_amount}, and this run closes as paid. Their money is already funded and stays set aside for them; each is paid the moment they connect a bank. Both runs keep a record of the move.",
+                      confirm_text: "Close this run",
+                      url: manage_close_out_payout_batch_path(@batch),
+                      method: :post %>
+              </div>
+            </div>
+          <% end %>
           <% if Rails.env.development? %>
             <%# Simulated funding never put money in the test balance — this
                 tops it up (bypass-pending test charge) and retries. %>
@@ -281,6 +305,31 @@
           <div class="mt-3">
             <%= link_to "Show just these payments", state_path.call(:waiting), class: "text-xs font-medium text-blue-700 hover:text-blue-900 underline", data: { turbo_action: "replace" } %>
           </div>
+        </div>
+      <% end %>
+
+      <%# A closed-out run: who moved to the waiting run, when, and by whom. %>
+      <% if @batch.closed_out_at %>
+        <% moved = @batch.moved_out_contributions.includes(:payee, :payout_batch).to_a %>
+        <div class="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 class="text-sm font-semibold text-gray-900">Closed out <%= @batch.closed_out_at.strftime("%b %-d, %Y") %></h2>
+          <p class="text-xs text-gray-600 mt-1">
+            <%= @batch.closed_out_by ? "#{@batch.closed_out_by.person&.name || @batch.closed_out_by.email_address} moved" : "Moved" %>
+            the people still waiting on a bank to the Waiting on bank info run, where they're paid the moment they connect.
+          </p>
+          <ul class="mt-3 space-y-1.5 text-sm">
+            <% moved.group_by(&:payee).each do |payee, lines| %>
+              <li class="flex items-center justify-between gap-3">
+                <span class="min-w-0 truncate text-gray-800"><%= payee&.name %></span>
+                <span class="flex-shrink-0 tabular-nums text-gray-600"><%= number_to_currency(lines.sum(&:amount_cents) / 100.0) %></span>
+              </li>
+            <% end %>
+          </ul>
+          <% if (waiting_run = moved.first&.payout_batch) %>
+            <div class="mt-3">
+              <%= link_to "Open the Waiting on bank info run", manage_payout_batch_path(waiting_run), class: "text-xs font-medium text-pink-600 hover:text-pink-700 underline" %>
+            </div>
+          <% end %>
         </div>
       <% end %>
 
@@ -462,6 +511,11 @@
                           <%= render "manage/payout_batches/line_menu", batch: @batch, contribution: c, item: item %>
                         </div>
                       </div>
+                      <% if c.moved_from_batch %>
+                        <div class="text-[11px] text-gray-400">
+                          from <%= link_to "#{c.moved_from_batch.kind_label} · #{c.moved_from_batch.created_at.strftime('%b %-d, %Y')}", manage_payout_batch_path(c.moved_from_batch), class: "underline hover:text-gray-600" %>
+                        </div>
+                      <% end %>
                     </div>
                   <% end %>
                 </div>

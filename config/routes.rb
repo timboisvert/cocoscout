@@ -1535,6 +1535,7 @@ Rails.application.routes.draw do
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
     post "money/payout-runs/:id/pay-now", to: "payout_batches#pay_now", as: "pay_now_payout_batch"
     post "money/payout-runs/:id/pay-remaining", to: "payout_batches#pay_remaining", as: "pay_remaining_payout_batch"
+    post "money/payout-runs/:id/close-out", to: "payout_batches#close_out", as: "close_out_payout_batch"
     # Dev-only escape hatch (the action 404s outside development).
     post "money/payout-runs/:id/simulate-funding", to: "payout_batches#simulate_funding", as: "simulate_funding_payout_batch"
     delete "money/payout-runs/:id", to: "payout_batches#destroy"
