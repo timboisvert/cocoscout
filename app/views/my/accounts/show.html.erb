@@ -43,7 +43,7 @@
   <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }, class: "mb-4") do |f| %>
     <%= hidden_field_tag :return_to, my_account_path %>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Email notifications" %>
+      <%= render "shared/section_heading", padding: "px-5 py-4", title: "Email notifications" %>
       <div class="p-5">
         <div class="space-y-1">
           <% [

@@ -1,0 +1,38 @@
+<%#
+  The "me" card at the top of Account settings and Edit profile: your photo,
+  your name and one line under it. On a phone the photo sits on top and
+  everything is centered, so nothing runs off the side; wider screens put
+  them side by side. Anything in the block (a Change email button) goes
+  under the text on a phone, on the right otherwise.
+
+    render "shared/me_card", person: @person, line: Current.user.email_address,
+           detail: "Member since August 2026" do
+      ...buttons...
+    end
+
+  Locals: person (may be nil: initials come from fallback_name), line,
+  detail (optional), fallback_name (optional).
+%>
+<%
+  actions = block_given? ? capture { yield } : nil
+  name = person&.name || local_assigns[:fallback_name] || "Your account"
+  headshot_variant = person&.safe_headshot_variant(:thumb)
+  initials = person&.initials || name.to_s[0].to_s.upcase
+%>
+<div id="me-card" class="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 mb-6">
+  <div class="flex flex-col items-center text-center gap-3 sm:flex-row sm:text-left sm:gap-5">
+    <% if headshot_variant %>
+      <%= image_tag headshot_variant, alt: name, class: "w-20 h-20 rounded-lg object-cover flex-shrink-0" %>
+    <% else %>
+      <div class="w-20 h-20 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-2xl flex-shrink-0"><%= initials %></div>
+    <% end %>
+    <div class="min-w-0 flex-1">
+      <h1 class="text-xl font-semibold text-gray-900 break-words"><%= name %></h1>
+      <% if local_assigns[:line].present? %><p class="text-sm text-gray-600 mt-0.5 break-all"><%= line %></p><% end %>
+      <% if local_assigns[:detail].present? %><p class="text-xs text-gray-500 mt-1"><%= detail %></p><% end %>
+    </div>
+    <% if actions.present? && actions.strip.present? %>
+      <div class="flex flex-wrap justify-center gap-2 sm:justify-end flex-shrink-0"><%= actions %></div>
+    <% end %>
+  </div>
+</div>

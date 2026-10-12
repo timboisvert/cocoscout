@@ -5,76 +5,40 @@
     <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   </div>
 
-  <!-- Hero Section with User Info -->
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="p-6">
-      <div class="flex items-start gap-6">
-        <!-- User Headshot -->
-        <div class="flex-shrink-0">
-          <% headshot = @person&.primary_headshot %>
-          <% if headshot&.image&.attached? %>
-            <%= image_tag headshot.image.variant(resize_to_fill: [120, 120]), class: "w-24 h-24 rounded-xl object-cover" %>
-          <% else %>
-            <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl">
-              <%= @person&.initials || Current.user.email_address[0].upcase %>
-            </div>
-          <% end %>
-        </div>
+  <%= render "shared/me_card", person: @person, line: Current.user.email_address,
+        detail: "Member since #{Current.user.created_at.strftime('%B %Y')}" do %>
+    <%= render "shared/button", text: "Change email", variant: "secondary", size: "small", type: :button, data: { action: "click->account-email#open" } %>
+  <% end %>
 
-        <!-- User Details -->
-        <div class="flex-1">
-          <h1 class="text-2xl font-bold text-gray-900 coustard-regular mb-1">
-            <%= @person&.name || "Your Account" %>
-          </h1>
-          <div class="flex items-center gap-2 text-gray-600 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
-            <span><%= Current.user.email_address %></span>
-            <span class="ml-2">
-              <%= render "shared/button", text: "Change", variant: "primary", size: "small", type: :button, data: { action: "click->account-email#open" } %>
-            </span>
-          </div>
-          <p class="text-sm text-gray-500">
-            Member since <%= Current.user.created_at.strftime("%B %Y") %>
-          </p>
+  <%# Each setting is one row: what it is, a line about it, and its button. %>
+  <% row_class = "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6" %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
+    <%= render "shared/section_heading", title: "Sign-in and help", padding: "px-4 py-3 sm:px-6 sm:py-4" %>
+    <div class="divide-y divide-gray-100">
+      <div class="<%= row_class %>">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-gray-900">Password</div>
+          <div class="text-sm text-gray-600">We'll email you a link to set a new one.</div>
         </div>
+        <%= render "shared/button", text: "Reset password", path: password_path, variant: "secondary", size: "small" %>
+      </div>
+      <div class="<%= row_class %>">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-gray-900">Support</div>
+          <div class="text-sm text-gray-600">Questions or feedback? We'd love to hear from you.</div>
+        </div>
+        <%= render "shared/button", text: "Email support", path: "mailto:support@cocoscout.com", variant: "secondary", size: "small" %>
       </div>
     </div>
   </div>
 
-  <!-- Password Section -->
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Password" %>
-    <div class="p-6">
-      <p class="text-sm text-gray-600 mb-4">
-        To change your password, use the password reset flow.
-      </p>
-      <%= render "shared/button", text: "Reset Password", path: password_path, variant: "outline" %>
-    </div>
-  </div>
-
-  <!-- Contact Support Section -->
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Contact Support" %>
-    <div class="p-6">
-      <p class="text-sm text-gray-600 mb-4">
-        Need help? Have a question or feedback? We'd love to hear from you.
-      </p>
-      <%= render "shared/button", text: "Email Support", path: "mailto:support@cocoscout.com", variant: "outline", icon: "mail" %>
-    </div>
-  </div>
-
-  <!-- Danger Zone Section -->
-  <div class="bg-white border border-red-200 rounded-lg overflow-hidden mb-6">
-    <div class="bg-red-50 px-4 py-3 border-b border-red-200">
-      <h3 class="text-md font-semibold text-red-900 coustard-regular">Danger Zone</h3>
-    </div>
-    <div class="p-6">
-      <p class="text-sm text-gray-600 mb-4">
-        Want to delete your account? Contact support and we'll help you with that.
-      </p>
-      <%= render "shared/button", text: "Contact Support to Delete Account", path: "mailto:support@cocoscout.com?subject=Delete%20My%20Account", variant: "danger", icon: "mail" %>
+  <div class="bg-white border border-red-200 rounded-xl overflow-hidden mb-6">
+    <div class="<%= row_class %>">
+      <div class="min-w-0">
+        <div class="text-sm font-medium text-gray-900">Delete your account</div>
+        <div class="text-sm text-gray-600">Support will take care of it for you.</div>
+      </div>
+      <%= render "shared/button", text: "Ask support", path: "mailto:support@cocoscout.com?subject=Delete%20My%20Account", variant: "secondary", size: "small" %>
     </div>
   </div>
 
