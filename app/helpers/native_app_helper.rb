@@ -26,7 +26,7 @@ module NativeAppHelper
   # Everything in My, for the app's full-screen menu (the one-button and
   # mixed navigation styles): the web nav's items with short titles and
   # SF Symbols, the Door for anyone who can work one, then profile, groups
-  # and settings.
+  # (only for someone in one) and settings.
   def native_menu
     user = Current.user
     return [] unless user
@@ -35,7 +35,8 @@ module NativeAppHelper
     if native_door_tab?(user) && items.none? { |item| item[:id] == "door" }
       items.insert(items.index { |item| item[:id] == "shows" }.to_i + 1, native_menu_item(path: door_index_path))
     end
-    items + [ profile_path, groups_path, account_path ].map { |path| native_menu_item(path: path) }
+    paths = [ profile_path, (groups_path if native_in_a_group?(user)), account_path ].compact
+    items + paths.map { |path| native_menu_item(path: path) }
   end
 
   # The More screen: everything in the web nav that isn't a tab, then the
@@ -45,9 +46,9 @@ module NativeAppHelper
     items = talent_nav_sections.flat_map { |section| section[:items] }.reject { |item| tab_paths.include?(item[:path]) }
     items + [
       { label: "My Profile", path: profile_path, icon: "profiles" },
-      { label: "My Groups", path: groups_path, icon: "people" },
+      ({ label: "My Groups", path: groups_path, icon: "people" } if native_in_a_group?(Current.user)),
       { label: "Account Settings", path: account_path, icon: "account" }
-    ]
+    ].compact
   end
 
   private
@@ -79,6 +80,13 @@ module NativeAppHelper
   # House staff who aren't performers get Shifts where performers get Tasks.
   def native_staff_only?(user)
     user.shows_my_shifts? && !TalentPoolMembership.where(member_type: "Person", member_id: user.people.active.select(:id)).exists?
+  end
+
+  # Groups are a niche corner; the menu only offers them to someone in one.
+  def native_in_a_group?(user)
+    return @native_in_a_group if defined?(@native_in_a_group)
+
+    @native_in_a_group = GroupMembership.joins(:group).where(person_id: user.people.active.select(:id), groups: { archived_at: nil }).exists?
   end
 
   # Anyone who can work a door: a granted volunteer, or the theater's managers

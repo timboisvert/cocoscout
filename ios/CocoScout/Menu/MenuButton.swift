@@ -62,7 +62,8 @@ final class MenuButton: UIButton {
             widthAnchor.constraint(equalToConstant: 60),
             heightAnchor.constraint(equalToConstant: 60),
             trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
-            bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12)
+            // Down where a tab bar would sit, a little into the home-indicator area.
+            bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 10)
         ])
     }
 }

@@ -105,31 +105,43 @@ final class AppShell {
         }
     }
 
-    /// A menu item that's also a tab selects the tab; anything else opens in
-    /// place (one button: as the whole screen; mix: on top of the current tab).
+    /// A menu item that's also a tab selects the tab. Anything else becomes
+    /// the whole screen: in one-button style the only screen; in mix style the
+    /// Menu tab's screen, so the tab bar shows you're somewhere off the menu.
     private func open(_ item: TabSpec) {
         if let index = loadedTabs.firstIndex(where: { $0.id == item.id }) {
             select(index)
             return
         }
         let url = AppConfig.url(item.path)
-        let navigator = tabBarController.activeNavigator
-        if style == .button {
-            var properties = Hotwire.config.pathConfiguration.properties(for: url)
-            properties["presentation"] = "replace_root"
-            navigator.route(VisitProposal(url: url, options: VisitOptions(action: .advance), properties: properties))
-        } else {
-            navigator.route(url)
+        switch style {
+        case .button:
+            replaceRoot(of: tabBarController.activeNavigator, with: url)
+        case .mix:
+            if let menuIndex = loadedTabs.firstIndex(where: { $0.id == "menu" }) {
+                select(menuIndex, start: false)
+            }
+            replaceRoot(of: tabBarController.activeNavigator, with: url)
+        case .tabs:
+            tabBarController.activeNavigator.route(url)
         }
     }
 
-    private func select(_ index: Int) {
+    private func replaceRoot(of navigator: Navigator, with url: URL) {
+        var properties = Hotwire.config.pathConfiguration.properties(for: url)
+        properties["presentation"] = "replace_root"
+        navigator.route(VisitProposal(url: url, options: VisitOptions(action: .advance), properties: properties))
+    }
+
+    private func select(_ index: Int, start: Bool = true) {
         if #available(iOS 18.0, *) {
             tabBarController.selectedTab = tabBarController.tabs.first { $0.identifier == loadedTabs[index].id }
         } else {
             tabBarController.selectedIndex = index
         }
-        tabBarController.activeNavigator.start()
+        if start {
+            tabBarController.activeNavigator.start()
+        }
     }
 
     // MARK: Building the frame
