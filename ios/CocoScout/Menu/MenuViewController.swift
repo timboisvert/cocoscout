@@ -38,12 +38,18 @@ struct MenuView: View {
     /// pink-500 → pink-600, the gradient every CocoScout modal header uses.
     private let headerGradient = LinearGradient(colors: [Tailwind.pink500, Tailwind.pink600], startPoint: .leading, endPoint: .trailing)
 
+    /// About you rather than everyday work: these sit in the pink card, as
+    /// buttons under who's signed in, instead of among the tiles.
+    private static let accountIDs: Set<String> = ["profile", "groups", "settings"]
+    private var accountItems: [MenuItem] { items.filter { Self.accountIDs.contains($0.id) } }
+    private var everydayItems: [MenuItem] { items.filter { !Self.accountIDs.contains($0.id) } }
+
     var body: some View {
         VStack(spacing: 0) {
             header
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(items) { item in
+                    ForEach(everydayItems) { item in
                         Button { onAction(.open(item)) } label: { tile(item) }
                             .buttonStyle(.plain)
                     }
@@ -102,6 +108,18 @@ struct MenuView: View {
                 }
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: 14).fill(.white.opacity(0.15)))
+            }
+
+            if !accountItems.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(accountItems) { item in
+                        Button { onAction(.open(item)) } label: {
+                            Label(item.title, systemImage: item.icon)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SharedButtonStyle(variant: .secondary, size: .small))
+                    }
+                }
             }
         }
         .padding(.horizontal, 16)
