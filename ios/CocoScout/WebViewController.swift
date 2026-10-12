@@ -9,7 +9,7 @@ final class WebViewController: HotwireWebViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        titleLabel.font = AppConfig.coustard(22)
+        titleLabel.font = AppConfig.coustard(25)
         titleLabel.textColor = .label
         titleLabel.lineBreakMode = .byTruncatingTail
 
@@ -29,6 +29,6 @@ final class WebViewController: HotwireWebViewController {
         super.visitableDidRender()
         titleLabel.text = navigationItem.title
         let width = min(titleLabel.intrinsicContentSize.width, view.bounds.width - 120)
-        titleLabel.frame = CGRect(x: 0, y: 0, width: width, height: 30)
+        titleLabel.frame = CGRect(x: 0, y: 0, width: width, height: 34)
     }
 }

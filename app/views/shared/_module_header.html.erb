@@ -19,14 +19,18 @@
   Icons supported: calendar, clipboard-list, user-group, cog, users, chart-bar, dollar-sign
 %>
 <% actions ||= [] %>
+<%# In the app the nav bar already says the title, so the page doesn't repeat it. %>
+<% show_title = !turbo_native_app? %>
 
-<div class="pt-2 mb-6">
+<div class="<%= show_title ? 'pt-2' : '' %> mb-6">
   <%# Title %>
-  <h1 class="text-4xl coustard-regular text-gray-900"><%= title %></h1>
+  <% if show_title %>
+    <h1 class="text-4xl coustard-regular text-gray-900"><%= title %></h1>
+  <% end %>
 
   <%# Description %>
   <% if local_assigns[:description] && description.present? %>
-    <div class="text-sm text-gray-600 max-w-3xl space-y-2 mt-4">
+    <div class="text-sm text-gray-600 max-w-3xl space-y-2 <%= 'mt-4' if show_title %>">
       <%= raw description %>
     </div>
   <% end %>
