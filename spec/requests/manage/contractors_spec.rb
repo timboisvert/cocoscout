@@ -180,10 +180,12 @@ RSpec.describe "Manage::Contractors", type: :request do
   end
 
   describe "getting paid" do
-    it "offers a bank-onboarding link once a person is linked but not bank-connected" do
+    # The link goes to their email only; managers never see it (2026-10-12).
+    it "offers to email a bank setup link once a person is linked but not bank-connected" do
       link!(email: "sound@example.com")
       get manage_contractor_path(contractor)
-      expect(response.body).to include("Bank setup link").and include("/pay/setup/")
+      expect(response.body).to include("Email the setup link")
+      expect(response.body).not_to include("/pay/setup/")
     end
 
     it "shows the connected state once the linked person can receive payouts" do

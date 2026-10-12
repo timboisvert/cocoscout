@@ -8,7 +8,9 @@
 # links simply expire rather than being individually revocable.
 module PayeeOnboardingToken
   EXPIRY = 30.days
-  PURPOSE = "payee_onboarding"
+  # v2 (2026-10-12): links are emailed to the payee only (BankSetupLink);
+  # every link managers could copy before then stopped working.
+  PURPOSE = "payee_onboarding_v2"
   # Payee classes that carry a Stripe Connect account (see StripeConnectable).
   TYPE_NAMES = %w[Person Contractor].freeze
 

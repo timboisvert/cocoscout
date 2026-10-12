@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -299,6 +299,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_130000) do
     t.index ["organization_id"], name: "index_balance_withdrawals_on_organization_id"
     t.index ["requested_by_id"], name: "index_balance_withdrawals_on_requested_by_id"
     t.index ["stripe_transfer_id"], name: "index_balance_withdrawals_on_stripe_transfer_id"
+  end
+
+  create_table "bank_setup_emails", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "payee_type", null: false
+    t.bigint "payee_id", null: false
+    t.string "email", null: false
+    t.bigint "sent_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "payee_type", "payee_id"], name: "idx_bank_setup_emails_payee"
   end
 
   create_table "billing_invoices", force: :cascade do |t|
@@ -4023,6 +4034,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_130000) do
   add_foreign_key "balance_top_ups", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "balance_withdrawals", "organizations"
   add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
+  add_foreign_key "bank_setup_emails", "organizations"
+  add_foreign_key "bank_setup_emails", "users", column: "sent_by_id"
   add_foreign_key "billing_invoices", "organizations"
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "casting_table_draft_assignments", "casting_tables"

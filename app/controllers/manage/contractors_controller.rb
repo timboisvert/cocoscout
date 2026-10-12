@@ -46,7 +46,6 @@ module Manage
       # A contractor is paid as its backing Person — chosen explicitly by the
       # manager (search-or-invite), never auto-created.
       @person = @contractor.person
-      @payment_setup_url = @person && payee_onboarding_url(token: PayeeOnboardingToken.generate(@person))
       @pending_invitation = @person && PersonInvitation.pending.find_by(email: @person.email, organization: Current.organization)
       @has_cocoscout_access = @person&.user.present?
       @invite_preview = @person && !@has_cocoscout_access ? invitation_preview(@person) : nil

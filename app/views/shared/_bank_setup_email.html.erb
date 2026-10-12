@@ -1,0 +1,20 @@
+<%# "Email the setup link" for a payee with no bank connected. The link goes
+    only to their own address (BankSetupLink); managers never see or copy it.
+    Locals: payee (Person or Contractor), size (shared/button size, default
+    "small"). %>
+<% last_sent = BankSetupEmail.last_for(Current.organization, payee) %>
+<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+  <% if payee.email.present? %>
+    <%= form_with url: manage_bank_setup_emails_path, method: :post, class: "inline" do %>
+      <%= hidden_field_tag :payee_type, payee.class.name, id: nil %>
+      <%= hidden_field_tag :payee_id, payee.id, id: nil %>
+      <%= render "shared/button", text: last_sent ? "Resend setup link" : "Email the setup link", variant: "secondary",
+            size: local_assigns.fetch(:size, "small"), type: :submit %>
+    <% end %>
+    <span class="text-xs text-gray-500">
+      <% if last_sent %>Sent <%= last_sent.created_at.strftime("%b %-d") %> to their email.<% else %>Goes to their email. The link works for 30 days.<% end %>
+    </span>
+  <% else %>
+    <span class="text-xs text-gray-500">Add an email address for them to send a bank setup link.</span>
+  <% end %>
+</div>

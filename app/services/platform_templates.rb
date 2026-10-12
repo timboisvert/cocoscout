@@ -1,10 +1,16 @@
 # frozen_string_literal: true
 
-# The words of the emails CocoScout sends about its own money, in one place
-# (as TicketingTemplates and CourseTemplates are for theirs). Each is a
-# seeded ContentTemplate.
+# The words of the emails CocoScout sends about its own money, and the bank
+# setup link a payee is sent, in one place (as TicketingTemplates and
+# CourseTemplates are for theirs). Each is a seeded ContentTemplate.
 class PlatformTemplates
   TEMPLATES = [
+    { key: "payee_bank_setup_link", name: "Bank setup link for a payee", channel: "email",
+      subject: "{{organization_name}} wants to pay you through CocoScout",
+      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} pays people through CocoScout, straight to their bank. Connect yours here. It takes a few minutes, and you don't need a CocoScout account.</p><p><a href="{{setup_url}}">Connect your bank</a></p><p>This link is just for you, so please don't forward it. It works for 30 days. If you weren't expecting it, you can ignore this email.</p>),
+      variables: [ { "name" => "first_name", "description" => "The payee's first name" },
+                   { "name" => "organization_name", "description" => "The organization paying them" },
+                   { "name" => "setup_url", "description" => "Their own bank setup link (no sign-in; 30 days)" } ] },
     { key: "cocoscout_money_check", name: "CocoScout money check needs a look", channel: "email",
       subject: "CocoScout's money check: {{headline}}",
       body: %(<p>This morning's check of CocoScout's Stripe balance against its records needs a look.</p>{{findings}}<p><a href="{{check_url}}">Open the Stripe check</a></p>),

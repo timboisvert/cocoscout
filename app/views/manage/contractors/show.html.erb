@@ -134,14 +134,10 @@
           <% if @person.connect_account_started? %>
             This contractor started bank setup but hasn't finished. Send them the link again to complete it.
           <% else %>
-            Send this contractor a secure link to connect their bank, so you can pay them through CocoScout — no account needed on their end.
+            Email this contractor a secure link to connect their bank, so you can pay them through CocoScout. They don't need an account.
           <% end %>
         </p>
-        <%= render "shared/copy_url",
-          url: @payment_setup_url,
-          label: "Bank setup link",
-          copy_button_text: "Copy link",
-          help_text: "Email this to #{@person.email}. The link expires in 30 days." %>
+        <%= render "shared/bank_setup_email", payee: @person %>
       <% end %>
     </div>
   </div>

@@ -190,10 +190,10 @@
                     <span class="text-lg font-semibold text-gray-900"><%= number_to_currency(row[:amount_cents] / 100.0) %></span>
                     <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full <%= badge_class %>"><%= label %></span>
                   </div>
-                  <%# Needs a bank? Hand them a no-login setup link (copy or QR). Org
+                  <%# Needs a bank? Email them their own no-login setup link. Org
                       remainder connects via course settings, so only Person/Contractor. %>
                   <% if row[:status] == :needs_bank && payee && %w[Person Contractor].include?(payee.class.name) %>
-                    <%= render "payment_setup_actions", setup_url: payee_onboarding_url(token: PayeeOnboardingToken.generate(payee)) %>
+                    <%= render "shared/bank_setup_email", payee: payee, size: "xs" %>
                     <% if row[:source].is_a?(CourseOfferingPayoutLineItem) %>
                       <div data-controller="modal">
                         <% oid = "offline-pay-#{row[:source].id}" %>
