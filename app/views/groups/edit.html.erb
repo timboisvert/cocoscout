@@ -8,8 +8,8 @@
 
   <!-- Public Profile Card -->
   <div id="public-group-profile" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Public Group Profile" %>
-    <div class="p-6">
+    <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Public Group Profile" %>
+    <div class="p-4 sm:p-6">
       <%= form_with(model: @group, url: update_group_path(@group), method: :patch, data: { profile_visibility_target: "form", turbo: true }) do |form| %>
         <div class="space-y-4">
           <!-- Enable Toggle -->
@@ -66,8 +66,8 @@
     <!-- Basic Information Section -->
     <%= form_with(model: @group, url: update_group_path(@group), method: :patch, id: "basic-info-form", data: { controller: "profile-auto-save", turbo: true }) do |form| %>
       <div id="basic-info" class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "Basic Information" %>
-        <div class="p-6 space-y-4">
+        <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Basic Information" %>
+        <div class="p-4 sm:p-6 space-y-4">
           <div>
             <%= form.label :name, "Group Name", class: "block text-sm font-medium text-gray-700" %>
             <%= form.text_field :name, required: true, class: "mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { action: "blur->profile-auto-save#save" } %>

@@ -14,8 +14,8 @@
   <% if @upcoming_courses.any? || @past_courses.any? %>
 
     <!-- Upcoming Courses -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Upcoming Courses" %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Upcoming Courses" %>
       <div class="p-4">
         <% if @upcoming_courses.any? %>
           <div class="space-y-1">
@@ -90,8 +90,8 @@
     </div>
 
     <!-- Completed Courses -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Completed Courses" %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Completed Courses" %>
       <div class="p-4">
         <% if @past_courses.any? %>
           <div class="space-y-1">

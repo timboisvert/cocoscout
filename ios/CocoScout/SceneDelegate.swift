@@ -14,7 +14,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         shell.start()
         shell.tabBarController.view.backgroundColor = .white
 
+        #if DEBUG
+        window = ShakeWindow(windowScene: windowScene)
+        #else
         window = UIWindow(windowScene: windowScene)
+        #endif
         // Launch screen and web views are white; keep the window white too so
         // there's no flash between them.
         window?.backgroundColor = .white

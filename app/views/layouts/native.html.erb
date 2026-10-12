@@ -28,37 +28,8 @@
   <body class="inter-regular text-slate-700 bg-[#f9f9f7]"
         data-turbo-native="true">
 
-    <div id="native-loader" data-turbo-permanent>
-      <img src="/icon.png" alt="" width="80" height="80">
-    </div>
-
-    <script>
-      if (!window._cocoLoaderReady) {
-        window._cocoLoaderReady = true;
-        var _cocoShowAt = 0;
-        var _cocoTimer  = null;
-
-        function _cocoShow() {
-          clearTimeout(_cocoTimer);
-          _cocoShowAt = Date.now();
-          var el = document.getElementById("native-loader");
-          if (el) el.classList.add("visible");
-        }
-
-        function _cocoHide() {
-          var wait = Math.max(0, 400 - (Date.now() - _cocoShowAt));
-          clearTimeout(_cocoTimer);
-          _cocoTimer = setTimeout(function() {
-            var el = document.getElementById("native-loader");
-            if (el) el.classList.remove("visible");
-          }, wait);
-        }
-
-        document.addEventListener("turbo:visit", _cocoShow);
-        document.addEventListener("turbo:load",  _cocoHide);
-      }
-    </script>
-
+    <%# No loading overlay: the page stays put while the next one loads, and
+        Hotwire Native shows its own spinner only when a load is slow. %>
     <main class="px-4 pt-4 pb-8 overflow-x-hidden" data-controller="bridge--form">
       <div id="flash-messages"></div>
       <%= yield %>

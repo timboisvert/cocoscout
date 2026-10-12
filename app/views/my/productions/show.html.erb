@@ -347,8 +347,8 @@
     <!-- Tab 3: Documents -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Documents" %>
-        <div class="p-6">
+        <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Documents" %>
+        <div class="p-4 sm:p-6">
           <%# Everything that applies to this production (incl. handbooks shared
               from another production) that this person is allowed to see. %>
           <% shared_documents = @person ? ProductionDocument.where(id: @production.applied_documents.select(:id)).visible_to_person(@person, @person.document_audience_context).ordered : ProductionDocument.none %>

@@ -1,6 +1,7 @@
-<%# In the iOS/Android app only: tells the native shell which tabs this person
-    gets and their badge counts (bridge/tabs_controller.js). Rendered by every
-    layout the app can land on. %>
+<%# In the iOS/Android app only: tells the native shell which tabs and menu
+    items this person gets, with badge counts (bridge/tabs_controller.js).
+    Rendered by every layout the app can land on. %>
 <% if turbo_native_app? %>
-  <%= tag.div hidden: true, data: { controller: "bridge--tabs", "bridge--tabs-tabs-value": native_tabs.to_json } %>
+  <%= tag.div hidden: true, data: { controller: "bridge--tabs", "bridge--tabs-tabs-value": native_tabs.to_json,
+                                    "bridge--tabs-menu-value": native_menu.to_json } %>
 <% end %>

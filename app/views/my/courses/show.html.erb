@@ -173,7 +173,7 @@
   <%# Instructor Panel: Registered Course Members %>
   <% if @is_instructor && @registered_students.present? %>
     <div class="border border-gray-200 rounded-lg overflow-hidden bg-white mb-6">
-      <%= render "shared/card_header", title: "Course Members (#{@registered_students.size})" do %>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Course Members (#{@registered_students.size})" do %>
         <%= render "shared/button",
             text: "Contact All Members",
             variant: "secondary",
@@ -225,8 +225,8 @@
   <div class="space-y-4">
 
     <!-- Class Schedule -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Class Schedule" %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Class Schedule" %>
       <div class="p-2">
         <% if @all_sessions.any? %>
           <div class="space-y-1">
@@ -262,8 +262,8 @@
 
     <!-- Location -->
     <% if @location %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: @location.name, icon: '<svg class="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>' %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: @location.name, icon: '<svg class="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>' %>
         <div class="p-4 flex flex-col lg:flex-row gap-4">
           <% address = [@location.address1, @location.address2, @location.city, @location.state, @location.postal_code].compact.reject(&:blank?).join(', ') %>
 

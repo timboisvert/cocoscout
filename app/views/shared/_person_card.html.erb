@@ -39,8 +39,8 @@
             <% end %>
 
             <!-- Email & Socials Box -->
-            <div class="border border-gray-200 rounded-lg overflow-hidden mt-5">
-                <%= render "shared/card_header", title: "Email & Socials" %>
+            <div class="border border-gray-200 rounded-lg overflow-hidden mt-5 bg-white">
+                <%= render "shared/section_heading", padding: "px-4 py-3", title: "Email & Socials" %>
                 <div class="p-4">
                     <div class="flex items-center space-x-2"
                          data-controller="compose-message"
@@ -71,8 +71,8 @@
 
             <% if current_user_can_manage? || Current.user&.superadmin? %>
                 <!-- Organization Box -->
-                <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-                    <%= render "shared/card_header", title: "Organization" %>
+                <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+                    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Organization" %>
                     <div class="p-4">
                         <% if current_user_can_manage? && person.organizations.include?(Current.organization) %>
                             <% remove_person_confirm_id = "confirm-#{SecureRandom.hex(6)}" %>
@@ -115,8 +115,8 @@
 
             <% if Current.user&.superadmin? %>
                 <!-- Superadmin Actions Box -->
-                <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-                    <%= render "shared/card_header", title: "Superadmin Actions" %>
+                <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+                    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Superadmin Actions" %>
                     <div class="p-4 space-y-2">
                         <% if person.user %>
                             <%= button_to impersonate_user_path, method: :post, params: { email: person.user.email_address }, class: "text-sm text-pink-500 hover:underline cursor-pointer" do %>

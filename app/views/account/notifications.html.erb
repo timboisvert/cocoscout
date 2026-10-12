@@ -8,8 +8,8 @@
   <!-- Email Notifications Section -->
   <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }) do |f| %>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Email Notifications" %>
-      <div class="p-6">
+      <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Email Notifications" %>
+      <div class="p-4 sm:p-6">
         <p class="text-sm text-gray-600 mb-6">
           Control which email notifications you receive from CocoScout.
         </p>
