@@ -101,11 +101,17 @@ module My
     end
 
 
+    # The app opens Stripe in its own secure sheet, which has none of the
+    # app's cookies, so Stripe sends it back by way of /app/return instead of
+    # straight to a signed-in page. An expired link lands on Payment Settings
+    # to start again.
     def start_bank_onboarding
-      url = StripeConnectService.new(@person).onboarding_link(
-        return_url: my_payments_connect_return_url,
-        refresh_url: my_payments_connect_refresh_url
-      )
+      return_url, refresh_url = if turbo_native_app?
+        [ app_return_url(to: my_payments_connect_return_path), app_return_url(to: my_payments_setup_path) ]
+      else
+        [ my_payments_connect_return_url, my_payments_connect_refresh_url ]
+      end
+      url = StripeConnectService.new(@person).onboarding_link(return_url: return_url, refresh_url: refresh_url)
       redirect_to url, allow_other_host: true
     rescue StripeConnectService::Error => e
       redirect_to my_payments_setup_path, alert: "Couldn't start bank setup: #{e.message}"

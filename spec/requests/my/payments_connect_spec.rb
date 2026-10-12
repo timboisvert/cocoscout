@@ -30,6 +30,23 @@ RSpec.describe "My::Payments bank connect", type: :request do
     expect(response).to redirect_to("https://connect.stripe.com/setup/abc")
   end
 
+  # The app opens Stripe in a sheet with none of its cookies, so Stripe sends
+  # it back by way of /app/return (AppReturnsController) instead.
+  it "sends Stripe back through the app's return in the iOS app" do
+    links = []
+    allow_any_instance_of(StripeConnectService).to receive(:onboarding_link) do |_service, **urls|
+      links << urls
+      "https://connect.stripe.com/setup/abc"
+    end
+
+    post my_payments_connect_bank_path, headers: { "User-Agent" => "CocoScout (iPhone) Hotwire Native iOS; Turbo Native iOS;" }
+    expect(links.last).to eq(return_url: app_return_url(to: my_payments_connect_return_path),
+                             refresh_url: app_return_url(to: my_payments_setup_path))
+
+    post my_payments_connect_bank_path
+    expect(links.last).to eq(return_url: my_payments_connect_return_url, refresh_url: my_payments_connect_refresh_url)
+  end
+
   it "syncs the account and returns to setup after onboarding" do
     person.update!(stripe_account_id: "acct_1")
     allow_any_instance_of(StripeConnectService).to receive(:sync_account) do

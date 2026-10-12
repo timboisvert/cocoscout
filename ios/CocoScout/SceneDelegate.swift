@@ -33,6 +33,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             SafariViewControllerRouteDecisionHandler(),
             SystemNavigationRouteDecisionHandler()
         ])
+        // Stripe first, then Hotwire's own defaults in their usual order.
+        Hotwire.registerWebViewPolicyDecisionHandlers([
+            StripeSheetPolicyDecisionHandler(),
+            ReloadWebViewPolicyDecisionHandler(),
+            NewWindowWebViewPolicyDecisionHandler(),
+            ExternalNavigationWebViewPolicyDecisionHandler(),
+            LinkActivatedWebViewPolicyDecisionHandler()
+        ])
         Hotwire.config.backButtonDisplayMode = .minimal
         Hotwire.config.showDoneButtonOnModals = true
         Hotwire.config.defaultViewController = { url in WebViewController(url: url) }

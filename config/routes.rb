@@ -46,6 +46,9 @@ Rails.application.routes.draw do
   get "/terms", to: "legal#terms", as: "terms"
   get "/privacy", to: "legal#privacy", as: "privacy"
 
+  # Back into the iOS app from its secure sheet (Stripe bank setup).
+  get "/app/return", to: "app_returns#show", as: "app_return"
+
   # Authentication
   get   "/signup",        to: "auth#signup",          as: "signup"
   post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
