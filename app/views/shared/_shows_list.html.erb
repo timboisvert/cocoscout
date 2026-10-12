@@ -25,10 +25,9 @@
   my_vacancies_by_show = local_assigns.fetch(:my_vacancies_by_show, {})
   link_path_helper = local_assigns.fetch(:link_path_helper, nil)
 
-  # Sort rows by show date
+  # Sort rows by show date. No Tickets chips here: they came off every
+  # Shows & Events list (Tim, 2026-10-06 for managers; 2026-10-12 for My).
   sorted_rows = show_rows.sort_by { |row| row[:show].date_and_time }
-  # Where each show's tickets are (what the public can see), once for the list.
-  ticket_links = TicketLink.for_all(sorted_rows.map { |row| row[:show] }, public: true)
 %>
 
 <div class="space-y-1" data-controller="linked-highlight">
@@ -91,8 +90,7 @@
       right_panel: right_panel_type,
       show_cant_make_it: row_show_cant_make_it,
       cant_make_it_person: row_cant_make_it_person,
-      my_vacancies: my_vacancies,
-      ticket_link: ticket_links[show.id]
+      my_vacancies: my_vacancies
     } %>
   <% end %>
 </div>

@@ -31,6 +31,23 @@ RSpec.describe "The ticket link everywhere", type: :request do
     expect(response.body).not_to include("Where do people get tickets", "Tickets · Eventbrite", "data-tooltip-text=\"Get tickets\"")
   end
 
+  # Not on the cast's side yet: a ticket module for cast members is coming
+  # (Tim, 2026-10-12).
+  it "keeps tickets off My Shows & Events and a show's page in My" do
+    sell!
+    performer = create(:user, password: password)
+    person = create(:person, user: performer).tap { |p| performer.update!(default_person: p) }
+    TalentPoolMembership.create!(talent_pool: production.effective_talent_pool, member: person)
+    post handle_signin_path, params: { email_address: performer.email_address, password: password }
+
+    get my_shows_path(filter: "all")
+    expect(response.body).not_to include("data-tooltip-text=\"Get tickets\"", "/t/#{ShortLink.canonical_for!(production).code}")
+
+    get my_show_path(show)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Get tickets", ">Tickets<")
+  end
+
   it "puts Get tickets on the public production and show pages, only while the box office is open" do
     get public_profile_path("openmic")
     expect(response.body).to include("Get tickets", "https://www.eventbrite.com/e/mic")
