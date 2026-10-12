@@ -218,6 +218,8 @@ Rails.application.routes.draw do
   delete "/account/app-sessions/:id",     to: "account#sign_out_app",        as: "sign_out_app_account"
   delete "/account/sessions/:id",         to: "account#sign_out_session",    as: "sign_out_session_account"
   delete "/account/sessions",             to: "account#sign_out_elsewhere",  as: "sign_out_elsewhere_account"
+  post   "/account/deletion",             to: "account#request_deletion",    as: "request_deletion_account"
+  delete "/account/deletion",             to: "account#cancel_deletion",     as: "cancel_deletion_account"
 
   # Superadmin
   scope "/superadmin" do

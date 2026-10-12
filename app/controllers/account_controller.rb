@@ -246,6 +246,24 @@ class AccountController < ApplicationController
     redirect_to account_path, notice: "You're signed out everywhere but here."
   end
 
+  # Delete my account, from the website or the app (Apple requires the app to
+  # offer it). It's a request: the superadmins get an email and finish it
+  # within 30 days from the person's Superadmin page, keeping the payout and
+  # tax records the law needs. Until then it can be taken back.
+  def request_deletion
+    user = Current.user
+    unless user.deletion_requested_at
+      user.update!(deletion_requested_at: Time.current)
+      AccountDeletionRequest.notify_superadmins(user, from_app: turbo_native_app?)
+    end
+    redirect_to account_path, notice: "We've got your request. Your account will be deleted within 30 days."
+  end
+
+  def cancel_deletion
+    Current.user.update!(deletion_requested_at: nil)
+    redirect_to account_path, notice: "Your account won't be deleted."
+  end
+
   def leave_organization
     organization = Organization.find(params[:id])
     @people = Current.user.people.active.to_a

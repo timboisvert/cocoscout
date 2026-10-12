@@ -10,6 +10,15 @@
     links: []
   } %>
 
+  <%# They asked to delete their account (Account Settings); finish it here
+      with Delete, within 30 days of the date they asked. %>
+  <% if (requested_at = @person.user&.deletion_requested_at) %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Asked to be deleted",
+          headline: "Since #{requested_at.strftime('%B %-d, %Y')}",
+          body: "They were told it would be done within 30 days (by #{(requested_at + 30.days).strftime('%B %-d')}). Keep the payout and tax records the law needs, then delete the account below." %>
+  <% end %>
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
     <!-- Main Content - 2 cols -->
     <div class="lg:col-span-2 space-y-6">

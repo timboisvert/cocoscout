@@ -96,14 +96,36 @@
     </div>
   </div>
 
+  <%# Delete my account: asked for right here, on the website or in the app
+      (Apple requires the app to offer it); superadmins finish it within 30
+      days, and it can be taken back until then. %>
   <div class="bg-white border border-red-200 rounded-xl overflow-hidden mb-6">
-    <div class="<%= row_class %>">
-      <div class="min-w-0">
-        <div class="text-sm font-medium text-gray-900">Delete your account</div>
-        <div class="text-sm text-gray-600">Support will take care of it for you.</div>
+    <% if (requested_at = Current.user.deletion_requested_at) %>
+      <div class="<%= row_class %>">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-gray-900">Deleting your account</div>
+          <div class="text-sm text-gray-600">You asked on <%= requested_at.strftime("%B %-d") %>. It will be done within 30 days; until then, you can change your mind.</div>
+        </div>
+        <%= form_with url: cancel_deletion_account_path, method: :delete, class: "inline" do %>
+          <%= render "shared/button", text: "Keep my account", variant: "secondary", size: "small", type: :submit %>
+        <% end %>
       </div>
-      <%= render "shared/button", text: "Ask support", path: "mailto:support@cocoscout.com?subject=Delete%20My%20Account", variant: "secondary", size: "small" %>
-    </div>
+    <% else %>
+      <% delete_cid = "confirm-delete-account" %>
+      <div class="<%= row_class %>">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-gray-900">Delete your account</div>
+          <div class="text-sm text-gray-600">Your account and profiles are deleted within 30 days.</div>
+        </div>
+        <%= render "shared/button", text: "Delete my account", variant: "secondary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: delete_cid } %>
+      </div>
+      <%= render "shared/confirm_modal", id: delete_cid,
+            title: "Delete your account?",
+            message: "We'll delete your account and profiles within 30 days, and sign-ins will stop working. Payment and tax records the law requires are kept. You can change your mind here until it's done.",
+            confirm_text: "Delete my account",
+            url: request_deletion_account_path, method: :post %>
+    <% end %>
   </div>
 
   <!-- Email Change Modal -->
