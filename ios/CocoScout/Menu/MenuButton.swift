@@ -1,9 +1,12 @@
 import UIKit
 
-/// The one-button style's floating pink button: always there, bottom right,
-/// opens the full-screen menu. Shows the total of every badge.
+/// The floating menu button: Coco's face in a white circle with a pink ring,
+/// always there at the bottom right, opening the full-screen menu. Shows the
+/// total of every badge.
 final class MenuButton: UIButton {
     private let onTap: () -> Void
+    private let circle = UIView()
+    private let coco = UIImageView(image: UIImage(named: "LaunchLogo"))
     private let badgeLabel = UILabel()
 
     var badge: String? {
@@ -16,20 +19,26 @@ final class MenuButton: UIButton {
     init(onTap: @escaping () -> Void) {
         self.onTap = onTap
         super.init(frame: .zero)
-
-        var configuration = UIButton.Configuration.filled()
-        configuration.baseBackgroundColor = AppConfig.pink
-        configuration.baseForegroundColor = .white
-        configuration.cornerStyle = .capsule
-        configuration.image = UIImage(systemName: "square.grid.2x2.fill",
-                                      withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold))
-        self.configuration = configuration
         accessibilityLabel = "Menu"
 
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.25
         layer.shadowRadius = 8
         layer.shadowOffset = CGSize(width: 0, height: 4)
+
+        // The circle clips Coco to head and collar; the badge sits outside it.
+        circle.backgroundColor = .white
+        circle.layer.cornerRadius = 30
+        circle.layer.borderColor = AppConfig.pink.cgColor
+        circle.layer.borderWidth = 3
+        circle.clipsToBounds = true
+        circle.isUserInteractionEnabled = false
+        circle.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(circle)
+
+        coco.contentMode = .scaleAspectFit
+        coco.translatesAutoresizingMaskIntoConstraints = false
+        circle.addSubview(coco)
 
         badgeLabel.font = .systemFont(ofSize: 12, weight: .bold)
         badgeLabel.textColor = .white
@@ -40,7 +49,17 @@ final class MenuButton: UIButton {
         badgeLabel.isHidden = true
         badgeLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(badgeLabel)
+
         NSLayoutConstraint.activate([
+            circle.topAnchor.constraint(equalTo: topAnchor),
+            circle.bottomAnchor.constraint(equalTo: bottomAnchor),
+            circle.leadingAnchor.constraint(equalTo: leadingAnchor),
+            circle.trailingAnchor.constraint(equalTo: trailingAnchor),
+            // A little wider than the circle and nudged down, so the face fills it.
+            coco.centerXAnchor.constraint(equalTo: circle.centerXAnchor),
+            coco.topAnchor.constraint(equalTo: circle.topAnchor, constant: 5),
+            coco.widthAnchor.constraint(equalTo: circle.widthAnchor, multiplier: 1.1),
+            coco.heightAnchor.constraint(equalTo: coco.widthAnchor, multiplier: 768.0 / 721.0),
             badgeLabel.topAnchor.constraint(equalTo: topAnchor, constant: -4),
             badgeLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 4),
             badgeLabel.heightAnchor.constraint(equalToConstant: 20),
@@ -53,6 +72,10 @@ final class MenuButton: UIButton {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("Use init(onTap:)")
+    }
+
+    override var isHighlighted: Bool {
+        didSet { circle.alpha = isHighlighted ? 0.85 : 1 }
     }
 
     func install(in view: UIView) {
