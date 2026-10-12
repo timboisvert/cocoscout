@@ -39,10 +39,7 @@
   <%# Existing Events Section %>
   <% if @existing_rentals.any? %>
     <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-700">Current Events (<%= @existing_rentals.count %>)</h3>
-        <p class="text-xs text-gray-500 mt-0.5">Changing a time? Use Change time on the event, so it keeps its tickets, cast and staffing. Removing it and adding another starts over.</p>
-      </div>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Current Events (#{@existing_rentals.count})", intro: "Changing a time? Use Change time on the event, so it keeps its tickets, cast and staffing. Removing it and adding another starts over." %>
       <div class="p-4 space-y-2" id="existing-rentals-list">
         <% staged_moves = @amend_data["moved_rentals"] || {} %>
         <% @existing_rentals.each do |rental| %>
@@ -87,9 +84,7 @@
 
   <%# Add New Events Section %>
   <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-      <h3 class="text-sm font-semibold text-gray-700">Add New Events</h3>
-    </div>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Add New Events" %>
     <div class="p-4">
         <%# Multiple events mode (always show this for amending) %>
         <div data-contract-bookings-target="multipleModeContent">

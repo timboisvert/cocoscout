@@ -64,7 +64,7 @@ RSpec.describe "The Tickets question", type: :request do
     TicketsAnswer.apply!(production, mode: "cocoscout", tiers: [ { "name" => "General", "price" => "20", "seats" => "60" } ])
 
     get manage_production_show_path(production, show)
-    box = response.body[%r{>Tickets</h3>.*?Scan for tickets}m]
+    box = response.body[%r{>Tickets</h2>.*?Scan for tickets}m]
     expect(box).to include("sm:grid-cols-2", "Tickets sold", "Ticket link", "Visit", "Copy", "QR")
     expect(box.index("Tickets sold")).to be < box.index("Ticket link")
     expect(box).to match(%r{truncate" title="https?://[^"]+/t/[^"]+">(?!https?://)[^<]+/t/})
@@ -78,7 +78,7 @@ RSpec.describe "The Tickets question", type: :request do
       TicketsAnswer.apply!(production, mode: "cocoscout", tiers: [ { "name" => "General", "price" => "20", "seats" => "60" } ])
 
       get manage_production_show_path(production, tonight)
-      box = response.body[%r{>Tickets</h3>.*?Scan for tickets}m]
+      box = response.body[%r{>Tickets</h2>.*?Scan for tickets}m]
       expect(box).to include("Tickets sold", "Ticket link")
       expect(box).not_to include(">Door<", "check people in", "sm:row-span-2", door_path(tonight.reload.ticket_listing))
     end
@@ -122,7 +122,7 @@ RSpec.describe "The Tickets question", type: :request do
       post set_organization_path(id: org.id)
 
       get manage_production_show_path(production, tonight)
-      box = response.body[%r{>Tickets</h3>.*?Scan for tickets}m].gsub(/\s+/, " ")
+      box = response.body[%r{>Tickets</h2>.*?Scan for tickets}m].gsub(/\s+/, " ")
       # 2 here + 7 + 3 elsewhere = 12 sold, of the 57 seats left to sell once 3 comps are set aside.
       expect(box).to include("Tickets sold", "12 <span class=\"text-sm font-normal text-gray-500\">of 57</span> sold", "3 comps")
       expect(box).to include("2 on CocoScout", "7 on Ticket Tailor", "$140.00", "3 on DoMore")

@@ -122,8 +122,8 @@
     <%# Main content %>
     <div class="lg:col-span-2 space-y-6">
       <%# Contractor Info %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Contractor Information" %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contractor Information" %>
         <div class="p-4">
           <dl class="grid grid-cols-2 gap-4">
             <div>
@@ -170,8 +170,8 @@
       <%= render "contract_terms", contract: @contract %>
 
       <%# Bookings %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Space Bookings" %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Space Bookings" %>
         <div class="p-4">
           <% if @rentals.any? %>
             <div class="space-y-2">
@@ -188,8 +188,8 @@
       <%# Payments. No overflow-hidden here: the rows' kebab menus are
           absolutely positioned and would be clipped at the card edge — the
           header rounds its own top corners instead. %>
-      <div class="border border-gray-200 rounded-lg">
-        <%= render "shared/card_header", title: "Payments", bg_class: "bg-gray-50 rounded-t-lg" %>
+      <div class="border border-gray-200 rounded-lg bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Payments" %>
         <div class="p-4">
           <% if @payments.any? %>
             <div class="space-y-2">
@@ -208,8 +208,8 @@
       <%# Course Offering Payouts - show if contract has course offerings with payouts %>
       <% course_payouts = @contract.course_offerings.includes(:course_offering_payout).filter_map(&:course_offering_payout) %>
       <% if course_payouts.any? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Course Payouts" %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Course Payouts" %>
           <div class="p-4 space-y-2">
             <% course_payouts.each do |payout| %>
               <div class="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg bg-white">
@@ -244,8 +244,8 @@
 
       <%# Associated Productions %>
       <% if @productions.any? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Associated Productions" %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Associated Productions" %>
           <div class="p-4 space-y-2">
             <% @productions.each do |production| %>
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:border-gray-400 transition-all bg-white">
@@ -283,8 +283,8 @@
       <%# Financial Summary — the gross picture first (what the deal made vs
           cost us, ticket revenue included), then plain payment cash-flow. %>
       <% money ||= @contract.money_display %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Financial Summary" %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Financial Summary" %>
         <div class="p-4">
           <dl class="space-y-3">
             <div class="flex justify-between">
@@ -319,13 +319,11 @@
       </div>
 
       <%# Documents %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden" data-controller="modal">
-        <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 class="text-sm font-semibold text-gray-700">Documents</h3>
-          <button type="button" data-action="click->modal#open" data-modal-id="document-upload-modal" class="text-pink-600 hover:text-pink-700">
-            <%= icon("plus", class: "w-4 h-4") %>
-          </button>
-        </div>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-controller="modal">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Documents" do %>
+          <%= render "shared/button", text: "Upload", variant: "secondary", size: "small", icon: "plus", type: :button,
+                data: { action: "click->modal#open", modal_id: "document-upload-modal" } %>
+        <% end %>
         <div class="p-4">
           <% if @documents.any? %>
             <div class="space-y-2">
@@ -423,8 +421,8 @@
 
       <%# Notes %>
       <% if @contract.notes.present? || @contract.terms.present? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Notes & Terms" %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Notes & Terms" %>
           <div class="p-4">
             <% if @contract.notes.present? %>
               <div class="mb-4">
@@ -446,8 +444,8 @@
       <% if @contract.status_active? %>
         <%= render "manage/contracts/version_history" %>
 
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Actions" %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Actions" %>
           <div class="p-4 space-y-2">
             <%= render "shared/button",
               text: "Amend Contract",
@@ -466,8 +464,8 @@
           </div>
         </div>
       <% elsif @contract.status_completed? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Actions" %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Actions" %>
           <div class="p-4 space-y-2">
             <%= render "shared/button",
               text: "Reopen to Amend",
@@ -481,8 +479,8 @@
           </div>
         </div>
       <% elsif @contract.status_cancelled? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Actions" %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Actions" %>
           <div class="p-4 space-y-2">
             <button type="button"
                 data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-delete-contract-<%= @contract.id %>"

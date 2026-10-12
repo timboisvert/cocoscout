@@ -33,8 +33,8 @@
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
     <!-- By Service -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "By Service" %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "By Service" %>
       <div class="p-4">
         <table class="w-full text-sm">
           <thead>
@@ -58,8 +58,8 @@
     </div>
 
     <!-- By Content Type -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "By Content Type" %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "By Content Type" %>
       <div class="p-4">
         <table class="w-full text-sm">
           <thead>
@@ -82,8 +82,8 @@
   </div>
 
   <!-- Attachments Breakdown -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <%= render "shared/card_header", title: "Attachments by Type" %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Attachments by Type" %>
     <div class="p-4">
       <table class="w-full text-sm">
         <thead>
@@ -109,8 +109,8 @@
   <!-- Cleanup Actions -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
     <!-- Orphaned Blobs -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Orphaned Blobs" do %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Orphaned Blobs" do %>
         <% if @orphaned_count > 0 %>
           <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
             <%= @orphaned_count %> orphans
@@ -154,8 +154,8 @@
     </div>
 
     <!-- Legacy Attachments -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Legacy Attachments" do %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Legacy Attachments" do %>
         <% if @legacy_count > 0 %>
           <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
             <%= @legacy_count %> legacy
@@ -191,8 +191,8 @@
   </div>
 
   <!-- Key Migration -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <%= render "shared/card_header", title: "Key Structure Migration" do %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Key Structure Migration" do %>
       <% if @flat_keys_count > 0 %>
         <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
           <%= @flat_keys_count %> to migrate
@@ -257,8 +257,8 @@
   </div>
 
   <!-- Orphaned S3 Files -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <%= render "shared/card_header", title: "Orphaned S3 Files" %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Orphaned S3 Files" %>
     <div class="p-4">
       <p class="text-sm text-gray-600 mb-3">
         After migrating keys, old flat-key files remain on S3. This cleanup finds and deletes
@@ -282,8 +282,8 @@
   </div>
 
   <!-- Variants Info -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <%= render "shared/card_header", title: "Variants" %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Variants" %>
     <div class="p-4">
       <p class="text-sm text-gray-600">
         <strong><%= @variant_count %></strong> variant records (thumbnails, resized images, etc.)

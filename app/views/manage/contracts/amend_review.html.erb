@@ -4,9 +4,7 @@
   <% if @has_changes %>
     <%# Events Changes %>
     <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-700">Event Changes</h3>
-      </div>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Event Changes" %>
       <div class="p-4 space-y-4">
         <% if @rentals_to_remove.any? %>
           <div>
@@ -102,10 +100,7 @@
     <%# Payment Changes — the full set of payments after this amendment (paid
         payments are preserved; the pending ones are replaced by this list). %>
     <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-700">Payments</h3>
-        <p class="text-xs text-gray-500 mt-0.5">The schedule after this amendment. Payments already paid or on a payout run are kept as they are; pending ones are re-priced or replaced by this list.</p>
-      </div>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Payments", intro: "The schedule after this amendment. Payments already paid or on a payout run are kept as they are; pending ones are re-priced or replaced by this list." %>
       <div class="p-4 space-y-2">
         <% if @financials_changed %>
           <% staged_payments = @amend_data["payments"] || [] %>
@@ -139,9 +134,7 @@
     <%# Production Name Change %>
     <% if @production_name_changed %>
       <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 class="text-sm font-semibold text-gray-700">Production Name Change</h3>
-        </div>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Production Name Change" %>
         <div class="p-4 flex items-center gap-3 text-sm">
           <span class="text-gray-500 line-through"><%= @contract.production_name.presence || "(unnamed)" %></span>
           <%= icon("arrow-right", class: "w-4 h-4 text-gray-400") %>
@@ -153,9 +146,7 @@
     <%# Ticketing & Services Changes %>
     <% if @ticketing_changed || @services_changed %>
       <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 class="text-sm font-semibold text-gray-700">Ticketing &amp; Services Changes</h3>
-        </div>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Ticketing & Services Changes" %>
         <div class="p-4 space-y-4">
           <% if @ticketing_changed %>
             <% tiers = @new_ticketing["tiers"] || [] %>

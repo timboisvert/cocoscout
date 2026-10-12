@@ -17,7 +17,7 @@
 
   <!-- Shareable Link -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Shareable Link" %>
+    <%= render "shared/section_heading", title: "Shareable Link" %>
     <div class="p-6">
       <% if @sign_up_form.active? && @sign_up_form.short_code.present? %>
         <% public_url = "#{request.base_url}/s/#{@sign_up_form.short_code}" %>

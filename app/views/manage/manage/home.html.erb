@@ -198,12 +198,13 @@
     <!-- Row 2: Vacancy Alerts -->
     <% if all_open_vacancies.any? %>
       <div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
-        <%= render "shared/card_header",
-          title: "Open Vacancies (#{all_open_vacancies.size})",
-          bg_class: "bg-pink-100",
-          border_class: "border-pink-200",
-          title_class: "text-pink-900",
-          icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>' %>
+        <%# Pink on purpose: an open vacancy is an alert, so this keeps its own header. %>
+        <div class="bg-pink-100 px-4 py-3 border-b border-pink-200">
+          <h3 class="text-md font-semibold text-pink-900 coustard-regular flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+            <%= "Open Vacancies (#{all_open_vacancies.size})" %>
+          </h3>
+        </div>
         <div class="p-4 space-y-1">
           <% all_open_vacancies.each do |vacancy_data| %>
             <% vacancy = vacancy_data[:vacancy] %>

@@ -33,7 +33,7 @@
       <%= hidden_field_tag :tab, "0" %>
 
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Form Name" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Form Name" %>
         <div class="p-5 space-y-6">
           <div>
             <%= form.label :name, class: "block text-sm font-medium text-gray-700 mb-1" %>
@@ -59,7 +59,7 @@
 
       <%# Introduction Instructions %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Introduction Instructions" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Introduction Instructions" %>
         <div class="p-5">
           <p class="text-sm text-gray-600 mb-4">This text appears at the top of the sign-up form, before any questions.</p>
           <%= form.rich_text_area :instruction_text,
@@ -70,7 +70,7 @@
 
       <%# Success Message %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Success Message" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Success Message" %>
         <div class="p-5">
           <p class="text-sm text-gray-600 mb-4">This text is shown after someone successfully submits the sign-up form.</p>
           <%= form.rich_text_area :success_text,

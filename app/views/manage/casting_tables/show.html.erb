@@ -195,9 +195,7 @@
     <%# lg:left-[17rem] = the w-64 nav plus the same 16px inset the other edges
         use. This was lg:left-60 (240px), which tucked the bar under the nav. %>
     <div class="fixed bottom-4 left-4 right-4 lg:left-[17rem] lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-40 overflow-hidden">
-      <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-900 coustard-regular">Draft Mode</h3>
-      </div>
+      <%= render "shared/section_heading", padding: "px-3 py-2", title: "Draft Mode" %>
       <div class="p-3 flex flex-col sm:flex-row sm:items-center gap-3">
         <div class="flex-1 text-sm text-gray-600">
           <span class="font-medium" data-casting-table-target="draftAssignmentCount"><%= @casting_table.casting_table_draft_assignments.count %></span> draft assignments

@@ -17,7 +17,7 @@
     <div class="lg:col-span-1 space-y-4">
       <!-- Template Identity -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Template Identity" %>
+        <%= render "shared/section_heading", title: "Template Identity" %>
         <div class="p-6 space-y-4">
           <div>
             <%= f.label :name, class: "block text-sm font-medium text-gray-700" %>
@@ -55,7 +55,7 @@
 
       <!-- Template Type & Mailer -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Template Type" %>
+        <%= render "shared/section_heading", title: "Template Type" %>
         <div class="p-6 space-y-4">
           <div>
             <%= f.label :template_type, class: "block text-sm font-medium text-gray-700" %>
@@ -109,7 +109,7 @@
 
       <!-- Description & Notes -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Documentation" %>
+        <%= render "shared/section_heading", title: "Documentation" %>
         <div class="p-6 space-y-4">
           <div>
             <%= f.label :description, class: "block text-sm font-medium text-gray-700" %>
@@ -131,7 +131,7 @@
 
       <!-- Variables -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Available Variables" %>
+        <%= render "shared/section_heading", title: "Available Variables" %>
         <div class="p-6">
           <div id="variables-container" class="space-y-2">
             <% if template.available_variables.present? %>
@@ -175,7 +175,7 @@
     <!-- Right Column: Email Content -->
     <div class="lg:col-span-2 space-y-4">
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Template Content" %>
+        <%= render "shared/section_heading", title: "Template Content" %>
         <div class="p-6 space-y-4">
           <div>
             <%= f.label :subject, class: "block text-sm font-medium text-gray-700" %>

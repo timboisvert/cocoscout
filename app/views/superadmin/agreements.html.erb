@@ -76,7 +76,7 @@
 
   <!-- Default Agreement Template -->
   <div class="mt-6 bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Default Agreement Template", subtitle: "This template is used as the starting point when organizations create new agreement templates." %>
+    <%= render "shared/section_heading", title: "Default Agreement Template", subtitle: "This template is used as the starting point when organizations create new agreement templates." %>
     <div class="p-6">
       <%= form_with url: agreements_monitor_path, method: :patch, local: true do |f| %>
         <div class="mb-4">

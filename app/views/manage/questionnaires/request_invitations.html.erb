@@ -22,7 +22,7 @@
     <!-- Already Invited People -->
     <% if @invited_people.any? %>
       <div class="mb-5 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Already Invited (#{@invited_people.count})" %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Already Invited (#{@invited_people.count})" %>
         <div class="p-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <% @invited_people.each do |person| %>

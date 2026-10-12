@@ -15,9 +15,7 @@
 
   <div class="mt-4">
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <%= render "shared/card_header", title: "All Promo Codes" do %>
-        <p class="text-sm text-gray-500 mt-1"><%= @promo_codes.count %> total codes</p>
-      <% end %>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "All Promo Codes", intro: "#{@promo_codes.count} total codes" %>
 
       <% if @promo_codes.any? %>
         <div class="overflow-x-auto">
@@ -100,9 +98,7 @@
     <% redemptions = FeatureCreditRedemption.includes(:feature_credit, :organization, :redeemable).order(created_at: :desc).limit(20) %>
     <% if redemptions.any? %>
       <div class="mt-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Recent Redemptions" do %>
-          <p class="text-sm text-gray-500 mt-1">Last 20 promo code redemptions</p>
-        <% end %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Recent Redemptions", intro: "Last 20 promo code redemptions" %>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">

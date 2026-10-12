@@ -32,7 +32,7 @@
 
   <!-- Audition Type & Settings -->
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <%= render "shared/card_header", title: "Audition Settings" %>
+    <%= render "shared/section_heading", title: "Audition Settings" %>
     <div class="p-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div class="p-3 bg-gray-50 rounded-lg">
@@ -56,17 +56,7 @@
 
   <!-- Audition Requests Received -->
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <%= render "shared/card_header" do %>
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-
-        <% if @audition_cycle.accepts_in_person_auditions? %>
-          Open Sign-ups
-        <% else %>
-          Video Auditions Received
-        <% end %>
-        <span class="ml-2 text-sm font-normal text-gray-600">(<%= @audition_requests.count %>)</span>
-      </h3>
-    <% end %>
+    <%= render "shared/section_heading", title: "#{@audition_cycle.accepts_in_person_auditions? ? "Open Sign-ups" : "Video Auditions Received"} (#{@audition_requests.count})" %>
     <div class="p-6">
       <% if @audition_requests.any? %>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -136,12 +126,7 @@
       end
     %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header" do %>
-        <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-          People Offered Auditions
-          <span class="ml-2 text-sm font-normal text-gray-600">(<%= @accepted_requests.count %>)</span>
-        </h3>
-      <% end %>
+      <%= render "shared/section_heading", title: "People Offered Auditions (#{@accepted_requests.count})" %>
       <div class="p-6">
         <% if @accepted_requests.any? %>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -183,12 +168,7 @@
 
   <!-- People Added to Cast -->
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-    <%= render "shared/card_header" do %>
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">
-        People Added to Cast
-        <span class="ml-2 text-sm font-normal text-gray-600">(<%= @cast_people.count %>)</span>
-      </h3>
-    <% end %>
+    <%= render "shared/section_heading", title: "People Added to Cast (#{@cast_people.count})" %>
     <div class="p-6">
       <% if @cast_people.any? %>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

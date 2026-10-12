@@ -12,8 +12,8 @@
   } %>
 
   <% if @completed_contracts.any? %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-      <%= render "shared/card_header", title: "Past Contracts" %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Past Contracts" %>
       <div class="p-4 space-y-2">
         <% @completed_contracts.each do |contract| %>
           <%= render "contract_list_row", contract: contract %>

@@ -79,10 +79,8 @@
       <div data-tabs-target="panel" class="hidden">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Left Column: Core Profile Elements -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Core Profile Elements" do %>
-              <p class="text-sm text-gray-500 mt-1">Essential profile completion metrics</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Core Profile Elements", intro: "Essential profile completion metrics" %>
             <div class="divide-y divide-gray-100">
               <!-- Headshots -->
               <div class="p-4 flex items-center justify-between">
@@ -161,10 +159,8 @@
           </div>
 
           <!-- Right Column: Extended Profile Elements -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Extended Profile Content" do %>
-              <p class="text-sm text-gray-500 mt-1">Additional profile features</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Extended Profile Content", intro: "Additional profile features" %>
             <div class="divide-y divide-gray-100">
               <!-- Videos -->
               <div class="p-4 flex items-center justify-between">
@@ -246,10 +242,8 @@
         <!-- Row 1: Event & Audition Engagement -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <!-- Registered for Events -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Event Registrations" do %>
-              <p class="text-sm text-gray-500 mt-1">Confirmed for an event</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Event Registrations", intro: "Confirmed for an event" %>
             <div class="p-4">
               <div class="text-4xl font-bold text-green-600"><%= number_with_delimiter(@registered_for_events) %></div>
               <div class="text-sm text-gray-500 mt-1"><%= @registered_for_events_percent %>% of active profiles</div>
@@ -262,10 +256,8 @@
           </div>
 
           <!-- Waitlisted -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Waitlisted" do %>
-              <p class="text-sm text-gray-500 mt-1">On a waitlist</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Waitlisted", intro: "On a waitlist" %>
             <div class="p-4">
               <div class="text-4xl font-bold text-amber-600"><%= number_with_delimiter(@registered_waitlisted) %></div>
               <div class="text-sm text-gray-500 mt-1"><%= @registered_waitlisted_percent %>% of active profiles</div>
@@ -278,10 +270,8 @@
           </div>
 
           <!-- In-Person Auditions -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "In-Person Auditions" do %>
-              <p class="text-sm text-gray-500 mt-1">Submitted request</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "In-Person Auditions", intro: "Submitted request" %>
             <div class="p-4">
               <div class="text-4xl font-bold text-purple-600"><%= number_with_delimiter(@submitted_in_person_auditions) %></div>
               <div class="text-sm text-gray-500 mt-1"><%= @submitted_in_person_percent %>% of active profiles</div>
@@ -294,10 +284,8 @@
           </div>
 
           <!-- Video Auditions -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Video Auditions" do %>
-              <p class="text-sm text-gray-500 mt-1">Submitted video</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Video Auditions", intro: "Submitted video" %>
             <div class="p-4">
               <div class="text-4xl font-bold text-red-600"><%= number_with_delimiter(@submitted_video_auditions) %></div>
               <div class="text-sm text-gray-500 mt-1"><%= @submitted_video_percent %>% of active profiles</div>
@@ -313,10 +301,8 @@
         <!-- Row 2: Original Engagement Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <!-- Talent Pool Participation -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Talent Pool Participation" do %>
-              <p class="text-sm text-gray-500 mt-1">Profiles in talent pools</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Talent Pool Participation", intro: "Profiles in talent pools" %>
             <div class="p-4">
               <div class="text-4xl font-bold text-pink-600"><%= number_with_delimiter(@in_talent_pools) %></div>
               <div class="text-sm text-gray-500 mt-1"><%= @talent_pool_percent %>% of active profiles</div>
@@ -329,10 +315,8 @@
           </div>
 
           <!-- Group Membership -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Group Membership" do %>
-              <p class="text-sm text-gray-500 mt-1">Profiles in groups</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Group Membership", intro: "Profiles in groups" %>
             <div class="p-4">
               <div class="text-4xl font-bold text-blue-600"><%= number_with_delimiter(@in_groups) %></div>
               <div class="text-sm text-gray-500 mt-1">
@@ -348,10 +332,8 @@
           </div>
 
           <!-- Sign-up Activity -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "New Profiles (14 Days)" do %>
-              <p class="text-sm text-gray-500 mt-1">Daily profile creation</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "New Profiles (14 Days)", intro: "Daily profile creation" %>
             <div class="p-4">
               <div class="flex items-end gap-1 h-16">
                 <% max_count = [@daily_signups.map { |d| d[:count] }.max, 1].max %>
@@ -373,10 +355,8 @@
 
       <!-- Recent Profiles Panel -->
       <div data-tabs-target="panel" class="hidden">
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Recent Profiles" do %>
-            <p class="text-sm text-gray-500 mt-1">Last 50 profiles created</p>
-          <% end %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Recent Profiles", intro: "Last 50 profiles created" %>
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">

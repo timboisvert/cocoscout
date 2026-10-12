@@ -75,7 +75,7 @@
   <% if @linked_course_offerings.any? %>
     <!-- Linked Courses -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Used by Courses" %>
+      <%= render "shared/section_heading", title: "Used by Courses" %>
       <div class="p-6">
         <p class="text-sm text-gray-600 mb-4">This questionnaire is delivered automatically through course registration. Manage delivery settings from each course's questionnaire page.</p>
         <div class="space-y-3">
@@ -119,10 +119,14 @@
     <% all_responses = @questionnaire.questionnaire_responses.includes(:respondent).order(created_at: :desc) %>
     <% if all_responses.any? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "All Responses (#{all_responses.count})", links: [
-          { text: "View All", path: manage_responses_contacts_questionnaire_path(@questionnaire) },
-          { text: "Grid View", path: manage_responses_table_contacts_questionnaire_path(@questionnaire) }
-        ] %>
+        <%= render "shared/section_heading", title: "All Responses (#{all_responses.count})" do %>
+          <%= link_to manage_responses_contacts_questionnaire_path(@questionnaire) do %>
+            <%= render "shared/button", text: "View All", variant: "secondary", size: "small" %>
+          <% end %>
+          <%= link_to manage_responses_table_contacts_questionnaire_path(@questionnaire) do %>
+            <%= render "shared/button", text: "Grid View", variant: "secondary", size: "small" %>
+          <% end %>
+        <% end %>
         <div class="p-6">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <% all_responses.each do |response| %>
@@ -167,7 +171,7 @@
   <% else %>
     <!-- Invite People (standalone questionnaire) -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Invitations and Responses" %>
+      <%= render "shared/section_heading", title: "Invitations and Responses" %>
       <div class="p-6">
         <%# Build already-invited people list %>
         <% invited_people = @questionnaire.questionnaire_invitations.includes(:invitee).where(invitee_type: 'Person').map(&:invitee).compact.sort_by(&:name) %>

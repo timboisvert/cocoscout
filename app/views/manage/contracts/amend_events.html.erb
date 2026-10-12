@@ -48,9 +48,7 @@
 
     <%# Full Event List %>
     <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-700">All Events After Amendment (<%= @all_events_after.count %>)</h3>
-      </div>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "All Events After Amendment (#{@all_events_after.count})" %>
       <% if @all_events_after.any? %>
         <div class="divide-y divide-gray-100">
           <% current_month = nil %>

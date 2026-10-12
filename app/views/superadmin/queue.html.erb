@@ -99,7 +99,7 @@
     <!-- Queue Breakdown -->
     <% if @queue_stats.any? %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Pending Jobs by Queue" %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Pending Jobs by Queue" %>
         <div class="p-4">
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <% @queue_stats.each do |queue_name, count| %>
@@ -116,7 +116,7 @@
     <!-- Recurring Jobs -->
     <% if @recurring_jobs.any? %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Recurring Jobs" %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Recurring Jobs" %>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
@@ -192,7 +192,7 @@
 
     <!-- Recent Jobs -->
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Recent Jobs (Last 50)" %>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Recent Jobs (Last 50)" %>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">

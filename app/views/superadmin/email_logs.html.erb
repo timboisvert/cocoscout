@@ -33,11 +33,7 @@
 
   <!-- Email logs table -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Email History" do %>
-      <% if params[:user_id].present? || params[:recipient].present? %>
-        <span class="text-sm font-normal text-gray-600">(filtered)</span>
-      <% end %>
-    <% end %>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Email History#{" (filtered)" if params[:user_id].present? || params[:recipient].present?}" %>
 
     <% if @email_logs.empty? %>
       <div class="text-center py-12 text-gray-500">

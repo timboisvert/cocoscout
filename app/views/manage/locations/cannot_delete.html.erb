@@ -12,13 +12,9 @@
     links: []
   } %>
 
-  <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900 coustard-regular"><%= @location.name %></h2>
-      <p class="text-sm text-gray-600 mt-1">
-        <%= "#{@location.address1}, #{@location.city}, #{@location.state} #{@location.postal_code}" %>
-      </p>
-    </div>
+  <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <%= render "shared/section_heading", title: @location.name,
+          intro: "#{@location.address1}, #{@location.city}, #{@location.state} #{@location.postal_code}" %>
 
     <div class="p-6">
       <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">

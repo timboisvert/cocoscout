@@ -92,10 +92,8 @@
     <div class="mt-4">
       <!-- Database Files Panel -->
       <div data-tabs-target="panel" class="hidden">
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Database Files" do %>
-            <p class="text-sm text-gray-500 mt-1">SQLite database files on disk</p>
-          <% end %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Database Files", intro: "SQLite database files on disk" %>
           <div class="p-4">
             <% if @database_files.any? %>
               <table class="w-full text-sm">
@@ -133,10 +131,8 @@
 
         <!-- Storage Breakdown -->
         <% if @storage_breakdown.present? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-            <%= render "shared/card_header", title: "Where Is the Space Going?" do %>
-              <p class="text-sm text-gray-500 mt-1">Breakdown of storage usage by type</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Where Is the Space Going?", intro: "Breakdown of storage usage by type" %>
             <div class="p-4">
               <div class="space-y-4">
                 <% @storage_breakdown.each do |item| %>
@@ -181,10 +177,8 @@
 
       <!-- Tables Panel -->
       <div data-tabs-target="panel" class="hidden">
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Database Tables" do %>
-            <p class="text-sm text-gray-500 mt-1">All tables sorted by size</p>
-          <% end %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Database Tables", intro: "All tables sorted by size" %>
           <div class="p-4 overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
@@ -240,10 +234,8 @@
         <!-- Size Distribution Chart -->
         <% sized_tables = @tables.select { |t| t[:size_bytes] && t[:size_bytes] > 0 }.first(15) %>
         <% if sized_tables.any? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-            <%= render "shared/card_header", title: "Size Distribution" do %>
-              <p class="text-sm text-gray-500 mt-1">Top tables by disk space usage</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Size Distribution", intro: "Top tables by disk space usage" %>
             <div class="p-4">
               <% max_size = sized_tables.map { |t| t[:size_bytes] }.max %>
               <div class="space-y-3">
@@ -269,10 +261,8 @@
         <!-- Row Distribution Chart -->
         <% large_tables = @tables.select { |t| t[:row_count] >= 100 }.first(15) %>
         <% if large_tables.any? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-            <%= render "shared/card_header", title: "Row Distribution" do %>
-              <p class="text-sm text-gray-500 mt-1">Top tables by row count</p>
-            <% end %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Row Distribution", intro: "Top tables by row count" %>
             <div class="p-4">
               <% max_rows = large_tables.map { |t| t[:row_count] }.max %>
               <div class="space-y-3">
@@ -295,10 +285,8 @@
 
       <!-- Indexes Panel -->
       <div data-tabs-target="panel" class="hidden">
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Database Indexes" do %>
-            <p class="text-sm text-gray-500 mt-1">All indexes across all tables</p>
-          <% end %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Database Indexes", intro: "All indexes across all tables" %>
           <div class="p-4 overflow-x-auto">
             <% if @indexes.any? %>
               <table class="w-full text-sm">

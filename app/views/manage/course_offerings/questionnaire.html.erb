@@ -15,7 +15,7 @@
   <div class="max-w-2xl">
     <%# ── Step 1: Select Questionnaire ── %>
     <div class="bg-white border border-gray-200 rounded-lg mb-6">
-      <%= render "shared/card_header", title: "Questionnaire" %>
+      <%= render "shared/section_heading", padding: "px-5 py-4", title: "Questionnaire" %>
       <div class="p-5">
         <% if @questionnaire.present? %>
           <div class="flex items-center gap-4">
@@ -89,7 +89,7 @@
     <% if @questionnaire.present? %>
       <%# ── Step 2: Delivery Rules ── %>
       <div class="bg-white border border-gray-200 rounded-lg mb-6">
-        <%= render "shared/card_header", title: "Delivery Rules" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Delivery Rules" %>
         <div class="p-5">
           <p class="text-sm text-gray-500 mb-4">When should the questionnaire be sent to course registrants?</p>
 
@@ -159,12 +159,16 @@
 
       <%# ── Responses ── %>
       <div class="bg-white border border-gray-200 rounded-lg mb-6">
-        <%= render "shared/card_header",
-          title: "Responses (#{@context_responded}/#{@context_invited})",
-          links: @context_responses.any? ? [
-            { text: "View All", path: manage_responses_contacts_questionnaire_path(@questionnaire) },
-            { text: "Grid View", path: manage_responses_table_contacts_questionnaire_path(@questionnaire) }
-          ] : [] %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Responses (#{@context_responded}/#{@context_invited})" do %>
+          <% if @context_responses.any? %>
+            <%= link_to manage_responses_contacts_questionnaire_path(@questionnaire) do %>
+              <%= render "shared/button", text: "View All", variant: "secondary", size: "small" %>
+            <% end %>
+            <%= link_to manage_responses_table_contacts_questionnaire_path(@questionnaire) do %>
+              <%= render "shared/button", text: "Grid View", variant: "secondary", size: "small" %>
+            <% end %>
+          <% end %>
+        <% end %>
         <div class="p-5">
           <% if @context_responses.any? %>
             <div class="space-y-2">
@@ -199,7 +203,7 @@
       <%# ── Manual Send (only when delivery mode is manual) ── %>
       <% if @course_offering.delivery_mode == "manual" %>
         <div class="bg-white border border-gray-200 rounded-lg">
-          <%= render "shared/card_header", title: "Send Now" %>
+          <%= render "shared/section_heading", padding: "px-5 py-4", title: "Send Now" %>
           <div class="p-5">
             <p class="text-sm text-gray-500 mb-4">Send the questionnaire to all confirmed registrants who haven't received it yet.</p>
             <%= form_with url: manage_course_offering_send_questionnaire_path(@course_offering), method: :post do %>

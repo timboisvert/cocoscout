@@ -46,8 +46,8 @@
           label: "Your organization's invite link",
           help_text: "This link never expires and can be used by anyone. Share it with your cast, crew, or team members." %>
 
-      <div class="mt-8 border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Sample Email Template" %>
+      <div class="mt-8 border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Sample Email Template" %>
         <div class="p-4 bg-gray-50">
           <p class="text-sm text-gray-600 mb-3">Here's a template you can copy and paste into your email:</p>
           <div class="bg-white border border-gray-200 rounded-lg p-4 text-sm text-gray-700 font-mono whitespace-pre-wrap" id="email-template">Subject: Join <%= Current.organization.name %> on CocoScout
@@ -83,13 +83,9 @@ Looking forward to working with you!
 
       <%# Step 1: Search Section %>
       <div data-invite-search-target="searchSection">
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <div class="flex items-center gap-2">
-              <span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold">1</span>
-              <h3 class="font-medium text-gray-900">Find someone to invite</h3>
-            </div>
-          </div>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Find someone to invite",
+                icon: '<span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold flex-shrink-0">1</span>' %>
           <div class="p-4">
             <p class="text-gray-600 text-sm mb-4">
               Search by name or email. If they're already on CocoScout, you can invite them directly.
@@ -124,13 +120,9 @@ Looking forward to working with you!
 
       <%# Selected Person Display (shown when selecting an existing CocoScout user) %>
       <div data-invite-search-target="selectedPerson" class="hidden mb-4">
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <div class="flex items-center gap-2">
-              <span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold">1</span>
-              <h3 class="font-medium text-gray-900">Who are you inviting?</h3>
-            </div>
-          </div>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Who are you inviting?",
+                icon: '<span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold flex-shrink-0">1</span>' %>
           <div class="p-4">
             <div class="flex items-center justify-between">
               <div>
@@ -155,13 +147,9 @@ Looking forward to working with you!
           <input type="hidden" name="selected_profile_ids[]" value="" data-invite-search-target="selectedPersonIdInput">
 
           <%# Step 1: Who are you inviting? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4" data-invite-search-target="personDetailsSection">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold">1</span>
-                <h3 class="font-medium text-gray-900">Who are you inviting?</h3>
-              </div>
-            </div>
+          <div class="border border-gray-200 rounded-lg overflow-hidden mb-4 bg-white" data-invite-search-target="personDetailsSection">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Who are you inviting?",
+                  icon: '<span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold flex-shrink-0">1</span>' %>
             <div class="p-4">
               <div class="flex flex-col sm:flex-row sm:gap-4">
                 <div class="w-full sm:w-1/2">
@@ -194,14 +182,9 @@ Looking forward to working with you!
 
           <%# Step 2: Talent Pool (optional) %>
           <% if @talent_pools.any? %>
-            <div class="border border-gray-200 rounded-lg overflow-hidden mb-4" data-controller="toggle-section">
-              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold">2</span>
-                    <h3 class="font-medium text-gray-900">Add to a talent pool?</h3>
-                    <span class="text-sm text-gray-500">(optional)</span>
-                  </div>
+            <div class="border border-gray-200 rounded-lg overflow-hidden mb-4 bg-white" data-controller="toggle-section">
+              <%= render "shared/section_heading", padding: "px-4 py-3", title: "Add to a talent pool?", intro: "Optional",
+                    icon: '<span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold flex-shrink-0">2</span>' do %>
                   <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox"
                            name="invite_to_pool"
@@ -211,8 +194,7 @@ Looking forward to working with you!
                            data-toggle-section-target="toggle">
                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
                   </label>
-                </div>
-              </div>
+              <% end %>
               <div class="p-4 hidden" data-toggle-section-target="content">
                 <p class="text-sm text-gray-600 mb-3">Select which talent pool to add this person to when they accept the invitation.</p>
                 <% if @talent_pool_options.size == 1 %>
@@ -233,13 +215,9 @@ Looking forward to working with you!
           <% end %>
 
           <%# Step 3: Review & Send Email %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold">3</span>
-                <h3 class="font-medium text-gray-900">Review & send invitation</h3>
-              </div>
-            </div>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Review & send invitation",
+                  icon: '<span class="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold flex-shrink-0">3</span>' %>
             <div class="p-4 space-y-4">
               <% rendered_email = ContentTemplateService.render("person_invitation", { organization_name: Current.organization.name, setup_url: "{{setup_url}}" }) %>
               <div>

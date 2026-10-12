@@ -22,7 +22,7 @@
     <% current_mode = @audition_cycle.signup_mode.presence || "curated" %>
     <% open_mode = current_mode == "open" %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Sign-up Mode" %>
+      <%= render "shared/section_heading", padding: "px-5 py-4", title: "Sign-up Mode" %>
       <div class="p-5 space-y-3">
         <p class="text-sm text-gray-500">How performers get into this audition.</p>
 
@@ -48,7 +48,7 @@
 
     <%# ===== Audition Format ===== %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Audition Format" %>
+      <%= render "shared/section_heading", padding: "px-5 py-4", title: "Audition Format" %>
       <div class="p-5">
         <p class="text-sm text-gray-500 mb-4">
           <span data-audition-mode-target="curatedOptions" class="<%= 'hidden' if open_mode %>">Choose which audition formats to accept. Both can be enabled to allow video submissions and in-person sessions.</span>
@@ -111,7 +111,7 @@
 
     <%# ===== Request Window ===== %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: open_mode ? "Sign-up Window" : "Request Window" %>
+      <%= render "shared/section_heading", padding: "px-5 py-4", title: open_mode ? "Sign-up Window" : "Request Window" %>
       <div class="p-5">
         <p class="text-sm text-gray-500 mb-5">When should <%= open_mode ? "sign-ups" : "the request window" %> open? Optionally set a close date, or leave it open-ended.</p>
 
@@ -132,7 +132,7 @@
 
     <%# ===== Notifications ===== %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: "Notifications" %>
+      <%= render "shared/section_heading", padding: "px-5 py-4", title: "Notifications" %>
       <div class="p-5">
         <div class="flex items-center justify-between">
           <div>
@@ -153,7 +153,7 @@
       selected_reviewer_ids = @audition_cycle.reviewer_people.pluck(:id).map(&:to_s)
     %>
     <div data-audition-mode-target="curatedOptions" class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6 <%= 'hidden' if open_mode %>" data-controller="reviewer-wizard">
-      <%= render "shared/card_header", title: "Review Team" %>
+      <%= render "shared/section_heading", padding: "px-5 py-4", title: "Review Team" %>
       <div class="p-5 space-y-3">
         <p class="text-sm text-gray-500">Who can view and vote on submissions and auditions.</p>
 

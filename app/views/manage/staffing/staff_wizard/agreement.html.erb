@@ -28,11 +28,8 @@
     <% end %>
 
     <%# Preview of the selected agreement, rendered with this member's details. %>
-    <div class="rounded-lg border border-gray-200 overflow-hidden mb-6">
-      <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-        <span class="text-sm font-semibold text-gray-900"><%= @selected_template.name %></span>
-        <span class="text-xs text-gray-500">Version <%= @selected_template.version %></span>
-      </div>
+    <div class="rounded-lg border border-gray-200 overflow-hidden mb-6 bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: @selected_template.name, intro: "Version #{@selected_template.version}" %>
       <div class="p-4 max-h-80 overflow-y-auto prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1">
         <%= @staff_member.rendered_agreement_html(@selected_template) %>
       </div>

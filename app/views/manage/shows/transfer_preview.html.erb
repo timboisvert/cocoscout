@@ -48,7 +48,7 @@
 
   <!-- Events Being Transferred -->
   <div class="mt-6 bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Events Being Transferred (#{@shows_to_transfer.count})" %>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Events Being Transferred (#{@shows_to_transfer.count})" %>
 
     <div class="divide-y divide-gray-200">
       <% @shows_to_transfer.sort_by(&:date_and_time).each do |show| %>
@@ -82,7 +82,7 @@
 
   <!-- Data Being Transferred -->
   <div class="mt-6 bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Data Being Transferred" %>
+    <%= render "shared/section_heading", title: "Data Being Transferred" %>
 
     <div class="p-6">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

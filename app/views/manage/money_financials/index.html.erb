@@ -53,8 +53,8 @@
         three boxes above. Here's the detail behind them. %>
     <% if @course_offering %>
       <% line_items = @course_offering.course_offering_payout&.line_items&.to_a || [] %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Registrations & payouts" %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Registrations & payouts" %>
         <div class="p-4 space-y-4">
           <dl class="grid grid-cols-3 gap-4">
             <div>

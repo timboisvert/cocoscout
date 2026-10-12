@@ -55,7 +55,7 @@
     <%# ==================== TAB 0: SCOPE ==================== %>
     <div data-tabs-target="panel">
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "What kind of sign-up form?" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "What kind of sign-up form?" %>
         <div class="p-5 space-y-4">
           <p class="text-sm text-gray-600 mb-4">Choose how registrations should be organized across your events.</p>
 
@@ -92,7 +92,7 @@
     <%# ==================== TAB 1: EVENTS ==================== %>
     <div data-tabs-target="panel" data-settings-form-target="eventsPanel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Event Selection" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Event Selection" %>
         <div class="p-5 space-y-4">
           <%# Single Event Selection %>
           <div data-settings-form-target="singleEventSection" class="<%= @sign_up_form.single_event? ? '' : 'hidden' %>">
@@ -210,7 +210,7 @@
     <%# ==================== TAB 2: SLOTS ==================== %>
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Slot Structure" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Slot Structure" %>
         <div class="p-5 space-y-6">
           <p class="text-sm text-gray-600 mb-4">How are registration slots structured?</p>
 
@@ -724,7 +724,7 @@
     <%# ==================== TAB 4: SCHEDULE ==================== %>
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: is_waitlist ? "Activation" : "Schedule" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: is_waitlist ? "Activation" : "Schedule" %>
         <div class="p-5 space-y-6">
           <% if is_waitlist %>
             <%# Waitlist: Simple activation matching wizard style %>
@@ -1019,7 +1019,7 @@
     <%# ==================== TAB 5: NOTIFICATIONS ==================== %>
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <%= render "shared/card_header", title: "Team Notifications" %>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Team Notifications" %>
         <div class="p-5 space-y-6">
           <p class="text-sm text-gray-600">Choose whether to notify your production team when someone registers.</p>
 

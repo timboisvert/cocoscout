@@ -30,8 +30,8 @@
 
     <%# Events being cancelled %>
     <% if @shows.any? %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "Events Being Cancelled (#{@shows.count})" %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Events Being Cancelled (#{@shows.count})" %>
         <div class="p-4 space-y-1 max-h-64 overflow-y-auto">
           <% @shows.each do |show| %>
             <%= render partial: "shared/show_row", locals: {
@@ -50,8 +50,8 @@
 
     <%# Settlement options %>
     <%= form_with url: process_cancel_manage_contract_path(@contract), method: :post, local: true, data: { controller: "contract-cancel" } do |f| %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "Payment Settlement" %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Payment Settlement" %>
         <div class="p-4">
           <% if @pending_payments.any? %>
             <p class="text-sm text-gray-600 mb-4">

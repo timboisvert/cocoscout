@@ -64,7 +64,7 @@
   <% if @show.canceled %>
     <!-- Uncancel Section -->
     <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Restore This Event" %>
+      <%= render "shared/section_heading", title: "Restore This Event" %>
       <div class="p-6">
         <p class="text-sm text-gray-600 mb-4">Remove the canceled status and restore this event to the calendar.</p>
 
@@ -95,7 +95,7 @@
   <% else %>
     <!-- Cancel Section -->
     <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/card_header", title: "Cancel This Event" %>
+      <%= render "shared/section_heading", title: "Cancel This Event" %>
       <div class="p-6">
         <p class="text-sm text-gray-600 mb-6">Mark as canceled but keep it visible in the calendar. You can uncancel it later if needed.</p>
 
@@ -257,7 +257,7 @@
 
   <!-- Delete Section -->
   <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Permanently Delete" %>
+    <%= render "shared/section_heading", title: "Permanently Delete" %>
     <div class="p-6">
       <div class="flex items-start gap-3 mb-4">
         <svg class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -3,7 +3,7 @@
     subject, body. %>
 <% input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
 <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
-  <%= render "shared/card_header", title: "Ticket Buyers" %>
+  <%= render "shared/section_heading", title: "Ticket Buyers" %>
   <div class="p-6 space-y-4">
     <p class="text-sm text-gray-600">
       <%= pluralize(summary.orders.size, "person") %> still <%= summary.orders.one? ? "holds" : "hold" %> tickets for this canceled date.

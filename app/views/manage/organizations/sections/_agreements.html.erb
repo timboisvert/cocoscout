@@ -1,6 +1,6 @@
 <% unless @organization.feature_available?(:agreements) %>
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Agreement Templates" do %>
+    <%= render "shared/section_heading", title: "Agreement Templates" do %>
       <%= render "shared/pro_marker", kind: :header %>
     <% end %>
     <div class="p-6">
@@ -11,7 +11,7 @@
   </div>
 <% else %>
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-  <%= render "shared/card_header", title: "Agreement Templates" do %>
+  <%= render "shared/section_heading", title: "Agreement Templates" do %>
     <%= render "shared/pro_marker", kind: :header %>
     <%= link_to new_manage_agreement_template_path do %>
       <%= render "shared/button", text: "New Template", variant: "secondary", size: "small" %>

@@ -134,8 +134,8 @@
   </div>
 
   <!-- Keys List -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <%= render "shared/card_header", title: "Short URL Keys (#{number_with_delimiter(@total_keys)} total)" %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Short URL Keys (#{number_with_delimiter(@total_keys)} total)" %>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
@@ -227,8 +227,8 @@
   </div>
 
   <!-- Technical Details -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4">
-    <%= render "shared/card_header", title: "Technical Details" %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mt-4 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Technical Details" %>
     <div class="p-4">
       <p class="text-sm text-gray-600 mb-4">
         Short URL keys are <strong>sacred</strong> and permanent. Once assigned, a key should last forever.
