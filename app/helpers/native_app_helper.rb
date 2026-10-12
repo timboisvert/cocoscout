@@ -19,19 +19,19 @@ module NativeAppHelper
   end
 
   # Everything in My, as the menu's tiles: the web nav's items, each titled
-  # "My …" like the page it opens (Tim, 2026-10-12), with SF Symbols, the Door for anyone who can work one, then
+  # "My …" like the page it opens (Tim, 2026-10-12), with SF Symbols, then
   # profile, groups (only for someone in one) and settings. badge is a count.
+  # The Door isn't a tile: it comes last, as the menu's full-width bar, only
+  # while a show someone can work is on (DoorTonight; Tim, 2026-10-13).
   # Signed out: an empty menu (the app shows just the sign-in screen).
   def native_menu
     user = native_user
     return [] unless user
 
     items = talent_nav_sections.flat_map { |section| section[:items] }.map { |item| native_menu_item(item) }
-    if native_works_door?(user) && items.none? { |item| item[:id] == "door" }
-      items.insert(items.index { |item| item[:id] == "shows" }.to_i + 1, native_menu_item(path: door_index_path))
-    end
+    items.reject! { |item| item[:id] == "door" }
     paths = [ profile_path, (groups_path if native_in_a_group?(user)), account_path ].compact
-    items + paths.map { |path| native_menu_item(path: path) }
+    items + paths.map { |path| native_menu_item(path: path) } + [ native_door_item(user) ].compact
   end
 
   # Who's signed in, for the top of the menu. headshot_path is relative to
@@ -95,16 +95,28 @@ module NativeAppHelper
     { id: id, title: title, path: path, icon: icon, badge: item[:badge].to_i }
   end
 
+  # The Door, while a show is on: straight to that show's door when there's
+  # one, otherwise the list of tonight's. subtitle says which and when.
+  def native_door_item(user)
+    listings = DoorTonight.listings_for(user)
+    return nil if listings.empty?
+
+    if listings.one?
+      listing = listings.first
+      starts = listing.show.date_and_time
+      verb = starts <= Time.current ? "Started" : "Starts"
+      { id: "door", title: "Work the door", path: door_path(listing), icon: "qrcode.viewfinder", badge: 0,
+        subtitle: "#{listing.display_title} · #{verb} #{starts.strftime('%-l:%M %p')}" }
+    else
+      { id: "door", title: "Work the door", path: door_index_path, icon: "qrcode.viewfinder", badge: 0,
+        subtitle: "#{listings.size} shows on now" }
+    end
+  end
+
   # Groups are a niche corner; the menu only offers them to someone in one.
   def native_in_a_group?(user)
     return @native_in_a_group if defined?(@native_in_a_group)
 
     @native_in_a_group = GroupMembership.joins(:group).where(person_id: user.people.active.select(:id), groups: { archived_at: nil }).exists?
-  end
-
-  # Anyone who can work a door: a granted volunteer, or the theater's managers
-  # (who'd use Ticketing on the web, but have no /manage in the app).
-  def native_works_door?(user)
-    TicketingDoorAccess.organizations_for(user).any?
   end
 end

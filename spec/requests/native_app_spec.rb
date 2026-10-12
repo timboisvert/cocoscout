@@ -34,14 +34,37 @@ RSpec.describe "The iOS app's web side", type: :request do
       expect(person_card).to include("name" => "Ida Performer", "email" => user.email_address, "initials" => "IP")
     end
 
-    it "adds the Door for anyone who can work one, managers included" do
+    # The Door is the menu's last, full-width bar, and only while a show
+    # someone can work is on (DoorTonight; Tim, 2026-10-13).
+    it "offers the Door last, only while a show is on, managers included" do
       TicketingProfile.for(org).update!(enabled: true)
       create(:organization_role, :manager, user: user, organization: org)
+      production = create(:production, organization: org)
+      show = create(:show, production: production, date_and_time: Time.zone.local(2026, 10, 16, 21))
+      listing = create(:ticket_listing, organization: org, show: show, status: "on_sale")
       sign_in
-      get my_dashboard_path, headers: in_app
 
-      expect(menu.map { |item| item["id"] }).to eq(%w[home messages tasks shows door courses auditions documents payments productions profile settings])
-      expect(menu.find { |item| item["id"] == "door" }["path"]).to eq(door_index_path)
+      travel_to Time.zone.local(2026, 10, 15, 20) do
+        get my_dashboard_path, headers: in_app
+        expect(menu.map { |item| item["id"] }).to eq(%w[home messages tasks shows courses auditions documents payments productions profile settings])
+      end
+
+      travel_to Time.zone.local(2026, 10, 16, 12) do
+        get my_dashboard_path, headers: in_app
+        door = menu.last
+        expect(door).to include("id" => "door", "title" => "Work the door", "path" => door_path(listing))
+        expect(door["subtitle"]).to eq("#{listing.display_title} · Starts 9:00 PM")
+      end
+
+      # No end time set: still on at 1:30 AM, gone after 2.
+      travel_to Time.zone.local(2026, 10, 17, 1, 30) do
+        get my_dashboard_path, headers: in_app
+        expect(menu.last["subtitle"]).to include("Started 9:00 PM")
+      end
+      travel_to Time.zone.local(2026, 10, 17, 2, 15) do
+        get my_dashboard_path, headers: in_app
+        expect(menu.map { |item| item["id"] }).not_to include("door")
+      end
     end
 
     it "offers Groups only to someone in one" do

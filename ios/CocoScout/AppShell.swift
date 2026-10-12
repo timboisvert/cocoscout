@@ -3,13 +3,15 @@ import UIKit
 import UserNotifications
 
 /// One menu tile as the server describes it (NativeAppHelper#native_menu):
-/// icon is an SF Symbol name; badge is a count.
+/// icon is an SF Symbol name; badge is a count; subtitle is a second line
+/// (the Door's bar says which show and when).
 struct MenuItem: Codable, Equatable, Identifiable {
     let id: String
     let title: String
     let path: String
     let icon: String
     var badge: Int?
+    var subtitle: String?
 }
 
 /// Who's signed in, for the menu's pink card (NativeAppHelper#native_person).
@@ -73,7 +75,9 @@ final class AppShell {
     func update(menu newMenu: [MenuItem], person newPerson: MenuPerson?) {
         menu = newMenu
         person = newPerson
-        Self.cache(newMenu.map { MenuItem(id: $0.id, title: $0.title, path: $0.path, icon: $0.icon) }, Self.menuKey)
+        // Without badges or the Door (it comes and goes with tonight's shows).
+        Self.cache(newMenu.filter { $0.id != "door" }.map { MenuItem(id: $0.id, title: $0.title, path: $0.path, icon: $0.icon) },
+                   Self.menuKey)
         Self.cache(newPerson, Self.personKey)
         // The app icon shows unread messages, as the notifications set it.
         let unread = newMenu.first { $0.id == "messages" }?.badge ?? 0

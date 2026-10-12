@@ -42,7 +42,9 @@ struct MenuView: View {
     /// buttons under who's signed in, instead of among the tiles.
     private static let accountIDs: Set<String> = ["profile", "groups", "settings"]
     private var accountItems: [MenuItem] { items.filter { Self.accountIDs.contains($0.id) } }
-    private var everydayItems: [MenuItem] { items.filter { !Self.accountIDs.contains($0.id) } }
+    private var everydayItems: [MenuItem] { items.filter { !Self.accountIDs.contains($0.id) && $0.id != "door" } }
+    /// Only while a show someone can work is on (DoorTonight on the server).
+    private var doorItem: MenuItem? { items.first { $0.id == "door" } }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,8 +58,49 @@ struct MenuView: View {
                 }
                 .padding(16)
             }
+            if let doorItem {
+                Button { onAction(.open(doorItem)) } label: { doorBar(doorItem) }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 16)
+            }
         }
         .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: The Door
+
+    /// Full width along the bottom, pink: tonight's show and when, a tap
+    /// from the door.
+    private func doorBar(_ item: MenuItem) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: item.icon)
+                .font(.system(size: 24, weight: .regular))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.2)))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                if let subtitle = item.subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: 14).fill(headerGradient))
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: The pink card

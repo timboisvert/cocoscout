@@ -258,10 +258,18 @@
           </div>
         </div>
 
-        <!-- Mobile: All Months List View -->
+        <!-- Mobile: All Months List View (this month on) -->
+        <% mobile_months = @calendar_shows_by_month.sort.reject { |month_start, _| month_start < Time.current.beginning_of_month } %>
+        <% if mobile_months.empty? %>
+          <%# Everything's in the past: say so instead of a blank tab. %>
+          <% last_show = @calendar_shows.max_by(&:date_and_time) %>
+          <div class="md:hidden bg-white border border-gray-200 rounded-lg p-4">
+            <div class="text-sm font-medium text-gray-900">Nothing coming up</div>
+            <p class="text-sm text-gray-600 mt-1">The last date on this production's calendar was <%= last_show.date_and_time.strftime("%A, %B %-d, %Y") %>.</p>
+          </div>
+        <% end %>
         <div class="md:hidden space-y-8">
-          <% @calendar_shows_by_month.sort.each do |month_start, shows| %>
-            <% next if month_start < Time.current.beginning_of_month %>
+          <% mobile_months.each do |month_start, shows| %>
             <div class="border border-gray-200 rounded-lg p-4">
               <h2 class="text-xl font-bold mb-4"><%= month_start.strftime("%B %Y") %></h2>
 
