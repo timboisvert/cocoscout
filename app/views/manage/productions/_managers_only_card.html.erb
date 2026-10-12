@@ -1,0 +1,11 @@
+<%# A Pro section on the production page, as a producer sees it: what it is,
+    and that the organization's managers look after it. No links into the
+    module. Locals: title, description. %>
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+  <%= render "shared/section_heading", title: title do %>
+    <%= render "shared/pro_marker", kind: :header %>
+  <% end %>
+  <div class="p-6 pt-4">
+    <p class="text-sm text-gray-600"><%= description %></p>
+  </div>
+</div>

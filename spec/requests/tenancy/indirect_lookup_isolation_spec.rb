@@ -203,6 +203,18 @@ RSpec.describe "Cross-org isolation: indirect lookups (manage)", type: :request 
     end
   end
 
+  describe "production agreement template (Agreements)" do
+    let!(:victim_template) do
+      AgreementTemplate.create!(organization: victim_org, name: "Their terms", content: "<p>Confidential terms</p>")
+    end
+
+    it "won't attach another org's agreement template to my production" do
+      patch manage_production_path(production),
+            params: { production: { agreement_template_id: victim_template.id, agreement_required: "1" } }
+      expect(production.reload.agreement_template_id).to be_nil
+    end
+  end
+
   describe "staffing: add a staff member (Staffing)" do
     it "404s adding a foreign org's person as my staff" do
       expect {

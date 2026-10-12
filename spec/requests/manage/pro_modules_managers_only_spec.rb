@@ -41,6 +41,33 @@ RSpec.describe "Pro modules are for managers", type: :request do
     end
   end
 
+  it "keeps a producer out of the Pro actions on the production page (pay, agreements)" do
+    template = AgreementTemplate.create!(organization: org, name: "House rules", content: "<p>Be kind</p>")
+    sign_in(producer)
+
+    patch update_pay_manage_production_path(production), params: { performers_paid: "0" }
+    expect(response).to redirect_to(manage_path)
+    expect(production.reload.pays_performers?).to be(true)
+
+    get agreement_status_manage_production_path(production)
+    expect(response).to redirect_to(manage_path)
+
+    post send_agreement_reminders_manage_production_path(production)
+    expect(response).to redirect_to(manage_path)
+
+    patch manage_production_path(production),
+          params: { production: { name: "Boylesque!", agreement_template_id: template.id, agreement_required: "1" } }
+    production.reload
+    expect(production.name).to eq("Boylesque!") # the free settings still save
+    expect(production.agreement_template_id).to be_nil
+    expect(production.agreement_required).to be_falsey
+
+    get edit_manage_production_path(production)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include(manage_money_payout_calculation_wizard_start_path(production_id: production.id))
+    expect(response.body).not_to include(manage_agreement_templates_path)
+  end
+
   it "lets a manager in everywhere" do
     sign_in(owner)
     [ manage_money_index_path, manage_money_show_financials_path(show), manage_contracts_path, manage_reports_path, manage_ticketing_path ].each do |path|
