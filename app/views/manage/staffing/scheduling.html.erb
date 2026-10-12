@@ -665,9 +665,9 @@
                       own modal would re-open it on every backdrop click). %>
                   <div id="<%= detail_cid %>" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
                        data-controller="modal" data-action="click->modal#closeOnBackdrop">
-                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl sm:mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
                       <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
-                        <h3 class="text-lg font-semibold text-white truncate"><%= show.display_name %> · <%= show.date_and_time.strftime("%a, %b %-d") %></h3>
+                        <h3 class="text-lg font-semibold text-white leading-snug sm:truncate"><%= show.display_name %> · <%= show.date_and_time.strftime("%a, %b %-d") %></h3>
                         <button type="button" data-action="click->modal#close" class="text-white/70 hover:text-white cursor-pointer flex-shrink-0 ml-3">
                           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
@@ -726,14 +726,16 @@
                                 tech and still be checked for the door person. %>
                             <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
                               <% coverage[:roles].each do |role| %>
-                                <div class="flex items-center gap-3 px-4 py-3 <%= "bg-gray-50/60" if role[:exempt] %>">
+                                <%# On a phone the buttons take their own line under the role
+                                    (the name and "Not covered yet" wrapped a letter at a time). %>
+                                <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 <%= "bg-gray-50/60" if role[:exempt] %>">
                                   <% if role[:exempt] %>
                                     <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
                                     <div class="min-w-0 flex-1">
                                       <p class="text-sm font-medium text-gray-500"><%= role[:name] %></p>
                                       <p class="text-xs text-gray-400">Not needed for this show</p>
                                     </div>
-                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "flex-shrink-0" do %>
+                                    <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0" do %>
                                       <%= render "shared/button", text: "Needs it again", variant: "secondary", size: "small", type: :submit %>
                                     <% end %>
                                   <% elsif role[:covered] %>
@@ -748,7 +750,7 @@
                                       <p class="text-sm font-medium text-gray-900"><%= role[:name] %></p>
                                       <p class="text-xs text-amber-700 font-medium">Not covered yet</p>
                                     </div>
-                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                    <div class="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0">
                                       <%# Straight into the Add-shift modal with this role and
                                           show preselected — the day payloads ride on the button
                                           exactly like the "+ Add shift" trigger. %>

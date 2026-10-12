@@ -61,11 +61,14 @@
       <% clickable = box[:state].nil? || box[:count].positive? %>
       <%# The box wears its state's color while it holds money; empty states stay quiet. %>
       <% tint = box[:count].positive? ? box[:tint] : "bg-white border-gray-200" %>
-      <% classes = "block rounded-lg border p-4 transition #{tint} #{active ? "ring-2 #{box[:ring]}" : ""} #{clickable ? "hover:shadow-sm" : "opacity-60"}" %>
+      <% classes = "block rounded-lg border p-3 sm:p-4 transition #{tint} #{active ? "ring-2 #{box[:ring]}" : ""} #{clickable ? "hover:shadow-sm" : "opacity-60"}" %>
+      <%# On a phone: the label, the amount and how many payees; the longer
+          note is for wider screens. %>
       <% content = capture do %>
-        <div class="text-xs text-gray-500 uppercase tracking-wide"><%= box[:label] %></div>
-        <div class="mt-1 text-xl sm:text-2xl font-bold tabular-nums <%= box[:color] %>"><%= number_to_currency(box[:cents] / 100.0) %></div>
-        <div class="text-xs text-gray-400 mt-0.5"><%= box[:note] %></div>
+        <div class="text-[11px] sm:text-xs text-gray-500 uppercase tracking-wide leading-tight"><%= box[:label] %></div>
+        <div class="mt-1 text-lg sm:text-2xl font-bold tabular-nums <%= box[:color] %>"><%= number_to_currency(box[:cents] / 100.0) %></div>
+        <div class="sm:hidden text-[11px] text-gray-400 mt-0.5"><%= box[:count].positive? ? pluralize(box[:count], box[:state] == :returned ? "payment" : "payee") : "none" %></div>
+        <div class="hidden sm:block text-xs text-gray-400 mt-0.5"><%= box[:note] %></div>
       <% end %>
       <% if clickable %>
         <%= link_to content, state_path.call(box[:state]), class: classes, data: { turbo_action: "replace" } %>
@@ -399,13 +402,17 @@
             <% if contributions.any? %>
               <%# Click a payee to expand what they're being paid for. %>
               <details class="group">
-                <summary class="px-5 py-3 flex items-center justify-between gap-4 cursor-pointer list-none hover:bg-gray-50">
+                <%# On a phone the name gets the room: its count sits under it and
+                    the badge under the amount (names were cut to "An…"). %>
+                <summary class="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 sm:gap-4 cursor-pointer list-none hover:bg-gray-50">
                   <div class="flex items-center gap-2 min-w-0">
                     <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    <span class="text-gray-900 truncate"><%= item.payee&.name %></span>
-                    <span class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></span>
+                    <div class="min-w-0 sm:flex sm:items-center sm:gap-2">
+                      <div class="text-gray-900 truncate"><%= item.payee&.name %></div>
+                      <div class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></div>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-3 flex-shrink-0">
+                  <div class="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 flex-shrink-0">
                     <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
                     <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch %>
                   </div>
@@ -413,7 +420,7 @@
                 <% if item.error.present? %>
                   <div class="px-5 pb-2 pl-11 text-xs text-red-600"><%= item.error %></div>
                 <% end %>
-                <div class="bg-gray-50 border-t border-gray-100 px-5 py-1.5 pl-11">
+                <div class="bg-gray-50 border-t border-gray-100 px-4 sm:px-5 py-1.5 pl-10 sm:pl-11">
                   <% contributions.each do |c| %>
                     <% source_path = payout_contribution_source_path(c) %>
                     <% worksheet = c.worksheet_entries %>
@@ -460,14 +467,14 @@
                 </div>
               </details>
             <% else %>
-              <div class="px-5 py-3 flex items-center justify-between gap-4">
+              <div class="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 sm:gap-4">
                 <div class="min-w-0">
                   <span class="text-gray-900"><%= item.payee&.name %></span>
                   <% if item.error.present? %>
                     <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
                   <% end %>
                 </div>
-                <div class="flex items-center gap-3 flex-shrink-0">
+                <div class="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 flex-shrink-0">
                   <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
                   <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch %>
                 </div>

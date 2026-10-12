@@ -11,13 +11,15 @@
     line_input shared input class string
     persisted  whether this row already exists (only those carry an id)
 %>
-<div class="grid grid-cols-[minmax(0,1fr)_6rem_8rem] sm:grid-cols-[minmax(0,1fr)_7rem_9rem] items-center gap-2 px-3 py-2" data-ticket-line>
+<%# On a phone the source has its own line and the two boxes sit under it
+    (names were cut to "D.."); from sm up, one row of three. %>
+<div class="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_7rem_9rem] items-center gap-x-2 gap-y-1.5 px-3 py-2" data-ticket-line>
   <% if persisted %>
     <%= line.hidden_field :id %>
   <% end %>
   <%= line.hidden_field :ticket_source_id %>
 
-  <span class="min-w-0 truncate text-sm font-medium text-gray-900"><%= label %></span>
+  <span class="col-span-2 sm:col-span-1 min-w-0 truncate text-sm font-medium text-gray-900"><%= label %></span>
 
   <%# Blank rather than 0 / 0.0 when a source sold nothing, so the placeholder
       shows; money always to the cent. %>

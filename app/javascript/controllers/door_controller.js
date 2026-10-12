@@ -337,9 +337,15 @@ export default class extends Controller {
         this.soldTarget.textContent = counts.sold
     }
 
+    // Sell sits beside List and Scan; it opens the sale form under them and
+    // shows pressed while it's open. Pressing it (or Close) again shuts it.
     toggleSell() {
-        const open = this.sellPanelTarget.classList.toggle("hidden")
-        this.sellButtonTarget.classList.toggle("hidden", !open)
+        const open = !this.sellPanelTarget.classList.toggle("hidden")
+        if (this.hasSellButtonTarget) {
+            this.sellButtonTarget.setAttribute("aria-pressed", open)
+            this.constructor.ACTIVE.forEach((c) => this.sellButtonTarget.classList.toggle(c, open))
+        }
+        if (open) this.sellPanelTarget.scrollIntoView({ block: "nearest", behavior: "smooth" })
     }
 
     async post(url, body) {

@@ -55,6 +55,11 @@ RSpec.describe "Door", type: :request do
       sign_in(door_person)
       get door_path(listing)
       expect(response.body).to include("Sell tickets", "Card or phone pay")
+      # Sell sits beside List and Scan, and its form above the list, so a long
+      # night's list never pushes it out of reach (Tim, 2026-10-11).
+      body = response.body
+      expect(body.index('data-door-target="sellButton"')).to be < body.index('data-door-target="listPanel"')
+      expect(body.index('data-door-target="sellPanel"')).to be < body.index('data-door-target="listPanel"')
     end
 
     it "is not found for someone without access, a revoked grant, or a theater that isn't switched on" do

@@ -8,14 +8,16 @@
   display_alert = local_assigns[:alert].presence || params[:alert].presence
 %>
 
+<%# Full width on a phone (centred with an automatic width, it shrank to
+    half the screen and wrapped into a narrow column); centred from sm up. %>
 <% if display_notice.present? %>
-  <div data-controller="notice" data-notice-timeout-value="2000" class="fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-auto max-w-lg px-6 py-3 bg-pink-500 text-white shadow-lg flex items-center transition-opacity duration-300 rounded-bl-lg rounded-br-lg" data-notice-target="container">
+  <div data-controller="notice" data-notice-timeout-value="2000" class="fixed inset-x-0 top-0 z-50 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-max sm:max-w-lg px-4 sm:px-6 py-3 bg-pink-500 text-white shadow-lg flex items-center transition-all duration-300 sm:rounded-b-lg" data-notice-target="container">
     <span class="font-medium"><%= display_notice %></span>
   </div>
 <% end %>
 
 <% if display_alert.present? %>
-  <div data-controller="notice" data-notice-timeout-value="5000" class="fixed top-0 left-1/2 transform -translate-x-1/2 z-50 w-auto max-w-lg px-6 py-3 bg-red-600 text-white shadow-lg flex items-center transition-opacity duration-300 rounded-bl-lg rounded-br-lg" data-notice-target="container">
+  <div data-controller="notice" data-notice-timeout-value="5000" class="fixed inset-x-0 top-0 z-50 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-max sm:max-w-lg px-4 sm:px-6 py-3 bg-red-600 text-white shadow-lg flex items-center transition-all duration-300 sm:rounded-b-lg" data-notice-target="container">
     <span class="font-medium"><%= display_alert %></span>
   </div>
 <% end %>

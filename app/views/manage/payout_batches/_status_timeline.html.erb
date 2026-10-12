@@ -77,9 +77,11 @@
 </div>
 
 <%# Where that sits in the run's lifecycle. %>
-<div class="rounded-lg border border-gray-200 bg-white p-5 mb-6">
-  <div class="overflow-x-auto">
-    <div class="flex items-start min-w-[30rem]">
+<%# Fits a phone: narrower steps and smaller labels instead of a strip that
+    scrolls sideways inside its box (Tim, 2026-10-11). %>
+<div class="rounded-lg border border-gray-200 bg-white p-4 sm:p-5 mb-6">
+  <div>
+    <div class="flex items-start">
       <% steps.each_with_index do |step, i| %>
         <%
           dot, ring, connector, label_class =
@@ -94,8 +96,8 @@
               [ "bg-gray-100 text-gray-400 border border-gray-300", "", "bg-gray-200", "text-gray-400" ]
             end
         %>
-        <div class="flex flex-col items-center text-center w-24 flex-shrink-0">
-          <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 <%= dot %>">
+        <div class="flex flex-col items-center text-center w-12 sm:w-24 flex-shrink-0">
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center flex-shrink-0 <%= dot %>">
             <% case step[:state] %>
             <% when :done %>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -107,13 +109,13 @@
               <span class="text-xs font-semibold"><%= i + 1 %></span>
             <% end %>
           </div>
-          <span class="mt-2 text-xs <%= label_class %>"><%= step[:label] %></span>
+          <span class="mt-1.5 sm:mt-2 text-[10px] sm:text-xs leading-tight <%= label_class %>"><%= step[:label] %></span>
           <% if step[:at] %>
-            <span class="mt-0.5 text-[11px] text-gray-400"><%= step[:at].strftime("%b %-d") %></span>
+            <span class="mt-0.5 text-[10px] sm:text-[11px] text-gray-400"><%= step[:at].strftime("%b %-d") %></span>
           <% end %>
         </div>
         <% if i < steps.size - 1 %>
-          <div class="flex-1 h-0.5 mt-3.5 rounded <%= connector %>"></div>
+          <div class="flex-1 h-0.5 mt-3 sm:mt-3.5 rounded <%= connector %>"></div>
         <% end %>
       <% end %>
     </div>
