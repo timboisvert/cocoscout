@@ -212,6 +212,7 @@ Rails.application.routes.draw do
   patch "/account/notifications",         to: "account#update_notifications"
   get   "/account/organizations",         to: "account#organizations",       as: "account_organizations"
   delete "/account/organizations/:id/leave", to: "account#leave_organization", as: "leave_organization_account"
+  delete "/account/app-sessions/:id",     to: "account#sign_out_app",        as: "sign_out_app_account"
 
   # Superadmin
   scope "/superadmin" do

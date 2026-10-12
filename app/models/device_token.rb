@@ -2,6 +2,7 @@
 
 class DeviceToken < ApplicationRecord
   belongs_to :user
+  belongs_to :app_session, optional: true
 
   validates :token, presence: true
   validates :platform, presence: true, inclusion: { in: %w[ios android] }

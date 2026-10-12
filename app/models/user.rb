@@ -13,11 +13,11 @@ class User < ApplicationRecord
     password_digest
   end
 
-  # API token for native mobile app authentication (Hotwire Native)
-  generates_token_for :api, expires_in: 30.days
-
   has_many :sessions, dependent: :destroy
+  # The app's signed-in phones (AppSession); a new password ends them all.
+  has_many :app_sessions, dependent: :destroy
   has_many :device_tokens, dependent: :destroy
+  after_update :end_app_sessions, if: :saved_change_to_password_digest?
 
   has_many :organization_roles, dependent: :destroy
   has_many :organizations, through: :organization_roles
@@ -428,6 +428,10 @@ class User < ApplicationRecord
   end
 
   private
+
+  def end_app_sessions
+    app_sessions.destroy_all
+  end
 
   def password_complexity
     return unless password.present?

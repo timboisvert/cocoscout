@@ -8,6 +8,8 @@ module Api
           token: params[:token],
           platform: params[:platform]
         )
+        # Notifications stop when this phone's session ends.
+        device_token.app_session = current_app_session
 
         if device_token.save
           render json: { id: device_token.id }, status: :created

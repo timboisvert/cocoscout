@@ -10,6 +10,7 @@ class AccountController < ApplicationController
 
   def show
     @person = Current.user.person
+    @app_sessions = Current.user.app_sessions.live.order(last_used_at: :desc)
   end
 
   def update
@@ -220,6 +221,13 @@ class AccountController < ApplicationController
       connections[:production_count] = org_production_ids.count
       @organization_connections[org.id] = connections
     end
+  end
+
+  # Signs one phone out of the app; its token stops working at once.
+  def sign_out_app
+    session = Current.user.app_sessions.find(params[:id])
+    session.destroy!
+    redirect_to account_path, notice: "#{session.label} is signed out of the app."
   end
 
   def leave_organization

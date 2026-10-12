@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe "API V1 Push Tokens", type: :request do
   let(:user) { create(:user) }
-  let(:api_token) { user.generate_token_for(:api) }
+  let(:api_token) { AppSession.start!(user).last }
   let(:auth_headers) { { "Authorization" => "Bearer #{api_token}" } }
 
   describe "POST /api/v1/push_tokens" do

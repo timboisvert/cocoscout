@@ -10,16 +10,22 @@ module Api
 
       private
 
+      # A bearer token names one signed-in phone (AppSession).
       def authenticate_api_user!
         authenticate_with_http_token do |token, _options|
-          if (user = User.find_by_token_for(:api, token))
-            @current_api_user = user
+          if (session = AppSession.authenticate(token))
+            @current_app_session = session
+            @current_api_user = session.user
           end
         end or render_unauthorized
       end
 
       def current_user
         @current_api_user
+      end
+
+      def current_app_session
+        @current_app_session
       end
 
       # Make Current.user available for services that depend on it

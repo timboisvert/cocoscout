@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -125,6 +125,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_140000) do
     t.string "value"
     t.index ["audition_request_id"], name: "index_answers_on_audition_request_id"
     t.index ["question_id"], name: "index_answers_on_question_id"
+  end
+
+  create_table "app_sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "token_digest", null: false
+    t.string "device_name"
+    t.string "user_agent"
+    t.string "ip_address"
+    t.datetime "last_used_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["token_digest"], name: "index_app_sessions_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_app_sessions_on_user_id"
   end
 
   create_table "audition_cycles", force: :cascade do |t|
@@ -877,6 +890,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_140000) do
     t.string "token", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.bigint "app_session_id"
+    t.index ["app_session_id"], name: "index_device_tokens_on_app_session_id"
     t.index ["token", "platform"], name: "index_device_tokens_on_token_and_platform", unique: true
     t.index ["user_id"], name: "index_device_tokens_on_user_id"
   end
@@ -4014,6 +4029,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_140000) do
   add_foreign_key "agreement_templates", "organizations"
   add_foreign_key "answers", "audition_requests"
   add_foreign_key "answers", "questions"
+  add_foreign_key "app_sessions", "users"
   add_foreign_key "audition_cycles", "productions"
   add_foreign_key "audition_email_assignments", "audition_cycles"
   add_foreign_key "audition_request_votes", "audition_requests"
@@ -4091,6 +4107,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_140000) do
   add_foreign_key "course_registrations", "users", column: "added_by_id"
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "departments", "organizations"
+  add_foreign_key "device_tokens", "app_sessions", on_delete: :cascade
   add_foreign_key "device_tokens", "users"
   add_foreign_key "document_productions", "production_documents"
   add_foreign_key "document_productions", "productions"

@@ -42,6 +42,18 @@
         </div>
         <%= render "shared/button", text: "Reset password", path: password_path, variant: "secondary", size: "small" %>
       </div>
+      <%# Phones signed in to the app; a new password signs them all out. %>
+      <% (@app_sessions || []).each do |app_session| %>
+        <div class="<%= row_class %>">
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-gray-900">Signed in on the app: <%= app_session.label %></div>
+            <div class="text-sm text-gray-600">Since <%= app_session.created_at.strftime("%b %-d, %Y") %>, last used <%= app_session.last_used_at.strftime("%b %-d") %></div>
+          </div>
+          <%= form_with url: sign_out_app_account_path(app_session), method: :delete, class: "inline" do %>
+            <%= render "shared/button", text: "Sign out", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        </div>
+      <% end %>
       <div class="<%= row_class %>">
         <div class="min-w-0">
           <div class="text-sm font-medium text-gray-900">Support</div>
