@@ -29,10 +29,27 @@ final class WebViewController: HotwireWebViewController {
         navigationItem.titleView = UIView()
     }
 
+    /// Sign-in and sign-up stand on their own: no bar above them (the page has
+    /// its own heading, and there's nowhere to go back to).
+    private static let barlessPaths: Set<String> = ["/signin", "/signup"]
+
+    private var hidesBar: Bool {
+        Self.barlessPaths.contains(currentVisitableURL.path)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(hidesBar, animated: animated)
+    }
+
     /// Hotwire puts the page's <title> in navigationItem.title once it renders;
     /// show it in the left-hand label instead.
     override func visitableDidRender() {
         super.visitableDidRender()
+        // A page can turn out to be sign-in after a redirect (/my, signed out).
+        if navigationController?.topViewController === self {
+            navigationController?.setNavigationBarHidden(hidesBar, animated: false)
+        }
         // App pages never zoom (their viewport says so). The app keeps one web
         // view for every page, so undo any zoom left over from before.
         if let scrollView = visitableView.webView?.scrollView, scrollView.zoomScale != 1 {
