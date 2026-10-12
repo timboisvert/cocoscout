@@ -765,10 +765,12 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
   describe "removing a payee from the run" do
     before { post manage_add_to_run_money_show_payout_path(show) } # queues Owed Ollie
 
-    it "offers a Remove from run control while queued" do
+    # In the row's ⋮ menu (Tim, 2026-10-11), not an ✕ and links under the chip.
+    it "offers Take out of the payout run in the row's menu while queued" do
       expect(li_unpaid.reload.in_payout_run?).to be(true)
       get manage_money_show_payout_path(show)
-      expect(response.body).to include("Remove from run")
+      expect(response.body).to include("Take out of the payout run", 'aria-label="More actions"', "remove-from-run-modal-#{li_unpaid.id}")
+      expect(response.body).not_to include('title="Remove from run"', "(show payment QR)")
     end
 
     it "pulls the payee out of the open run but keeps them owed" do

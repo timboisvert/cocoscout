@@ -965,6 +965,37 @@
                     all_paid = items.all?(&:paid?)
                     any_pending = items.any?(&:payout_pending?)
                     any_failed = items.any?(&:payout_failed?)
+                    # The row's ⋮ menu (manage/show_payouts/_row_menu): what you can
+                    # do about this payee, instead of links under the chip.
+                    offline_ok = Current.organization.offline_payout_method_choices.any?
+                    needs_bank = !item.paid? && !item.is_guest? && !item.auto_payout?
+                    qr_entry = needs_bank ? { text: "Show payment setup QR", icon: "link", data: { action: "click->qr-code#open" },
+                                              title: "Have them scan it to connect a bank so payments land automatically." } : nil
+                    paid_another_way = offline_ok ? { text: "Mark paid another way", icon: "check-circle",
+                                                      data: { action: "click->payment-actions#showMarkPaidModal", item_id: items.map(&:id).join(","),
+                                                              item_name: item.payee_name, item_amount: number_to_currency(total_net_amount) },
+                                                      title: "Record an offline payment (Zelle, check, cash)." } : nil
+                    qr_modal = if needs_bank
+                      capture do %>
+                        <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
+                          <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 text-left" data-action="click->qr-code#stopPropagation">
+                            <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-lg">
+                              <h3 class="text-lg font-semibold text-white">Set up payment</h3>
+                              <button type="button" data-action="click->qr-code#close" class="text-white/80 hover:text-white cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                              </button>
+                            </div>
+                            <div class="p-6 text-center">
+                              <p class="text-sm text-gray-600 mb-4">Have <span class="font-medium"><%= item.payee_name %></span> scan this with their phone camera to set up how they get paid. They'll connect a bank so payments land automatically.</p>
+                              <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                                <canvas data-qr-code-target="canvas" width="220" height="220"></canvas>
+                              </div>
+                              <p class="text-xs text-gray-500 mt-4">Or send them to <%= my_payments_setup_url %></p>
+                            </div>
+                          </div>
+                        </div>
+                      <% end
+                    end
                   %>
                   <tr class="flex flex-wrap items-start gap-x-3 py-3 lg:py-0 lg:table-row">
                     <td class="flex-1 min-w-0 lg:table-cell lg:py-3">
@@ -986,32 +1017,6 @@
                         <div class="min-w-0">
                           <div class="font-medium text-gray-900 flex items-center gap-1.5 flex-wrap">
                             <span class="truncate"><%= item.payee_name %></span>
-                            <% if !item.paid? && !item.is_guest? && !item.auto_payout? %>
-                              <%# They haven't connected a bank yet — a QR they can scan
-                                  to set it up, right by the name where you look first. %>
-                                <span data-controller="qr-code" data-qr-code-url-value="<%= my_payments_setup_url %>" class="text-xs font-normal">
-                                  <button type="button"
-                                          data-action="click->qr-code#open"
-                                          class="text-pink-500 hover:text-pink-600 underline cursor-pointer">(show payment QR)</button>
-                                  <div data-qr-code-target="modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" data-action="click->qr-code#closeOnBackdrop keydown.esc@window->qr-code#closeOnEscape">
-                                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" data-action="click->qr-code#stopPropagation">
-                                      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                                        <h3 class="text-lg font-semibold text-gray-900">Set up payment</h3>
-                                        <button type="button" data-action="click->qr-code#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
-                                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                      </div>
-                                      <div class="p-6 text-center">
-                                        <p class="text-sm text-gray-600 mb-4">Have <span class="font-medium"><%= item.payee_name %></span> scan this with their phone camera to set up how they get paid — they'll connect a bank so payments land automatically.</p>
-                                        <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
-                                          <canvas data-qr-code-target="canvas" width="220" height="220"></canvas>
-                                        </div>
-                                        <p class="text-xs text-gray-500 mt-4">Or send them to <%= my_payments_setup_url %></p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </span>
-                            <% end %>
                           </div>
                           <%# How the number was arrived at — secondary info, lives under the name. %>
                           <div class="text-xs text-gray-500">
@@ -1064,17 +1069,12 @@
                               Paid<% if item.payment_method_label && item.payment_method_label != "Paid" %> via <%= item.payment_method_label %><% end %><% if item.paid_at %> · <%= item.paid_at.strftime("%b %-d") %><% end %>
                             </span>
                             <% unless @show_payout.paid? %>
+                              <%= render "manage/show_payouts/row_menu",
+                                    entries: items.map { |li|
+                                      { text: items.one? ? "Unmark as paid" : "Unmark #{li.calculation_explanation.presence || 'this line'} as paid",
+                                        icon: "x-mark", data: { action: "click->modal#open", modal_id: "confirm-unmark-li-#{li.id}" } } } %>
                               <% items.each do |li| %>
-                                <% unmark_li_cid = "confirm-unmark-li-#{li.id}" %>
-                                <button type="button"
-                                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= unmark_li_cid %>"
-                                    class="text-gray-400 hover:text-gray-600 bg-transparent border-0 cursor-pointer"
-                                    title="Unmark as paid">
-                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                  </svg>
-                                </button>
-                                <%= render "shared/confirm_modal", id: unmark_li_cid, title: "Unmark as paid?",
+                                <%= render "shared/confirm_modal", id: "confirm-unmark-li-#{li.id}", title: "Unmark as paid?",
                                       message: "Unmark #{li.payee_name} as paid?", confirm_text: "Unmark",
                                       url: manage_unmark_line_item_paid_money_show_payout_path(@show, li), method: :delete %>
                               <% end %>
@@ -1118,59 +1118,41 @@
                           <%# Chip + ✕, mirroring the Paid row: the ✕ always undoes the chip
                               it sits next to (here: remove from the run). Confirm via modal. %>
                           <% item_bank_ready = item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts? %>
-                          <div class="text-right">
-                          <div class="flex items-center justify-end gap-2" title="<%= item_bank_ready ? "Added to a payout run — fund and pay it to send this to their bank." : "On the payout run without a bank connected — the run holds their money and pays them the moment they connect." %>">
-                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">In payout run<% unless item_bank_ready %> · awaiting their bank<% end %></span>
-                            <div data-controller="modal">
-                              <button type="button"
-                                      data-action="click->modal#open"
-                                      data-modal-id="remove-from-run-modal-<%= item.id %>"
-                                      class="text-gray-400 hover:text-gray-600 bg-transparent border-0 cursor-pointer align-middle"
-                                      title="Remove from run">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                              </button>
-                              <div id="remove-from-run-modal-<%= item.id %>" class="hidden fixed inset-0 z-50 overflow-y-auto">
-                                <div class="flex min-h-full items-center justify-center p-4">
-                                  <div class="fixed inset-0 bg-gray-500/75" data-action="click->modal#close"></div>
-                                  <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md text-left overflow-hidden">
-                                    <%# Solid-pink header, matching the standard confirmation modal. %>
-                                    <div class="flex items-center justify-between px-6 py-4 bg-pink-500">
-                                      <h3 class="text-lg font-semibold text-white">Remove from payout run</h3>
-                                      <button type="button" data-action="click->modal#close" class="text-white/70 hover:text-white cursor-pointer">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                      </button>
-                                    </div>
-                                    <div class="px-6 py-4">
-                                      <p class="text-sm text-gray-600">Remove <span class="font-medium"><%= item.payee_name %></span> from the payout run for this show? They'll stay owed and can be added back to a run anytime — this only cancels the pending transfer.</p>
-                                    </div>
-                                    <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200">
-                                      <button type="button" data-action="click->modal#close" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Cancel</button>
-                                      <%= button_to manage_remove_line_item_from_run_money_show_payout_path(@show, item), method: :delete, class: "inline-block" do %>
-                                        <%= render "shared/button", text: "Remove from run", variant: "primary", size: "small", type: :submit %>
-                                      <% end %>
-                                    </div>
+                          <% remove_modal = capture do %>
+                            <div id="remove-from-run-modal-<%= item.id %>" class="hidden fixed inset-0 z-50 overflow-y-auto">
+                              <div class="flex min-h-full items-center justify-center p-4">
+                                <div class="fixed inset-0 bg-gray-500/75" data-action="click->modal#close"></div>
+                                <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md text-left overflow-hidden">
+                                  <%# Solid-pink header, matching the standard confirmation modal. %>
+                                  <div class="flex items-center justify-between px-6 py-4 bg-pink-500">
+                                    <h3 class="text-lg font-semibold text-white">Take out of the payout run</h3>
+                                    <button type="button" data-action="click->modal#close" class="text-white/70 hover:text-white cursor-pointer">
+                                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                  </div>
+                                  <div class="px-6 py-4">
+                                    <p class="text-sm text-gray-600">Take <span class="font-medium"><%= item.payee_name %></span> out of the payout run for this show? They stay owed and can be added back to a run anytime; this only cancels the pending transfer.</p>
+                                  </div>
+                                  <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200">
+                                    <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->modal#close" } %>
+                                    <%= button_to manage_remove_line_item_from_run_money_show_payout_path(@show, item), method: :delete, class: "inline-block" do %>
+                                      <%= render "shared/button", text: "Take out", variant: "primary", size: "small", type: :submit %>
+                                    <% end %>
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                          <% if Current.organization.offline_payout_method_choices.any? %>
-                            <%# Escape hatch, tucked right under the chip: hand-paying
-                                them takes the line off the run — on a funded run the
-                                freed money becomes credit toward the next funding debit.
-                                Same label as the needs-setup branch, one vocabulary. %>
-                            <div class="-mt-0.5">
-                              <button type="button"
-                                      data-action="click->payment-actions#showMarkPaidModal"
-                                      data-item-id="<%= items.map(&:id).join(",") %>"
-                                      data-item-name="<%= item.payee_name %>"
-                                      data-item-amount="<%= number_to_currency(total_net_amount) %>"
-                                      class="text-[11px] text-gray-400 hover:text-pink-600 underline cursor-pointer"
-                                      title="Record an offline payment — this also takes them off the payout run; already-funded money becomes credit for your next run.">Mark paid another way</button>
-                            </div>
                           <% end %>
+                          <div class="flex items-center justify-end gap-2" title="<%= item_bank_ready ? "Added to a payout run — fund and pay it to send this to their bank." : "On the payout run without a bank connected — the run holds their money and pays them the moment they connect." %>">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">In payout run<% unless item_bank_ready %> · awaiting their bank<% end %></span>
+                            <%= render "manage/show_payouts/row_menu",
+                                  entries: [
+                                    { text: "Take out of the payout run", icon: "x-mark",
+                                      data: { action: "click->modal#open", modal_id: "remove-from-run-modal-#{item.id}" } },
+                                    (paid_another_way && paid_another_way.merge(title: "Record an offline payment. This also takes them off the payout run; already-funded money becomes credit for your next run.")),
+                                    qr_entry
+                                  ],
+                                  extra: safe_join([ remove_modal, qr_modal ].compact), qr_url: (my_payments_setup_url if needs_bank) %>
                           </div>
                         <% elsif item.auto_payout? %>
                           <%# Bank connected but not yet added — adding to a run is a manual step. %>
@@ -1188,17 +1170,12 @@
                               them it's usually the whole story, since we only set a
                               guest up as a real payee when there's an ongoing deal. %>
                           <div class="text-right" title="<%= item.is_guest? ? "Guests aren't set up to be paid through CocoScout. If you've paid them another way, you can record it." : "This person hasn't connected a bank, so they can't be paid on a payout run. If you've already paid them another way, you can record it." %>">
-                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700"><%= item.is_guest? ? "Guest — unpaid" : "Needs payment setup" %></span>
-                            <% if Current.organization.offline_payout_method_choices.any? %>
-                              <div class="mt-0.5">
-                                <button type="button"
-                                        data-action="click->payment-actions#showMarkPaidModal"
-                                        data-item-id="<%= items.map(&:id).join(",") %>"
-                                        data-item-name="<%= item.payee_name %>"
-                                        data-item-amount="<%= number_to_currency(total_net_amount) %>"
-                                        class="text-xs text-gray-400 hover:text-pink-600 underline cursor-pointer">Mark paid another way</button>
-                              </div>
-                            <% else %>
+                            <div class="flex items-center justify-end gap-2">
+                              <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700"><%= item.is_guest? ? "Guest — unpaid" : "Needs payment setup" %></span>
+                              <%= render "manage/show_payouts/row_menu", entries: [ qr_entry, paid_another_way ],
+                                    extra: qr_modal, qr_url: (my_payments_setup_url if needs_bank) %>
+                            </div>
+                            <% unless offline_ok || needs_bank %>
                               <div class="text-xs text-gray-400 mt-0.5">not payable yet</div>
                             <% end %>
                           </div>

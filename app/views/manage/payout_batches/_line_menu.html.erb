@@ -12,7 +12,7 @@
   menu_item_classes = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left"
 %>
 <% if removable %>
-  <div class="relative" data-controller="dropdown">
+  <div class="relative" data-controller="dropdown" data-dropdown-fixed-value="true">
     <button type="button" data-action="click->dropdown#toggle" title="More actions" aria-label="More actions for <%= c.label %>"
             class="p-1 text-gray-400 hover:text-gray-600 rounded-md border border-transparent hover:border-gray-300 bg-transparent transition-colors cursor-pointer">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

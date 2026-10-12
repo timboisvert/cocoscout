@@ -1,0 +1,29 @@
+<%# The ⋮ menu on a payee's row on a show's payout page: the row keeps its
+    status chip and puts everything you can do about it here (Tim,
+    2026-10-11: links under every row). Locals: entries ([{ text:, icon:,
+    data:, title: }], nils skipped), extra (optional html: modals the entries
+    open, kept inside so their close buttons work), qr_url (optional: the
+    payment setup link, for a "Show payment QR" entry). %>
+<% entries = Array(local_assigns[:entries]).compact %>
+<% if entries.any? %>
+  <%
+    item_classes = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left"
+    controllers = [ "dropdown", "modal", ("qr-code" if local_assigns[:qr_url]) ].compact.join(" ")
+  %>
+  <div class="relative inline-block text-left" data-controller="<%= controllers %>" data-dropdown-fixed-value="true" <% if local_assigns[:qr_url] %>data-qr-code-url-value="<%= qr_url %>"<% end %>>
+    <button type="button" data-action="click->dropdown#toggle" title="More actions" aria-label="More actions"
+            class="p-1.5 text-gray-400 hover:text-gray-600 rounded-md border border-gray-200 hover:border-gray-400 bg-white transition-colors cursor-pointer align-middle">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+      </svg>
+    </button>
+    <div data-dropdown-target="menu" class="hidden absolute right-0 top-full mt-1 w-60 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+      <% entries.each do |entry| %>
+        <%= tag.button(type: "button", class: item_classes, title: entry[:title], data: entry[:data]) do %>
+          <%= icon(entry[:icon] || "arrow-right", class: "w-4 h-4 text-gray-400") %><span><%= entry[:text] %></span>
+        <% end %>
+      <% end %>
+    </div>
+    <%= local_assigns[:extra] %>
+  </div>
+<% end %>
