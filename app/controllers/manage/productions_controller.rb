@@ -193,10 +193,10 @@ module Manage
         .where("LOWER(users.email_address) LIKE LOWER(:q) OR LOWER(people.name) LIKE LOWER(:q)", q: "%#{q}%")
         .distinct.includes(:default_person, :people).limit(5).to_a
 
-      # Search globally on CocoScout (not in org, not already on production)
-      global_users = User.where.not(id: org_user_ids + existing_user_ids)
-        .joins("LEFT JOIN people ON people.user_id = users.id AND people.archived_at IS NULL")
-        .where("LOWER(users.email_address) LIKE LOWER(:q) OR LOWER(people.name) LIKE LOWER(:q)", q: "%#{q}%")
+      # Search globally on CocoScout (not in org, not already on production):
+      # by name or exact email, never part of an email (PersonSearch).
+      global_users = PersonSearch.outside_users(q, User.where.not(id: org_user_ids + existing_user_ids)
+        .joins("LEFT JOIN people ON people.user_id = users.id AND people.archived_at IS NULL"))
         .distinct.includes(:default_person, :people).limit(10).to_a
 
       # Show invite option if query is an email and no exact match found

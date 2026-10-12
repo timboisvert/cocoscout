@@ -81,7 +81,7 @@
             <% end %>
             <div class="min-w-0 flex-1">
               <div class="font-medium text-gray-900 truncate"><%= person.name %></div>
-              <div class="text-xs text-gray-500 truncate"><%= person.email %></div>
+              <div class="text-xs text-gray-500 truncate"><%= searched_detail(person, @query, connected: @connected_ids.include?(person.id)) %></div>
             </div>
             <% if person.user.present? %>
               <span class="hidden sm:inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 flex-shrink-0">On CocoScout</span>

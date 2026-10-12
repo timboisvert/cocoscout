@@ -251,12 +251,10 @@ module Manage
         q: "%#{q}%"
       ).limit(10).to_a
 
-      # Search globally (people not in this org)
+      # Search globally (people not in this org): by name, profile key or
+      # exact email, never part of an email (PersonSearch).
       org_person_ids = Current.organization.people.pluck(:id)
-      global_people = Person.where(
-        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)",
-        q: "%#{q}%"
-      ).where.not(id: org_person_ids).limit(10).to_a
+      global_people = PersonSearch.outside(q).where.not(id: org_person_ids).limit(10).to_a
 
       # Show invite if query looks like an email with no exact match
       show_invite = q.include?("@") &&

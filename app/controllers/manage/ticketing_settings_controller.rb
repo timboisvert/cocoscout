@@ -89,13 +89,12 @@ module Manage
       people = if q.length < 2
         []
       else
-        like = "%#{Person.sanitize_sql_like(q)}%"
-        Person.where.not(user_id: nil).where(archived_at: nil)
-              .where("people.name ILIKE :q OR people.email ILIKE :q", q: like)
-              .includes(:user).order(:name).limit(30).to_a.uniq(&:user_id).first(15)
+        PersonSearch.anyone(q, Current.organization, Person.where.not(user_id: nil).where(archived_at: nil))
+                    .includes(:user).order(:name).limit(30).to_a.uniq(&:user_id).first(15)
       end
       render partial: "manage/ticketing_settings/door_search_results",
-             locals: { people: people, query: q, granted_user_ids: door_grants.pluck(:user_id).compact, manager_user_ids: manager_user_ids }
+             locals: { people: people, query: q, granted_user_ids: door_grants.pluck(:user_id).compact, manager_user_ids: manager_user_ids,
+                       connected_ids: PersonSearch.connected_ids(Current.organization, people) }
     end
 
     # Gives door access to the staff members ticked, or to one person found by

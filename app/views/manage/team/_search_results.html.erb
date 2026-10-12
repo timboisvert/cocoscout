@@ -61,11 +61,12 @@
           <span class="text-xs text-yellow-600 flex-shrink-0">Invite pending</span>
         </div>
       <% else %>
+        <% connected = connected_ids.include?(person.id) %>
         <button type="button"
                 class="flex items-center gap-3 p-3 border border-pink-200 bg-pink-50 rounded-lg hover:border-pink-400 transition-all w-full text-left cursor-pointer"
                 data-action="team-invite-search#selectPerson"
                 data-person-name="<%= person.name %>"
-                data-person-email="<%= person.email %>"
+                data-person-email="<%= searched_email(person.email, query, connected: connected) %>"
                 data-person-id="<%= person.id %>"
                 data-has-account="<%= has_account %>">
           <% headshot_variant = person.safe_headshot_variant(:tile) %>
@@ -78,8 +79,8 @@
           <% end %>
           <div class="flex-grow min-w-0">
             <span class="font-medium text-sm block truncate"><%= person.name %></span>
-            <% if person.email.present? %>
-              <span class="text-xs text-gray-500 block truncate"><%= person.email %></span>
+            <% if (detail = searched_detail(person, query, connected: connected)) %>
+              <span class="text-xs text-gray-500 block truncate"><%= detail %></span>
             <% end %>
           </div>
           <span class="px-3 py-1.5 text-pink-600 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-300 flex-shrink-0">

@@ -23,7 +23,7 @@
     <dl class="rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
       <div class="flex gap-3 px-4 py-2.5">
         <dt class="w-16 flex-shrink-0 text-gray-500">To</dt>
-        <dd class="text-gray-900 min-w-0 truncate"><%= @preview_person_name %> &lt;<%= @preview_person_email %>&gt;</dd>
+        <dd class="text-gray-900 min-w-0 truncate"><%= @preview_person_name %><% if @preview_shows_email %> &lt;<%= @preview_person_email %>&gt;<% else %> <span class="text-gray-500">(at the address on their CocoScout account)</span><% end %></dd>
       </div>
       <div class="flex gap-3 px-4 py-2.5">
         <dt class="w-16 flex-shrink-0 text-gray-500">Subject</dt>

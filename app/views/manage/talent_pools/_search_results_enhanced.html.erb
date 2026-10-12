@@ -81,7 +81,7 @@
             <% end %>
             <div class="flex-grow min-w-0">
               <span class="font-medium text-sm block truncate"><%= person.name %></span>
-              <span class="text-xs text-gray-500 block truncate"><%= person.email %></span>
+              <span class="text-xs text-gray-500 block truncate"><%= searched_detail(person, query) %></span>
             </div>
             <button type="button"
               class="px-3 py-1.5 text-pink-600 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-300 cursor-pointer flex-shrink-0"

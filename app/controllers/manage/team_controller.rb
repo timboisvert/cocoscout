@@ -18,11 +18,9 @@ module Manage
         return
       end
 
-      # Search all people by name or email
-      people = Person.where(
-        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)",
-        q: "%#{q}%"
-      ).limit(15).to_a
+      # Search everyone by name or exact email; the organization's own people
+      # by any part of their email too (PersonSearch).
+      people = PersonSearch.anyone(q, Current.organization).limit(15).to_a
 
       # Find user IDs already on this org's team (manager or viewer roles only)
       team_user_ids = Current.organization.organization_roles
@@ -33,7 +31,8 @@ module Manage
       pending_emails = Current.organization.team_invitations.where(accepted_at: nil).pluck(:email).map(&:downcase)
 
       render partial: "manage/team/search_results",
-             locals: { people: people, query: q, team_user_ids: team_user_ids, pending_emails: pending_emails }
+             locals: { people: people, query: q, team_user_ids: team_user_ids, pending_emails: pending_emails,
+                       connected_ids: PersonSearch.connected_ids(Current.organization, people) }
     end
 
     def check_profiles
@@ -92,6 +91,9 @@ module Manage
       @team_invitation = TeamInvitation.new(team_invitation_params)
       @team_invitation.organization = Current.organization
       @team_invitation.person_id = person&.id
+      # Someone found on CocoScout is invited at their own address, which the
+      # picker doesn't show for people outside the organization.
+      @team_invitation.email = person.email if person && @team_invitation.email.blank?
 
       default_subject = ContentTemplateService.render_subject("team_organization_invitation", {
         organization_name: Current.organization.name

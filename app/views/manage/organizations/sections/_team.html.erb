@@ -174,7 +174,7 @@
 
           <%# Step 2: Email & Message (shown after selection) %>
           <div data-team-invite-search-target="formSection" class="hidden space-y-4">
-            <div>
+            <div data-team-invite-search-target="emailRow">
               <%= f.label :email, "Email Address", class: "block text-sm font-medium text-gray-700 mb-2" %>
               <%= f.email_field :email, placeholder: "email@example.com", autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", data: { team_invite_search_target: "emailField" } %>
             </div>

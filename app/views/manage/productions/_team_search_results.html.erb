@@ -93,25 +93,28 @@
       <div class="space-y-1">
         <% global_users.each do |user| %>
           <% person = user.person %>
+          <%# Outside the organization: no email unless it's what was typed. %>
+          <% shown_email = searched_email(user.email_address, query) %>
+          <% shown_name = person&.name.presence || shown_email || "CocoScout member" %>
           <div class="flex items-center gap-3 p-3 border border-pink-200 bg-pink-50 rounded-lg hover:border-pink-400 transition-all">
             <% headshot_variant = person&.safe_headshot_variant(:thumb) %>
             <% if headshot_variant %>
               <%= image_tag headshot_variant, alt: person&.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
             <% else %>
               <div class="w-8 h-8 rounded-lg bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-xs flex-shrink-0">
-                <%= (person&.initials || user.email_address.first.upcase) %>
+                <%= person&.initials || shown_name.first.upcase %>
               </div>
             <% end %>
             <div class="flex-grow min-w-0">
-              <span class="font-medium text-sm block truncate"><%= person&.name || user.email_address %></span>
-              <span class="text-xs text-gray-500 block truncate"><%= user.email_address %></span>
+              <span class="font-medium text-sm block truncate"><%= shown_name %></span>
+              <span class="text-xs text-gray-500 block truncate"><%= shown_email || (person&.public_key.present? ? "cocoscout.com/#{person.public_key}" : nil) %></span>
             </div>
             <button type="button"
               class="px-3 py-1.5 text-pink-600 bg-white rounded-md text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-300 cursor-pointer flex-shrink-0"
               data-action="production-team-search#selectUser"
               data-user-id="<%= user.id %>"
-              data-user-name="<%= person&.name || user.email_address %>"
-              data-user-email="<%= user.email_address %>">
+              data-user-name="<%= shown_name %>"
+              data-user-email="<%= shown_email %>">
               Add
             </button>
           </div>

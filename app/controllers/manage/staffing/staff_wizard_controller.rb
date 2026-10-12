@@ -120,6 +120,7 @@ module Manage
         @searched = params.key?(:q)
         @has_pick = @selected_person.present? || @invite_email.present?
         @results = @has_pick ? [] : search_people(@query)
+        @connected_ids = PersonSearch.connected_ids(Current.organization, @results)
         # Only offer "invite a new user" once a search has come back empty.
         @no_results = @searched && !@has_pick && @results.empty?
 
@@ -340,13 +341,15 @@ module Manage
         id.present? ? Person.find_by(id: id) : nil
       end
 
-      # Search people by name / email / public key to connect an existing account.
+      # Search people to connect an existing account: the organization's own by
+      # name or any part of their email, everyone else by name, profile key or
+      # exact email (PersonSearch).
       def search_people(query)
         return [] if query.blank?
 
-        like = "%#{query}%"
-        Person.where("name ILIKE :q OR email ILIKE :q OR public_key ILIKE :q", q: like)
-              .order(:name).limit(8).to_a
+        PersonSearch.anyone(query, Current.organization)
+                    .or(PersonSearch.outside(query))
+                    .order(:name).limit(8).to_a
       end
 
       # Make sure the picked person is in this org and has a CocoScout login.

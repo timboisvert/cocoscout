@@ -4,7 +4,7 @@ export default class extends Controller {
     static targets = [
         "searchInput", "searchResults", "searchSection",
         "selectedSection", "selectedName", "selectedEmail",
-        "formSection", "emailField", "personIdField", "searchCancel"
+        "formSection", "emailField", "emailRow", "personIdField", "searchCancel"
     ]
     static values = { url: String }
 
@@ -38,10 +38,17 @@ export default class extends Controller {
         this.selectedSectionTarget.classList.remove("hidden")
         this.formSectionTarget.classList.remove("hidden")
 
+        // Someone outside the organization arrives without their email (the
+        // search hides it); they're invited at the address on their account.
         this.selectedNameTarget.textContent = personName
-        this.selectedEmailTarget.textContent = personEmail
-        this.emailFieldTarget.value = personEmail
+        this.selectedEmailTarget.textContent = personEmail || "We'll email them at the address on their CocoScout account."
+        this.emailFieldTarget.value = personEmail || ""
         this.personIdFieldTarget.value = personId
+        this.toggleEmailRow(!!personEmail)
+    }
+
+    toggleEmailRow(show) {
+        if (this.hasEmailRowTarget) this.emailRowTarget.classList.toggle("hidden", !show)
     }
 
     selectEmail(event) {
@@ -56,6 +63,7 @@ export default class extends Controller {
         this.selectedEmailTarget.textContent = "New invitation"
         this.emailFieldTarget.value = email
         this.personIdFieldTarget.value = ""
+        this.toggleEmailRow(true)
     }
 
     backToSearch() {
@@ -66,6 +74,7 @@ export default class extends Controller {
 
         this.emailFieldTarget.value = ""
         this.personIdFieldTarget.value = ""
+        this.toggleEmailRow(true)
 
         this.searchInputTarget.focus()
         this.searchInputTarget.select()

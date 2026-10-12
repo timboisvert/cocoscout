@@ -40,7 +40,8 @@
         <% end %>
         <div class="min-w-0 flex-1">
           <div class="text-sm font-medium text-gray-900 truncate"><%= person.name %></div>
-          <div class="text-xs text-gray-500 truncate"><%= person.email %></div>
+          <% connected = connected_ids.include?(person.id) || manager_user_ids.include?(person.user_id) %>
+          <div class="text-xs text-gray-500 truncate"><%= searched_detail(person, query, connected: connected) %></div>
         </div>
         <% if manager_user_ids.include?(person.user_id) %>
           <span class="text-xs text-gray-500 flex-shrink-0">Manager</span>
@@ -48,7 +49,7 @@
           <span class="text-xs text-gray-500 flex-shrink-0">Sees it</span>
         <% else %>
           <%= render "shared/button", text: "Choose", variant: "secondary", size: "small", type: :button,
-                data: { action: "click->door-access-search#choose", person_id: person.id, person_name: person.name, person_email: person.email } %>
+                data: { action: "click->door-access-search#choose", person_id: person.id, person_name: person.name, person_email: searched_email(person.email, query, connected: connected) } %>
         <% end %>
       </li>
     <% end %>

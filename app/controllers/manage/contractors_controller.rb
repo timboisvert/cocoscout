@@ -125,6 +125,9 @@ module Manage
 
       @preview_person_name = target[:name]
       @preview_person_email = target[:email]
+      # Someone picked from outside the organization keeps their email hidden
+      # (PersonSearch); a typed address, or one of the organization's own, shows.
+      @preview_shows_email = params[:person_id].blank? || Current.organization.people.exists?(id: target[:person_id])
       @preview_person_id = target[:person_id]
       @preview_is_member = target[:person]&.user.present?
       @preview = @preview_is_member ? member_notification_preview(target[:person]) : invitation_preview_for(target[:name], target[:email])

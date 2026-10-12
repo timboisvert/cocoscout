@@ -130,12 +130,10 @@ module Manage
         q: "%#{q}%"
       ).limit(10).to_a
 
-      # Search globally in CocoScout (people not in this org)
+      # Search globally in CocoScout (people not in this org): by name, profile
+      # key or exact email, never part of an email (PersonSearch).
       org_person_ids = Current.organization.people.pluck(:id)
-      global_people = Person.where(
-        "LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q) OR LOWER(public_key) LIKE LOWER(:q)",
-        q: "%#{q}%"
-      ).where.not(id: org_person_ids).limit(10).to_a
+      global_people = PersonSearch.outside(q).where.not(id: org_person_ids).limit(10).to_a
 
       # Determine if we should show invite option
       # Show invite if query looks like an email and we didn't find exact matches
@@ -165,7 +163,11 @@ module Manage
     end
 
     def invite_selected_profiles(profile_ids)
-      profiles = Person.where(id: profile_ids, email: person_params[:email]&.downcase)
+      # Someone picked from outside the organization arrives without the email
+      # (the picker hides it); they're invited at their own address.
+      email = person_params[:email]&.strip&.downcase
+      profiles = Person.where(id: profile_ids) # rubocop:disable CocoScout/UnscopedFind -- invite flow: the invitation goes to the person's own address
+      profiles = profiles.where(email: email) if email.present?
       talent_pool = selected_talent_pool
       invitation_subject = params[:invitation_subject]
       invitation_body = params[:invitation_body]
