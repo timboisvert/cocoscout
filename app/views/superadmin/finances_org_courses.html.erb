@@ -83,8 +83,8 @@
   </div>
 
   <!-- Course Breakdown -->
-  <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Course Breakdown" %>
+  <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Course Breakdown" %>
 
     <% if @course_summaries.any? %>
       <div class="overflow-x-auto">
@@ -132,8 +132,8 @@
   </div>
 
   <!-- Payment History -->
-  <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Payment History" %>
+  <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Payment History" %>
 
     <% if @payments.any? %>
       <div class="overflow-x-auto">

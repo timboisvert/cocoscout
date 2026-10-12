@@ -26,13 +26,10 @@
         <div class="space-y-6 max-h-[500px] overflow-y-auto">
           <% @productions.each do |production| %>
             <% shows = @shows_by_production[production.id] || [] %>
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-sm font-semibold text-gray-900"><%= production.name %></h3>
-                  <span class="text-xs text-gray-500"><%= pluralize(shows.count, "show") %></span>
-                </div>
-              </div>
+            <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+              <%= render "shared/section_heading", padding: "px-4 py-3", title: production.name do %>
+                <span class="text-xs text-gray-500"><%= pluralize(shows.count, "show") %></span>
+              <% end %>
               <div class="divide-y divide-gray-100">
                 <% if shows.any? %>
                   <% shows.each do |show| %>

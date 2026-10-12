@@ -52,14 +52,9 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <%# Left panel: Slots/Assigned - matches _registration_list.html.erb style %>
       <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
-          <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-gray-900"><%= is_open_list ? "Assigned" : "Slots" %></h2>
-            <span class="text-sm text-gray-500">
-              <%= @assigned.count %> assigned
-            </span>
-          </div>
-        </div>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: is_open_list ? "Assigned" : "Slots" do %>
+          <span class="text-sm text-gray-500"><%= @assigned.count %> assigned</span>
+        <% end %>
 
         <% if is_open_list %>
           <%# Open list mode: flat list matching _registration_list style %>
@@ -258,33 +253,18 @@
 
       <%# Right panel: Queue %>
       <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <h2 class="font-semibold text-gray-900">Queue</h2>
-              <span class="text-sm text-gray-500"><%= @queue.count %> waiting</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <button type="button"
-                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors cursor-pointer"
-                      data-action="click->add-sign-up-person#openQueue"
-                      data-instance-id="<%= @instance&.id %>">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Add
-              </button>
-              <%= render "shared/button",
-                  text: "Auto-assign All",
-                  variant: "primary",
-                  size: "small",
-                  path: manage_auto_assign_queue_signups_form_path(@production, @sign_up_form, instance_id: @instance&.id),
-                  method: :post,
-                  disabled: @queue.empty?,
-                  data: { turbo_method: :post } %>
-            </div>
-          </div>
-        </div>
+        <%= render "shared/section_heading", padding: "px-5 py-4", title: "Queue", intro: "#{@queue.count} waiting" do %>
+          <%= render "shared/button", text: "Add", variant: "secondary", size: "small", icon: "plus", type: :button,
+                data: { action: "click->add-sign-up-person#openQueue", instance_id: @instance&.id } %>
+          <%= render "shared/button",
+              text: "Auto-assign All",
+              variant: "primary",
+              size: "small",
+              path: manage_auto_assign_queue_signups_form_path(@production, @sign_up_form, instance_id: @instance&.id),
+              method: :post,
+              disabled: @queue.empty?,
+              data: { turbo_method: :post } %>
+        <% end %>
 
         <% if @queue.empty? %>
           <div class="p-8 text-center">

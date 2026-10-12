@@ -9,10 +9,8 @@
   <% end %>
 
   <%# The locked contract, so they sign with it in front of them. %>
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
-    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-      <h3 class="text-sm font-semibold text-gray-700">Contract</h3>
-    </div>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contract" %>
     <div class="p-6 max-h-[45vh] overflow-y-auto bg-white">
       <div class="prose prose-sm max-w-none
                   [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1

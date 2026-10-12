@@ -143,8 +143,8 @@
             <% if has_course %>
               <%# Course info box %>
               <% course = @show.course_offering || @production.course_offerings.first %>
-              <div class="border border-gray-200 rounded-lg overflow-hidden">
-                <%= render "shared/card_header", title: "Course" %>
+              <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                <%= render "shared/section_heading", padding: "px-4 py-3", title: "Course" %>
                 <div class="p-4">
                   <div class="mb-3">
                     <div class="text-sm font-medium text-gray-900"><%= course.title %></div>
@@ -174,8 +174,8 @@
 
             <% if has_contract %>
               <%# Contract info box %>
-              <div class="border border-gray-200 rounded-lg overflow-hidden">
-                <%= render "shared/card_header", title: "Contract" %>
+              <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contract" %>
                 <div class="p-4">
                   <div class="mb-3">
                     <div class="text-sm font-medium text-gray-900"><%= @production.contract.contractor_name %></div>
@@ -196,8 +196,8 @@
 
         <% unless has_contract %>
           <%# Standard manage show box — only for productions NOT governed by a contract %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
             <div class="p-4">
               <%
                 # Sanitize event_type to prevent XSS (even though it's from an enum)
@@ -233,15 +233,9 @@
 
       <%# Notes Box %>
       <% if @show.notes.present? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.86-8.888z" />
-              </svg>
-              Notes
-            </h3>
-          </div>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Notes",
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.86-8.888z" /></svg>' %>
           <div class="p-4">
             <p class="text-sm text-gray-700 whitespace-pre-wrap"><%= @show.notes %></p>
           </div>
@@ -353,8 +347,8 @@
           </div>
         <% end %>
 
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Casting" do %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Casting" do %>
             <%= render "shared/button", text: "Manage Cast", path: manage_casting_show_cast_path(@production, @show), variant: "primary", size: "small" %>
             <% cast_members = @show.people.distinct %>
             <% if cast_members.any? %>
@@ -584,8 +578,8 @@
             # Get sign-up form for linking (use first registration's form)
             first_sign_up_form = @sign_up_registrations.first&.sign_up_form
           %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Attendees" do %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Attendees" do %>
               <div class="flex items-center gap-2">
                 <% if first_sign_up_form %>
                   <%= render "shared/button", text: "View Sign-ups", path: manage_signups_form_path(@production, first_sign_up_form), variant: "secondary", size: "small" %>
@@ -661,8 +655,8 @@
 
         <%# Vacancy History - show all vacancies including resolved ones %>
         <% if @all_vacancies.any? %>
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Vacancy History" %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Vacancy History" %>
             <div class="divide-y divide-gray-200">
               <% @all_vacancies.each do |vacancy| %>
                 <% vacated_by = vacancy.vacated_by %>
@@ -734,8 +728,8 @@
 
       <% if @show.is_online && !@show.canceled %>
         <!-- Online Event Card -->
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Online Event" %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Online Event" %>
           <div class="p-4">
             <% if @show.online_location_info.present? %>
               <div class="text-sm text-gray-700">
@@ -754,8 +748,8 @@
         </div>
       <% elsif @show.location.present? && !@show.canceled %>
         <!-- In-Person Location Card -->
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: @show.location.name %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: @show.location.name %>
           <div class="p-4 flex flex-col lg:flex-row gap-4">
             <% loc = @show.location %>
             <% if loc.present? %>

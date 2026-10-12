@@ -1,5 +1,5 @@
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <%= render "shared/card_header", title: "Organization Details" %>
+<div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+  <%= render "shared/section_heading", title: "Organization Details" %>
   <div class="p-6 bg-white">
     <%= form_with model: [:manage, @organization], method: :patch, multipart: true, class: "space-y-6", data: { controller: "file-preview" } do |f| %>
       <% if @organization.errors.any? %>

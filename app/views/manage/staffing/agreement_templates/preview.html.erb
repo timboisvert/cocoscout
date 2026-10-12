@@ -24,10 +24,7 @@
   </div>
 
   <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-      <h2 class="text-lg font-semibold text-gray-900"><%= @agreement_template.name %></h2>
-      <p class="text-sm text-gray-500">Version <%= @agreement_template.version %></p>
-    </div>
+    <%= render "shared/section_heading", title: @agreement_template.name, intro: "Version #{@agreement_template.version}" %>
 
     <div class="p-6">
       <div class="prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1">

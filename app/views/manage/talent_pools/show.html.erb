@@ -73,13 +73,12 @@
       <%# This production uses a shared pool from another production %>
       <% all_sharing_productions = @production.shared_pool_productions %>
       <div class="mt-8 bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h4 class="text-sm font-semibold text-gray-900">Shared Talent Pool</h4>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Shared Talent Pool" do %>
           <%= link_to manage_casting_talent_pool_leave_shared_pool_confirm_path(@production),
               data: { turbo_frame: "leave_pool_modal" } do %>
             <%= render "shared/button", text: "Leave Shared Pool", variant: "secondary", size: "small", tag: :span %>
           <% end %>
-        </div>
+        <% end %>
         <div class="p-4">
           <p class="text-sm text-gray-600">
             This talent pool is shared with: <strong><%= all_sharing_productions.map(&:name).to_sentence %></strong>.
@@ -92,10 +91,7 @@
     <% elsif sibling_productions.any? %>
       <%# This production owns its pool - show sharing options %>
       <div class="mt-8 bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h4 class="text-sm font-semibold text-gray-900">Share Talent Pool</h4>
-          <p class="text-sm text-gray-500 mt-0.5">Share this talent pool with other productions in your organization.</p>
-        </div>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Share Talent Pool", intro: "Share this talent pool with other productions in your organization." %>
 
         <%= form_with url: manage_casting_talent_pool_update_shares_path(@production), method: :patch, data: { turbo: false, talent_pool_sharing_target: "form" } do |f| %>
           <div class="divide-y divide-gray-100">

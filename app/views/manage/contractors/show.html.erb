@@ -16,8 +16,8 @@
   } %>
 
   <%# Contractor Details Card %>
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-    <%= render "shared/card_header", title: "Contact Information" %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contact Information" %>
     <div class="p-4">
       <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <% if @contractor.email.present? %>
@@ -60,8 +60,8 @@
   <%# Associated person — who this contractor IS. The person and their CocoScout
       access are the same thing, so they live together; adding one is a single
       previewed step in the modal below. %>
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-    <%= render "shared/card_header", title: "Associated person" %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Associated person" %>
     <div class="p-4">
       <% if @person %>
         <div class="flex items-center gap-3 min-w-0 mb-3">
@@ -118,8 +118,8 @@
   </div>
 
   <%# Getting paid — Stripe bank connection %>
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8">
-    <%= render "shared/card_header", title: "Getting paid" %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Getting paid" %>
     <div class="p-4">
       <% if @person.nil? %>
         <p class="text-sm text-gray-600">Link a person above first — that's who connects a bank and gets paid.</p>

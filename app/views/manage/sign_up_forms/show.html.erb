@@ -459,7 +459,7 @@
 
         <%# Share Card %>
         <div class="bg-white border border-gray-200 rounded-lg">
-          <%= render "shared/card_header", title: "Sign-up Form" %>
+          <%= render "shared/section_heading", padding: "px-5 py-4", title: "Sign-up Form" %>
           <div class="p-5 space-y-4">
             <%# Public Sign-up Link (short link) %>
             <% if @sign_up_form.short_code.present? %>
@@ -615,7 +615,7 @@
       <div class="space-y-4">
         <%# Share Card %>
         <div class="bg-white border border-gray-200 rounded-lg">
-          <%= render "shared/card_header", title: "Share" %>
+          <%= render "shared/section_heading", padding: "px-5 py-4", title: "Share" %>
           <div class="p-5 space-y-4">
             <%# Public Sign-up Link (short link) %>
             <% if @sign_up_form.short_code.present? %>

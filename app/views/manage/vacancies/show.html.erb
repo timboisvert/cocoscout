@@ -77,7 +77,7 @@
 
   <!-- Show Row -->
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
-    <%= render "shared/card_header", title: "Show & Role" %>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Show & Role" %>
     <div class="p-4">
       <div class="flex flex-col md:flex-row md:items-stretch bg-white border border-gray-200 rounded-lg overflow-hidden">
         <%# Left half: Affected dates %>
@@ -169,11 +169,8 @@
   <!-- Other Cast Members -->
   <% if @other_cast_assignments.any? %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
-      <%= render "shared/card_header", title: "Other Cast Members" do %>
-        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      <% end %>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Other Cast Members",
+            icon: '<svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>' %>
       <div class="p-4">
         <div class="flex flex-wrap gap-3">
           <% @other_cast_assignments.each do |assignment| %>
@@ -323,7 +320,7 @@
     <!-- Invitations Sent -->
     <% if @invitations.any? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "Invitations Sent" %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Invitations Sent" %>
         <div class="p-4">
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             <% @invitations.each do |invitation| %>
@@ -373,7 +370,7 @@
 
     <!-- Invite Cast Members Box -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/card_header", title: @invitations.any? ? "Invite More Cast Members" : "Invite Cast Members" %>
+      <%= render "shared/section_heading", title: @invitations.any? ? "Invite More Cast Members" : "Invite Cast Members" %>
       <div class="p-6">
 
         <% if @eligible_people.any? || @all_potential_people.any? %>
@@ -640,7 +637,7 @@
 
       <!-- Close Vacancy Box (for linked events, shown only when "no action" is selected) -->
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6 <%= has_invitations ? 'hidden' : '' %>" data-linked-vacancy-decision-target="closeSection">
-        <%= render "shared/card_header", title: "Close Vacancy" %>
+        <%= render "shared/section_heading", title: "Close Vacancy" %>
         <div class="p-6">
           <p class="text-sm text-gray-600 mb-4">
             If you no longer need to fill this role, you can close the vacancy without finding a replacement.
@@ -658,7 +655,7 @@
     <% else %>
       <!-- Changed Your Mind Box (non-linked only) -->
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <%= render "shared/card_header", title: "Changed Your Mind?" %>
+        <%= render "shared/section_heading", title: "Changed Your Mind?" %>
         <div class="p-6">
           <p class="text-sm text-gray-600 mb-4">
             If you no longer need to fill this role, you can close the vacancy without finding a replacement.

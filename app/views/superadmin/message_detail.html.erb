@@ -17,33 +17,26 @@
     <div class="lg:col-span-2 space-y-4">
       <!-- Message Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden <%= @message.deleted? ? 'ring-2 ring-red-300' : '' %>">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-          <h2 class="font-semibold text-gray-900 flex items-center gap-2">
-            <% if @message.deleted? %>
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">DELETED</span>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: @message.subject,
+              icon: (@message.deleted? ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">DELETED</span>' : nil) do %>
+          <% if @message.deleted? %>
+            <%= button_to message_restore_path(@message), method: :post, class: "px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium" do %>
+              Restore Message
             <% end %>
-            <%= @message.subject %>
-          </h2>
-          <div class="flex items-center gap-2">
-            <% if @message.deleted? %>
-              <%= button_to message_restore_path(@message), method: :post, class: "px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium" do %>
-                Restore Message
-              <% end %>
-            <% else %>
-              <% cid = "confirm-delete-message" %>
-              <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
-                      class="px-3 py-1.5 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 font-medium cursor-pointer">
-                Delete Message
-              </button>
-              <%= render "shared/confirm_modal", id: cid,
-                    title: "Delete message?",
-                    message: "Are you sure you want to delete this message?",
-                    confirm_text: "Delete Message",
-                    url: message_delete_path(@message),
-                    method: :delete %>
-            <% end %>
-          </div>
-        </div>
+          <% else %>
+            <% cid = "confirm-delete-message" %>
+            <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
+                    class="px-3 py-1.5 text-sm bg-pink-500 text-white rounded-lg hover:bg-pink-600 font-medium cursor-pointer">
+              Delete Message
+            </button>
+            <%= render "shared/confirm_modal", id: cid,
+                  title: "Delete message?",
+                  message: "Are you sure you want to delete this message?",
+                  confirm_text: "Delete Message",
+                  url: message_delete_path(@message),
+                  method: :delete %>
+          <% end %>
+        <% end %>
 
         <div class="p-4 space-y-4">
           <!-- Message Body -->
@@ -78,11 +71,7 @@
       <!-- Thread / Replies Section -->
       <% if @thread_messages.size > 1 || @message.parent_message.present? %>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h3 class="font-semibold text-gray-900">
-              Thread (<%= @thread_messages.size %> messages)
-            </h3>
-          </div>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Thread (#{@thread_messages.size} messages)" %>
 
           <div class="divide-y divide-gray-100">
             <% @thread_messages.each do |msg| %>
@@ -127,11 +116,7 @@
       <!-- Direct Replies (Children) -->
       <% if @message.child_messages.any? %>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h3 class="font-semibold text-gray-900">
-              Direct Replies (<%= @message.child_messages.size %>)
-            </h3>
-          </div>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Direct Replies (#{@message.child_messages.size})" %>
 
           <div class="divide-y divide-gray-100">
             <% @message.child_messages.order(:created_at).each do |reply| %>
@@ -165,9 +150,7 @@
     <div class="space-y-4">
       <!-- Message Metadata -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 class="font-semibold text-gray-900">Message Details</h3>
-        </div>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Message Details" %>
         <div class="p-4 space-y-3 text-sm">
           <div class="flex justify-between">
             <span class="text-gray-500">ID</span>
@@ -222,9 +205,7 @@
 
       <!-- Sender Info -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 class="font-semibold text-gray-900">Sender</h3>
-        </div>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Sender" %>
         <div class="p-4 text-sm">
           <% if @message.sender.present? %>
             <div class="flex items-center gap-3">
@@ -253,9 +234,7 @@
 
       <!-- Recipients -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 class="font-semibold text-gray-900">Recipients (<%= @message.message_recipients.size %>)</h3>
-        </div>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Recipients (#{@message.message_recipients.size})" %>
         <div class="max-h-64 overflow-y-auto">
           <% if @message.message_recipients.any? %>
             <% @message.message_recipients.each do |mr| %>
@@ -287,9 +266,7 @@
 
       <!-- Context/Associations -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h3 class="font-semibold text-gray-900">Context & Associations</h3>
-        </div>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Context & Associations" %>
         <div class="p-4 space-y-3 text-sm">
           <% if @message.organization.present? %>
             <div>
@@ -347,9 +324,7 @@
       <!-- Reactions -->
       <% if @message.message_reactions.any? %>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h3 class="font-semibold text-gray-900">Reactions (<%= @message.message_reactions.size %>)</h3>
-          </div>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Reactions (#{@message.message_reactions.size})" %>
           <div class="p-4">
             <div class="flex flex-wrap gap-2">
               <% @message.reaction_counts.each do |emoji, count| %>
@@ -373,9 +348,7 @@
       <!-- Subscriptions -->
       <% if @message.message_subscriptions.any? %>
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h3 class="font-semibold text-gray-900">Subscriptions (<%= @message.message_subscriptions.size %>)</h3>
-          </div>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Subscriptions (#{@message.message_subscriptions.size})" %>
           <div class="max-h-48 overflow-y-auto">
             <% @message.message_subscriptions.each do |sub| %>
               <div class="px-4 py-2 border-b border-gray-100 last:border-0 text-sm">

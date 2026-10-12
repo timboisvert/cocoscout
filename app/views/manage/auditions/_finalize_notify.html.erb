@@ -14,7 +14,7 @@
 
 <% if show_notify_box %>
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden my-6">
-    <%= render "shared/card_header", title: "Email Notifications" %>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Email Notifications" %>
     <div class="p-4">
       <% if cast_pending_stages.any? || rejected_pending_stages.any? %>
         <%# There are pending stages to notify %>

@@ -349,15 +349,9 @@
   <div class="fixed bottom-4 left-4 right-4 lg:left-[17rem] lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
        data-controller="vote-form"
        data-vote-form-save-url-value="<%= manage_cast_vote_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>">
-    <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
-      <h3 class="text-sm font-semibold text-gray-900 coustard-regular">
-        <% if @audition_cycle.video_only? %>
-          Should this <%= @requestable.is_a?(Person) ? 'person' : 'group' %> be added to <%= @production.name %>'s talent pool?
-        <% else %>
-          Should this <%= @requestable.is_a?(Person) ? 'person' : 'group' %> get an audition?
-        <% end %>
-      </h3>
-    </div>
+    <% requestable_kind = @requestable.is_a?(Person) ? "person" : "group" %>
+    <%= render "shared/section_heading", padding: "px-3 py-2",
+          title: @audition_cycle.video_only? ? "Should this #{requestable_kind} be added to #{@production.name}'s talent pool?" : "Should this #{requestable_kind} get an audition?" %>
     <div class="p-3 flex flex-col sm:flex-row sm:items-center gap-3">
       <!-- Navigation row on mobile, left side on desktop -->
       <div class="flex items-center gap-2 sm:gap-3">

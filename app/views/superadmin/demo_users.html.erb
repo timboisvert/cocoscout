@@ -14,10 +14,8 @@
   <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
     <!-- Left column: Add new demo user -->
     <div>
-      <div class="border border-gray-200 rounded-lg overflow-visible">
-        <%= render "shared/card_header", title: "Add Demo User" do %>
-          <p class="text-sm text-gray-500 mt-1">Search for a user to add as a demo org manager</p>
-        <% end %>
+      <div class="border border-gray-200 rounded-lg overflow-visible bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Add Demo User", intro: "Search for a user to add as a demo org manager" %>
         <div class="p-4 overflow-visible">
           <div data-controller="user-search" data-user-search-url-value="<%= search_users_path %>">
             <label class="block text-sm font-medium text-gray-700 mb-1">Search Users</label>
@@ -65,8 +63,8 @@
       </div>
 
       <!-- Demo Org Status -->
-      <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Demo Organization" %>
+      <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Demo Organization" %>
         <div class="p-4">
           <% if @demo_org %>
             <div class="flex items-center gap-2 text-green-600">
@@ -92,10 +90,8 @@
 
     <!-- Right column: Demo users list -->
     <div>
-      <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <%= render "shared/card_header", title: "Demo Users" do %>
-          <p class="text-sm text-gray-500 mt-1"><%= @demo_users.count %> users configured</p>
-        <% end %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Demo Users", intro: "#{@demo_users.count} users configured" %>
 
         <% if @demo_users.empty? %>
           <div class="p-8 text-center">

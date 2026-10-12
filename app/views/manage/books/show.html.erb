@@ -62,10 +62,9 @@
       <div class="max-w-3xl space-y-4">
         <% groups.each do |label, rows, total| %>
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 class="text-sm font-semibold text-gray-900"><%= label %></h2>
+            <%= render "shared/section_heading", padding: "px-5 py-3", title: label do %>
               <span class="text-sm font-semibold tabular-nums text-gray-900"><%= money.call(total) %></span>
-            </div>
+            <% end %>
             <ul class="divide-y divide-gray-100">
               <% rows.each do |row| %>
                 <li>

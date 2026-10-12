@@ -113,9 +113,7 @@
 
   <!-- Messages table -->
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/card_header", title: "Messages" do %>
-      <span class="text-sm font-normal text-gray-600">(<%= @pagy.count %> total)</span>
-    <% end %>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Messages (#{@pagy.count} total)" %>
 
     <% if @messages.empty? %>
       <div class="text-center py-12 text-gray-500">

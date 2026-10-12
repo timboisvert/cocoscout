@@ -20,11 +20,10 @@
   end
 %>
 <% if listing || link.outside? %>
-  <div class="border border-gray-200 rounded-lg overflow-hidden">
-    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
-      <h3 class="text-md font-semibold text-gray-900 coustard-regular">Tickets</h3>
+  <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>
       <%= render "shared/pro_marker" %>
-    </div>
+    <% end %>
     <%# Two halves, like the Money box's tiles: how it's selling on the left,
         the link on the right. %>
     <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">

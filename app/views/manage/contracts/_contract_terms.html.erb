@@ -27,8 +27,8 @@
   show_ticketing = contract.org_sells_tickets? || tiers.any? || discounts.any?
   show_services = services.any? || tech["provider"].present?
 %>
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <%= render "shared/card_header", title: "Contract Terms" do %>
+<div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+  <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contract Terms" do %>
     <% if pdf_doc %>
       <%= link_to rails_blob_path(pdf_doc.file, disposition: "inline"), target: "_blank" do %>
         <%= render "shared/button", text: "View signed contract", variant: "secondary", size: "small", icon: "eye" %>

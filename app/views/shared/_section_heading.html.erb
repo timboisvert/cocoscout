@@ -3,8 +3,9 @@
   "the best one"). A white strip at the top of a white card: the title in
   bold, an optional gray line under it, anything for the right side
   (buttons, a Pro pill) in the block, and a hairline between it and the
-  card's body. Replaces shared/card_header's gray bar and
-  shared/section_header everywhere.
+  card's body. It replaced the old gray-bar card_header (deleted) and
+  shared/section_header's look everywhere. A card that has no background
+  of its own gets bg-white, so the strip and the body read as one.
 
     render "shared/section_heading", title: "Production details"
     render "shared/section_heading", title: "Documents", intro: "Shared with your cast." do

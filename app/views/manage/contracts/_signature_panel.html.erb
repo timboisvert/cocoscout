@@ -1,7 +1,6 @@
 <%# E-signature status + actions. Only rendered for signing_mode: esign contracts. %>
-<div class="border border-gray-200 rounded-lg overflow-hidden">
-  <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-    <h3 class="text-sm font-semibold text-gray-700">Signature</h3>
+<div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+  <%= render "shared/section_heading", padding: "px-4 py-3", title: "Signature" do %>
     <% if @contract.signing_out_for_signature? %>
       <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">
         <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Out for signature
@@ -17,7 +16,7 @@
     <% else %>
       <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">Not signed yet</span>
     <% end %>
-  </div>
+  <% end %>
 
   <div class="p-4">
     <% if @contract.signing_unsent? %>

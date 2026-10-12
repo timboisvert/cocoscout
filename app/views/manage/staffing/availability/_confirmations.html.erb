@@ -4,13 +4,8 @@
     Locals: confirmed_count, staff_count, unconfirmed, nudgeable, draft. %>
 <% nudge_cid = "availability-nudge" %>
 <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
-  <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-    <h2 class="text-sm font-semibold text-gray-900">Who's confirmed</h2>
-    <p class="text-xs text-gray-500 mt-0.5">
-      <span class="font-medium <%= confirmed_count == staff_count ? "text-green-700" : "text-gray-900" %>"><%= confirmed_count %> of <%= staff_count %></span>
-      have confirmed their availability is up to date.
-    </p>
-  </div>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title: "Who's confirmed",
+        intro: safe_join([tag.span("#{confirmed_count} of #{staff_count}", class: "font-medium #{confirmed_count == staff_count ? "text-green-700" : "text-gray-900"}"), " have confirmed their availability is up to date."]) %>
 
   <% if unconfirmed.empty? %>
     <p class="px-4 py-3 text-sm text-green-700">Everyone's up to date.</p>

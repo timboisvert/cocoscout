@@ -92,7 +92,7 @@
     <div class="lg:col-span-2 space-y-6">
       <%# Details Card %>
       <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <%= render "shared/card_header", title: "Details" %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Details" %>
         <div class="p-4">
           <dl class="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -143,7 +143,7 @@
 
       <%# Repayment History %>
       <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <%= render "shared/card_header", title: "Repayment History" %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Repayment History" %>
         <% if @repayments.any? %>
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">

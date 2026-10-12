@@ -16,15 +16,12 @@
   add_id = "appendix-new-#{contract.id}"
 %>
 
-<div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
-  <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3">
-    <div>
-      <h3 class="text-sm font-semibold text-gray-700">Appendixes</h3>
-      <p class="text-xs text-gray-500 mt-0.5">Riders, hospitality, anything extra. They print at the end of the contract and are signed with it.</p>
-    </div>
+<div class="mt-6 border border-gray-200 rounded-lg overflow-hidden bg-white">
+  <%= render "shared/section_heading", padding: "px-4 py-3", title: "Appendixes",
+        intro: "Riders, hospitality, anything extra. They print at the end of the contract and are signed with it." do %>
     <%= render "shared/button", text: "Add appendix", variant: "primary", size: "small", icon: "plus", type: :button,
           data: { controller: "modal", action: "click->modal#open", modal_id: add_id } %>
-  </div>
+  <% end %>
 
   <% if appendixes.any? %>
     <div class="divide-y divide-gray-100">

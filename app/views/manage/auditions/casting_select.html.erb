@@ -51,12 +51,8 @@
       <div class="w-full lg:w-1/2">
         <!-- Add to Cast Bucket -->
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-4">
-          <%= render "shared/card_header", title: "Add to Cast" do %>
-            <p class="text-xs text-gray-500">
-              <span class="hidden lg:inline">Drag auditionees here to add them to the talent pool.</span>
-              <span class="lg:hidden">Tap + to add auditionees to cast.</span>
-            </p>
-          <% end %>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Add to Cast",
+                intro: safe_join([tag.span("Drag auditionees here to add them to the talent pool.", class: "hidden lg:inline"), tag.span("Tap + to add auditionees to cast.", class: "lg:hidden")]) %>
           <div class="p-4">
             <div class="border-2 border-dashed border-pink-300 rounded-lg p-4 min-h-[100px]"
                  data-casting-drag-target="dropZone"
@@ -111,12 +107,8 @@
 
         <!-- Reject Bucket -->
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <%= render "shared/card_header", title: "Reject" do %>
-            <p class="text-xs text-gray-500">
-              <span class="hidden lg:inline">Drag auditionees here to send rejection notices.</span>
-              <span class="lg:hidden">Tap to reject auditionees.</span>
-            </p>
-          <% end %>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Reject",
+                intro: safe_join([tag.span("Drag auditionees here to send rejection notices.", class: "hidden lg:inline"), tag.span("Tap to reject auditionees.", class: "lg:hidden")]) %>
           <div class="p-4">
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[100px]"
                  data-casting-drag-target="dropZone"
@@ -173,11 +165,7 @@
       <!-- Right side: Auditionees - hidden on mobile -->
       <div class="hidden lg:block w-full lg:w-1/2 flex-shrink-0">
         <div class="lg:sticky lg:top-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
-          <%= render "shared/card_header", title: "Auditionees" do %>
-            <p class="text-xs text-gray-500">
-              People who auditioned.
-            </p>
-          <% end %>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Auditionees", intro: "People who auditioned." %>
           <div class="p-2 space-y-1 overflow-y-auto flex-1">
             <% @auditioned_people.each do |auditionee| %>
               <%

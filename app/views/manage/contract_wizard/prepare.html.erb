@@ -35,11 +35,8 @@
     <% end %>
 
     <%# The rendered contract — the whole point of this step. %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-gray-700">Preview — <%= @selected_template&.name %></h3>
-        <span class="text-xs text-gray-500">with this contract's data</span>
-      </div>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Preview — #{@selected_template&.name}", intro: "With this contract's data" %>
       <div class="p-6 max-h-[55vh] overflow-y-auto bg-white">
         <div class="prose prose-sm max-w-none
                     [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1

@@ -30,10 +30,7 @@
     <% else %>
       <!-- Summary by Show -->
       <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
-        <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Casting Summary</h3>
-          <p class="text-sm text-gray-600 mt-1">Review all assignments before finalizing.</p>
-        </div>
+        <%= render "shared/section_heading", title: "Casting Summary", intro: "Review all assignments before finalizing." %>
 
         <div class="space-y-2 px-4 py-3">
           <% @assignments_by_show.each do |show, assignments| %>
@@ -59,18 +56,8 @@
 
       <!-- People to Notify -->
       <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
-        <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900 coustard-regular">Notifications</h3>
-          <% if @casting_table.finalized? %>
-            <p class="text-sm text-gray-600 mt-1">
-              <strong><%= @notified_people&.count || 0 %></strong> people were notified of their casting.
-            </p>
-          <% else %>
-            <p class="text-sm text-gray-600 mt-1">
-              <strong><%= @people_to_notify.count %></strong> people will be notified of their casting.
-            </p>
-          <% end %>
-        </div>
+        <%= render "shared/section_heading", title: "Notifications",
+              intro: @casting_table.finalized? ? safe_join([tag.strong(@notified_people&.count || 0), " people were notified of their casting."]) : safe_join([tag.strong(@people_to_notify.count), " people will be notified of their casting."]) %>
 
         <div class="p-6">
           <% if @casting_table.finalized? && @notified_people.present? %>

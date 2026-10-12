@@ -18,16 +18,7 @@
   <div class="space-y-6">
     <% @tasks.each do |namespace, tasks| %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h2 class="text-sm font-semibold text-gray-900">
-            <% if namespace == "default" %>
-              General Tasks
-            <% else %>
-              <%= namespace %>
-            <% end %>
-          </h2>
-          <p class="text-xs text-gray-500"><%= tasks.size %> task<%= tasks.size == 1 ? '' : 's' %></p>
-        </div>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: namespace == "default" ? "General Tasks" : namespace, intro: pluralize(tasks.size, "task") %>
         <div class="divide-y divide-gray-100">
           <% tasks.each do |task| %>
             <div class="px-4 py-3 group">

@@ -23,7 +23,7 @@
       <div class="lg:col-span-1 space-y-4">
         <!-- Template Info Card -->
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <%= render "shared/card_header", title: "Template Info" %>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Template Info" %>
           <div class="p-4 space-y-3">
             <div>
               <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider">Key</label>
@@ -115,11 +115,10 @@
 
         <!-- Variable Editor -->
         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-sm font-medium text-gray-900">Preview Variables</h3>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Preview Variables" do %>
             <button type="button" class="text-xs text-pink-600 hover:text-pink-800 font-medium"
                     data-action="content-template-preview#resetVariables">Reset</button>
-          </div>
+          <% end %>
           <div class="p-4 space-y-4 max-h-96 overflow-y-auto">
             <% if @template.hybrid? %>
               <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
@@ -172,7 +171,7 @@
         <!-- Usage Locations -->
         <% if @template.usage_locations.present? || @template.mailer_class.present? %>
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <%= render "shared/card_header", title: "Used In" %>
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Used In" %>
             <div class="p-4 space-y-2">
               <% if @template.mailer_class.present? %>
                 <div class="flex items-start gap-2">
