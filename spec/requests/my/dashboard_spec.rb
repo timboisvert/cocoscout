@@ -188,7 +188,7 @@ RSpec.describe "My::Dashboard", type: :request do
       get my_dashboard_path
 
       expect(response.body).not_to include('data-intro-guide="talent_welcome"')
-      expect(response.body).to include("Show it on the page")
+      expect(response.body).not_to include("Show it on the page", "data-intro-guide-help") # closed means gone, no "?" circle
       # The retired "Get started by completing your profile" checklist is gone
       # for good — profile nudges are the talent-pool alert panels now.
       expect(response.body).not_to include("Get started by completing your profile")

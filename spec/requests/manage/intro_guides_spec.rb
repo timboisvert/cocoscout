@@ -25,7 +25,7 @@ RSpec.describe "Intro guides", type: :request do
 
     get manage_casting_path
     expect(response.body).not_to include('data-intro-guide="casting_intro"')
-    expect(response.body).to include("Show it on the page")
+    expect(response.body).not_to include("Show it on the page", "data-intro-guide-help") # closed means gone, no "?" circle
 
     post guide_restore_path("casting_intro")
     get manage_casting_path
@@ -108,7 +108,7 @@ RSpec.describe "Intro guides", type: :request do
     post guide_dismiss_path("production_next_steps")
     get manage_path
     expect(response.body).not_to include('data-intro-guide="production_next_steps"')
-    expect(response.body).to include("Show it on the page")
+    expect(response.body).not_to include("Show it on the page", "data-intro-guide-help") # closed means gone, no "?" circle
   end
 
   it "hides the what's-next home panel when the org has no productions" do
