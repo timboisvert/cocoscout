@@ -34,15 +34,8 @@ class AppSession < ApplicationRecord
     OpenSSL::Digest::SHA256.hexdigest(token.to_s)
   end
 
-  # The name the app sent, or a guess from its user agent.
+  # The name the app sent, or one from its user agent.
   def label
-    return device_name if device_name.present?
-
-    case user_agent.to_s
-    when /iPad/ then "iPad"
-    when /iPhone|iOS/ then "iPhone"
-    when /Android/ then "Android phone"
-    else "A phone"
-    end
+    device_name.presence || DeviceLabel.device_name(user_agent.to_s) || "A phone"
   end
 end

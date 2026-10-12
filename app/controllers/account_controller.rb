@@ -11,6 +11,7 @@ class AccountController < ApplicationController
   def show
     @person = Current.user.person
     @app_sessions = Current.user.app_sessions.live.order(last_used_at: :desc)
+    @other_sessions = Current.user.sessions.where.not(id: Current.session.id).order(created_at: :desc)
   end
 
   def update
@@ -228,6 +229,21 @@ class AccountController < ApplicationController
     session = Current.user.app_sessions.find(params[:id])
     session.destroy!
     redirect_to account_path, notice: "#{session.label} is signed out of the app."
+  end
+
+  # Signs one other browser or app phone out.
+  def sign_out_session
+    session = Current.user.sessions.where.not(id: Current.session.id).find(params[:id])
+    session.destroy!
+    redirect_to account_path, notice: "#{session.label} is signed out."
+  end
+
+  # Signs out everywhere but here: every other browser, app phone and API
+  # sign-in.
+  def sign_out_elsewhere
+    Current.user.sessions.where.not(id: Current.session.id).destroy_all
+    Current.user.app_sessions.destroy_all
+    redirect_to account_path, notice: "You're signed out everywhere but here."
   end
 
   def leave_organization

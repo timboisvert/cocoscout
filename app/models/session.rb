@@ -6,4 +6,8 @@ class Session < ApplicationRecord
   # on the session row (not a cookie) so the impersonation banner survives
   # anything the browser does to its session cookies.
   belongs_to :impersonator, class_name: "User", optional: true
+
+  def label
+    DeviceLabel.from_user_agent(user_agent)
+  end
 end

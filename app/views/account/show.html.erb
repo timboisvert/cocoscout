@@ -42,17 +42,47 @@
         </div>
         <%= render "shared/button", text: "Reset password", path: password_path, variant: "secondary", size: "small" %>
       </div>
-      <%# Phones signed in to the app; a new password signs them all out. %>
-      <% (@app_sessions || []).each do |app_session| %>
+      <%# Where else you're signed in: browsers, the app, and API sign-ins.
+          A new password signs them all out. %>
+      <% others = @other_sessions.to_a %>
+      <% app_sessions = @app_sessions.to_a %>
+      <div class="<%= row_class %>">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-gray-900">Where you're signed in</div>
+          <div class="text-sm text-gray-600">
+            Here, on <%= Current.session.label %><% if others.any? || app_sessions.any? %>, and <%= pluralize(others.size + app_sessions.size, "other place") %><% end %>.
+          </div>
+        </div>
+        <% if others.any? || app_sessions.any? %>
+          <%= form_with url: sign_out_elsewhere_account_path, method: :delete, class: "inline" do %>
+            <%= render "shared/button", text: "Sign out everywhere else", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        <% end %>
+      </div>
+      <% others.first(10).each do |other| %>
         <div class="<%= row_class %>">
           <div class="min-w-0">
-            <div class="text-sm font-medium text-gray-900">Signed in on the app: <%= app_session.label %></div>
-            <div class="text-sm text-gray-600">Since <%= app_session.created_at.strftime("%b %-d, %Y") %>, last used <%= app_session.last_used_at.strftime("%b %-d") %></div>
+            <div class="text-sm text-gray-900"><%= other.label %></div>
+            <div class="text-sm text-gray-600">Signed in <%= other.created_at.strftime("%b %-d, %Y") %></div>
+          </div>
+          <%= form_with url: sign_out_session_account_path(other), method: :delete, class: "inline" do %>
+            <%= render "shared/button", text: "Sign out", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        </div>
+      <% end %>
+      <% app_sessions.each do |app_session| %>
+        <div class="<%= row_class %>">
+          <div class="min-w-0">
+            <div class="text-sm text-gray-900"><%= app_session.label %></div>
+            <div class="text-sm text-gray-600">Signed in <%= app_session.created_at.strftime("%b %-d, %Y") %>, last used <%= app_session.last_used_at.strftime("%b %-d") %></div>
           </div>
           <%= form_with url: sign_out_app_account_path(app_session), method: :delete, class: "inline" do %>
             <%= render "shared/button", text: "Sign out", variant: "secondary", size: "small", type: :submit %>
           <% end %>
         </div>
+      <% end %>
+      <% if others.size > 10 %>
+        <div class="px-4 py-2 sm:px-6 text-xs text-gray-500"><%= pluralize(others.size - 10, "older sign-in") %> not shown. Sign out everywhere else covers them too.</div>
       <% end %>
       <div class="<%= row_class %>">
         <div class="min-w-0">

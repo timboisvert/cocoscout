@@ -213,6 +213,8 @@ Rails.application.routes.draw do
   get   "/account/organizations",         to: "account#organizations",       as: "account_organizations"
   delete "/account/organizations/:id/leave", to: "account#leave_organization", as: "leave_organization_account"
   delete "/account/app-sessions/:id",     to: "account#sign_out_app",        as: "sign_out_app_account"
+  delete "/account/sessions/:id",         to: "account#sign_out_session",    as: "sign_out_session_account"
+  delete "/account/sessions",             to: "account#sign_out_elsewhere",  as: "sign_out_elsewhere_account"
 
   # Superadmin
   scope "/superadmin" do

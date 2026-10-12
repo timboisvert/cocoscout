@@ -14,10 +14,12 @@ class User < ApplicationRecord
   end
 
   has_many :sessions, dependent: :destroy
-  # The app's signed-in phones (AppSession); a new password ends them all.
+  # The app's signed-in phones (AppSession). A new password ends them all, and
+  # every web sign-in but the one making the change (the iOS app signs in
+  # through the web, so its phones are web sessions too).
   has_many :app_sessions, dependent: :destroy
   has_many :device_tokens, dependent: :destroy
-  after_update :end_app_sessions, if: :saved_change_to_password_digest?
+  after_update :end_other_sign_ins, if: :saved_change_to_password_digest?
 
   has_many :organization_roles, dependent: :destroy
   has_many :organizations, through: :organization_roles
@@ -429,8 +431,9 @@ class User < ApplicationRecord
 
   private
 
-  def end_app_sessions
+  def end_other_sign_ins
     app_sessions.destroy_all
+    sessions.where.not(id: Current.session&.id).destroy_all
   end
 
   def password_complexity
