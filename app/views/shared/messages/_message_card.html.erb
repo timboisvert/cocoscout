@@ -110,90 +110,90 @@
     end
   %>
 
-  <div class="p-3 bg-gray-50/80">
-    <div class="flex items-center gap-2">
-      <%# Avatar - system icon for automated messages, otherwise normal avatar %>
-      <% if is_system_generated %>
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-100 to-pink-50 flex items-center justify-center flex-shrink-0 border border-pink-200">
-          <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-          </svg>
-        </div>
-      <% else %>
+  <%# Two lines, phone-first (Tim, 2026-10-12): who it's from and when, then
+      how it came and who it's to. No icon for automated messages; a person
+      sender keeps their headshot. %>
+  <%
+    viewer_people_ids = Current.user ? Current.user.people.ids : []
+    single_recipient = recipient_count == 1 ? message.recipient_people.first : nil
+    via_production = production_context && !message.sent_as_production_team? && message.visibility != "personal" && !is_system_generated
+  %>
+  <div class="px-4 py-3 bg-gray-50/80 border-b border-gray-100">
+    <div class="flex items-start gap-3">
+      <% unless is_system_generated %>
         <%= render "shared/messages/message_avatar", message: message, sender_person: sender_person, size: :small %>
       <% end %>
 
-      <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap text-sm">
-        <%# Sender + via inline - system messages show "Automated Notification" %>
-        <% if is_system_generated %>
-          <span class="font-semibold text-gray-700">Automated Notification</span>
-          <% if message.production %>
-            <span class="text-gray-400">from</span>
-            <% if production_link %>
-              <%= link_to message.production.name, production_link, class: "relative z-10 font-medium text-pink-600 hover:text-pink-700 hover:underline" %>
+      <div class="flex-1 min-w-0">
+        <%# Line 1: who it's from, and the date. %>
+        <div class="flex items-baseline justify-between gap-3">
+          <div class="min-w-0 flex items-center gap-1.5 text-sm">
+            <% if is_system_generated %>
+              <% if message.production %>
+                <% if production_link %>
+                  <%= link_to message.production.name, production_link, class: "relative z-10 truncate font-semibold text-pink-600 hover:text-pink-700 hover:underline" %>
+                <% else %>
+                  <span class="truncate font-semibold text-pink-600"><%= message.production.name %></span>
+                <% end %>
+              <% else %>
+                <span class="truncate font-semibold text-gray-900">CocoScout</span>
+              <% end %>
+            <% elsif message.sent_as_production_team? && production_link %>
+              <%= link_to message.sender_name, production_link, class: "relative z-10 truncate font-semibold text-pink-600 hover:text-pink-700 hover:underline" %>
             <% else %>
-              <span class="font-medium text-pink-600"><%= message.production.name %></span>
+              <span class="truncate font-semibold text-gray-900"><%= message.sender_name %></span>
             <% end %>
-          <% end %>
-        <% elsif message.sent_as_production_team? && production_link %>
-          <%= link_to message.sender_name, production_link, class: "relative z-10 font-semibold text-pink-600 hover:text-pink-700 hover:underline" %>
-        <% else %>
-          <span class="font-semibold text-gray-900"><%= message.sender_name %></span>
-          <%# Show "via Production" only for non-personal messages that aren't sent as production team %>
-          <% if production_context && !message.sent_as_production_team? && message.visibility != "personal" %>
-            <span class="text-gray-400">via</span>
-            <% if production_link %>
-              <%= link_to production_context.name, production_link, class: "relative z-10 font-medium text-pink-600 hover:text-pink-700 hover:underline" %>
-            <% else %>
-              <span class="font-medium text-pink-600"><%= production_context.name %></span>
+            <% if is_unread %>
+              <span class="w-2 h-2 flex-shrink-0 bg-pink-500 rounded-full" aria-label="Unread"></span>
             <% end %>
+          </div>
+          <span class="flex-shrink-0 text-xs text-gray-500"><%= message.created_at.year == Date.current.year ? message.created_at.strftime("%b %-d") : message.created_at.strftime("%b %-d, %Y") %></span>
+        </div>
+
+        <%# Line 2: automated or via a production, and who it went to. %>
+        <div class="mt-0.5 flex items-center gap-1.5 flex-wrap text-xs text-gray-500">
+          <% if is_system_generated %>
+            <span>Automated</span>
+          <% elsif via_production %>
+            <span>via
+              <% if production_link %>
+                <%= link_to production_context.name, production_link, class: "relative z-10 font-medium text-pink-600 hover:text-pink-700 hover:underline" %>
+              <% else %>
+                <span class="font-medium text-pink-600"><%= production_context.name %></span>
+              <% end %>
+            </span>
           <% end %>
-        <% end %>
 
-        <span class="text-gray-300">·</span>
-        <span class="text-gray-500"><%= message.created_at.strftime("%b %-d") %></span>
-
-        <%# Recipients with context label and headshots %>
-        <% if recipient_context_label %>
-          <span class="text-gray-300">·</span>
-          <span class="text-gray-500">To <span class="font-medium text-gray-700"><%= recipient_context_label %></span></span>
-          <% if show_recipient_headshots && recipient_count > 0 %>
-            <div class="flex items-center -space-x-1">
-              <% message.recipient_people.limit(8).each do |person| %>
-                <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                <span data-controller="tooltip" data-tooltip-text-value="<%= person.name %>" class="relative">
-                  <% if headshot_variant %>
-                    <%= image_tag rails_storage_proxy_url(headshot_variant),
-                        alt: person.name,
-                        class: "w-6 h-6 rounded-lg object-cover ring-1 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default" %>
-                  <% else %>
-                    <div class="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[9px] ring-1 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default">
-                      <%= person.initials %>
+          <% if recipient_context_label || single_recipient %>
+            <% if is_system_generated || via_production %><span class="text-gray-300">·</span><% end %>
+            <span>To <span class="font-medium text-gray-700"><%= recipient_context_label || (viewer_people_ids.include?(single_recipient.id) ? "you" : single_recipient.name) %></span></span>
+            <% if show_recipient_headshots && recipient_count > 0 %>
+              <div class="flex items-center -space-x-1">
+                <% message.recipient_people.limit(8).each do |person| %>
+                  <% headshot_variant = person.safe_headshot_variant(:thumb) %>
+                  <span data-controller="tooltip" data-tooltip-text-value="<%= person.name %>" class="relative">
+                    <% if headshot_variant %>
+                      <%= image_tag rails_storage_proxy_url(headshot_variant),
+                          alt: person.name,
+                          class: "w-5 h-5 rounded-lg object-cover ring-1 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default" %>
+                    <% else %>
+                      <div class="w-5 h-5 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[8px] ring-1 ring-white relative z-10 hover:z-20 hover:scale-110 transition-transform cursor-default">
+                        <%= person.initials %>
+                      </div>
+                    <% end %>
+                  </span>
+                <% end %>
+                <% if recipient_count > 8 %>
+                  <span data-controller="tooltip" data-tooltip-text-value="<%= recipient_count - 8 %> more" class="relative">
+                    <div class="w-5 h-5 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-[8px] ring-1 ring-white relative z-10">
+                      +<%= recipient_count - 8 %>
                     </div>
-                  <% end %>
-                </span>
-              <% end %>
-              <% if recipient_count > 8 %>
-                <span data-controller="tooltip" data-tooltip-text-value="<%= recipient_count - 8 %> more" class="relative">
-                  <div class="w-6 h-6 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-[9px] ring-1 ring-white relative z-10">
-                    +<%= recipient_count - 8 %>
-                  </div>
-                </span>
-              <% end %>
-            </div>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
           <% end %>
-        <% elsif recipient_count == 1 %>
-          <% recipient = message.recipient_people.first %>
-          <% if recipient %>
-            <span class="text-gray-300">·</span>
-            <span class="text-gray-500">To</span>
-            <span class="font-medium text-gray-700"><%= recipient.name %></span>
-          <% end %>
-        <% end %>
-
-        <% if is_unread %>
-          <span class="w-2 h-2 bg-pink-500 rounded-full"></span>
-        <% end %>
+        </div>
       </div>
 
       <%

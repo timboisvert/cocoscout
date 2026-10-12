@@ -12,11 +12,11 @@ final class WebViewController: HotwireWebViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        titleLabel.font = AppConfig.coustard(25)
+        titleLabel.font = AppConfig.coustard(22)
         titleLabel.textColor = .label
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([titleWidth, titleLabel.heightAnchor.constraint(equalToConstant: 34)])
+        NSLayoutConstraint.activate([titleWidth, titleLabel.heightAnchor.constraint(equalToConstant: 30)])
 
         let item = UIBarButtonItem(customView: titleLabel)
         if #available(iOS 26.0, *) {
