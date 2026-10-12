@@ -276,7 +276,9 @@ module Manage
     end
 
     def audition_cycle_params
-      params.require(:audition_cycle).permit(:production_id, :opens_at, :closes_at, :audition_type,
+      # No production_id: it let an update move a cycle (and its applicants)
+      # into another org's production.
+      params.require(:audition_cycle).permit(:opens_at, :closes_at, :audition_type,
                                              :signup_mode, :allow_slot_changes,
                                              :allow_video_submissions, :allow_in_person_auditions,
                                              :listed_in_directory, :resume_required,
@@ -285,7 +287,9 @@ module Manage
     end
 
     def question_params
-      params.require(:question).permit(:key, :text, :question_type, :required, :questionable_id, :questionable_type,
+      # No questionable_id/type: the question's form is set from the URL, and
+      # taking it from params let an update move a question onto any org's form.
+      params.require(:question).permit(:key, :text, :question_type, :required,
                                        question_options_attributes: %i[id text _destroy])
     end
   end

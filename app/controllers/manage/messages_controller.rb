@@ -385,7 +385,9 @@ module Manage
       when "talent_pool"
         production_id = params[:production_id]
         production = production_id.present? ? Current.organization.productions.find(production_id) : nil
-        talent_pool = production&.effective_talent_pool || TalentPool.find(recipient_id)
+        # Org-scoped: a bare find let a manager message every member of any org's pool.
+        talent_pool = production&.effective_talent_pool ||
+                      TalentPool.joins(:production).where(productions: { organization_id: Current.organization.id }).find(recipient_id)
 
         # Get all people in the talent pool
         people = Person.joins(:talent_pool_memberships)

@@ -1727,7 +1727,9 @@ module Manage
 
     # Only allow a list of trusted parameters through.
     def show_params
-      permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :wide_image, :remove_wide_image, :production_id, :location_id, :location_space_id,
+      # No production_id: it let an update move a show into another org's
+      # production. Moving a show between productions is the Transfer flow.
+      permitted = params.require(:show).permit(:event_type, :secondary_name, :date_and_time, :duration_minutes, :poster, :remove_poster, :wide_image, :remove_wide_image, :location_id, :location_space_id,
                                                :event_frequency, :recurrence_pattern, :recurrence_end_date, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :casting_mode, :is_online, :online_location_info,
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,

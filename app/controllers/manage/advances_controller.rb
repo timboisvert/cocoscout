@@ -30,7 +30,8 @@ module Manage
     end
 
     def create
-      person = Person.find_by(id: advance_params[:person_id])
+      # Scoped: an advance pays out of this org's balance to one of its own people.
+      person = advance_params[:person_id].present? ? Current.organization.people.find(advance_params[:person_id]) : nil
       show = advance_params[:show_id].present? ? @production.shows.find_by(id: advance_params[:show_id]) : nil
       amount_cents = (advance_params[:original_amount].to_d * 100).round
 
@@ -110,7 +111,11 @@ module Manage
 
     # Waivers - for recording why someone didn't get an advance
     def create_waiver
-      @waiver = ShowAdvanceWaiver.new(waiver_params)
+      # Scoped like set_waiver: a raw show_id wrote a waiver onto another org's show.
+      @waiver = ShowAdvanceWaiver.new(waiver_params.merge(
+        show: @production.shows.find(waiver_params[:show_id]),
+        person: Current.organization.people.find(waiver_params[:person_id])
+      ))
       @waiver.waived_by = Current.user
 
       if @waiver.save

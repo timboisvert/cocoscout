@@ -210,7 +210,7 @@ module Manage
 
     def fill
       person_id = params[:person_id]
-      person = Person.find(person_id)
+      person = Current.organization.people.find(person_id)
 
       # The fill! method handles removing old assignment, creating new assignment, and updating vacancy status
       @vacancy.fill!(person, by: Current.person)
