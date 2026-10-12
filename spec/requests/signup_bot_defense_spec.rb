@@ -119,6 +119,16 @@ RSpec.describe "Signup bot defense", type: :request do
       expect { post_signup(from: "172.58.167.89") }.to change { user_count }.by(1)
     end
 
+    # The iOS app's sign-in checks a password just like /signin, with no
+    # token in front of it, so it gets the same per-IP ceiling.
+    it "throttles the app's sign-in like the web's" do
+      throttle = Rack::Attack.throttles.fetch("auth/ip")
+      post_to = ->(path) { Rack::Attack::Request.new(Rack::MockRequest.env_for(path, method: "POST", "REMOTE_ADDR" => "24.13.93.231")) }
+
+      expect(throttle.block.call(post_to.call("/signin"))).to eq("24.13.93.231")
+      expect(throttle.block.call(post_to.call("/api/v1/sessions"))).to eq("24.13.93.231")
+    end
+
     it "leaves assets and Active Storage out of the general per-IP ceiling" do
       # Variants have their own dedicated throttle; counting them here too let a
       # manager on a few headshot-heavy pages burn the whole 5-minute budget on

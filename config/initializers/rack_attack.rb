@@ -22,9 +22,10 @@ class Rack::Attack
     req.ip unless req.path.start_with?("/assets", "/rails/active_storage")
   end
 
-  # Auth endpoints: brute-force and bot-signup protection.
+  # Auth endpoints: brute-force and bot-signup protection. The iOS app's
+  # sign-in checks a password just the same.
   throttle("auth/ip", limit: 10, period: 1.minute) do |req|
-    req.ip if req.post? && [ "/signin", "/signup" ].include?(req.path)
+    req.ip if req.post? && [ "/signin", "/signup", "/api/v1/sessions" ].include?(req.path)
   end
 
   # Address ranges that may not touch the auth forms at all. Added 2026-08-18
