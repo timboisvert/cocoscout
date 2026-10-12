@@ -34,6 +34,51 @@ enum NavStyle: String, CaseIterable, Identifiable {
     }
 }
 
+/// How a page picked from the menu replaces the one on screen. Being tried
+/// out (DEBUG builds switch from the menu).
+enum MenuTransition: String, CaseIterable, Identifiable {
+    /// iOS's own cross-fade.
+    case fade
+    /// The new page slides in from the right, the old one off to the left.
+    case slide
+    /// The new page rises up from the bottom.
+    case slideUp
+    case none
+
+    static var current: MenuTransition {
+        MenuTransition(rawValue: UserDefaults.standard.string(forKey: "MenuTransition") ?? "") ?? .fade
+    }
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .fade: "Fade"
+        case .slide: "Slide"
+        case .slideUp: "Slide up"
+        case .none: "None"
+        }
+    }
+
+    /// A Core Animation transition to run instead of iOS's fade (nil: use the fade, or nothing).
+    var coreAnimation: CATransition? {
+        let transition = CATransition()
+        transition.duration = 0.3
+        transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        switch self {
+        case .slide:
+            transition.type = .push
+            transition.subtype = .fromRight
+        case .slideUp:
+            transition.type = .moveIn
+            transition.subtype = .fromTop
+        case .fade, .none:
+            return nil
+        }
+        return transition
+    }
+}
+
 /// The app's frame around the web pages. The server sends the person's tabs
 /// and menu on every page load (TabsComponent); this rebuilds the frame only
 /// when what it shows actually changes, and keeps the badges current. No tabs
@@ -127,10 +172,21 @@ final class AppShell {
         }
     }
 
+    /// Swaps the whole screen for the picked page, with the chosen transition:
+    /// iOS's fade, our own slide (Hotwire's animation off), or nothing.
     private func replaceRoot(of navigator: Navigator, with url: URL) {
+        let transition = MenuTransition.current
         var properties = Hotwire.config.pathConfiguration.properties(for: url)
         properties["presentation"] = "replace_root"
+        properties["animated"] = transition == .fade
+        if let animation = transition.coreAnimation {
+            navigator.rootViewController.view.layer.add(animation, forKey: kCATransition)
+        }
         navigator.route(VisitProposal(url: url, options: VisitOptions(action: .advance), properties: properties))
+    }
+
+    func setMenuTransition(_ transition: MenuTransition) {
+        UserDefaults.standard.set(transition.rawValue, forKey: "MenuTransition")
     }
 
     private func select(_ index: Int, start: Bool = true) {

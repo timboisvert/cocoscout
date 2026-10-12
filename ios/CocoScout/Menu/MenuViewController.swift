@@ -29,6 +29,7 @@ final class MenuViewController: UIHostingController<MenuView> {
 struct MenuView: View {
     let items: [TabSpec]
     @State var style: NavStyle
+    @State private var transition = MenuTransition.current
     let onAction: (MenuViewController.Action) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -65,6 +66,13 @@ struct MenuView: View {
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: style) { _, newStyle in onAction(.style(newStyle)) }
+
+                    Text("Switching pages from the menu").font(.footnote).foregroundStyle(.secondary).padding(.top, 8)
+                    Picker("Switching pages", selection: $transition) {
+                        ForEach(MenuTransition.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: transition) { _, newTransition in AppShell.shared.setMenuTransition(newTransition) }
                 }
                 .padding(16)
                 #endif
