@@ -200,6 +200,15 @@ RSpec.describe "CocoScout's money" do
         expect { PlatformReconciliationJob.perform_now }.to have_enqueued_mail(AppMailer, :send_template).twice
       end
     end
+
+    it "never emails from a development machine, whose Stripe test account never matches" do
+      CocoScoutLedgerEntry.post!(source: org, entry_type: "explained", amount_cents: 100, occurred_at: Time.current)
+      travel_to(Time.zone.local(2026, 10, 6, 6)) { PlatformReconciliationJob.perform_now }
+      allow(Rails.env).to receive(:development?).and_return(true)
+      travel_to(Time.zone.local(2026, 10, 7, 6)) do
+        expect { PlatformReconciliationJob.perform_now }.not_to have_enqueued_mail(AppMailer, :send_template)
+      end
+    end
   end
 
   before { allow(Stripe::BalanceTransaction).to receive(:list).and_return(double(auto_paging_each: nil)) }
