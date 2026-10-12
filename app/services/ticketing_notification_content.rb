@@ -200,7 +200,11 @@ class TicketingNotificationContent
     items = TicketOrderItem.where(ticket_order_id: orders.map(&:id), status: TicketOrderItem::SOLD_STATUSES).to_a
     products_sold = items.sum(&:quantity)
     product_sales = items.sum(&:price_cents)
-    label = ->(listing) { "#{listing.show.date_and_time.strftime('%a %b %-d')} · #{h(listing.display_title)}" }
+    # The date on its own small line over the title, so a long title has the
+    # whole cell (it wrapped to three lines beside the date).
+    label = lambda do |listing|
+      %(<span style="display:block;font-size:12px;color:#6b7280">#{listing.show.date_and_time.strftime('%a %b %-d')}</span>#{h(listing.display_title)})
+    end
     yesterday_rows = by_show.sort_by { |l, _| l.show.date_and_time }.map do |listing, os|
       ids = os.map(&:id).to_set
       count = os.sum { |o| o.tickets.count { |t| bought.include?(t.status) } }
@@ -210,6 +214,12 @@ class TicketingNotificationContent
         s.capacity ? "#{s.sold} of #{s.capacity}" : s.sold.to_s ]
     end
     yesterday_rows << { cells: [ "Total", tickets.to_s, products_sold.positive? ? products_sold.to_s : "—", money(sales), "" ] } if yesterday_rows.size > 1
+    # No products sold that day: no Products column, one less to squeeze.
+    head = [ "Show", "Sold", "Products", "Sales", "Now" ]
+    unless products_sold.positive?
+      head.delete_at(2)
+      yesterday_rows = yesterday_rows.map { |row| row.is_a?(Hash) ? row.merge(cells: row[:cells].dup.tap { |c| c.delete_at(2) }) : row.dup.tap { |c| c.delete_at(2) } }
+    end
     refund_rows = refunds.group_by { |r| r.ticket_order.ticket_listing }.sort_by { |l, _| l.show.date_and_time }.map do |listing, rs|
       [ label.call(listing), rs.sum { |r| r.ticket_ids.size }.to_s, money(rs.sum(&:amount_cents)) ]
     end
@@ -219,7 +229,7 @@ class TicketingNotificationContent
       products_sold: products_sold.positive? ? ActionController::Base.helpers.pluralize(products_sold, "product") : "",
       product_sales: money(product_sales),
       refunded: refunds.any? ? money(refunds.sum(:amount_cents)) : "",
-      yesterday_table: yesterday_rows.any? ? table([ "Show", "Sold", "Products", "Sales", "Now" ], yesterday_rows) : "<p>No sales that day.</p>",
+      yesterday_table: yesterday_rows.any? ? table(head, yesterday_rows) : "<p>No sales that day.</p>",
       refunds_table: refund_rows.any? ? %(<h3 style="font-size:15px;margin:24px 0 8px">Refunded</h3>#{table([ 'Show', 'Tickets', 'Refunded' ], refund_rows)}) : "",
       anything: orders.any? || refunds.any?
     }
