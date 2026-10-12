@@ -39,6 +39,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         ])
         Hotwire.config.backButtonDisplayMode = .minimal
         Hotwire.config.showDoneButtonOnModals = true
+        Hotwire.config.defaultViewController = { url in WebViewController(url: url) }
         #if DEBUG
         Hotwire.config.debugLoggingEnabled = true
         #endif
@@ -48,6 +49,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Opaque bars so iOS places web content below them.
         let navBar = UINavigationBarAppearance()
         navBar.configureWithOpaqueBackground()
+        // Titles iOS draws itself (the menu sheet) in Coustard too; web pages
+        // put theirs on the left (WebViewController).
+        navBar.titleTextAttributes = [.font: AppConfig.coustard(18), .foregroundColor: UIColor.label]
         UINavigationBar.appearance().standardAppearance = navBar
         UINavigationBar.appearance().scrollEdgeAppearance = navBar
         UITabBar.appearance().tintColor = AppConfig.pink

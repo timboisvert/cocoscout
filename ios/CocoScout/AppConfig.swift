@@ -28,4 +28,12 @@ enum AppConfig {
 
     /// CocoScout pink (Tailwind pink-500).
     static let pink = UIColor(red: 236 / 255, green: 72 / 255, blue: 153 / 255, alpha: 1)
+
+    /// Coustard, the website's title face (bundled; listed in Info.plist's
+    /// UIAppFonts). Falls back to the system font if it ever fails to load.
+    static func coustard(_ size: CGFloat) -> UIFont {
+        if let font = UIFont(name: "Coustard-Regular", size: size) { return font }
+        if let name = UIFont.fontNames(forFamilyName: "Coustard").first, let font = UIFont(name: name, size: size) { return font }
+        return .systemFont(ofSize: size, weight: .semibold)
+    }
 }

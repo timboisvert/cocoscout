@@ -87,6 +87,15 @@ RSpec.describe "The iOS app's web side", type: :request do
       get my_dashboard_path
       expect(tabs).to be_nil
     end
+
+    # The password page is open to everyone, so it doesn't load the session
+    # on its own; it must still tell the app you're signed in, or the app
+    # resets to its sign-in screen (Reset password "did nothing").
+    it "keeps a signed-in person's tabs on pages open to everyone" do
+      sign_in
+      get password_path, headers: in_app
+      expect(tabs.map { |tab| tab["id"] }).to include("home", "more")
+    end
   end
 
   describe "signing in and out in the app" do

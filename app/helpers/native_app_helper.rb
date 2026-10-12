@@ -8,7 +8,7 @@ module NativeAppHelper
   # The tab bar, in order. icon is an SF Symbol name; badge is a count.
   # Signed out: no tabs (the app shows just the sign-in screen).
   def native_tabs
-    user = Current.user
+    user = native_user
     return [] unless user
 
     tabs = [ { id: "home", title: "Home", path: my_dashboard_path, icon: "house" } ]
@@ -28,7 +28,7 @@ module NativeAppHelper
   # SF Symbols, the Door for anyone who can work one, then profile, groups
   # (only for someone in one) and settings.
   def native_menu
-    user = Current.user
+    user = native_user
     return [] unless user
 
     items = talent_nav_sections.flat_map { |section| section[:items] }.map { |item| native_menu_item(item) }
@@ -52,6 +52,14 @@ module NativeAppHelper
   end
 
   private
+
+  # The signed-in person, even on pages open to everyone (the password and
+  # sign-in pages skip loading the session, and an empty answer here would
+  # tell the app you'd signed out).
+  def native_user
+    authenticated? if respond_to?(:authenticated?)
+    Current.user
+  end
 
   # Short title, SF Symbol and id for one menu item, by where it goes.
   def native_menu_item(item)
