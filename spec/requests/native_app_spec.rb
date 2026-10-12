@@ -135,6 +135,21 @@ RSpec.describe "The iOS app's web side", type: :request do
     expect(response.body).to include("bridge--menu")
   end
 
+  it "keeps a signed-in phone's push notifications in step, in the app only" do
+    get signin_path, headers: in_app
+    expect(response.body).not_to include("bridge--push")
+
+    sign_in
+    get my_dashboard_path, headers: in_app
+    push = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--push']")
+    expect(push["data-bridge--push-url-value"]).to eq(my_push_token_path)
+    expect(push["data-action"]).to include("push:request@window->bridge--push#request")
+    expect(response.body).to include("Turn on notifications")
+
+    get my_dashboard_path
+    expect(response.body).not_to include("bridge--push", "Turn on notifications")
+  end
+
   it "hands the door's camera to the app, which titles the page Door" do
     TicketingProfile.for(org).update!(enabled: true)
     listing = create(:ticket_listing, organization: org)

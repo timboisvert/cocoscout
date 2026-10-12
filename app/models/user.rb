@@ -46,6 +46,12 @@ class User < ApplicationRecord
     Message.joins(:message_recipients).where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
   end
 
+  # A phone with the app checked in this month with notifications on, so new
+  # messages reach them straight away (the unread-messages email waits longer).
+  def push_enabled?
+    device_tokens.where(platform: "ios").recent.exists?
+  end
+
   def unread_message_count
     # Sum unread counts across all active, non-archived subscriptions
     # (optimized via counter cache)

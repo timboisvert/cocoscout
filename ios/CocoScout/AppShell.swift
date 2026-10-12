@@ -1,5 +1,6 @@
 import HotwireNative
 import UIKit
+import UserNotifications
 
 /// One menu tile as the server describes it (NativeAppHelper#native_menu):
 /// icon is an SF Symbol name; badge is a count.
@@ -50,6 +51,23 @@ final class AppShell {
         menu = Self.cached([MenuItem].self, Self.menuKey) ?? []
         person = Self.cached(MenuPerson.self, Self.personKey)
         rebuild()
+        if let path = pendingPath {
+            pendingPath = nil
+            open(path: path)
+        }
+    }
+
+    /// A tapped notification's page, on top of whatever's showing. One that
+    /// launched the app waits for the screen to be built.
+    private var pendingPath: String?
+
+    func open(path: String) {
+        guard loadedSignedIn != nil else {
+            pendingPath = path
+            return
+        }
+        tabBarController.dismiss(animated: false)
+        tabBarController.activeNavigator.route(AppConfig.url(path))
     }
 
     func update(menu newMenu: [MenuItem], person newPerson: MenuPerson?) {
@@ -57,6 +75,9 @@ final class AppShell {
         person = newPerson
         Self.cache(newMenu.map { MenuItem(id: $0.id, title: $0.title, path: $0.path, icon: $0.icon) }, Self.menuKey)
         Self.cache(newPerson, Self.personKey)
+        // The app icon shows unread messages, as the notifications set it.
+        let unread = newMenu.first { $0.id == "messages" }?.badge ?? 0
+        Task { try? await UNUserNotificationCenter.current().setBadgeCount(unread) }
         // Signing in or out starts the screen afresh; otherwise only the badge changes.
         if !newMenu.isEmpty != loadedSignedIn {
             rebuild()

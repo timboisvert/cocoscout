@@ -1,8 +1,14 @@
 <%# In the iOS/Android app only: tells the native shell this person's menu
-    (with badge counts) and who's signed in (bridge/menu_controller.js).
-    Rendered by every layout the app can land on. %>
+    (with badge counts) and who's signed in (bridge/menu_controller.js), and
+    keeps this phone's push notifications filed under this sign-in
+    (bridge/push_controller.js). Rendered by every layout the app can land on. %>
 <% if turbo_native_app? %>
   <% person = native_person %>
   <%= tag.div hidden: true, data: { controller: "bridge--menu", "bridge--menu-menu-value": native_menu.to_json,
                                     "bridge--menu-person-value": (person.to_json if person) } %>
+  <% if person && Current.session %>
+    <%= tag.div hidden: true, data: { controller: "bridge--push", "bridge--push-url-value": my_push_token_path,
+                                      "bridge--push-session-value": Current.session.id,
+                                      action: "push:request@window->bridge--push#request push:open-settings@window->bridge--push#openSettings" } %>
+  <% end %>
 <% end %>

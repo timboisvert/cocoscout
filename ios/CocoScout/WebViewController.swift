@@ -5,6 +5,9 @@ import UIKit
 /// Coustard, next to the back button, instead of small and centered.
 final class WebViewController: HotwireWebViewController {
     private let titleLabel = UILabel()
+    // iOS sizes a bar item to its view's full text unless told otherwise; a
+    // title wider than the bar then hides behind the "more" button.
+    private lazy var titleWidth = titleLabel.widthAnchor.constraint(equalToConstant: 0)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -12,6 +15,8 @@ final class WebViewController: HotwireWebViewController {
         titleLabel.font = AppConfig.coustard(25)
         titleLabel.textColor = .label
         titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([titleWidth, titleLabel.heightAnchor.constraint(equalToConstant: 34)])
 
         let item = UIBarButtonItem(customView: titleLabel)
         if #available(iOS 26.0, *) {
@@ -32,6 +37,6 @@ final class WebViewController: HotwireWebViewController {
         // tucked into iOS's "more" menu instead of truncating.
         let hasBackButton = navigationController?.viewControllers.first !== self
         let width = min(titleLabel.intrinsicContentSize.width, view.bounds.width - (hasBackButton ? 180 : 120))
-        titleLabel.frame = CGRect(x: 0, y: 0, width: width, height: 34)
+        titleWidth.constant = ceil(width)
     }
 }

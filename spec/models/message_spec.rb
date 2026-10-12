@@ -355,6 +355,24 @@ RSpec.describe Message do
     end
   end
 
+  describe "push notifications" do
+    it "queues a push for subscribers with the app, never the sender or a muted thread" do
+      reader = create(:user)
+      muted = create(:user)
+      create(:device_token, user: reader)
+      create(:device_token, user: muted)
+      root = create(:message)
+      root.subscribe!(reader)
+      root.subscribe!(muted)
+      root.subscribe!(root.sender)
+      MessageSubscription.find_by(user: muted, message: root).update!(muted: true)
+
+      expect {
+        create(:message, sender: root.sender, parent_message: root, organization: root.organization)
+      }.to have_enqueued_job(PushDeliveryJob).with(reader.id, hash_including("data" => hash_including("path" => "/my/messages/#{root.id}"))).exactly(:once)
+    end
+  end
+
   describe "subscription methods" do
     let(:user) { create(:user) }
     let(:message) { create(:message) }

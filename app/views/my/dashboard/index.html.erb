@@ -6,6 +6,23 @@
 
   <% primary = @people.first %>
 
+  <%# In the app, until they've answered: turn on notifications. Never on
+      first launch; iPhone asks only when they tap. "Not now" puts it away
+      on this phone; it's in Settings → Notifications from then on. %>
+  <% if turbo_native_app? %>
+    <div class="hidden" data-controller="push-settings" data-push-settings-dismiss-key-value="home"
+         data-action="push:status@window->push-settings#update">
+      <div class="hidden" data-push-settings-target="state" data-push-state="ask">
+        <%= render "shared/alert_panel",
+              eyebrow: "On this phone",
+              headline: "Turn on notifications",
+              body: "Hear about new messages from your productions the moment they arrive.",
+              actions: [ { text: "Turn on", type: :button, data: { action: "push-settings#request" } },
+                         { text: "Not now", type: :button, data: { action: "push-settings#dismiss" } } ] %>
+      </div>
+    </div>
+  <% end %>
+
   <!-- One-shot greeting after joining an org via its public /join link -->
   <% if @just_joined_organization %>
     <%= render "shared/alert_panel",

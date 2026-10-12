@@ -6,6 +6,8 @@ class Session < ApplicationRecord
   # on the session row (not a cookie) so the impersonation banner survives
   # anything the browser does to its session cookies.
   belongs_to :impersonator, class_name: "User", optional: true
+  # The app's phone signed in here; signing out ends its notifications.
+  has_many :device_tokens, dependent: :delete_all
 
   def label
     DeviceLabel.from_user_agent(user_agent)

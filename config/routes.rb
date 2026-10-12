@@ -587,6 +587,10 @@ Rails.application.routes.draw do
     get  "/tax-forms/:organization_id/w9/copy",      to: "tax_forms#w9_copy",      as: "w9_copy"
     get  "/tax-forms/:organization_id/1099/:tax_year", to: "tax_forms#form_1099", as: "form_1099"
 
+    # The iOS app's push notifications for this phone: on, or off.
+    post   "/push-token",                        to: "push_tokens#create",                 as: "push_token"
+    delete "/push-token",                        to: "push_tokens#destroy"
+
     # Payments (for talent to connect a bank and view payout history)
     get    "/payments",                          to: "payments#index",                     as: "payments"
     get    "/payments/setup",                    to: "payments#setup",                     as: "payments_setup"

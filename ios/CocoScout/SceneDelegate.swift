@@ -25,7 +25,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     private func configureHotwire() {
         Hotwire.loadPathConfiguration(from: [.server(AppConfig.pathConfigurationURL)])
-        Hotwire.registerBridgeComponents([FormComponent.self, MenuComponent.self, DoorScannerComponent.self])
+        Hotwire.registerBridgeComponents([FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self])
         Hotwire.registerRouteDecisionHandlers([
             OpenInSafariRouteDecisionHandler(),
             OpenAsDocumentRouteDecisionHandler(),

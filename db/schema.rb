@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -891,7 +891,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_150000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.bigint "app_session_id"
+    t.bigint "session_id"
+    t.string "apns_environment", default: "production", null: false
     t.index ["app_session_id"], name: "index_device_tokens_on_app_session_id"
+    t.index ["session_id"], name: "index_device_tokens_on_session_id"
     t.index ["token", "platform"], name: "index_device_tokens_on_token_and_platform", unique: true
     t.index ["user_id"], name: "index_device_tokens_on_user_id"
   end
@@ -4108,6 +4111,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_150000) do
   add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "departments", "organizations"
   add_foreign_key "device_tokens", "app_sessions", on_delete: :cascade
+  add_foreign_key "device_tokens", "sessions", on_delete: :cascade
   add_foreign_key "device_tokens", "users"
   add_foreign_key "document_productions", "production_documents"
   add_foreign_key "document_productions", "productions"

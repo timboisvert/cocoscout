@@ -4,7 +4,9 @@
 # checked their inbox recently.
 #
 # Adaptive throttle strategy:
-# - Wait 1 hour after messages arrive before sending first digest
+# - Wait 1 hour after messages arrive before sending first digest; a day for
+#   someone with push notifications on (User#push_enabled?), who heard about
+#   it at once, so the email only catches what's still unread (Tim, 2026-10-12)
 # - Start with 1 day throttle (baseline frequency)
 # - If user checks inbox after digest: reset to 1 day (they're engaged)
 # - If user ignores digest: double the throttle (1 → 2 → 4 → 8 → 14 days max)
@@ -16,6 +18,7 @@ class UnreadDigestJob < ApplicationJob
 
   # How long to wait before sending first digest after new message
   INITIAL_DELAY = 1.hour
+  INITIAL_DELAY_WITH_PUSH = 1.day
 
   # Maximum throttle period for unresponsive users
   MAX_THROTTLE_DAYS = 14
@@ -51,7 +54,8 @@ class UnreadDigestJob < ApplicationJob
 
     # Check if the oldest unread is old enough (waited INITIAL_DELAY)
     oldest_unread_at = find_oldest_unread_at(user, unread_threads)
-    return if oldest_unread_at.nil? || oldest_unread_at > INITIAL_DELAY.ago
+    delay = user.push_enabled? ? INITIAL_DELAY_WITH_PUSH : INITIAL_DELAY
+    return if oldest_unread_at.nil? || oldest_unread_at > delay.ago
 
     # Adjust throttle based on whether user checked inbox after last digest
     adjust_throttle(user)
