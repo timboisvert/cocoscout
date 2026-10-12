@@ -35,11 +35,8 @@ struct MenuView: View {
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
     private let pink = Color(AppConfig.pink)
-    /// Tailwind pink-500 → pink-600, the gradient every CocoScout modal header uses.
-    private let headerGradient = LinearGradient(
-        colors: [Color(red: 236 / 255, green: 72 / 255, blue: 153 / 255), Color(red: 219 / 255, green: 39 / 255, blue: 119 / 255)],
-        startPoint: .leading, endPoint: .trailing
-    )
+    /// pink-500 → pink-600, the gradient every CocoScout modal header uses.
+    private let headerGradient = LinearGradient(colors: [Tailwind.pink500, Tailwind.pink600], startPoint: .leading, endPoint: .trailing)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -100,15 +97,8 @@ struct MenuView: View {
                             .truncationMode(.middle)
                     }
                     Spacer(minLength: 8)
-                    Button { onAction(.signOut) } label: {
-                        Text("Sign out")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(pink)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(.white))
-                    }
-                    .buttonStyle(.plain)
+                    Button("Sign out") { onAction(.signOut) }
+                        .buttonStyle(SharedButtonStyle(variant: .secondary, size: .small))
                 }
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: 14).fill(.white.opacity(0.15)))

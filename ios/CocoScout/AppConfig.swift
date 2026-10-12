@@ -26,8 +26,8 @@ enum AppConfig {
         URL(string: path, relativeTo: baseURL)!.absoluteURL
     }
 
-    /// CocoScout pink (Tailwind pink-500).
-    static let pink = UIColor(red: 236 / 255, green: 72 / 255, blue: 153 / 255, alpha: 1)
+    /// CocoScout pink: Tailwind v4's pink-500, as the website compiles it.
+    static let pink = UIColor(red: 0xF6 / 255, green: 0x33 / 255, blue: 0x9A / 255, alpha: 1)
 
     /// Coustard, the website's title face (bundled; listed in Info.plist's
     /// UIAppFonts). Falls back to the system font if it ever fails to load.
