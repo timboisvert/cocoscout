@@ -17,7 +17,13 @@
               end
   mode = @show.tickets_mode.presence || "elsewhere"
 %>
-<% if organization.feature_available?(:ticketing) %>
+<% if !(Current.user&.superadmin? || organization.manageable_by?(Current.user)) %>
+  <%# Ticketing is the organization's managers'; a producer sees the answer, not the switch. %>
+  <%= render layout: "manage/shows/edit/card", locals: { title: "Tickets", intro: "Where people get tickets for this date." } do %>
+    <p class="text-sm text-gray-900"><%= own ? (@show.tickets_mode == "none" ? "No tickets for this date" : "Sold on #{TicketLink.recognize(@show.tickets_url)&.dig(:name) || 'another site'}") : inherited %></p>
+    <p class="text-xs text-gray-500">Your organization's managers set where people get tickets.</p>
+  <% end %>
+<% elsif organization.feature_available?(:ticketing) %>
   <%= render layout: "manage/shows/edit/card", locals: { title: "Tickets", intro: "Where people get tickets for this date." } do %>
   <div class="space-y-5" data-controller="fieldset-toggle">
     <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">

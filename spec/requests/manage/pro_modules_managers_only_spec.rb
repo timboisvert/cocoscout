@@ -68,6 +68,21 @@ RSpec.describe "Pro modules are for managers", type: :request do
     expect(response.body).not_to include(manage_agreement_templates_path)
   end
 
+  it "keeps a producer from taking a date off CocoScout sales on the show page" do
+    sign_in(producer)
+
+    patch manage_update_show_path(production, show),
+          params: { show: { secondary_name: "Late show", tickets_override: "1", tickets_mode: "none" } }
+    show.reload
+    expect(show.secondary_name).to eq("Late show") # the free settings still save
+    expect(show.tickets_mode).to be_nil
+    expect(production.production_ticketing.reload.excluded_show_ids).not_to include(show.id)
+
+    get manage_edit_show_path(production, show)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Set tickets for this date only")
+  end
+
   it "lets a manager in everywhere" do
     sign_in(owner)
     [ manage_money_index_path, manage_money_show_financials_path(show), manage_contracts_path, manage_reports_path, manage_ticketing_path ].each do |path|

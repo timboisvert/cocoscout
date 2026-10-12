@@ -1735,6 +1735,12 @@ module Manage
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,
                                                :tickets_override, :tickets_mode, :tickets_url)
 
+      # The Tickets tab is Ticketing (Pro), the organization's managers': a
+      # producer's save leaves where this date's tickets are alone.
+      unless Current.user&.superadmin? || Current.organization.manageable_by?(Current.user)
+        permitted = permitted.except(:tickets_override, :tickets_mode, :tickets_url)
+      end
+
       # The Tickets tab: off, the date follows the production (nothing of its
       # own); on, its own answer, with a link only when it points somewhere.
       if permitted.key?(:tickets_override)
