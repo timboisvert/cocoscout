@@ -116,6 +116,10 @@ env:
     - STRIPE_METER_STAFF_ACTIVE
     - STRIPE_PRICE_PERFORMER_ACTIVE
     - STRIPE_METER_PERFORMER_ACTIVE
+    # Push notifications to the iOS app (ApnsClient, PushDeliveryJob).
+    - APNS_KEY_ID
+    - APNS_TEAM_ID
+    - APNS_PRIVATE_KEY
   clear:
     # Job processing is handled by the dedicated job server (bin/jobs)
     SOLID_QUEUE_IN_PUMA: false
