@@ -111,7 +111,7 @@
       <%= link_to manage_ticket_balance_path, class: "block rounded-lg border px-5 py-4 transition-colors hover:border-pink-400 #{@balance.available_cents.positive? ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}" do %>
         <div class="text-sm text-gray-600">Your CocoScout balance</div>
         <div class="text-2xl font-bold tabular-nums text-gray-900"><%= money.call(@balance.available_cents) %> <span class="text-sm font-normal text-gray-600">available</span></div>
-        <div class="text-xs text-gray-600 mt-1"><%= money.call(@balance.upcoming_cents) %> waiting on upcoming shows</div>
+        <div class="text-xs text-gray-600 mt-1"><%= money.call(@balance.upcoming_cents) %> waiting on upcoming shows<%= " · #{money.call(@balance.tax_set_aside_cents)} set aside for sales tax" if @balance.tax_set_aside_cents.positive? %></div>
       <% end %>
 
       <div class="bg-white rounded-lg border border-gray-200 p-5">
@@ -122,7 +122,7 @@
       <%= render "shared/action_list", items: [
         { text: "Reports", description: "Ticket sales by show, type and channel, in Reports", path: manage_reports_path,
           icon: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
-        { text: "Taxes collected", description: "What you collected, to pay the government", path: manage_ticket_taxes_path,
+        { text: "Sales tax", description: "What you collected, what's set aside, and how to pay it", path: manage_ticket_taxes_path,
           icon: "M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" },
         { text: "Embed on your website", description: "Sell from your own site", path: manage_ticketing_settings_section_path(section: "embed"),
           icon: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" },

@@ -1,0 +1,17 @@
+<%# One tax's paid status for the period on the Sales tax page: paid (with
+    Undo), paid as part of a longer period, or a Mark paid button. Locals:
+    state (:paid, :covered or :unpaid), paid (SalesTaxRemittance or nil),
+    modal_id (the Undo or Mark paid modal). %>
+<% if state == :paid %>
+  <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Paid <%= paid.paid_on.strftime("%b %-d") %></span>
+  <div class="text-xs text-gray-500 mt-1"><%= number_to_currency(paid.amount_cents / 100.0) %><%= " · #{paid.reference}" if paid.reference.present? %></div>
+  <div class="mt-1.5">
+    <%= render "shared/button", text: "Undo", variant: "secondary", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+  </div>
+<% elsif state == :covered %>
+  <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Paid with <%= sales_tax_period_label(paid.period_start, paid.period_end) %></span>
+<% else %>
+  <%= render "shared/button", text: "Mark paid", variant: "secondary", size: "small", type: :button,
+        data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+<% end %>

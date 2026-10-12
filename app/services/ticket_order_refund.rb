@@ -188,10 +188,14 @@ class TicketOrderRefund
 
   # Take the refund out of the theater's money before Stripe sends it. Before
   # the show it comes out of that show's held sales; after, it has to fit in
-  # the available balance.
+  # the available balance, plus the sales tax set aside for these tickets
+  # (it goes back to the buyer, so the government isn't owed it).
   def self.reserve!(order, listing, refund)
-    if listing.released_at.present? && refund.org_debit_cents > CocoScoutBalance.available_cents(order.organization)
-      available = CocoScoutBalance.available_cents(order.organization)
+    available = if listing.released_at.present?
+      CocoScoutBalance.available_cents(order.organization) +
+        SalesTaxSetAside.relief_cents(order.organization, ticket_ids: refund.ticket_ids, item_ids: refund.item_ids)
+    end
+    if available && refund.org_debit_cents > available
       raise Error, "Your CocoScout balance has #{ActiveSupport::NumberHelper.number_to_currency(available / 100.0)}, " \
                    "not enough to refund #{ActiveSupport::NumberHelper.number_to_currency(refund.org_debit_cents / 100.0)}. " \
                    "Money for this show was already spent or withdrawn."

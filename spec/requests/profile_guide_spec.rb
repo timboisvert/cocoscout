@@ -27,7 +27,7 @@ RSpec.describe "Profile intro guide", type: :request do
     get profile_path
 
     expect(response.body).not_to include('data-intro-guide="profile_intro"')
-    expect(response.body).to include("Show it on the page")
+    expect(response.body).not_to include("Show it on the page", "data-intro-guide-help") # closed means gone, no "?" circle
 
     post guide_restore_path("profile_intro")
     get profile_path

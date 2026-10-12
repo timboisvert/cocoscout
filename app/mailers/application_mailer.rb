@@ -8,8 +8,23 @@ class ApplicationMailer < ActionMailer::Base
 
   private
 
+  # A small copy made for email (240px, 32 KB, shown at 120px); the site's
+  # cocoscout.png is 970 KB and rode along on every email (Tim, 2026-10-12).
+  EMAIL_LOGO = Rails.root.join("app", "assets", "images", "cocoscout_email.png")
+
   def attach_logo
-    attachments.inline["cocoscout.png"] = File.read(Rails.root.join("app", "assets", "images", "cocoscout.png"))
+    attachments.inline["cocoscout.png"] = File.binread(EMAIL_LOGO)
+  end
+
+  # Who the footer says the email is for ("Sent by CocoScout for Stars &
+  # Garters"): the mailer's organization, else the template's
+  # organization_name. Nil leaves it as "Sent by CocoScout".
+  def footer_organization_name
+    org = @organization || @order&.organization || @show&.production&.organization || @production&.organization
+    return org.name if org
+
+    variables = respond_to?(:params) && params.is_a?(Hash) ? params[:variables] : nil
+    variables.is_a?(Hash) ? (variables["organization_name"] || variables[:organization_name]).presence : nil
   end
 
   def default_url_options
@@ -64,6 +79,10 @@ class ApplicationMailer < ActionMailer::Base
       headers["X-Production-ID"] = production_id.to_s
     end
 
+    @footer_organization_name = footer_organization_name
+    # Built here from the configured host: some mailers override url_options,
+    # which the layout's own url helpers can't then use.
+    @email_settings_url = Rails.application.routes.url_helpers.account_notifications_url(**default_url_options)
     super(headers, &block)
   end
 

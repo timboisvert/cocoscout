@@ -1044,7 +1044,9 @@ module Manage
       session_id = params[:session_id] || params[:audition_session_id]
       if session_id.present?
         # Nested route: /signups/auditions/:production_id/:cycle_id/sessions/:session_id/auditions/:id
-        @audition_session = AuditionSession.find(session_id)
+        # Through the cycle: a bare find let a manager read (and vote on) another
+        # org's audition — answers, reviewers' comments — behind their own cycle.
+        @audition_session = @audition_cycle.audition_sessions.find(session_id)
         @audition = @audition_session.auditions.find(params.expect(:id))
       else
         # Direct route for audition show (if needed)

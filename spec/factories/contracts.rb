@@ -140,7 +140,7 @@ FactoryBot.define do
 
   factory :space_rental do
     association :contract
-    association :location
+    location { association :location, organization: contract.organization }
     starts_at { 1.month.from_now.change(hour: 18) }
     ends_at { 1.month.from_now.change(hour: 23) }
     confirmed { false }

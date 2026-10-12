@@ -49,6 +49,12 @@ class TicketTaxReport
     rows.sum(&:net_cents)
   end
 
+  # The part of it collected in cash at the door: it's in the organization's
+  # cash box already, so it's never set aside in the CocoScout balance.
+  def cash_tax_cents
+    lines.select { |line| line.attributes["money_path"] == "cash" }.sum(&:tax_cents)
+  end
+
   def to_csv
     require "csv"
     dollars = ->(cents) { format("%.2f", cents / 100.0) }
@@ -66,22 +72,26 @@ class TicketTaxReport
   private
 
   def lines
+    return @lines if @lines
+
     date_column = basis == "event" ? :event_date : :sale_date
     base = TaxLine.where(organization_id: @organization.id, remitter: "organization").where(date_column => from..to)
     found = []
     if kind != "courses"
       found += base.where(taxable_type: "Ticket")
                    .joins("JOIN tickets ON tickets.id = tax_lines.taxable_id JOIN ticket_orders ON ticket_orders.id = tickets.ticket_order_id")
-                   .where(ticket_orders: { status: TicketOrder::WAS_PAID }).to_a
+                   .where(ticket_orders: { status: TicketOrder::WAS_PAID })
+                   .select("tax_lines.*, ticket_orders.money_path AS money_path").to_a
       found += base.where(taxable_type: "TicketOrderItem")
                    .joins("JOIN ticket_order_items ON ticket_order_items.id = tax_lines.taxable_id JOIN ticket_orders ON ticket_orders.id = ticket_order_items.ticket_order_id")
-                   .where(ticket_orders: { status: TicketOrder::WAS_PAID }).to_a
+                   .where(ticket_orders: { status: TicketOrder::WAS_PAID })
+                   .select("tax_lines.*, ticket_orders.money_path AS money_path").to_a
     end
     if kind != "tickets"
       found += base.where(taxable_type: "CourseRegistration")
                    .joins("JOIN course_registrations ON course_registrations.id = tax_lines.taxable_id")
                    .where(course_registrations: { status: %w[confirmed refunded] }).to_a
     end
-    found
+    @lines = found
   end
 end

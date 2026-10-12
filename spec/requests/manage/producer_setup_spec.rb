@@ -57,7 +57,7 @@ RSpec.describe "Producer setup", type: :request do
       post guide_dismiss_path("production_next_steps")
       get manage_path
       expect(response.body).not_to include("data-intro-guide=\"production_next_steps\"")
-      expect(response.body).to include("Show it on the page")
+      expect(response.body).not_to include("Show it on the page", "data-intro-guide-help") # closed means gone, no "?" circle
 
       post guide_restore_path("production_next_steps")
       get manage_path

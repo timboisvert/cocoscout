@@ -1386,6 +1386,8 @@ Rails.application.routes.draw do
     post   "money/books/balance/top-up",          to: "ticket_balance#top_up",           as: "ticket_balance_top_up"
     patch  "money/books/balance/auto-withdraw",   to: "ticket_balance#update_auto_withdraw", as: "ticket_balance_auto_withdraw"
     get    "ticketing/taxes",                     to: "ticket_taxes#show",               as: "ticket_taxes"
+    post   "ticketing/taxes/paid",                to: "ticket_taxes#mark_paid",          as: "ticket_tax_remittances"
+    delete "ticketing/taxes/paid/:id",            to: "ticket_taxes#unmark_paid",        as: "ticket_tax_remittance"
 
     # Staffing → Availability: the whole staff's availability on a month calendar.
     get   "staffing/availability",                to: "staffing/availability#index",     as: "staffing_availability"
@@ -1535,6 +1537,7 @@ Rails.application.routes.draw do
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
     post "money/payout-runs/:id/pay-now", to: "payout_batches#pay_now", as: "pay_now_payout_batch"
     post "money/payout-runs/:id/pay-remaining", to: "payout_batches#pay_remaining", as: "pay_remaining_payout_batch"
+    post "money/payout-runs/:id/close-out", to: "payout_batches#close_out", as: "close_out_payout_batch"
     # Dev-only escape hatch (the action 404s outside development).
     post "money/payout-runs/:id/simulate-funding", to: "payout_batches#simulate_funding", as: "simulate_funding_payout_batch"
     delete "money/payout-runs/:id", to: "payout_batches#destroy"

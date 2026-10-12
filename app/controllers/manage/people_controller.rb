@@ -292,7 +292,8 @@ module Manage
         show_id = key.split("_").last.to_i
         next if show_id.zero?
 
-        show = Show.find_by(id: show_id)
+        # Org-scoped: a bare find wrote availability onto any org's show.
+        show = Show.joins(:production).where(productions: { organization_id: Current.organization.id }).find_by(id: show_id)
         next unless show
 
         availability = @person.show_availabilities.find_or_initialize_by(show: show)

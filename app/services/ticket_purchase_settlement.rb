@@ -9,10 +9,18 @@
 # still has the seats. If any show's are gone, the whole purchase is refunded
 # rather than half of it kept.
 class TicketPurchaseSettlement
-  def self.settle!(purchase, payment_intent_id: nil, charge_id: nil)
+  # amount_cents: what the card paid; it must be the purchase's total (see
+  # TicketOrderSettlement.settle!). Anything else is refunded and canceled.
+  def self.settle!(purchase, payment_intent_id: nil, charge_id: nil, amount_cents: nil)
     go = false
     purchase.with_lock do
       next if purchase.paid? || purchase.status == "canceled"
+
+      if amount_cents && amount_cents != purchase.total_cents
+        Rails.logger.error("[TicketPurchaseSettlement] purchase #{purchase.id} paid #{amount_cents}c but costs #{purchase.total_cents}c")
+        refund_late_payment!(purchase, payment_intent_id)
+        next
+      end
 
       orders = purchase.ticket_orders.to_a
       late = purchase.hold_expired? || purchase.status == "expired"

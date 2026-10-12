@@ -1,19 +1,59 @@
-<% content_for :title, "Taxes collected" %>
+<% content_for :title, "Sales tax" %>
 <%
   r = @report
+  org = Current.organization
   select_class = "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   money = ->(cents) { number_to_currency(cents / 100.0) }
+  period_label = @period[:label]
+  report_params = { period: @period[:key], basis: r.basis, kind: r.kind }
+  settings_link = manage_ticketing_settings_section_path(section: "tax")
+  set_aside_on = SalesTaxSetAside.on?(org)
+  # Paid status for a row: a remittance for exactly this period (which can be
+  # undone here), or one covering a longer period that includes it.
+  paid_for = lambda do |row|
+    matching = @remittances.select { |rem| rem.tax_name == row.name && rem.rate_bps == row.rate_bps }
+    matching.find { |rem| rem.exact?(@period[:from], @period[:to], basis: r.basis) } ||
+      matching.find { |rem| rem.covers?(@period[:from], @period[:to], basis: r.basis) }
+  end
+  modals = []
 %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
-    text: "Taxes collected",
-    links: [ { text: "Download CSV", path: manage_ticket_taxes_path(format: :csv, period: @period[:key], basis: r.basis, kind: r.kind), data: { turbo: false } } ]
+    text: "Sales tax",
+    links: [ { text: "Download CSV", path: manage_ticket_taxes_path(format: :csv, **report_params), data: { turbo: false } } ]
   } %>
 
   <div class="max-w-4xl space-y-6">
+    <%# What's set aside for the government right now. %>
+    <% if set_aside_on %>
+      <div class="rounded-xl border px-5 py-4 <%= @set_aside_cents.positive? ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200' %>">
+        <div class="text-sm text-gray-600">Set aside for sales tax</div>
+        <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= money.call(@set_aside_cents) %></div>
+        <p class="text-xs text-gray-600 mt-1">
+          Kept in your CocoScout balance, out of reach of payout runs and withdrawals, until you mark its period paid below.
+          Tax on a show's tickets joins once the show has happened; before that the whole sale is held for the show.
+          Set aside since <%= org.sales_tax_set_aside_since.strftime("%B %-d, %Y") %>.
+        </p>
+        <% if @set_aside_months.any? %>
+          <ul class="mt-2 text-sm text-gray-700 flex flex-wrap gap-x-4 gap-y-1">
+            <% @set_aside_months.each do |month, cents| %>
+              <li><%= month.strftime("%B %Y") %>: <span class="tabular-nums font-medium text-gray-900"><%= money.call(cents) %></span></li>
+            <% end %>
+          </ul>
+        <% end %>
+        <p class="text-xs text-gray-500 mt-2"><%= link_to "Change this in Ticketing settings", settings_link, class: "text-pink-600 hover:text-pink-700 underline" %></p>
+      </div>
+    <% else %>
+      <div class="rounded-xl border border-gray-200 bg-white px-5 py-4">
+        <div class="text-sm font-medium text-gray-900">Sales tax isn't set aside</div>
+        <p class="text-sm text-gray-600 mt-1">The tax you collect is spendable like the rest of your balance, so keep enough back to pay it. To have CocoScout hold it apart, turn on "Keep sales tax set aside" in <%= link_to "Ticketing settings", settings_link, class: "text-pink-600 hover:text-pink-700 underline" %>.</p>
+      </div>
+    <% end %>
+
     <%= form_with url: manage_ticket_taxes_path, method: :get, class: "flex flex-wrap items-end gap-3", data: { controller: "auto-submit" } do %>
       <div>
         <label for="period" class="block text-sm font-medium text-gray-700 mb-1.5">Period</label>
@@ -32,13 +72,54 @@
       </div>
     <% end %>
 
+    <%
+      entries = r.rows.each_with_index.map do |row, index|
+        paid = paid_for.call(row)
+        if paid&.exact?(@period[:from], @period[:to], basis: r.basis)
+          modal_id = "tax-paid-undo-#{paid.id}"
+          modals << [ :undo, modal_id, row, paid ]
+          [ row, :paid, paid, modal_id ]
+        elsif paid
+          [ row, :covered, paid, nil ]
+        else
+          modal_id = "tax-paid-#{index}"
+          modals << [ :pay, modal_id, row, nil ]
+          [ row, :unpaid, nil, modal_id ]
+        end
+      end
+    %>
+    <% unpaid_cents = entries.select { |_, state| state == :unpaid }.sum { |row, *| row.net_cents } %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900"><%= @period[:label] %>: <%= money.call(r.total_net_cents) %> to pay</h2>
-        <p class="text-sm text-gray-600 mt-1">Tax CocoScout collected on your <%= { "tickets" => "tickets", "courses" => "course registrations" }.fetch(r.kind, "tickets and course registrations") %> and paid out to you with that money. You send it to the government. Ask your accountant which way your city counts sales.</p>
+        <h2 class="text-lg font-semibold text-gray-900">
+          <% if entries.any? && entries.none? { |_, state| state == :unpaid } %>
+            <%= period_label %>: <%= money.call(r.total_net_cents) %> collected, marked paid
+          <% else %>
+            <%= period_label %>: <%= money.call(unpaid_cents) %> to pay
+          <% end %>
+        </h2>
+        <p class="text-sm text-gray-600 mt-1">Tax CocoScout collected on your <%= { "tickets" => "tickets and products", "courses" => "course registrations" }.fetch(r.kind, "tickets, products and course registrations") %>. Your organization sends it to the government. When you have, mark it paid.</p>
       </div>
-      <% if r.rows.any? %>
-        <div class="overflow-x-auto">
+      <% if entries.any? %>
+        <%# Phones: one card per tax, the amount to pay and its status. %>
+        <ul class="sm:hidden divide-y divide-gray-100">
+          <% entries.each do |row, state, paid, modal_id| %>
+            <li class="px-4 py-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="text-sm font-medium text-gray-900"><%= row.name %> <span class="font-normal text-gray-500"><%= row.rate_label %></span></div>
+                  <div class="text-xs text-gray-600 mt-1">Taxable <%= money.call(row.taxable_cents) %> of <%= money.call(row.gross_cents) %> · collected <%= money.call(row.collected_cents) %><%= " · refunded #{money.call(-row.refunded_cents)}" if row.refunded_cents.nonzero? %></div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-gray-500">To pay</div>
+                  <div class="text-base font-semibold tabular-nums text-gray-900"><%= money.call(row.net_cents) %></div>
+                </div>
+              </div>
+              <div class="mt-3"><%= render "manage/ticket_taxes/paid_status", state: state, paid: paid, modal_id: modal_id %></div>
+            </li>
+          <% end %>
+        </ul>
+        <div class="hidden sm:block overflow-x-auto">
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 text-xs text-gray-500">
               <tr>
@@ -48,11 +129,12 @@
                 <th class="px-3 py-2 text-right font-medium">Taxable</th>
                 <th class="px-3 py-2 text-right font-medium">Collected</th>
                 <th class="px-3 py-2 text-right font-medium">Refunded</th>
-                <th class="px-6 py-2 text-right font-medium">To pay</th>
+                <th class="px-3 py-2 text-right font-medium">To pay</th>
+                <th class="px-6 py-2 text-right font-medium">Paid</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <% r.rows.each do |row| %>
+              <% entries.each do |row, state, paid, modal_id| %>
                 <tr>
                   <td class="px-6 py-3 text-gray-900"><%= row.name %> <span class="text-gray-500"><%= row.rate_label %></span></td>
                   <td class="px-3 py-3 text-right tabular-nums"><%= money.call(row.gross_cents) %></td>
@@ -60,15 +142,112 @@
                   <td class="px-3 py-3 text-right tabular-nums"><%= money.call(row.taxable_cents) %></td>
                   <td class="px-3 py-3 text-right tabular-nums"><%= money.call(row.collected_cents) %></td>
                   <td class="px-3 py-3 text-right tabular-nums"><%= money.call(row.refunded_cents) %></td>
-                  <td class="px-6 py-3 text-right tabular-nums font-semibold text-gray-900"><%= money.call(row.net_cents) %></td>
+                  <td class="px-3 py-3 text-right tabular-nums font-semibold text-gray-900"><%= money.call(row.net_cents) %></td>
+                  <td class="px-6 py-3 text-right whitespace-nowrap"><%= render "manage/ticket_taxes/paid_status", state: state, paid: paid, modal_id: modal_id %></td>
                 </tr>
               <% end %>
             </tbody>
           </table>
         </div>
+        <% if r.cash_tax_cents.nonzero? %>
+          <p class="px-6 py-3 border-t border-gray-100 text-xs text-gray-600">Includes <%= money.call(r.cash_tax_cents) %> of tax on cash sales at the door. That's in your cash box already, so it's never set aside here.</p>
+        <% end %>
       <% else %>
-        <p class="px-6 py-5 text-sm text-gray-500">No taxed ticket sales in <%= @period[:label] %>.</p>
+        <p class="px-6 py-5 text-sm text-gray-500">No taxed sales in <%= period_label %>.</p>
       <% end %>
     </div>
+
+    <%# How filing works: CocoScout collects, the organization files and pays. %>
+    <div class="bg-white border border-gray-200 rounded-xl px-6 py-5">
+      <h2 class="text-lg font-semibold text-gray-900">How to file and pay</h2>
+      <p class="text-sm text-gray-600 mt-1">CocoScout collects the tax at checkout and keeps it with your money. It doesn't file returns or pay the government for you: your organization does.</p>
+      <ol class="mt-3 list-decimal pl-5 space-y-2 text-sm text-gray-700">
+        <li><span class="font-medium text-gray-900">Find out which tax you owe.</span> Admission tickets are often taxed differently from products, and many cities exempt live performances in smaller rooms. Your accountant can tell you which applies, and the rate to enter in <%= link_to "Ticketing settings", settings_link, class: "text-pink-600 hover:text-pink-700 underline" %>.</li>
+        <li><span class="font-medium text-gray-900">Register with the tax agency</span> to get an account number, if you don't have one yet.</li>
+        <li><span class="font-medium text-gray-900">File each period's return</span> with the numbers above: gross receipts, exempt receipts, taxable receipts and tax collected. Pick the period, and whether your agency counts a sale by the day it sold or the day of the show. Download the CSV for your accountant.</li>
+        <li><span class="font-medium text-gray-900">Pay it</span> from your organization's bank account.</li>
+        <li><span class="font-medium text-gray-900">Mark the period paid here.</span> The tax set aside for it becomes available again: withdraw it to your bank to cover the payment, or let your next payout run spend it.</li>
+      </ol>
+    </div>
+
+    <% if @chicago %>
+      <div class="bg-white border border-gray-200 rounded-xl px-6 py-5">
+        <h2 class="text-lg font-semibold text-gray-900">In Chicago</h2>
+        <% if @ticket_tax.percent == "10.25" %>
+          <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-gray-700">
+            Your tickets are taxed at 10.25%. That's Chicago's sales tax rate, not its amusement tax. If your shows are live performances in a small room, your tickets may owe no amusement tax at all. Check with your accountant before your next return.
+          </div>
+        <% end %>
+        <dl class="mt-3 space-y-4 text-sm">
+          <div>
+            <dt class="font-medium text-gray-900">City of Chicago Amusement Tax</dt>
+            <dd class="text-gray-700 mt-0.5">9% of admission charges. Live cultural performances (theater, comedy, music, dance) in a space that holds 1,500 people or fewer are exempt. Paid monthly, by the 15th of the following month, and filed online. <%= link_to "City of Chicago: Amusement Tax (7510)", "https://www.chicago.gov/city/en/depts/fin/supp_info/revenue/tax_list/amusement_tax.html", target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700 underline" %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-900">Cook County Amusement Tax</dt>
+            <dd class="text-gray-700 mt-0.5">Live theatrical and musical performances in a space that holds 750 people or fewer are exempt. Returns are due the 20th of each month. <%= link_to "Cook County: Amusement Tax", "https://www.cookcountyil.gov/service/amusement-tax", target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700 underline" %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-900">Products you sell</dt>
+            <dd class="text-gray-700 mt-0.5">Things like bottles usually carry sales tax, filed with the Illinois Department of Revenue. Alcohol has its own taxes too. <%= link_to "MyTax Illinois", "https://mytax.illinois.gov/", target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700 underline" %></dd>
+          </div>
+        </dl>
+        <p class="text-xs text-gray-500 mt-4">Checked October 2026. Rules change, so confirm with the city, the county or your accountant.</p>
+      </div>
+    <% end %>
   </div>
+
+  <%# The modals live outside the table, and outside any form. %>
+  <% modals.each do |kind, modal_id, row, paid| %>
+    <% if kind == :undo %>
+      <%= render "shared/confirm_modal", id: modal_id,
+            title: "Undo marking it paid?",
+            message: "#{row.name} for #{sales_tax_period_label(paid.period_start, paid.period_end)} goes back to unpaid, and its tax is set aside again.",
+            confirm_text: "Undo",
+            url: manage_ticket_tax_remittance_path(paid, **report_params), method: :delete %>
+    <% else %>
+      <div id="<%= modal_id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+           data-controller="modal" data-action="click->modal#closeOnBackdrop">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+          <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+            <h3 class="text-lg font-semibold text-white">Mark <%= period_label %> paid</h3>
+            <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+          <%= form_with url: manage_ticket_tax_remittances_path(**report_params), method: :post, scope: :remittance do |f| %>
+            <%= f.hidden_field :tax_name, value: row.name %>
+            <%= f.hidden_field :rate_bps, value: row.rate_bps %>
+            <%= f.hidden_field :basis, value: r.basis %>
+            <%= f.hidden_field :period_start, value: @period[:from] %>
+            <%= f.hidden_field :period_end, value: @period[:to] %>
+            <div class="px-6 py-5 space-y-4">
+              <p class="text-sm text-gray-600"><%= row.name %> <%= row.rate_label %>, counted by <%= r.basis == "event" ? "the day of the show" : "the day it sold" %>. Once it's marked paid, its tax is no longer set aside.</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label for="<%= modal_id %>-amount" class="block text-sm font-medium text-gray-700 mb-1.5">Amount you paid</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+                    <%= f.text_field :amount, value: format("%.2f", [ row.net_cents, 0 ].max / 100.0), id: "#{modal_id}-amount", inputmode: "decimal", class: "#{input_class} pl-7" %>
+                  </div>
+                </div>
+                <div>
+                  <label for="<%= modal_id %>-paid-on" class="block text-sm font-medium text-gray-700 mb-1.5">Paid on</label>
+                  <%= f.date_field :paid_on, value: Date.current, id: "#{modal_id}-paid-on", class: input_class %>
+                </div>
+              </div>
+              <div>
+                <label for="<%= modal_id %>-reference" class="block text-sm font-medium text-gray-700 mb-1.5">Confirmation number <span class="font-normal text-gray-500">(optional)</span></label>
+                <%= f.text_field :reference, id: "#{modal_id}-reference", class: input_class %>
+              </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+              <%= render "shared/button", text: "Mark paid", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
 </div>

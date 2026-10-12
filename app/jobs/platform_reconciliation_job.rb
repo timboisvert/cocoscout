@@ -13,6 +13,11 @@ class PlatformReconciliationJob < ApplicationJob
     end
     row = PlatformReconciliationCheck.run!
     return unless PlatformReconciliationCheck.alert?(row)
+    # On a laptop the check compares Stripe's test account with local data,
+    # which never agree, so it would email every morning (Tim, 2026-10-12).
+    # The check still runs and shows on the Stripe check page; only
+    # production's is worth an email.
+    return if Rails.env.development?
 
     variables = PlatformMoneyCheckContent.for(row)
     User::SUPERADMIN_EMAILS.each do |email|

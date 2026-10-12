@@ -51,6 +51,20 @@ RSpec.describe "Impersonation persistence", type: :request do
     expect(target.sessions.reload).to be_empty
   end
 
+  # Signing out mid-impersonation leaves the browser's old impersonation
+  # cookies behind. The next person to sign in on that browser must not get a
+  # Stop button that signs them in as the superadmin.
+  it "doesn't hand the superadmin's login to whoever signs in next on the browser" do
+    get signout_path
+    stranger = create(:user, password: "Password123!")
+    post handle_signin_path, params: { email_address: stranger.email_address, password: "Password123!" }
+
+    get my_dashboard_path
+    expect(response.body).not_to include(stop_impersonating_user_path)
+
+    expect { post stop_impersonating_user_path }.not_to change { superadmin.sessions.count }
+  end
+
   it "clears the impersonator when impersonation stops" do
     post stop_impersonating_user_path
 

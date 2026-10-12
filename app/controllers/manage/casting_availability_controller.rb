@@ -118,11 +118,11 @@ module Manage
         entity_type = matches[1]
         entity_id = matches[2].to_i
 
-        # Find the entity (Person or Group)
+        # Find the entity (Person or Group) — in this org, not any org's
         entity = if entity_type == "Person"
-                   Person.find(entity_id)
+                   Current.organization.people.find(entity_id)
         else
-                   Group.find(entity_id)
+                   Current.organization.groups.find(entity_id)
         end
 
         availability = entity.show_availabilities.find_or_initialize_by(show: @show)

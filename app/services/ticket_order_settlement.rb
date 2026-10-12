@@ -18,10 +18,20 @@ class TicketOrderSettlement
   # seats_checked: a purchase already made sure every order's seats are still
   # there (TicketPurchaseSettlement), so a late payment never splits it.
   # confirm: false when a purchase sends one email for all its shows.
-  def self.settle!(order, payment_intent_id: nil, charge_id: nil, seats_checked: false, confirm: true)
+  # amount_cents: what the card paid, when a PaymentIntent did. It must be the
+  # order's total — the checkout page can add products after the intent is
+  # made, and paying the older, smaller intent mustn't get them free. A
+  # payment for anything else is refunded and the order canceled.
+  def self.settle!(order, payment_intent_id: nil, charge_id: nil, seats_checked: false, confirm: true, amount_cents: nil)
     settled = false
+    wrong_amount = false
     order.with_lock do
       next if order.paid? || %w[refunded canceled exchanged].include?(order.status)
+
+      if amount_cents && amount_cents != order.total_cents
+        wrong_amount = true
+        next
+      end
 
       ensure_seats_still_free!(order) if !seats_checked && (order.hold_expired? || order.status == "expired")
       order.told_current_show!
@@ -47,6 +57,8 @@ class TicketOrderSettlement
       TicketOrderConfirmationJob.perform_later(order.id) if confirm && order.buyer_email.present?
       TicketingAfterSaleJob.perform_later(order.id)
     end
+    return refund_wrong_amount!(order, payment_intent_id, amount_cents) if wrong_amount
+
     order
   rescue SeatsGone
     refund_late_payment!(order, payment_intent_id)
@@ -111,5 +123,15 @@ class TicketOrderSettlement
     Rails.logger.warn("[TicketOrderSettlement] order #{order.id} paid after its seats were gone; refunded")
   end
 
-  private_class_method :post_money!, :ensure_seats_still_free!, :refund_late_payment!
+  def self.refund_wrong_amount!(order, payment_intent_id, amount_cents)
+    intent_id = payment_intent_id || order.stripe_payment_intent_id
+    Stripe::Refund.create({ payment_intent: intent_id }, { idempotency_key: "ticket-wrong-amount-refund-#{intent_id}" }) if intent_id
+    order.update!(status: "canceled", canceled_at: Time.current, stripe_payment_intent_id: intent_id)
+    order.tickets.update_all(status: "void", updated_at: Time.current)
+    order.ticket_order_items.update_all(status: "void", updated_at: Time.current)
+    Rails.logger.error("[TicketOrderSettlement] order #{order.id} paid #{amount_cents}c on #{intent_id} but costs #{order.total_cents}c; refunded and canceled")
+    order
+  end
+
+  private_class_method :post_money!, :ensure_seats_still_free!, :refund_late_payment!, :refund_wrong_amount!
 end

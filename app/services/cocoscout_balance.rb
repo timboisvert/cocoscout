@@ -11,6 +11,9 @@
 #   settling  — money still reaching Stripe's available balance: ticket money
 #               from shows that just happened, and course or contract money
 #               from the last two days.
+#   tax set aside — sales tax collected that the organization owes the
+#               government (SalesTaxSetAside), kept apart until it marks
+#               the period paid. On by default; a setting turns it off.
 #   available — everything else in the ledger, less what funded runs still
 #               owe their payees and less funding credit (money a run
 #               released back, which the next run spends through
@@ -23,9 +26,9 @@ class CocoScoutBalance
   SETTLE_AFTER = TicketBalance::SETTLE_AFTER
   OTHER_CREDITS = %w[course_registration contract_payment].freeze
 
-  Summary = Data.define(:upcoming_cents, :settling_cents, :available_cents, :sources) do
+  Summary = Data.define(:upcoming_cents, :settling_cents, :tax_set_aside_cents, :available_cents, :sources) do
     def total_cents
-      upcoming_cents + settling_cents + available_cents
+      upcoming_cents + settling_cents + tax_set_aside_cents + available_cents
     end
 
     def any?
@@ -39,17 +42,18 @@ class CocoScoutBalance
 
   def self.summary(organization)
     tickets = TicketBalance.summary(organization)
-    return Summary.new(upcoming_cents: tickets.upcoming_cents, settling_cents: tickets.settling_cents,
-                       available_cents: tickets.available_cents, sources: sources(organization)) unless pooled?(organization)
+    tax = SalesTaxSetAside.cents(organization)
+    return Summary.new(upcoming_cents: tickets.upcoming_cents, settling_cents: tickets.settling_cents, tax_set_aside_cents: tax,
+                       available_cents: available_cents(organization), sources: sources(organization)) unless pooled?(organization)
 
     Summary.new(upcoming_cents: tickets.upcoming_cents,
-                settling_cents: tickets.settling_cents + settling_other_cents(organization),
+                settling_cents: tickets.settling_cents + settling_other_cents(organization), tax_set_aside_cents: tax,
                 available_cents: available_cents(organization), sources: sources(organization))
   end
 
   # Spendable now: by a payout run, a refund, or a withdrawal.
   def self.available_cents(organization)
-    return TicketBalance.available_cents(organization) unless pooled?(organization)
+    return [ TicketBalance.available_cents(organization) - SalesTaxSetAside.cents(organization), 0 ].max unless pooled?(organization)
 
     [ raw_available_cents(organization), 0 ].max
   end
@@ -62,16 +66,17 @@ class CocoScoutBalance
   end
 
   def self.shortfall_cents(organization, cents)
-    return TicketBalance.shortfall_cents(organization, cents) unless pooled?(organization)
+    return TicketBalance.shortfall_cents(organization, cents + SalesTaxSetAside.cents(organization)) unless pooled?(organization)
 
     [ cents - raw_available_cents(organization), 0 ].max
   end
 
   # In the ledger but not spendable: ticket money waiting on its show or
-  # settling, and (once the theater pools) course or contract money from the
-  # last two days. A theater that doesn't pool keeps its old reach.
+  # settling, (once the organization pools) course or contract money from
+  # the last two days, and sales tax set aside for the government. An
+  # organization that doesn't pool keeps its old reach.
   def self.held_cents(organization)
-    held = TicketBalance.held_cents(organization)
+    held = TicketBalance.held_cents(organization) + SalesTaxSetAside.cents(organization)
     held += settling_other_cents(organization) if pooled?(organization)
     held
   end

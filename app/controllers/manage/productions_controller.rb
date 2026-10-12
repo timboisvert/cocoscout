@@ -5,6 +5,9 @@ module Manage
     before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay]
     before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay]
     before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay]
+    # Performer pay and agreements are Pro, and Pro is the organization's
+    # managers' — a production's own manager (a producer) doesn't get them.
+    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay]
 
     def index
       @filter = params[:filter] || "all"
@@ -475,9 +478,18 @@ module Manage
                      show_upcoming_event_types cast_talent_pool_ids
                      auto_create_event_pages auto_create_event_pages_mode event_visibility_overrides]
       # Performer agreements are Pro: the settings that turn them on (and the
-      # auto-send that fires on every talent-pool add) only get through on Pro.
-      permitted += %i[agreement_template_id agreement_required agreement_auto_send] if Current.organization&.feature_available?(:agreements)
-      params.require(:production).permit(*permitted).merge(organization_id: Current.organization&.id)
+      # auto-send that fires on every talent-pool add) only get through on Pro,
+      # and only from the organization's managers.
+      if Current.organization&.feature_available?(:agreements) &&
+         (Current.user&.superadmin? || Current.organization.manageable_by?(Current.user))
+        permitted += %i[agreement_template_id agreement_required agreement_auto_send]
+      end
+      attrs = params.require(:production).permit(*permitted).merge(organization_id: Current.organization&.id)
+      # One of this org's templates: a raw id attached another org's agreement.
+      if attrs[:agreement_template_id].present?
+        attrs[:agreement_template_id] = Current.organization.agreement_templates.find(attrs[:agreement_template_id]).id
+      end
+      attrs
     end
 
     # Convert event_visibility checkboxes to JSON stored in event_visibility_overrides

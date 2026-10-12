@@ -1,4 +1,7 @@
 <% content_for :title, "Edit #{@production.name}" %>
+<%# Pay, Agreement and Tickets are Pro, and Pro is the organization's managers':
+    a producer editing their production sees a note there, never the controls. %>
+<% org_manager = Current.user&.superadmin? || @production.organization.manageable_by?(Current.user) %>
 
 <div class="w-full">
 
@@ -414,7 +417,10 @@
 
         <%# Same shape as the Pay tab: one card, Pro pill in the header, and the
             locked treatment inside it when the plan doesn't include agreements. %>
-        <% unless @production.organization.feature_available?(:agreements) %>
+        <% if !org_manager %>
+          <%= render "manage/productions/managers_only_card", title: "Performer agreements",
+                description: "Performer agreements for #{@production.name} are set up by your organization's managers." %>
+        <% elsif !@production.organization.feature_available?(:agreements) %>
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
             <%= render "shared/section_heading", title: "Performer agreements" do %>
               <%= render "shared/pro_marker", kind: :header %>
@@ -735,14 +741,21 @@
 
     <!-- Tab 7: Pay -->
     <div data-tabs-target="panel" class="hidden">
-      <%= render "manage/productions/pay_tab", production: @production %>
+      <% if org_manager %>
+        <%= render "manage/productions/pay_tab", production: @production %>
+      <% else %>
+        <%= render "manage/productions/managers_only_card", title: "Performer pay",
+              description: "How performers on #{@production.name} are paid is set by your organization's managers." %>
+      <% end %>
     </div>
     <% end %><%# end unless type_third_party %>
 
     <!-- Tickets (Pro): the Tickets question (Round 9 §3). Dates inherit the answer; a date can answer for itself on its own Tickets tab. -->
     <div data-tabs-target="panel" class="hidden">
       <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <% if @production.organization.feature_available?(:ticketing) %>
+        <% if !org_manager %>
+          <p class="text-sm text-gray-600">Tickets for <%= @production.name %> are set up by your organization's managers.</p>
+        <% elsif @production.organization.feature_available?(:ticketing) %>
           <%= render "shared/ticketing/tickets_question", production: @production, cocoscout_fields: false,
                 return_to: edit_manage_production_path(@production, tab: (@production.type_third_party? ? 3 : 7)) %>
           <p class="mt-4 text-xs text-gray-500">Every date of <%= @production.name %> follows this. A date can answer for itself on its own Tickets tab.</p>

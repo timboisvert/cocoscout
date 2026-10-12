@@ -123,7 +123,11 @@ class TicketCheckoutsController < ApplicationController
     if intent_id.present? && !@order.paid?
       intent = Stripe::PaymentIntent.retrieve(intent_id)
       if intent.status == "succeeded"
-        settle!(payment_intent_id: intent.id, charge_id: intent.latest_charge)
+        settle!(payment_intent_id: intent.id, charge_id: intent.latest_charge, amount_cents: intent.amount)
+        if payable.reload.status == "canceled"
+          return redirect_to(tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params),
+                             alert: "Your order changed while you were paying, so we refunded that payment. Please start again.")
+        end
       elsif intent.status == "requires_payment_method"
         return redirect_to(tickets_checkout_path(token: @order.token, **embed_params), alert: "That payment didn't go through. Please try another way to pay.")
       end
@@ -179,11 +183,11 @@ class TicketCheckoutsController < ApplicationController
     payable.stripe_payment_intent_id.presence || @order.stripe_payment_intent_id
   end
 
-  def settle!(payment_intent_id: nil, charge_id: nil)
+  def settle!(payment_intent_id: nil, charge_id: nil, amount_cents: nil)
     if @purchase
-      TicketPurchaseSettlement.settle!(@purchase, payment_intent_id: payment_intent_id, charge_id: charge_id)
+      TicketPurchaseSettlement.settle!(@purchase, payment_intent_id: payment_intent_id, charge_id: charge_id, amount_cents: amount_cents)
     else
-      TicketOrderSettlement.settle!(@order, payment_intent_id: payment_intent_id, charge_id: charge_id)
+      TicketOrderSettlement.settle!(@order, payment_intent_id: payment_intent_id, charge_id: charge_id, amount_cents: amount_cents)
     end
   end
 

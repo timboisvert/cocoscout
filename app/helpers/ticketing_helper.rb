@@ -1,6 +1,17 @@
 # frozen_string_literal: true
 
 module TicketingHelper
+  # A tax period in words: "September 2026", "Q3 2026", or the dates.
+  def sales_tax_period_label(from, to)
+    if from == from.beginning_of_month && to == from.end_of_month
+      from.strftime("%B %Y")
+    elsif from == from.beginning_of_quarter && to == from.end_of_quarter
+      "Q#{((from.month - 1) / 3) + 1} #{from.year}"
+    else
+      "#{from.strftime('%b %-d, %Y')} to #{to.strftime('%b %-d, %Y')}"
+    end
+  end
+
   # Where a show's sales stand, in words and a badge color. Sold out wins over
   # "on sale"; a scheduled opening says when.
   def ticket_listing_status_badge(listing, inventory = listing.inventory, at: Time.current)

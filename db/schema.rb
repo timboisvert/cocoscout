@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_12_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1643,6 +1643,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.string "subscription_tier", default: "free", null: false
     t.string "talent_pool_mode", default: "per_production", null: false
     t.datetime "updated_at", null: false
+    t.date "sales_tax_set_aside_since", default: -> { "CURRENT_DATE" }
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
@@ -1695,6 +1696,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.bigint "total_cents", default: 0, null: false
     t.string "trigger", default: "manual", null: false
     t.datetime "updated_at", null: false
+    t.boolean "waiting_on_banks", default: false, null: false
+    t.datetime "closed_out_at"
+    t.bigint "closed_out_by_id"
     t.index ["created_by_id"], name: "index_payout_batches_on_created_by_id"
     t.index ["organization_id", "status"], name: "idx_payout_batches_org_status"
     t.index ["organization_id"], name: "idx_payout_batches_one_open_run_per_org", unique: true, where: "(((status)::text = 'draft'::text) AND ((kind)::text <> 'course'::text))"
@@ -1717,6 +1721,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.string "source_type"
     t.datetime "updated_at", null: false
     t.jsonb "worksheet"
+    t.bigint "moved_from_batch_id"
+    t.datetime "moved_at"
+    t.index ["moved_from_batch_id"], name: "index_payout_contributions_on_moved_from_batch_id"
     t.index ["payee_type", "payee_id"], name: "index_payout_contributions_on_payee"
     t.index ["payout_batch_id"], name: "index_payout_contributions_on_payout_batch_id"
     t.index ["payout_batch_item_id"], name: "index_payout_contributions_on_payout_batch_item_id"
@@ -2377,6 +2384,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.string "uri"
     t.text "url_args"
     t.index ["delivered", "failed", "processing", "deliver_after", "created_at"], name: "index_rpush_notifications_multi", where: "((NOT delivered) AND (NOT failed))"
+  end
+
+  create_table "sales_tax_remittances", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "tax_name", null: false
+    t.integer "rate_bps", null: false
+    t.string "basis", default: "sale", null: false
+    t.date "period_start", null: false
+    t.date "period_end", null: false
+    t.integer "amount_cents", default: 0, null: false
+    t.date "paid_on", null: false
+    t.string "reference"
+    t.bigint "recorded_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "tax_name", "rate_bps", "period_start"], name: "idx_sales_tax_remittances_lookup"
   end
 
   create_table "scheduling_rules", force: :cascade do |t|
@@ -3512,20 +3535,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.index ["user_id"], name: "index_ticket_orders_on_user_id"
   end
 
-  create_table "ticket_products", force: :cascade do |t|
-    t.datetime "archived_at"
-    t.boolean "counts_toward_ticket_revenue", default: false, null: false
-    t.datetime "created_at", null: false
-    t.string "description"
-    t.string "name", null: false
-    t.bigint "organization_id", null: false
-    t.integer "position", default: 0, null: false
-    t.integer "price_cents", default: 0, null: false
-    t.boolean "taxable", default: true, null: false
-    t.datetime "updated_at", null: false
-    t.index ["organization_id"], name: "index_ticket_products_on_organization_id"
-  end
-
   create_table "ticket_outside_sales", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.bigint "ticket_listing_id", null: false
@@ -3621,6 +3630,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
     t.datetime "updated_at", null: false
     t.index ["organization_id", "slug"], name: "index_ticket_passes_on_organization_id_and_slug", unique: true
     t.index ["organization_id"], name: "index_ticket_passes_on_organization_id"
+  end
+
+  create_table "ticket_products", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.boolean "counts_toward_ticket_revenue", default: false, null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "price_cents", default: 0, null: false
+    t.boolean "taxable", default: true, null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_products_on_organization_id"
   end
 
   create_table "ticket_purchases", force: :cascade do |t|
@@ -4125,9 +4148,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_batch_items", "payout_batches"
   add_foreign_key "payout_batches", "organizations"
+  add_foreign_key "payout_batches", "users", column: "closed_out_by_id"
   add_foreign_key "payout_batches", "users", column: "created_by_id"
   add_foreign_key "payout_contributions", "payout_batch_items"
   add_foreign_key "payout_contributions", "payout_batches"
+  add_foreign_key "payout_contributions", "payout_batches", column: "moved_from_batch_id"
   add_foreign_key "payout_funding_credits", "organizations"
   add_foreign_key "payout_ledger_entries", "organizations"
   add_foreign_key "payout_scheme_defaults", "payout_schemes"
@@ -4178,6 +4203,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
   add_foreign_key "role_vacancy_shows", "shows"
   add_foreign_key "roles", "productions"
   add_foreign_key "roles", "shows", on_delete: :cascade
+  add_foreign_key "sales_tax_remittances", "organizations"
+  add_foreign_key "sales_tax_remittances", "users", column: "recorded_by_id"
   add_foreign_key "scheduling_rules", "house_roles"
   add_foreign_key "scheduling_rules", "organizations"
   add_foreign_key "scheduling_rules", "people"
@@ -4314,7 +4341,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
   add_foreign_key "ticket_outside_sales", "ticket_listings"
   add_foreign_key "ticket_outside_sales", "ticket_sources"
   add_foreign_key "ticket_outside_sales", "ticket_tiers"
-  add_foreign_key "ticket_products", "organizations"
   add_foreign_key "ticket_pass_coverages", "productions"
   add_foreign_key "ticket_pass_coverages", "ticket_passes"
   add_foreign_key "ticket_pass_holdings", "organizations"
@@ -4324,6 +4350,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
   add_foreign_key "ticket_pass_shows", "ticket_passes"
   add_foreign_key "ticket_pass_shows", "ticket_tiers"
   add_foreign_key "ticket_passes", "organizations"
+  add_foreign_key "ticket_products", "organizations"
   add_foreign_key "ticket_purchases", "organizations"
   add_foreign_key "ticket_purchases", "ticket_purchases", column: "earned_by_purchase_id"
   add_foreign_key "ticket_refunds", "organizations"

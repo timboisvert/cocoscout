@@ -35,6 +35,16 @@
       <% end %>
     </div>
 
+    <% if s.tax_set_aside_cents.positive? %>
+      <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div>
+          <div class="text-sm font-medium text-gray-900">Set aside for sales tax: <span class="tabular-nums"><%= number_to_currency(s.tax_set_aside_cents / 100.0) %></span></div>
+          <p class="text-xs text-gray-600 mt-0.5">Tax you collected and owe the government. It's here, but payout runs and withdrawals don't touch it until you mark its period paid.</p>
+        </div>
+        <%= link_to "Sales tax", manage_ticket_taxes_path, class: "text-sm text-pink-600 hover:text-pink-700 underline whitespace-nowrap" %>
+      </div>
+    <% end %>
+
     <%# Everything CocoScout has held for you, and where it went. %>
     <% src = s.sources %>
     <% rows = [ [ "Tickets", src[:tickets] ], [ "Classes", src[:courses] ], [ "Contract payments", src[:contracts] ], [ "Added from your bank", src[:added] ],

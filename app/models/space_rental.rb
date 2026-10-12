@@ -15,6 +15,7 @@ class SpaceRental < ApplicationRecord
   validate :ends_after_starts
   validate :no_overlapping_rentals, on: :create, unless: :allow_overlap
   validate :event_times_within_rental
+  validate :location_in_contract_organization, if: :will_save_change_to_location_id?
 
   scope :upcoming, -> { where("starts_at >= ?", Time.current).order(:starts_at) }
   scope :past, -> { where("ends_at < ?", Time.current).order(starts_at: :desc) }
@@ -62,6 +63,16 @@ class SpaceRental < ApplicationRecord
   end
 
   private
+
+  # A booking is at one of the contract's organization's own venues (the
+  # wizard's location ids come from the form); another org's would sit in its
+  # overlap checks and block its own bookings.
+  def location_in_contract_organization
+    return if location.nil? || contract.nil?
+    return if location.organization_id == contract.organization_id
+
+    errors.add(:location, "must be one of your organization's locations")
+  end
 
   def ends_after_starts
     return if starts_at.blank? || ends_at.blank?

@@ -1,7 +1,9 @@
 <%# The one-setting tax form (TicketTaxSetting): a name, a percentage, and
     whether it's added on top or inside the price, with worked examples.
     Locals: tax (TicketTaxSetting::Form), url (where it saves), what
-    ("tickets" or "courses"), example_cents (the price in the examples). %>
+    ("tickets" or "courses"), example_cents (the price in the examples),
+    set_aside (optional: the organization, to show the "keep it set aside"
+    switch, which covers every tax CocoScout collects for it). %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   example_cents = local_assigns.fetch(:example_cents, 2_000)
@@ -18,7 +20,7 @@
 %>
 <%= form_with url: url, method: :patch, scope: :tax do |f| %>
   <div class="space-y-6">
-    <p class="text-sm text-gray-600">If you charge tax on <%= what %>, enter it here. CocoScout collects it at checkout, pays it out to you with your <%= unit %> money, and lists it in your taxes-collected report. You send it to the government. Leave the percentage blank if your <%= what %> carry no tax.</p>
+    <p class="text-sm text-gray-600">If you charge tax on <%= what %>, enter it here. CocoScout collects it at checkout, keeps it with your <%= unit %> money, and lists it on your Sales tax page. You send it to the government. Leave the percentage blank if your <%= what %> carry no tax.</p>
 
     <div class="space-y-6">
       <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_10rem] gap-4">
@@ -49,6 +51,19 @@
           <% end %>
         </div>
       </fieldset>
+
+      <% if (org = local_assigns[:set_aside]) %>
+        <div class="rounded-lg border border-gray-200 px-4 py-3 flex items-center justify-between gap-4">
+          <div>
+            <div class="text-sm font-medium text-gray-900">Keep sales tax set aside</div>
+            <div class="text-xs text-gray-600 mt-0.5">
+              The tax you collect stays in your CocoScout balance, apart from what payout runs and withdrawals can spend, until you mark the period paid on the Sales tax page.
+              <% if org.sales_tax_set_aside_since %>Set aside since <%= org.sales_tax_set_aside_since.strftime("%B %-d, %Y") %>.<% else %>Turning it on sets aside tax collected from today on.<% end %>
+            </div>
+          </div>
+          <%= render "shared/toggle_switch", name: "tax[set_aside]", checked: org.sales_tax_set_aside_since.present?, hidden_false: true, id: "tax_set_aside", aria_label: "Keep sales tax set aside" %>
+        </div>
+      <% end %>
     </div>
 
     <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>

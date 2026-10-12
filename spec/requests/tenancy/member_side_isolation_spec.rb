@@ -49,6 +49,20 @@ RSpec.describe "Cross-org isolation (member side)", type: :request do
     end
   end
 
+  describe "message reactions" do
+    let!(:stranger_thread) do
+      Message.create!(sender: stranger.user, subject: "Cast only", body: "private",
+                      message_type: "direct", visibility: :personal, organization: stranger_org)
+    end
+
+    it "refuses a reaction on a thread I'm not part of" do
+      expect {
+        post "/my/messages/#{stranger_thread.id}/react/love", as: :turbo_stream
+      }.not_to change(MessageReaction, :count)
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
   describe "availability writes (low)" do
     it "404s writing my availability against a show in an org I don't belong to" do
       show = create(:show, production: stranger_production)

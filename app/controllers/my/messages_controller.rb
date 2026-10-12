@@ -251,6 +251,13 @@ class My::MessagesController < ApplicationController
     message = Message.find(params[:id])
     emoji = params[:emoji]
 
+    # Only thread participants may react (as on the manage side): this also
+    # renders the message's reactions, with who made them.
+    unless message.root_message.subscribed?(Current.user)
+      head :forbidden
+      return
+    end
+
     # Validate emoji is in allowed list
     unless MessageReaction::REACTIONS.include?(emoji)
       head :unprocessable_content

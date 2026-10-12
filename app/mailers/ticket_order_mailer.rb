@@ -8,6 +8,11 @@
 class TicketOrderMailer < ApplicationMailer
   helper TicketingHelper
 
+  # A buyer's email is the theater's: its name leads the frame and the footer
+  # says "Tickets by CocoScout" (layouts/mailer, @storefront_organization), so
+  # CocoScout's cat isn't attached at all.
+  skip_before_action :attach_logo
+
   # Their tickets, with a receipt: what they paid, line by line.
   def confirmation(order)
     @receipt = order.total_cents.positive?
@@ -87,6 +92,7 @@ class TicketOrderMailer < ApplicationMailer
     @holdings = purchase.ticket_pass_holdings.select { |holding| holding.status == "active" }
     holding = @holdings.first
     @organization = holding.organization
+    @storefront_organization = @organization
     words = render_words("ticket_pass_bought", self.class.pass_variables(holding))
     @intro_html = words[:body_html]
     mail(to: holding.holder_email, subject: words[:subject],
@@ -97,6 +103,7 @@ class TicketOrderMailer < ApplicationMailer
   # A credit pass ending with credits left (TicketPassEndingJob).
   def pass_ending(holding)
     @organization = holding.organization
+    @storefront_organization = @organization
     variables = self.class.pass_variables(holding).merge(
       credits_left: ActionController::Base.helpers.pluralize(holding.credits_left, "credit"),
       pass_url: tickets_pass_holding_url(token: holding.token)
@@ -256,6 +263,7 @@ class TicketOrderMailer < ApplicationMailer
 
   def deliver_from_theater(subject, **options)
     organization = @order.organization
+    @storefront_organization = organization
     mail(to: @order.buyer_email, subject: subject,
          from: email_address_with_name("info@cocoscout.com", "#{organization.name} via CocoScout"),
          reply_to: TicketingProfile.for(organization).support_email.presence, **options)

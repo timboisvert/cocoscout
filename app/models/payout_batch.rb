@@ -11,6 +11,12 @@ class PayoutBatch < ApplicationRecord
 
   belongs_to :organization
   belongs_to :created_by, class_name: "User", optional: true
+  # Closed out: paid except for people with no bank yet, who moved to the
+  # standing "Waiting on bank info" run (PayoutRunCloseOut).
+  belongs_to :closed_out_by, class_name: "User", optional: true
+  # Lines that came from here into the waiting run: the close-out's trail.
+  has_many :moved_out_contributions, class_name: "PayoutContribution", foreign_key: :moved_from_batch_id,
+                                     inverse_of: :moved_from_batch, dependent: :nullify
   has_many :items, class_name: "PayoutBatchItem", dependent: :destroy
   has_many :payout_contributions, dependent: :destroy
   # Worked-time entries pulled into this run; freeing them if the batch is deleted.
@@ -96,6 +102,8 @@ class PayoutBatch < ApplicationRecord
   end
 
   def kind_label
+    return "Waiting on bank info" if waiting_on_banks?
+
     case kind
     when "payout" then "Payouts"
     when "performer" then "Performer payouts"

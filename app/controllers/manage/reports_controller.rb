@@ -46,7 +46,7 @@ module Manage
           { key: :ticket_sales_by_type, title: "Ticket Sales by Type", description: "How each ticket type sold across a period." },
           { key: :ticket_sales_by_channel, title: "Ticket Sales by Channel", description: "Online, your website, the door and comps." },
           { key: :ticket_buyers, title: "Ticket Buyers", description: "Everyone who bought in a period, with their contact details." },
-          { key: :ticket_taxes, title: "Taxes Collected on Tickets", description: "What you collected, to pay the government." }
+          { key: :ticket_taxes, title: "Sales Tax", description: "Tax collected on tickets and courses, what's set aside, and marking it paid." }
         ]
       },
       {

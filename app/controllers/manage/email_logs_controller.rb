@@ -2,6 +2,10 @@
 
 module Manage
   class EmailLogsController < Manage::ManageController
+    # The organization's own sent mail, bodies and all (contract signing and
+    # pay links among them): its owners' and managers', not every role.
+    before_action :ensure_org_owner_or_manager
+
     def show
       # Org-scoped: email bodies carry invite tokens and signing links, so a
       # bare find here let any manage user read any org's mail.

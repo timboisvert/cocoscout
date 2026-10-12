@@ -35,6 +35,30 @@ RSpec.describe Contract, "#apply_amendment! removing booked dates" do
     expect(payment.reload.show_id).to be_nil
   end
 
+  # The removed ids come from the amend form. Only this contract's own nights
+  # go: a foreign id used to take another contract's show (any organization's)
+  # with it, and unlink its payments, while only the rental delete was scoped.
+  it "never removes another contract's night" do
+    other_org = create(:organization, :pro)
+    other_location = create(:location, organization: other_org)
+    other_production = create(:production, organization: other_org, production_type: "third_party")
+    other_contract = create(:contract, :active, :revenue_share_per_event, organization: other_org, production: other_production)
+    starts_at = 3.weeks.from_now.change(hour: 20)
+    other_rental = other_contract.space_rentals.create!(location: other_location, starts_at: starts_at,
+                                                        ends_at: starts_at + 2.hours, confirmed: true)
+    other_show = other_production.shows.create!(date_and_time: starts_at, duration_minutes: 120,
+                                                location: other_location, space_rental: other_rental)
+    other_payment = other_contract.contract_payments.create!(description: "Revenue Share", amount: 100,
+                                                             direction: "incoming", due_date: starts_at.to_date,
+                                                             show_id: other_show.id)
+
+    contract.transaction { contract.apply_amendment!({ "removed_rental_ids" => [ other_rental.id ] }) }
+
+    expect(Show.exists?(other_show.id)).to be(true)
+    expect(SpaceRental.exists?(other_rental.id)).to be(true)
+    expect(other_payment.reload.show_id).to eq(other_show.id)
+  end
+
   # Round 9 §0 (2026-10-06): a night people hold tickets for can't be dropped
   # by an amendment; it's canceled in Shows & Events, where they're refunded.
   it "refuses to drop a night that sold tickets" do

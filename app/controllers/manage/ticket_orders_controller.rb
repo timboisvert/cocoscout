@@ -101,9 +101,12 @@ module Manage
       end
 
       listing = @order.ticket_listing
-      @available_cents = CocoScoutBalance.available_cents(Current.organization)
+      # The tax on these tickets is set aside for the government; refunding
+      # gives it back to the buyer, so the refund can spend it.
+      relief = SalesTaxSetAside.relief_cents(Current.organization, ticket_ids: @quote.tickets.map(&:id), item_ids: @quote.items.map(&:id))
+      @available_cents = CocoScoutBalance.available_cents(Current.organization) + relief
       @short = @order.money_path == "cocoscout" && listing.released_at.present? && @quote.org_debit_cents > @available_cents
-      @short_cents = CocoScoutBalance.shortfall_cents(Current.organization, @quote.org_debit_cents) if @short
+      @short_cents = CocoScoutBalance.shortfall_cents(Current.organization, @quote.org_debit_cents - relief) if @short
     end
 
     def refund
@@ -130,7 +133,8 @@ module Manage
       outside_policy = exception_allowed!
       keep_fees = params[:keep_fees] == "1"
       quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: keep_fees, reprice: reprice?)
-      short = CocoScoutBalance.shortfall_cents(Current.organization, quote.org_debit_cents)
+      relief = SalesTaxSetAside.relief_cents(Current.organization, ticket_ids: quote.tickets.map(&:id), item_ids: quote.items.map(&:id))
+      short = CocoScoutBalance.shortfall_cents(Current.organization, quote.org_debit_cents - relief)
       unless short.positive?
         redirect_to manage_ticket_order_refund_path(@order.id, ticket_ids: params[:ticket_ids], item_ids: params[:item_ids], keep_fees: params[:keep_fees]) and return
       end

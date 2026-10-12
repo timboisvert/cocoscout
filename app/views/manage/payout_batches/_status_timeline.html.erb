@@ -24,6 +24,17 @@
   money = ->(cents) { number_to_currency(cents / 100.0) }
 
   headline, description, tint, eyebrow_color =
+    if batch.closed_out_at && batch.status == "completed"
+      # Closed out (PayoutRunCloseOut): paid except for the people who moved.
+      [ "Closed out",
+        "#{money.call(batch.total_cents)} went out. The people still waiting on a bank moved to the Waiting on bank info run on #{batch.closed_out_at.strftime('%b %-d, %Y')}, where they're paid the moment they connect.",
+        "bg-green-50 border-green-200", "text-green-700" ]
+    elsif batch.waiting_on_banks? && batch.status == "partially_paid"
+      # The standing run people move to when a run is closed out (PayoutRunCloseOut).
+      [ "Waiting on bank info",
+        "Everyone here is waiting to connect a bank. Their money was funded with the runs they came from and stays set aside; each is paid the moment they connect.#{" We also check every morning — next #{next_try_text}." if next_try_text}",
+        "bg-blue-50 border-blue-200", "text-blue-700" ]
+    else
     case batch.status
     when "draft"
       [ "Draft — not submitted",
@@ -64,6 +75,7 @@
       [ "Canceled", "This run was canceled; nothing was paid from it.", "bg-gray-50 border-gray-300", "text-gray-500" ]
     else
       [ batch.display_status, "", "bg-gray-50 border-gray-300", "text-gray-500" ]
+    end
     end
 %>
 

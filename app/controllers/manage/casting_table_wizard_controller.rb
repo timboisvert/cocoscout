@@ -131,9 +131,10 @@ module Manage
         @wizard_state[:person_ids] = person_ids
         @wizard_state[:group_ids] = group_ids
       else
-        # Manual selection
-        person_ids = Array(params[:person_ids]).map(&:to_i).reject(&:zero?)
-        group_ids = Array(params[:group_ids]).map(&:to_i).reject(&:zero?)
+        # Manual selection — only this org's people and groups (raw ids would
+        # put anyone on CocoScout on the table, and cast and notify them).
+        person_ids = Current.organization.people.where(id: Array(params[:person_ids]).map(&:to_i).reject(&:zero?)).pluck(:id)
+        group_ids = Current.organization.groups.where(id: Array(params[:group_ids]).map(&:to_i).reject(&:zero?)).pluck(:id)
 
         if person_ids.empty? && group_ids.empty?
           flash.now[:alert] = "Please select at least one person or group"

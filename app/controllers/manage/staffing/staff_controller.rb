@@ -32,7 +32,11 @@ module Manage
 
         # Re-adding someone who was marked inactive reactivates their existing
         # membership (uniqueness is org-scoped and counts inactive rows).
-        @staff_member = Current.organization.organization_staff_members.find_or_initialize_by(person_id: params[:person_id])
+        # This org's people (or someone already on its staff, to reactivate) —
+        # a raw person_id put anyone on CocoScout on the roster.
+        person = Current.organization.people.find_by(id: params[:person_id]) ||
+                 Current.organization.organization_staff_members.find_by!(person_id: params[:person_id]).person
+        @staff_member = Current.organization.organization_staff_members.find_or_initialize_by(person: person)
         @staff_member.archived_at = nil
         if @staff_member.save
           @staff_member.sync_role_qualifications!(role_ids: params[:house_role_ids], rates: params[:role_rates]&.to_unsafe_h)

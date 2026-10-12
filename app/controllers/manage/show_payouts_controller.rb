@@ -583,7 +583,7 @@ module Manage
         amount = advance_data[:amount].present? ? advance_data[:amount].to_f : default_amount
         next if amount <= 0
 
-        person = Person.find_by(id: person_id)
+        person = Current.organization.people.find_by(id: person_id)
         next unless person
 
         # Issue the advance into the open performer run (paid to their bank when
@@ -770,7 +770,13 @@ module Manage
     end
 
     def show_payout_params
-      params.require(:show_payout).permit(:notes, :payout_scheme_id)
+      permitted = params.require(:show_payout).permit(:notes, :payout_scheme_id)
+      # Only this org's calculations (as in apply_choice): a raw id pointed the
+      # payout at another org's calculation and showed its rules.
+      if permitted[:payout_scheme_id].present?
+        permitted[:payout_scheme_id] = Current.organization.payout_schemes.find(permitted[:payout_scheme_id]).id
+      end
+      permitted
     end
 
     def show_financials_params
