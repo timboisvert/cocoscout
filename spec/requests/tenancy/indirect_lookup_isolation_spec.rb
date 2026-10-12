@@ -61,6 +61,24 @@ RSpec.describe "Cross-org isolation: indirect lookups (manage)", type: :request 
     end
   end
 
+  describe "a show's venue" do
+    let!(:victim_location) { create(:location, organization: victim_org) }
+
+    # A show at another org's venue shows its address on our pages and trips
+    # that org's own room bookings (SpaceRental overlap checks are by venue).
+    it "won't put my show at another org's venue" do
+      patch manage_update_show_path(production, my_show), params: { show: { location_id: victim_location.id } }
+      expect(my_show.reload.location_id).not_to eq(victim_location.id)
+    end
+
+    it "won't book my contract's night at another org's venue" do
+      contract = create(:contract, :active, organization: org, production: production)
+      rental = contract.space_rentals.build(location: victim_location, starts_at: 2.weeks.from_now, ends_at: 2.weeks.from_now + 2.hours)
+      expect(rental).not_to be_valid
+      expect(rental.errors[:location]).to be_present
+    end
+  end
+
   describe "audition cycle update" do
     let!(:my_cycle) { create(:audition_cycle, production: production) }
 

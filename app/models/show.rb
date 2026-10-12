@@ -179,6 +179,7 @@ class Show < ApplicationRecord
   validates :date_and_time, presence: true
   validate :poster_content_type
   validate :location_or_online_required
+  validate :location_in_production_organization, if: :will_save_change_to_location_id?
   validate :within_free_event_limit, on: :create
 
   # Cache invalidation - invalidate production dashboard when show changes
@@ -1099,6 +1100,17 @@ class Show < ApplicationRecord
     return if location.present? || location_id.present? || is_online?
 
     errors.add(:base, "Please select a location or mark this event as online")
+  end
+
+  # A venue is an organization's own: a raw location_id from a form put a
+  # show at another org's venue (its address on our pages, and our show in
+  # its room-booking overlap checks). Checked when the venue changes, so a
+  # show already saved somewhere odd can still be edited otherwise.
+  def location_in_production_organization
+    return if location.nil? || production.nil?
+    return if location.organization_id == production.organization_id
+
+    errors.add(:location, "must be one of your organization's locations")
   end
 
   # Free orgs are capped at Organization::FREE_MONTHLY_EVENT_LIMIT non-canceled

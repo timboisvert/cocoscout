@@ -156,7 +156,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
     end
 
     it "creates a per_session payment" do
-      location = create(:location)
+      location = create(:location, organization: organization)
       show1 = create(:show, production: production, course_offering: course_offering, location: location, date_and_time: 1.day.from_now)
       show2 = create(:show, production: production, course_offering: course_offering, location: location, date_and_time: 2.days.from_now)
       create(:course_registration, course_offering: course_offering, amount_cents: 10000, cocoscout_fee_cents: 1000, status: "confirmed")

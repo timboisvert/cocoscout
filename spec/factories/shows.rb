@@ -3,7 +3,7 @@
 FactoryBot.define do
   factory :show do
     association :production
-    association :location
+    location { association :location, organization: production.organization }
     date_and_time { 1.week.from_now }
     event_type { :show }
 
