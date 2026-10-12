@@ -10,7 +10,8 @@
 #                       withdrawals, corrections).
 #   Owed to payees    — the payout ledger, every row.
 #   Tax to remit      — the tax lines on paid tickets and on course
-#                       registrations, less their reversals.
+#                       registrations, less their reversals and less what
+#                       the organization marked paid (SalesTaxRemittance).
 #
 # Returns the mismatches; none means the books agree.
 class BooksReconciliation
@@ -54,7 +55,9 @@ class BooksReconciliation
                     .joins("JOIN ticket_pass_holdings ON ticket_pass_holdings.id = tax_lines.taxable_id")
                     .where(ticket_pass_holdings: { status: %w[active ended] })
                     .sum(:tax_cents)
-    expected = tickets + products + courses + passes
+    # Less what the organization has marked paid to the government.
+    paid = SalesTaxRemittance.where(organization_id: organization.id).sum(:amount_cents)
+    expected = tickets + products + courses + passes - paid
     Mismatch.new(account: "tax_to_remit", books_cents: books, expected_cents: expected) unless books == expected
   end
 

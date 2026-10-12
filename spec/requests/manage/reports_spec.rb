@@ -71,7 +71,7 @@ RSpec.describe "Manage::Reports", type: :request do
       post handle_signin_path, params: { email_address: superadmin.email_address, password: password }
       post set_organization_path(id: org.id)
       get manage_reports_path
-      expect(response.body).to include("Ticketing", "Ticket Sales by Show", "Ticket Buyers", "Taxes Collected on Tickets", manage_ticket_taxes_path)
+      expect(response.body).to include("Ticketing", "Ticket Sales by Show", "Ticket Buyers", "Sales Tax", manage_ticket_taxes_path)
 
       get manage_report_ticket_sales_by_show_path
       expect(response.body).to include("Ticket Sales by Show", "Count each sale by", "Held for the show", "$40.00", "Download spreadsheet")

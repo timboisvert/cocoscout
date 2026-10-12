@@ -1386,6 +1386,8 @@ Rails.application.routes.draw do
     post   "money/books/balance/top-up",          to: "ticket_balance#top_up",           as: "ticket_balance_top_up"
     patch  "money/books/balance/auto-withdraw",   to: "ticket_balance#update_auto_withdraw", as: "ticket_balance_auto_withdraw"
     get    "ticketing/taxes",                     to: "ticket_taxes#show",               as: "ticket_taxes"
+    post   "ticketing/taxes/paid",                to: "ticket_taxes#mark_paid",          as: "ticket_tax_remittances"
+    delete "ticketing/taxes/paid/:id",            to: "ticket_taxes#unmark_paid",        as: "ticket_tax_remittance"
 
     # Staffing → Availability: the whole staff's availability on a month calendar.
     get   "staffing/availability",                to: "staffing/availability#index",     as: "staffing_availability"

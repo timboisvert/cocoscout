@@ -77,6 +77,7 @@ class Organization < ApplicationRecord
   has_many :tax_lines, dependent: :delete_all
   has_many :tax_rules, dependent: :delete_all
   has_many :tax_rates, dependent: :delete_all
+  has_many :sales_tax_remittances, dependent: :delete_all
   has_and_belongs_to_many :people
   has_and_belongs_to_many :groups
 

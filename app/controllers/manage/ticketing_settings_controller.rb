@@ -74,8 +74,9 @@ module Manage
     end
 
     def update_tax
-      tax = params.fetch(:tax, {}).permit(:name, :percent, :mode)
+      tax = params.fetch(:tax, {}).permit(:name, :percent, :mode, :set_aside)
       rule = TicketTaxSetting.save!(Current.organization, name: tax[:name], percent: tax[:percent], mode: tax[:mode])
+      save_set_aside!(tax[:set_aside]) if tax.key?(:set_aside)
       redirect_to section_path("tax"), notice: rule ? "Tax on tickets saved." : "Tickets now carry no tax."
     rescue ArgumentError, ActiveRecord::RecordInvalid => e
       redirect_to section_path("tax"), alert: e.message
@@ -166,6 +167,17 @@ module Manage
     end
 
     private
+
+    # On: tax collected from today on is set aside (an organization already
+    # on keeps its start date). Off: nothing is set aside.
+    def save_set_aside!(value)
+      org = Current.organization
+      if value == "1"
+        org.update_column(:sales_tax_set_aside_since, Date.current) unless org.sales_tax_set_aside_since
+      else
+        org.update_column(:sales_tax_set_aside_since, nil)
+      end
+    end
 
     def door_grants
       Current.organization.ticketing_access_grants.active
