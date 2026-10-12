@@ -28,6 +28,15 @@ class Rack::Attack
     req.ip if req.post? && [ "/signin", "/signup", "/api/v1/sessions" ].include?(req.path)
   end
 
+  # The organization join link (/join/:token) checks an existing account's
+  # password too. It's counted per email, not per address: a whole cast
+  # joining together on the venue's Wi-Fi shares one address, but nobody
+  # honestly tries one email's password ten times in 15 minutes (Tim,
+  # 2026-10-12).
+  throttle("join/email", limit: 10, period: 15.minutes) do |req|
+    req.params["email"].to_s.downcase.strip.presence if req.post? && req.path.start_with?("/join/")
+  end
+
   # Address ranges that may not touch the auth forms at all. Added 2026-08-18
   # after an account-creation script on an IBM Cloud proxy pool (30 addresses,
   # all in 169.58.0.0/16, rotating decade-old user agents) created ~85 fake

@@ -129,6 +129,25 @@ RSpec.describe "Signup bot defense", type: :request do
       expect(throttle.block.call(post_to.call("/api/v1/sessions"))).to eq("24.13.93.231")
     end
 
+    # The join link checks passwords too. It counts per email, so a cast
+    # joining together on one Wi-Fi address never trips it (2026-10-12).
+    it "limits wrong passwords on a join link per email, not per address" do
+      organization = create(:organization)
+      organization.update_column(:invite_token, "join-token-1")
+      create(:user, email_address: "dana@example.com", password: password)
+
+      10.times { post "/join/join-token-1", params: { email: "dana@example.com", password: "wrong" }, env: { "REMOTE_ADDR" => "24.13.93.231" } }
+      expect(response).to have_http_status(:unprocessable_content)
+
+      post "/join/join-token-1", params: { email: "Dana@example.com", password: password }, env: { "REMOTE_ADDR" => "73.1.2.3" }
+      expect(response).to have_http_status(:too_many_requests)
+
+      # Someone else on the same venue Wi-Fi joins fine.
+      expect {
+        post "/join/join-token-1", params: { email: "newcast@example.com", password: password }, env: { "REMOTE_ADDR" => "24.13.93.231" }
+      }.to change { user_count }.by(1)
+    end
+
     it "leaves assets and Active Storage out of the general per-IP ceiling" do
       # Variants have their own dedicated throttle; counting them here too let a
       # manager on a few headshot-heavy pages burn the whole 5-minute budget on
