@@ -48,4 +48,44 @@ namespace :ios do
 
     puts "#{org.name} (#{production.name}): ios-performer@, ios-staff@, ios-door@cocoscout.test — password in lib/tasks/ios_dev.rake"
   end
+
+  # A party of three comp tickets on the next show the door account can work,
+  # for trying the app's scanner. Each run puts them back to not checked in
+  # and prints their codes (type one into the Simulator's scanner, which has
+  # no camera). Comps carry no money, so nothing reaches the books.
+  #
+  #   bin/rails ios:door_tickets
+  #   bin/rails ios:door_tickets LISTING_ID=16
+  desc "Make or reset scannable test tickets for the iOS door scanner (development only)"
+  task door_tickets: :environment do
+    abort "ios:door_tickets only runs in development." unless Rails.env.development?
+
+    door_user = User.find_by!(email_address: "ios-door@cocoscout.test")
+    org = TicketingAccessGrant.active.where(user: door_user).first!.organization
+    listing = if ENV["LISTING_ID"].present?
+      org.ticket_listings.find(ENV["LISTING_ID"])
+    else
+      org.ticket_listings.joins(:show).where(status: "on_sale").where("shows.date_and_time > ?", 1.day.ago).order("shows.date_and_time").first!
+    end
+    tier = listing.ticket_tiers.active.first!
+
+    order = listing.ticket_orders.find_by(buyer_name: "Scan Test Party") ||
+            TicketOrder.create!(organization: org, ticket_listing: listing, status: "paid", paid_at: Time.current, channel: "comp",
+                                money_path: "none", fee_mode: listing.effective_fee_mode, buyer_name: "Scan Test Party")
+    (3 - order.tickets.count).times do
+      order.tickets.create!(ticket_tier: tier, ticket_listing: listing, status: "valid", price_cents: tier.price_cents, discount_cents: tier.price_cents)
+    end
+    order.tickets.update_all(status: "valid", checked_in_at: nil, checked_in_by_id: nil, updated_at: Time.current)
+
+    # A bottle to hand over, when the organization sells any, so the
+    # scanner's Delivered button has something to deliver.
+    if (product = org.ticket_products.first)
+      item = order.ticket_order_items.find_or_initialize_by(ticket_product: product)
+      item.update!(organization: org, ticket_listing: listing, status: "valid", name: product.name, unit_price_cents: 0, quantity: 1)
+      item.update_columns(fulfilled_quantity: 0, fulfilled_at: nil, fulfilled_by_id: nil)
+    end
+
+    puts "#{listing.display_title}, #{listing.show.date_and_time.strftime('%a %b %-d %-l:%M %p')} (listing #{listing.id}, order #{order.code})"
+    order.tickets.order(:id).each { |ticket| puts "  #{ticket.code}" }
+  end
 end

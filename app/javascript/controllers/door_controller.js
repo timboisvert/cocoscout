@@ -6,12 +6,15 @@ import { Controller } from "@hotwired/stimulus"
 // fresh by polling (there's no ActionCable). Every result shows as a big
 // colored banner with a sound and a buzz, so the person at the door never
 // has to read small print. The QR library loads only when scanning starts.
+// In the iOS app the app's own camera scans instead (bridge/door_scanner):
+// codes come back here as door-scanner:code, and every banner goes to the
+// app as door:result to show over the camera.
 export default class extends Controller {
     static targets = ["video", "viewport", "startButton", "stopButton", "banner", "checkedIn", "sold", "deliveries",
                       "modeButton", "listPanel", "scanPanel", "filterInput", "filterChip", "deliverChip", "results", "party", "nobody",
                       "sellPanel", "passHolders"]
     static values = { checkInUrl: String, statsUrl: String, listUrl: String, undoUrl: String, deliveriesUrl: String, listingId: Number,
-                      passesUrl: String }
+                      passesUrl: String, inApp: Boolean }
 
     static BANNER_CLASSES = {
         admitted: "bg-green-600 text-white",
@@ -23,7 +26,9 @@ export default class extends Controller {
     connect() {
         this.recentCodes = new Map()
         this.filterState = "all"
-        this.applyMode(this.rememberedMode())
+        // The app's scanner is full screen, so it opens on a tap, never by
+        // itself as the page loads.
+        this.applyMode(this.rememberedMode(), { start: !this.inAppValue })
         this.applyFilter()
         this.pollTimer = setInterval(() => this.refreshStats(), 5000)
         this.listTimer = setInterval(() => this.refreshList(), 30000)
@@ -45,7 +50,7 @@ export default class extends Controller {
         this.applyMode(event.currentTarget.dataset.mode)
     }
 
-    applyMode(mode) {
+    applyMode(mode, { start = true } = {}) {
         const sellable = this.hasSellPanelTarget
         this.mode = mode === "scan" ? "scan" : (mode === "sell" && sellable ? "sell" : "list")
         this.modeButtonTargets.forEach((button) => {
@@ -59,8 +64,8 @@ export default class extends Controller {
         if (this.mode !== "sell") {
             try { window.localStorage.setItem(this.modeKey(), this.mode) } catch (_e) { /* fine without */ }
         }
-        if (this.mode === "scan") this.startScanning()
-        else this.stopScanning()
+        if (this.mode !== "scan") this.stopScanning()
+        else if (start) this.startScanning()
     }
 
     rememberedMode() {
@@ -72,6 +77,11 @@ export default class extends Controller {
     }
 
     async startScanning() {
+        // The app's own camera, when there is one.
+        if (this.dispatch("scan", { cancelable: true }).defaultPrevented) {
+            this.nativeScanning = true
+            return
+        }
         try {
             const { default: QrScanner } = await import("qr-scanner")
             this.viewportTarget.classList.remove("hidden")
@@ -154,14 +164,20 @@ export default class extends Controller {
             const response = await fetch(this.deliveriesUrlValue, { headers: { Accept: "text/html" }, credentials: "same-origin" })
             if (!response.ok) return
             const html = await response.text()
+            // Empty means nothing to deliver; development wraps every partial
+            // in file-name comments, which don't count.
+            const empty = html.replace(/<!--[\s\S]*?-->/g, "").trim() === ""
             this.deliveriesTarget.innerHTML = html
-            this.deliveriesTarget.classList.toggle("hidden", html.trim() === "")
-            if (this.hasDeliverChipTarget) this.deliverChipTarget.classList.toggle("hidden", html.trim() === "")
+            this.deliveriesTarget.classList.toggle("hidden", empty)
+            if (this.hasDeliverChipTarget) this.deliverChipTarget.classList.toggle("hidden", empty)
         } catch { /* the next refresh tries again */ }
     }
 
-    async undo(event) {
-        const ticketId = event.currentTarget.dataset.ticketId
+    undo(event) {
+        this.undoTicket(event.currentTarget.dataset.ticketId)
+    }
+
+    async undoTicket(ticketId) {
         try {
             const data = await this.post(this.undoUrlValue, { ticket_id: ticketId })
             this.showBanner(data.ok ? "already" : "error", data.message)
@@ -183,7 +199,12 @@ export default class extends Controller {
 
     // items: what they pre-bought (a bottle), each with a Delivered tap. A
     // banner with something still to deliver stays until the next scan.
-    showBanner(tone, lines, undoTicketId = null, items = []) {
+    // quiet: the same banner redrawn, with no sound.
+    showBanner(tone, lines, undoTicketId = null, items = [], { quiet = false } = {}) {
+        this.lastBanner = { tone, lines, undoTicketId, items }
+        this.dispatch("result", {
+            detail: { tone, lines: [].concat(lines), undo_ticket_id: undoTicketId ? String(undoTicketId) : null, items, quiet }
+        })
         const banner = this.bannerTarget
         banner.className = `mt-4 rounded-xl px-4 py-4 text-center ${this.constructor.BANNER_CLASSES[tone]}`
         banner.replaceChildren()
@@ -220,7 +241,8 @@ export default class extends Controller {
             }
             banner.appendChild(row)
         })
-        this.feedback(tone)
+        // The app's scanner makes its own sound and buzz.
+        if (!quiet && !this.nativeScanning) this.feedback(tone)
         clearTimeout(this.bannerTimer)
         const waiting = items.some((item) => !item.fulfilled)
         if (!waiting) this.bannerTimer = setTimeout(() => banner.classList.add("hidden"), 8000)
@@ -244,6 +266,36 @@ export default class extends Controller {
         } catch {
             button.disabled = false
         }
+    }
+
+    // From the app's scanner (bridge/door_scanner): a code, an Undo or a
+    // Delivered tap on its result, and the scanner closing.
+    nativeCode({ detail: { value } }) {
+        this.scanned(value)
+    }
+
+    nativeUndo({ detail: { value } }) {
+        this.undoTicket(value)
+    }
+
+    async nativeFulfill({ detail: { value } }) {
+        try {
+            const data = await this.post(value, {})
+            const shown = this.lastBanner
+            if (shown) {
+                const items = shown.items.map((item) => (item.fulfill_url === value ? { ...item, fulfilled: true } : item))
+                this.showBanner(shown.tone, shown.lines, shown.undoTicketId, items, { quiet: true })
+            }
+            if (data.counts) this.updateCounts(data.counts)
+            this.refreshList()
+            this.refreshDeliveries()
+        } catch {
+            this.showBanner("error", "Couldn't reach CocoScout. Try again.")
+        }
+    }
+
+    nativeClosed() {
+        this.nativeScanning = false
     }
 
     // A rising chirp for admitted, a low buzz for anything else, and a

@@ -28,7 +28,10 @@ final class WebViewController: HotwireWebViewController {
     override func visitableDidRender() {
         super.visitableDidRender()
         titleLabel.text = navigationItem.title
-        let width = min(titleLabel.intrinsicContentSize.width, view.bounds.width - 120)
+        // Narrower beside a back button: a title too wide for the bar gets
+        // tucked into iOS's "more" menu instead of truncating.
+        let hasBackButton = navigationController?.viewControllers.first !== self
+        let width = min(titleLabel.intrinsicContentSize.width, view.bounds.width - (hasBackButton ? 180 : 120))
         titleLabel.frame = CGRect(x: 0, y: 0, width: width, height: 34)
     }
 }

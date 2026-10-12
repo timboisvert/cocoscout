@@ -135,6 +135,28 @@ RSpec.describe "The iOS app's web side", type: :request do
     expect(response.body).to include("bridge--menu")
   end
 
+  it "hands the door's camera to the app, which titles the page Door" do
+    TicketingProfile.for(org).update!(enabled: true)
+    listing = create(:ticket_listing, organization: org)
+    org.ticketing_access_grants.create!(user: user, access_level: "check_in")
+    sign_in
+
+    get door_path(listing), headers: in_app
+    page = Nokogiri::HTML(response.body)
+    door = page.at_css("[data-controller~='door']")
+    expect(door["data-controller"].split).to include("bridge--door-scanner")
+    expect(door["data-door-in-app-value"]).to eq("true")
+    expect(door["data-bridge--door-scanner-title-value"]).to eq(listing.display_title)
+    expect(door["data-action"]).to include("door:scan->bridge--door-scanner#open", "door-scanner:code->door#nativeCode")
+    expect(page.at_css("title").text).to eq("Door")
+
+    # A browser keeps its own camera, and a title naming the show.
+    get door_path(listing)
+    page = Nokogiri::HTML(response.body)
+    expect(page.at_css("[data-controller~='door']")["data-door-in-app-value"]).to eq("false")
+    expect(page.at_css("title").text).to eq("Door · #{listing.display_title}")
+  end
+
   it "serves page rules the app can read" do
     rules = JSON.parse(Rails.public_path.join("hotwire-native/path-configuration.json").read)["rules"]
     open_in = rules.select { |rule| rule["properties"]["open_in"] }.to_h { |rule| [ rule["properties"]["open_in"], rule["patterns"] ] }

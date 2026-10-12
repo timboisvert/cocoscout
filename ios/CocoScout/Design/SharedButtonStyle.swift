@@ -62,4 +62,9 @@ enum Tailwind {
     static let gray50 = Color(red: 0xF9 / 255, green: 0xFA / 255, blue: 0xFB / 255)
     static let gray300 = Color(red: 0xD1 / 255, green: 0xD5 / 255, blue: 0xDC / 255)
     static let gray700 = Color(red: 0x36 / 255, green: 0x41 / 255, blue: 0x53 / 255)
+    static let gray900 = Color(red: 0x10 / 255, green: 0x18 / 255, blue: 0x28 / 255)
+    // The door's result banner: green-600 in, amber-300 already in, red-600 no.
+    static let green600 = Color(red: 0x00 / 255, green: 0xA6 / 255, blue: 0x3E / 255)
+    static let amber300 = Color(red: 0xFF / 255, green: 0xD2 / 255, blue: 0x30 / 255)
+    static let red600 = Color(red: 0xE7 / 255, green: 0x00 / 255, blue: 0x0B / 255)
 }
