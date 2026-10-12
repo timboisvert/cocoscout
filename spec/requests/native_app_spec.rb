@@ -25,12 +25,12 @@ RSpec.describe "The iOS app's web side", type: :request do
   end
 
   describe "the menu" do
-    it "lists everything in My with short titles, icons and badges, and who's signed in" do
+    it "lists everything in My, each titled like its page, with icons and badges, and who's signed in" do
       sign_in
       get my_dashboard_path, headers: in_app
 
       expect(menu.map { |item| item["id"] }).to eq(%w[home messages tasks shows courses auditions documents payments productions profile settings])
-      expect(menu.find { |item| item["id"] == "messages" }).to include("title" => "Messages", "path" => my_messages_path, "icon" => "envelope", "badge" => 0)
+      expect(menu.find { |item| item["id"] == "messages" }).to include("title" => "My Messages", "path" => my_messages_path, "icon" => "envelope", "badge" => 0)
       expect(person_card).to include("name" => "Ida Performer", "email" => user.email_address, "initials" => "IP")
     end
 

@@ -46,6 +46,13 @@ RSpec.describe "The ticket link everywhere", type: :request do
     get my_show_path(show)
     expect(response).to have_http_status(:ok)
     expect(response.body).not_to include("Get tickets", ">Tickets<")
+
+    # Nor on the production's page in My (its assignments list).
+    create(:show_person_role_assignment, show: show, assignable: person, role: create(:role, production: production))
+    get my_production_path(production)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(show.display_name)
+    expect(response.body).not_to include("data-tooltip-text=\"Get tickets\"", "/t/#{ShortLink.canonical_for!(production).code}")
   end
 
   it "puts Get tickets on the public production and show pages, only while the box office is open" do

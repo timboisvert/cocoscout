@@ -18,8 +18,8 @@ module NativeAppHelper
     end
   end
 
-  # Everything in My, as the menu's tiles: the web nav's items with short
-  # titles and SF Symbols, the Door for anyone who can work one, then
+  # Everything in My, as the menu's tiles: the web nav's items, each titled
+  # "My …" like the page it opens (Tim, 2026-10-12), with SF Symbols, the Door for anyone who can work one, then
   # profile, groups (only for someone in one) and settings. badge is a count.
   # Signed out: an empty menu (the app shows just the sign-in screen).
   def native_menu
@@ -75,19 +75,19 @@ module NativeAppHelper
   def native_menu_item(item)
     path = item[:path]
     id, title, icon = {
-      my_dashboard_path => %w[home Home house],
-      my_messages_path => %w[messages Messages envelope],
-      my_tasks_path => %w[tasks Tasks checklist],
-      my_shows_path => %w[shows Shows calendar],
-      my_shifts_path => %w[shifts Shifts clock],
+      my_dashboard_path => [ "home", "My Calendar", "house" ],
+      my_messages_path => [ "messages", "My Messages", "envelope" ],
+      my_tasks_path => [ "tasks", "My Tasks", "checklist" ],
+      my_shows_path => [ "shows", "My Shows", "calendar" ],
+      my_shifts_path => [ "shifts", "My Shifts", "clock" ],
       door_index_path => %w[door Door qrcode.viewfinder],
       my_ticket_sales_path => [ "ticket_sales", "Ticket Sales", "chart.bar" ],
-      my_courses_path => %w[courses Courses book],
-      my_auditions_path => %w[auditions Auditions theatermasks],
-      my_documents_path => %w[documents Documents doc.text],
-      my_contracts_path => %w[contracts Contracts signature],
-      my_payments_path => %w[payments Payments dollarsign.circle],
-      my_productions_path => %w[productions Productions building.2],
+      my_courses_path => [ "courses", "My Courses", "book" ],
+      my_auditions_path => [ "auditions", "My Auditions", "theatermasks" ],
+      my_documents_path => [ "documents", "My Documents", "doc.text" ],
+      my_contracts_path => [ "contracts", "My Contracts", "signature" ],
+      my_payments_path => [ "payments", "My Payments", "dollarsign.circle" ],
+      my_productions_path => [ "productions", "My Productions", "building.2" ],
       profile_path => %w[profile Profile person.crop.circle],
       groups_path => %w[groups Groups person.3],
       account_path => %w[settings Settings gearshape]

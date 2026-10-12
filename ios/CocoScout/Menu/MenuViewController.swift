@@ -159,11 +159,14 @@ struct MenuView: View {
                 .font(.system(size: 26, weight: .regular))
                 .foregroundStyle(pink)
                 .frame(height: 30)
+            // "My Productions" and friends: two lines before anything shrinks.
             Text(item.title)
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .padding(.horizontal, 4)
         }
         .frame(maxWidth: .infinity, minHeight: 92)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color(.systemBackground)))
