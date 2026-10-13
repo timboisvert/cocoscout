@@ -1,5 +1,5 @@
 {
-  "originHash" : "e043e35d89fc9c175f4169f4aa9709becdfb87b915ef76ee944456cb593c96b1",
+  "originHash" : "2fe5c87e62f209ba0e4d87566c664307d68c12284483c891b257e4ea21eaac82",
   "pins" : [
     {
       "identity" : "hotwire-native-ios",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "dbc4fc0fec0d2401f0be46015793bfcb29ec07a4",
         "version" : "1.3.1"
+      }
+    },
+    {
+      "identity" : "stripe-terminal-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stripe/stripe-terminal-ios",
+      "state" : {
+        "revision" : "05b6932bb5bae758d42141ecee08391a9f21803c",
+        "version" : "4.7.3"
       }
     }
   ],

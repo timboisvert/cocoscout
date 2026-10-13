@@ -24,6 +24,7 @@
      data-door-tap-expires-at-value="<%= @order.expires_at&.iso8601 %>"
      data-bridge--tap-to-pay-client-secret-value="<%= @client_secret %>"
      data-bridge--tap-to-pay-connection-token-url-value="<%= door_tap_connection_token_path(@listing) %>"
+     data-bridge--tap-to-pay-location-id-value="<%= @location_id %>"
      data-bridge--tap-to-pay-amount-cents-value="<%= @order.total_cents %>"
      data-bridge--tap-to-pay-label-value="<%= @listing.display_title %>">
   <div data-door-tap-target="waiting" class="rounded-2xl border border-gray-200 bg-white p-5 text-center">

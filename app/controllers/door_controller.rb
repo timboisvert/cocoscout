@@ -135,6 +135,8 @@ class DoorController < ApplicationController
     return redirect_to(door_path(@listing), notice: "Paid. #{card_paid_message}") if @order.paid?
 
     @client_secret = TapToPay.client_secret(@order)
+    # The phone connects as a reader at the organization's Terminal Location.
+    @location_id = TapToPay.location_for(@listing.organization)
   end
 
   # The app's Terminal SDK connects with this.

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		22FD88F92F9FBFE70011EF84 /* HotwireNative in Frameworks */ = {isa = PBXBuildFile; productRef = 22FD88F82F9FBFE70011EF84 /* HotwireNative */; };
+		22FD88FC2F9FBFE70011EF84 /* StripeTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = 22FD88FB2F9FBFE70011EF84 /* StripeTerminal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				22FD88F92F9FBFE70011EF84 /* HotwireNative in Frameworks */,
+				22FD88FC2F9FBFE70011EF84 /* StripeTerminal in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +86,7 @@
 			name = CocoScout;
 			packageProductDependencies = (
 				22FD88F82F9FBFE70011EF84 /* HotwireNative */,
+				22FD88FB2F9FBFE70011EF84 /* StripeTerminal */,
 			);
 			productName = CocoScout;
 			productReference = 22FD88DF2F9FBFC10011EF84 /* CocoScout.app */;
@@ -115,6 +118,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				22FD88F72F9FBFE70011EF84 /* XCRemoteSwiftPackageReference "hotwire-native-ios" */,
+				22FD88FA2F9FBFE70011EF84 /* XCRemoteSwiftPackageReference "stripe-terminal-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 22FD88E02F9FBFC10011EF84 /* Products */;
@@ -372,6 +376,14 @@
 				minimumVersion = 1.3.0;
 			};
 		};
+		22FD88FA2F9FBFE70011EF84 /* XCRemoteSwiftPackageReference "stripe-terminal-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stripe/stripe-terminal-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.7.3;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -379,6 +391,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 22FD88F72F9FBFE70011EF84 /* XCRemoteSwiftPackageReference "hotwire-native-ios" */;
 			productName = HotwireNative;
+		};
+		22FD88FB2F9FBFE70011EF84 /* StripeTerminal */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 22FD88FA2F9FBFE70011EF84 /* XCRemoteSwiftPackageReference "stripe-terminal-ios" */;
+			productName = StripeTerminal;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

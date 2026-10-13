@@ -25,36 +25,59 @@ final class TapToPayReader: NSObject {
     func take(_ sale: TapToPayPayment) async -> Outcome {
         connectionTokenURL = URL(string: sale.connectionTokenUrl)
         do {
-            try await connectIfNeeded()
+            try await connectIfNeeded(locationId: sale.locationId)
             let intent = try await Terminal.shared.retrievePaymentIntent(clientSecret: sale.clientSecret)
-            let collected = try await Terminal.shared.collectPaymentMethod(intent)
-            let confirmed = try await Terminal.shared.confirmPaymentIntent(collected)
+            let collected = try await collectPaymentMethod(intent)
+            let confirmed = try await confirmPaymentIntent(collected)
             guard confirmed.status == .succeeded || confirmed.status == .requiresCapture else {
                 return Outcome(status: "failed", message: "The payment didn't go through.")
             }
             return Outcome(status: "paid", message: nil)
-        } catch let error as NSError where error.code == ErrorCode.Code.canceled.rawValue {
+        } catch let error as NSError where error.domain == ErrorDomain && error.code == ErrorCode.canceled.rawValue {
             return Outcome(status: "canceled", message: nil)
         } catch {
             return Outcome(status: "failed", message: error.localizedDescription)
         }
     }
 
-    /// The phone as a Tap to Pay reader, connected once per launch.
-    private func connectIfNeeded() async throws {
+    /// The phone as a Tap to Pay reader at the organization's Location,
+    /// connected once per launch.
+    private func connectIfNeeded(locationId: String) async throws {
         if Terminal.shared.connectionStatus == .connected { return }
 
-        guard Terminal.shared.supportsReaders(of: .tapToPay, simulated: false) == nil else {
+        #if targetEnvironment(simulator)
+        let simulated = true // no NFC in the Simulator: Stripe's simulated reader
+        #else
+        let simulated = false
+        #endif
+        if case .failure = Terminal.shared.supportsReaders(of: .tapToPay, discoveryMethod: .tapToPay, simulated: simulated) {
             throw TapToPayError.unsupported
         }
 
-        let discovery = try TapToPayDiscoveryConfigurationBuilder().setSimulated(false).build()
+        let discovery = try TapToPayDiscoveryConfigurationBuilder().setSimulated(simulated).build()
         let reader = try await discoverTapToPayReader(discovery)
-        // The Location comes with the connection token the server minted.
-        let connection = try TapToPayConnectionConfigurationBuilder(delegate: self, locationId: reader.locationId ?? "")
-            .setOnBehalfOf(nil)
-            .build()
+        let connection = try TapToPayConnectionConfigurationBuilder(delegate: self, locationId: locationId).build()
         _ = try await Terminal.shared.connectReader(reader, connectionConfig: connection)
+    }
+
+    // The SDK hands back a Cancelable for these, so they have no async
+    // forms of their own.
+    private func collectPaymentMethod(_ intent: PaymentIntent) async throws -> PaymentIntent {
+        try await withCheckedThrowingContinuation { continuation in
+            Terminal.shared.collectPaymentMethod(intent) { collected, error in
+                if let collected { continuation.resume(returning: collected) }
+                else { continuation.resume(throwing: error ?? TapToPayError.noToken) }
+            }
+        }
+    }
+
+    private func confirmPaymentIntent(_ intent: PaymentIntent) async throws -> PaymentIntent {
+        try await withCheckedThrowingContinuation { continuation in
+            Terminal.shared.confirmPaymentIntent(intent) { confirmed, error in
+                if let confirmed { continuation.resume(returning: confirmed) }
+                else { continuation.resume(throwing: error ?? TapToPayError.noToken) }
+            }
+        }
     }
 
     private func discoverTapToPayReader(_ configuration: DiscoveryConfiguration) async throws -> Reader {
@@ -82,6 +105,7 @@ final class TapToPayReader: NSObject {
 struct TapToPayPayment: Decodable {
     let clientSecret: String
     let connectionTokenUrl: String
+    let locationId: String
     let amountCents: Int
     let label: String
 }
@@ -121,7 +145,11 @@ extension TapToPayReader: ConnectionTokenProvider {
     private struct TokenBody: Decodable { let secret: String }
 }
 
+// Apple's Tap to Pay screen does the prompting; nothing extra to show here.
 extension TapToPayReader: TapToPayReaderDelegate {
+    nonisolated func tapToPayReader(_ reader: Reader, didStartInstallingUpdate update: ReaderSoftwareUpdate, cancelable: Cancelable?) {}
+    nonisolated func tapToPayReader(_ reader: Reader, didReportReaderSoftwareUpdateProgress progress: Float) {}
+    nonisolated func tapToPayReader(_ reader: Reader, didFinishInstallingUpdate update: ReaderSoftwareUpdate?, error: Error?) {}
     nonisolated func tapToPayReader(_ reader: Reader, didRequestReaderInput inputOptions: ReaderInputOptions = []) {}
     nonisolated func tapToPayReader(_ reader: Reader, didRequestReaderDisplayMessage displayMessage: ReaderDisplayMessage) {}
     nonisolated func tapToPayReaderDidAcceptTermsOfService(_ reader: Reader) {}

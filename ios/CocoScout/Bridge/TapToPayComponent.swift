@@ -10,12 +10,9 @@ import UIKit
 ///   { status: "paid" | "failed" | "canceled", message }. The page settles
 ///   the order with the server when it hears "paid".
 ///
-/// Needs, on a Mac: the stripe-terminal-ios package (StripeTerminal), the
-/// Tap to Pay entitlement in CocoScout.entitlements (added), and Apple's
-/// "How to Tap" screen shown once before the first tap
-/// (`Terminal.shared.supportsReaders` / the SDK's tap-to-pay education). The
-/// SDK calls below follow Stripe Terminal iOS 4.x; check the names against
-/// the version the package resolves to.
+/// Built on stripe-terminal-ios 4.7 (the StripeTerminal package) and the
+/// Tap to Pay entitlement in CocoScout.entitlements. Still to add before
+/// review: Apple's "How to Tap" screen shown once before the first tap.
 final class TapToPayComponent: BridgeComponent {
     nonisolated override class var name: String { "tap-to-pay" }
 
@@ -26,7 +23,7 @@ final class TapToPayComponent: BridgeComponent {
 
         Task { @MainActor in
             let outcome = await reader.take(data)
-            reply(to: "pay", with: Answer(status: outcome.status, message: outcome.message))
+            _ = try? await reply(to: "pay", with: Answer(status: outcome.status, message: outcome.message))
         }
     }
 }
