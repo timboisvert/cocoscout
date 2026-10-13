@@ -13,8 +13,8 @@
           The command center for live entertainment.
         </h1>
         <p class="text-lg sm:text-xl max-w-2xl mx-auto text-slate-600 leading-relaxed mb-8">
-          Program shows, cast performers, sign contracts, schedule staff, and make payroll — the whole
-          operation on one platform, built for how live production actually works.
+          Sell tickets, cast performers, sign contracts, schedule staff, and make payroll — the whole
+          operation on one platform, built for how live production actually works. Ticketing is 50¢ a ticket.
         </p>
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           <%= render "shared/button", text: "See the platform", path: "#platform", variant: "primary", size: "large" %>
@@ -33,6 +33,13 @@
           </h2>
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2 rounded-2xl border-2 border-pink-500 bg-pink-50/40 p-6">
+            <div class="text-xs font-semibold uppercase tracking-wide text-pink-500 mb-1.5">Instead of a ticketing site</div>
+            <div class="text-slate-800 leading-relaxed">
+              Your own box office for <strong>50¢ a ticket</strong> — not the dollar-plus most ticketing sites take.
+              Free tickets are free, and the money lands in the same place you pay your people from.
+            </div>
+          </div>
           <% [
             ["Instead of Gusto", "Payroll for cast, crew, staff, and contractors — one run, paid straight to their bank."],
             ["Instead of DocuSign", "Contracts you send and get e-signed in minutes."],
@@ -50,6 +57,34 @@
 
     <%# ==================== DEEP FEATURE AREAS ==================== %>
     <div id="platform"></div>
+
+    <%# ==================== TICKETING (headline feature) ==================== %>
+    <section id="ticketing" class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-gradient-to-br from-pink-50 via-white to-slate-50">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-3xl">
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">Tickets &amp; box office</p>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4">Sell tickets for 50¢ a ticket.</h2>
+          <p class="text-lg text-slate-600 leading-relaxed">
+            Most ticketing sites take a dollar or more from every ticket before card processing even starts.
+            CocoScout takes 50¢ — and nothing on free tickets, comps, or cash at the door. Your box office,
+            your door, and your payouts all live in one place, so Saturday's ticket money is already there
+            when you pay the cast.
+          </p>
+        </div>
+        <div class="mt-8"><%= render "home/ticketing_fees" %></div>
+        <ul class="mt-8 grid gap-3 sm:grid-cols-2">
+          <% ["Your own box office page and short link, ready to share", "QR tickets by email; guests check in at the Door from a phone", "Door sales — cash, comps, or card on the buyer's own phone", "Discount codes, multi-show passes, and add-ons sold with the ticket", "Embed the box office on your own website", "Sales tax charged on each ticket and set aside until you remit", "Refunds and exchanges, with our 50¢ always returned", "Ticket money funds your payout run — no transfers in between"].each do |b| %>
+            <li class="flex items-start gap-3">
+              <span class="mt-0.5 w-6 h-6 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+              </span>
+              <span class="text-slate-800 leading-relaxed"><%= b %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </section>
+
     <% [
       { bg: "bg-white", eyebrow: "Program &amp; schedule", title: "Plan every show, rehearsal, and event.",
         desc: "Your whole calendar in one place, per production — so nothing slips and everyone knows what's next.",
@@ -59,7 +94,7 @@
         bullets: ["Roles and talent pools you reuse across shows", "Multi-show casting tables — every role in every show, on one board", "Auditions and sign-ups with reviewing and voting", "Availability tracking, contacts, groups, and documents", "Message your cast and crew without leaving the platform"] },
       { bg: "bg-white", eyebrow: "Money &amp; contracts", title: "Get paid, and put the deal in writing.",
         desc: "Track the money on every show, pay your performers, and send contracts that get signed.",
-        bullets: ["Show and production financials — revenue and expenses", "Payout calculations and splits, worked out for you", "Pay performers straight to their bank", "Booking contracts with native e-signatures", "Revenue, payout, and participation reports"] },
+        bullets: ["Ticket sales flow straight into show financials and payouts", "Show and production financials — revenue and expenses", "Payout calculations and splits, worked out for you", "Pay performers straight to their bank", "Booking contracts with native e-signatures", "Revenue, payout, and participation reports"] },
       { bg: "bg-[#f9f9f7]", eyebrow: "Staffing &amp; payroll", title: "Schedule your team and make payroll.",
         desc: "The full staffing stack — from the weekly schedule to the payout run — built for live venues.",
         bullets: ["Build the week and assign shifts", "Staff log their hours; you approve before you pay", "One payout run — hours, bonuses, reimbursements, and tips", "House roles with default rates, departments, and org chart", "Contractor payments with tax handled — W-2 and full payroll with Enterprise"] }

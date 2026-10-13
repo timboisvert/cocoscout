@@ -13,8 +13,8 @@
           Run the whole production.<br class="hidden sm:block"> In one place.
         </h1>
         <p class="text-lg sm:text-xl max-w-2xl mx-auto text-slate-600 leading-relaxed mb-8">
-          Casting, scheduling, contracts, and payroll — built for live entertainment by people
-          who actually do it. Not another spreadsheet.
+          Ticketing, casting, scheduling, contracts, and payroll — built for live entertainment by
+          people who actually do it. Sell tickets for 50¢ a ticket, then pay everyone who made the show.
         </p>
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           <%= render "shared/button", text: "Start free", path: signup_path, variant: "primary", size: "large" %>
@@ -35,6 +35,13 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2 rounded-2xl border-2 border-pink-500 bg-pink-50/40 p-6">
+            <div class="text-xs font-semibold uppercase tracking-wide text-pink-500 mb-1.5">Instead of a ticketing site</div>
+            <div class="text-slate-800 leading-relaxed">
+              Your own box office for <strong>50¢ a ticket</strong> — not the dollar-plus most ticketing sites take.
+              Free tickets are free, and the money lands in the same place you pay your people from.
+            </div>
+          </div>
           <% [
             ["Instead of Gusto", "Payroll for cast, crew, staff, and contractors — one run, paid straight to their bank."],
             ["Instead of DocuSign", "Contracts you send and get e-signed in minutes."],
@@ -76,6 +83,14 @@
             ["Contacts &amp; groups", "Your people directory, organized."],
             ["Documents", "Share riders, scripts, and paperwork."],
             ["Messaging", "Reach your cast and crew in one place."]
+          ]],
+          ["Tickets &amp; box office", [
+            ["Online ticket sales", "Your own box office page and short link, 50¢ a ticket."],
+            ["The Door", "Check guests in by QR code and sell at the door from a phone."],
+            ["Discount codes &amp; passes", "Promo codes, multi-show passes, and comps for your guests."],
+            ["Embed on your site", "Drop the box office into your own website."],
+            ["Sales tax, handled", "Charge it on each ticket and set it aside until you remit."],
+            ["Straight to payouts", "Ticket money funds the payout run — no transfers in between."]
           ]],
           ["Money &amp; contracts", [
             ["Payouts &amp; splits", "Pay performers by the split you set, to their bank."],
@@ -133,6 +148,32 @@
       <div class="max-w-5xl mx-auto">
         <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 coustard-regular mb-8">Compare every tier</h2>
         <%= render "home/tier_comparison" %>
+      </div>
+    </section>
+
+    <%# ==================== TICKETING DEEP-DIVE ==================== %>
+    <section id="ticketing" class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-gradient-to-br from-pink-50 via-white to-slate-50">
+      <div class="max-w-5xl mx-auto">
+        <div class="max-w-3xl">
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">Ticketing, built for live entertainment</p>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4">
+            Sell tickets for 50¢ a ticket.
+          </h2>
+          <p class="text-lg text-slate-600 leading-relaxed">
+            Most ticketing sites take a dollar or more from every ticket before card processing even starts.
+            CocoScout takes 50¢ — and nothing on free tickets, comps, or cash at the door. Your box office,
+            your door, and your payouts all live in one place, so the money from Saturday night is already
+            there when you pay the cast.
+          </p>
+        </div>
+        <div class="mt-8">
+          <%= render "home/ticketing_fees" %>
+        </div>
+        <div class="mt-8 flex flex-wrap gap-2">
+          <% ["Box office page &amp; short link", "QR tickets", "Door check-in &amp; door sales", "Discount codes", "Multi-show passes", "Comps", "Embed widget", "Sales tax", "Refunds &amp; exchanges"].each do |chip| %>
+            <span class="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-3.5 py-1.5 text-sm font-medium"><%= chip.html_safe %></span>
+          <% end %>
+        </div>
       </div>
     </section>
 
@@ -244,7 +285,7 @@
     <section class="w-full bg-pink-500 text-white px-6 py-16">
       <div class="max-w-4xl mx-auto text-center">
         <h2 class="text-3xl sm:text-4xl coustard-regular mb-3">Start running your production today.</h2>
-        <p class="text-pink-100 text-lg mb-8 max-w-2xl mx-auto">Free to start. No credit card. Set up your first show in minutes.</p>
+        <p class="text-pink-100 text-lg mb-8 max-w-2xl mx-auto">Free to start. No credit card. Set up your first show in minutes — and sell tickets for 50¢ a ticket.</p>
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           <%= link_to "Start free", signup_path,
                 class: "inline-flex justify-center items-center px-8 py-3 rounded bg-white text-pink-700 font-semibold hover:bg-pink-50 transition" %>

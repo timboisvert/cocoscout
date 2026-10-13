@@ -1,0 +1,33 @@
+<%#
+  The three ticketing fee facts, reused on /, /for-producers and /pricing.
+  The per-ticket figure comes from TicketPricing so the marketing copy can't
+  drift from what checkout actually charges.
+%>
+<%
+  ticket_fee = TicketPricing::PLATFORM_FEE_CENTS
+  processing_pct = (TicketPricing::PROCESSING_PER_MILLE / 10.0).to_s.sub(/\.0\z/, "")
+  processing_fixed = TicketPricing::PROCESSING_FIXED_CENTS
+%>
+<div class="grid gap-4 sm:grid-cols-3">
+  <div class="rounded-2xl border-2 border-pink-500 bg-white p-6">
+    <div class="text-4xl font-bold text-pink-500 coustard-regular"><%= ticket_fee %>¢</div>
+    <div class="font-bold text-slate-900 mt-1">per paid ticket. That's it.</div>
+    <div class="text-sm text-slate-600 mt-1 leading-relaxed">
+      No monthly ticketing fee, no setup fee, no percentage of the sale. A $20 ticket costs you <%= ticket_fee %>¢ to sell.
+    </div>
+  </div>
+  <div class="rounded-2xl border border-slate-200 bg-white p-6">
+    <div class="text-4xl font-bold text-slate-900 coustard-regular">$0</div>
+    <div class="font-bold text-slate-900 mt-1">for free tickets, comps &amp; cash at the door</div>
+    <div class="text-sm text-slate-600 mt-1 leading-relaxed">
+      Free shows, comped guests, and cash sales at the door carry no fee at all. You only pay when a ticket is paid for.
+    </div>
+  </div>
+  <div class="rounded-2xl border border-slate-200 bg-white p-6">
+    <div class="text-4xl font-bold text-slate-900 coustard-regular">At cost</div>
+    <div class="font-bold text-slate-900 mt-1">card processing, charged once per order</div>
+    <div class="text-sm text-slate-600 mt-1 leading-relaxed">
+      <%= processing_pct %>% + <%= processing_fixed %>¢ per order, not per ticket — so a pair costs less than two singles. You choose whether the buyer pays the fees or you absorb them.
+    </div>
+  </div>
+</div>

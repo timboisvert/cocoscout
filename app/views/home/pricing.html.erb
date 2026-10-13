@@ -12,8 +12,8 @@
           Start free. Pay as you grow.
         </h1>
         <p class="text-lg sm:text-xl text-slate-600 leading-relaxed">
-          Run your whole production for free. Add payments, contracts, and payroll when you're
-          ready — and only pay for what you actually use.
+          Run your whole production for free. Add ticketing, payments, contracts, and payroll when
+          you're ready — and only pay for what you actually use. Tickets are 50¢ a ticket.
         </p>
       </div>
     </section>
@@ -26,6 +26,22 @@
           When you pay your staff and performers through CocoScout, simple usage-based fees apply —
           you only pay for the people you actually pay. No seat licenses, no lock-in.
         </p>
+      </div>
+    </section>
+
+    <%# ==================== TICKETING FEES ==================== %>
+    <section id="ticketing" class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-gradient-to-br from-pink-50 via-white to-slate-50">
+      <div class="max-w-5xl mx-auto">
+        <div class="max-w-3xl mb-8">
+          <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">Ticketing</p>
+          <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4">50¢ a ticket. Free tickets are free.</h2>
+          <p class="text-lg text-slate-600 leading-relaxed">
+            Most ticketing sites charge a dollar or more per ticket, then add card processing on top.
+            CocoScout charges 50¢ per paid ticket, with card processing passed through at cost — the same
+            processing every ticketing site charges, just without the markup.
+          </p>
+        </div>
+        <%= render "home/ticketing_fees" %>
       </div>
     </section>
 
@@ -44,7 +60,9 @@
         <div class="space-y-4">
           <% [
             ["Is it really free to start?", "Yes. The Producer tier is free forever — build a production, cast it, take sign-ups, and run courses at no cost."],
-            ["When do I need Pro?", "When you want to get paid, pay your people, send contracts, or run staffing and payroll for your team."],
+            ["When do I need Pro?", "When you want to sell tickets, pay your people, send contracts, or run staffing and payroll for your team."],
+            ["What does ticketing cost?", "50¢ per paid ticket, and nothing on free tickets, comps, or cash at the door. There's no monthly ticketing fee and no percentage of the sale. Card processing (2.9% + 30¢, once per order) passes through at cost, and you choose whether the buyer pays it or you absorb it."],
+            ["Do you take a cut of the card processing?", "No. Every ticketing site has card processing — ours passes through at exactly what the card networks charge, once per order rather than once per ticket."],
             ["How do the usage-based fees work?", "You only pay for the staff and performers you actually pay through CocoScout. Don't pay anyone in a month, and there's nothing extra that month."],
             ["What's Enterprise for?", "Large-scale staffing and full W-2 payroll for major production companies, theatres, and venues. Talk to us and we'll tailor it to your operation."],
             ["Is it free for performers and staff?", "Always. Performers and staff members never pay to use CocoScout."]

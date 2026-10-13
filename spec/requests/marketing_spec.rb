@@ -24,6 +24,14 @@ RSpec.describe "Public marketing site", type: :request do
     it "no longer leads with the old performer-centric headline" do
       expect(response.body).not_to include("Where performers and<br>productions connect")
     end
+
+    it "sells ticketing as a headline feature at the real per-ticket fee" do
+      # The figure is read from TicketPricing so the pitch can't drift from checkout.
+      expect(response.body).to include("Sell tickets for #{TicketPricing::PLATFORM_FEE_CENTS}¢ a ticket.")
+      expect(response.body).to include("Instead of a ticketing site")
+      expect(response.body).to include("for free tickets, comps &amp; cash at the door")
+      expect(response.body).to include("card processing, charged once per order")
+    end
   end
 
   describe "GET /for-producers" do
@@ -32,6 +40,29 @@ RSpec.describe "Public marketing site", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("operating platform for")
       expect(response.body).to include(%(href="#{mics_home_path}")) # shared header bridge
+    end
+
+    it "leads the feature areas with ticketing at 50¢ a ticket" do
+      get producers_path
+      expect(response.body).to include("Sell tickets for #{TicketPricing::PLATFORM_FEE_CENTS}¢ a ticket.")
+      expect(response.body).to include("Instead of a ticketing site")
+      expect(response.body).to include("with our 50¢ always returned")
+    end
+  end
+
+  describe "GET /pricing" do
+    before { get pricing_path }
+
+    it "states the ticketing fee and that free tickets are free" do
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("50¢ a ticket. Free tickets are free.")
+      expect(response.body).to include("What does ticketing cost?")
+      expect(response.body).to include("Do you take a cut of the card processing?")
+    end
+
+    it "no longer claims there is no per-transaction cut, which the ticket fee contradicts" do
+      expect(response.body).not_to include("no per-transaction cut")
+      expect(response.body).to include("no cut of what you pay out")
     end
   end
 
