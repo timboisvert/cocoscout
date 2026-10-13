@@ -413,6 +413,10 @@ Rails.application.routes.draw do
   get  "/door/:listing_id/card/:token",   to: "door#card",           as: "door_card"
   get  "/door/:listing_id/card/:token/status", to: "door#card_status", as: "door_card_status"
   post "/door/:listing_id/card/:token/cancel", to: "door#card_cancel", as: "door_card_cancel"
+  # Tap to Pay on the door phone (the app only; TapToPay).
+  get  "/door/:listing_id/tap/connection-token", to: "door#tap_connection_token", as: "door_tap_connection_token"
+  get  "/door/:listing_id/tap/:token",        to: "door#tap",            as: "door_tap"
+  post "/door/:listing_id/tap/:token/settle", to: "door#tap_settle",     as: "door_tap_settle"
 
   # Short URL for course registrations
   get "/c/:code", to: "course_shortlink#show", as: "course_shortlink"

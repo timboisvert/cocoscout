@@ -14,10 +14,17 @@
 # Tax added on top is part of what's charged (and what Stripe's 2.9% is taken
 # on) but belongs to the theater, who remits it. Cash at the door and comps
 # carry no fees at all. All integer cents; no floats touch money.
+#
+# A card tapped on the door phone (Tap to Pay, Stripe Terminal) is an
+# in-person charge at Stripe's in-person rate: 2.7% + 5¢, plus 10¢ for each
+# Tap to Pay authorization — 2.7% + 15¢ a charge. Same 50¢ to us, same fee
+# switch; only the processing changes (in_person: true).
 class TicketPricing
   PLATFORM_FEE_CENTS = 50
   PROCESSING_PER_MILLE = 29 # 2.9%
   PROCESSING_FIXED_CENTS = 30
+  IN_PERSON_PER_MILLE = 27 # 2.7%
+  IN_PERSON_FIXED_CENTS = 15 # 5¢ + 10¢ a Tap to Pay authorization
 
   Quote = Data.define(:subtotal_cents, :discount_cents, :tax_cents, :platform_fee_cents,
                       :processing_cents, :buyer_fee_cents, :total_cents, :org_net_cents, :paid_ticket_count)
@@ -27,7 +34,7 @@ class TicketPricing
   # inside price_cents). A product bought with the tickets is an item with
   # platform_fee: false: our 50¢ is per paid ticket, and processing is per
   # order, so a product only adds its price, its tax and the 2.9% on them.
-  def self.quote(items:, fee_mode:, money_path: "cocoscout")
+  def self.quote(items:, fee_mode:, money_path: "cocoscout", in_person: false)
     subtotal = items.sum { |i| i[:price_cents].to_i }
     discount = items.sum { |i| i[:discount_cents].to_i }
     tax = items.sum { |i| i[:tax_cents].to_i }
@@ -41,8 +48,8 @@ class TicketPricing
     end
 
     platform = PLATFORM_FEE_CENTS * paid
-    total = fee_mode == "buyer" ? gross_up(base + platform) : base
-    processing = processing_cents(total)
+    total = fee_mode == "buyer" ? gross_up(base + platform, in_person: in_person) : base
+    processing = processing_cents(total, in_person: in_person)
 
     Quote.new(subtotal_cents: subtotal, discount_cents: discount, tax_cents: tax, platform_fee_cents: platform,
               processing_cents: processing, buyer_fee_cents: total - base, total_cents: total,
@@ -66,17 +73,24 @@ class TicketPricing
   end
 
   # Stripe's cut of a charge, rounded half up.
-  def self.processing_cents(total_cents)
-    ((total_cents * PROCESSING_PER_MILLE) + 500) / 1000 + PROCESSING_FIXED_CENTS
+  def self.processing_cents(total_cents, in_person: false)
+    per_mille, fixed = rate(in_person: in_person)
+    ((total_cents * per_mille) + 500) / 1000 + fixed
   end
 
   # The smallest charge that leaves exactly `needed` after processing.
   # (total − processing) climbs by 0 or 1 cent per cent of total, so the first
   # total that reaches `needed` hits it exactly.
-  def self.gross_up(needed_cents)
-    total = (((needed_cents + PROCESSING_FIXED_CENTS) * 1000) / (1000 - PROCESSING_PER_MILLE)) - 2
-    total += 1 while total - processing_cents(total) < needed_cents
+  def self.gross_up(needed_cents, in_person: false)
+    per_mille, fixed = rate(in_person: in_person)
+    total = (((needed_cents + fixed) * 1000) / (1000 - per_mille)) - 2
+    total += 1 while total - processing_cents(total, in_person: in_person) < needed_cents
     total
+  end
+
+  # [per mille, fixed cents] of the processing: online, or tapped in person.
+  def self.rate(in_person: false)
+    in_person ? [ IN_PERSON_PER_MILLE, IN_PERSON_FIXED_CENTS ] : [ PROCESSING_PER_MILLE, PROCESSING_FIXED_CENTS ]
   end
 
   # What one ticket of a tier really costs a buyer: fees in, and tax in too

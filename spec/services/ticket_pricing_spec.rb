@@ -83,6 +83,31 @@ RSpec.describe TicketPricing do
     listing.update!(fee_mode: "org")
     expect(described_class.all_in_price_cents(listing, tier)).to eq(2_000)
   end
+  context "when the card is tapped on the door phone (Tap to Pay, in person)" do
+    it "charges Stripe's in-person rate: 2.7% + 15¢, so a $20 ticket grosses up to $21.22" do
+      quote = described_class.quote(items: tickets(2_000, 1), fee_mode: "buyer", in_person: true)
+      expect(quote.to_h.slice(:total_cents, :buyer_fee_cents, :platform_fee_cents, :processing_cents, :org_net_cents))
+        .to eq(total_cents: 2_122, buyer_fee_cents: 122, platform_fee_cents: 50, processing_cents: 72, org_net_cents: 2_000)
+      expect(described_class.quote(items: tickets(2_000, 1), fee_mode: "buyer").total_cents).to eq(2_142)
+    end
+
+    it "nets the theater $18.81 on a $20 ticket it absorbs the fees on, against $18.62 online" do
+      tapped = described_class.quote(items: tickets(2_000, 1), fee_mode: "org", in_person: true)
+      expect([ tapped.total_cents, tapped.processing_cents, tapped.org_net_cents ]).to eq([ 2_000, 69, 1_881 ])
+      expect(described_class.quote(items: tickets(2_000, 1), fee_mode: "org").org_net_cents).to eq(1_862)
+    end
+
+    it "still leaves the theater exactly its ticket money when the buyer pays" do
+      [ 100, 1_500, 2_499, 10_000 ].each do |price|
+        (1..6).each do |count|
+          quote = described_class.quote(items: tickets(price, count), fee_mode: "buyer", in_person: true)
+          expect(quote.org_net_cents).to eq(price * count), "#{count} × #{price}¢"
+          expect(quote.processing_cents).to eq(described_class.processing_cents(quote.total_cents, in_person: true))
+        end
+      end
+    end
+  end
+
   describe ".all_in_price_cents" do
     let(:org) { create(:organization, :pro) }
     let(:listing) { create(:ticket_listing, organization: org) }

@@ -84,7 +84,9 @@
                   door_sell_fee_mode_value: @listing.effective_fee_mode,
                   door_sell_platform_fee_value: TicketPricing::PLATFORM_FEE_CENTS,
                   door_sell_per_mille_value: TicketPricing::PROCESSING_PER_MILLE,
-                  door_sell_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS } do %>
+                  door_sell_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS,
+                  door_sell_tap_per_mille_value: TicketPricing::IN_PERSON_PER_MILLE,
+                  door_sell_tap_fixed_value: TicketPricing::IN_PERSON_FIXED_CENTS } do %>
       <div class="flex items-center justify-between gap-3">
         <h2 class="text-base font-semibold text-gray-900">Sell tickets</h2>
         <%= render "shared/button", text: "Close", variant: "ghost", size: "xs", type: :button, data: { mode: "list", action: "click->door#setMode" } %>
@@ -148,7 +150,12 @@
         <%= text_field_tag :buyer_name, nil, placeholder: "Their name (optional)", "aria-label": "Their name", class: input_class %>
       </div>
       <div class="mt-3 space-y-2">
-        <%= render "shared/button", text: "Card or phone pay", variant: "primary", size: "large", type: :submit, name: "kind", value: "card",
+        <% if turbo_native_app? %>
+          <%# Tap to Pay: the buyer taps their card on this phone (the app's Terminal SDK). %>
+          <%= render "shared/button", text: "Tap to pay", variant: "primary", size: "large", type: :submit, name: "kind", value: "tap",
+                classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "tapButton" } %>
+        <% end %>
+        <%= render "shared/button", text: "Card or phone pay", variant: turbo_native_app? ? "secondary" : "primary", size: "large", type: :submit, name: "kind", value: "card",
               classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "cardButton" } %>
         <div class="grid grid-cols-2 gap-2">
           <%= render "shared/button", text: "Cash", variant: "secondary", size: "large", type: :submit, name: "kind", value: "cash",
@@ -157,7 +164,7 @@
                 classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "compButton" } %>
         </div>
       </div>
-      <p class="mt-3 text-xs text-gray-500">Card or phone pay shows a code they scan to pay on their own phone, with Apple Pay, Google Pay or a card. Cash and comps are checked in as you record them<%= "; a comp carries no products" if @offers.any? %>.</p>
+      <p class="mt-3 text-xs text-gray-500"><%= "Tap to pay takes their card or phone on this one. " if turbo_native_app? %>Card or phone pay shows a code they scan to pay on their own phone, with Apple Pay, Google Pay or a card. Cash and comps are checked in as you record them<%= "; a comp carries no products" if @offers.any? %>.</p>
     <% end %>
   <% end %>
 

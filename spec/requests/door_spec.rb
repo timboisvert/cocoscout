@@ -251,4 +251,98 @@ RSpec.describe "Door", type: :request do
       expect(response).to have_http_status(:not_found)
     end
   end
+
+  # Tap to Pay: the buyer's card on the door phone itself, through the app's
+  # Stripe Terminal SDK. The server holds the seats, makes the in-person
+  # PaymentIntent, hands out connection tokens, and settles once Stripe says
+  # paid — the same books as every other sale.
+  describe "Tap to Pay (the app)" do
+    let(:native) { { "User-Agent" => "Turbo Native iOS" } }
+
+    before do
+      grant(door_person, "box_office")
+      sign_in(door_person)
+    end
+
+    it "won't sell by tap until the venue has an address for Stripe's Location" do
+      org.locations.update_all(address1: nil)
+      post door_sell_path(listing), params: { kind: "tap", quantities: { general.id => 2 } }
+      expect(response).to redirect_to(door_path(listing))
+      expect(flash[:alert]).to include("venue's address")
+      expect(listing.ticket_orders.count).to eq(0)
+    end
+
+    context "with the venue's address" do
+      let(:intent) do
+        Stripe::PaymentIntent.construct_from(id: "pi_tap", client_secret: "pi_tap_secret", amount: 4_229,
+                                             status: "requires_payment_method", latest_charge: nil)
+      end
+
+      before do
+        org.locations.create!(name: "Playhouse", address1: "48 Lantern St", city: "Providence", state: "RI", postal_code: "02903", default: true)
+        allow(Stripe::Terminal::Location).to receive(:create).and_return(Stripe::Terminal::Location.construct_from(id: "tml_1"))
+        allow(Stripe::Terminal::ConnectionToken).to receive(:create).and_return(Stripe::Terminal::ConnectionToken.construct_from(secret: "pst_1"))
+        allow(Stripe::PaymentIntent).to receive(:create).and_return(intent)
+        allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(intent)
+      end
+
+      it "offers the tap in the app only, priced at the in-person rate" do
+        get door_path(listing)
+        expect(response.body).not_to include("Tap to pay")
+
+        get door_path(listing), headers: native
+        expect(response.body).to include("Tap to pay", "data-door-sell-tap-per-mille-value=\"27\"", "data-door-sell-tap-fixed-value=\"15\"")
+      end
+
+      it "holds the seats behind an in-person PaymentIntent, and checks them in once Stripe says paid" do
+        post door_sell_path(listing), params: { kind: "tap", quantities: { general.id => 2 }, buyer_name: "Robin" }, headers: native
+        order = listing.ticket_orders.last
+        expect(response).to redirect_to(door_tap_path(listing, token: order.token))
+        expect(order).to have_attributes(channel: "door_tap", status: "pending", total_cents: 4_229, processing_cents: 129,
+                                         org_net_cents: 4_000, stripe_payment_intent_id: "pi_tap", buyer_name: "Robin")
+        expect(order.tickets.pluck(:status)).to eq(%w[reserved reserved])
+        expect(org.reload.stripe_terminal_location_id).to eq("tml_1")
+        expect(Stripe::PaymentIntent).to have_received(:create)
+          .with(hash_including(amount: 4_229, payment_method_types: [ "card_present" ], transfer_group: "org_#{org.id}",
+                               metadata: hash_including(ticket_order_id: order.id, terminal_location: "tml_1")), anything)
+
+        get door_tap_path(listing, token: order.token), headers: native
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("$42.29", "pi_tap_secret", door_tap_settle_path(listing, token: order.token))
+
+        # The app's Terminal SDK connects with a token at the organization's Location — made once.
+        2.times { get door_tap_connection_token_path(listing), headers: native }
+        expect(response.parsed_body).to eq("secret" => "pst_1")
+        expect(Stripe::Terminal::ConnectionToken).to have_received(:create).with(location: "tml_1").twice
+        expect(Stripe::Terminal::Location).to have_received(:create).once
+
+        # Too soon: Stripe hasn't confirmed, nothing settles.
+        post door_tap_settle_path(listing, token: order.token), headers: native
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["error"]).to include("hasn't confirmed")
+        expect(order.reload.status).to eq("pending")
+
+        paid = Stripe::PaymentIntent.construct_from(id: "pi_tap", amount: 4_229, status: "succeeded", latest_charge: "ch_tap")
+        allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(paid)
+        post door_tap_settle_path(listing, token: order.token), headers: native
+        expect(response.parsed_body).to include("status" => "paid", "message" => "2 tickets paid by card, checked in.")
+        expect(order.reload).to have_attributes(status: "paid", stripe_charge_id: "ch_tap")
+        expect(order.tickets.pluck(:status).uniq).to eq([ "checked_in" ])
+        expect(OrgCashEntry.where(organization: org).sum(:amount_cents)).to eq(4_000)
+
+        # Settling again, or the door asking how it stands, says paid and changes nothing.
+        post door_tap_settle_path(listing, token: order.token), headers: native
+        expect(response.parsed_body["status"]).to eq("paid")
+        get door_card_status_path(listing, token: order.token), headers: native
+        expect(response.parsed_body["status"]).to eq("paid")
+        expect(OrgCashEntry.where(organization: org).count).to eq(1)
+      end
+
+      it "needs box office, like every sale" do
+        org.ticketing_access_grants.find_by(user: door_person).update!(access_level: "check_in")
+        get door_tap_connection_token_path(listing), headers: native.merge("Accept" => "application/json")
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+  end
 end

@@ -30,7 +30,7 @@ module Ticketing
     end
     ProductRow = Data.define(:name, :sold, :gross_cents, :handed_over)
     CHANNELS = { "online" => "Online", "embed" => "Your website", "door_cash" => "Cash at the door",
-                 "door_card" => "Card at the door", "comp" => "Comps", "pass" => "Pass credits", "door_pass" => "Pass credits at the door" }.freeze
+                 "door_card" => "Card at the door", "door_tap" => "Tapped at the door", "comp" => "Comps", "pass" => "Pass credits", "door_pass" => "Pass credits at the door" }.freeze
 
     attr_reader :listing
 

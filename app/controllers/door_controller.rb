@@ -10,8 +10,8 @@ class DoorController < ApplicationController
   layout "door"
 
   before_action :set_listing, except: :index
-  before_action -> { require_level(:box_office) }, only: %i[sell card card_status card_cancel use_pass]
-  before_action :set_card_order, only: %i[card card_status card_cancel]
+  before_action -> { require_level(:box_office) }, only: %i[sell card card_status card_cancel use_pass tap tap_connection_token tap_settle]
+  before_action :set_card_order, only: %i[card card_status card_cancel tap tap_settle]
 
   def index
     organizations = TicketingDoorAccess.organizations_for(Current.user)
@@ -101,11 +101,17 @@ class DoorController < ApplicationController
 
   # Selling to someone at the door: cash and comps are recorded and checked
   # in on the spot; card or phone pay holds the seats and shows a QR code the
-  # buyer scans to pay on their own phone (card).
+  # buyer scans to pay on their own phone (card); tap holds them and takes
+  # the buyer's card on the door phone itself (TapToPay, in the app only).
   def sell
     quantities = params[:quantities].respond_to?(:each_pair) ? params[:quantities].each_pair.to_h { |k, v| [ k.to_s, v.to_s ] } : {}
     products = params[:products].respond_to?(:each_pair) ? params[:products].each_pair.to_h { |k, v| [ k.to_s, v.to_s ] } : {}
-    kind = params[:kind].presence_in(%w[card cash comp]) || "cash"
+    kind = params[:kind].presence_in(%w[card tap cash comp]) || "cash"
+    if kind == "tap"
+      order = TapToPay.start!(listing: @listing, quantities: quantities, products: products, buyer_name: params[:buyer_name],
+                              user: Current.user, client_ip: request.remote_ip)
+      return redirect_to(door_tap_path(@listing, token: order.token))
+    end
     if kind == "card"
       order = TicketCheckout.start!(listing: @listing, quantities: quantities, channel: "door_card", at_door: true,
                                     client_ip: request.remote_ip)
@@ -119,8 +125,31 @@ class DoorController < ApplicationController
     extras = order.ticket_order_items.sum(:quantity)
     sold = extras.positive? ? "#{count} and #{helpers.pluralize(extras, 'product')}" : count.to_s
     redirect_to door_path(@listing), notice: kind == "cash" ? "Sold #{sold} at the door — collect #{helpers.number_to_currency(order.total_cents / 100.0)} cash." : "Comped #{count} and checked them in."
-  rescue TicketCheckout::Error => e
+  rescue TicketCheckout::Error, TapToPay::Error => e
     redirect_to door_path(@listing), alert: e.message
+  end
+
+  # The door phone taking the tap: the app's Terminal SDK collects the card
+  # against this order's PaymentIntent, then tells tap_settle.
+  def tap
+    return redirect_to(door_path(@listing), notice: "Paid. #{card_paid_message}") if @order.paid?
+
+    @client_secret = TapToPay.client_secret(@order)
+  end
+
+  # The app's Terminal SDK connects with this.
+  def tap_connection_token
+    render json: { secret: TapToPay.connection_token(@listing.organization) }
+  rescue TapToPay::Error => e
+    render json: { error: e.message }, status: :unprocessable_content
+  end
+
+  # The app says the tap went through: check with Stripe and settle.
+  def tap_settle
+    TapToPay.settle!(@order)
+    render json: { status: "paid", message: card_paid_message, counts: door.counts }
+  rescue TapToPay::Error => e
+    render json: { status: "pending", error: e.message }, status: :unprocessable_content
   end
 
   # The door phone while the buyer pays on theirs: a QR code that opens
@@ -168,7 +197,7 @@ class DoorController < ApplicationController
   end
 
   def set_card_order
-    @order = @listing.ticket_orders.where(channel: "door_card").find_by!(token: params[:token].to_s)
+    @order = @listing.ticket_orders.where(channel: TicketOrder::DOOR_CARD_CHANNELS).find_by!(token: params[:token].to_s)
   end
 
   def card_paid_message

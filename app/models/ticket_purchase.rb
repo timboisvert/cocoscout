@@ -54,8 +54,10 @@ class TicketPurchase < ApplicationRecord
     holdings = ticket_pass_holdings.includes(:tax_lines, :ticket_pass).to_a
     fee_mode = orders.first&.fee_mode || holdings.first&.ticket_pass&.fee_mode([]) || "buyer"
     parts = orders.map { |order| TicketCheckout.order_items(order) } + holdings.map { |holding| self.class.holding_items(holding) }
-    quote = TicketPricing.quote(items: parts.flatten, fee_mode: fee_mode)
-    own = parts.map { |items| TicketPricing.quote(items: items, fee_mode: fee_mode) }
+    # A tap on the door phone is one in-person charge (TicketPricing in_person).
+    in_person = orders.any? { |order| order.channel == "door_tap" }
+    quote = TicketPricing.quote(items: parts.flatten, fee_mode: fee_mode, in_person: in_person)
+    own = parts.map { |items| TicketPricing.quote(items: items, fee_mode: fee_mode, in_person: in_person) }
     bases = own.map { |q| q.subtotal_cents - q.discount_cents + q.tax_cents }
     processing = TicketPricing.share(quote.processing_cents, bases)
     buyer_fees = Array.new(orders.size, 0)

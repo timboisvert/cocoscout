@@ -315,7 +315,8 @@ class TicketCheckout
 
     tickets = order.tickets.to_a
     products = order.ticket_order_items.to_a
-    quote = TicketPricing.quote(items: order_items(order), fee_mode: order.fee_mode, money_path: order.money_path)
+    quote = TicketPricing.quote(items: order_items(order), fee_mode: order.fee_mode, money_path: order.money_path,
+                                in_person: order.channel == "door_tap")
     order.update!(subtotal_cents: quote.subtotal_cents, discount_cents: quote.discount_cents,
                   tax_cents: tickets.sum(&:tax_cents) + products.sum(&:tax_cents), platform_fee_cents: quote.platform_fee_cents,
                   processing_cents: quote.processing_cents, buyer_fee_cents: quote.buyer_fee_cents,

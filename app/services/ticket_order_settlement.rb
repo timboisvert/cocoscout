@@ -38,7 +38,7 @@ class TicketOrderSettlement
       order.update!(status: "paid", paid_at: Time.current, expires_at: nil,
                     stripe_payment_intent_id: payment_intent_id || order.stripe_payment_intent_id,
                     stripe_charge_id: charge_id || order.stripe_charge_id)
-      if order.channel == "door_card"
+      if order.channel.in?(TicketOrder::DOOR_CARD_CHANNELS)
         # Paid standing at the door: they're in.
         order.tickets.where(status: "reserved").update_all(status: "checked_in", checked_in_at: Time.current,
                                                            checked_in_by_id: order.issued_by_id, updated_at: Time.current)

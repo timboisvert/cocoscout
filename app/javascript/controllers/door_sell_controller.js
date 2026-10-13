@@ -5,8 +5,8 @@ import { orderTotalCents, money } from "controllers/lib/ticket_pricing"
 // of paying comes to. Cash is the tickets and their tax; card or phone pay is
 // the online price, fees and all (the buyer pays on their own phone).
 export default class extends Controller {
-    static targets = ["row", "input", "count", "minus", "plus", "cardButton", "cashButton", "compButton"]
-    static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number }
+    static targets = ["row", "input", "count", "minus", "plus", "cardButton", "cashButton", "compButton", "tapButton"]
+    static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, tapPerMille: Number, tapFixed: Number }
 
     connect() {
         this.render()
@@ -55,6 +55,13 @@ export default class extends Controller {
         this.label(this.cardButtonTarget, count === 0 ? "Card or phone pay" : `Card or phone pay · ${money(card)}`)
         this.label(this.cashButtonTarget, count === 0 ? "Cash" : `Cash · ${money(base)}`)
         ;[this.cardButtonTarget, this.cashButtonTarget, this.compButtonTarget].forEach((button) => { button.disabled = count === 0 })
+        // Tap to Pay (the app): the same sale at Stripe's in-person rate.
+        if (this.hasTapButtonTarget) {
+            const tap = orderTotalCents({ base, paid, feeMode: this.feeModeValue, platformFee: this.platformFeeValue,
+                perMille: this.tapPerMilleValue, fixed: this.tapFixedValue })
+            this.label(this.tapButtonTarget, count === 0 ? "Tap to pay" : `Tap to pay · ${money(tap)}`)
+            this.tapButtonTarget.disabled = count === 0 || tap === 0
+        }
         // A free ticket can't go on a card, and a comp carries no products.
         if (card === 0) this.cardButtonTarget.disabled = true
         if (products > 0) this.compButtonTarget.disabled = true
