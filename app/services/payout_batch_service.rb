@@ -249,16 +249,15 @@ class PayoutBatchService
       raise Error, "Connect a bank or card to fund payouts first."
     end
 
-    # The Stripe payment-method type: prefer the connected source's type, else
-    # the caller's ach/card choice.
-    pm_type = org.funding_payment_method_type.presence || (method == "card" ? "card" : "us_bank_account")
-
+    # No payment_method_types: Stripe rejects that parameter on this account
+    # since Oct 2026 (payment methods are managed from the Dashboard). The
+    # ACH configuration allows the bank debit the Default one keeps off.
     intent = Stripe::PaymentIntent.create({
       amount: debit_cents,
       currency: "usd",
       customer: org.stripe_customer_id,
       payment_method: payment_method,
-      payment_method_types: [ pm_type ],
+      **PayoutFundingService.ach_configuration_params,
       confirm: true,
       off_session: true,
       transfer_group: "org_#{org.id}",

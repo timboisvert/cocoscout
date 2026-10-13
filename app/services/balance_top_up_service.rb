@@ -18,7 +18,7 @@ class BalanceTopUpService
       {
         amount: amount_cents, currency: "usd", customer: organization.stripe_customer_id,
         payment_method: organization.funding_payment_method_id,
-        payment_method_types: [ organization.funding_payment_method_type.presence || "us_bank_account" ],
+        **PayoutFundingService.ach_configuration_params,
         confirm: true, off_session: true, transfer_group: "org_#{organization.id}",
         metadata: { type: "balance_top_up", balance_top_up_id: top_up.id, organization_id: organization.id }
       },

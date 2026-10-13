@@ -12,14 +12,42 @@ class PayoutFundingService
     @organization = organization
   end
 
+  # The Stripe payment-method configuration that allows ACH debits. Stripe
+  # manages payment methods from the Dashboard now (the account rejects
+  # `payment_method_types` since Oct 2026), and the Default configuration
+  # keeps bank debit OFF so ticket buyers never see it — so everything that
+  # debits an org's bank (funding a run, a balance top-up, connecting the
+  # bank) passes the configuration that has it on. Found by what it allows,
+  # not by name, so the Dashboard can rename it. nil = none set up yet.
+  def self.ach_configuration_id
+    Rails.cache.fetch("stripe/ach_payment_method_configuration", expires_in: 1.hour, skip_nil: true) do
+      configs = Stripe::PaymentMethodConfiguration.list(limit: 100).data.select do |c|
+        c.active && c.respond_to?(:us_bank_account) && c.us_bank_account&.display_preference&.value == "on"
+      end
+      (configs.reject(&:is_default).first || configs.first)&.id
+    end
+  rescue Stripe::StripeError
+    nil
+  end
+
+  # Params that pick the ACH-enabled configuration for a PaymentIntent or
+  # Checkout Session — empty when none exists, so Stripe falls back to the
+  # account's Default configuration (and ACH fails loudly rather than silently).
+  def self.ach_configuration_params
+    { payment_method_configuration: ach_configuration_id }.compact
+  end
+
   # Hosted Checkout URL to collect a funding source.
   def setup_session_url(success_url:, cancel_url:)
     ensure_customer!
+    # Bank accounts (ACH) only — we don't fund payouts from cards. The
+    # ACH configuration does that under Dashboard-managed payment methods;
+    # without one, ask for the type outright (test/dev accounts still allow it).
+    only_bank = self.class.ach_configuration_params.presence || { payment_method_types: %w[us_bank_account] }
     Stripe::Checkout::Session.create(
       mode: "setup",
       customer: @organization.stripe_customer_id,
-      # Bank accounts (ACH) only — we don't fund payouts from cards.
-      payment_method_types: %w[us_bank_account],
+      **only_bank,
       success_url: success_url,
       cancel_url: cancel_url,
       metadata: { organization_id: @organization.id, purpose: "payout_funding" }

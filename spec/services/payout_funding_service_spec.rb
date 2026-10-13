@@ -5,7 +5,46 @@ require "rails_helper"
 RSpec.describe PayoutFundingService do
   let(:org) { create(:organization, stripe_customer_id: "cus_1") }
 
+  before { allow(Stripe::PaymentMethodConfiguration).to receive(:list).and_return(double(data: [])) }
+
+  describe ".ach_configuration_id" do
+    def config(id, on:, default: false)
+      double(id: id, active: true, is_default: default,
+             us_bank_account: double(display_preference: double(value: on ? "on" : "off")))
+    end
+
+    it "picks the non-default configuration that has ACH on" do
+      allow(Stripe::PaymentMethodConfiguration).to receive(:list).and_return(
+        double(data: [ config("pmc_default", on: false, default: true), config("pmc_ach", on: true) ])
+      )
+      expect(described_class.ach_configuration_id).to eq("pmc_ach")
+      expect(described_class.ach_configuration_params).to eq(payment_method_configuration: "pmc_ach")
+    end
+
+    it "is nil (no param) when no configuration allows ACH" do
+      allow(Stripe::PaymentMethodConfiguration).to receive(:list).and_return(
+        double(data: [ config("pmc_default", on: false, default: true) ])
+      )
+      expect(described_class.ach_configuration_id).to be_nil
+      expect(described_class.ach_configuration_params).to eq({})
+    end
+
+    it "is nil when Stripe can't be reached" do
+      allow(Stripe::PaymentMethodConfiguration).to receive(:list).and_raise(Stripe::StripeError.new("down"))
+      expect(described_class.ach_configuration_id).to be_nil
+    end
+  end
+
   describe "#setup_session_url" do
+    it "passes the ACH configuration when one exists" do
+      allow(described_class).to receive(:ach_configuration_id).and_return("pmc_ach")
+      expect(Stripe::Checkout::Session).to receive(:create).with(
+        hash_including(mode: "setup", customer: "cus_1", payment_method_configuration: "pmc_ach")
+      ).and_return(double(url: "https://checkout.stripe.com/x"))
+
+      described_class.new(org).setup_session_url(success_url: "http://s", cancel_url: "http://c")
+    end
+
     it "creates a bank-only setup-mode checkout session and returns its url" do
       expect(Stripe::Checkout::Session).to receive(:create).with(
         hash_including(mode: "setup", customer: "cus_1", payment_method_types: %w[us_bank_account])
