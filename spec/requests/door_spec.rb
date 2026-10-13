@@ -286,11 +286,16 @@ RSpec.describe "Door", type: :request do
         allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(intent)
       end
 
-      it "offers the tap in the app only, priced at the in-person rate" do
+      it "offers the tap only in a copy of the app that has it, priced at the in-person rate" do
         get door_path(listing)
         expect(response.body).not_to include("Tap to pay")
 
-        get door_path(listing), headers: native
+        # TestFlight and App Store builds leave Tap to Pay out until Apple
+        # grants its distribution entitlement.
+        get door_path(listing), headers: { "User-Agent" => "Turbo Native iOS; bridge-components: [form menu door-scanner push];" }
+        expect(response.body).not_to include("Tap to pay")
+
+        get door_path(listing), headers: { "User-Agent" => "Turbo Native iOS; bridge-components: [form menu door-scanner push tap-to-pay];" }
         expect(response.body).to include("Tap to pay", "data-door-sell-tap-per-mille-value=\"27\"", "data-door-sell-tap-fixed-value=\"15\"")
       end
 

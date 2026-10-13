@@ -48,7 +48,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     private func configureHotwire() {
         Hotwire.loadPathConfiguration(from: [.server(AppConfig.pathConfigurationURL)])
-        Hotwire.registerBridgeComponents([FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self, TapToPayComponent.self])
+        var components: [BridgeComponent.Type] = [FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self]
+        // Tap to Pay only in builds run from Xcode (Debug) until Apple grants
+        // its distribution entitlement; TestFlight and App Store builds leave
+        // it out, so the door page doesn't offer it (NativeAppHelper).
+        #if DEBUG
+        components.append(TapToPayComponent.self)
+        #endif
+        Hotwire.registerBridgeComponents(components)
         Hotwire.registerRouteDecisionHandlers([
             OpenInSafariRouteDecisionHandler(),
             OpenAsDocumentRouteDecisionHandler(),
