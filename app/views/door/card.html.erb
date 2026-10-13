@@ -2,10 +2,13 @@
   show = @listing.show
   tickets = @order.tickets.includes(:ticket_tier).to_a
 %>
-<% content_for :title, "Pay · #{@listing.display_title}" %>
+<% content_for :title, turbo_native_app? ? "Pay" : "Pay · #{@listing.display_title}" %>
 <% content_for :door_header do %>
-  <%= link_to door_path(@listing), class: "flex-shrink-0 -ml-2 p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "Back to the door" do %>
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+  <%# The app has its own back button. %>
+  <% unless turbo_native_app? %>
+    <%= link_to door_path(@listing), class: "flex-shrink-0 -ml-2 p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "Back to the door" do %>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    <% end %>
   <% end %>
   <div class="min-w-0 flex-1">
     <div class="text-base font-semibold text-gray-900 leading-tight truncate"><%= @listing.display_title %></div>

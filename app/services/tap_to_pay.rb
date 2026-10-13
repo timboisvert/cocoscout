@@ -8,9 +8,9 @@
 #     cards are taken; the venue's address), made once (location_for);
 #   - a connection token the app uses to talk to Terminal (connection_token);
 #   - the sale: the seats held like a card-or-phone sale (TicketCheckout),
-#     and a card_present PaymentIntent for the order's total, at the
-#     in-person rate (TicketPricing in_person) — the app collects and
-#     confirms it (start!);
+#     at the in-person rate (TicketPricing in_person) (start!), and what the
+#     app makes the card_present PaymentIntent with, then collects and
+#     confirms (payment_params);
 #   - the settlement when the app says it's paid, checked against Stripe,
 #     through TicketOrderSettlement like every other sale: the organization's
 #     balance gets its net, the books their lines, the tickets are checked in
@@ -47,50 +47,59 @@ class TapToPay
     Stripe::Terminal::ConnectionToken.create(location: location_for(organization)).secret
   end
 
-  # Hold the seats and make the PaymentIntent the phone will take the tap
-  # for. Returns the pending order, its stripe_payment_intent_id set.
+  # Hold the seats for the tap. Returns the pending order. The app makes the
+  # PaymentIntent itself with the Terminal SDK (payment_params): Stripe no
+  # longer lets the server name card_present on this account (payment methods
+  # are managed from the Dashboard since Oct 2026, and Payment method
+  # configurations can't include in-person cards), so the SDK, which creates
+  # in-person intents on its own, is the way in.
   def self.start!(listing:, quantities:, user:, products: {}, buyer_name: nil, client_ip: nil)
-    location_id = location_for(listing.organization)
+    location_for(listing.organization) # no venue address, no Tap to Pay: say so before holding seats
     order = TicketCheckout.start!(listing: listing, quantities: quantities, channel: "door_tap", at_door: true, client_ip: client_ip)
     order.update!(buyer_name: buyer_name.to_s.squish.presence, issued_by: user)
     TicketCheckout.set_items!(order, products) if products.values.any? { |v| v.to_i.positive? }
     raise Error, "A free ticket can't be tapped for; comp it instead." unless order.total_cents.positive?
 
-    intent = Stripe::PaymentIntent.create(
-      {
-        amount: order.total_cents,
-        currency: "usd",
-        payment_method_types: [ "card_present" ],
-        capture_method: "automatic",
-        description: "#{listing.display_title} · #{listing.organization.name}".first(250),
-        metadata: { type: "ticket_order", ticket_order_id: order.id, ticket_order_code: order.code,
-                    organization_id: order.organization_id, ticket_listing_id: listing.id, door: "tap",
-                    terminal_location: location_id },
-        # Segregates each org's money flows Stripe-side, like the cash ledger.
-        transfer_group: "org_#{order.organization_id}"
-      },
-      { idempotency_key: "ticket-order-#{order.id}-#{order.total_cents}-tap" }
-    )
-    order.update!(stripe_payment_intent_id: intent.id)
     order
   end
 
-  # The intent's client secret, for the app to collect and confirm against.
-  def self.client_secret(order)
-    Stripe::PaymentIntent.retrieve(order.stripe_payment_intent_id).client_secret
+  # What the app makes the PaymentIntent with: the order's total, and the
+  # metadata Stripe's webhook and the books find the order by.
+  def self.payment_params(order)
+    listing = order.ticket_listing
+    {
+      amount_cents: order.total_cents,
+      currency: "usd",
+      description: "#{listing.display_title} · #{listing.organization.name}".first(250),
+      metadata: { type: "ticket_order", ticket_order_id: order.id, ticket_order_code: order.code,
+                  organization_id: order.organization_id, ticket_listing_id: listing.id, door: "tap",
+                  terminal_location: location_for(listing.organization) }.transform_values(&:to_s),
+      # Segregates each org's money flows Stripe-side, like the cash ledger.
+      transfer_group: "org_#{order.organization_id}"
+    }
   end
 
-  # The app says the tap went through: ask Stripe, and settle the order the
-  # way every paid order settles. Idempotent; the webhook may get there first.
-  def self.settle!(order)
+  # The app says the tap went through, with the PaymentIntent it made: ask
+  # Stripe, and settle the order the way every paid order settles (which
+  # checks the amount). Idempotent; the webhook may get there first.
+  def self.settle!(order, payment_intent_id: nil)
     return order if order.paid?
-    raise Error, "This sale has no payment to check." if order.stripe_payment_intent_id.blank?
 
-    intent = Stripe::PaymentIntent.retrieve(order.stripe_payment_intent_id)
+    intent_id = payment_intent_id.presence || order.stripe_payment_intent_id
+    raise Error, "This sale has no payment to check." if intent_id.blank?
+
+    intent = Stripe::PaymentIntent.retrieve(intent_id)
+    raise Error, "That payment isn't for this sale." unless intent.metadata&.[]("ticket_order_id").to_s == order.id.to_s
     unless intent.status == "succeeded"
       raise Error, "Stripe hasn't confirmed the payment yet (#{intent.status.to_s.humanize.downcase}). Try again in a moment."
     end
 
+    # A payment for the wrong amount is refunded there and the sale canceled.
     TicketOrderSettlement.settle!(order, payment_intent_id: intent.id, charge_id: intent.latest_charge, amount_cents: intent.amount)
+    unless order.reload.paid?
+      raise Error, "Stripe took #{format('$%.2f', intent.amount / 100.0)}, not this sale's total, so it was refunded and nobody was checked in. Start the sale again."
+    end
+
+    order
   end
 end

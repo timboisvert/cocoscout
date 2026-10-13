@@ -19,6 +19,7 @@ export default class extends Controller {
     disconnect() {
         clearInterval(this.timer)
         clearInterval(this.clock)
+        clearTimeout(this.asking)
     }
 
     // Asks the app for the tap; nothing answers in a browser.
@@ -26,13 +27,24 @@ export default class extends Controller {
         this.errorTarget.classList.add("hidden")
         this.retryTarget.classList.add("hidden")
         this.promptTarget.textContent = "Hold their card or phone to the top of this phone"
-        this.dispatch("pay")
+        this.askApp()
     }
 
-    // tap-to-pay:done — { status: "paid" | "failed" | "canceled", message }.
+    // The app's bridge isn't listening yet when the page first connects:
+    // ask until it takes the tap (bridge--tap-to-pay marks the event
+    // handled), for a few seconds.
+    askApp(attempt = 0) {
+        clearTimeout(this.asking)
+        const event = this.dispatch("pay")
+        if (!event.defaultPrevented && attempt < 20) {
+            this.asking = setTimeout(() => this.askApp(attempt + 1), 250)
+        }
+    }
+
+    // tap-to-pay:done — { status: "paid" | "failed" | "canceled", message, paymentIntentId }.
     async done({ detail }) {
         if (detail.status === "paid") {
-            await this.settle()
+            await this.settle(detail.paymentIntentId)
         } else if (detail.status === "failed") {
             this.fail(detail.message || "The tap didn't go through.")
         } else {
@@ -40,12 +52,14 @@ export default class extends Controller {
         }
     }
 
-    async settle() {
+    async settle(paymentIntentId) {
         this.promptTarget.textContent = "Confirming with Stripe…"
         try {
             const token = document.querySelector("meta[name='csrf-token']")?.content
             const response = await fetch(this.settleUrlValue, {
-                method: "POST", headers: { Accept: "application/json", "X-CSRF-Token": token }
+                method: "POST",
+                headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": token },
+                body: JSON.stringify({ payment_intent_id: paymentIntentId })
             })
             const data = await response.json()
             if (data.status === "paid") this.show("paid", data.message)

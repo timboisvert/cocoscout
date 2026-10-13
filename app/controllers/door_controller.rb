@@ -127,6 +127,9 @@ class DoorController < ApplicationController
     redirect_to door_path(@listing), notice: kind == "cash" ? "Sold #{sold} at the door — collect #{helpers.number_to_currency(order.total_cents / 100.0)} cash." : "Comped #{count} and checked them in."
   rescue TicketCheckout::Error, TapToPay::Error => e
     redirect_to door_path(@listing), alert: e.message
+  rescue Stripe::StripeError => e
+    Rails.logger.error("[door sell] #{e.class}: #{e.message}")
+    redirect_to door_path(@listing), alert: "Stripe couldn't start that sale. Nothing was charged; try again or take it another way."
   end
 
   # The door phone taking the tap: the app's Terminal SDK collects the card
@@ -134,23 +137,24 @@ class DoorController < ApplicationController
   def tap
     return redirect_to(door_path(@listing), notice: "Paid. #{card_paid_message}") if @order.paid?
 
-    @client_secret = TapToPay.client_secret(@order)
-    # The phone connects as a reader at the organization's Terminal Location.
+    # The app makes the PaymentIntent with these, as a reader at the
+    # organization's Terminal Location.
+    @payment = TapToPay.payment_params(@order)
     @location_id = TapToPay.location_for(@listing.organization)
   end
 
   # The app's Terminal SDK connects with this.
   def tap_connection_token
     render json: { secret: TapToPay.connection_token(@listing.organization) }
-  rescue TapToPay::Error => e
+  rescue TapToPay::Error, Stripe::StripeError => e
     render json: { error: e.message }, status: :unprocessable_content
   end
 
   # The app says the tap went through: check with Stripe and settle.
   def tap_settle
-    TapToPay.settle!(@order)
+    TapToPay.settle!(@order, payment_intent_id: params[:payment_intent_id])
     render json: { status: "paid", message: card_paid_message, counts: door.counts }
-  rescue TapToPay::Error => e
+  rescue TapToPay::Error, Stripe::StripeError => e
     render json: { status: "pending", error: e.message }, status: :unprocessable_content
   end
 

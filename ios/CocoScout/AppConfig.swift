@@ -2,9 +2,10 @@ import UIKit
 
 /// Where the app points and how it looks.
 ///
-/// Debug builds talk to the Rails server on this Mac (the Simulator reaches it
-/// at localhost); release builds talk to cocoscout.com. Either can be pointed
-/// elsewhere for a run with a launch argument:
+/// The Simulator talks to the Rails server on this Mac (it reaches it at
+/// localhost); a phone, whether run from Xcode or installed from TestFlight,
+/// talks to cocoscout.com. Either can be pointed elsewhere for a run with a
+/// launch argument:
 ///
 ///     xcrun simctl launch booted com.cocoscout.app -BaseURL https://cocoscout.com
 enum AppConfig {
@@ -13,7 +14,7 @@ enum AppConfig {
            let url = URL(string: override) {
             return url
         }
-        #if DEBUG
+        #if DEBUG && targetEnvironment(simulator)
         return URL(string: "http://localhost:3000")!
         #else
         return URL(string: "https://cocoscout.com")!

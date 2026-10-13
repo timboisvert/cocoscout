@@ -33,10 +33,16 @@ the buyer paying: $21.42 online, $21.22 tapped.
   `TicketCheckout.price!` / `TicketPurchase#price!`.
 - `TapToPay`: a Stripe Terminal Location per organization from its default
   venue's address (`organizations.stripe_terminal_location_id`), connection
-  tokens, the sale (seats held via `TicketCheckout.start!`, a `card_present`
-  PaymentIntent for the total), and settlement checked against Stripe
-  through `TicketOrderSettlement`. The `payment_intent.succeeded` webhook
-  settles it too.
+  tokens, the sale (seats held via `TicketCheckout.start!`), the amount and
+  metadata the app makes the PaymentIntent with (`payment_params`), and
+  settlement checked against Stripe through `TicketOrderSettlement` (it must
+  carry this order's id; a wrong amount is refunded). The
+  `payment_intent.succeeded` webhook settles it too.
+- The app makes the PaymentIntent, not the server: since Oct 2026 Stripe
+  rejects `payment_method_types` on CocoScout's account, and payment method
+  configurations can't include `card_present`. The Terminal SDK's
+  `createPaymentIntent` still makes in-person intents (checked in the
+  Simulator against test mode, 2026-10-13).
 - Door: a "Tap to pay" button on the sell panel, in the app only;
   `/door/:listing/tap/:token` (the page the phone is held out on),
   `/door/:listing/tap/connection-token`, `/door/:listing/tap/:token/settle`;
