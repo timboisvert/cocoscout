@@ -196,6 +196,8 @@ class PayoutBatchService
       raise Error, "This run is already being paid." if IN_PROGRESS_STATUSES.include?(batch.status)
 
       batch.increment!(:funding_attempts)
+      # A fresh attempt starts clean: the last failure's reason is history.
+      batch.update!(funding_error: nil) if batch.funding_error.present?
       batch.funding_attempts
     end
 
@@ -241,12 +243,13 @@ class PayoutBatchService
     if payment_method.blank?
       # Nothing was debited — hand back the credit and balance this attempt
       # claimed so the org's available balance stays truthful.
-      batch.update!(balance_applied_cents: 0, credit_applied_cents: 0)
+      message = "Connect a bank or card to fund payouts first."
+      batch.update!(balance_applied_cents: 0, credit_applied_cents: 0, funding_error: message)
       if credit_used.positive?
         PayoutFundingCredit.create!(organization: org, amount_cents: credit_used,
                                     note: "Restored after failed funding of run ##{batch.id}")
       end
-      raise Error, "Connect a bank or card to fund payouts first."
+      raise Error, message
     end
 
     # No payment_method_types: Stripe rejects that parameter on this account
@@ -277,14 +280,18 @@ class PayoutBatchService
       PayoutFundingCredit.create!(organization: batch.organization, amount_cents: credit_used,
                                   note: "Restored after failed funding of run ##{batch.id}")
     end
-    batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0)
+    # Keep Stripe's own words on the run: a flash message is gone by the time
+    # anyone asks why run 29 failed (2026-10-13).
+    batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0,
+                  funding_error: e.message)
     raise Error, e.message
   end
 
   # The bank debit bounced days later (the ACH webhook). Give back the funding
   # credit the run spent and let go of the balance it claimed, exactly as a
   # failure at submission does, so the org's available money stays truthful.
-  def self.funding_failed!(batch)
+  # `reason` is Stripe's last_payment_error message when the webhook carries one.
+  def self.funding_failed!(batch, reason: nil)
     batch.with_lock do
       return batch if batch.status == "failed"
 
@@ -292,7 +299,8 @@ class PayoutBatchService
         PayoutFundingCredit.create!(organization: batch.organization, amount_cents: batch.credit_applied_cents,
                                     note: "Restored after failed funding of run ##{batch.id}")
       end
-      batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0)
+      batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0,
+                    funding_error: reason.presence || "The bank debit was returned by the bank.")
     end
     batch
   end

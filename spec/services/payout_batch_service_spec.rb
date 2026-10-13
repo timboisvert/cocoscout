@@ -293,6 +293,35 @@ RSpec.describe PayoutBatchService do
       }.not_to have_enqueued_job(PayoutSentPayeeNotificationJob)
     end
 
+    # Run 29 (2026-10-13) failed and the only record of why was a flash message
+    # nobody saw. Stripe's words now live on the run.
+    it "keeps Stripe's error on the run, and clears it when the next attempt starts" do
+      allow(Stripe::PaymentIntent).to receive(:create)
+        .and_raise(Stripe::StripeError.new("The payment method configuration does not allow this payment method."))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      expect { PayoutBatchService.fund!(batch, method: "ach") }.to raise_error(PayoutBatchService::Error)
+
+      batch.reload
+      expect(batch.status).to eq("failed")
+      expect(batch.funding_error).to eq("The payment method configuration does not allow this payment method.")
+
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_2", status: "processing", amount: 5000))
+      PayoutBatchService.fund!(batch, method: "ach")
+
+      batch.reload
+      expect(batch.status).to eq("funding")
+      expect(batch.funding_error).to be_nil
+    end
+
+    it "records the missing funding source as the reason" do
+      org.update!(funding_payment_method_id: nil)
+      batch = PayoutBatchService.build_for(organization: org)
+      expect { PayoutBatchService.fund!(batch, method: "ach") }.to raise_error(PayoutBatchService::Error)
+
+      expect(batch.reload.funding_error).to eq("Connect a bank or card to fund payouts first.")
+    end
+
     it "notifies immediately for card funding, which sends in the same breath" do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_c", status: "succeeded", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_c"))
@@ -401,6 +430,24 @@ RSpec.describe PayoutBatchService do
 
       expect(batch.items.first.reload.status).to eq("paid")
       expect(OrgCashEntry.balance_cents(org)).to eq(1000)
+    end
+  end
+
+  describe ".funding_failed!" do
+    let(:batch) do
+      org.payout_batches.create!(kind: "staff_pay", status: "funding", trigger: "manual",
+                                 funding_payment_intent_id: "pi_b", funding_status: "processing", total_cents: 1_000)
+    end
+
+    it "stores the bank's reason when the webhook carries one" do
+      PayoutBatchService.funding_failed!(batch, reason: "The customer's account has insufficient funds.")
+      expect(batch.reload.funding_error).to eq("The customer's account has insufficient funds.")
+      expect(batch.status).to eq("failed")
+    end
+
+    it "says the debit was returned when Stripe gives no reason" do
+      PayoutBatchService.funding_failed!(batch)
+      expect(batch.reload.funding_error).to eq("The bank debit was returned by the bank.")
     end
   end
 

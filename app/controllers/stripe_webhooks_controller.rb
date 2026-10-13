@@ -112,7 +112,7 @@ class StripeWebhooksController < ApplicationController
     if event_type == "payment_intent.succeeded"
       PayoutBatchService.advance_funding!(batch, "succeeded", funded_cents: intent.amount)
     else
-      PayoutBatchService.funding_failed!(batch)
+      PayoutBatchService.funding_failed!(batch, reason: intent.try(:last_payment_error)&.try(:message))
       # A bounced debit used to be silent — the run just sat there "failed"
       # while everyone assumed the money was moving.
       PayoutFundingFailedNotificationJob.perform_later(batch.id)
