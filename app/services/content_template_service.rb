@@ -349,6 +349,8 @@ class ContentTemplateService
       when /custom_message/i then "<p>Looking forward to having you join our production!</p>"
       when /body_content/i then sample_body_content(template_key)
       when /subject/i then sample_subject(template_key)
+      when /event_type/i then "Show"
+      when /week_label|week_of/i then Date.current.beginning_of_week.strftime("%B %-d")
       when /phone/i then "(555) 123-4567"
       when /amount|total|price|fee|cost|balance|payout|rate|pay\b/i then "$45.00"
       when /count|number|quantity|qty/i then "5"
