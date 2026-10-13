@@ -3,11 +3,7 @@
   The per-ticket figure comes from TicketPricing so the marketing copy can't
   drift from what checkout actually charges.
 %>
-<%
-  ticket_fee = TicketPricing::PLATFORM_FEE_CENTS
-  processing_pct = (TicketPricing::PROCESSING_PER_MILLE / 10.0).to_s.sub(/\.0\z/, "")
-  processing_fixed = TicketPricing::PROCESSING_FIXED_CENTS
-%>
+<% ticket_fee = TicketPricing::PLATFORM_FEE_CENTS %>
 <div class="grid gap-4 sm:grid-cols-3">
   <div class="rounded-2xl border-2 border-pink-500 bg-white p-6">
     <div class="text-4xl font-bold text-pink-500 coustard-regular"><%= ticket_fee %>¢</div>
@@ -25,9 +21,9 @@
   </div>
   <div class="rounded-2xl border border-slate-200 bg-white p-6">
     <div class="text-4xl font-bold text-slate-900 coustard-regular">At cost</div>
-    <div class="font-bold text-slate-900 mt-1">card processing, charged once per order</div>
+    <div class="font-bold text-slate-900 mt-1">standard card processing, nothing added</div>
     <div class="text-sm text-slate-600 mt-1 leading-relaxed">
-      <%= processing_pct %>% + <%= processing_fixed %>¢ per order, not per ticket — so a pair costs less than two singles. You choose whether the buyer pays the fees or you absorb them.
+      Whatever the card processor charges passes straight through — no markup, and once per order rather than per ticket. You choose whether the buyer pays it or you absorb it.
     </div>
   </div>
 </div>

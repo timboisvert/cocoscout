@@ -30,7 +30,8 @@ RSpec.describe "Public marketing site", type: :request do
       expect(response.body).to include("Sell tickets for #{TicketPricing::PLATFORM_FEE_CENTS}¢ a ticket.")
       expect(response.body).to include("Instead of a ticketing site")
       expect(response.body).to include("for free tickets, comps &amp; cash at the door")
-      expect(response.body).to include("card processing, charged once per order")
+      expect(response.body).to include("standard card processing, nothing added")
+      expect(response.body).not_to include("2.9%") # rates differ by channel; never quote one
     end
   end
 
