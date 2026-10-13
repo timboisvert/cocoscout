@@ -45,7 +45,7 @@ class TicketDoor
     changed = Ticket.where(id: ticket.id, status: "valid")
                     .update_all(status: "checked_in", checked_in_at: Time.current, checked_in_by_id: @user&.id, updated_at: Time.current)
     ticket.reload
-    return result(:admitted, ticket, "Admitted — #{ticket.ticket_tier.name}") if changed == 1
+    return result(:admitted, ticket, "Admitted — #{ticket.type_label}") if changed == 1
 
     case ticket.status
     when "checked_in"

@@ -75,7 +75,7 @@ class TicketOrderMailer < ApplicationMailer
     })
     @intro_html = words[:body_html]
     @sections = @orders.map do |order|
-      tickets = order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:ticket_tier, :ticket_pass).order(:id).to_a
+      tickets = order.tickets.where(status: Ticket::SOLD_STATUSES).includes(:ticket_tier, :ticket_pass, :bundle_tier).order(:id).to_a
       tickets.each do |ticket|
         png = RQRCode::QRCode.new(tickets_ticket_url(code: ticket.code)).as_png(size: 360, border_modules: 2)
         attachments.inline["ticket-#{ticket.id}.png"] = png.to_s
