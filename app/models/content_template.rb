@@ -96,21 +96,28 @@ class ContentTemplate < ApplicationRecord
 
   # The phone notification for the in-app message: the push_body if the
   # superadmin wrote one, else the subject. Plain text, one line.
+  # (The push columns are read through has_attribute? so a database that
+  # hasn't run their migration yet — the pre-deploy validation on a dev
+  # machine — still loads templates: no push text, push on.)
   def render_push_body(variables = {})
-    ActionController::Base.helpers.strip_tags(interpolate(push_body.presence || subject, variables)).squish
+    ActionController::Base.helpers.strip_tags(interpolate(push_text.presence || subject, variables)).squish
   end
 
   # Does the in-app message this template creates buzz the phone? Only
   # templates that create a message can; "push" is the superadmin's switch.
   def pushes?
-    push? && (message? || both?)
+    (!has_attribute?(:push) || push?) && (message? || both?)
+  end
+
+  def push_text
+    has_attribute?(:push_body) ? push_body : nil
   end
 
   # Returns the list of variable names used in the template
   def variable_names
     texts = [ subject, body ]
     texts << message_body if both? && message_body.present?
-    texts << push_body if push_body.present?
+    texts << push_text if push_text.present?
     texts.compact.flat_map { |t| extract_variables(t) }.uniq
   end
 
