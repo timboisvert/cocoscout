@@ -15,6 +15,7 @@ RSpec.describe "Signup bot defense", type: :request do
 
   describe "the form" do
     it "carries a fresh signed token and the honeypot field" do
+      freeze_time
       get signup_path
       expect(response).to have_http_status(:ok)
       token = response.body[/name="signup_token" value="([^"]+)"/, 1]
