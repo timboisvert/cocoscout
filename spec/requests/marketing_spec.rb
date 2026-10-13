@@ -61,6 +61,13 @@ RSpec.describe "Public marketing site", type: :request do
       expect(response.body).to include("Do you take a cut of the card processing?")
     end
 
+    it "names advanced ticketing as an Enterprise direction, not a Pro feature" do
+      expect(response.body).to include("Advanced ticketing: reserved seating, subscriptions, group sales")
+      expect(response.body).to include("Patron CRM &amp; donations")
+      # Nothing here is built yet, so the comparison table keeps ticketing as one row.
+      expect(response.body).not_to include("Reserved seating</td>")
+    end
+
     it "no longer claims there is no per-transaction cut, which the ticket fee contradicts" do
       expect(response.body).not_to include("no per-transaction cut")
       expect(response.body).to include("no cut of what you pay out")
