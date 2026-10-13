@@ -13,8 +13,9 @@ class TicketTier < ApplicationRecord
   belongs_to :source_tier, class_name: "TicketTier", optional: true
   has_many :tickets, dependent: :restrict_with_error
   has_many :copies, class_name: "TicketTier", foreign_key: :source_tier_id, inverse_of: :source_tier, dependent: :nullify
-  # A bundle ("4 × General for $70") admits several people of another type,
-  # using that type's seats; each ticket it makes is that type's ticket.
+  # A bundle ("4 × General for $70", or one General plus a swag bag for a few
+  # dollars more) admits one or more people of another type, using that
+  # type's seats; each ticket it makes is that type's ticket.
   belongs_to :bundle_of, class_name: "TicketTier", foreign_key: :bundle_of_tier_id, optional: true
   has_many :bundles, class_name: "TicketTier", foreign_key: :bundle_of_tier_id, inverse_of: :bundle_of, dependent: :nullify
   # The tickets a bundle made (they belong to its type, remembering the bundle).
@@ -26,9 +27,9 @@ class TicketTier < ApplicationRecord
   validates :name, presence: true, length: { maximum: 80 }
   validates :price_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :quantity, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
-  # People one purchase admits: 1 for a ticket; 2 to 20 for a bundle.
+  # People one purchase admits: 1 for a ticket; 1 to 20 for a bundle (a
+  # "Swag Bag Ticket" is one General plus a bag, Tim 2026-10-13).
   validates :admits, numericality: { only_integer: true, in: 1..20 }
-  validates :admits, numericality: { greater_than: 1, message: "must be at least 2 for a bundle" }, if: :bundle?
   validate :bundles_a_plain_type_of_its_own
   # A plain ticket admits one; a bundle has no seats of its own (it uses its
   # type's).
@@ -73,7 +74,7 @@ class TicketTier < ApplicationRecord
     effective_availability == "unlisted"
   end
 
-  # A ticket type that admits several people of another type for one price.
+  # A ticket type that admits people of another type for its own price.
   def bundle?
     bundle_of_tier_id.present?
   end

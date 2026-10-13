@@ -35,8 +35,13 @@ class Ticket < ApplicationRecord
 
   # What a guest list or the door calls it: "General", or "General (Twilight
   # Double Feature pass)" when it came with a pass.
+  # Its type, plus the bundle it came in, so the door knows to hand over
+  # what a "Swag Bag Ticket" includes.
   def type_label
-    ticket_pass ? "#{ticket_tier.name} (#{ticket_pass.name} pass)" : ticket_tier.name
+    if ticket_pass then "#{ticket_tier.name} (#{ticket_pass.name} pass)"
+    elsif bundle_tier then "#{ticket_tier.name} (#{bundle_tier.name})"
+    else ticket_tier.name
+    end
   end
 
   def checked_in?

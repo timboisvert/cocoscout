@@ -75,7 +75,7 @@ class DoorController < ApplicationController
     @orders = if q.length < 2 || passes_only
       []
     else
-      scope = @listing.ticket_orders.paid_like.includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass]).order(:buyer_name)
+      scope = @listing.ticket_orders.paid_like.includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass bundle_tier]).order(:buyer_name)
       scope.where(code: q.upcase)
            .or(scope.where("ticket_orders.buyer_name ILIKE ?", "%#{TicketOrder.sanitize_sql_like(q)}%"))
            .or(scope.where("ticket_orders.buyer_email ILIKE ?", "%#{TicketOrder.sanitize_sql_like(q)}%"))
@@ -192,7 +192,7 @@ class DoorController < ApplicationController
 
   # Alphabetical by name; nameless (a door sale) at the end by order code.
   def parties
-    @listing.ticket_orders.paid_like.includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass])
+    @listing.ticket_orders.paid_like.includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass bundle_tier])
             .order(Arel.sql("LOWER(COALESCE(NULLIF(ticket_orders.buyer_name, ''), 'zzzz')), ticket_orders.id")).to_a
   end
 

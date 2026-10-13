@@ -44,11 +44,25 @@ RSpec.describe "Ticket bundles" do
     pack.update!(quantity: 30)
     expect(pack.reload.quantity).to be_nil
     expect(listing.inventory.capacity).to eq(10)
-    expect(listing.ticket_tiers.build(name: "Bad", price_cents: 100, admits: 1, bundle_of: general)).not_to be_valid
+    expect(listing.ticket_tiers.build(name: "Too many", price_cents: 100, admits: 21, bundle_of: general)).not_to be_valid
   end
 
   it "splits a price that doesn't divide evenly so the tickets still add up" do
     expect(TicketTier.split(7_001, 4)).to eq([ 1_751, 1_750, 1_750, 1_750 ])
+  end
+
+  it "sells a one-ticket bundle, like a Swag Bag Ticket, and names it at the door so the bag gets handed over" do
+    swag = listing.ticket_tiers.create!(name: "Swag Bag Ticket", price_cents: 2_500, admits: 1, bundle_of: general, position: 2)
+    order = TicketCheckout.start!(listing: listing, quantities: { swag.id.to_s => "2" })
+
+    expect(order.tickets.pluck(:ticket_tier_id, :bundle_tier_id, :price_cents)).to eq([ [ general.id, swag.id, 2_500 ] ] * 2)
+    expect(order.platform_fee_cents).to eq(100)
+    expect(listing.inventory.remaining(tier: general)).to eq(8)
+    expect(order.tickets.first.type_label).to eq("General (Swag Bag Ticket)")
+
+    order.tickets.update_all(status: "valid")
+    result = TicketDoor.new(listing, create(:user)).admit(order.tickets.first)
+    expect(result.message).to eq("Admitted — General (Swag Bag Ticket)")
   end
 
   it "gives a bundle as four General tickets, and sells one at the door the same way" do
