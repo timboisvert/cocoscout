@@ -313,12 +313,16 @@ class ContentTemplateService
 
     private
 
-    # Generate placeholder sample values for variables
+    # Placeholder sample values for every variable the template uses — the
+    # ones it declares (available_variables) and any it only mentions, so a
+    # preview never shows a bare {{variable}}.
     def generate_sample_variables(template)
-      template.variables_with_descriptions.each_with_object({}) do |var, hash|
-        name = var[:name].to_s
-        hash[name] = sample_value_for(name, template.key)
-      end
+      sample_variable_names(template).index_with { |name| sample_value_for(name, template.key) }
+    end
+
+    # Declared first, then the rest in the order the template uses them.
+    def sample_variable_names(template)
+      template.variables_with_descriptions.map { |var| var[:name].to_s } | template.variable_names
     end
 
     # Generate a sample value based on variable name
@@ -334,6 +338,7 @@ class ContentTemplateService
       when /casting_unit/i then "role"
       when /recipient_name|inviter_name|sender_name|author_name|talent_name/i then "Sarah Johnson"
       when /requester_name|vacated_by_name|filled_by_name/i then "Michael Chen"
+      when /first_name/i then "Alex"
       when /name/i then "Alex Thompson"
       when /title/i then "Example Title"
       when /show_info/i then "Saturday, March 15, 2025 at 7:30 PM - Main Stage"
@@ -344,7 +349,12 @@ class ContentTemplateService
       when /custom_message/i then "<p>Looking forward to having you join our production!</p>"
       when /body_content/i then sample_body_content(template_key)
       when /subject/i then sample_subject(template_key)
-      when /count|number/i then "5"
+      when /phone/i then "(555) 123-4567"
+      when /amount|total|price|fee|cost|balance|payout|rate|pay\b/i then "$45.00"
+      when /count|number|quantity|qty/i then "5"
+      when /year/i then Date.current.year.to_s
+      when /code|token/i then "ABC123"
+      when /location|venue|address|city/i then "Main Street Theater"
       else "[#{name}]"
       end
     end

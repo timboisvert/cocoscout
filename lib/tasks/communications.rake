@@ -423,6 +423,29 @@ namespace :communications do
     validator.run
   end
 
+  # Every phone notification as it would read, with sample variables: a
+  # quick read of the lot after editing push text in Superadmin. Flags a
+  # template whose push would still show a {{variable}} or a [placeholder]
+  # (a variable the sample values don't know how to fake).
+  desc "Show every message template's push notification with sample variables"
+  task push_preview: :environment do
+    puts "\n#{"=" * 80}"
+    puts "PUSH NOTIFICATIONS (as they'd read, with sample variables)"
+    puts "=" * 80
+    ContentTemplate.where(channel: %w[message both]).order(:category, :key).each do |template|
+      rendered = ContentTemplateService.preview(template.key)[:push_body]
+      flag = if rendered.include?("{{") then "❌ unrendered"
+      elsif rendered.match?(/\[\w+\]/) then "⚠️  placeholder"
+      else "✅"
+      end
+      quiet = template.pushes? ? "" : " (quiet)"
+      source = template.push_body.present? ? "" : " [from subject]"
+      puts "\n#{flag} #{template.key}#{quiet}#{source}"
+      puts "   #{rendered}"
+    end
+    puts
+  end
+
   desc "List all communication scenarios"
   task list: :environment do
     puts "\n#{"=" * 80}"
