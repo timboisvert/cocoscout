@@ -1,0 +1,74 @@
+<% content_for :title, "Support - CocoScout" %>
+<div class="min-h-screen bg-white">
+  <!-- Header -->
+  <div class="border-b border-slate-200 bg-white px-6 py-6">
+    <div class="mx-auto flex w-full max-w-4xl items-center justify-between">
+      <%= link_to root_path, class: "flex items-center gap-3" do %>
+        <%= image_tag "/icon.png", alt: "CocoScout", class: "h-10 w-10" %>
+        <span class="text-xl font-semibold coustard-regular text-pink-500">CocoScout</span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-4xl px-6 py-12">
+    <h1 class="text-4xl font-bold text-slate-900 mb-4 coustard-regular">Support</h1>
+    <p class="text-lg text-slate-700 mb-8">
+      Stuck, or something not working? Email us and a person will write back.
+    </p>
+
+    <div class="mb-10 rounded-xl border border-pink-200 bg-pink-50 p-6">
+      <p class="text-sm font-medium uppercase tracking-wider text-pink-700 mb-2">Email</p>
+      <a href="mailto:support@cocoscout.com" class="text-2xl font-semibold text-pink-600 hover:text-pink-700 underline">support@cocoscout.com</a>
+      <p class="text-sm text-slate-600 mt-3">
+        Say which organization or show it's about and, if it's the app, which phone you're on. We answer every message, usually within a day.
+      </p>
+    </div>
+
+    <div class="prose prose-slate max-w-none">
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold text-slate-900 mb-4">Common questions</h2>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-2 mt-4">I can't sign in</h3>
+        <p class="text-slate-700 mb-4">
+          Use <%= link_to "Forgot password", password_path, class: "text-pink-600 hover:text-pink-700 underline" %> with the email your organization has for you. If no email arrives, check spam, then write to us and we'll sort it out.
+        </p>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-2 mt-4">Where do I manage my organization?</h3>
+        <p class="text-slate-700 mb-4">
+          Casting, ticketing, payouts and everything else on the organization's side live on the web at <%= link_to "cocoscout.com", root_path, class: "text-pink-600 hover:text-pink-700 underline" %>. The iPhone app is the performer side — your calendar, messages, sign-ups, contracts, pay and the door. A link to Manage from the app opens in Safari.
+        </p>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-2 mt-4">I'm not getting notifications on my phone</h3>
+        <p class="text-slate-700 mb-4">
+          Check Settings → Notifications → CocoScout on your iPhone, and that you're signed in to the app with the same account your organization messages. A muted thread stays quiet on purpose; unmute it from the thread.
+        </p>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-2 mt-4">Something's wrong with my tickets</h3>
+        <p class="text-slate-700 mb-4">
+          Tickets are sold by the organization putting on the show, and refunds follow its policy — the link in your order email reaches them directly. If the email never came, write to us with the name and date of the show.
+        </p>
+
+        <h3 class="text-xl font-semibold text-slate-900 mb-2 mt-4">How do I delete my account?</h3>
+        <p class="text-slate-700 mb-4">
+          In the app or on the web, Account Settings → Delete my account files the request. We finish it within 30 days, and you can take it back until then.
+        </p>
+      </section>
+
+      <div class="mt-12 pt-8 border-t border-slate-200">
+        <p class="text-sm text-slate-500">
+          How we handle your information is in the <%= link_to "Privacy Policy", privacy_path, class: "text-pink-600 hover:text-pink-700 underline" %>; the rules of the road are in the <%= link_to "Terms of Service", terms_path, class: "text-pink-600 hover:text-pink-700 underline" %>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-200 px-6 py-8 text-sm text-slate-500 bg-slate-50">
+    <div class="mx-auto flex w-full max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <p>&copy; <%= Time.current.year %> CocoScout. All rights reserved.</p>
+      <div class="flex gap-4">
+        <%= link_to "Terms of Service", terms_path, class: "hover:text-pink-600" %>
+        <%= link_to "Privacy Policy", privacy_path, class: "hover:text-pink-600" %>
+      </div>
+    </div>
+  </footer>
+</div>

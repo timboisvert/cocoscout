@@ -8,4 +8,7 @@ class LegalController < ApplicationController
   def terms; end
 
   def privacy; end
+
+  # How to reach us: the App Store's support page.
+  def support; end
 end

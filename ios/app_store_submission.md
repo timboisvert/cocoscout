@@ -21,13 +21,10 @@ ship as 1.1 without a listing change.
 | Price | Free |
 | Copyright | 2026 CocoScout |
 | Privacy policy URL | https://cocoscout.com/privacy |
-| Support URL | https://cocoscout.com/for-performers (see note) |
+| Support URL | https://cocoscout.com/support |
 | Marketing URL | https://cocoscout.com |
 
-Support URL note: Apple wants a page that says how to reach a person. The
-site has /privacy and /terms but no /support; either add a short /support
-page with the support email, or point at /for-performers and make sure the
-footer there shows the email. Pick one before submitting.
+The support page is /support (support@cocoscout.com, the common questions, links to privacy and terms); it's linked from the site footer.
 
 ### Keywords (100 characters, comma-separated, no spaces)
 
@@ -119,6 +116,7 @@ Matches `ios/CocoScout/PrivacyInfo.xcprivacy` exactly.
 | Contact Info → Phone Number | Yes | Yes | No | App Functionality |
 | User Content → Photos or Videos (headshots) | Yes | Yes | No | App Functionality |
 | User Content → Other User Content (messages, profile text) | Yes | Yes | No | App Functionality |
+| Identifiers → User ID (the account) | Yes | Yes | No | App Functionality |
 | Identifiers → Device ID (the push token) | Yes | Yes | No | App Functionality |
 
 Everything else: not collected. In particular —
@@ -134,11 +132,7 @@ Everything else: not collected. In particular —
 - Tracking: no. `NSPrivacyTracking` is false and there are no tracking
   domains.
 
-Judgment call: Apple's "Identifiers → User ID" means an account identifier.
-The app sends a session cookie, which the manifest doesn't declare as a User
-ID. If you'd rather declare it, add `NSPrivacyCollectedDataTypeUserID`
-(linked, not tracking, App Functionality) to the manifest and say Yes here —
-either answer is defensible; the two must agree.
+User ID is declared (the conservative reading: a signed-in phone is tied to an account), so answer Yes to it here.
 
 Required reason APIs: UserDefaults, reason CA92.1 (the app's own settings:
 the cached menu and the push token). Already in the manifest.

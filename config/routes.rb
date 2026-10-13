@@ -45,6 +45,7 @@ Rails.application.routes.draw do
   # Legal pages
   get "/terms", to: "legal#terms", as: "terms"
   get "/privacy", to: "legal#privacy", as: "privacy"
+  get "/support", to: "legal#support", as: "support"
 
   # Back into the iOS app from its secure sheet (Stripe bank setup).
   get "/app/return", to: "app_returns#show", as: "app_return"
