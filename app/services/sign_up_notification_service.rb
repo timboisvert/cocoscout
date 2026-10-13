@@ -112,6 +112,7 @@ class SignUpNotificationService
 
       # Send as in-app message (system_generated: true so it doesn't appear in sender's sent folder)
       message = MessageService.send_direct(
+        template_key: template_key, push_body: template[:push_body],
         sender: sender,
         recipient_person: person,
         subject: subject,

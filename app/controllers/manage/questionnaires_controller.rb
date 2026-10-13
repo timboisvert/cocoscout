@@ -235,6 +235,7 @@ module Manage
           end
 
           MessageService.send_direct(
+            template_key: "questionnaire_invitation", push_body: rendered&.dig(:push_body),
             sender: Current.user,
             recipient_person: person,
             subject: subject,

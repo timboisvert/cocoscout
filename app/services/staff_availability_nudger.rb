@@ -55,7 +55,7 @@ class StaffAvailabilityNudger
     StaffAvailabilityMailer.confirm_request(@staff_member, to: self.class.email_for(@staff_member),
                                                            subject: copy[:subject], body: copy[:body]).deliver_later
     MessageService.send_direct(sender: @sender, recipient_person: @staff_member.person,
-                               subject: copy[:subject], body: copy[:body],
+                               subject: copy[:subject], body: copy[:body], template_key: TEMPLATE,
                                organization: @staff_member.organization, system_generated: true)
     true
   end

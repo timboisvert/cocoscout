@@ -544,10 +544,12 @@ class Message < ApplicationRecord
     # don't raise from a notification callback
   end
 
-  # Notify all subscribers about the new message (increment unread counts)
+  # Notify all subscribers about the new message (increment unread counts),
+  # and buzz the phones of the ones this message is for (see push_audience).
   def notify_subscribers
     root = root_message
     sender_user = sender.is_a?(User) ? sender : nil
+    audience = pushes? ? push_audience_user_ids : nil
 
     root.message_subscriptions.includes(:user).find_each do |subscription|
       next if subscription.user == sender_user # Don't notify sender
@@ -556,10 +558,42 @@ class Message < ApplicationRecord
       subscription.increment_unread!
 
       # Native push notification for backgrounded/closed apps (skipped when muted)
-      unless subscription.muted?
-        PushNotificationService.notify_new_message(subscription.user, self)
+      next if subscription.muted? || audience.nil?
+      next unless audience == :everyone || audience.include?(subscription.user_id)
+
+      PushNotificationService.notify_new_message(subscription.user, self)
+    end
+  end
+
+  # Whether this message buzzes phones at all. A message rendered from a
+  # content template follows the template's Push switch (Superadmin → Content
+  # Templates); anything a person wrote always pushes.
+  def pushes?
+    return true if template_key.blank?
+
+    template = ContentTemplate.find_by(key: template_key)
+    template.nil? || template.push?
+  end
+
+  # Who gets the push. A reply in a production or show thread is for the people
+  # in the conversation — the message's recipients and anyone who has written
+  # in the thread — not every manager and viewer subscribed to it (they still
+  # see it as unread). Everything else pushes to every subscriber.
+  def push_audience_user_ids
+    return :everyone unless reply? && visibility.in?(%w[production show])
+
+    root = root_message
+    thread = [ root ] + root.descendant_messages.to_a
+    writers = thread.filter_map do |m|
+      case m.sender
+      when User then m.sender_id
+      when Person then m.sender.user_id
       end
     end
+    recipients = MessageRecipient.where(message: thread, recipient_type: "Person")
+                                 .joins("INNER JOIN people ON people.id = message_recipients.recipient_id")
+                                 .pluck("people.user_id")
+    (writers + recipients).compact.uniq
   end
 
   # Calculate depth for nested reply rendering

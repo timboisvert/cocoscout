@@ -59,6 +59,7 @@ class VacancyInvitationMailer < ApplicationMailer
     sender = find_sender
 
     MessageService.send_direct(
+      template_key: "vacancy_invitation", push_body: rendered[:push_body],
       sender: sender,
       recipient_person: @person,
       subject: rendered[:subject],

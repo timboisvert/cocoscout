@@ -284,6 +284,7 @@ module My
         })
 
         MessageService.send_direct(
+          template_key: "talent_left_production", push_body: rendered[:push_body],
           sender: nil,
           recipient_person: user.person,
           subject: rendered[:subject],

@@ -7,7 +7,7 @@ RSpec.describe PushDeliveryJob do
   let!(:phone) { create(:device_token, user: user, token: "b" * 64) }
   let!(:test_phone) { create(:device_token, user: user, token: "c" * 64, apns_environment: "sandbox") }
   let(:notification) do
-    { "title" => "Andie", "body" => "Call time is 7", "data" => { "path" => "/my/messages/5" }, "badge" => 2 }
+    { "title" => "Andie", "subtitle" => "Spring Revue", "body" => "Call time is 7", "data" => { "path" => "/my/messages/5" }, "badge" => 2 }
   end
 
   it "sends to each phone on its own Apple server, and forgets phones Apple says are gone" do
@@ -24,7 +24,7 @@ RSpec.describe PushDeliveryJob do
 
     expect(sent.map(&:first)).to contain_exactly(ApnsClient::HOSTS["production"], ApnsClient::HOSTS["sandbox"])
     expect(sent.first.last).to eq("path" => "/my/messages/5",
-                                  aps: { alert: { title: "Andie", body: "Call time is 7" }, sound: "default", badge: 2 })
+                                  aps: { alert: { title: "Andie", subtitle: "Spring Revue", body: "Call time is 7" }, sound: "default", badge: 2 })
     expect(DeviceToken.exists?(phone.id)).to be(true)
     expect(DeviceToken.exists?(test_phone.id)).to be(false)
   end

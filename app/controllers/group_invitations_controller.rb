@@ -48,6 +48,7 @@ class GroupInvitationsController < ApplicationController
         })
 
         MessageService.send_direct(
+          template_key: "group_member_added", push_body: rendered[:push_body],
           sender: Current.user,
           recipient_person: existing_person,
           subject: rendered[:subject],

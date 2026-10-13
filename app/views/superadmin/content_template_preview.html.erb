@@ -16,7 +16,8 @@
 
   <div class="mt-4" data-controller="content-template-preview tabs"
        data-content-template-preview-subject-template-value="<%= ERB::Util.html_escape(@template.subject) %>"
-       data-content-template-preview-body-template-value="<%= ERB::Util.html_escape(@template.body) %>">
+       data-content-template-preview-body-template-value="<%= ERB::Util.html_escape(@template.body) %>"
+       data-content-template-preview-push-template-value="<%= ERB::Util.html_escape(@template.push_body.presence || @template.subject) %>">
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <!-- Left Panel: Variables & Info -->
@@ -73,6 +74,17 @@
                 </span>
               <% end %>
             </div>
+
+            <% if @template.message? || @template.both? %>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider">Push</label>
+                <% if @template.push? %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">Buzzes phones</span>
+                <% else %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Quiet</span>
+                <% end %>
+              </div>
+            <% end %>
 
             <!-- Template Type -->
             <div>
@@ -263,6 +275,38 @@
               </div>
             </div>
 
+            <% if @template.message? || @template.both? %>
+              <%# Push Preview - styled like an iPhone lock-screen notification %>
+              <div class="mb-6">
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                  <span class="inline-flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    Push Notification Preview
+                    <% unless @template.push? %>
+                      <span class="ml-1 normal-case tracking-normal font-normal text-gray-400">(off for this template)</span>
+                    <% end %>
+                  </span>
+                </label>
+                <div class="bg-gradient-to-br from-gray-700 to-gray-900 p-6 rounded-lg">
+                  <div class="max-w-sm mx-auto bg-white/90 backdrop-blur rounded-2xl shadow-lg px-4 py-3 flex items-start gap-3 <%= 'opacity-50' unless @template.push? %>">
+                    <div class="w-10 h-10 rounded-lg flex-shrink-0 bg-pink-500 text-white flex items-center justify-center font-bold coustard-regular">C</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-baseline justify-between gap-2">
+                        <span class="font-semibold text-gray-900 text-sm truncate">Sample Production</span>
+                        <span class="text-xs text-gray-500 flex-shrink-0">now</span>
+                      </div>
+                      <div class="text-sm text-gray-800 leading-snug" data-content-template-preview-target="pushPreview"><%= @preview[:push_body] %></div>
+                    </div>
+                  </div>
+                </div>
+                <% if @template.push_body.blank? %>
+                  <p class="text-xs text-gray-500 mt-2">No push text written; the subject is used. <a href="<%= content_template_edit_path(@template) %>" class="underline font-medium">Edit template</a> to write one.</p>
+                <% end %>
+              </div>
+            <% end %>
+
             <% if @template.message? %>
               <%# Message Preview - styled like in-app message card %>
               <div>
@@ -446,6 +490,18 @@
               <code class="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800"
                     data-content-template-preview-target="subjectRaw"><%= @template.subject %></code>
             </div>
+            <% if @template.message? || @template.both? %>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Push Notification Template</label>
+                <% if @template.push_body.present? %>
+                  <code class="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800"><%= @template.push_body %></code>
+                <% else %>
+                  <div class="bg-amber-50 border border-amber-200 p-4 rounded text-sm text-amber-800">
+                    No push text defined. The subject is used for the phone notification.
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
             <div>
               <% if @template.message? %>
                 <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Body Template (Rich Text)</label>

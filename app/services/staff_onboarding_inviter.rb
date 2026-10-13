@@ -88,6 +88,7 @@ class StaffOnboardingInviter
 
   def send_in_app_message(copy = onboarding_copy)
     MessageService.send_direct(
+      template_key: "staff_onboarding_invite", push_body: copy[:push_body],
       sender: @sender,
       recipient_person: @person,
       subject: copy[:subject],
@@ -101,7 +102,8 @@ class StaffOnboardingInviter
   # otherwise the interpolated default.
   def onboarding_copy
     default = default_onboarding_copy
-    { subject: @subject_override || default[:subject], body: @body_override || default[:body] }
+    { subject: @subject_override || default[:subject], body: @body_override || default[:body],
+      push_body: (default[:push_body] unless @subject_override) }
   end
 
   # The single source of truth for the default (interpolated) onboarding copy —
@@ -117,7 +119,7 @@ class StaffOnboardingInviter
       organization_name: @organization.name,
       onboarding_url: my_onboarding_url(@organization.id, **default_url_options)
     })
-    { subject: rendered[:subject], body: rendered[:body] }
+    { subject: rendered[:subject], body: rendered[:body], push_body: rendered[:push_body] }
   end
 
   def recipient_email

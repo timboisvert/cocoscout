@@ -95,6 +95,7 @@ class CastingNotificationService
           recipient_person: person,
           subject: subject,
           body: body,
+          template_key: template_key,
           production: production,
           organization: production.organization,
           system_generated: true

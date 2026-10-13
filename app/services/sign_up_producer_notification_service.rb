@@ -51,6 +51,7 @@ class SignUpProducerNotificationService
         # Send message if channel is :message or :both
         if channel.in?([ :message, :both ]) && sender && user.person
           MessageService.send_direct(
+            template_key: TEMPLATE_KEY, push_body: rendered[:push_body],
             sender: sender,
             recipient_person: user.person,
             subject: subject,

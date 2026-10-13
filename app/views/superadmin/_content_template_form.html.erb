@@ -91,6 +91,23 @@
             </p>
           </div>
 
+          <% if template.message? || template.both? %>
+            <div class="flex items-center gap-3 pt-2">
+              <%= f.check_box :push, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+              <%= f.label :push, "Push to phones", class: "text-sm text-gray-700" %>
+            </div>
+            <p class="text-xs text-gray-500">When on, the in-app message also buzzes the CocoScout app on the recipient's phone.</p>
+
+            <div>
+              <%= f.label :push_body, "Push Notification", class: "block text-sm font-medium text-gray-700" %>
+              <%= f.text_area :push_body,
+                  rows: 2,
+                  class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500 text-sm",
+                  placeholder: template.subject.presence || "Leave blank to use the subject" %>
+              <p class="text-xs text-gray-500 mt-1">One line of plain text; the title is the production's name. Blank means the subject. Use <code class="bg-gray-100 px-1 rounded font-mono">{{variable_name}}</code> for placeholders.</p>
+            </div>
+          <% end %>
+
           <div class="border-t border-gray-200 pt-4">
             <%= f.label :mailer_class, "Mailer Class", class: "block text-sm font-medium text-gray-700" %>
             <%= f.text_field :mailer_class,

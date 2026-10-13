@@ -55,6 +55,7 @@ module Manage
           "person_name" => person.name.to_s
         )
         MessageService.send_direct(
+          template_key: "payment_setup_reminder",
           sender: Current.user,
           recipient_person: person,
           subject: ContentTemplate.interpolate(subject, variables),

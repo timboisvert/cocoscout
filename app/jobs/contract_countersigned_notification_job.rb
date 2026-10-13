@@ -29,6 +29,7 @@ class ContractCountersignedNotificationJob < ApplicationJob
     # Silently no-ops for a counterparty without an account, which is the
     # common case — the email above is what actually reaches them.
     MessageService.send_direct(
+      template_key: "contract_countersigned_to_signer", push_body: rendered[:push_body],
       sender: nil,
       recipient_person: person,
       subject: rendered[:subject],

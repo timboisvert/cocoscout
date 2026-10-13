@@ -1,10 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["variableInput", "subjectPreview", "bodyPreview", "subjectRaw", "bodyRaw"]
+    static targets = ["variableInput", "subjectPreview", "bodyPreview", "pushPreview", "subjectRaw", "bodyRaw"]
     static values = {
         subjectTemplate: String,
         bodyTemplate: String,
+        pushTemplate: String,
         emailLayoutPrefix: { type: String, default: "" },
         emailLayoutSuffix: { type: String, default: "" }
     }
@@ -19,6 +20,11 @@ export default class extends Controller {
         // Update subject preview
         if (this.hasSubjectPreviewTarget) {
             this.subjectPreviewTarget.textContent = this.interpolateText(this.subjectTemplateValue, variables)
+        }
+
+        // Update the phone notification
+        if (this.hasPushPreviewTarget) {
+            this.pushPreviewTarget.textContent = this.interpolateText(this.pushTemplateValue, variables)
         }
 
         // Update iframe with styled body

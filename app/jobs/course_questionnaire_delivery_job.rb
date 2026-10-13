@@ -48,6 +48,7 @@ class CourseQuestionnaireDeliveryJob < ApplicationJob
     end
 
     MessageService.send_direct(
+      template_key: "questionnaire_invitation", push_body: rendered&.dig(:push_body),
       sender: nil,
       recipient_person: person,
       subject: subject,

@@ -106,6 +106,7 @@ class PayoutSentPayeeNotificationJob < ApplicationJob
 
     # In-app copy for anyone with an account. Silently no-ops without a user.
     MessageService.send_direct(
+      template_key: template_key, push_body: rendered[:push_body],
       sender: nil,
       recipient_person: person,
       subject: rendered[:subject],

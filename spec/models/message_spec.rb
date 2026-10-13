@@ -373,6 +373,49 @@ RSpec.describe Message do
     end
   end
 
+  describe "push notifications: who, and whether" do
+    # user ids of every push queued so far
+    def pushed_user_ids
+      ActiveJob::Base.queue_adapter.enqueued_jobs.select { |job| job[:job] == PushDeliveryJob }.map { |job| job[:args].first }
+    end
+
+    it "follows the template's Push switch for an automated notice, still counting it unread" do
+      create(:content_template, :message_channel, key: "quiet_notice", push: false)
+      reader = create(:user)
+      create(:device_token, user: reader)
+      root = create(:message)
+      root.subscribe!(reader)
+
+      expect {
+        create(:message, :system, sender: root.sender, parent_message: root, organization: root.organization,
+                                  template_key: "quiet_notice")
+      }.not_to have_enqueued_job(PushDeliveryJob)
+      expect(MessageSubscription.find_by(user: reader, message: root).unread_count).to eq(1)
+    end
+
+    it "pushes a reply in a production thread to the people in the conversation, not every manager watching" do
+      production = create(:production)
+      recipient_user = create(:user)
+      recipient = create(:person, user: recipient_user)
+      earlier_writer = create(:user)
+      watching_manager = create(:user)
+      [ recipient_user, earlier_writer, watching_manager ].each { |user| create(:device_token, user: user) }
+
+      root = create(:message, :production_visible, production: production)
+      root.message_recipients.create!(recipient: recipient)
+      [ root.sender, recipient_user, earlier_writer, watching_manager ].each { |user| root.subscribe!(user) }
+      create(:message, sender: earlier_writer, parent_message: root, organization: root.organization,
+                       production: production, visibility: :production)
+      ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+
+      create(:message, sender: root.sender, parent_message: root, organization: root.organization,
+                       production: production, visibility: :production)
+
+      expect(pushed_user_ids).to contain_exactly(recipient_user.id, earlier_writer.id)
+      expect(MessageSubscription.find_by(user: watching_manager, message: root).unread_count).to eq(2)
+    end
+  end
+
   describe "subscription methods" do
     let(:user) { create(:user) }
     let(:message) { create(:message) }

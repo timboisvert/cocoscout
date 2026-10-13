@@ -32,6 +32,7 @@ class StaffTaxFormDeliverer
 
     StaffTaxFormMailer.form_1099_ready(@form, to: email, subject: rendered[:subject], body: rendered[:body]).deliver_later
     MessageService.send_direct(
+      template_key: "staff_1099_ready", push_body: rendered[:push_body],
       sender: @sender,
       recipient_person: @person,
       subject: rendered[:subject],

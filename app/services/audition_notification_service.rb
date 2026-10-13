@@ -148,6 +148,7 @@ class AuditionNotificationService
         template_key: template_key,
         subject: subject,
         body: body,
+        push_body: rendered&.dig(:push_body),
         production: production,
         sender: sender,
         person: person,
@@ -182,6 +183,7 @@ class AuditionNotificationService
         template_key: template_key,
         subject: subject,
         body: body,
+        push_body: rendered&.dig(:push_body),
         production: production,
         sender: sender,
         person: person,
@@ -241,6 +243,7 @@ class AuditionNotificationService
         template_key: template_key,
         subject: subject,
         body: body,
+        push_body: rendered&.dig(:push_body),
         production: production,
         sender: sender,
         person: person,
@@ -276,6 +279,7 @@ class AuditionNotificationService
         template_key: template_key,
         subject: subject,
         body: body,
+        push_body: rendered&.dig(:push_body),
         production: production,
         sender: sender,
         person: person,
@@ -290,7 +294,7 @@ class AuditionNotificationService
     # All audition notifications are message-only (no email)
     def send_notification(template_key:, subject:, body:, production:, sender:,
                           person:, message_type:, visibility:, email_batch:,
-                          mailer_method: :casting_notification)
+                          mailer_method: :casting_notification, push_body: nil)
       result = { messages_sent: 0, emails_sent: 0 }
 
       return result unless person&.email.present?
@@ -303,6 +307,8 @@ class AuditionNotificationService
           recipient_person: person,
           subject: subject,
           body: body,
+          template_key: template_key,
+          push_body: push_body,
           production: production,
           organization: production.organization,
           system_generated: true

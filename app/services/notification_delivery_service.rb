@@ -43,6 +43,7 @@ class NotificationDeliveryService
       # Send message if channel is :message or :both
       if channel.in?([ :message, :both ]) && sender && recipient.user.present?
         result[:message] = MessageService.send_direct(
+          template_key: template_key, push_body: rendered[:push_body],
           sender: sender,
           recipient_person: recipient,
           subject: subject,
@@ -155,6 +156,7 @@ class NotificationDeliveryService
         # Send message if channel is :message or :both
         if channel.in?([ :message, :both ]) && person
           message = MessageService.send_direct(
+            template_key: template_key, push_body: rendered[:push_body],
             sender: sender,
             recipient_person: person,
             subject: subject,

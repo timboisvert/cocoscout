@@ -23,7 +23,8 @@ class PushDeliveryJob < ApplicationJob
   end
 
   def self.payload(notification)
-    aps = { alert: { title: notification["title"], body: notification["body"] }.compact, sound: "default" }
+    alert = { title: notification["title"], subtitle: notification["subtitle"], body: notification["body"] }.compact
+    aps = { alert: alert, sound: "default" }
     aps[:badge] = notification["badge"].to_i if notification["badge"]
     (notification["data"] || {}).merge(aps: aps)
   end

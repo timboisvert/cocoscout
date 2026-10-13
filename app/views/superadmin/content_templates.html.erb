@@ -67,6 +67,18 @@
                           Both
                         </span>
                       <% end %>
+                      <% if template.message? || template.both? %>
+                        <% if template.push? %>
+                          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800 ml-1" title="Buzzes the CocoScout app">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                            Push
+                          </span>
+                        <% else %>
+                          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 ml-1" title="No phone notification">
+                            Quiet
+                          </span>
+                        <% end %>
+                      <% end %>
                     </td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm">
                       <% if template.active? %>

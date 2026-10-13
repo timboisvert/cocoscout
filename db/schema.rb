@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_13_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -508,6 +508,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
     t.string "template_type"
     t.datetime "updated_at", null: false
     t.jsonb "usage_locations"
+    t.boolean "push", default: true, null: false
+    t.text "push_body"
     t.index ["active"], name: "index_content_templates_on_active"
     t.index ["category"], name: "index_content_templates_on_category"
     t.index ["key"], name: "index_content_templates_on_key", unique: true
@@ -1302,6 +1304,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_12_210000) do
     t.boolean "system_generated", default: false, null: false
     t.datetime "updated_at", null: false
     t.string "visibility", default: "private", null: false
+    t.string "template_key"
+    t.string "push_body"
     t.index ["parent_message_id"], name: "index_messages_on_parent_message_id"
     t.index ["production_id"], name: "index_messages_on_production_id"
     t.index ["sender_type", "sender_id"], name: "idx_messages_sender"

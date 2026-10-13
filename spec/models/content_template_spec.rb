@@ -215,4 +215,35 @@ RSpec.describe ContentTemplate, type: :model do
       expect(result.first[:description]).to eq("A test variable")
     end
   end
+
+
+  describe "push notifications" do
+    it "says the push text with the variables filled in, as one plain line" do
+      template = build(:content_template, :message_channel, push_body: "<b>{{recipient_name}}</b>, you're on\n for {{topic}}")
+
+      expect(template.render_push_body(recipient_name: "Casey", topic: "Friday")).to eq("Casey, you're on for Friday")
+      expect(template.variable_names).to include("recipient_name", "topic")
+    end
+
+    it "falls back to the subject when no push text is written" do
+      template = build(:content_template, :message_channel, push_body: nil)
+
+      expect(template.render_push_body(recipient_name: "Casey")).to eq("Test Subject with Casey")
+    end
+
+    it "only pushes for templates that create an in-app message, and only while the switch is on" do
+      expect(build(:content_template, :message_channel)).to be_pushes
+      expect(build(:content_template, :both_channels)).to be_pushes
+      expect(build(:content_template, :message_channel, push: false)).not_to be_pushes
+      expect(build(:content_template, channel: :email)).not_to be_pushes
+    end
+
+    it "comes back from ContentTemplateService.render alongside the subject and body" do
+      create(:content_template, :message_channel, key: "call_time", push_body: "Call is at {{topic}}")
+
+      rendered = ContentTemplateService.render("call_time", { recipient_name: "Casey", topic: "7" })
+      expect(rendered[:push_body]).to eq("Call is at 7")
+      expect(ContentTemplateService.render_push_body("call_time", { topic: "8" })).to eq("Call is at 8")
+    end
   end
+end

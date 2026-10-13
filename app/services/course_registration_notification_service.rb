@@ -30,6 +30,7 @@ class CourseRegistrationNotificationService
       variables = CourseRegistrationMailer.variables(registration)
       rendered = ContentTemplateService.render(REGISTRANT_TEMPLATE_KEY, variables)
       MessageService.send_direct(sender: sender, recipient_person: person, subject: rendered[:subject], body: rendered[:body],
+                                 template_key: REGISTRANT_TEMPLATE_KEY, push_body: rendered[:push_body],
                                  production: production, organization: production.organization, system_generated: true)
     end
 

@@ -37,6 +37,7 @@ class AuditionRequestNotificationJob < ApplicationJob
       })
 
       MessageService.send_direct(
+        template_key: "audition_request_submitted", push_body: rendered[:push_body],
         sender: nil,
         recipient_person: user.person,
         subject: rendered[:subject],

@@ -67,6 +67,7 @@ class StaffW9Requester
     rendered = copy
     StaffTaxFormMailer.w9_request(@staff_member, to: recipient_email, subject: rendered[:subject], body: rendered[:body]).deliver_later
     MessageService.send_direct(
+      template_key: (@reminder ? "staff_w9_reminder" : "staff_w9_request"), push_body: rendered[:push_body],
       sender: @sender,
       recipient_person: @person,
       subject: rendered[:subject],
@@ -91,13 +92,14 @@ class StaffW9Requester
   def copy
     default = default_copy
     personal = ->(text) { ContentTemplate.interpolate(text, { "first_name" => first_name }) }
-    { subject: personal.call(@subject_override || default[:subject]), body: personal.call(@body_override || default[:body]) }
+    { subject: personal.call(@subject_override || default[:subject]), body: personal.call(@body_override || default[:body]),
+      push_body: (default[:push_body] unless @subject_override) }
   end
 
   def default_copy
     rendered = ContentTemplateService.render(@reminder ? "staff_w9_reminder" : "staff_w9_request",
                                              self.class.shared_variables(@organization).merge(first_name: first_name))
-    { subject: rendered[:subject], body: rendered[:body] }
+    { subject: rendered[:subject], body: rendered[:body], push_body: rendered[:push_body] }
   end
 
   def first_name

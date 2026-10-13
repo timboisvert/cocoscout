@@ -247,7 +247,7 @@ module Manage
         organization_name: Current.organization.name,
         contracts_url: my_contracts_url
       })
-      { subject: rendered[:subject], body: rendered[:body] }
+      { subject: rendered[:subject], body: rendered[:body], push_body: rendered[:push_body] }
     rescue ContentTemplateService::TemplateNotFoundError => e
       Rails.logger.warn("Contractor member-notification preview failed: #{e.message}")
       nil
@@ -260,6 +260,7 @@ module Manage
       return unless copy
 
       MessageService.send_direct(
+        template_key: "contract_person_added", push_body: copy[:push_body],
         sender: Current.user, recipient_person: person,
         subject: copy[:subject], body: copy[:body],
         organization: Current.organization, system_generated: true

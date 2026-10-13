@@ -94,10 +94,23 @@ class ContentTemplate < ApplicationRecord
     format_html(interpolate(content, variables))
   end
 
+  # The phone notification for the in-app message: the push_body if the
+  # superadmin wrote one, else the subject. Plain text, one line.
+  def render_push_body(variables = {})
+    ActionController::Base.helpers.strip_tags(interpolate(push_body.presence || subject, variables)).squish
+  end
+
+  # Does the in-app message this template creates buzz the phone? Only
+  # templates that create a message can; "push" is the superadmin's switch.
+  def pushes?
+    push? && (message? || both?)
+  end
+
   # Returns the list of variable names used in the template
   def variable_names
     texts = [ subject, body ]
     texts << message_body if both? && message_body.present?
+    texts << push_body if push_body.present?
     texts.compact.flat_map { |t| extract_variables(t) }.uniq
   end
 

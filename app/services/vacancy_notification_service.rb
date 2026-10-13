@@ -138,6 +138,7 @@ class VacancyNotificationService
         if channel == :message || channel == :both
           if person.present?
             message = MessageService.send_direct(
+              template_key: template_key, push_body: rendered[:push_body],
               sender: sender || system_sender(production),
               recipient_person: person,
               subject: rendered[:subject],

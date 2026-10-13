@@ -97,6 +97,8 @@ module Mics
         sent = 0
         recipients.each do |person|
           message = MessageService.send_direct(
+            template_key:     template_key,
+            push_body:        rendered[:push_body],
             sender:           sender,
             recipient_person: person,
             subject:          rendered[:subject],

@@ -56,6 +56,7 @@ class ContentTemplateService
       {
         subject: template.render_subject(variables),
         body: template.render_body(variables),
+        push_body: template.render_push_body(variables),
         channel: template.channel.to_sym,
         template: template
       }
@@ -76,6 +77,16 @@ class ContentTemplateService
       raise TemplateNotFoundError, "Template '#{key}' not found" unless template
 
       template.render_subject(variables.transform_keys(&:to_s))
+    end
+
+    # Render only the phone notification's text from a template
+    # @param key [String] The template key
+    # @param variables [Hash] Variables to interpolate
+    def render_push_body(key, variables = {})
+      template = find_template(key)
+      raise TemplateNotFoundError, "Template '#{key}' not found" unless template
+
+      template.render_push_body(variables.transform_keys(&:to_s))
     end
 
     # Render only the body from a template
@@ -129,6 +140,7 @@ class ContentTemplateService
       {
         subject: template.render_subject(variables),
         body: template.render_body(variables),
+        push_body: template.render_push_body(variables),
         variables_used: template.variable_names,
         available_variables: template.variables_with_descriptions
       }
@@ -193,6 +205,8 @@ class ContentTemplateService
         message = deliver_as_message(
           subject: subject,
           body: result[:body],
+          template_key: template_key,
+          push_body: result[:push_body],
           sender: sender,
           recipients: recipients,
           production: production,
@@ -260,6 +274,8 @@ class ContentTemplateService
         message = deliver_as_message(
           subject: rendered[:subject],
           body: rendered[:body],
+          template_key: template_key,
+          push_body: rendered[:push_body],
           sender: sender,
           recipients: people,
           production: production,
@@ -423,7 +439,7 @@ class ContentTemplateService
 
     def deliver_as_message(subject:, body:, sender:, recipients:,
                            production:, show:, organization:, message_type:, visibility:,
-                           system_generated: nil)
+                           system_generated: nil, template_key: nil, push_body: nil)
       # Filter to people with user accounts
       valid_recipients = Array(recipients).select { |p| p.is_a?(Person) && p.user.present? }
       return nil if valid_recipients.empty?
@@ -433,6 +449,8 @@ class ContentTemplateService
         recipients: valid_recipients,
         subject: subject,
         body: body,
+        template_key: template_key,
+        push_body: push_body,
         production: production,
         show: show,
         organization: organization || production&.organization,

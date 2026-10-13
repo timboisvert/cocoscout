@@ -71,6 +71,7 @@ class ContractInvoiceDelivery
 
     if (person = @contract.signer_member_person) && sender
       MessageService.create_message(sender: sender, recipients: [ person ], subject: subject, body: body.to_s,
+                                    template_key: key, push_body: ContentTemplateService.render_push_body(key, variables),
                                     message_type: :system, organization: @organization, production: @contract.production,
                                     system_generated: true)
     end

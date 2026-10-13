@@ -1774,7 +1774,7 @@ class SuperadminController < ApplicationController
 
   def content_template_params
     params.require(:content_template).permit(:key, :name, :subject, :body, :message_body, :description, :category, :active,
-                                             :template_type, :mailer_class, :mailer_action, :notes, :channel,
+                                             :template_type, :mailer_class, :mailer_action, :notes, :channel, :push, :push_body,
                                              available_variables: [ :name, :description ])
   end
 

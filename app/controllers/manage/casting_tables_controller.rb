@@ -698,6 +698,7 @@ module Manage
           })
 
           MessageService.send_direct(
+            template_key: "casting_table_notification", push_body: rendered[:push_body],
             sender: nil,
             recipient_person: person,
             subject: rendered[:subject],

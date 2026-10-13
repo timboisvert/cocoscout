@@ -56,6 +56,7 @@ class ShowNotificationService
       if channel == :message || channel == :both
         if person.user.present?
           message = MessageService.send_direct(
+            template_key: TEMPLATE_KEY, push_body: rendered&.dig(:push_body),
             sender: sender,
             recipient_person: person,
             subject: subject,
