@@ -177,7 +177,7 @@ ActiveRecord::Base.transaction do
 
   org = Organization.find_by(name: ORG_NAME) ||
         Organization.create!(name: ORG_NAME, owner: manager_user, is_demo: true,
-                             talent_pool_mode: "per_production", forum_mode: "per_production")
+                             talent_pool_mode: "per_production")
   OrganizationRole.find_or_create_by!(organization: org, user: manager_user) { |r| r.company_role = "manager" }
   say.call "organization: #{org.name} (#{org.id})"
 
