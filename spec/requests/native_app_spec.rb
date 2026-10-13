@@ -67,6 +67,37 @@ RSpec.describe "The iOS app's web side", type: :request do
       end
     end
 
+    # Ticketing settings → Door: an organization chooses when the app shows it.
+    it "follows the organization's Door setting: some hours before, or all the time" do
+      profile = TicketingProfile.for(org)
+      profile.update!(enabled: true, door_hours_before: 2)
+      create(:organization_role, :manager, user: user, organization: org)
+      production = create(:production, organization: org)
+      show = create(:show, production: production, date_and_time: Time.zone.local(2026, 10, 16, 21))
+      listing = create(:ticket_listing, organization: org, show: show, status: "on_sale")
+      sign_in
+
+      travel_to Time.zone.local(2026, 10, 16, 12) do
+        get my_dashboard_path, headers: in_app
+        expect(menu.map { |item| item["id"] }).not_to include("door")
+      end
+      travel_to Time.zone.local(2026, 10, 16, 19, 30) do
+        get my_dashboard_path, headers: in_app
+        expect(menu.last).to include("id" => "door", "path" => door_path(listing))
+      end
+
+      profile.update!(door_in_app: "always")
+      travel_to Time.zone.local(2026, 10, 14, 12) do
+        get my_dashboard_path, headers: in_app
+        expect(menu.last).to include("id" => "door", "title" => "Work the door", "path" => door_index_path,
+                                     "subtitle" => "Next: #{listing.display_title} · Fri, Oct 16")
+      end
+      travel_to Time.zone.local(2026, 10, 18, 12) do
+        get my_dashboard_path, headers: in_app
+        expect(menu.last).to include("id" => "door", "subtitle" => "No shows coming up")
+      end
+    end
+
     it "offers Groups only to someone in one" do
       sign_in
       get my_account_path, headers: in_app

@@ -103,12 +103,18 @@ module NativeAppHelper
   end
 
   # The Door, while a show is on: straight to that show's door when there's
-  # one, otherwise the list of tonight's. subtitle says which and when.
+  # one, otherwise the list of tonight's. subtitle says which and when. An
+  # organization set to keep it all the time (Ticketing settings → Door) gets
+  # the list, naming the next show, when nothing's on.
   def native_door_item(user)
     listings = DoorTonight.listings_for(user)
-    return nil if listings.empty?
+    if listings.empty?
+      return nil unless DoorTonight.always?(user)
 
-    if listings.one?
+      upcoming = DoorTonight.next_listing(user)
+      subtitle = upcoming ? "Next: #{upcoming.display_title} · #{upcoming.show.date_and_time.strftime('%a, %b %-d')}" : "No shows coming up"
+      { id: "door", title: "Work the door", path: door_index_path, icon: "qrcode.viewfinder", badge: 0, subtitle: subtitle }
+    elsif listings.one?
       listing = listings.first
       starts = listing.show.date_and_time
       verb = starts <= Time.current ? "Started" : "Starts"

@@ -98,6 +98,22 @@ RSpec.describe "Manage ticketing door access", type: :request do
     expect(flash[:alert]).to eq("Choose someone to give door access to.")
     expect(TicketingAccessGrant.count).to eq(0)
   end
+  it "chooses when the Door shows in the app" do
+    get manage_ticketing_settings_section_path(section: "door")
+    expect(response.body).to include("In the CocoScout app", "On show days", "All the time")
+
+    patch manage_ticketing_door_in_app_path, params: { ticketing_profile: { door_in_app: "always", door_hours_before: "4" } }
+    expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "door"))
+    expect(org.ticketing_profile.reload).to have_attributes(door_in_app: "always", door_hours_before: 4)
+
+    patch manage_ticketing_door_in_app_path, params: { ticketing_profile: { door_in_app: "smart", door_hours_before: "" } }
+    expect(org.ticketing_profile.reload).to have_attributes(door_in_app: "smart", door_hours_before: nil)
+
+    patch manage_ticketing_door_in_app_path, params: { ticketing_profile: { door_in_app: "sometimes" } }
+    expect(flash[:alert]).to be_present
+    expect(org.ticketing_profile.reload.door_in_app).to eq("smart")
+  end
+
   describe "inviting someone not on CocoScout" do
     include ActiveJob::TestHelper
 

@@ -6,9 +6,46 @@
     [ "box_office", "Box office", "Everything in Check in, plus cash sales and comps at the door." ]
   ]
   staff_with_accounts, staff_without_accounts = @door_staff.partition { |member| member.person&.user_id.present? }
+  in_app_choices = [
+    [ "smart", "On show days", "From the morning of a show with tickets until an hour after it ends, or 2 AM when it has no end time." ],
+    [ "always", "All the time", "For selling ahead or trying the door out. When nothing's on, it opens the list of your coming shows." ]
+  ]
 %>
 
 <div class="space-y-6">
+  <%# When the Door shows in the app's menu (DoorTonight). %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">In the CocoScout app</h2>
+      <p class="text-sm text-gray-600 mt-1">Door people find the Door at the bottom of the app's menu. Choose when it's there. In a phone's browser, cocoscout.com/door always works.</p>
+    </div>
+    <%= form_with model: ticketing_profile, url: manage_ticketing_door_in_app_path, method: :patch do |f| %>
+      <fieldset class="px-6 py-4">
+        <legend class="sr-only">When the Door shows in the app</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <% in_app_choices.each do |value, title, explanation| %>
+            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= f.radio_button :door_in_app, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <span>
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+      </fieldset>
+      <div class="px-6 pb-4">
+        <label for="ticketing_profile_door_hours_before" class="block text-sm font-medium text-gray-700 mb-1.5">On show days, it appears</label>
+        <%= f.select :door_hours_before,
+              [ [ "The morning of the show", "" ] ] + TicketingProfile::DOOR_HOURS_BEFORE.map { |hours| [ "#{pluralize(hours, 'hour')} before the show", hours ] },
+              {}, class: "#{select_class} w-full max-w-xs" %>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
       <h2 class="text-lg font-semibold text-gray-900">Who can work the door</h2>

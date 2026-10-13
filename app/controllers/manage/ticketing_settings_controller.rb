@@ -8,7 +8,7 @@ module Manage
   class TicketingSettingsController < Manage::TicketingBaseController
     SECTIONS = %w[box_office refunds tax notifications door embed].freeze
     SECTION_LABELS = { "box_office" => "Box office", "refunds" => "Refunds", "tax" => "Tax", "notifications" => "Notifications",
-                       "door" => "Door access", "embed" => "Your website" }.freeze
+                       "door" => "Door", "embed" => "Your website" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -157,6 +157,18 @@ module Manage
       level = params[:access_level].presence_in(TicketingAccessGrant::LEVELS)
       grant.update!(access_level: level) if level
       redirect_to section_path("door"), notice: "Door access updated."
+    end
+
+    # When the Door shows in the CocoScout app's menu: smart (show days, from
+    # the morning or some hours before) or always (DoorTonight).
+    def update_door_in_app
+      attrs = params.require(:ticketing_profile).permit(:door_in_app, :door_hours_before)
+      attrs[:door_hours_before] = attrs[:door_hours_before].presence
+      if ticketing_profile.update(attrs)
+        redirect_to section_path("door"), notice: "Saved. The app shows the Door #{ticketing_profile.door_in_app == 'always' ? 'all the time' : 'on show days'}."
+      else
+        redirect_to section_path("door"), alert: ticketing_profile.errors.full_messages.to_sentence
+      end
     end
 
     def revoke_door_access

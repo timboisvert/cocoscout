@@ -2,11 +2,14 @@
 
 # The shows someone could be working the door for right now: the app's menu
 # offers the Door only then (Tim, 2026-10-13), instead of as a tile every day.
+# Each organization chooses in Ticketing settings → Door (door_in_app):
+# "smart", the window below, or "always", where the menu keeps the Door and
+# names the next show when none is on.
 #
 # A show's door is open from the morning of the show (or 12 hours before, for
-# a show after midnight) until an hour after it ends. A show with no end time
-# set stays open until 2 AM the night of the show, since nobody can say when
-# it's done.
+# a show after midnight), or door_hours_before it when the organization sets
+# that, until an hour after it ends. A show with no end time set stays open
+# until 2 AM the night of the show, since nobody can say when it's done.
 module DoorTonight
   ENDS_LATE = 2 # o'clock, the morning after a show with no end time
   AFTER_END = 1.hour
@@ -14,20 +17,33 @@ module DoorTonight
   NIGHT_ROLLOVER = 6
 
   def self.listings_for(user, at: Time.current)
-    organizations = TicketingDoorAccess.organizations_for(user)
-    return [] if organizations.blank?
-
-    TicketListing.where(organization: organizations).where.not(status: %w[draft canceled])
-                 .joins(:show).where(shows: { canceled: false })
-                 .where(shows: { date_and_time: (at - 1.day)..(at + 1.day) })
-                 .includes(:production, show: :space_rental)
-                 .order("shows.date_and_time").to_a
-                 .select { |listing| window(listing.show).cover?(at) }
+    listings(TicketingDoorAccess.organizations_for(user).map(&:id))
+      .where(shows: { date_and_time: (at - 1.day)..(at + 1.day) })
+      .includes(organization: :ticketing_profile).to_a
+      .select { |listing| window(listing.show, listing.organization.ticketing_profile).cover?(at) }
   end
 
-  def self.window(show)
+  # Whether one of the user's organizations keeps the Door in the app's menu
+  # all the time.
+  def self.always?(user)
+    TicketingProfile.where(organization: TicketingDoorAccess.organizations_for(user), door_in_app: "always").exists?
+  end
+
+  # The next show at an "always" organization, for the menu to name when
+  # nothing's on.
+  def self.next_listing(user, at: Time.current)
+    organization_ids = TicketingProfile.where(organization: TicketingDoorAccess.organizations_for(user), door_in_app: "always")
+                                       .pluck(:organization_id)
+    listings(organization_ids).where("shows.date_and_time >= ?", at).first
+  end
+
+  def self.window(show, profile = nil)
     starts = show.date_and_time
-    opens = [ starts.beginning_of_day, starts - 12.hours ].min
+    opens = if profile&.door_hours_before
+      starts - profile.door_hours_before.hours
+    else
+      [ starts.beginning_of_day, starts - 12.hours ].min
+    end
     opens..closes(show)
   end
 
@@ -38,4 +54,14 @@ module DoorTonight
     night = (starts - NIGHT_ROLLOVER.hours).to_date
     [ (night + 1).in_time_zone.change(hour: ENDS_LATE), starts + 4.hours ].max
   end
+
+  def self.listings(organization_ids)
+    return TicketListing.none if organization_ids.empty?
+
+    TicketListing.where(organization_id: organization_ids).where.not(status: %w[draft canceled])
+                 .joins(:show).where(shows: { canceled: false })
+                 .includes(:production, show: :space_rental)
+                 .order("shows.date_and_time")
+  end
+  private_class_method :listings
 end

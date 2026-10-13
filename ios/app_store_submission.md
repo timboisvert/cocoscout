@@ -91,8 +91,8 @@ Review the email, the password, and these notes:
 >   Safari. There is no in-app purchase, nothing is sold inside the app, and
 >   no money changes hands in it.
 > - Door: the account also has box-office access to tonight's sample show.
->   Open the menu → "Work the door" (it appears on the day of a show) or
->   Door → the show. "Scan" opens the camera (that is the camera permission);
+>   Open the menu → "Work the door" at the bottom → the show. "Scan" opens
+>   the camera (that is the camera permission);
 >   the list shows two parties with tickets you can check in by tapping, and
 >   "Sell" records cash and comp sales. The "Card or phone pay" option shows
 >   a QR code for the buyer's own phone; the sample organization has no
@@ -212,7 +212,7 @@ ActiveRecord::Base.transaction do
   end
 
   profile = TicketingProfile.for(org)
-  profile.update!(enabled: true)
+  profile.update!(enabled: true, door_in_app: "always") # the reviewer finds the Door whatever day they look
   listing = TicketListing.find_by(show: shows[1]) || TicketListing.create!(show: shows[1], status: "on_sale")
   general = listing.ticket_tiers.find_by(name: "General") || listing.ticket_tiers.create!(name: "General", price_cents: 1_500, quantity: 60)
   listing.update!(status: "on_sale")

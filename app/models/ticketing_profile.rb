@@ -8,6 +8,11 @@ class TicketingProfile < ApplicationRecord
   # Automatic withdrawal of the CocoScout balance to the theater's bank. Off
   # by default: money left here pays payout runs without a bank debit.
   AUTO_WITHDRAW = %w[off weekly after_shows].freeze
+  # When the Door shows in the CocoScout app's menu (Ticketing settings →
+  # Door): "smart" while a show is on (DoorTonight), or "always". Smart opens
+  # door_hours_before the show, or the morning of show day when that's blank.
+  DOOR_IN_APP = %w[smart always].freeze
+  DOOR_HOURS_BEFORE = [ 1, 2, 3, 4, 6, 8, 12 ].freeze
   # Path words under /tickets that an org's slug must never shadow.
   RESERVED_SLUGS = %w[orders checkout embed embed-js v p go door api assets help admin pass-checkout my-pass].freeze
 
@@ -33,6 +38,8 @@ class TicketingProfile < ApplicationRecord
   validates :refund_policy, inclusion: { in: RefundPolicy::KINDS }
   validates :refund_window_hours, numericality: { only_integer: true, in: 0..RefundPolicy::MAX_HOURS }
   validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
+  validates :door_in_app, inclusion: { in: DOOR_IN_APP }
+  validates :door_hours_before, inclusion: { in: DOOR_HOURS_BEFORE }, allow_nil: true
 
   def refund_policy_object
     RefundPolicy.of_profile(self)
