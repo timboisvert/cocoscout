@@ -1411,12 +1411,14 @@ class SuperadminController < ApplicationController
     @template = ContentTemplate.find(params[:id])
     @preview = ContentTemplateService.preview(@template.key)
 
-    # Generate sample values for editable preview
-    @sample_variables = @preview[:available_variables].map do |var|
+    # Sample values for the editable preview: every variable the template
+    # uses, with the declared ones' descriptions (an undeclared one says so).
+    descriptions = @preview[:available_variables].to_h { |var| [ var[:name].to_s, var[:description] ] }
+    @sample_variables = ContentTemplateService.send(:sample_variable_names, @template).map do |name|
       {
-        name: var[:name],
-        description: var[:description],
-        value: ContentTemplateService.send(:sample_value_for, var[:name], @template.key)
+        name: name,
+        description: descriptions.key?(name) ? descriptions[name] : "Used but not in available variables",
+        value: ContentTemplateService.send(:sample_value_for, name, @template.key)
       }
     end
 

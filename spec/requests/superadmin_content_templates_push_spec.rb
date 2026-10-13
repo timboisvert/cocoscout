@@ -28,4 +28,18 @@ RSpec.describe "Superadmin content templates: push", type: :request do
     get content_template_edit_path(template)
     expect(response.body).to include("Push to phones", "Push Notification")
   end
+
+
+  it "previews with every variable the template uses filled in, declared or not" do
+    template.update!(subject: "{{organization_name}} added you to a contract", body: "<p>See your contracts.</p>",
+                     push_body: "Invoice {{invoice_number}}: {{amount}} due {{due_date}}",
+                     available_variables: [ { name: "invoice_number", description: "The number" } ])
+
+    get content_template_preview_path(template)
+    expect(response.body).to include("Invoice 5: $45.00 due #{Date.current.strftime('%B %d, %Y')}", "Downtown Arts Center added you")
+    expect(response.body).to match(%r{target="pushPreview">Invoice 5: \$45\.00 due [^<]*</div>})
+    expect(response.body).not_to include("[amount]")
+    # Every used variable gets a preview input, so the live re-render has a value for it too.
+    expect(response.body.scan(/data-variable-name="(\w+)"/).flatten).to contain_exactly("invoice_number", "organization_name", "amount", "due_date")
+  end
 end
