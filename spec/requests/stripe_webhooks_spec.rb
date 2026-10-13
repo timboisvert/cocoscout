@@ -365,10 +365,12 @@ RSpec.describe "StripeWebhooksController", type: :request do
       funding = org.payout_batches.create!(kind: "staff_pay", status: "funding", trigger: "manual",
                                            funding_payment_intent_id: "pi_1", total_cents: 1_000)
 
-      expect { deliver("payment_intent.payment_failed", Stripe::PaymentIntent.construct_from(id: "pi_1")) }
+      intent = Stripe::PaymentIntent.construct_from(id: "pi_1", last_payment_error: { message: "Insufficient funds." })
+      expect { deliver("payment_intent.payment_failed", intent) }
         .to change { ActiveJob::Base.queue_adapter.enqueued_jobs.count { |j| j["job_class"] == "PayoutFundingFailedNotificationJob" } }.by(1)
 
       expect(funding.reload.status).to eq("failed")
+      expect(funding.funding_error).to eq("Insufficient funds.")
     end
   end
 

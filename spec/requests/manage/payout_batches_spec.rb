@@ -87,6 +87,17 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     expect(batch.total_cents).to eq(4000)
   end
 
+  it "shows what Stripe said when a run failed to fund" do
+    batch = PayoutBatch.create!(organization: org, kind: "staff_pay", status: "failed", funding_status: "failed",
+                                trigger: "manual", funding_error: "The payment method configuration does not allow this payment method.")
+
+    get manage_payout_batch_path(batch)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("The bank debit failed, so nobody was paid.")
+    expect(response.body).to include("The payment method configuration does not allow this payment method.")
+  end
+
   describe "a run with someone still waiting on a bank" do
     before do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
