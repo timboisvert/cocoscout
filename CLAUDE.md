@@ -23,6 +23,14 @@ There are TWO levels of management pages:
 
 ---
 
+## Mobile App Roadmap
+
+1. **V1**: the app as it is today (see `ios/app_store_submission.md`).
+2. **V1.1**: Tap to Pay at the door (`ios/tap_to_pay.md`). It should also give each app build its own path-configuration address and a user-agent version marker, so V2 server changes can't reach V1 installs.
+3. **V2, next after V1.1 ships**: production mode on mobile web and in the app, plus the new navigation (enter and exit production mode from the account menu, the organization on a pink band in the top left, the floating sidebar). The plan is locked (2026-10-14): `docs/production_mode_v2_plan.md`. Don't start V2 work until V1.1 is out.
+
+---
+
 ## UI Components
 
 ### Headshots

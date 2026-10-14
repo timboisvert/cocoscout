@@ -1,0 +1,479 @@
+# Production Mode in the App (V2): difficulty assessment and plan
+
+*Read-only audit of `/manage`, 2026-10-14. No code was changed for it.*
+
+**Status: locked 2026-10-14.** Queued to start once V1.1 (Tap to Pay) ships. Navigation mockups: https://claude.ai/artifact/CNaAubdaxfkbdn3ST59LwG. Plan page: https://claude.ai/artifact/J5PCo4RYJ3Q9G4PUCR7s1R.
+
+**Scores**
+- **1** = already close; mostly reflows inside the native layout.
+- **2** = real create/edit work that needs mobile patterns: sheets, card rows, sticky actions, and drill-in sections instead of tabs.
+- **3** = the screen's value is seeing a lot at once, or it depends on drag-and-drop. It needs a different interaction model on a phone.
+
+**Priority**
+- **H** = producers need it away from a desk (day-of-show, a call-out, settling a night).
+- **M** = needed sometimes.
+- **L** = setup or desk work.
+
+---
+
+## 0. Release plan
+
+Nothing in this plan is built this week.
+
+1. **V1, now.** Finish the app and ship it with today's features.
+   - Include the must-ship items from the V1 triage in §8.
+   - Most of those fixes are server-side (views and `path-configuration.json`), so any that miss launch can follow without an app release.
+   - Keep today's `path-configuration.json` safe for V1 for as long as V1 installs are around. V1 builds will always read it.
+2. **V1.1, right after.** Tap to Pay, out quickly.
+   - Also give each app build its own path-config address (`AppConfig.swift:24`) and a version marker in the user agent. Then V2 server changes can't reach V1 installs.
+   - No production mode yet.
+3. **V2.** Production mode and the rest of this plan.
+   - Enter/exit production mode, the floating nav, the organization switcher.
+   - Production features on mobile web and the app together, in the §7/§8 order.
+   - The invisible plumbing (0a) can start once V1.1 is out.
+
+## 0a. What's locked (navigation and modes)
+
+- **One site, one login, one app.** `/my` and `/manage` stay; no subdomains.
+- **One mobile experience.** Mobile web and the app get the same screens and features; the app differs only in its frame.
+- **The everyday side has no name.** You enter and exit production mode.
+- **The switch is a menu link,** the first item in the account menu, never an always-visible control. The menu is the same in both modes.
+- **Profile, account settings and superadmin** are account-menu items, not dashboards.
+- **Top left shows where you are:** the CocoScout logo, or the organization on a soft pink band with "Production mode" under it (option A).
+- **The organization name always has a single ▾,** on every plan.
+  - Several organizations: the list, with your role and each one's plan, then settings and New organization.
+  - One organization: production settings, organization settings, plan and billing, a locked "Add a production" (Producer plan allows one) and New organization.
+- **The desktop sidebar floats:** inset, rounded, soft shadow; in production mode its edge and shadow pick up a faint pink.
+- **Pro with several productions:** "Productions" moves from the account menu into the nav with a count.
+- **Producer plan (free):** Pro modules stay in the nav with today's grey padlock (`shared/pro_marker`, `kind: :lock`), and today's plan meter sits under them.
+- **Team access as today:** non-managers see the free modules and no Pro heading; audition reviewers see Sign-ups only.
+- **The address decides the mode.** A link into `/manage` switches by itself and says so in a soft pink notice with an Exit button (`shared/button`, secondary, small); the app opens in the last mode used.
+- **Counts:** only Messages and Tasks carry a count in the nav, as today.
+- **The app:**
+  - the same menu, drawn natively;
+  - a soft pink strip with the organization under the nav bar in production mode;
+  - the floating Coco button stays as it is, but its count becomes a pink-600 badge with a 2pt white ring (`MenuButton.swift`, today `.systemRed`);
+  - the menu tiles' counts use the same pink (`MenuViewController.swift`, today `Color.red`).
+
+**Decide before V2 starts:**
+1. Does "Start producing" appear in the app at all (App Store review), or only on the web?
+2. Is Superadmin web-only, and should the app show a "you're impersonating · Stop" banner?
+3. Course instructors: attendance on the everyday side, or limited production access?
+4. One label set everywhere: "Home" or "My Calendar", and "My Shows" or "Shows"?
+5. Keep the Exit shortcut in the switch notice?
+6. Can people buy the Pro plan inside the iOS app, or does it link out to the web?
+
+Found while building the mockups (existing, not fixed): production Home hides an open vacancy's Review button on desktop until hover (`md:hidden md:group-hover:block`), and Sign-ups' Waitlists card shows an info icon because `queue-list` is missing from `shared/_module_header_icon`.
+
+## 1. Bottom line
+
+1. **The production dashboard is much closer to phone-ready than its density suggests.**
+   - Of about 170 distinct screens, roughly **105 score a 1**, **58 score a 2**, and only **6 score a 3**.
+   - That is because of recent phone work: `shared/slim_list` rows that wrap, `settings_layout`'s phone `<select>`, `module_header`'s folded actions, `wizard_steps`, `show_row`, `month_calendar`'s day list, the casting board's mobile assign sheet, the Pay People accordion, and the payout card layouts.
+   - Ticketing and Money are already largely phone-aware.
+2. **The difficulty is concentrated in six 3s.** Every one is a grid (people × shows / days / sessions / questions):
+   - Staffing → Scheduling (week builder)
+   - Casting → Casting Tables (batch-cast grid)
+   - Casting → org-wide Availability matrix
+   - Courses → Attendance (students × sessions)
+   - Ticketing → Notification settings matrix (low priority)
+   - Contacts → Questionnaire responses table (person × question; low priority)
+
+   None of these should be squeezed onto a phone. Each needs a **pivot**: one show, one day, one person or one session at a time, with the rest one tap away.
+3. **The real cost is cross-cutting, not per-screen.**
+   - About **205 hand-rolled modals** across 110 manage views.
+   - **23 hover-only reveals** across manage views (plus explanations that only exist in `title=` tooltips). On iPhone these are invisible: Tailwind v4 only applies `hover:` on devices that can hover, so `opacity-0 group-hover:opacity-100` never shows.
+   - **14 wizards**, plus many tabbed edit pages.
+   - Fixing these with **about 12 shared components** fixes most of the 2s at once.
+4. **Before any screen can come in, the shell needs work.**
+   - `/manage` is currently sent out to Safari.
+   - The Manage controllers hard-code the full web layout.
+   - The native menu only knows about Talent mode.
+
+## 1a. Ground rule: one mobile experience
+
+Everything in this plan is built **for phones, not for the app**. Mobile Safari and the app get the same screens, components and features. The app differs only in its **frame**.
+
+**Rules**
+- Phone layouts are gated by **screen width** (Tailwind `sm:` / `md:`), never by `turbo_native_app?`.
+- `turbo_native_app?` is only for the frame:
+  - hiding web navigation and titles that the native nav bar shows
+  - bridge hooks
+  - push prompts
+  - things only the phone can do (Tap to Pay, the native scanner)
+- A native piece is a **progressive upgrade of the same action**: same items, same order, same result, and a web version that works in mobile Safari.
+  - ⋯ menu: web sheet on mobile web → native action sheet in the app.
+  - Sharing: Web Share or copy → native share sheet.
+  - Exports: download → QuickLook.
+  - Some flows: web sheet → native modal presentation.
+- Production mode uses the same `production_nav_sections` in both places. The enter/exit link sits at the top of the account menu on every surface; the four existing dashboard switchers (including the one in `shared/navigation/_mobile_grid_nav`) are retired.
+- Every phase is checked at phone width in **both** mobile Safari and the app.
+
+**Where the code stands today:** the existing app-only branches already follow this rule:
+- native nav bar titles
+- push prompts
+- account links shown as rows because the app hides the sidebar
+- the Door's native scanner and Tap to Pay
+
+One deliberate exception needs revisiting for V2: the talent dashboard hides "Producing your own shows?" in the app (`my/dashboard/index.html.erb:56`), because Pro is sold on the web.
+
+---
+
+## 2. Phase 0: shell and plumbing (required before any screen)
+
+| Item | What exists today | What V2 needs |
+|---|---|---|
+| **Switching modes** (see the market study, *Dual persona mode switching*) | Four different dashboard switchers on the web; the app's menu is talent only. | **No always-visible switcher.** **Decided (option A):** everyday CocoScout has no name at all (no "Talent Dashboard"), and an "Enter production mode" / "Exit production mode" link sits at the top of the account menu on desktop, mobile web and the app, drawn from one list the server sends. Alternatives considered: Personal/Producing; you vs. your organizations; "My CocoScout"; a named workspace such as "Production Office". Talent and Performing are ruled out because they leave out staff, contractors and students. Only people with production access see it; talent-only users get a quiet "Start producing". The top left shows context: the organization switcher plus a "Production mode" label in production mode; otherwise just the CocoScout mark. Profile, account and superadmin become account-menu items. The mode follows the address (`/my` vs `/manage`): links from the other mode switch automatically and announce it. The app opens in the last mode used, stored on the user. One inbox at both message paths. In the app, a `replace_root` rule on both mode home pages. |
+| **Organization / production context** | Org and production are chosen in the session (`manage_controller.rb#set_current_organization`), so they already carry over into the WebView. | An org switcher in the menu's pink person card (the "Producing for: Stars & Garters ▾" pattern). Production selection stays in-page. |
+| **Layout** | `Manage::ManageController` hard-codes `layout "application"` (`manage_controller.rb:11`). That layout's native branch is missing `shared/native/bridge` and `bridge--form`, so on Manage pages the native menu, push and nav-bar Save would not work. | Use `resolve_layout` (→ `layouts/native`) for Manage, or add the bridge partial and `bridge--form` to the application layout's native branch. |
+| **Path configuration** | `^/manage` → `open_in: safari`. Generic `/new$`, `/edit$` and `/edit/` modal rules. | Remove the Safari rule. Add Manage-specific rules: <br>• Wizard steps after the first (`/wizard/`, `/new/…`, `/setup/`) must stay in the modal; today only step 1 matches `/new$`. <br>• Tabbed edit pages that should *not* be modals: `staffing/staff/:id/edit`, `ticketing/shows/:id/edit/sales`, `casting/tables/:id/edit/members`. <br>• `open_in: document` for CSV, print and PDF routes (guest list, door list, roster, reports CSV, W-9/1099, signed contracts). |
+| **Universal links** | `apple_app_site_associations_controller.rb` lists only `/my`, `/door`, `/profile`, `/claim`, `/vacancy`. Its comment says "Manage and checkout stay in Safari". | Add `/manage/*`, so producer emails (call-outs, sign-ups, payouts) open in the app. Ship this together with the path-config change, or the links open the app and then bounce to Safari. |
+| **Hover sweep** | 23 hover-only reveals in manage views (`opacity-0 group-hover:opacity-100`, `hidden group-hover:block`), plus explanations that only exist in `title=` tooltips. | One sweep that adopts the existing touch-safe pattern `block md:hidden md:group-hover:block` (already used at `manage/home:258`, `show_row:709`), or a visible ⋯ menu. The same bug is **already live in V1** on a talent page; see §6. |
+| **Native exports** | CSV links, `window.print`, inline PDFs. | Route them to QuickLook or the share sheet (the `DocumentPresenter` that already exists, plus path rules). |
+| **Stripe-hosted flows** | Connect onboarding, payout funding setup, Checkout and Billing Portal all redirect to Stripe. | An in-app browser session that returns by universal link. **Product decision:** whether buying a CocoScout subscription from inside an iOS app is acceptable under App Store payment rules, or whether billing should be hidden or link out in the app. |
+
+---
+
+## 3. Section scorecard
+
+| Section | Overall | Mobile priority | Hardest screen(s) | Already phone-ready |
+|---|---|---|---|---|
+| Home | **1** | H | none | Calendar already has a phone agenda list |
+| Messages | **1.5** | H | Compose (2-step modal, 1,443-line controller) | Thread and row partials already ship in `/my/messages` |
+| Shows & Events | **1.5** | H | Show detail (826 lines, ~8 modals, day-of hub); calendars (7-column grid) | `show_row`, show edit's phone tab select, show wizard |
+| Casting | **2.5** | H | **Casting Tables grid (3)**, **org Availability matrix (3)**; casting board (2) | Board has a phone assign sheet; per-show and per-person availability modals already exist |
+| Sign-ups & Auditions (+ Questionnaires) | **2** | H (sign-up roster, voting in the audition room) | Sign-up slot **assign** (drag is the only way to place someone in a slot; every row action is hover-only); sign-up form settings (1,075-line form with 6 tabs) | Phone vote bar on both review screens; casting-select bottom sheet; tap-to-schedule auditions; question reorder supports touch |
+| Courses | **2** | H (show, attendance, add student) | **Attendance (3)**; course show | Wizard, money pages |
+| Documents | **2** | M | Editor (`100vh` card with an inner scroll; the keyboard hides Save) | Reader already ships in `/my/documents` |
+| Contacts | **1** | **H** | none. Cheap, high-payoff work: contact rows with call/text/email | Filter bar folds up on phones |
+| Ticketing | **1.5** | H | Show page (show-night hub, unpaginated guest list); tier editor; notifications matrix (3, low priority) | Most pages; `/my/ticket_sales` reuses the same partials in the app |
+| Staffing | **2** | H | **Scheduling (3)**; Pay People (2) | Hub, availability, timesheets, wizard; Pay already uses accordion cards on phones |
+| Money | **1.4** | H | Show payouts (15+ modals, buried main action); settlement worksheet (modals on top of a modal) | Slim lists, payee cards, payout-run detail |
+| Contracts | **2** | M–H | Contract detail (6 modals per payment row, 10-item kebab menu); deal financials step | List pages, wizard shell, contractor pages |
+| Reports | **1–2** | M | Wide reports (Ticket Buyers has 11 columns) | One shared template, so one component fixes all 10 |
+| Settings & admin (production edit, org settings, team, billing, locations) | **2** | L | Production edit (9 tabs with no phone menu; team management relies on hover) | Org settings already uses `settings_layout` |
+
+---
+
+## 4. Page by page
+
+### Home: overall 1
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| `/manage` home | 1 | H | Agenda first, with a "Needs attention" stack on top (vacancies, sign-ups to review, unpaid payouts, hours to approve). |
+| `/manage/productions/:id` production dashboard | 1 | H | Fix the hover-only "Review" button (`productions/show:285`). Same "Needs attention" stack. |
+| `/manage/productions` index | 1 | M | Fine as is. |
+
+### Messages: overall 1.5
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Inbox (`messages#index`) | 2 | H | Search in the nav bar; filters in a sheet. |
+| Compose (`shared/_compose_message_modal`) | 2 | H | Full-screen sheet: recipient type → **People Picker** → body, with Send in the nav bar. |
+| Thread / production thread | 1 | H | Already the shipped `/my` partials. |
+
+### Shows & Events: overall 1.5
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Show lists (org and production) | 1 | H | Keep `show_row`. Filters go in a sheet with chips for active filters. The headshot strip opens a "Cast for this show" sheet; today names only appear in tooltips. |
+| Calendars (org and production) | 2 | M | Reuse home's agenda list, or a week strip with a day list. Today it's a `min-w-[640px]` grid that scrolls sideways. |
+| **Show detail** | 2 | **H** | Sticky bottom bar with the day-of actions (Attendance, Contact cast, Manage cast). Edit, Duplicate, Cancel and Transfer go in a ⋯ action sheet. Money and Tickets sections collapse. |
+| Attendance | 1 | H | A full page instead of an auto-opening modal: search, big toggles, sticky "Add walk-in". |
+| Show edit (8 tabs) | 2 | M | Section list you drill into; one Save in the nav bar. |
+| Cancel / transfer / time change | 1 | M | Fine as is. |
+| New show wizard | 1 | M | Wizard shell. |
+
+### Casting: overall 2.5
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| `/manage/casting` org index; production index | 1 | H | Pin an "Action needed" group. Tapping the row opens the board; today headshots jump to the person's page. |
+| **Casting board** (`show_cast`) | 2 | **H** | Already has a phone path: Assign buttons open a bottom sheet. Make the slot list *the* board: tap a filled slot for an action sheet (Can't make it / Replace / Move to… / Remove). Add a sticky "4/6 cast · Notify" bar, with Notify as a full-screen sheet. Gaps to close are listed in §6. |
+| Vacancy (`vacancies#show`) | 2 | **H** | **People Picker** sorted by availability, then a sticky "Send invites" button. Resend becomes visible; today it's hover-only. |
+| Production availability matrix | 2 | M | Default to a list of shows with ✓/✗/– counts. Tapping a show pushes the existing show modal as a page; add a People tab. |
+| **Org availability matrix** | **3** | M–H | Per-show list grouped by production. Tapping a show opens Available / No response / Unavailable tabs (already built in `org_availability/_show_modal`). An action sheet replaces the side popup that JS places next to the row. |
+| **Casting Tables grid** | **3** | L–M | **Show pager**: one show at a time, roles → tap a slot → picker showing each member's running count. Optional per-member checklist: "Pick Alex's shows". |
+| Casting tables list, wizard, summary, edit lists | 1 | L | Wizard shell. |
+| Casting settings → Roles | 2 | L–M | Explicit Reorder mode. `role_order` currently blocks scrolling and posts a reorder on every tap; see §6. |
+| Per-show casting settings / show roles modal | 2 | L | Give it a real route and push it as a screen. Reorder with ↑/↓; today it's HTML5 drag only, with no touch support. |
+| Talent pools | 2 | M | Tapping a tile opens an action sheet. Add uses the People Picker. Remove/Revoke are hover-only today. |
+| Roles index | 1 | L | Fine as is. |
+
+### Sign-ups & Auditions (and Questionnaires): overall 2
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Sign-ups hub, production sign-ups, form lists, auditions hub | 1 | H | Auditions' Form / Requests / Sessions / Casting nav becomes a segmented control. |
+| **Sign-up form show** (live roster) | 2 | **H** | Day-of line-up first; date pills or swipe between events. Tap a row → action sheet (Move / Remove / Profile); today Move and Remove are ~24px links. QR goes through the native share sheet. |
+| **Sign-up assign** (queue → slots) | 2 | M–H | **Slot Picker sheet**: tap a queued person, then pick a slot. Today only HTML5 drag works, with no touch support. Return / Auto-assign / Remove get a visible ⋯ instead of hover-only. Sticky "Auto-assign all". |
+| Sign-up form edit (question builder) | 2 | L | **Question Builder**: full-screen editor, reorder mode (touch reorder already exists). |
+| Sign-up form settings (6 tabs) / sign-up wizard | 2 | L–M | Section list; Save or Next in the nav bar; one **Offset input** for the ~10 hand-built days/hours/minutes triplets. |
+| Confirm slot/event changes, preview, print list | 1 | L | Before/After toggle; print list via `open_in: document`. Preview should render the talent partials; today it's a hand copy. |
+| **Audition requests list** | 2 | **H** | Compact rows with vote chips; sort/filter sheet ("not voted by me", "most yes"); Select mode for bulk archive. |
+| **Audition review + vote** (request and session) | 1 | **H** | Phone vote bar already built. Add swipe, "next one I haven't voted on", prev/next within the session, and haptics. |
+| **Session run-sheet** (`audition_sessions#show`) | 1 | **H** | Tapping a row opens the review card; prev/next is already scoped to the session. |
+| Sessions list | 2 | M | Modals become sheets. |
+| Schedule auditions | 2 | M–H | Already tap-based (`audition_assign`). Picker becomes a full-screen sheet; Remove is visible. |
+| Casting decisions / casting select | 2 | M–H | Phone bottom sheet already exists; polish it and reuse the review card. Notify flow: review → edit email → send. |
+| Audition form, settings, wizard | 2 | L | Question Builder; section list; wizard shell. |
+| Questionnaires: index, responses, response | 1 | M | Fine as is. |
+| Questionnaire show / form | 2 | M / L | People Picker for invites; Question Builder. |
+| **Questionnaire responses table** | **3** | L | Don't port it. Per-question summary plus the existing per-response view. |
+
+### Courses: overall 2
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Course list | 1 | M | Compact rows, stats as a 2-up strip. |
+| **Course show** | 2 | **H** | ⋯ menu for course actions. "Mark completed" and "Reopen" are missing from the phone layout today. The registrant "Contact" button is invisible on touch. Registration link goes through the native share sheet. |
+| Add student | 1 | **H** | Walk-in at the door; "Add" in the nav bar. |
+| **Attendance** | **3** | **H** | **Session checklist**: pick a session (default today), then big tap rows and a running count. *Catch:* the controller replaces each student's whole attendance list, so it needs a one-session endpoint. |
+| Course edit (5 tabs) / wizard | 2 | L–M | Section list; session fields stack in one column. |
+| Payout / payout run / money / settings / questionnaire / change notice | 1–2 | L–M | Payee **money rows**; failure reasons shown inline instead of only in tooltips. |
+
+### Documents: overall 2
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Lists, new, show | 1 | M | Reuse the shipped `my/documents/show` reader. |
+| **Editor** | 2 | L–M | Keyboard-aware full-screen editor sized with `dvh`, toolbar above the keyboard, Save in the nav bar. |
+| Sharing modal | 2 | M | Full-screen sheet; native picker for permission. |
+
+### Contacts: overall 1
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| **Directory** | 1 | **H** | Default to the list (tiles are the default today). **Contact row** with call / text / email / message. Search in the nav bar. |
+| Person | 1 | **H** | Phone becomes a `tel:` / `sms:` link (plain text today). Action-button row. |
+| Group | 1 | M | Member list using contact rows. |
+| Invite person | 2 | M | Invite link through the native share sheet. |
+
+### Ticketing: overall 1.5
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Ticketing dashboard | 1 | H | "Tonight" card first, with an **Open Door** button; KPI tiles as 2×2. |
+| Shows list, production page, links, change notice, visibility | 1 | M | Fine as is; the action list moves into a ⋯ menu. |
+| **Show page** | 2 | **H** | Sticky header with status and **Open Door** (hand off to the existing `/door/:id`; don't rebuild check-in). Comps and "Sold elsewhere" become sheets with steppers; "Sold elsewhere" breaks at 390px today. Guest list is search-first and paginated. |
+| **Orders / order detail / refund** | 1 | **H** | Sticky search plus infinite scroll; order sheet with a bottom action bar (Resend / Refund / Move / contact buyer). |
+| Move tickets | 2 | M | A real 3-step flow instead of reloads. |
+| Production ticket settings / per-date edit (tier editor) | 2 | L–M | Tier cards, each opening an edit sheet; reorder mode (▲▼ already exists). |
+| Passes, deals, products, taxes, balance | 1–2 | L | Pass form is long; the rest is fine. |
+| Ticketing settings → **Notifications matrix** | **3** | L | One row per email kind, tapping into a recipient checklist sheet. |
+
+### Staffing: overall 2
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Hub / roster | 1 | **H** | "Needs attention" card at the top. Call-out alert rows get **Find cover**, which opens the Assign sheet for that shift. |
+| **Scheduling** | **3** | **H** (cover, fill, notify) / L (building a week) | **Day agenda + swipeable week strip** with dots for open slots and call-outs. Within a day, group by role; tapping an open slot opens the **Assign sheet** (reuse the `shift_assign` payloads and the Everyone / Can work / Free filters). Tapping a shift opens an action sheet: edit, add person, split, merge, remove. Publish & notify is a sticky footer. Replace the dual range-slider split with time pickers. Hide the Gantt views on phones, or make them read-only. |
+| Availability | 1 | M–H | Push the day as a page; the route already exists. |
+| **Approve Hours** | 1 | **H** | Action sheet per entry; sticky "Approve all (N hrs)". |
+| Approved hours, org chart, regulars, roles & departments | 1 | L | Org chart becomes an indented list. |
+| Staff profile (7 tabs) | 2 | M | Section list; tap-to-call. |
+| Add-staff wizard | 1 | M | Already shaped like a mobile flow. |
+| **Pay People** (incl. tips) | 2 | M (tips on the night: H) | Keep the accordion; add a sticky grand total and CTA; Hours and Tips become full-height sheets with steppers. |
+| Taxes (W-9 / 1099) | 2 | L | Each row opens a detail sheet; PDFs open in the document viewer. |
+| Settings / agreement templates | 1–2 | L | Fine as is. |
+
+### Money: overall 1.4
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Money hub | 1 | H | To-do counts as the main cards. |
+| Financials lists | 1 | M | Fine as is. |
+| **Show settlement** (financials + worksheet) | 2 | **H** | Make the worksheet a real full page; its `edit` template is missing today, see §6. Stacked sections, sticky **running net**, inline expense rows, and a **snap receipt** camera action (the input rejects `image/*` today). |
+| **Show payouts** | 2 | **H** | Sticky bar whose button follows the payout's state: Calculate → Add to run → Pay. Acts and Customize become full-screen sheets with stepper rows and a sticky total. Tooltip text appears inline (e.g. why a payout failed). |
+| Payouts lists / runs list | 1 | H | Fine as is. |
+| **Payout run detail** | 2 | **H** | Review-and-pay confirm sheet; Stripe funding setup in an in-app browser that returns to the app. |
+| Incoming / payment detail | 1 | M–H | **Collect sheet**: QR, share link, **Tap to Pay** (the bridge already exists for the Door). |
+| Advances (production page has 3 tables) | 1–2 | L–M | Card rows grouped by status. |
+| Calculations / wizard / expenses / settings | 1–2 | L | Wizard shell; tier rows. |
+| Books (superadmin only) | 2 | L | Ledger rows grouped by month. |
+
+### Contracts: overall 2
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Contracts hub | 1 | H | 2×2 stats. "In motion" cards with an action strip, modelled on `/my/contracts`. Fix the calendar's `mobile_show_past`. |
+| All / completed | 1 | M | Fine as is; add search. |
+| **Contract detail** | 2 | **H** | Reorder for phones: status → money → **Next action** card → payments → bookings → docs → terms. Kebab becomes an action sheet; about 6 modals per payment row become sheets. Add a QR hand-off for "sign or pay here". |
+| Wizard: about, documents, review | 1 | L | Wizard shell. |
+| Wizard: schedule / financials / ticketing & services | 2 | L | Line-item editor with a sticky total. Recommend drafting new contracts on desktop. |
+| Wizard: prepare / sign / send | 1–2 | M–H | Full-page document reader; the licence-schedule table overflows today. |
+| Amend: dates / space | 1 | M | Keep / Move / Remove per night. |
+| Amend: deal | 2 | L | Reuses the wizard steps. |
+| Contractors / settings / templates | 1–2 | L–M | Template editor gets an "Insert field" chip picker. |
+
+### Reports: overall 1–2
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Catalogue | 1 | M | Fine as is. |
+| 10 reports (one shared `reports/show`) | 1 (≤4 columns) / 2 (wide) | M | **Responsive data table**: each row becomes a card with 2–3 key figures and an expander; total as a card. CSV and print go to the share sheet. |
+
+### Settings & admin: overall 2 (all L unless noted)
+| Page | Score | Pri | On a phone |
+|---|---|---|---|
+| Production edit (9 tabs) | 2 | L | Add the phone `<select>` (`tabs_controller` supports it) or use `settings_layout` sections. Team rows become cards with a ⋯ menu instead of hover actions. |
+| Org settings / team / locations | 2 | L | Same team-row fix. |
+| Production wizard, producer setup, org select, team invite accept | 1 | L–M | Fine as is. Invite-accept pages are opened from email on phones. |
+| Billing | 1 | L | App Store policy decision (see Phase 0). |
+
+---
+
+## 5. Proposed mobile components, ranked by leverage
+
+These are web components (ERB partial + Stimulus), so they also improve mobile web. Items marked **native** go through a Bridge Component.
+
+| # | Component | Replaces | Screens it unlocks |
+|---|---|---|---|
+| 1 | **Sheet** (`shared/sheet`): bottom sheet on phone, centered card from `sm:`, pink header kept, full-height variant, plus a route-backed variant so deep flows can be pushed as native modal screens | About 205 hand-rolled `fixed inset-0` modals. Starting point: `my/work_availability/_sheet_frame` and the casting board's assign sheet | Nearly every 2 |
+| 2 | **Action sheet / ⋯ overflow** (**native** `UIAlertController` via the planned `Menu` bridge, falling back to a web sheet) | Kebab dropdowns, hover-only reveals, wrapped rows of pink `top_menu` buttons in native, sidebar "Actions" cards | Show detail, contract detail, show payouts, run detail, talent pools, team, timesheets, 1099s, tier menu |
+| 3 | **Sticky action bar + nav-bar Save** (`data-bridge-title` is wired in `bridge/form_controller.js` but **no page uses it yet**). The main button follows the record's state | Sidebar action tiles that end up below long lists on phones; inline Save/Submit | Show payouts, settlement, casting board (Notify), scheduling (Publish), approve hours, pay people, vacancies, every edit page |
+| 4 | **People Picker sheet**: search, single or multi-select, availability filter and badges, eligibility lock with "assign anyway", "already in show" and conflict badges, add guest; loaded per context in a lazy turbo-frame so it's always fresh | Drag from the talent pool, add-person modal, vacancy checkbox lists, talent-pool add, role eligibility, compose recipients, team add, door access, staff assign | Casting board, vacancies, talent pools, compose, staffing scheduling, casting tables, team, sign-up add-person, audition scheduling, casting select, questionnaire invites (**4+ separate implementations exist today**) |
+| 5 | **Pivot views** for grids: *Show → people* list (Available / No response / Unavailable), *Person → shows* list, *Session checklist*, *Show pager with load chips*, *Day agenda + week strip* | Every people × shows/days/sessions matrix | All of the 3s |
+| 6 | **Filter sheet + search-first header** | `shared/filters/_filter_bar` (`bare` variants have no phone toggle) | Shows, messages, orders, directory, money lists, casting index |
+| 7 | **Number row + sticky running total / stepper** (generalize `show_financials/_ticket_line` and the Door's 44px steppers) | Worksheet grids, act counts, custom amounts, tips, comps, sold elsewhere, advances, tier prices | Settlement, show payouts, pay people, ticket show page, payout wizard |
+| 8 | **Contact row** (headshot `rounded-lg`, name, subline, call / text / email / message) | Directory tiles, hover-only Contact/Message buttons, member chips | Directory, person, group, course registrants, staff roster |
+| 9 | **Responsive data table**: per-column priority; rows become cards below `sm`; total row becomes a card. Builds on `slim_list` | Real `<table>`s in `overflow-x-auto` (22 files) | Reports, advances, books, ticket tables, pass holders |
+| 10 | **Section list** (tabs become a drill-in list; each section is a page or sheet; generalizes `settings_layout`'s select) | Tab strips on edit pages | Show edit, production edit, staff profile, course edit |
+| 11 | **Wizard shell**: "Step 3 of 6", sticky Back/Next or nav-bar Next, every step inside the modal | 14 `*_wizard` layouts | Shows, productions, courses, contracts, casting tables, sign-up forms, auditions, payouts, staff, deals |
+| 12 | **Reorder mode**: explicit Edit, ↑/↓ or handle-only long-press (copy `running_order_controller`'s grip-only touch) | `role_order`, `show_roles_modal` drag, question order, tier order | Casting settings, running order, question builders, ticket tiers |
+| 13 | **Stat tiles** (2×2 on phone; one partial, merging about 6 copies) | Per-page stat-box grids | Ticketing, money, contracts, reports, courses, door |
+| 14 | **Share / QR / Collect sheet** (**native** share sheet, full-screen QR, Tap to Pay) | `shared/_copy_url`, QR modals, "Copy pay link" | Registration links, ticket links, contract sign/pay, incoming payments |
+| 15 | **Native export** (**native** QuickLook / share sheet via `open_in: document`) | CSV links, `window.print`, inline PDFs | Reports, guest/door list, rosters, tax forms, signed contracts |
+| 16 | **Keyboard-aware rich-text editor** with a merge-field chip picker | Trix in `100vh` cards; hand-typed `{{field}}` | Documents, contract/agreement/staffing templates, compose |
+| 17 | **Slot Picker sheet** (tap a target instead of dragging; date pills + times, modelled on the talent `_open_slot_picker`) | `assign_drag` and other drag-to-slot interactions | Sign-up assign, move registration, audition sessions |
+| 18 | **Review card + vote bar** (swipe, "next unvoted", haptics; merges the two duplicated phone vote bars) | Two copies of the vote bar | Audition requests, session run-sheet, casting select |
+| 19 | **Question Builder** (cards, full-screen editor, reorder mode) | Three near-duplicate builders | Sign-up forms, audition forms, questionnaires, wizard form_starter |
+
+**Mobile web vs. app:** every component ships to both, gated by screen width. Only #2 (action sheet), #14 (share), #15 (export) and the mode switch have a native version in the app, each a Bridge Component that upgrades the same action, with the web version as the fallback (the app already has this pattern: Menu, DoorScanner, TapToPay, DocumentPresenter). Everything else is plain Rails/Tailwind and is identical in mobile Safari and the app.
+
+---
+
+## 6. Things found along the way (not fixed; this was read-only)
+
+**Live in V1 today**
+- `app/views/my/courses/show.html.erb:205`: the instructor's **Message** button is `opacity-0 group-hover:opacity-100`. On iPhone it is invisible but still tappable, because of Tailwind v4's hover gating. Worth fixing before V1 ships.
+
+**Web bugs**
+- `Manage::ShowFinancialsController#edit` renders an `edit` template that **doesn't exist** (`app/views/manage/show_financials/` has only `show`, `_worksheet_modal`, `_ticket_line`). `show_payouts_controller.rb:73` redirects there ("enter financial data first"), and a failed `update` renders `:edit`. Both would raise a missing-template error.
+- `role_order_controller.js:75-83` binds touch to the whole role card and calls `preventDefault()` on every touchmove. This blocks page scrolling over the list, and a tap posts a reorder.
+- Gaps in the casting board's phone assign sheet:
+  - It disables anyone already in the show, which breaks act mode (one performer, several acts).
+  - Its list goes stale after assigning.
+  - Restricted roles fail silently: the server returns 422 and the response is ignored.
+  - "Can't make it" on a finalized cast is hover-only (`_finalized_cast.html.erb:128`).
+- Ticketing "Sold elsewhere" row (`_outside_sales_row:5`): the fixed grid leaves about 0px for the ticket-type name at 390px.
+- Course show: "Mark completed" and "Reopen" exist only in the `hidden sm:flex` desktop block.
+- Contracts hub calendar doesn't pass `mobile_show_past`, so the phone list hides earlier overdue payments.
+- Pink-standard violations:
+  - `contracts/show.html.erb`: the upload and reopen modals have white headers.
+  - `contract_settings/sections/_services.html.erb:53`: Remove uses `variant: "danger"`.
+  - `shared/_attendance_modal`: white header.
+
+**Docs and cleanup**
+- **CLAUDE.md's route section is out of date.** `org_shows`, `org_signups`, `org_auditions` and `org_roles` controllers don't exist; e.g. `/manage/shows` → `shows#org_index`.
+- Apparently dead code:
+  - `shared/messages/_thread_display`
+  - `manage/course_offerings/_form`
+  - `money_financials/_third_party_financials`, `_show_row`, `_toggle_filters`
+  - `casting_availability/org_partials/*`
+  - `email_logs#show` (nothing links to it)
+  - Old drag-to-schedule auditions: `auditions/_right_list`, `_sessions_list`, `audition_sessions/_dropzone`
+  - `questionnaires/request_invitations` (no route)
+- Duplicated talent-pool member grid (initial render vs AJAX refresh), so any fix has to go in both.
+- `staffing/scheduling.html.erb:536`: the "Swipe to see all roles" hint shows on phones, where the roles are stacked and there is nothing to swipe.
+
+---
+
+## 7. Suggested V2 sequencing
+
+1. **Phase 0: shell.**
+   - Mode switch, org switcher, Manage layout, path config.
+   - Sheet, action sheet, sticky bar / nav-bar Save.
+   - Hover sweep.
+
+   Nothing ships without this, and it immediately makes every 1 usable.
+2. **Phase 1: show night and on the go.** All H, mostly 1s and 2s.
+   - Home and production dashboard; Messages; show list and show detail; attendance.
+   - Casting board; vacancies; "Can't make it".
+   - Ticketing dashboard, show page → Door; orders.
+   - Contacts.
+   - Staffing hub (Find cover), Approve Hours.
+   - Money hub, settlement, show payouts, payout run.
+   - Contract detail; course show, attendance, add student.
+   - Sign-up roster (day-of line-up); audition review and voting; session run-sheet.
+
+   New components: People Picker, Contact row, Number row + running total, Collect sheet, Review card.
+3. **Phase 2: running the week.**
+   - Compose; show edit; Scheduling as a day agenda; availability pivots; Pay People.
+   - Sign-up assign; audition requests list; schedule auditions; casting select; Reports; talent pools.
+
+   New components: Pivot views, Filter sheet, Responsive table, Section list, Slot Picker.
+4. **Phase 3: setup and desk work.** Comes in at "functional", redesigned later.
+   - Wizards (wizard shell); settings; templates; production edit.
+   - Casting Tables; form builders (Question Builder); sign-up and audition settings; Books; taxes.
+   - Notifications matrix; questionnaire responses table.
+
+   These work today at 390px or with small fixes, so they can ship *in* the app without a redesign and improve later.
+
+**Options for the low-priority 3s** (Casting Tables, notifications matrix, questionnaire responses table, the Scheduling Gantt):
+- (a) Ship them read-only on the phone with an "Edit on a bigger screen" note.
+- (b) Ship them working but unoptimized.
+- (c) Build the pivot redesign.
+
+Phase 3 assumes (b). That keeps "everything comes in" true without blocking V2 on the hardest screens.
+
+
+---
+
+## 8. Revised after Fable's review
+
+Fable checked the load-bearing claims against the code; all of them held. Changes to this plan:
+
+**New Phase 0 blockers**
+- **Path rules and the menu are server-loaded and unversioned.** `SceneDelegate.swift:50` and `AppConfig.swift:24` read one `path-configuration.json` from the server, so any change reaches V1 apps already installed.
+  - Fix: a versioned path-config address per app build, plus a user-agent marker the server checks before sending production menu items.
+  - Add `/manage/*` to universal links only once V2 is the minimum build.
+- **`Manage::ManageController` inherits from `ActionController::Base`** (`manage_controller.rb:4`). It lacks `resolve_layout` and `ActivityTracking`.
+  - Move it under `ApplicationController`.
+  - Also fix the three places that force `/my`:
+    - `concerns/authentication.rb:66-70`
+    - `AppShell.swift:128` (add a `/start` route that opens the last mode)
+    - `AppReturnsController::ALLOWED_PATH`
+  - The `^/select/` and `^/superadmin` Safari rules need decisions too.
+
+**Phase 0 split**
+- **0a plumbing.** Invisible. Starts once V1.1 is out (see §0):
+  1. Reparent the controller.
+  2. Add an organization-context concern for both controller roots.
+  3. Menu data v2 with `mode`, `kind` and one `badge_total`.
+  4. Add `/start`.
+  - The versioned path config and user-agent marker ride in V1.1 itself.
+- **0b components:** sheet, action sheet, sticky bar and nav-bar Save, and the hover sweep. The hover sweep shouldn't wait for anything.
+
+**Phase 1 split**
+- **1a, the smallest show-night slice:** enter/exit, production home, casting board, vacancies, Contacts, and the ticketing show page handing off to the Door.
+- **1b:** money (settlement, payouts, run), contracts, courses, sign-up roster, audition voting.
+
+**Deferred**
+- **Unified inbox.** It's a data-model merge: subscription-based vs. visibility-based, and unread lives on subscriptions. Ship V2 with the existing production inbox and one server-computed badge, then unify behind a switch.
+- **Push routing.** Pushes need routing by notification type; today every push opens `/my/messages/:id`.
+- **`last_dashboard`.** Store it on the user. Update it only on real page loads, not Turbo frames or prefetches, and throttle the writes.
+
+**Cut or defer from the in-app redesign:** the documents editor, contract wizard financials, Books, the notifications matrix, questionnaire responses, and in-app billing (link out instead). Keep course attendance.
+
+**App mode cue:** a "Production mode · organization" strip under the native nav bar, in the app's frame, so it never scrolls away. The switch notice fades after a few seconds.
+
+**V1 triage**
+- Must ship before launch:
+  - the active_storage document rule
+  - turning off swipe-to-dismiss on form sheets
+  - email-link sign-in
+  - the four hover-only buttons
+  - the ranking scroll fix
+  - keeping marketing and Manage out of the app
+- Hide sign-up questions now, and build answer storage next.
+- Can wait a sprint: profile credits, the resume picker, reset password, the W-9 field.
+- Missed in the first pass: impersonating in the app has no Stop control, and Manage lacks activity tracking.
+- Security look: the `except: %i[index]` access guards (`manage_controller.rb:21-28`).
+
+**Decisions for the owner**
+1. Does "Start producing" appear in the app at all (App Store review), or only on the web?
+2. Is Superadmin web-only, and should the app show an impersonation banner with Stop?
+3. Course instructors: attendance on the everyday side, or limited production access?
+4. One label set everywhere: "Home" or "My Calendar", and "My Shows" or "Shows"?
+5. Keep the Exit shortcut in the switch notice?
+
+Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions in 8 files.

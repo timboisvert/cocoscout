@@ -63,3 +63,11 @@ the buyer paying: $21.42 online, $21.22 tapped.
   version asks for it.
 - Test with a Stripe test-mode Location and the SDK's simulated reader, then
   a real tap on a device.
+
+## After this: V2
+
+Once V1.1 (Tap to Pay) ships, the next app release is V2: production mode
+on mobile web and in the app. The plan is locked in
+`docs/production_mode_v2_plan.md`. Have V1.1 carry a per-build
+path-configuration address and a user-agent version marker (see that plan's
+release section), so V2 server changes can't reach V1 installs.
