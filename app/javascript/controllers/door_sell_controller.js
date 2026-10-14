@@ -6,7 +6,8 @@ import { orderTotalCents, money } from "controllers/lib/ticket_pricing"
 // the online price, fees and all (the buyer pays on their own phone).
 export default class extends Controller {
     static targets = ["row", "input", "count", "minus", "plus", "cardButton", "cashButton", "compButton", "tapButton"]
-    static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, tapPerMille: Number, tapFixed: Number }
+    static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, tapPerMille: Number, tapFixed: Number,
+                      cardLabel: { type: String, default: "Card or phone pay" } }
 
     connect() {
         this.render()
@@ -52,7 +53,7 @@ export default class extends Controller {
 
         const card = orderTotalCents({ base, paid, feeMode: this.feeModeValue, platformFee: this.platformFeeValue,
             perMille: this.perMilleValue, fixed: this.fixedValue })
-        this.label(this.cardButtonTarget, count === 0 ? "Card or phone pay" : `Card or phone pay · ${money(card)}`)
+        this.label(this.cardButtonTarget, count === 0 ? this.cardLabelValue : `${this.cardLabelValue} · ${money(card)}`)
         this.label(this.cashButtonTarget, count === 0 ? "Cash" : `Cash · ${money(base)}`)
         ;[this.cardButtonTarget, this.cashButtonTarget, this.compButtonTarget].forEach((button) => { button.disabled = count === 0 })
         // Tap to Pay (the app): the same sale at Stripe's in-person rate.

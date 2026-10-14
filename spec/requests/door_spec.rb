@@ -298,6 +298,9 @@ RSpec.describe "Door", type: :request do
 
         get door_path(listing), headers: { "User-Agent" => "Turbo Native iOS; bridge-components: [form menu door-scanner push tap-to-pay];" }
         expect(response.body).to include("Tap to pay", "data-door-sell-tap-per-mille-value=\"27\"", "data-door-sell-tap-fixed-value=\"15\"")
+        # Beside it, the QR code reads as the other way to pay: tap a card, or scan a code.
+        expect(response.body).to include("Scan to pay", "data-door-sell-card-label-value=\"Scan to pay\"")
+        expect(response.body).not_to include("Card or phone pay")
       end
 
       it "holds the seats, has the app make the in-person PaymentIntent, and checks them in once Stripe says it's paid" do
