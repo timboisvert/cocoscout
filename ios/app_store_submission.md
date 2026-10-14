@@ -255,9 +255,12 @@ re-dates nothing) and move the listing's show if review drags on.
 
 ## Still needs a Mac
 
-- Screenshots: 6.7" and 6.1" iPhone sets from the Simulator (menu, My
+- Screenshots: 6.9" and 6.1" iPhone sets from the Simulator (menu, My
   Calendar, a message thread, the door list, the scanner). iPad isn't
   required while the app is iPhone-only.
-- Build 4 upload from Xcode with `CURRENT_PROJECT_VERSION = 4`.
-- Tap to Pay (later): add the Stripe Terminal SDK package, the
-  `TapToPayComponent`, Apple's How to Tap screen, and build.
+- Submit build 5 (`CURRENT_PROJECT_VERSION = 5`; it adds the location and
+  Bluetooth purpose strings App Store Connect asked for on build 4). Bump to
+  6 for the next upload.
+- v1 ships without Tap to Pay: release builds leave it out until Apple
+  grants the distribution entitlement (ios/tap_to_pay.md). Still to build
+  for that: Apple's How to Tap screen.
