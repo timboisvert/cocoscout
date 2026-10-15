@@ -39,10 +39,11 @@ module Ticketing
     end
 
     # Dates still to come that aren't canceled, without eager loading, so it
-    # can be counted and ranked.
+    # can be counted and ranked. Tonight's stays until its door closes
+    # (DoorTonight.still_on), past midnight for a late show.
     def upcoming
-      @organization.ticket_listings.joins(:show).where.not(status: "canceled").where(shows: { canceled: false })
-                   .where("shows.date_and_time >= ?", Time.current.beginning_of_day)
+      DoorTonight.still_on(@organization.ticket_listings.joins(:show).where.not(status: "canceled")
+                                        .where(shows: { canceled: false }))
     end
   end
 end

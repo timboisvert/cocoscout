@@ -52,6 +52,25 @@ RSpec.describe "Door", type: :request do
       expect(body.index(">Coming up<")).to be < body.index(door_path(later))
     end
 
+    it "keeps last night's show on the list until its door closes" do
+      production = create(:production, organization: org)
+      friday = Time.zone.local(2026, 11, 6)
+      late = create(:ticket_listing, organization: org, status: "on_sale",
+                    show: create(:show, production: production, date_and_time: friday.change(hour: 22, min: 30)))
+      grant(door_person, "box_office")
+
+      travel_to(friday + 1.day + 30.minutes) do # 12:30 AM: no end time, so on until 2 AM
+        sign_in(door_person)
+        get door_index_path
+        expect(response.body).to include(door_path(late))
+      end
+      travel_to(friday + 1.day + 2.hours + 30.minutes) do
+        sign_in(door_person)
+        get door_index_path
+        expect(response.body).not_to include(door_path(late))
+      end
+    end
+
     it "opens for someone with a grant, and lists that theater's shows" do
       grant(door_person, "check_in")
       sign_in(door_person)

@@ -15,11 +15,10 @@ class DoorController < ApplicationController
 
   def index
     organizations = TicketingDoorAccess.organizations_for(Current.user)
-    @listings = TicketListing.where(organization: organizations).where.not(status: %w[draft canceled])
-                             .joins(:show).where(shows: { canceled: false })
-                             .where("shows.date_and_time >= ?", Time.current.beginning_of_day)
-                             .includes(:organization, :production, show: :location)
-                             .order("shows.date_and_time").limit(40).to_a
+    on_sale = TicketListing.where(organization: organizations).where.not(status: %w[draft canceled])
+                           .joins(:show).where(shows: { canceled: false })
+    @listings = DoorTonight.still_on(on_sale).includes(:organization, :production, show: :location)
+                           .order("shows.date_and_time").limit(40).to_a
   end
 
   def show

@@ -37,6 +37,17 @@ module DoorTonight
     listings(organization_ids).where("shows.date_and_time >= ?", at).first
   end
 
+  # The listings in scope (joined to their shows) whose show is still on:
+  # today's, and last night's until its door closes. Lists of tonight's and
+  # upcoming shows (the Door's, Ticketing's) go by this, so a late show
+  # doesn't drop off at midnight while people are still buying at the door
+  # (Tim, 2026-10-15: until it ends, or 2 AM when nobody knows the end).
+  def self.still_on(scope, at: Time.current)
+    late = scope.where(shows: { date_and_time: (at - 1.day)...at.beginning_of_day })
+                .includes(show: :space_rental).select { |listing| closes(listing.show) > at }.map(&:id)
+    scope.where("shows.date_and_time >= ? OR ticket_listings.id IN (?)", at.beginning_of_day, late.presence || [ 0 ])
+  end
+
   def self.window(show, profile = nil)
     starts = show.date_and_time
     opens = if profile&.door_hours_before

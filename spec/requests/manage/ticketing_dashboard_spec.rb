@@ -96,6 +96,25 @@ RSpec.describe "Ticketing dashboard", type: :request do
     expect(response.body).to include("1 show in the next two weeks isn&#39;t on sale")
   end
 
+  it "keeps last night's late show on until its door closes, not just until midnight" do
+    friday = Time.zone.local(2026, 11, 6)
+    late = listing_at(friday.change(hour: 22, min: 30))                                  # no end time: on until 2 AM
+    timed = listing_at(friday.change(hour: 21)).tap { |l| l.show.update!(duration_minutes: 60) } # ends 10 PM: door shuts 11 PM
+
+    travel_to(friday + 1.day + 30.minutes) do # 12:30 AM Saturday
+      dashboard = TicketingDashboard.new(org)
+      expect(dashboard.tonight.map(&:first)).to eq([ late ])
+      expect(dashboard.just_played.map(&:first)).to eq([ timed ])
+      expect(dashboard.coming_up.flat_map { |row| row.dates.map(&:first) }).to eq([ late ])
+    end
+
+    travel_to(friday + 1.day + 2.hours + 30.minutes) do # 2:30 AM
+      dashboard = TicketingDashboard.new(org)
+      expect(dashboard.tonight).to be_empty
+      expect(dashboard.just_played.map(&:first)).to eq([ late, timed ])
+    end
+  end
+
   it "says the box office isn't open until they open it" do
     TicketingProfile.for(org).update!(enabled: false)
     get manage_ticketing_path

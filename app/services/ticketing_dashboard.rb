@@ -72,15 +72,19 @@ class TicketingDashboard
     @upcoming_production_count ||= upcoming.distinct.count("ticket_listings.production_id")
   end
 
+  # Today's shows, and last night's until its door closes (a show running
+  # past midnight is still tonight's).
   def tonight
-    @tonight ||= with_stats(listings.where.not(status: %w[canceled draft]).where(shows: { canceled: false })
-                                    .where(shows: { date_and_time: Time.current.beginning_of_day..Time.current.end_of_day })
-                                    .order("shows.date_and_time"))
+    @tonight ||= with_stats(DoorTonight.still_on(listings.where.not(status: %w[canceled draft]).where(shows: { canceled: false }))
+                                       .where("shows.date_and_time <= ?", Time.current.end_of_day)
+                                       .order("shows.date_and_time"))
   end
 
+  # Before today, but not one that's still on tonight.
   def just_played
     @just_played ||= with_stats(listings.where.not(status: %w[canceled draft])
                                         .where("shows.date_and_time < ?", Time.current.beginning_of_day)
+                                        .where.not(id: tonight.map { |listing, _| listing.id })
                                         .order("shows.date_and_time DESC").limit(JUST_PLAYED))
   end
 
