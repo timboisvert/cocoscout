@@ -29,9 +29,10 @@ final class WebViewController: HotwireWebViewController {
         navigationItem.titleView = UIView()
     }
 
-    /// Sign-in and sign-up stand on their own: no bar above them (the page has
-    /// its own heading, and there's nowhere to go back to).
-    private static let barlessPaths: Set<String> = ["/signin", "/signup"]
+    /// The welcome screen, sign-in and sign-up stand on their own: no bar
+    /// above them (each has its own heading; sign-in and sign-up have a Back
+    /// link to the welcome screen).
+    private static let barlessPaths: Set<String> = ["/welcome", "/signin", "/signup"]
 
     private var hidesBar: Bool {
         Self.barlessPaths.contains(currentVisitableURL.path)

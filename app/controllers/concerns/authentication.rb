@@ -34,7 +34,8 @@ module Authentication
 
   def request_authentication
     session[:return_to_after_authenticating] = request.url
-    redirect_to signin_path
+    # The app opens on its welcome screen, not straight onto the form.
+    redirect_to request.user_agent.to_s.include?("Turbo Native") ? welcome_path : signin_path
   end
 
   def after_authentication_url

@@ -47,7 +47,7 @@
       }
     },
     {
-      "patterns": ["/signin$", "/signup$", "/password$", "/reset/"],
+      "patterns": ["/welcome$", "/password$", "/reset/"],
       "properties": {
         "context": "default",
         "presentation": "replace_root",

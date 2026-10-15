@@ -159,7 +159,7 @@ final class AppShell {
         guard let page, let url = URL(string: page), url.host == AppConfig.baseURL.host else { return nil }
         let path = url.path
         let home = ["", "/", "/my", "/my/"]
-        let signingIn = ["/signin", "/signup", "/signout", "/password", "/reset"]
+        let signingIn = ["/welcome", "/signin", "/signup", "/signout", "/password", "/reset"]
         guard !home.contains(path), !signingIn.contains(where: { path.hasPrefix($0) }) else { return nil }
         return url.query.map { "\(path)?\($0)" } ?? path
     }

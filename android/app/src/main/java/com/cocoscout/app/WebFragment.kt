@@ -3,7 +3,8 @@ package com.cocoscout.app
 import android.os.Bundle
 import android.view.View
 import androidx.core.net.toUri
-import androidx.core.view.isVisible
+import android.view.ViewGroup
+import androidx.core.view.updateLayoutParams
 import dev.hotwire.navigation.destinations.HotwireDestinationDeepLink
 import dev.hotwire.navigation.fragments.HotwireWebFragment
 
@@ -26,15 +27,20 @@ open class WebFragment : HotwireWebFragment() {
     }
 
     /**
-     * Sign-in and sign-up stand on their own: no title bar above them (the
-     * page has its own heading, and there's nowhere to go back to). The status
-     * bar's space stays.
+     * The welcome screen, sign-in and sign-up stand on their own: no title bar
+     * above them (each has its own heading; sign-in and sign-up have a Back
+     * link to the welcome screen). The status bar's space stays.
      */
     private fun updateToolbar(location: String) {
-        toolbarForNavigation()?.isVisible = location.toUri().path !in barlessPaths
+        val toolbar = toolbarForNavigation() ?: return
+        // Zero height rather than hidden: the app bar above it only keeps the
+        // status bar's space while it has a visible child.
+        toolbar.updateLayoutParams {
+            height = if (location.toUri().path in barlessPaths) 0 else ViewGroup.LayoutParams.WRAP_CONTENT
+        }
     }
 
     companion object {
-        private val barlessPaths = setOf("/signin", "/signup")
+        private val barlessPaths = setOf("/welcome", "/signin", "/signup")
     }
 }

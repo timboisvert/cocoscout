@@ -50,6 +50,9 @@ Rails.application.routes.draw do
   # Back into the iOS app from its secure sheet (Stripe bank setup).
   get "/app/return", to: "app_returns#show", as: "app_return"
 
+  # The app's first screen when signed out (WelcomeController).
+  get   "/welcome",       to: "welcome#show",         as: "welcome"
+
   # Authentication
   get   "/signup",        to: "auth#signup",          as: "signup"
   post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"

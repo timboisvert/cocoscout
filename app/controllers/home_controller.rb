@@ -7,7 +7,7 @@ class HomeController < ApplicationController
 
   # The app doesn't carry the marketing site: App Review rejects an app that
   # shows a website (and these pages sell Pro). Links to them open in Safari
-  # (path-configuration.json); a redirect here lands on My, or sign-in.
+  # (path-configuration.json); a redirect here lands on My, or the app's welcome screen.
   before_action :keep_out_of_the_app, only: %i[new_landing new_performers new_producers pricing sketchfest]
 
   # Use the public facing layout
@@ -41,6 +41,6 @@ class HomeController < ApplicationController
   private
 
   def keep_out_of_the_app
-    redirect_to(authenticated? ? my_dashboard_path : signin_path) if turbo_native_app?
+    redirect_to(authenticated? ? my_dashboard_path : welcome_path) if turbo_native_app?
   end
 end

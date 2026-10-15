@@ -131,7 +131,7 @@ RSpec.describe "The iOS app's web side", type: :request do
   end
 
   describe "signing in and out in the app" do
-    it "lands on My even for someone who last used Manage, and signs out to the sign-in screen" do
+    it "lands on My even for someone who last used Manage, and signs out to the welcome screen" do
       create(:organization_role, :manager, user: user, organization: org)
       post handle_signin_path, params: { email_address: user.email_address, password: password }
       get manage_path
@@ -141,7 +141,43 @@ RSpec.describe "The iOS app's web side", type: :request do
       expect(response).to redirect_to(my_dashboard_path)
 
       get signout_path, headers: in_app
+      expect(response).to redirect_to(welcome_path)
+    end
+
+    # Opening the app signed out: a welcome screen first, not the form (Tim, 2026-10-15).
+    it "opens on the welcome screen when signed out, with Back links from sign-in and sign-up" do
+      get my_dashboard_path, headers: in_app
+      expect(response).to redirect_to(welcome_path)
+
+      get welcome_path, headers: in_app
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Your shows, your messages, your tickets. All in one place.",
+                                       "Working the box office: scan and sell tickets", "Create an account",
+                                       signin_path, signup_path)
+
+      get signin_path, headers: in_app
+      expect(Nokogiri::HTML(response.body).at_css("a[href='#{welcome_path}']")&.text).to include("Back")
+      get signup_path, headers: in_app
+      expect(Nokogiri::HTML(response.body).at_css("a[href='#{welcome_path}']")&.text).to include("Back")
+
+      # The page rules open it as the app's whole screen; sign-in goes on top of it.
+      rules = JSON.parse(Rails.public_path.join("hotwire-native/path-configuration.json").read)["rules"]
+      replace_root = rules.select { |rule| rule["properties"]["presentation"] == "replace_root" }.flat_map { |rule| rule["patterns"] }
+      expect(replace_root).to include("/welcome$")
+      expect(replace_root).not_to include("/signin$")
+
+      sign_in
+      get welcome_path, headers: in_app
+      expect(response).to redirect_to(my_dashboard_path)
+    end
+
+    it "keeps the website's own sign-in" do
+      get welcome_path
       expect(response).to redirect_to(signin_path)
+      get my_dashboard_path
+      expect(response).to redirect_to(signin_path)
+      get signin_path
+      expect(Nokogiri::HTML(response.body).at_css("a[href='#{welcome_path}']")).to be_nil
     end
 
     it "still signs a browser out to the home page" do
@@ -270,9 +306,9 @@ RSpec.describe "The iOS app's web side", type: :request do
 
   it "keeps the marketing site out of the app" do
     get root_path, headers: in_app
-    expect(response).to redirect_to(signin_path)
+    expect(response).to redirect_to(welcome_path)
     get pricing_path, headers: in_app
-    expect(response).to redirect_to(signin_path)
+    expect(response).to redirect_to(welcome_path)
 
     sign_in
     get root_path, headers: in_app
