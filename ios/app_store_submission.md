@@ -90,7 +90,7 @@ Review the email, the password, and these notes:
 >   deliberately a website, not part of the app. Any link to it opens in
 >   Safari. There is no in-app purchase, nothing is sold inside the app, and
 >   no money changes hands in it.
-> - Door: the account also has box-office access to tonight's sample show.
+> - Door: the account also has box-office access to the sample shows.
 >   Open the menu → "Work the door" at the bottom → the show. "Scan" opens
 >   the camera (that is the camera permission);
 >   the list shows two parties with tickets you can check in by tapping, and
@@ -141,7 +141,8 @@ the cached menu and the push token). Already in the manifest.
 
 One block, run on production. It creates a sample organization on the demo
 email domain (so the superadmin metrics ignore it), a manager, the reviewer
-as a performer cast in four shows, a message thread, tonight's show on sale
+as a performer cast in four shows, a message thread, tonight's show and
+the one three days out on sale
 with two paid parties to check in, and box-office door access for the
 reviewer. Run it dry first; it prints what it would make and rolls back.
 
@@ -213,19 +214,22 @@ ActiveRecord::Base.transaction do
 
   profile = TicketingProfile.for(org)
   profile.update!(enabled: true, door_in_app: "always") # the reviewer finds the Door whatever day they look
-  listing = TicketListing.find_by(show: shows[1]) || TicketListing.create!(show: shows[1], status: "on_sale")
-  general = listing.ticket_tiers.find_by(name: "General") || listing.ticket_tiers.create!(name: "General", price_cents: 1_500, quantity: 60)
-  listing.update!(status: "on_sale")
-  say.call "tonight's show on sale: #{listing.display_title} (listing #{listing.id}), General $15 × 60"
-
-  # Two parties pre-sold at the box office, their tickets still to be scanned.
-  if listing.ticket_orders.none?
-    door = TicketDoor.new(listing, manager_user)
-    { "Avery Patel" => 2, "Sam Okafor" => 3 }.each do |name, count|
-      order = door.sell({ general.id.to_s => count.to_s }, kind: "cash", buyer_name: name)
-      order.tickets.update_all(status: "valid", checked_in_at: nil, checked_in_by_id: nil)
+  # Tonight's show and the one three days out are both on sale, each with two
+  # parties pre-sold at the box office (tickets still to scan), so the
+  # reviewer has a show at the door whichever day they look.
+  listings = [ shows[1], shows[2] ].map do |show|
+    listing = TicketListing.find_by(show: show) || TicketListing.create!(show: show, status: "on_sale")
+    general = listing.ticket_tiers.find_by(name: "General") || listing.ticket_tiers.create!(name: "General", price_cents: 1_500, quantity: 60)
+    listing.update!(status: "on_sale")
+    if listing.ticket_orders.none?
+      door = TicketDoor.new(listing, manager_user)
+      { "Avery Patel" => 2, "Sam Okafor" => 3 }.each do |name, count|
+        order = door.sell({ general.id.to_s => count.to_s }, kind: "cash", buyer_name: name)
+        order.tickets.update_all(status: "valid", checked_in_at: nil, checked_in_by_id: nil)
+      end
     end
-    say.call "parties to check in: Avery Patel (2), Sam Okafor (3)"
+    say.call "on sale: #{listing.display_title} #{show.date_and_time.in_time_zone(tz).strftime('%a %b %-d')} (listing #{listing.id}), General $15 × 60, parties Avery Patel (2) and Sam Okafor (3)"
+    listing
   end
 
   grant = org.ticketing_access_grants.where(revoked_at: nil).find_or_initialize_by(user: reviewer_user)
@@ -234,7 +238,7 @@ ActiveRecord::Base.transaction do
 
   puts
   puts "App Review sign-in: #{REVIEWER_EMAIL} / #{PASSWORD}"
-  puts "Door URL: https://cocoscout.com/door/#{listing.id}"
+  puts "Door URLs: " + listings.map { |listing| "https://cocoscout.com/door/#{listing.id}" }.join(", ")
   raise ActiveRecord::Rollback if DRY_RUN
 end
 puts(DRY_RUN ? "Rolled back." : "Done.")
@@ -249,9 +253,10 @@ After a real run: the reviewer's password is in the output; change the
 organization from Superadmin → Organizations (the two users are on the demo
 domain and can stay).
 
-The show is "tonight" relative to the day the block runs, so run it the day
-you submit, or re-run it (it's idempotent: it only adds what's missing and
-re-dates nothing) and move the listing's show if review drags on.
+The shows on sale are "tonight" and three days later, relative to the day
+the block runs, so run it the day you submit. If review drags past the
+second one, re-run it (it's idempotent: it only adds what's missing and
+re-dates nothing) the day before, and it adds the next dates.
 
 ## Still needs a Mac
 
