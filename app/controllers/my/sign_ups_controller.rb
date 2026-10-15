@@ -82,7 +82,7 @@ module My
       end
 
       @slots = @instance&.sign_up_slots&.includes(:sign_up_registrations)&.order(:position) || []
-      @questions = @sign_up_form.questions.order(:position)
+      @questions = SignUpForm::CUSTOM_QUESTIONS ? @sign_up_form.questions.order(:position) : Question.none
       @show = @instance&.show
       @my_registrations = find_user_registrations
       @my_registration = @my_registrations.first # For backward compatibility

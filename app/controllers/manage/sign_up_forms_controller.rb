@@ -641,7 +641,7 @@ module Manage
         @preview_show = nil
         @slots = @sign_up_form.sign_up_slots.order(:position)
       end
-      @questions = @sign_up_form.questions.order(:position)
+      @questions = SignUpForm::CUSTOM_QUESTIONS ? @sign_up_form.questions.order(:position) : Question.none
     end
 
     def print_list

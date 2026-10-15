@@ -14,6 +14,12 @@ class SignUpForm < ApplicationRecord
   has_many :sign_up_form_holdouts, dependent: :destroy
   has_many :sign_up_registrations, through: :sign_up_slots
 
+  # Custom questions are switched off until answers are saved (Tim,
+  # 2026-10-15): the sign-up page showed them but nothing stored the answers
+  # (SignUpRegistration has no answers yet). Building that is post-V1 work;
+  # turning this back on shows the Questions tab and the questions again.
+  CUSTOM_QUESTIONS = false
+
   # Questions use polymorphic questionable association
   has_many :questions, as: :questionable, dependent: :destroy
   accepts_nested_attributes_for :questions, reject_if: :all_blank, allow_destroy: true

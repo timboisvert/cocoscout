@@ -4,7 +4,7 @@
      data-create-path="<%= manage_create_question_signups_form_path(@production, @sign_up_form) %>"
      data-new-description="Custom Questions are shown on the sign-up form."
      data-has-errors="<%= @question.errors.any? %>"
-     data-tabs-initial-tab-value="<%= params[:tab].to_i %>">
+     data-tabs-initial-tab-value="<%= [ params[:tab].to_i, SignUpForm::CUSTOM_QUESTIONS ? 2 : 1 ].min %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -24,7 +24,9 @@
   <nav class="flex space-x-2 border-b border-gray-200 mb-6 overflow-x-auto">
     <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Basic Info</button>
     <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Instructions</button>
-    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Questions</button>
+    <% if SignUpForm::CUSTOM_QUESTIONS %>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap">Questions</button>
+    <% end %>
   </nav>
 
   <%# ==================== TAB 0: BASIC INFO ==================== %>
@@ -61,7 +63,7 @@
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <%= render "shared/section_heading", padding: "px-5 py-4", title: "Introduction Instructions" %>
         <div class="p-5">
-          <p class="text-sm text-gray-600 mb-4">This text appears at the top of the sign-up form, before any questions.</p>
+          <p class="text-sm text-gray-600 mb-4">This text appears at the top of the sign-up form<%= ", before any questions" if SignUpForm::CUSTOM_QUESTIONS %>.</p>
           <%= form.rich_text_area :instruction_text,
                                   class: "w-full prose max-w-none",
                                   data: { controller: "trix-no-files" } %>
@@ -85,12 +87,14 @@
     <% end %>
   </div>
 
-  <%# ==================== TAB 2: QUESTIONS ==================== %>
-  <div data-tabs-target="panel" class="hidden">
-    <p class="text-sm text-gray-600 mb-5">Add custom questions to collect additional information. Questions appear on the sign-up form.</p>
-    <%= render partial: "questions" %>
-  </div>
+  <%# ==================== TAB 2: QUESTIONS (off until answers are saved; SignUpForm::CUSTOM_QUESTIONS) ==================== %>
+  <% if SignUpForm::CUSTOM_QUESTIONS %>
+    <div data-tabs-target="panel" class="hidden">
+      <p class="text-sm text-gray-600 mb-5">Add custom questions to collect additional information. Questions appear on the sign-up form.</p>
+      <%= render partial: "questions" %>
+    </div>
 
-  <!-- Question Modal -->
-  <%= render "shared/question_modal" %>
+    <!-- Question Modal -->
+    <%= render "shared/question_modal" %>
+  <% end %>
 </div>

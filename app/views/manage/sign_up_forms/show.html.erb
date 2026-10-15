@@ -706,7 +706,7 @@
               <div class="flex-shrink-0 w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-sm font-medium">1</div>
               <div>
                 <p class="font-medium text-gray-900">Customize your form</p>
-                <p class="text-sm text-gray-500">Add a description, header image, and custom questions</p>
+                <p class="text-sm text-gray-500"><%= SignUpForm::CUSTOM_QUESTIONS ? "Add a description, header image, and custom questions" : "Add a description and header image" %></p>
               </div>
             </div>
             <div class="flex items-start gap-3">
