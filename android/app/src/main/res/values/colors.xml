@@ -1,0 +1,8 @@
+<resources>
+    <!-- Tailwind v4 pink-500 and pink-600, as the website compiles them. -->
+    <color name="pink">#FFF6339A</color>
+    <color name="pink_600">#FFE60076</color>
+    <color name="gray_900">#FF101828</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="ic_launcher_background">#FFFFFFFF</color>
+</resources>

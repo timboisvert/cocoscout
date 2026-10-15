@@ -1,0 +1,25 @@
+<resources>
+    <!-- Light only, like the iOS app (Tim, 2026-10-12). -->
+    <style name="Theme.CocoScout" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/pink</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSurface">@color/white</item>
+        <item name="android:colorBackground">@color/white</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="toolbarStyle">@style/Widget.CocoScout.Toolbar</item>
+    </style>
+
+    <!-- Page titles in Coustard on the left, as on iOS. -->
+    <style name="Widget.CocoScout.Toolbar" parent="Widget.Material3.Toolbar.Surface">
+        <item name="titleTextAppearance">@style/TextAppearance.CocoScout.Title</item>
+    </style>
+
+    <style name="TextAppearance.CocoScout.Title" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:fontFamily">@font/coustard_regular</item>
+        <item name="fontFamily">@font/coustard_regular</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textColor">@color/gray_900</item>
+    </style>
+</resources>
