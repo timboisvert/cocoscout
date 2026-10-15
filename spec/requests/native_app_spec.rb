@@ -296,6 +296,18 @@ RSpec.describe "The iOS app's web side", type: :request do
     expect(json.dig("webcredentials", "apps")).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
   end
 
+  it "tells Android phones the app may open cocoscout.com links, signed out and without a redirect" do
+    get "/.well-known/assetlinks.json"
+    expect(response).to have_http_status(:ok)
+    expect(response.media_type).to eq("application/json")
+
+    statement = JSON.parse(response.body).sole
+    expect(statement["relation"]).to include("delegate_permission/common.handle_all_urls")
+    expect(statement["target"]).to include("namespace" => "android_app", "package_name" => "com.cocoscout.app")
+    # Google Play's app signing key first: it signs every copy people install.
+    expect(statement.dig("target", "sha256_cert_fingerprints").first).to start_with("58:B5:1D:2E")
+  end
+
   it "serves page rules the app can read" do
     rules = JSON.parse(Rails.public_path.join("hotwire-native/path-configuration.json").read)["rules"]
     open_in = rules.select { |rule| rule["properties"]["open_in"] }.to_h { |rule| [ rule["properties"]["open_in"], rule["patterns"] ] }

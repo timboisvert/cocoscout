@@ -1949,6 +1949,8 @@ Rails.application.routes.draw do
   # Which links open in the iOS app (universal links).
   get "/.well-known/apple-app-site-association", to: "apple_app_site_associations#show", format: false,
                                                  defaults: { format: :json }
+  # ...and in the Android app (App Links).
+  get "/.well-known/assetlinks.json", to: "android_asset_links#show", format: false, defaults: { format: :json }
 
   # Vacancy flow (cast member can't make it to a show)
   scope "/vacancy/:show_id" do

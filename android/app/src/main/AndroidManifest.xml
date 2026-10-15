@@ -38,6 +38,25 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="cocoscout" android:host="open" />
             </intent-filter>
+
+            <!-- cocoscout.com links (emails, texts) open here: the pages the
+                 iPhone app claims too. Verified by /.well-known/assetlinks.json. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="cocoscout.com" />
+                <data android:host="www.cocoscout.com" />
+                <data android:path="/my" />
+                <data android:pathPrefix="/my/" />
+                <data android:path="/door" />
+                <data android:pathPrefix="/door/" />
+                <data android:path="/profile" />
+                <data android:pathPrefix="/profile/" />
+                <data android:pathPrefix="/claim/" />
+                <data android:pathPrefix="/vacancy/" />
+            </intent-filter>
         </activity>
 
         <!-- Notifications from the server (FcmClient), shown by the app. -->

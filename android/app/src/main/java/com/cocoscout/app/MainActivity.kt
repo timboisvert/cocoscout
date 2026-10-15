@@ -78,12 +78,17 @@ class MainActivity : HotwireActivity() {
 
     /**
      * cocoscout://open?path=/my/... from Stripe's return page
-     * (AppReturnsController), or a tapped notification (push/Notifications).
+     * (AppReturnsController) or a tapped notification (push/Notifications),
+     * and https://cocoscout.com/... links the app claims (AndroidManifest).
      */
     private fun openLinkFrom(intent: Intent?) {
         val uri = intent?.data ?: return
         if (uri.scheme == "cocoscout" && uri.host == "open") {
             val path = uri.getQueryParameter("path")?.takeIf { it.startsWith("/") } ?: "/my"
+            AppShell.open(path)
+        } else if (uri.scheme == "https" && uri.host in setOf("cocoscout.com", "www.cocoscout.com")) {
+            val path = (uri.encodedPath?.takeIf { it.startsWith("/") } ?: "/my") +
+                (uri.encodedQuery?.let { "?$it" } ?: "")
             AppShell.open(path)
         }
     }
