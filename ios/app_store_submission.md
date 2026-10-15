@@ -142,7 +142,7 @@ the cached menu and the push token). Already in the manifest.
 One block, run on production. It creates a sample organization on the demo
 email domain (so the superadmin metrics ignore it), a manager, the reviewer
 as a performer cast in four shows, a message thread, tonight's show and
-the one three days out on sale
+the next two (three and ten days out) on sale, each
 with two paid parties to check in, and box-office door access for the
 reviewer. Run it dry first; it prints what it would make and rolls back.
 
@@ -214,10 +214,10 @@ ActiveRecord::Base.transaction do
 
   profile = TicketingProfile.for(org)
   profile.update!(enabled: true, door_in_app: "always") # the reviewer finds the Door whatever day they look
-  # Tonight's show and the one three days out are both on sale, each with two
-  # parties pre-sold at the box office (tickets still to scan), so the
-  # reviewer has a show at the door whichever day they look.
-  listings = [ shows[1], shows[2] ].map do |show|
+  # Tonight's show and the next two (three and ten days out) are on sale,
+  # each with two parties pre-sold at the box office (tickets still to
+  # scan), so the reviewer has a show at the door through a week of review.
+  listings = [ shows[1], shows[2], shows[3] ].map do |show|
     listing = TicketListing.find_by(show: show) || TicketListing.create!(show: show, status: "on_sale")
     general = listing.ticket_tiers.find_by(name: "General") || listing.ticket_tiers.create!(name: "General", price_cents: 1_500, quantity: 60)
     listing.update!(status: "on_sale")
@@ -253,9 +253,9 @@ After a real run: the reviewer's password is in the output; change the
 organization from Superadmin → Organizations (the two users are on the demo
 domain and can stay).
 
-The shows on sale are "tonight" and three days later, relative to the day
-the block runs, so run it the day you submit. If review drags past the
-second one, re-run it (it's idempotent: it only adds what's missing and
+The shows on sale are "tonight", three days later and ten days later,
+relative to the day the block runs, so run it the day you submit. If review
+drags past the last one, re-run it (it's idempotent: it only adds what's missing and
 re-dates nothing) the day before, and it adds the next dates.
 
 ## Still needs a Mac

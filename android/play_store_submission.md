@@ -34,8 +34,8 @@ Free app for performers and crew. This account is a performer at a sample organi
 ```
 
 The sample shows on sale are dated from the day the reviewer block last ran
-(Oct 15 and Oct 18, 2026). **Re-run the block the day you send the app for
-review** so the Door has a show to open.
+(on 2026-10-15: Oct 15, 18 and 25). **Re-run the block the day you send the
+app for review** so the Door has a show to open through a week of review.
 
 ### Ads
 
