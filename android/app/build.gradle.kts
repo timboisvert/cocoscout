@@ -4,6 +4,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    // Reads app/google-services.json (Firebase, for notifications). It's kept
+    // out of git; the copy is in 1Password with the upload key.
+    alias(libs.plugins.google.services)
 }
 
 // Google Play's upload key: keystores/ and keystore.properties are kept out
@@ -83,6 +86,10 @@ dependencies {
     implementation(libs.camerax.view)
     implementation(libs.camerax.mlkit)
     implementation(libs.mlkit.barcode)
+
+    // Notifications: Firebase Cloud Messaging (push/).
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

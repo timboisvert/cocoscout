@@ -42,6 +42,9 @@ object AppShell {
     /** Signed in or out, as the screen was last built for (from the cache at launch). */
     private var shownSignedIn: Boolean? = null
     private var pendingPath: String? = null
+    private var pendingScreen: String? = null
+    /** The first page has rendered: before that, the web view can't take a visit. */
+    private var pageShown = false
     private lateinit var appContext: Context
 
     /** Starts with last time's menu, so the button is there right away for someone still signed in. */
@@ -54,13 +57,24 @@ object AppShell {
 
     fun attach(activity: MainActivity) {
         this.activity = activity
+        pageShown = false
     }
 
     fun detach(activity: MainActivity) {
         if (this.activity === activity) this.activity = null
     }
 
-    fun navigatorReady() {
+    /**
+     * A page finished rendering (WebFragment). A link that opened the app
+     * from closed (a tapped notification) waits for the first one, then
+     * opens on top of it.
+     */
+    fun pageRendered() {
+        pageShown = true
+        pendingScreen?.let {
+            pendingScreen = null
+            replaceScreen(it)
+        }
         pendingPath?.let {
             pendingPath = null
             open(it)
@@ -84,21 +98,30 @@ object AppShell {
             .apply()
     }
 
-    /** A page on top of whatever's showing (a link back from Stripe). */
+    /** A page on top of whatever's showing (a link back from Stripe, a tapped notification). */
     fun open(path: String) {
         val navigator = activity?.currentNavigator
-        if (navigator == null || !navigator.isReady()) {
+        if (navigator == null || !navigator.isReady() || !pageShown) {
             pendingPath = path
             return
         }
         navigator.route(AppConfig.url(path))
     }
 
-    /** A pick from the menu becomes the whole screen, with no back to the page before. */
+    /**
+     * A pick from the menu becomes the whole screen, with no back to the page
+     * before. With pages stacked up, they're cleared back to the first one,
+     * which must finish showing before it's replaced: replacing it straight
+     * away left the shared web view stuck on the screen being removed, and
+     * every screen after it blank.
+     */
     fun replaceScreen(path: String) {
         val navigator = activity?.currentNavigator ?: return
-        navigator.clearAll {
+        if (navigator.isAtStartDestination()) {
             navigator.route(AppConfig.url(path), VisitOptions(action = VisitAction.REPLACE))
+        } else {
+            pendingScreen = path
+            navigator.clearAll()
         }
     }
 

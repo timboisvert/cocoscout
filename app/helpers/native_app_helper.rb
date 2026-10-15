@@ -25,6 +25,17 @@ module NativeAppHelper
     turbo_native_app? && request.user_agent.to_s[/bridge-components: \[([^\]]*)\]/, 1].to_s.split.include?(name)
   end
 
+  # The Android app (Hotwire Native Android's user agent says so); the
+  # iPhone app otherwise.
+  def native_android?
+    turbo_native_app? && request.user_agent.to_s.include?("Android")
+  end
+
+  # The phone's own Settings, in words: where notifications are turned off.
+  def native_settings_name
+    native_android? ? "your phone's Settings" : "iPhone Settings"
+  end
+
   # Everything in My, as the menu's tiles: the web nav's items, each titled
   # "My …" like the page it opens (Tim, 2026-10-12), with SF Symbols, then
   # profile, groups (only for someone in one) and settings. badge is a count.

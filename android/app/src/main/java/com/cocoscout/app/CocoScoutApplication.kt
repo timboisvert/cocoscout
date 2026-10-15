@@ -4,6 +4,8 @@ import android.app.Application
 import com.cocoscout.app.bridge.DoorScannerComponent
 import com.cocoscout.app.bridge.FormComponent
 import com.cocoscout.app.bridge.MenuComponent
+import com.cocoscout.app.bridge.PushComponent
+import com.cocoscout.app.push.Notifications
 import com.cocoscout.app.routing.OpenAsDocumentRouteDecisionHandler
 import com.cocoscout.app.routing.OpenInBrowserRouteDecisionHandler
 import dev.hotwire.core.bridge.BridgeComponentFactory
@@ -31,8 +33,10 @@ class CocoScoutApplication : Application() {
         Hotwire.registerBridgeComponents(
             BridgeComponentFactory("form", ::FormComponent),
             BridgeComponentFactory("menu", ::MenuComponent),
-            BridgeComponentFactory("door-scanner", ::DoorScannerComponent)
+            BridgeComponentFactory("door-scanner", ::DoorScannerComponent),
+            BridgeComponentFactory("push", ::PushComponent)
         )
+        Notifications.createChannels(this)
 
         // The page rules' "open_in" first (the phone's browser, or a document
         // viewer), then Hotwire's own in its usual order.
