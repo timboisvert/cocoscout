@@ -23,6 +23,34 @@ RSpec.describe "Manage::Staffing::Pay", type: :request do
     expect(response.body).not_to include(%(data-entry-id="#{pending.id}"))
   end
 
+  # Marking someone inactive hides them from the grid — approved hours they'd
+  # already worked must not vanish with them.
+  describe "inactive staff with approved, unpaid hours" do
+    let(:gone) { create(:person, name: "Gone Gabi") }
+    let!(:gone_member) { create(:organization_staff_member, organization: org, person: gone, hourly_rate_cents: 2000, archived_at: 1.day.ago) }
+
+    it "nudges with their name and hours, and a button that reveals them" do
+      create(:staff_time_entry, organization: org, person: gone, started_at: Time.current.change(hour: 18), ended_at: Time.current.change(hour: 21, min: 3), approved_at: Time.current, approved_by: owner)
+
+      get manage_staffing_pay_path
+      expect(response.body).to include("Hours still waiting")
+      expect(response.body).to include("Gone Gabi · 3.05h")
+      expect(response.body).to include(%(data-member-ids="#{gone_member.id}"))
+      expect(response.body).to include("3.05h approved, unpaid")
+    end
+
+    it "stays quiet when their hours are paid, pending, or they're only excluded" do
+      create(:staff_time_entry, organization: org, person: gone)
+      create(:staff_time_entry, organization: org, person: gone, approved_at: Time.current, approved_by: owner, offline_paid_at: Time.current, paid_at: Time.current)
+      salaried = create(:person, name: "Salaried Sam")
+      create(:organization_staff_member, organization: org, person: salaried, excluded_from_pay: true)
+      create(:staff_time_entry, organization: org, person: salaried, approved_at: Time.current, approved_by: owner)
+
+      get manage_staffing_pay_path
+      expect(response.body).not_to include("Hours still waiting")
+    end
+  end
+
   # Tips and cash tips are entered day by day, like hours — so the grid holds a
   # button, not a text box with a "worksheet" link tucked underneath it.
   it "puts tips behind a button instead of a box beside a worksheet link" do

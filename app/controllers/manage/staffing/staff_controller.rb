@@ -22,6 +22,10 @@ module Manage
         @departments = Current.organization.departments.ordered
         @managers = Current.organization.organization_staff_members.active
                            .includes(:person).order("people.name").references(:person).to_a
+        # Approved hours not yet paid — going inactive hides them from Pay
+        # People, so the Mark inactive box warns about them.
+        @approved_unpaid_hours = Current.organization.staff_time_entries.approved
+                                        .for_person(@staff_member.person).sum(:hours).to_f
         load_availability
       end
 

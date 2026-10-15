@@ -211,4 +211,29 @@ RSpec.describe "Manage::Staffing::Staff", type: :request do
       expect(member.reload.display_pronouns).to eq("she/her")
     end
   end
+
+  describe "approved hours that haven't been paid" do
+    let(:owner) { create(:user, password: password) }
+    let!(:org) { create(:organization, :pro, owner: owner) }
+    let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+    let(:person) { create(:person, name: "Hourly Hana") }
+    let!(:member) { create(:organization_staff_member, organization: org, person: person) }
+
+    before do
+      create(:staff_time_entry, organization: org, person: person, started_at: Time.current.change(hour: 18), ended_at: Time.current.change(hour: 21, min: 3), approved_at: Time.current, approved_by: owner)
+      sign_in(owner)
+    end
+
+    it "warns in the Mark inactive confirm" do
+      get manage_edit_staffing_staff_path(member)
+      expect(response.body).to include("They also have 3.05 approved hours that haven")
+    end
+
+    it "points an inactive member's page at Pay People" do
+      member.update!(archived_at: Time.current)
+      get manage_edit_staffing_staff_path(member)
+      expect(response.body).to include("3.05 approved hours still haven")
+      expect(response.body).to include(manage_staffing_pay_path)
+    end
+  end
 end

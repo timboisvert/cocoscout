@@ -51,6 +51,16 @@ module Manage
           [ member, entries ] if entries.present?
         end
         @approved_hours_waiting = @members_with_approved_hours.sum { |_, entries| entries.sum { |e| e.hours.to_f } }
+        # Approved hours per hidden member, for the reveal picker. Inactive ones
+        # get their own nudge above the grid: marking someone inactive used to
+        # strand hours they'd already worked — hidden here, still "owed" on their
+        # My Shifts. Excluded members (salaried managers) stay quiet; logging
+        # time without being paid by the hour is normal for them.
+        @hidden_hours_by_member_id = @hidden_staff_members.each_with_object({}) do |member, h|
+          hours = Array(@approved_entries_by_person[member.person_id]).sum { |e| e.hours.to_f }
+          h[member.id] = hours if hours.positive?
+        end
+        @inactive_with_approved_hours = @hidden_staff_members.select { |m| m.inactive? && @hidden_hours_by_member_id[m.id] }
         @draft = PayDraft.read(Current.organization)
       end
 

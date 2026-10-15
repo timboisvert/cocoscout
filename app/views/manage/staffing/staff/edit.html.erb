@@ -241,6 +241,9 @@
           <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
             <h3 class="text-sm font-semibold text-gray-800 mb-1">Inactive</h3>
             <p class="text-sm text-gray-600 mb-4"><%= @staff_member.display_name %> is marked inactive — kept in your records with all their history, but not scheduled, paid, counted, or asked for availability. Reactivating restores everything: roles, rates, and manager stay exactly as they were.</p>
+            <% if @approved_unpaid_hours.positive? %>
+              <p class="text-sm text-amber-700 mb-4"><%= number_with_precision(@approved_unpaid_hours, precision: 2, strip_insignificant_zeros: true) %> approved hours still haven't been paid. Pay them on <%= link_to "Pay People", manage_staffing_pay_path, class: "underline hover:text-amber-800" %>, where they'll be shown even though <%= @staff_member.display_name %> is inactive.</p>
+            <% end %>
             <%= button_to manage_reactivate_staffing_staff_path(@staff_member), method: :post, class: "inline-block" do %>
               <%= render "shared/button", text: "Reactivate", variant: "primary", size: "small", type: :submit %>
             <% end %>
@@ -254,7 +257,8 @@
                   data: { controller: "modal", action: "click->modal#open", modal_id: remove_staff_cid } %>
             <%= render "shared/confirm_modal", id: remove_staff_cid,
                   title: "Mark #{@staff_member.display_name} inactive?",
-                  message: "They'll keep their history and can be reactivated anytime. Heads up: any shifts they're already assigned to stay assigned — unassign those on the schedule if needed.",
+                  message: "They'll keep their history and can be reactivated anytime. Heads up: any shifts they're already assigned to stay assigned — unassign those on the schedule if needed." +
+                           (@approved_unpaid_hours.positive? ? " They also have #{number_with_precision(@approved_unpaid_hours, precision: 2, strip_insignificant_zeros: true)} approved hours that haven't been paid yet. Pay them first, or Pay People will show you a reminder." : ""),
                   confirm_text: "Mark inactive",
                   url: manage_destroy_staffing_staff_path(@staff_member), method: :delete %>
           </div>

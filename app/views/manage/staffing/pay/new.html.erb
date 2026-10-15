@@ -85,6 +85,22 @@
       <%# Rate has no column of its own — pay rates belong to the work (roles),
           and they surface inside each person's Hours modal where hours are
           actually included and priced. %>
+      <%# Inactive people are hidden from the grid, so approved hours they
+          worked before going inactive would otherwise never get paid. %>
+      <% if @inactive_with_approved_hours.any? %>
+        <% waiting = @inactive_with_approved_hours %>
+        <% fmt = ->(h) { number_with_precision(h, precision: 2, strip_insignificant_zeros: true) } %>
+        <%= render "shared/alert_panel",
+              tone: :amber,
+              eyebrow: "Hours still waiting",
+              headline: waiting.size == 1 ? "#{waiting.first.display_name} · #{fmt.(@hidden_hours_by_member_id[waiting.first.id])}h" : "#{waiting.size} inactive people · #{fmt.(waiting.sum { |m| @hidden_hours_by_member_id[m.id] })}h",
+              body: (waiting.size == 1 ? "They're inactive, so they're hidden from this list, but these approved hours haven't been paid. " : "They're inactive, so they're hidden from this list, but they have approved hours that haven't been paid (#{waiting.map { |m| "#{m.display_name} #{fmt.(@hidden_hours_by_member_id[m.id])}h" }.to_sentence}). ") +
+                    "Show #{waiting.size == 1 ? 'them' : 'them all'} to pay the hours in this run, or mark them already paid on Approved hours.",
+              actions: [
+                { text: waiting.size == 1 ? "Show #{waiting.first.display_name}" : "Show them", type: :button,
+                  data: { action: "click->pay-hidden-staff#revealMany", "member-ids": waiting.map(&:id).join(",") } }
+              ] %>
+      <% end %>
       <div class="lg:overflow-x-auto lg:border lg:border-gray-200 lg:rounded-lg lg:bg-white"
            data-controller="pay-accordion pay-hours"
            data-action="input->pay-accordion#refreshAll change->pay-accordion#refreshAll input->pay-hours#syncAll keydown.esc@window->pay-hours#closeAll pay-hours:commit->pay-hours#commitMembers">
@@ -253,7 +269,12 @@
                     <div data-hidden-person data-member-id="<%= member.id %>" class="flex items-center justify-between gap-3 px-3 py-2.5">
                       <div class="min-w-0">
                         <div class="text-sm text-gray-900 truncate"><%= member.display_name %></div>
-                        <div class="text-[11px] text-gray-500"><%= member.inactive? ? "Inactive" : "Hidden in Staffing settings" %></div>
+                        <div class="text-[11px] text-gray-500">
+                          <%= member.inactive? ? "Inactive" : "Hidden in Staffing settings" %>
+                          <% if (waiting_hours = @hidden_hours_by_member_id[member.id]) %>
+                            · <span class="text-amber-700"><%= number_with_precision(waiting_hours, precision: 2, strip_insignificant_zeros: true) %>h approved, unpaid</span>
+                          <% end %>
+                        </div>
                       </div>
                       <%= render "shared/button", text: "Show", variant: "secondary", size: "small", type: :button,
                             data: { action: "click->pay-hidden-staff#reveal", "member-id": member.id } %>

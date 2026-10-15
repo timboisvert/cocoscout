@@ -33,6 +33,16 @@ export default class extends Controller {
         this.revealMember(event.currentTarget.dataset.memberId)
     }
 
+    // The "hours still waiting" nudge: reveal everyone it names at once.
+    revealMany(event) {
+        event.preventDefault()
+        const ids = (event.currentTarget.dataset.memberIds || "").split(",").filter(Boolean)
+        ids.forEach(id => this.revealMember(id))
+        event.currentTarget.closest("[data-alert-panel]")?.remove()
+        const firstRow = this.rowTargets.find(row => row.dataset.memberId === ids[0])
+        firstRow?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }
+
     // Fired on any form input (including the draft restore's synthetic event):
     // reveal hidden rows that have values so nothing invisible can submit.
     autoReveal() {
