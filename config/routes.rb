@@ -1395,6 +1395,7 @@ Rails.application.routes.draw do
     post   "ticketing/orders/:id/refund",         to: "ticket_orders#refund"
     post   "ticketing/orders/:id/refund/top-up",  to: "ticket_orders#refund_top_up",     as: "ticket_order_refund_top_up"
     post   "ticketing/orders/:id/resend",         to: "ticket_orders#resend",            as: "ticket_order_resend"
+    patch  "ticketing/orders/:id/email",          to: "ticket_orders#update_email",      as: "ticket_order_email"
     get    "ticketing/orders/:id/move",           to: "ticket_orders#exchange_review",   as: "ticket_order_exchange"
     post   "ticketing/orders/:id/move",           to: "ticket_orders#exchange"
     # The CocoScout balance is part of Books (Money → Books → Balance).

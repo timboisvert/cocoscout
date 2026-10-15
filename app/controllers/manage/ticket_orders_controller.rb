@@ -163,6 +163,29 @@ module Manage
       end
     end
 
+    # The buyer's email, corrected (a typo at checkout, or another inbox).
+    # Other orders from the same checkout that had the same address change
+    # with it, and when asked, the tickets go to the new address.
+    def update_email
+      email = params[:buyer_email].to_s.strip
+      return redirect_to(manage_ticket_order_path(@order.id), alert: "Enter an email address.") if email.blank?
+
+      orders = [ @order ]
+      if @order.ticket_purchase && @order.buyer_email.present?
+        orders |= @order.ticket_purchase.ticket_orders.where(buyer_email: @order.buyer_email).to_a
+      end
+      TicketOrder.transaction { orders.each { |order| order.update!(buyer_email: email) } }
+
+      sent = params[:send_tickets] == "1" ? orders.select(&:paid?).each { |order| TicketOrderConfirmationJob.perform_later(order.id) } : []
+      others = orders.size - 1
+      notice = "Email changed to #{@order.buyer_email}"
+      notice += " here and on #{helpers.pluralize(others, 'other order')} from the same checkout" if others.positive?
+      notice += sent.any? ? ", and the tickets are on their way." : "."
+      redirect_to manage_ticket_order_path(@order.id), notice: notice
+    rescue ActiveRecord::RecordInvalid
+      redirect_to manage_ticket_order_path(@order.id), alert: "\"#{email}\" isn't an email address. Nothing was changed."
+    end
+
     private
 
     # Returning part of a pass prices what they keep at regular, unless the

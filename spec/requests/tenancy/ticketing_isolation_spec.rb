@@ -64,7 +64,7 @@ RSpec.describe "Cross-org isolation (ticketing)", type: :request do
     expect(victim_org.ticket_discount_codes).to be_empty
   end
 
-  it "can't read, refund or resend another theater's order" do
+  it "can't read, refund, resend or re-address another theater's order" do
     get manage_ticket_order_path(victim_order.id)
     expect(response).to have_http_status(:not_found)
     get manage_ticket_order_refund_path(victim_order.id), params: { ticket_ids: victim_order.tickets.pluck(:id) }
@@ -72,6 +72,8 @@ RSpec.describe "Cross-org isolation (ticketing)", type: :request do
     post manage_ticket_order_refund_path(victim_order.id), params: { ticket_ids: victim_order.tickets.pluck(:id) }
     expect(response).to have_http_status(:not_found)
     post manage_ticket_order_resend_path(victim_order.id)
+    expect(response).to have_http_status(:not_found)
+    patch manage_ticket_order_email_path(victim_order.id), params: { buyer_email: "attacker@example.com" }
     expect(response).to have_http_status(:not_found)
 
     expect(Stripe::Refund).not_to have_received(:create)

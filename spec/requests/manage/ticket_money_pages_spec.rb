@@ -121,6 +121,42 @@ RSpec.describe "Manage ticketing money", type: :request do
       expect { post manage_ticket_order_resend_path(order.id) }.to have_enqueued_job(TicketOrderConfirmationJob).with(order.id)
     end
 
+    it "changes the buyer's email (a typo at checkout) and sends the tickets there" do
+      order = sold(1)
+      order.update_columns(buyer_email: "dana@gmail.con")
+      expect {
+        patch manage_ticket_order_email_path(order.id), params: { buyer_email: " Dana@Gmail.com ", send_tickets: "1" }
+      }.to have_enqueued_job(TicketOrderConfirmationJob).with(order.id)
+      expect(order.reload.buyer_email).to eq("dana@gmail.com")
+      expect(flash[:notice]).to eq("Email changed to dana@gmail.com, and the tickets are on their way.")
+
+      # Without the box ticked, nothing is sent.
+      expect { patch manage_ticket_order_email_path(order.id), params: { buyer_email: "d@example.com" } }.not_to have_enqueued_job
+      expect(order.reload.buyer_email).to eq("d@example.com")
+
+      # Not an address, or none at all: nothing changes.
+      patch manage_ticket_order_email_path(order.id), params: { buyer_email: "dana@" }
+      expect(flash[:alert]).to include("isn't an email address")
+      patch manage_ticket_order_email_path(order.id), params: { buyer_email: " " }
+      expect(flash[:alert]).to eq("Enter an email address.")
+      expect(order.reload.buyer_email).to eq("d@example.com")
+
+      get manage_ticket_order_path(order.id)
+      expect(response.body).to include("Change email", "Send their tickets to the new address")
+    end
+
+    it "changes the email on the other orders from the same checkout too" do
+      first, second, elsewhere = sold(1), sold(1), sold(1)
+      purchase = TicketPurchase.create!(organization: org)
+      [ first, second ].each { |order| order.update_columns(ticket_purchase_id: purchase.id, buyer_email: "dana@gmail.con") }
+      elsewhere.update_columns(buyer_email: "dana@gmail.con")
+
+      patch manage_ticket_order_email_path(first.id), params: { buyer_email: "dana@gmail.com", send_tickets: "1" }
+      expect([ first, second ].map { |order| order.reload.buyer_email }).to eq([ "dana@gmail.com" ] * 2)
+      expect(elsewhere.reload.buyer_email).to eq("dana@gmail.con")
+      expect(flash[:notice]).to include("on 1 other order from the same checkout")
+    end
+
     it "can't reach another theater's orders" do
       other_listing = create(:ticket_listing, organization: create(:organization, :pro))
       tier = other_listing.ticket_tiers.create!(name: "General", price_cents: 1_000)
