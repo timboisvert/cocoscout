@@ -60,7 +60,7 @@ export default class extends Controller {
         if (this.hasTapButtonTarget) {
             const tap = orderTotalCents({ base, paid, feeMode: this.feeModeValue, platformFee: this.platformFeeValue,
                 perMille: this.tapPerMilleValue, fixed: this.tapFixedValue })
-            this.label(this.tapButtonTarget, count === 0 ? "Tap to pay" : `Tap to pay · ${money(tap)}`)
+            this.label(this.tapButtonTarget, count === 0 ? "Tap to Pay" : `Tap to Pay · ${money(tap)}`)
             this.tapButtonTarget.disabled = count === 0 || tap === 0
         }
         // A free ticket can't go on a card, and a comp carries no products.

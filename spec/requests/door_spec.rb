@@ -305,15 +305,15 @@ RSpec.describe "Door", type: :request do
 
       it "offers the tap only in a copy of the app that has it, priced at the in-person rate" do
         get door_path(listing)
-        expect(response.body).not_to include("Tap to pay")
+        expect(response.body).not_to include("Tap to Pay")
 
         # TestFlight and App Store builds leave Tap to Pay out until Apple
         # grants its distribution entitlement.
         get door_path(listing), headers: { "User-Agent" => "Turbo Native iOS; bridge-components: [form menu door-scanner push];" }
-        expect(response.body).not_to include("Tap to pay")
+        expect(response.body).not_to include("Tap to Pay")
 
         get door_path(listing), headers: { "User-Agent" => "Turbo Native iOS; bridge-components: [form menu door-scanner push tap-to-pay];" }
-        expect(response.body).to include("Tap to pay", "data-door-sell-tap-per-mille-value=\"27\"", "data-door-sell-tap-fixed-value=\"15\"")
+        expect(response.body).to include("Tap to Pay", "data-door-sell-tap-per-mille-value=\"27\"", "data-door-sell-tap-fixed-value=\"15\"")
         # Beside it, the QR code reads as the other way to pay: tap a card, or scan a code.
         expect(response.body).to include("Scan to pay", "data-door-sell-card-label-value=\"Scan to pay\"")
         expect(response.body).not_to include("Card or phone pay")
@@ -336,6 +336,8 @@ RSpec.describe "Door", type: :request do
         expect(payment).to include("amount_cents" => 4_229, "currency" => "usd", "transfer_group" => "org_#{org.id}")
         expect(payment["metadata"]).to include("type" => "ticket_order", "ticket_order_id" => order.id.to_s, "door" => "tap", "terminal_location" => "tml_1")
         expect(response.body).to include("$42.29", door_tap_settle_path(listing, token: order.token))
+        # Apple's How to Tap guide, any time (the app also shows it before the first tap).
+        expect(response.body).to include("How to take a tap", "click->bridge--tap-to-pay#howToTap")
 
         # The app's Terminal SDK connects with a token at the organization's Location — made once.
         2.times { get door_tap_connection_token_path(listing), headers: native }

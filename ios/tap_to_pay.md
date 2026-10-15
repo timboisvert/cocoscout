@@ -58,9 +58,10 @@ the buyer paying: $21.42 online, $21.22 tapped.
   the package resolves to, then build.
 - The entitlement `com.apple.developer.proximity-reader.payment.acceptance`
   is in CocoScout.entitlements; Apple has granted it on the App ID.
-- Show Apple's "How to Tap" screen once before the first tap (required for
-  review), and add the Tap to Pay usage copy to Info.plist if the SDK's
-  version asks for it.
+- Apple's "How to Tap" guide (done 2026-10-15, `Door/HowToTap.swift`): shown
+  before the first tap on a phone, and again from "How to take a tap" on the
+  tap page; iOS 17 gets a short guide of ours. Location and Bluetooth
+  purpose strings are in Info.plist (build 5).
 - Test with a Stripe test-mode Location and the SDK's simulated reader, then
   a real tap on a device.
 

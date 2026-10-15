@@ -33,4 +33,9 @@ export default class extends BridgeComponent {
       this.dispatch("done", { detail: message.data, prefix: "tap-to-pay" })
     })
   }
+
+  // "How to take a tap": Apple's guide again (the app shows it before the first tap too).
+  howToTap() {
+    if (this.enabled) this.send("howToTap")
+  }
 }

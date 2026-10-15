@@ -2,7 +2,7 @@
   show = @listing.show
   tickets = @order.tickets.includes(:ticket_tier).to_a
 %>
-<% content_for :title, turbo_native_app? ? "Tap to pay" : "Tap to pay · #{@listing.display_title}" %>
+<% content_for :title, turbo_native_app? ? "Tap to Pay" : "Tap to Pay · #{@listing.display_title}" %>
 <% content_for :door_header do %>
   <%# The app has its own back button. %>
   <% unless turbo_native_app? %>
@@ -12,7 +12,7 @@
   <% end %>
   <div class="min-w-0 flex-1">
     <div class="text-base font-semibold text-gray-900 leading-tight truncate"><%= @listing.display_title %></div>
-    <div class="text-xs text-gray-500 truncate">Tap to pay · <%= show.date_and_time.strftime("%-l:%M %p") %></div>
+    <div class="text-xs text-gray-500 truncate">Tap to Pay · <%= show.date_and_time.strftime("%-l:%M %p") %></div>
   </div>
 <% end %>
 
@@ -37,6 +37,10 @@
     </svg>
     <p class="mt-4 text-base font-medium text-gray-900" data-door-tap-target="prompt">Hold their card or phone to the top of this phone</p>
     <p class="mt-1 text-sm text-gray-600">Contactless card, Apple Pay or Google Pay</p>
+    <div class="mt-2 flex justify-center">
+      <%= render "shared/button", text: "How to take a tap", variant: "ghost", size: "small", type: :button,
+            data: { action: "click->bridge--tap-to-pay#howToTap" } %>
+    </div>
     <p class="mt-4 text-sm text-gray-500">Held <span class="tabular-nums" data-door-tap-target="countdown"></span></p>
     <p class="mt-3 hidden text-sm text-red-700" data-door-tap-target="error"></p>
     <div class="mt-4 flex justify-center gap-2">
