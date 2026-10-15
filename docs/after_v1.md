@@ -86,6 +86,10 @@ show vs per production, pricing for in-house shows).
 
 ## 7. "Paid" when the money is still on its way
 
+**Done 2026-10-15 (670db423, 9ee668c7), with 8.** Words: waiting for approval →
+approved → on its way → deposited. Needs `payout.created` and `payout.paid` on
+the connected-accounts webhook, and the one-time deposit backfill after deploy.
+
 We tell people "paid" the day CocoScout sends the money, days before it
 reaches their bank. Fae (staff) asked when they'd actually get paid: the
 date in CocoScout is "days before payment", it would help budgeting to know
@@ -104,6 +108,8 @@ stop giving the impression it's already arrived.
   "In your bank Oct 14". Never name the provider (rule 2's).
 
 ## 8. The getting-paid card on My Shifts
+
+**Done 2026-10-15 (670db423): direction A from the mockups.**
 
 Mockups for 7 and 8 (2026-10-15, three directions, waiting on Tim's pick):
 https://claude.ai/artifact/MBkyRtw5j498PHGKC1NV9n
