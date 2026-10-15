@@ -72,3 +72,46 @@ on mobile web and in the app. The plan is locked in
 `docs/production_mode_v2_plan.md`. Have V1.1 carry a per-build
 path-configuration address and a user-agent version marker (see that plan's
 release section), so V2 server changes can't reach V1 installs.
+
+## Apple's publishing review (requirements v1.7, Aug 2026)
+
+Apple's "App & Marketing Requirements and Review Guide" and checklist come
+from the Box folder linked in the Oct 12 email from ttpoientitlements@apple.com
+(Case-ID 22828656). To get the publishing entitlement, reply to that email and
+upload: a video of the New User (onboarding) flow, a video of the Existing
+User (enable + education) flow, a video of the Checkout flow, and the filled
+checklist. The checkout video must be filmed with another device: Apple's
+Tap to Pay screens don't show up in a screen recording.
+
+Where CocoScout stands (2026-10-15):
+
+Met: iPhone XS+ via Stripe (1.1); acceptance status from the SDK (1.6);
+Apple's How to Tap guide (4.1, 4.5–4.7); checkout trigger (3.7); Tap to Pay
+first in the payment list (5.1); processing and outcome screens (5.8, 5.9);
+US needs no fallback method, surcharging or IFR.
+
+To build:
+- Warm up Tap to Pay at launch and on foreground (1.5, 5.6), so the payment
+  screen opens within a second.
+- A "getting ready" screen with the SDK's progress while the phone
+  configures (3.9.1, 5.7).
+- Education after the terms are accepted, not before (4.2): connect first,
+  then the guide.
+- A Tap to Pay entry in Settings for box-office users: set it up (accept the
+  terms) and the guide (3.6, 4.3).
+- An awareness moment for eligible users, using Apple's toolkit assets: a
+  full-screen splash once, a push, a launch email (3.1–3.3, 6.1–6.3).
+- The button never greyed out (5.3), labelled "Tap to Pay on iPhone" next to
+  other methods (5.4), no custom tap icon (5.5, marketing rules), reachable
+  without scrolling (5.2).
+- A digital receipt on the result screen, approved or declined (5.10):
+  a QR code to the order page, or email.
+- A notification when a payment isn't approved after the app was closed
+  (5.12).
+- A clear "update iOS" message for the SDK's OS-version error (1.4).
+- No "Stripe" in the processing copy.
+
+Decision: in-app merchant onboarding (2.1–2.3). Organizations sign up and
+open their box office on cocoscout.com; door staff are invited and sign in
+in the app. Apple allows asking for an exception with the request; V2
+(production mode in the app) would meet it outright.
