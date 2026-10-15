@@ -1,143 +1,68 @@
-<% if turbo_native_app? %>
-  <%# In the app: back to its welcome screen. %>
-  <div class="-mt-1 mb-1">
-    <%= link_to welcome_path, class: "inline-flex items-center gap-1 py-2 pr-3 text-sm font-medium text-slate-600 hover:text-pink-600" do %>
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-      Back
+<% content_for :title, "Sign in" %>
+<%
+  # Who lands here: a performer who clicked a cast message, a producer heading
+  # to Manage, someone whose session lapsed, someone bounced from an invitation
+  # or a sign-up form. The lede says what's on the other side; the line under
+  # the divider catches the person an organization added who has never set a
+  # password (their account exists with a random one).
+  sent = @password_reset_instructions_sent
+  lede =
+    if @user_exists_error
+      "Your calendar, cast messages, contracts and pay are already waiting in there."
+    elsif sent
+      "Remembered it after all? Sign in here."
+    elsif auth_native_app?
+      "Your calendar, cast messages, contracts and pay, and the door scanner when you're working it. Sign in and it's all in your pocket."
+    else
+      "Everything about your shows lives here: your calendar, cast messages, contracts and pay, and any organization you run."
+    end
+%>
+<% notices = capture do %>
+  <% if sent %>
+    <%= render "shared/auth/notice", title: "Check your email.",
+          body: "If there's an account for that address, a link to choose a new password is on its way. It works for #{password_reset_link_lifetime}. Nothing yet? Check spam." %>
+  <% end %>
+  <% if @error %>
+    <%= render layout: "shared/auth/notice", locals: { kind: :error } do %>
+      That email and password don't match. Try again, or <%= link_to "reset your password", password_path, class: "font-semibold underline" %>. Never set one? That link is for you too.
     <% end %>
+  <% end %>
+  <% if @user_exists_error %>
+    <%= render layout: "shared/auth/notice", locals: { title: "You already have an account." } do %>
+      There's a CocoScout account for <strong class="font-semibold"><%= @email_address %></strong>, so sign in with its password below. If an organization set it up and you've never chosen a password, <%= link_to "choose one now", password_path, class: "font-semibold underline" %>.
+    <% end %>
+  <% end %>
+  <% if @invitation_link_invalid %>
+    <%= render "shared/auth/notice", kind: :error,
+          body: "That invitation link isn't valid. Ask whoever sent it for a new one, or sign in if you already have an account." %>
+  <% end %>
+<% end %>
+
+<%= render layout: "shared/auth/shell", locals: { title: "Sign in", lede: lede, notices: notices } do %>
+  <%= form_with url: handle_signin_path, class: "space-y-4" do |form| %>
+    <div>
+      <label for="email_address" class="mb-1.5 block text-sm font-medium text-slate-700">Email address</label>
+      <%= form.email_field :email_address,
+          required: true,
+          autofocus: !auth_native_app? && !@user_exists_error,
+          autocomplete: "email",
+          autocapitalize: "none",
+          placeholder: "you@example.com",
+          value: (@email_address || params[:email_address]),
+          class: auth_input_class %>
+    </div>
+
+    <%= render "shared/auth/password_field", form: form, autocomplete: "current-password", error: @error.present? %>
+
+    <div class="flex flex-col items-center gap-3.5 pt-1">
+      <%= render "shared/button", text: "Sign in", variant: "primary", size: "jumbo", type: :submit %>
+      <%= link_to (sent ? "Send the link again" : "Forgot your password?"), password_path,
+            class: "p-1 text-[15px] font-medium text-pink-600 hover:text-pink-700" %>
+    </div>
+  <% end %>
+
+  <div class="border-t border-slate-200 pt-4 text-center text-sm leading-[1.8] text-slate-600">
+    New to CocoScout? <%= link_to "Create an account", signup_path, class: "font-medium text-pink-600 hover:text-pink-700" %><br>
+    Invited by an organization? <%= link_to "Choose your password", password_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
   </div>
 <% end %>
-<div class="min-h-screen bg-white">
-  <!-- Header -->
-  <div class="flex flex-col items-center pt-6 sm:pt-10 pb-4">
-    <%= render "shared/cocoscout_logo", size: :medium %>
-    <h1 class="mt-3 text-3xl sm:text-4xl coustard-regular text-pink-500">CocoScout</h1>
-  </div>
-
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-    <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-
-      <!-- Left Column: Multi-persona welcome. One CocoScout account works
-           across the whole platform — make that explicit instead of
-           framing the page around a single persona. -->
-      <div class="order-2 lg:order-1">
-        <div class="lg:sticky lg:top-8">
-          <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
-            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Welcome back to CocoScout</h2>
-            <p class="text-slate-600 mb-6">One account to run your production — or find your next stage.</p>
-
-            <%= render "auth/persona_cards" %>
-
-            <!-- Divider -->
-            <div class="my-6 border-t border-pink-200"></div>
-
-            <!-- Don't have account -->
-            <div class="text-center">
-              <p class="text-sm text-slate-600 mb-2">Don't have an account yet?</p>
-              <%= link_to signup_path, class: "inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-pink-600 hover:text-pink-700 border border-pink-300 hover:border-pink-400 rounded-md transition" do %>
-                Create a free account
-                <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              <% end %>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column: Sign In Form -->
-      <div class="order-1 lg:order-2">
-        <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm">
-          <h2 class="text-2xl font-bold text-slate-900 mb-2 text-center">Sign in to your account</h2>
-          <p class="text-sm text-slate-600 mb-6 text-center">Enter your credentials to continue</p>
-
-          <!-- Success Messages -->
-          <% if @password_reset_instructions_sent %>
-            <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
-              Password reset instructions have been sent to your email address.
-            </div>
-          <% end %>
-
-          <!-- Error Messages -->
-          <% if @error %>
-            <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-md text-sm text-pink-700">
-              <p class="font-medium">We couldn't sign you in with that email and password.</p>
-              <p class="mt-1">Please check your credentials and try again, or <%= link_to "reset your password", password_path, class: "underline font-medium hover:text-pink-800" %> if you've forgotten it.</p>
-            </div>
-          <% end %>
-
-          <% if @user_exists_error %>
-            <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-md text-sm text-pink-700">
-              You already have a CocoScout account. Please sign in to continue.
-            </div>
-          <% end %>
-
-          <% if @invitation_link_invalid %>
-            <div class="mb-4 p-3 bg-pink-50 border border-pink-200 rounded-md text-sm text-pink-700">
-              Your invitation link is invalid.
-            </div>
-          <% end %>
-
-          <%= form_with url: handle_signin_path, class: "space-y-5" do |form| %>
-            <div>
-              <label for="email_address" class="block text-sm font-medium text-slate-700 mb-1">Email address</label>
-              <%= form.email_field :email_address,
-                  required: true,
-                  autofocus: true,
-                  autocomplete: "email",
-                  autocapitalize: "none",
-                  placeholder: "you@example.com",
-                  value: (@email_address || params[:email_address]),
-                  class: "block shadow-sm rounded-md border border-gray-300 px-3 py-2.5 w-full focus:border-pink-500 focus:ring-pink-500" %>
-            </div>
-
-            <div data-controller="password-visibility">
-              <div class="flex items-center justify-between mb-1">
-                <label for="password" class="block text-sm font-medium text-slate-700">Password</label>
-                <%= link_to "Need to reset your password?", password_path, tabindex: -1, class: "text-xs text-pink-600 hover:text-pink-700 font-medium" %>
-              </div>
-              <div class="relative">
-                <%= form.password_field :password,
-                    required: true,
-                    autocomplete: "current-password",
-                    placeholder: "Enter your password",
-                    maxlength: 72,
-                    class: "block shadow-sm rounded-md border border-gray-300 px-3 py-2.5 w-full pr-10 focus:border-pink-500 focus:ring-pink-500",
-                    data: { password_visibility_target: "input" } %>
-                <button type="button"
-                        data-action="password-visibility#toggle"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
-                  <span data-password-visibility-target="icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div class="pt-2">
-              <%= render "shared/button", text: "Sign In", variant: "primary", size: "jumbo", type: :submit %>
-            </div>
-
-            <div class="text-center text-sm text-slate-600 pt-4">
-              New to CocoScout? <%= link_to "Create an account", signup_path, class: "text-pink-600 hover:text-pink-700 font-medium underline" %>
-            </div>
-          <% end %>
-        </div>
-
-        <!-- Cross-platform trust line -->
-        <div class="mt-6 text-center space-y-2">
-          <p class="text-xs text-slate-500">
-            Your CocoScout account works across the whole platform — run your productions, or find your next stage.
-          </p>
-          <p class="text-xs text-slate-500">
-            By signing in, you agree to our <%= link_to "Terms of Service", terms_path, class: "text-pink-600 hover:text-pink-700 underline", target: "_blank" %> and <%= link_to "Privacy Policy", privacy_path, class: "text-pink-600 hover:text-pink-700 underline", target: "_blank" %>
-          </p>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>

@@ -7,9 +7,12 @@ class User < ApplicationRecord
 
   has_secure_password
 
-  # Override default password reset token expiry (default is 15 minutes, we want 2 hours)
-  # The block invalidates the token when password_digest changes (i.e., when password is reset)
-  generates_token_for :password_reset, expires_in: 2.hours do
+  # How long a password-reset link works. The sign-in pages quote this, so
+  # change it here and the copy follows. The block invalidates the token when
+  # password_digest changes (i.e., when password is reset).
+  PASSWORD_RESET_LINK_LIFETIME = 2.hours
+
+  generates_token_for :password_reset, expires_in: PASSWORD_RESET_LINK_LIFETIME do
     password_digest
   end
 

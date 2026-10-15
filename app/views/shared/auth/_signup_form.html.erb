@@ -1,0 +1,58 @@
+<%#
+  The create-account form: email, a new password with the strength meter, and
+  the bot defenses (AuthController#signup_gate_passed?). Used by /signup and
+  by every page that embeds account creation (sign-up and audition entry,
+  course registration), so they all carry the form token and honeypot.
+
+  Posts to handle_signup; a failure re-renders auth/signup, so error copy
+  lives there and this partial only draws the fields.
+
+  Locals:
+    user          the User (for model errors), default User.new
+    signup_token  from SignupFormToken.generate (the controller sets it; a
+                  fresh one is minted when the page didn't)
+    submit_text   default "Create account"
+    email_value   prefill
+    autofocus     default false
+%>
+<%
+  user         = local_assigns[:user] || User.new
+  signup_token = local_assigns[:signup_token] || SignupFormToken.generate
+  submit_text  = local_assigns[:submit_text] || "Create account"
+  autofocus    = local_assigns[:autofocus] || false
+%>
+<%= form_with(model: user, url: handle_signup_path, class: "space-y-4", data: { controller: "password-strength" }) do |form| %>
+  <%# A signed "form served at" stamp, and an off-screen honeypot no person
+      sees or tabs into. Neither is autofilled by browsers. %>
+  <%= hidden_field_tag :signup_token, signup_token, id: nil %>
+  <div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+    <label for="signup_website">Website</label>
+    <input type="text" name="website" id="signup_website" tabindex="-1" autocomplete="off" value="">
+  </div>
+
+  <div>
+    <%= form.label :email_address, "Email address", class: "mb-1.5 block text-sm font-medium text-slate-700" %>
+    <%= form.email_field :email_address,
+        required: true,
+        autofocus: autofocus,
+        autocomplete: "username",
+        autocapitalize: "none",
+        placeholder: "you@example.com",
+        value: local_assigns[:email_value],
+        class: auth_input_class(error: user.errors[:email_address].any?) %>
+  </div>
+
+  <%= render "shared/auth/password_field", form: form, strength: true, autocomplete: "new-password",
+             error: user.errors[:password].any? %>
+
+  <div class="pt-1">
+    <%= render "shared/button",
+        text: submit_text,
+        variant: "primary",
+        size: "jumbo",
+        type: :submit,
+        disabled: true,
+        classes: "!opacity-50 !cursor-not-allowed",
+        data: { password_strength_target: "submit" } %>
+  </div>
+<% end %>

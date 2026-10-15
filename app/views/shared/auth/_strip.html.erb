@@ -1,0 +1,23 @@
+<%#
+  The context strip above an auth card: who invited you, or which campaign
+  brought you here. An avatar (an organization's logo, a group's headshot) or
+  an initial, and one or two sentences.
+
+  Locals: text (HTML; or render with layout: and a block), image (an image
+  variant/attachment, optional), initial (fallback letter), dark (true for a
+  slate avatar instead of pink).
+%>
+<%
+  text    = local_assigns[:text] || yield
+  image   = local_assigns[:image]
+  initial = local_assigns[:initial].to_s.first.to_s.upcase
+  avatar  = local_assigns[:dark] ? "bg-slate-900" : "bg-pink-700"
+%>
+<div class="flex items-center gap-3 rounded-lg border border-pink-200 bg-pink-50 px-3.5 py-3">
+  <% if image %>
+    <%= image_tag image, alt: "", class: "h-11 w-11 flex-shrink-0 rounded-lg object-cover" %>
+  <% else %>
+    <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white <%= avatar %>" aria-hidden="true"><%= initial %></div>
+  <% end %>
+  <div class="text-sm leading-snug text-slate-700"><%= text %></div>
+</div>

@@ -1,217 +1,85 @@
-<div class="min-h-screen bg-white">
-  <!-- Header -->
-  <div class="flex flex-col items-center pt-6 sm:pt-10 pb-4">
-    <%= render "shared/cocoscout_logo", size: :medium %>
-    <h1 class="mt-3 text-3xl sm:text-4xl coustard-regular text-pink-500">CocoScout</h1>
-  </div>
+<% content_for :title, "Join #{@team_invitation.organization.name}" %>
+<%
+  # An invitation onto an organization's team (managers). @existing_user is
+  # the User with this email, if there is one: they sign in; anyone else
+  # chooses a password and the account is created.
+  inv = @team_invitation
+  org = inv.organization
+  existing = @existing_user.present?
+  profile = inv.person
+%>
+<% strip = capture do %>
+  <%= render layout: "shared/auth/strip", locals: { image: (org.logo if org.logo.attached?), initial: org.name } do %>
+    <strong class="font-semibold text-slate-900"><%= org.name %></strong> invited you to their team on CocoScout.
+  <% end %>
+<% end %>
+<% notices = capture do %>
+  <% if @authentication_error %>
+    <%= render layout: "shared/auth/notice", locals: { kind: :error } do %>
+      That password didn't match. Try again, or <%= link_to "reset your password", password_path, class: "font-semibold underline" %>.
+    <% end %>
+  <% elsif @user&.errors&.any? %>
+    <%= render "shared/auth/notice", kind: :error, title: "That password didn't work.", body: @user.errors.full_messages.to_sentence + "." %>
+  <% end %>
+<% end %>
+<%
+  title = existing ? "Sign in to join the team" : "Choose your password"
+  lede = if existing
+    "Enter the password for #{inv.email} and you're on #{org.name}'s team: their productions, casting and scheduling, yours to work on too."
+  else
+    "#{org.name} set you up as part of their team. Pick a password and you're in; their productions, casting and scheduling are yours to work on too."
+  end
+%>
 
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-    <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+<%= render layout: "shared/auth/shell", locals: { title: title, lede: lede, strip: strip, notices: notices, legal: "joining" } do %>
+  <%= form_with url: do_accept_manage_team_invitations_path(token: inv.token), method: :post, local: true, class: "space-y-4",
+        data: (existing ? {} : { controller: "password-strength" }) do |form| %>
+    <%= render "shared/auth/account_row", email: inv.email %>
 
-      <!-- Left Column: Invitation Info -->
-      <div class="order-2 lg:order-1">
-        <div class="lg:sticky lg:top-8">
-          <div class="bg-gradient-to-br from-pink-50 to-white border border-pink-200 rounded-lg p-6 sm:p-8 shadow-sm">
-            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">Join the team!</h2>
-            <p class="text-slate-600 mb-6">
-              <span class="font-semibold text-pink-600"><%= @team_invitation.organization.name %></span> is using CocoScout to manage its productions, auditions, and casting.
-            </p>
-
-            <!-- Invitation Details -->
-            <div class="bg-white border border-pink-200 rounded-lg p-4 mb-6">
-              <div class="flex items-center gap-3 mb-2">
-                <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span class="text-sm text-slate-600">Invited as:</span>
-              </div>
-              <p class="text-lg font-semibold text-slate-900 ml-8"><%= @team_invitation.email %></p>
-            </div>
-
-            <!-- What You'll Get -->
-            <div class="space-y-4">
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-900">Team collaboration</h3>
-                  <p class="text-sm text-slate-600">Work with your team to manage productions and casting</p>
-                </div>
-              </div>
-
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-900">Production management</h3>
-                  <p class="text-sm text-slate-600">Create and manage auditions, rehearsals, and performances</p>
-                </div>
-              </div>
-
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-900">Scheduling tools</h3>
-                  <p class="text-sm text-slate-600">Coordinate schedules and track availability across your team</p>
-                </div>
-              </div>
-            </div>
+    <% if profile.present? %>
+      <div>
+        <div class="mb-1.5 block text-sm font-medium text-slate-700">Profile being added</div>
+        <div class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <% headshot = profile.safe_headshot_variant(:thumb) %>
+          <% if headshot %>
+            <%= image_tag headshot, alt: profile.name, class: "h-10 w-10 rounded-lg object-cover" %>
+          <% else %>
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-200 text-sm font-bold text-gray-600"><%= profile.initials %></div>
+          <% end %>
+          <div class="min-w-0">
+            <div class="truncate font-medium text-slate-900"><%= profile.name %></div>
+            <% if profile.organizations.any? %>
+              <div class="truncate text-xs text-slate-500">Also in: <%= profile.organizations.pluck(:name).join(", ") %></div>
+            <% end %>
           </div>
         </div>
       </div>
+    <% end %>
 
-      <!-- Right Column: Form -->
-      <div class="order-1 lg:order-2">
-        <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 sm:p-8">
-          <% if @existing_user %>
-            <h2 class="text-xl font-bold text-slate-900 mb-2">Welcome back</h2>
-            <p class="text-sm text-slate-600 mb-6">Enter your password to continue</p>
-          <% else %>
-            <h2 class="text-xl font-bold text-slate-900 mb-2">Create your account</h2>
-            <p class="text-sm text-slate-600 mb-6">Set a password to join the team</p>
-          <% end %>
-
-          <% if @authentication_error %>
-            <div class="mb-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
-              <p class="text-sm text-pink-700 font-medium">Sign in failed. Please enter the correct password.</p>
-            </div>
-          <% end %>
-
-          <%= form_with url: do_accept_manage_team_invitations_path(token: @team_invitation.token), method: :post, local: true do |form| %>
-            <div class="mb-6">
-              <label class="block text-sm font-semibold text-slate-700 mb-2">
-                Email address
-              </label>
-              <div class="block rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-700">
-                <%= @team_invitation.email %>
-              </div>
-            </div>
-
-            <% if @team_invitation.person.present? %>
-              <div class="mb-6">
-                <label class="block text-sm font-semibold text-slate-700 mb-2">
-                  Profile being added
-                </label>
-                <div class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
-                  <% profile = @team_invitation.person %>
-                  <% if profile.headshot&.attached? %>
-                    <%= image_tag profile.safe_headshot_variant(:thumb), class: "w-10 h-10 rounded-lg object-cover" %>
-                  <% else %>
-                    <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
-                      <span class="text-sm font-semibold text-gray-600"><%= profile.name.first.upcase %></span>
-                    </div>
-                  <% end %>
-                  <div>
-                    <div class="font-medium text-slate-900"><%= profile.name %></div>
-                    <% if profile.organizations.any? %>
-                      <div class="text-xs text-slate-500">Also in: <%= profile.organizations.pluck(:name).join(", ") %></div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-
-            <div class="mb-6" data-controller="password-visibility<%= @existing_user ? '' : ' password-strength' %>">
-              <label class="block text-sm font-semibold text-slate-700 mb-2">
-                Password
-              </label>
-              <div class="relative">
-                <%= form.password_field :password,
-                      required: true,
-                      minlength: 8,
-                      autocomplete: @existing_user ? "current-password" : "new-password",
-                      placeholder: @existing_user ? "Enter your password" : "Set a password (at least 8 characters)",
-                      maxlength: 72,
-                      class: "block w-full rounded-lg border #{ @user&.errors&.[](:password)&.any? ? 'border-pink-500' : 'border-slate-300' } px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500 focus:ring-offset-0 transition pr-12",
-                      data: {
-                        password_visibility_target: "input",
-                        password_strength_target: @existing_user ? nil : "input",
-                        action: @existing_user ? nil : "input->password-strength#checkStrength paste->password-strength#checkStrength change->password-strength#checkStrength"
-                      }.compact
-                %>
-                <button type="button"
-                        data-action="password-visibility#toggle"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition">
-                  <span data-password-visibility-target="icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </span>
-                </button>
-              </div>
-              <% unless @existing_user %>
-                <div class="mt-2 bg-slate-50 rounded-md px-3 py-2.5 border border-slate-200">
-                  <p class="text-xs font-medium text-slate-700 mb-1.5">Password requirements:</p>
-                  <div class="space-y-1">
-                    <div class="flex items-start gap-2" data-password-strength-target="lengthCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
-                      <span class="text-xs text-slate-600 transition-colors">At least 8 characters</span>
-                    </div>
-                    <div class="flex items-start gap-2" data-password-strength-target="uppercaseCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
-                      <span class="text-xs text-slate-600 transition-colors">One uppercase letter (A-Z)</span>
-                    </div>
-                    <div class="flex items-start gap-2" data-password-strength-target="lowercaseCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
-                      <span class="text-xs text-slate-600 transition-colors">One lowercase letter (a-z)</span>
-                    </div>
-                    <div class="flex items-start gap-2" data-password-strength-target="numberCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
-                      <span class="text-xs text-slate-600 transition-colors">One number (0-9)</span>
-                    </div>
-                    <div class="flex items-start gap-2" data-password-strength-target="specialCheck">
-                      <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" opacity="0.3" />
-                      </svg>
-                      <span class="text-xs text-slate-600 transition-colors">One special character (!@#$%)</span>
-                    </div>
-                  </div>
-                </div>
-              <% end %>
-
-              <div class="flex flex-col gap-3 mt-6">
-                <%= render "shared/button",
-                    text: "Join #{sanitize(@team_invitation.organization.name)}",
-                    variant: "primary",
-                    size: "medium",
-                    type: :submit,
-                    class: "w-full",
-                    disabled: @existing_user ? false : true,
-                    classes: @existing_user ? "" : "!opacity-50 !cursor-not-allowed",
-                    data: @existing_user ? {} : { password_strength_target: "submit" } %>
-              </div>
-            </div>
-          <% end %>
-
-          <% if @existing_user %>
-            <div class="mt-6 pt-6 border-t border-slate-200">
-              <p class="text-sm text-slate-600 text-center">
-                <%= link_to "Need to reset your password?", password_path, class: "font-semibold text-pink-500 hover:text-pink-600 transition" %>
-              </p>
-            </div>
-          <% end %>
-        </div>
+    <% if existing %>
+      <%= render "shared/auth/password_field", form: form, autocomplete: "current-password", error: @authentication_error.present? %>
+      <div class="pt-1">
+        <%= render "shared/button", text: "Join #{org.name}", variant: "primary", size: "jumbo", type: :submit %>
       </div>
+    <% else %>
+      <%= render "shared/auth/password_field", form: form, strength: true, autocomplete: "new-password",
+            error: @user&.errors&.[](:password)&.any? || false %>
+      <div class="pt-1">
+        <%= render "shared/button",
+            text: "Join #{org.name}",
+            variant: "primary",
+            size: "jumbo",
+            type: :submit,
+            disabled: true,
+            classes: "!opacity-50 !cursor-not-allowed",
+            data: { password_strength_target: "submit" } %>
+      </div>
+    <% end %>
+  <% end %>
 
+  <% if existing %>
+    <div class="border-t border-slate-200 pt-4 text-center text-sm leading-[1.8] text-slate-600">
+      Forgot your password? <%= link_to "Reset it", password_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
     </div>
-  </div>
-</div>
+  <% end %>
+<% end %>

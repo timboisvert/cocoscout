@@ -1,0 +1,18 @@
+<%#
+  A notice at the top of an auth card. Text only, no icon. Two kinds:
+    :note  (default) neutral slate: "Check your email.", "You already have an account."
+    :error pink: a wrong password, an expired link.
+
+  Locals: kind, title (bold first line, optional), body (HTML; or render with
+  layout: and a block). Links inside the body should carry
+  class="font-semibold underline".
+%>
+<%
+  kind  = local_assigns[:kind] || :note
+  title = local_assigns[:title]
+  tone  = kind == :error ? "border-pink-200 bg-pink-50 text-pink-800" : "border-slate-200 bg-slate-50 text-slate-800"
+%>
+<div class="rounded-lg border px-4 py-3.5 text-sm leading-relaxed <%= tone %>" role="<%= kind == :error ? 'alert' : 'status' %>">
+  <% if title.present? %><strong class="mb-0.5 block font-semibold"><%= title %></strong><% end %>
+  <%= local_assigns[:body] || yield %>
+</div>
