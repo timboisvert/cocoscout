@@ -105,6 +105,9 @@ stop giving the impression it's already arrived.
 
 ## 8. The getting-paid card on My Shifts
 
+Mockups for 7 and 8 (2026-10-15, three directions, waiting on Tim's pick):
+https://claude.ai/artifact/MBkyRtw5j498PHGKC1NV9n
+
 `my/shifts/_getting_paid.html.erb` (Fae's screenshot, 2026-10-15) reads
 wrong in every part:
 - "Owed for staffing hours $0.00" right after a payout that hasn't arrived
