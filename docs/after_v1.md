@@ -42,3 +42,78 @@ Reword for door staff, per the same rule: "Stripe hasn't confirmed the
 payment yet", "Stripe took $X, not this sale's total", "Stripe couldn't start
 that sale" (`app/services/tap_to_pay.rb`, `app/controllers/door_controller.rb`)
 and "Confirming with Stripe…" (`door_tap_controller.js`).
+
+## 4. "Sold elsewhere" modal on mobile
+
+The Sold elsewhere modal on a show's ticketing page
+(`manage/ticket_listings/_outside_sales_modal.html.erb`, with
+`_outside_sales_row`) is unusable on a phone (Tim, 2026-10-15). Rebuild it
+phone-first: one row per line that stacks instead of a cramped grid, inputs
+at 16px so iPhone doesn't zoom, the save button always reachable.
+
+## 5. Downloading the ticketing QR code on mobile web
+
+The QR modal's Download (`shared/_qr_modal.html.erb` →
+`qr_code_controller.js#download`) clicks a link to a PNG data URL. On a
+phone nobody can tell where the file went (iPhone files it in Files →
+Downloads, or opens it as a page). On phones, offer the phone's share sheet
+with the image (Web Share API with a file: "Save Image", AirDrop, Messages),
+and fall back to opening the image with "press and hold to save". Desktop
+keeps the plain download. In the app, the same share sheet.
+
+## 6. Services a show needs (contracts, productions and staffing)
+
+The biggest gap (Tim): knowing which shows need our services. Some shows'
+contracts say they need a booth tech; shows we produce ourselves (about
+half) never say, so at staffing time nobody can tell which shows need
+security, a videographer or a booth tech.
+
+Make services first-class on the production (and each show), whatever
+created it:
+- A production (or a single show) lists the services it needs: e.g.
+  security, videographer, booth tech.
+- Contracts fill that in: a contract's services (today
+  `ContractServiceOption` and the contract's `draft_data["services"]`,
+  priced, per event or once) set the services on the shows it books. A
+  production made without a contract picks them directly.
+- Staffing reads them: each service maps to the house roles that provide
+  it (`HouseRole`: Tech, Security…), so the staffing pages show which shows
+  still need someone for a service, and scheduling can create those shifts.
+- Creating a contract starts from the services already chosen.
+
+Needs a design pass with Tim first (the service ↔ house role mapping, per
+show vs per production, pricing for in-house shows).
+
+## 7. "Paid" when the money is still on its way
+
+We tell people "paid" the day CocoScout sends the money, days before it
+reaches their bank. Fae (staff) asked when they'd actually get paid: the
+date in CocoScout is "days before payment", it would help budgeting to know
+when to expect it, and "you've paid but I've not had payment received, so
+it feels a little aaaa to see 0 owed". Tim: don't get it there faster;
+stop giving the impression it's already arrived.
+
+- Find every place that tells someone they've been paid or are being paid
+  (My Payments, My Shifts' getting-paid card, payout emails and messages
+  from ContentTemplates, the payout run timeline, contract payments) and
+  reword by stage: approved → sent, on its way (arrives about <date>) →
+  in your bank.
+- The arrival date can be real: the payment provider reports each payout
+  to the person's bank with an expected arrival date, and says when it has
+  landed (Connect payout events). Show "Arrives about Oct 14" and then
+  "In your bank Oct 14". Never name the provider (rule 2's).
+
+## 8. The getting-paid card on My Shifts
+
+`my/shifts/_getting_paid.html.erb` (Fae's screenshot, 2026-10-15) reads
+wrong in every part:
+- "Owed for staffing hours $0.00" right after a payout that hasn't arrived
+  says they're owed nothing. Show money on its way separately from money
+  still owed.
+- "Estimated from 0 unpaid hours · 0h pending, 0h approved. Tips and
+  extras are added at pay time." is too technical. Say it the way a person
+  would ("3 hours waiting for approval"), or say nothing when it's all zero.
+- "Recently paid … paid Oct 11" for each day worked: use the stages from 7
+  ("on its way", "in your bank Oct 14").
+- The green "Bank connected — you're set up to get paid. Manage" bar looks
+  bad on a phone; restyle it with the house alert style, not green.
