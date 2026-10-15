@@ -151,8 +151,7 @@ RSpec.describe "The iOS app's web side", type: :request do
 
       get welcome_path, headers: in_app
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Your shows, your messages, your tickets. All in one place.",
-                                       "Working the box office: scan and sell tickets", "Create an account",
+      expect(response.body).to include("Your shows, your messages, your ticketing. All in one place.", "Create an account",
                                        signin_path, signup_path)
 
       get signin_path, headers: in_app

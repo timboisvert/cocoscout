@@ -7,6 +7,7 @@
           - :small  -> w-16 (fixed corner links)
           - :medium -> w-20 sm:w-24 (welcome headers, default)
           - :large  -> w-32 (navigation sidebars)
+          - :hero   -> w-56 (the app's welcome screen)
     class: String - Additional CSS classes to add
 %>
 <%
@@ -18,6 +19,7 @@
     when :small then "w-16"
     when :medium then "w-20 sm:w-24"
     when :large then "w-32"
+    when :hero then "w-56"
     else "w-20 sm:w-24"
   end
 
