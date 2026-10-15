@@ -1,0 +1,220 @@
+# Google Play submission: CocoScout for Android
+
+Every answer Play Console asks for, in the order of its "Set up your app"
+list. The images live in `android/play_store/` (not in git; regenerate from
+the emulator if lost). The iOS answers are in `ios/app_store_submission.md`;
+these match them, plus what the iOS ones missed (see "Data safety").
+
+App: **CocoScout**, package `com.cocoscout.app`, free, organization account.
+
+## Set up your app (Dashboard)
+
+### Privacy policy
+
+`https://cocoscout.com/privacy`
+
+### App access
+
+**All or some functionality in my app is restricted.** Add one set of
+instructions:
+
+- Name: `Reviewer account`
+- Username: `app.review@demo.cocoscout.com`
+- Password: `Lantern-Street-2026!` (the reviewer block's default in
+  `ios/app_store_submission.md`)
+- Any other information:
+
+> CocoScout is a free companion app for performers and crew. This account is
+> a performer cast in upcoming shows at a sample organization.
+>
+> - Sign in with the email and password. The pink button (bottom right)
+>   opens the menu: Calendar, Messages, Shows, and so on.
+> - Messages has a thread from the organization's manager; replies work.
+> - "Manage" (the organization's side: casting, ticketing, payouts) is a
+>   website, not part of the app. Links to it open in the browser.
+>   Nothing is sold to the user inside the app.
+> - Door: the account has box-office access to the sample shows. Menu →
+>   "Work the door" (bottom) → the show. "Scan" opens the camera (that is
+>   the camera permission). The list has two parties to check in by
+>   tapping. "Sell" records cash and comp sales; "Card or phone pay" shows a
+>   QR code for the buyer's own phone, and says card payments aren't set up
+>   (the sample organization has none). That's expected.
+> - Account deletion: Settings → Delete my account.
+
+The sample shows on sale are dated from the day the reviewer block last ran
+(Oct 15 and Oct 18, 2026). **Re-run the block the day you send the app for
+review** so the Door has a show to open.
+
+### Ads
+
+**No, my app does not contain ads.**
+
+### Content rating
+
+Start the questionnaire. Email `support@cocoscout.com`. Category: **All Other
+App Types**.
+
+| Question | Answer |
+|---|---|
+| Violence, blood, sexual content, nudity, language, drugs, alcohol, tobacco, crude humor | No (all) |
+| Gambling, simulated gambling | No |
+| Users can interact or exchange content (chat, messages, sharing photos) | **Yes** |
+| Shares the user's current physical location with other users | No |
+| Lets users purchase digital goods | No |
+| Unrestricted internet access / a web browser | No |
+| Is the app a news app or contains news content | No |
+
+Expect Everyone / PEGI 3 with "Users Interact".
+
+### Target audience and content
+
+- Target age groups: **18 and over** only. (The privacy policy says it isn't
+  for under-13s; picking only 18+ keeps the app out of Google's Families
+  program.)
+- Could the app unintentionally appeal to children: **No**.
+
+### News apps
+
+**No.**
+
+### Data safety
+
+**Data collection and security**
+
+| Question | Answer |
+|---|---|
+| Does your app collect or share any of the required user data types? | Yes |
+| Is all of the user data collected by your app encrypted in transit? | Yes |
+| Account creation methods | Username and password (the sign-in is email and password) |
+| Delete account URL | `https://cocoscout.com/support#delete-account` |
+| Can users ask for some data to be deleted without deleting their account? | No |
+
+**Data types.** Every row: Collected **yes**, Shared **no**, Processed
+ephemerally **no**. "Shared" stays no: organizations a person joins see what
+they chose to share with them (user-initiated), and the companies that run
+CocoScout's servers, email and payments are service providers, which Google
+doesn't count as sharing.
+
+| Category → type | Required or optional | Purposes |
+|---|---|---|
+| Personal info → Name | Required | App functionality, Account management |
+| Personal info → Email address | Required | App functionality, Account management |
+| Personal info → User IDs | Required | App functionality, Account management |
+| Personal info → Address | Optional | App functionality, Fraud prevention, security and compliance |
+| Personal info → Phone number | Optional | App functionality |
+| Personal info → Other info | Optional | App functionality, Fraud prevention, security and compliance |
+| Financial info → Purchase history | Optional | App functionality |
+| Messages → Other in-app messages | Optional | App functionality |
+| Photos and videos → Photos | Optional | App functionality |
+| Files and docs | Optional | App functionality |
+| App activity → Other user-generated content | Optional | App functionality |
+| Device or other IDs | Optional | App functionality |
+
+What each one is, if Google asks:
+- Address and Other info: the mailing address and taxpayer ID number on a
+  W-9, needed before an organization pays someone; pronouns.
+- Purchase history: course registrations and contract payments made through
+  the app (the card itself is entered on the payment provider's page).
+- Photos: headshots and photos sent in messages. Files and docs: résumés.
+  Other user-generated content: profile bio and credits.
+- Device or other IDs: the notification token.
+
+Not collected: location, financial payment info (cards and bank details are
+entered on the payment provider's own page), health, contacts, calendar,
+audio, web browsing, app interactions, crash logs and diagnostics (no
+analytics or crash SDK in the app), advertising ID.
+
+### Government apps
+
+**No.**
+
+### Financial features
+
+**My app doesn't provide any financial features.** The door sells an
+organization's own event tickets (like any merchant), and payouts are set up
+on the payment provider's page, not in the app.
+
+### Health apps
+
+**My app does not have any health features.**
+
+### Advertising ID
+
+**No.** The app doesn't use it (the built app has no `AD_ID` permission).
+
+### App category and contact details (Store settings)
+
+- App or game: App. Category: **Business**.
+- Tags: pick up to five that fit from Google's list (event management,
+  business, productivity).
+- Email: `support@cocoscout.com`. Website: `https://cocoscout.com`. Phone:
+  leave blank.
+- External marketing: off.
+
+## Store listing (Grow users → Store presence → Main store listing)
+
+| Field | Value |
+|---|---|
+| App name (30) | CocoScout |
+| Short description (80) | Your shows, your messages, your ticketing. All in one place. |
+| App icon | `play_store/icon-512.png` |
+| Feature graphic | `play_store/feature-graphic.png` |
+| Phone screenshots | `play_store/1-welcome.png` through `5-door.png`, in order |
+| Tablet screenshots | none (phone-only, portrait) |
+| Video | none |
+
+### Full description (4000)
+
+```
+CocoScout is where performers, crew and the organizations they work with keep everything about a show in one place. The app brings the performer side to your phone.
+
+YOUR CALENDAR
+Every show, rehearsal and shift you're on, with call times, locations and who else is cast, plus the availability questions your organizations ask.
+
+MESSAGES THAT REACH YOU
+Cast messages, casting news, sign-up confirmations and contract requests arrive as notifications, and open straight to the thread.
+
+SIGN-UPS AND AUDITIONS
+Sign up for open mics and showcases, submit for auditions, and see where you stand.
+
+CONTRACTS, DOCUMENTS AND PAY
+Sign agreements, pick up scripts and schedules, finish your tax forms, and see what you've been paid.
+
+THE DOOR
+Working the box office tonight? The app scans tickets with the camera, checks in whole parties, and sells at the door.
+
+CocoScout is free for performers. Organizations manage casting, ticketing and payouts from the web at cocoscout.com; sign in there with the same account.
+```
+
+## The first release
+
+1. **Internal testing** first (Testing → Internal testing → Create new
+   release). Upload `app-release.aab`. It's live to testers in minutes, with
+   no review, and Google runs its pre-launch report on real devices. The
+   upload also makes Google's app signing key, whose SHA-256 goes into
+   `/.well-known/assetlinks.json` so cocoscout.com links open in the app.
+2. **Production** next (Production → Create new release → promote the same
+   build). Countries: United States (add more any time). Release name `1.0`.
+   Release notes:
+
+```
+The first CocoScout app: your calendar, messages, sign-ups, contracts and pay, with notifications for the things that matter and a scanner for the door.
+```
+
+New apps from new developer accounts can take up to a week in review.
+
+## Building the release
+
+The upload key is `android/keystores/cocoscout-upload.jks`; its passwords
+are in `android/keystore.properties`. Neither is in git; both are saved in
+1Password as "CocoScout Android upload key". If they're lost, Play
+Console can reset the upload key (Setup → App signing); the app signing key
+itself is Google's and can't be lost.
+
+```bash
+cd android && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew bundleRelease
+```
+
+The bundle lands at `android/app/build/outputs/bundle/release/app-release.aab`.
+Bump `versionCode` in `app/build.gradle.kts` for every upload (Play refuses
+a number it has seen).
