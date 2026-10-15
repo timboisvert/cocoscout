@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_13_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_15_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1709,6 +1709,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_140000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "payee_notified_at"
+    t.date "expected_deposit_on"
+    t.datetime "deposited_at"
     t.index ["payee_type", "payee_id"], name: "index_payout_batch_items_on_payee_type_and_payee_id"
     t.index ["payout_batch_id", "status"], name: "idx_payout_batch_items_batch_status"
     t.index ["payout_batch_id"], name: "index_payout_batch_items_on_payout_batch_id"

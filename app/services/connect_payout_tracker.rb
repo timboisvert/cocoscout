@@ -6,10 +6,13 @@
 # transactions do: each is the destination payment of one transfer, and that
 # payment names the transfer it came from.
 #
-#   payout.paid   — a theater's withdrawals in it reached the bank
-#   payout.failed — the bank turned it down: a theater's withdrawals wait in
-#                   its Stripe account; a payee's run payments go back to the
-#                   run (PayoutBatchService.return_item!)
+#   payout.created — the provider scheduled it: a payee's run payments in it
+#                    learn the day they're due in the bank (expected_deposit_on)
+#   payout.paid    — it reached the bank: a theater's withdrawals land, and a
+#                    payee's run payments read "Deposited" (deposited_at)
+#   payout.failed  — the bank turned it down: a theater's withdrawals wait in
+#                    its Stripe account; a payee's run payments go back to the
+#                    run (PayoutBatchService.return_item!)
 class ConnectPayoutTracker
   # The ids of our transfers a connected account's payout carried. Nil when
   # Stripe can't be asked, so callers can fall back.
@@ -28,6 +31,14 @@ class ConnectPayoutTracker
     nil
   end
 
+  def self.created!(payout, account_id)
+    ids = transfer_ids(payout.id, account_id)
+    return if ids.blank?
+
+    PayoutBatchItem.where(stripe_transfer_id: ids, status: "paid", deposited_at: nil)
+                   .update_all(expected_deposit_on: arrival_date(payout), updated_at: Time.current)
+  end
+
   def self.paid!(payout, account_id)
     ids = transfer_ids(payout.id, account_id)
     return if ids.blank?
@@ -35,6 +46,13 @@ class ConnectPayoutTracker
     BalanceWithdrawal.where(stripe_transfer_id: ids).find_each do |withdrawal|
       BalanceWithdrawalService.landed!(withdrawal, payout_id: payout.id)
     end
+    PayoutBatchItem.where(stripe_transfer_id: ids, status: "paid", deposited_at: nil)
+                   .update_all(deposited_at: arrival_date(payout)&.in_time_zone || Time.current, updated_at: Time.current)
+  end
+
+  # The day the provider puts the money in the bank (a Unix time at midnight UTC).
+  def self.arrival_date(payout)
+    payout.arrival_date && Time.at(payout.arrival_date).utc.to_date
   end
 
   # Returns the matched run items when the transfers could be read, or nil

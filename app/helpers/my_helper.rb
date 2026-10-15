@@ -220,6 +220,28 @@ module MyHelper
     "venmo" => "with Venmo"
   }.freeze
 
+  # Where a payment we sent stands, in the payee's words (Tim, 2026-10-15):
+  # on its way until the payout provider says deposited, and "sent" (never
+  # "paid") when it never says. stage: PayoutBatchItem#deposit_stage.
+  def deposit_stage_phrase(stage, paid_at:, expected_on: nil, deposited_on: nil)
+    case stage
+    when :deposited then "Deposited #{deposited_on.strftime('%a, %b %-d')}"
+    when :on_its_way then expected_on ? "On its way · expected about #{expected_on.strftime('%a, %b %-d')}" : "On its way"
+    else "Sent #{paid_at.strftime('%a, %b %-d')}"
+    end
+  end
+
+  DEPOSIT_STAGE_BADGES = {
+    on_its_way: [ "On its way", "bg-blue-50 text-blue-800" ],
+    deposited: [ "Deposited", "bg-green-50 text-green-800" ],
+    sent: [ "Sent", "bg-gray-100 text-gray-700" ]
+  }.freeze
+
+  def deposit_stage_badge(stage)
+    label, classes = DEPOSIT_STAGE_BADGES.fetch(stage || :sent)
+    tag.span(label, class: "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium flex-shrink-0 #{classes}")
+  end
+
   def paid_with_phrase(paid_at, method)
     phrase = +"Paid"
     phrase << " #{paid_at.strftime('%b %-d, %Y')}" if paid_at

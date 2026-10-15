@@ -31,6 +31,34 @@ class PayoutBatchItem < ApplicationRecord
     status == "paid"
   end
 
+  # After we send it, pay is "on its way" until the payout provider says it
+  # was deposited in the payee's bank (deposited_at, from its payout.paid
+  # event). Without that word it stays on its way until a couple of business
+  # days past when it was due, then reads as "sent" on the day we sent it:
+  # true either way, and never a claim that it reached the bank.
+  ON_ITS_WAY_GRACE_BUSINESS_DAYS = 2
+
+  # :deposited, :on_its_way or :sent; nil for an item not yet sent.
+  def deposit_stage(today = Date.current)
+    return nil unless paid? && paid_at
+    return :deposited if deposited_at
+
+    today <= PayoutBatch.add_business_days(expected_deposit_date, ON_ITS_WAY_GRACE_BUSINESS_DAYS) ? :on_its_way : :sent
+  end
+
+  # When the bank deposit should land: the provider's own arrival date once
+  # its payout.created event names it, else a couple of business days after
+  # we sent it (a week for someone's very first payment, which the provider
+  # holds longer).
+  def expected_deposit_date
+    return expected_deposit_on if expected_deposit_on
+    return nil unless paid_at
+
+    first_payment = !PayoutBatchItem.where(payee_type: payee_type, payee_id: payee_id, status: "paid")
+                                    .where(paid_at: ...paid_at).exists?
+    payout_batch.expected_deposit_range(first_payout: first_payment, from: paid_at.to_date).first
+  end
+
   # Mark paid and post the debiting ledger entry (idempotent per item).
   def mark_paid!(transfer_id: nil)
     transaction do

@@ -55,6 +55,8 @@ class StripeWebhooksController < ApplicationController
       handle_transfer_reversed(event.data.object)
     when "payout.failed"
       handle_connect_payout_failed(event.data.object, event.account)
+    when "payout.created"
+      ConnectPayoutTracker.created!(event.data.object, event.account) if event.account
     when "payout.paid"
       ConnectPayoutTracker.paid!(event.data.object, event.account) if event.account
     when "charge.dispute.created", "charge.dispute.closed"

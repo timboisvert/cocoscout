@@ -1,13 +1,14 @@
-<%# At-a-glance stat cards, in pipeline order: what you're owed, what's coming
-    up, hours awaiting approval, then approved hours awaiting pay. Money owed is
-    the STAFFING estimate only (hours × rate), not performance pay.
-    Uses @owed_estimate_cents, @upcoming_count, @pending_hours, @approved_hours. %>
+<%# At-a-glance stat cards, in pipeline order: what's still to be paid (not
+    sent yet: approved or waiting for approval, MyShiftPay), what's coming up,
+    hours waiting for approval, then approved hours not sent yet. Money on its
+    way is the Getting paid card's, so nothing here says "owed" while it's in
+    transit. Uses @shift_pay, @upcoming_count, @pending_hours, @approved_hours. %>
 <% next_shift = @rows.first %>
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
   <div class="rounded-xl border border-pink-200 bg-pink-50 p-4">
-    <div class="text-xs font-medium text-pink-600 uppercase tracking-wide">Est. pay owed</div>
-    <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_to_currency(@owed_estimate_cents / 100.0) %></div>
-    <div class="text-[11px] text-gray-400 mt-0.5">for staffing hours</div>
+    <div class="text-xs font-medium text-pink-600 uppercase tracking-wide">Still to be paid</div>
+    <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_to_currency(@shift_pay.still_to_be_paid_cents / 100.0) %></div>
+    <div class="text-[11px] text-gray-500 mt-0.5">not sent yet</div>
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white p-4">
@@ -19,14 +20,14 @@
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white p-4">
-    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Awaiting approval</div>
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Waiting for approval</div>
     <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_with_precision(@pending_hours, precision: 2, strip_insignificant_zeros: true) %></div>
-    <div class="text-[11px] text-gray-400 mt-0.5">hours pending review</div>
+    <div class="text-[11px] text-gray-500 mt-0.5">hours</div>
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white p-4">
     <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Approved</div>
     <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_with_precision(@approved_hours, precision: 2, strip_insignificant_zeros: true) %></div>
-    <div class="text-[11px] text-gray-400 mt-0.5">hours awaiting pay</div>
+    <div class="text-[11px] text-gray-500 mt-0.5">hours not sent yet</div>
   </div>
 </div>

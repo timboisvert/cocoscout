@@ -112,26 +112,12 @@ module My
         .includes(:house_role, shift_assignment: { shift: :house_role })
         .order(started_at: :desc)
         .to_a
-      # A little recently-paid history.
-      @paid_entries = StaffTimeEntry.where(person_id: people_ids).paid
-        .where(paid_at: 90.days.ago..Time.current)
-        .includes(:house_role, shift_assignment: { shift: :house_role })
-        .order(paid_at: :desc).limit(10).to_a
+      # The Getting paid card: the next money coming, and each recent day's
+      # pay by where it stands (waiting, approved, on its way, deposited).
+      @shift_pay = MyShiftPay.new(people_ids)
 
-      # Owed estimate for STAFFING hours (excludes performance payouts). Each
-      # entry prices at the role it was worked as — the member default rate is
-      # only the fallback for role-less entries.
-      members_by_key = OrganizationStaffMember.where(person_id: people_ids)
-                                              .includes(staff_role_qualifications: :house_role)
-                                              .index_by { |m| [ m.organization_id, m.person_id ] }
-
-      @unpaid_hours = @time_entries.sum { |e| e.hours.to_f }
       @pending_hours = @time_entries.select { |e| e.status == "pending" }.sum { |e| e.hours.to_f }
       @approved_hours = @time_entries.select { |e| e.status == "approved" }.sum { |e| e.hours.to_f }
-      @owed_estimate_cents = @time_entries.sum do |e|
-        member = members_by_key[[ e.organization_id, e.person_id ]]
-        member ? member.amount_cents_for(e.effective_house_role, hours: e.hours) : 0
-      end
 
       @staff_orgs = Organization.where(
         id: OrganizationStaffMember.active.where(person_id: people_ids).distinct.pluck(:organization_id)

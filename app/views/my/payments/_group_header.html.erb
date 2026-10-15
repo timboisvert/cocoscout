@@ -1,0 +1,19 @@
+<%# The top of a money card on My Payments: an icon by stage, what it is,
+    when it goes or lands, and how much. tone: :on_its_way, :approved or
+    :waiting. Locals: tone, title, sub, cents. %>
+<% icons = { on_its_way: [ "bg-blue-50", "text-blue-600", "M5 12h14M13 6l6 6-6 6" ],
+             approved: [ "bg-slate-100", "text-slate-600", "M5 13l4 4L19 7" ],
+             waiting: [ "bg-amber-50", "text-amber-600", "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" ] } %>
+<% bg, fg, path = icons.fetch(tone) %>
+<div class="px-5 py-3 border-b border-gray-100 flex items-start justify-between gap-4">
+  <div class="min-w-0 flex items-start gap-2.5">
+    <div class="w-7 h-7 rounded-lg <%= bg %> flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4 <%= fg %>" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= path %>"/></svg>
+    </div>
+    <div class="min-w-0">
+      <div class="text-sm font-semibold text-gray-900"><%= title %></div>
+      <% if sub.present? %><div class="text-xs <%= tone == :on_its_way ? 'text-blue-900' : 'text-gray-500' %>"><%= sub %></div><% end %>
+    </div>
+  </div>
+  <div class="text-sm font-bold text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(cents / 100.0) %></div>
+</div>

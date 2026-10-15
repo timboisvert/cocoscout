@@ -2,10 +2,12 @@
 
 require "rails_helper"
 
-# My Payments, rebuilt (Tim, 2026-10-10): "Coming to you" is only what hasn't
-# been paid, by where it stands, line by line, with anything taken out of a
-# share listed under it; "Paid" is each payment saying what it was for. No
-# list of everything ever earned minus "Already paid out".
+# My Payments, rebuilt (Tim, 2026-10-10): what's coming, by where it stands,
+# line by line, with anything taken out of a share listed under it; past
+# payments each say what they were for. No list of everything ever earned
+# minus "Already paid out". In the payee's words since 2026-10-15: on its way,
+# still to be paid (approved, waiting for approval), deposited; nothing says
+# paid until the payout provider says deposited.
 RSpec.describe "My Payments", type: :request do
   let(:password) { "Password123!" }
   let(:user) { create(:user, password: password) }
@@ -39,34 +41,43 @@ RSpec.describe "My Payments", type: :request do
       PayoutBatchItem.find_by!(payee: person)
     end
 
-    it "shows the run's lines under Coming to you, the charge under its share" do
+    it "shows the run's lines under Still to be paid, the charge under its share" do
       get my_payments_path
       html = text(response.body)
 
-      expect(html).to match(/Coming to you<\/div> <div[^>]*>\$207\.50/)
-      expect(html).to include("In the next payout run")
+      expect(html).to match(/Still to be paid<\/div> <div[^>]*>\$207\.50/)
+      expect(html).to include("Approved", "Goes out")
       expect(html).to include("Dan&#39;s Magic — Aug 9 — your 50% share", "$257.50", "Booth Tech — Aug 9, 2026", "−$50.00")
       expect(html).to match(/You get<\/span> <span[^>]*>\$207\.50/)
       expect(html).not_to include("to them")
       expect(html).not_to include("Already paid out")
     end
 
-    it "moves it to Paid once deposited, saying what it was for" do
+    it "is on its way once sent, and a past payment once the bank deposit is confirmed, saying what it was for" do
       item.mark_paid!(transfer_id: "tr_me")
 
       get my_payments_path
       html = text(response.body)
       expect(html).to include("Nothing waiting right now")
-      expect(html).to match(/Paid in #{Date.current.year}<\/div> <div[^>]*>\$207\.50/)
-      expect(html).to include(Time.current.strftime("%B %Y"))
-      expect(html).to include("Dan&#39;s Magic — Aug 9 — your 50% share", "Booth Tech — Aug 9, 2026")
-      expect(html).not_to include("bank deposit")
+      expect(html).to match(/On its way<\/div> <div[^>]*>\$207\.50/)
+      expect(html).to include("expected about", "Dan&#39;s Magic — Aug 9 — your 50% share", "Booth Tech — Aug 9, 2026")
+      expect(html).to match(/Sent to you in #{Date.current.year}<\/span> <span[^>]*>\$207\.50/)
+      expect(html).to include("No payments yet.") # on its way, so not a past payment yet
 
       get my_payment_receipt_path(kind: "run", id: item.id)
       html = text(response.body)
-      expect(html).to include("Taken out of your share", "Booth Tech — Aug 9, 2026", "−$50.00")
+      expect(html).to include("On its way", "Taken out of your share", "Booth Tech — Aug 9, 2026", "−$50.00")
       expect(html).to match(/You got<\/span> <span[^>]*>\$207\.50/)
-      expect(html).to match(/Deposited to your bank<\/span> <span[^>]*>\$207\.50/)
+      expect(html).to match(/Sent to your bank<\/span> <span[^>]*>\$207\.50/)
+
+      item.update!(deposited_at: Time.current)
+      get my_payments_path
+      html = text(response.body)
+      expect(html).to match(/On its way<\/div> <div[^>]*>\$0\.00/)
+      expect(html).to include(Time.current.strftime("%B %Y"), "Deposited #{Time.current.strftime('%a, %b %-d')}")
+
+      get my_payment_receipt_path(kind: "run", id: item.id)
+      expect(text(response.body)).to match(/Deposited to your bank<\/span> <span[^>]*>\$207\.50/)
     end
   end
 
@@ -80,9 +91,9 @@ RSpec.describe "My Payments", type: :request do
 
     get my_payments_path
     html = text(response.body)
-    expect(html).to include("Not in a payout run yet", "Bright Star Circus", "October 3, 2026", "$50.00")
+    expect(html).to include("Approved", "Goes out once it&#39;s added to a payout run", "Bright Star Circus", "October 3, 2026", "$50.00")
     expect(html).to include("Advances to repay", "−$20.00")
-    expect(html).to match(/Coming to you<\/div> <div[^>]*>\$30\.00/)
+    expect(html).to match(/Still to be paid<\/div> <div[^>]*>\$30\.00/)
   end
 
   describe "a share that went wholly toward what they owed" do
@@ -105,7 +116,7 @@ RSpec.describe "My Payments", type: :request do
       html = text(response.body)
       expect(html).to include("Dan&#39;s Magic — Oct 8 — your 40% share", "$18.00", "went toward what you owe")
       expect(html).to include("Rehearsal balance — Aug 26, 2026", "−$6.00", "Rehearsal — Sep 6, 2026", "−$12.00")
-      expect(html).to match(/Paid in #{Date.current.year}<\/div> <div[^>]*>\$0\.00/)
+      expect(html).to match(/Sent to you in #{Date.current.year}<\/span> <span[^>]*>\$0\.00/)
 
       get my_payment_receipt_path(kind: "offset", id: share.id)
       html = text(response.body)

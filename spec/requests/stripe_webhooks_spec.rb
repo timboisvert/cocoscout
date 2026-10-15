@@ -90,6 +90,27 @@ RSpec.describe "StripeWebhooksController", type: :request do
     end
   end
 
+  describe "a payee's pay, followed to their bank" do
+    it "learns the day it's due, then that it was deposited" do
+      allow(ConnectPayoutTracker).to receive(:transfer_ids).with("po_p", "acct_123").and_return([ "tr_123" ])
+      tuesday = Time.utc(2026, 10, 13)
+
+      deliver("payout.created", Stripe::Payout.construct_from(id: "po_p", amount: 5_000, arrival_date: tuesday.to_i), account: "acct_123")
+      expect(item.reload.expected_deposit_on).to eq(Date.new(2026, 10, 13))
+      expect(item.deposit_stage(Date.new(2026, 10, 12))).to eq(:on_its_way)
+
+      deliver("payout.paid", Stripe::Payout.construct_from(id: "po_p", amount: 5_000, arrival_date: tuesday.to_i), account: "acct_123")
+      expect(item.reload.deposited_at.to_date).to eq(Date.new(2026, 10, 13))
+      expect(item.deposit_stage).to eq(:deposited)
+    end
+
+    it "says sent, never deposited, when no word ever comes" do
+      item.update!(paid_at: Time.zone.local(2026, 9, 28, 10))
+      expect(item.deposit_stage(Date.new(2026, 9, 29))).to eq(:on_its_way)
+      expect(item.deposit_stage(Date.new(2026, 10, 15))).to eq(:sent)
+    end
+  end
+
   describe "a theater's withdrawal, followed to its bank" do
     let(:theater) { create(:organization, stripe_account_id: "acct_theater", payouts_enabled: true) }
     let!(:withdrawal) do

@@ -1,62 +1,118 @@
-<%# Goal 3: staffing pay owed (estimate — hours × rate, not performance pay),
-    bank setup/confirm, and a little recently-paid history. Uses
-    @owed_estimate_cents, @unpaid_hours, @pending_hours, @approved_hours,
-    @bank_connected, @paid_entries. %>
+<%# Getting paid (Tim, 2026-10-15, "direction A"): the next money coming in
+    big type, then each recent day and where its pay stands, in the payee's
+    words: waiting for approval, approved, on its way, deposited. Nothing says
+    paid until the payout provider says deposited; without that word, pay we
+    sent reads "sent". Uses @shift_pay (MyShiftPay) and @bank_connected. %>
+<%
+  pay = @shift_pay
+  hero = pay.hero
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  day_on = ->(date) { date&.strftime("%a, %b %-d") }
+  hours_text = ->(hours) { "#{number_with_precision(hours, precision: 2, strip_insignificant_zeros: true)} #{hours == 1 ? 'hour' : 'hours'}" }
+  stage_words = {
+    waiting: [ "Waiting for approval", "text-amber-700" ], approved: [ "Approved", "text-slate-600" ],
+    on_its_way: [ "On its way", "text-blue-700" ], deposited: [ "Deposited", "text-green-700" ],
+    sent: [ "Sent", "text-gray-500" ], paid_directly: [ "Paid directly", "text-gray-500" ]
+  }
+%>
 <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
   <%= render "shared/section_heading", padding: "px-5 py-4", title: "Getting paid" %>
 
   <div class="p-5 space-y-4">
-    <%# Owed estimate %>
-    <div class="rounded-lg bg-gray-50 border border-gray-100 p-4">
-      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Owed for staffing hours</div>
-      <div class="text-3xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_to_currency(@owed_estimate_cents / 100.0) %></div>
-      <div class="text-xs text-gray-500 mt-1">
-        Estimated from <%= number_with_precision(@unpaid_hours, precision: 2, strip_insignificant_zeros: true) %> unpaid hours ·
-        <%= number_with_precision(@pending_hours, precision: 2, strip_insignificant_zeros: true) %>h pending,
-        <%= number_with_precision(@approved_hours, precision: 2, strip_insignificant_zeros: true) %>h approved.
-        Tips and extras are added at pay time.
-      </div>
-    </div>
-
-    <%# Bank status %>
-    <% if @bank_connected %>
-      <div class="flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
-        <div class="flex items-center gap-2 text-sm text-green-800">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-          Bank connected — you're set up to get paid.
+    <% if !@bank_connected %>
+      <%# Nothing reaches them until they add a bank: say what's waiting. %>
+      <% if hero && hero.stage != :caught_up && hero.cents.positive? %>
+        <%= render "shared/alert_panel",
+              eyebrow: "Ready for you",
+              headline: "#{money.(hero.cents)} is #{hero.stage == :waiting ? 'waiting for approval' : 'approved'}",
+              body: "Add your bank and it goes out with the next payout run. It reaches your bank about two business days later.",
+              actions: [ { text: "Add your bank", path: my_payments_setup_path } ] %>
+      <% else %>
+        <%= render "shared/alert_panel",
+              eyebrow: "Getting paid", headline: "Add your bank",
+              body: "So you can be paid for your shifts.",
+              actions: [ { text: "Add your bank", path: my_payments_setup_path } ] %>
+      <% end %>
+    <% elsif hero %>
+      <% case hero.stage %>
+      <% when :on_its_way %>
+        <div class="rounded-lg border border-blue-100 bg-blue-50 p-4">
+          <%= render "my/shifts/pay_stage_chip", stage: :on_its_way %>
+          <div class="text-3xl font-bold text-gray-900 tabular-nums mt-2"><%= money.(hero.cents) %></div>
+          <% if hero.on %>
+            <div class="text-[15px] text-blue-900 mt-1">Expected in your bank about <strong><%= day_on.(hero.on) %></strong></div>
+          <% end %>
+          <div class="text-sm text-gray-600 mt-0.5">
+            <%= hero.sent_on ? "Sent #{day_on.(hero.sent_on)}" : "Going out now" %><% if hero.org %> by <%= hero.org %><% end %>
+          </div>
         </div>
-        <%= link_to "Manage", my_payments_setup_path, class: "text-sm font-medium text-green-700 hover:text-green-800" %>
-      </div>
+        <div class="flex items-baseline justify-between gap-3 text-sm">
+          <span class="font-medium text-gray-700">Still to be paid</span>
+          <% still = pay.still_to_be_paid_cents %>
+          <span class="<%= still.positive? ? 'font-semibold text-gray-900 tabular-nums' : 'text-gray-500' %>"><%= still.positive? ? money.(still) : "Nothing right now" %></span>
+        </div>
+      <% when :approved %>
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <%= render "my/shifts/pay_stage_chip", stage: :approved %>
+          <div class="text-3xl font-bold text-gray-900 tabular-nums mt-2"><%= money.(hero.cents) %></div>
+          <div class="text-[15px] text-slate-800 mt-1">
+            <% if hero.on %>
+              Goes out <strong><%= day_on.(hero.on) %></strong>, in your bank about <%= day_on.(PayoutBatch.add_business_days(hero.on, PayoutBatch::DEPOSIT_MIN_BUSINESS_DAYS)) %>
+            <% else %>
+              Goes out with the next payout run
+            <% end %>
+          </div>
+          <% if hero.org %><div class="text-sm text-gray-600 mt-0.5">From <%= hero.org %></div><% end %>
+        </div>
+      <% when :waiting %>
+        <div class="rounded-lg border border-amber-100 bg-amber-50 p-4">
+          <%= render "my/shifts/pay_stage_chip", stage: :waiting %>
+          <div class="text-3xl font-bold text-gray-900 tabular-nums mt-2"><%= money.(hero.cents) %></div>
+          <div class="text-[15px] text-amber-900 mt-1"><%= hours_text.(hero.hours) %> waiting for your manager to approve</div>
+          <% if hero.org %><div class="text-sm text-gray-600 mt-0.5">At <%= hero.org %></div><% end %>
+        </div>
+      <% when :caught_up %>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <%= render "my/shifts/pay_stage_chip", stage: hero.settled_as %>
+          <div class="text-lg font-semibold text-gray-900 mt-2">You're all caught up</div>
+          <div class="text-[15px] text-gray-700 mt-0.5">
+            Your last pay, <strong><%= money.(hero.cents) %></strong>, was <%= hero.settled_as == :deposited ? "deposited" : "sent" %> <%= day_on.(hero.on) %>.
+          </div>
+        </div>
+      <% end %>
     <% else %>
-      <div class="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-        <div class="text-sm text-amber-900">Connect your bank so we can pay you.</div>
-        <%= render "shared/button", text: "Set up bank", variant: "primary", size: "small", path: my_payments_setup_path %>
-      </div>
+      <p class="text-sm text-gray-500">Pay for the hours you work shows up here.</p>
     <% end %>
 
-    <%# Recently paid %>
-    <% if @paid_entries.any? %>
-      <div>
-        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Recently paid</div>
-        <div class="space-y-1.5">
-          <% @paid_entries.first(5).each do |e| %>
-            <div class="flex items-center justify-between gap-2 text-sm">
-              <span class="text-gray-600"><%= e.started_at.strftime("%b %-d") %> · <%= number_with_precision(e.hours, precision: 2, strip_insignificant_zeros: true) %>h</span>
-              <% if e.paid_offline? %>
-                <%# Settled by hand (payroll check, cash…), not a CocoScout deposit —
-                    say so, so no one waits on a bank transfer that isn't coming. %>
-                <span class="text-gray-400 text-xs" <% if e.offline_payment_note.present? %>title="<%= e.offline_payment_note %>"<% end %>>paid directly<% if e.paid_at %> <%= e.paid_at.strftime("%b %-d") %><% end %></span>
-              <% else %>
-                <span class="text-gray-400 text-xs">paid <%= e.paid_at.strftime("%b %-d") %></span>
-              <% end %>
+    <% if pay.days.any? %>
+      <div class="border-t border-gray-100 pt-3">
+        <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Your days</div>
+        <div class="divide-y divide-gray-100">
+          <% pay.days.each do |day| %>
+            <% words, color = stage_words.fetch(day.stage) %>
+            <div class="flex items-center justify-between gap-3 py-2.5">
+              <div class="min-w-0">
+                <div class="text-[15px] font-medium text-gray-900"><%= day_on.(day.date) %></div>
+                <div class="text-sm text-gray-500"><%= hours_text.(day.hours) %></div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <div class="text-[15px] font-semibold text-gray-900 tabular-nums"><%= money.(day.cents) %></div>
+                <div class="text-sm <%= color %>"><%= words %><% if day.on && %i[deposited sent paid_directly].include?(day.stage) %> <%= day.on.strftime("%b %-d") %><% end %></div>
+              </div>
             </div>
           <% end %>
         </div>
       </div>
     <% end %>
 
-    <div class="pt-1">
-      <%= link_to "View all my payments →", my_payments_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+    <% if @bank_connected %>
+      <div class="border-t border-gray-100 pt-3 flex items-center justify-between gap-3 text-sm">
+        <span class="text-gray-600">Paid to your bank</span>
+        <%= link_to "Change", my_payments_setup_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
+      </div>
+    <% end %>
+    <div>
+      <%= link_to "All my payments →", my_payments_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
     </div>
   </div>
 </section>

@@ -4,14 +4,20 @@
 # after a few months of weekly pay the page was a list of everything ever
 # earned, minus a lump "already paid out").
 #
-# Two halves:
-#   coming   what hasn't been paid yet, by where it stands: on its way (a
-#            funded run), in the next payout run (a draft), or not in a run
-#            yet (earned, plus hours awaiting approval). Every group is its
-#            line items, with charges taken out of a share listed under it.
-#            The groups add up to the ledger balance plus pending hours.
-#   payments what has been paid, newest first: each payment with the lines it
-#            covered, so a deposit says what it was for.
+# In the payee's words (Tim, 2026-10-15): waiting for approval, approved, on
+# its way, deposited. "Paid" on our side only means we sent it; the bank
+# deposit follows a couple of business days later, so nothing here says paid
+# until the payout provider says deposited.
+#
+#   coming   what hasn't been sent yet, by where it stands: going out now (a
+#            run being funded: on its way), approved in the next payout run
+#            (a draft), or approved but in no run yet (plus hours waiting for
+#            approval). Every group is its line items, with charges taken out
+#            of a share listed under it. The groups add up to the ledger
+#            balance plus pending hours.
+#   payments what's been sent, newest first: each payment with the lines it
+#            covered and where it stands (on its way, deposited, or sent when
+#            no word came), so a deposit says what it was for.
 class MyPaymentsSummary
   # One thing they're paid for. deductions: Lines taken out of it (negative).
   Line = Data.define(:label, :detail, :cents, :deductions, :tag) do
@@ -22,10 +28,15 @@ class MyPaymentsSummary
   # A batch of coming money: kind :on_its_way, :queued or :owed.
   Group = Data.define(:kind, :org, :when_text, :lines, :total_cents)
 
-  # One payment received. kind: run / show / hours / offset (the receipt kinds).
-  Payment = Data.define(:kind, :id, :org, :paid_at, :method, :cents, :offset_cents, :lines) do
+  # One payment sent. kind: run / show / hours / offset (the receipt kinds).
+  # stage (run payments only): :on_its_way, :deposited or :sent
+  # (PayoutBatchItem#deposit_stage); expected_on / deposited_on its dates.
+  Payment = Data.define(:kind, :id, :org, :paid_at, :method, :cents, :offset_cents, :lines,
+                        :stage, :expected_on, :deposited_on) do
+    def initialize(stage: nil, expected_on: nil, deposited_on: nil, **rest) = super(stage:, expected_on:, deposited_on:, **rest)
     def title = lines.first&.label || "Payment"
     def more_count = [ lines.size - 1, 0 ].max
+    def on_its_way? = stage == :on_its_way
   end
 
   HISTORY_LIMIT = 150
@@ -45,6 +56,24 @@ class MyPaymentsSummary
   def coming_total_cents
     person.payout_balance_cents + pending_hours_cents
   end
+
+  # Going out now (a run being funded) or sent and not yet deposited.
+  def on_its_way_groups = coming_groups.select { |g| g.kind == :on_its_way }
+  def on_its_way_payments = payments.select(&:on_its_way?)
+
+  def on_its_way_cents
+    on_its_way_groups.sum(&:total_cents) + on_its_way_payments.sum(&:cents)
+  end
+
+  # Approved or waiting for approval: not sent yet.
+  def still_to_come_groups = coming_groups.reject { |g| g.kind == :on_its_way }
+
+  def still_to_come_cents
+    coming_total_cents - on_its_way_groups.sum(&:total_cents)
+  end
+
+  # Past payments: everything sent that isn't still on its way.
+  def past_payments = payments.reject(&:on_its_way?)
 
   # --- Paid ------------------------------------------------------------------
 
@@ -77,12 +106,11 @@ class MyPaymentsSummary
       lines = item_lines(item)
       when_text =
         if batch.in_flight?
-          earliest, latest = batch.expected_deposit_range
-          "Expect it in your bank #{earliest.strftime('%b %-d')}–#{latest.strftime('%b %-d')}"
+          "Expected in your bank about #{batch.expected_deposit_range.first.strftime('%a, %b %-d')}"
         elsif batch.payday
-          "Planned for #{batch.payday.strftime('%b %-d')}"
+          "Goes out #{batch.payday.strftime('%a, %b %-d')}"
         else
-          "Goes out on the next payout run"
+          "Goes out with the next payout run"
         end
       Group.new(kind: batch.in_flight? ? :on_its_way : :queued, org: batch.organization&.name,
                 when_text: when_text, lines: lines, total_cents: item.amount_cents)
@@ -101,7 +129,8 @@ class MyPaymentsSummary
     lines += pending_hours_lines
     return nil if lines.empty?
 
-    Group.new(kind: :owed, org: nil, when_text: nil, lines: lines, total_cents: owed + pending_hours_cents)
+    Group.new(kind: lines.all?(&:tag) ? :waiting : :owed, org: nil, when_text: nil, lines: lines,
+              total_cents: owed + pending_hours_cents)
   end
 
   def unpaid_items
@@ -152,7 +181,7 @@ class MyPaymentsSummary
         member = members[e.organization_id]
         cents = member ? member.amount_cents_for(e.effective_house_role, hours: e.hours) : 0
         Line.new(label: hours_label(e), detail: [ e.organization&.name, e.started_at&.strftime("%B %-d, %Y") ].compact.join(" · "),
-                 cents: cents, tag: "Awaiting approval")
+                 cents: cents, tag: "Waiting for approval")
       end
     end
   end
@@ -174,7 +203,8 @@ class MyPaymentsSummary
     PayoutBatchItem.where(payee: person, status: "paid")
                    .includes(payout_contributions: :source, payout_batch: :organization).map do |item|
       Payment.new(kind: "run", id: item.id, org: item.payout_batch.organization&.name, paid_at: item.paid_at,
-                  method: "stripe", cents: item.amount_cents, offset_cents: nil, lines: item_lines(item))
+                  method: "stripe", cents: item.amount_cents, offset_cents: nil, lines: item_lines(item),
+                  stage: item.deposit_stage, expected_on: item.expected_deposit_date, deposited_on: item.deposited_at&.to_date)
     end
   end
 
