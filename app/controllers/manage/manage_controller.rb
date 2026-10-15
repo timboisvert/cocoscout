@@ -34,14 +34,7 @@ module Manage
 
     def index
       # Explicitly ensure cookie is set before any redirect
-      if Current.user.present?
-        last_dashboard_prefs = cookies.encrypted[:last_dashboard]
-        # Reset if it's an old string value instead of a hash
-        last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
-        last_dashboard_prefs[Current.user.id.to_s] = "manage"
-        cookies.encrypted[:last_dashboard] = { value: last_dashboard_prefs, expires: 1.year.from_now }
-        Rails.logger.info "🔍 Index action - Forcing last_dashboard cookie to 'manage' for user #{Current.user.id}"
-      end
+      track_last_dashboard
 
       # Redirect to organization selection if no organization is set
       unless Current.organization
@@ -211,6 +204,10 @@ module Manage
 
     def track_last_dashboard
       return unless Current.user.present?
+      # Someone with no organization (a performer who tapped into producer
+      # setup) must keep landing on My at sign-in, or every login drops them
+      # back into setup with no way out.
+      return unless Current.organization || Current.user.accessible_organizations.exists?
 
       last_dashboard_prefs = cookies.encrypted[:last_dashboard]
       # Reset if it's an old string value instead of a hash

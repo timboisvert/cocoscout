@@ -107,9 +107,12 @@ module Manage
       render :plan, status: :unprocessable_content
     end
 
+    # Back out to My. Not manage_path: with no organization that bounces
+    # through the org picker straight back into setup.
     def cancel
       clear_setup_state
-      redirect_to manage_path
+      remember_my_dashboard
+      redirect_to my_dashboard_path
     end
 
     private
@@ -155,6 +158,15 @@ module Manage
       @setup_state[:preselect_interval] =
         SignupTracking::PLAN_INTERVALS.include?(params[:interval].to_s) ? params[:interval].to_s : "year"
       save_setup_state
+    end
+
+    # Undo a "manage" landing preference saved before the setup-loop fix, so
+    # the next sign-in lands on My too.
+    def remember_my_dashboard
+      prefs = cookies.encrypted[:last_dashboard]
+      prefs = {} unless prefs.is_a?(Hash)
+      prefs[Current.user.id.to_s] = "my"
+      cookies.encrypted[:last_dashboard] = { value: prefs, expires: 1.year.from_now }
     end
 
     def referred_from_sketchfest?

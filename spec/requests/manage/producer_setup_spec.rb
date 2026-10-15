@@ -186,4 +186,48 @@ RSpec.describe "Producer setup", type: :request do
       expect(response).to redirect_to(manage_producer_setup_path)
     end
   end
+
+  # A performer who taps "Producing your own shows?" by mistake must be able
+  # to back out, and must not be dropped back into setup at the next sign-in.
+  describe "I'll do this later" do
+    let(:user) { create(:user, password: password) }
+
+    def sign_in
+      post handle_signin_path, params: { email_address: user.email_address, password: password }
+    end
+
+    it "lands on the My dashboard instead of looping back into setup" do
+      sign_in
+      get manage_path
+      follow_redirect! while response.redirect?
+      expect(response.request.path).to eq(manage_producer_setup_path)
+
+      delete manage_producer_setup_cancel_path
+
+      expect(response).to redirect_to(my_dashboard_path)
+    end
+
+    it "sends the next sign-in to My, even after visiting setup" do
+      sign_in
+      get manage_path
+      follow_redirect! while response.redirect?
+      delete manage_producer_setup_cancel_path
+
+      get signout_path
+      sign_in
+
+      expect(response).to redirect_to(my_dashboard_path)
+    end
+
+    it "never saves Manage as the landing page for someone with no organization" do
+      sign_in
+      get manage_path
+      follow_redirect! while response.redirect?
+
+      get signout_path
+      sign_in
+
+      expect(response).to redirect_to(my_dashboard_path)
+    end
+  end
 end
