@@ -128,7 +128,8 @@
       choosing = can_act && (@refundable_ids.size + @refundable_item_ids.size) > 1
       act_word = @order.money_path == "none" ? "cancel" : "refund"
     %>
-    <%= form_with url: manage_ticket_order_refund_path(@order.id), method: :get, local: true do %>
+    <%= form_with url: manage_ticket_order_refund_path(@order.id), method: :get, local: true,
+          data: { controller: "refund-quote", refund_quote_url_value: manage_ticket_order_refund_quote_path(@order.id), action: "change->refund-quote#update" } do %>
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-baseline justify-between gap-2">
           <h2 class="text-lg font-semibold text-gray-900"><%= pluralize(@tickets.size, "ticket") %></h2>
@@ -223,6 +224,8 @@
               <% end %>
               <%= render "shared/button", text: "Review refund", variant: "secondary", size: "small", type: :submit %>
             </div>
+            <%# Follows the ticks and Keep the fees (refund-quote). %>
+            <p class="text-sm text-gray-700 tabular-nums" aria-live="polite" data-refund-quote-target="line"><%= refund_preview(@refund_quote)[:text] if @refund_quote %></p>
           </div>
         <% end %>
       </div>

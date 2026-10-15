@@ -121,6 +121,28 @@ RSpec.describe "Manage ticketing money", type: :request do
       expect { post manage_ticket_order_resend_path(order.id) }.to have_enqueued_job(TicketOrderConfirmationJob).with(order.id)
     end
 
+    it "shows what a refund comes to as the fee choice changes" do
+      order = sold(2)
+      expect(order.buyer_fee_cents).to be_positive
+      kept = TicketOrderRefund.quote(order, keep_fees: true)
+      all = TicketOrderRefund.quote(order, keep_fees: false)
+
+      get manage_ticket_order_path(order.id)
+      expect(response.body).to include("Back to the buyer:")
+
+      get manage_ticket_order_refund_quote_path(order.id), params: { keep_fees: "1" }
+      expect(response.parsed_body["text"]).to include("Back to the buyer: #{ActiveSupport::NumberHelper.number_to_currency(kept.amount_cents / 100.0)}")
+      get manage_ticket_order_refund_quote_path(order.id), params: { keep_fees: "0" }
+      expect(response.parsed_body["text"]).to include("Back to the buyer: #{ActiveSupport::NumberHelper.number_to_currency(all.amount_cents / 100.0)}")
+      expect(all.amount_cents).to be > kept.amount_cents
+
+      # One of two tickets ticked costs less; none ticked says so.
+      get manage_ticket_order_refund_quote_path(order.id), params: { keep_fees: "1", ticket_ids: [ "", order.tickets.first.id ] }
+      expect(response.parsed_body["text"]).not_to include(ActiveSupport::NumberHelper.number_to_currency(kept.amount_cents / 100.0))
+      get manage_ticket_order_refund_quote_path(order.id), params: { keep_fees: "1", ticket_ids: [ "" ] }
+      expect(response.parsed_body["text"]).to eq("Tick what to refund.")
+    end
+
     it "changes the buyer's email (a typo at checkout) and sends the tickets there" do
       order = sold(1)
       order.update_columns(buyer_email: "dana@gmail.con")

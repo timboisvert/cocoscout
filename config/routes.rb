@@ -1392,6 +1392,7 @@ Rails.application.routes.draw do
     get    "ticketing/orders",                    to: "ticket_orders#index",             as: "ticket_orders"
     get    "ticketing/orders/:id",                to: "ticket_orders#show",              as: "ticket_order"
     get    "ticketing/orders/:id/refund",         to: "ticket_orders#refund_review",     as: "ticket_order_refund"
+    get    "ticketing/orders/:id/refund/quote",   to: "ticket_orders#refund_quote",      as: "ticket_order_refund_quote"
     post   "ticketing/orders/:id/refund",         to: "ticket_orders#refund"
     post   "ticketing/orders/:id/refund/top-up",  to: "ticket_orders#refund_top_up",     as: "ticket_order_refund_top_up"
     post   "ticketing/orders/:id/resend",         to: "ticket_orders#resend",            as: "ticket_order_resend"

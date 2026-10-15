@@ -2,23 +2,30 @@
 
 <h1 class="text-lg font-semibold text-gray-900">Pick the show you're working</h1>
 
-<div class="mt-4 space-y-2">
-  <% if @listings.any? %>
-    <% @listings.each do |listing| %>
-      <% show = listing.show %>
-      <%= link_to door_path(listing), class: "flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-pink-400 transition-colors" do %>
-        <div class="flex-shrink-0 w-12 text-center">
-          <div class="text-[11px] font-semibold uppercase text-pink-600"><%= show.date_and_time.strftime("%b") %></div>
-          <div class="text-2xl font-bold leading-tight text-gray-900"><%= show.date_and_time.day %></div>
-          <div class="text-[11px] uppercase text-gray-500"><%= show.date_and_time.to_date == Date.current ? "Today" : show.date_and_time.strftime("%a") %></div>
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="font-semibold text-gray-900 truncate"><%= listing.display_title %></div>
-          <div class="text-sm text-gray-600 truncate"><%= show.date_and_time.strftime("%-l:%M %p") %> · <%= listing.organization.name %></div>
-        </div>
+<%# Today's shows first (someone early for the second of three shows picks
+    theirs), then the rest, for selling ahead. %>
+<% today, later = @listings.partition { |listing| listing.show.date_and_time.to_date <= Date.current } %>
+<% if @listings.any? %>
+  <% [ [ "Today", today ], [ "Coming up", later ] ].each do |heading, listings| %>
+    <% next if listings.empty? %>
+    <h2 class="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500"><%= heading %></h2>
+    <div class="mt-2 space-y-2">
+      <% listings.each do |listing| %>
+        <% show = listing.show %>
+        <%= link_to door_path(listing), class: "flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-pink-400 transition-colors" do %>
+          <div class="flex-shrink-0 w-12 text-center">
+            <div class="text-[11px] font-semibold uppercase text-pink-600"><%= show.date_and_time.strftime("%b") %></div>
+            <div class="text-2xl font-bold leading-tight text-gray-900"><%= show.date_and_time.day %></div>
+            <div class="text-[11px] uppercase text-gray-500"><%= show.date_and_time.to_date == Date.current ? "Today" : show.date_and_time.strftime("%a") %></div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="font-semibold text-gray-900 truncate"><%= listing.display_title %></div>
+            <div class="text-sm text-gray-600 truncate"><%= show.date_and_time.strftime("%-l:%M %p") %> · <%= listing.organization.name %></div>
+          </div>
+        <% end %>
       <% end %>
-    <% end %>
-  <% else %>
-    <p class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-600">No upcoming shows to work. A theater manager can give you door access in Ticketing settings.</p>
+    </div>
   <% end %>
-</div>
+<% else %>
+  <p class="mt-4 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-600">No upcoming shows to work. A theater manager can give you door access in Ticketing settings.</p>
+<% end %>

@@ -52,7 +52,7 @@ RSpec.describe "The iOS app's web side", type: :request do
       travel_to Time.zone.local(2026, 10, 16, 12) do
         get my_dashboard_path, headers: in_app
         door = menu.last
-        expect(door).to include("id" => "door", "title" => "Work the door", "path" => door_path(listing))
+        expect(door).to include("id" => "door", "title" => "Work the door", "path" => door_index_path)
         expect(door["subtitle"]).to eq("#{listing.display_title} · Starts 9:00 PM")
       end
 
@@ -83,7 +83,7 @@ RSpec.describe "The iOS app's web side", type: :request do
       end
       travel_to Time.zone.local(2026, 10, 16, 19, 30) do
         get my_dashboard_path, headers: in_app
-        expect(menu.last).to include("id" => "door", "path" => door_path(listing))
+        expect(menu.last).to include("id" => "door", "path" => door_index_path)
       end
 
       profile.update!(door_in_app: "always")

@@ -36,6 +36,22 @@ RSpec.describe "Door", type: :request do
   end
 
   describe "who gets in" do
+    it "lists today's shows first, then the ones coming up" do
+      production = create(:production, organization: org)
+      tonight = create(:ticket_listing, organization: org, status: "on_sale",
+                       show: create(:show, production: production, date_and_time: Time.current.end_of_day - 1.hour))
+      later = create(:ticket_listing, organization: org, status: "on_sale",
+                     show: create(:show, production: production, date_and_time: 3.days.from_now))
+      grant(door_person, "box_office")
+      sign_in(door_person)
+
+      get door_index_path
+      body = response.body
+      expect(body.index(">Today<")).to be < body.index(door_path(tonight))
+      expect(body.index(door_path(tonight))).to be < body.index(">Coming up<")
+      expect(body.index(">Coming up<")).to be < body.index(door_path(later))
+    end
+
     it "opens for someone with a grant, and lists that theater's shows" do
       grant(door_person, "check_in")
       sign_in(door_person)

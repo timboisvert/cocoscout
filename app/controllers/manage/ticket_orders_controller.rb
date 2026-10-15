@@ -43,6 +43,8 @@ module Manage
       @disputed = TicketDispute.open?(@order)
       @exchanges_out = @order.exchanges_out.includes(to_order: { ticket_listing: :show }).order(:id).to_a
       @movable = @order.paid? && @order.money_path.in?(%w[cocoscout none]) && TicketOrderExchange.movable(@order).exists?
+      # Everything ticked, fees as the policy has them: how the refund choices start.
+      @refund_quote = TicketOrderRefund.quote(@order, keep_fees: !@policy_check.policy.fees) if @refundable_ids.any? || @refundable_item_ids.any?
     end
 
     # Moving tickets to another date of the same production: the date, the
@@ -107,6 +109,14 @@ module Manage
       @available_cents = CocoScoutBalance.available_cents(Current.organization) + relief
       @short = @order.money_path == "cocoscout" && listing.released_at.present? && @quote.org_debit_cents > @available_cents
       @short_cents = CocoScoutBalance.shortfall_cents(Current.organization, @quote.org_debit_cents - relief) if @short
+    end
+
+    # What a refund comes to as the manager ticks tickets or keeps the fees on
+    # the order page, before Review refund. Same quote as the review page.
+    def refund_quote
+      keep_fees = params.key?(:keep_fees) ? params[:keep_fees] == "1" : !TicketOrderRefund.policy_check(@order).policy.fees
+      quote = TicketOrderRefund.quote(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: keep_fees, reprice: reprice?)
+      render json: refund_preview(quote)
     end
 
     def refund
@@ -187,6 +197,16 @@ module Manage
     end
 
     private
+
+    # The line the order page shows under the refund choices.
+    def refund_preview(quote)
+      return { text: "Tick what to refund." } if quote.empty?
+
+      text = "Back to the buyer: #{helpers.number_to_currency(quote.amount_cents / 100.0)}"
+      text += " · from your balance: #{helpers.number_to_currency(quote.org_debit_cents / 100.0)}" if @order.money_path == "cocoscout"
+      { text: text }
+    end
+    helper_method :refund_preview
 
     # Returning part of a pass prices what they keep at regular, unless the
     # manager chose to refund the full share (reprice=0).
