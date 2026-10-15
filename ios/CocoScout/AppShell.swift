@@ -72,7 +72,8 @@ final class AppShell {
         tabBarController.activeNavigator.route(AppConfig.url(path))
     }
 
-    func update(menu newMenu: [MenuItem], person newPerson: MenuPerson?) {
+    /// page: the address of the page that sent the menu.
+    func update(menu newMenu: [MenuItem], person newPerson: MenuPerson?, page: String? = nil) {
         menu = newMenu
         person = newPerson
         // Without badges or the Door (it comes and goes with tonight's shows).
@@ -85,6 +86,12 @@ final class AppShell {
         // Signing in or out starts the screen afresh; otherwise only the badge changes.
         if !newMenu.isEmpty != loadedSignedIn {
             rebuild()
+            // Just signed in from an email link (an invitation, a sign-up):
+            // the server sent them on to that link's page, so stay there
+            // rather than starting over on My Calendar.
+            if !newMenu.isEmpty, let path = Self.pageAfterSignIn(page) {
+                open(path: path)
+            }
         } else {
             menuButton.badge = Self.badgeText(newMenu.reduce(0) { $0 + ($1.badge ?? 0) })
         }
@@ -144,6 +151,17 @@ final class AppShell {
         var top: UIViewController = tabBarController
         while let presented = top.presentedViewController { top = presented }
         return top
+    }
+
+    /// The page sign-in landed on, when it's somewhere other than My
+    /// Calendar or the sign-in pages themselves.
+    static func pageAfterSignIn(_ page: String?) -> String? {
+        guard let page, let url = URL(string: page), url.host == AppConfig.baseURL.host else { return nil }
+        let path = url.path
+        let home = ["", "/", "/my", "/my/"]
+        let signingIn = ["/signin", "/signup", "/signout", "/password", "/reset"]
+        guard !home.contains(path), !signingIn.contains(where: { path.hasPrefix($0) }) else { return nil }
+        return url.query.map { "\(path)?\($0)" } ?? path
     }
 
     static func badgeText(_ count: Int) -> String? {

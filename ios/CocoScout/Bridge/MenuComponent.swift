@@ -10,8 +10,9 @@ final class MenuComponent: BridgeComponent {
         guard message.event == "update", let data: MenuData = message.data() else { return }
         // Rebuilding the screen can tear down the page that sent this, so let
         // the message finish first.
+        let page = message.metadata?.url
         DispatchQueue.main.async {
-            AppShell.shared.update(menu: data.menu, person: data.person)
+            AppShell.shared.update(menu: data.menu, person: data.person, page: page)
         }
     }
 }

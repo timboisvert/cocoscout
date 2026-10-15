@@ -6,8 +6,6 @@ export default class extends Controller {
 
     connect() {
         this.draggedItem = null
-        this.touchStartY = 0
-        this.touchStartItem = null
         this.dropIndicator = this.createDropIndicator()
     }
 
@@ -74,19 +72,8 @@ export default class extends Controller {
         }, { offset: Number.NEGATIVE_INFINITY }).element
     }
 
-    // Mobile touch handlers
-    touchStart(event) {
-        this.touchStartY = event.touches[0].clientY
-        this.touchStartItem = event.currentTarget
-    }
-
-    touchMove(event) {
-        event.preventDefault()
-    }
-
-    touchEnd(event) {
-        // Touch events are handled by button clicks on mobile
-    }
+    // Phones reorder with the arrow buttons; the list itself takes no touch
+    // handling, so it scrolls with the page like anything else.
 
     // Mobile arrow buttons
     moveUp(event) {

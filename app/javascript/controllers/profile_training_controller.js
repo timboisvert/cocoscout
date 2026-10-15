@@ -223,7 +223,7 @@ export default class extends Controller {
         <input type="hidden" name="person[training_credits_attributes][${timestamp}][_destroy]" value="0" class="destroy-field">
 
         <div class="flex items-center gap-3 flex-1 min-w-0">
-          <div class="training-drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="training-drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
@@ -231,7 +231,7 @@ export default class extends Controller {
           <div class="text-sm font-medium text-gray-900">${displayText}</div>
         </div>
 
-        <div class="flex gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div class="flex gap-2 ml-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <button type="button"
                   class="inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap text-gray-700 hover:bg-gray-100 px-3 py-1.5 text-sm"
                   data-action="click->profile-training#edit"

@@ -12,6 +12,7 @@
       "patterns": ["/new$", "/edit$", "/edit/"],
       "properties": {
         "context": "modal",
+        "modal_dismiss_gesture_enabled": false,
         "pull_to_refresh_enabled": false
       }
     },
@@ -26,6 +27,7 @@
       ],
       "properties": {
         "context": "modal",
+        "modal_dismiss_gesture_enabled": false,
         "pull_to_refresh_enabled": false
       }
     },
@@ -34,6 +36,7 @@
       "properties": {
         "context": "modal",
         "modal_style": "full",
+        "modal_dismiss_gesture_enabled": false,
         "pull_to_refresh_enabled": false
       }
     },
@@ -52,7 +55,7 @@
       }
     },
     {
-      "patterns": ["^/manage", "^/superadmin", "^/select/"],
+      "patterns": ["^/manage", "^/superadmin", "^/select/", "^/$", "^/for-performers", "^/for-producers", "^/pricing", "^/sketchfest"],
       "properties": {
         "open_in": "safari"
       }
@@ -63,7 +66,8 @@
         "/tax-forms/[0-9]+/1099/[0-9]+$",
         "/pay/contract/[^/]+/invoice$",
         "/my/courses/[^/]+/calendar$",
-        "/tickets/orders/[^/]+/calendar$"
+        "/tickets/orders/[^/]+/calendar$",
+        "^/rails/active_storage/"
       ],
       "properties": {
         "open_in": "document"

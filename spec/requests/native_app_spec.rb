@@ -257,5 +257,28 @@ RSpec.describe "The iOS app's web side", type: :request do
     expect(open_in["safari"]).to include("^/manage")
     expect(open_in["document"].any? { |pattern| Regexp.new(pattern).match?("/my/tax-forms/12/w9/copy") }).to be(true)
     expect(rules.flat_map { |rule| rule["patterns"] }.any? { |pattern| Regexp.new(pattern).match?("/my/signups/ABC12/form") }).to be(true)
+
+    # Uploaded files (a signed contract) open in the document viewer, not as an error page.
+    expect(open_in["document"].any? { |pattern| Regexp.new(pattern).match?("/rails/active_storage/blobs/redirect/abc/contract.pdf") }).to be(true)
+    # The marketing site opens in Safari; My pages don't.
+    expect(%w[/ /pricing /for-producers].all? { |path| open_in["safari"].any? { |pattern| Regexp.new(pattern).match?(path) } }).to be(true)
+    expect(open_in["safari"].any? { |pattern| Regexp.new(pattern).match?("/my/shows") }).to be(false)
+    # Form sheets can't be swiped away with what someone typed in them.
+    sheets = rules.select { |rule| rule["properties"]["context"] == "modal" }
+    expect(sheets).to all(satisfy { |rule| rule["properties"]["modal_dismiss_gesture_enabled"] == false })
+  end
+
+  it "keeps the marketing site out of the app" do
+    get root_path, headers: in_app
+    expect(response).to redirect_to(signin_path)
+    get pricing_path, headers: in_app
+    expect(response).to redirect_to(signin_path)
+
+    sign_in
+    get root_path, headers: in_app
+    expect(response).to redirect_to(my_dashboard_path)
+
+    get root_path
+    expect(response).to have_http_status(:ok)
   end
 end
