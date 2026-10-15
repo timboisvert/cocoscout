@@ -3,11 +3,13 @@
 require "rails_helper"
 
 # The App Store's support URL: a public page that says how to reach a person.
+# Google Play's account deletion URL is its #delete-account answer.
 RSpec.describe "Support page", type: :request do
   it "is public, says the email, and answers the questions the app raises" do
     get support_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("support@cocoscout.com", "delete my account", "opens in Safari", "Notifications")
+    expect(response.body).to include("support@cocoscout.com", "delete my account", "opens in your phone's browser", "Notifications")
+    expect(response.body).to include(%(id="delete-account"), "privacy@cocoscout.com")
     expect(response.body).to include(%(href="#{privacy_path}"), %(href="#{terms_path}"))
     expect(response.body).not_to include("theater")
   end

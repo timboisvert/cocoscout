@@ -42,6 +42,13 @@ RSpec.describe "Deleting my account", type: :request do
     expect(user.reload.deletion_requested_at).to be_nil
   end
 
+  it "says it came from the Android app when it did" do
+    android = { "User-Agent" => "Mozilla/5.0 (Linux; Android 16; Pixel 8) AppleWebKit/537.36 Chrome/141.0 Mobile Safari/537.36 Hotwire Native Android; Turbo Native Android; bridge-components: [form menu]" }
+    perform_enqueued_jobs { post request_deletion_account_path, headers: android }
+
+    expect(ActionMailer::Base.deliveries.first.html_part.decoded).to include("the Android app")
+  end
+
   it "shows superadmins who asked, on their page" do
     user.update!(deletion_requested_at: Time.zone.local(2026, 10, 12, 15))
     admin = create(:user, password: password, email_address: User::SUPERADMIN_EMAILS.first)

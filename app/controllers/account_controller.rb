@@ -254,7 +254,7 @@ class AccountController < ApplicationController
     user = Current.user
     unless user.deletion_requested_at
       user.update!(deletion_requested_at: Time.current)
-      AccountDeletionRequest.notify_superadmins(user, from_app: turbo_native_app?)
+      AccountDeletionRequest.notify_superadmins(user, from_app: turbo_native_app?, device: DeviceLabel.device_name(request.user_agent.to_s))
     end
     redirect_to account_path, notice: "We've got your request. Your account will be deleted within 30 days."
   end

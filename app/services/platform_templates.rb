@@ -16,7 +16,7 @@ class PlatformTemplates
       body: %(<p>{{name}} ({{email}}) asked to delete their CocoScout account from {{where}} on {{requested_on}}. They were told it would be done within 30 days, and can take it back from Account Settings until then.</p><p>Keep the payout and tax records the law needs; delete the rest from their Superadmin page.</p><p><a href="{{person_url}}">Open them in Superadmin</a></p>),
       variables: [ { "name" => "name", "description" => "Their name" },
                    { "name" => "email", "description" => "Their sign-in email" },
-                   { "name" => "where", "description" => "The website or the iPhone app" },
+                   { "name" => "where", "description" => "The website, the iPhone app or the Android app" },
                    { "name" => "requested_on", "description" => "The date they asked" },
                    { "name" => "person_url", "description" => "Their Superadmin page" } ] },
     { key: "cocoscout_money_check", name: "CocoScout money check needs a look", channel: "email",

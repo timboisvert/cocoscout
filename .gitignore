@@ -53,3 +53,5 @@
 /ios/build/
 /ios/DerivedData/
 ios/app_store_screenshots/
+android/play_store/*.png
+android/play_store/*.jpg

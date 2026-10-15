@@ -1,6 +1,14 @@
 package com.cocoscout.app
 
 import android.content.Context
+import android.webkit.CookieManager
+import androidx.lifecycle.lifecycleScope
+import dev.hotwire.core.config.Hotwire
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
 import com.cocoscout.app.bridge.MenuItem
 import com.cocoscout.app.bridge.MenuPerson
 import dev.hotwire.core.turbo.visit.VisitAction
@@ -108,8 +116,31 @@ object AppShell {
         }
     }
 
+    /**
+     * Ends the session on the server (with the web view's cookies), then
+     * starts the app afresh, which lands on the welcome screen like opening
+     * the app signed out does.
+     */
     fun signOut() {
-        activity?.currentNavigator?.route(AppConfig.url("/signout"))
+        val activity = activity ?: return
+        activity.lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val url = AppConfig.url("/signout")
+                    val cookies = CookieManager.getInstance()
+                    val connection = URL(url).openConnection() as HttpURLConnection
+                    cookies.getCookie(url)?.let { connection.setRequestProperty("Cookie", it) }
+                    connection.setRequestProperty("User-Agent", Hotwire.config.userAgentWithWebViewDefault(activity))
+                    connection.instanceFollowRedirects = false
+                    connection.responseCode
+                    connection.headerFields["Set-Cookie"]?.forEach { cookies.setCookie(url, it) }
+                    cookies.flush()
+                    connection.disconnect()
+                }
+            }
+            update(emptyList(), null)
+            startOver(null)
+        }
     }
 
     /** The page sign-in landed on, when it's somewhere other than My Calendar or the sign-in pages. */
