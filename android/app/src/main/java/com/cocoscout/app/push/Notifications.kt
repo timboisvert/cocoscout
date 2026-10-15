@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -16,9 +15,10 @@ import com.cocoscout.app.R
 
 /**
  * Shows a notification the server sent (PushDeliveryJob.android_data): Coco's
- * outline in the status bar (Android draws those in one color), Coco herself
- * beside it, the title with the production under it when there is one, the
- * message, and a tap that opens its page. One notification per thread; a
+ * outline in the status bar (Android draws those in one color; the
+ * notification itself shows the app's icon, Coco in color), the title with
+ * the production beside it when there is one, the message, and a tap that
+ * opens its page. One notification per thread; a
  * newer message in the same thread replaces it.
  */
 object Notifications {
@@ -47,7 +47,6 @@ object Notifications {
         val notification = NotificationCompat.Builder(context, MESSAGES_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(ContextCompat.getColor(context, R.color.pink))
-            .setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.coco_notification))
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
