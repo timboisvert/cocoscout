@@ -1,9 +1,11 @@
 package com.cocoscout.app
 
+import android.Manifest
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -13,12 +15,19 @@ import dev.hotwire.navigation.activities.HotwireActivity
 import dev.hotwire.navigation.navigator.Navigator
 import dev.hotwire.navigation.navigator.NavigatorConfiguration
 import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * The app's frame around the web pages: one screen, no tab bar, and the
  * floating Coco button that opens the menu (AppShell, menu/). Like the iOS app.
  */
 class MainActivity : HotwireActivity() {
+
+    private var notificationAnswer: CompletableDeferred<Boolean>? = null
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notificationAnswer?.complete(granted)
+        notificationAnswer = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -52,19 +61,25 @@ class MainActivity : HotwireActivity() {
         )
     )
 
-    override fun onNavigatorReady(navigator: Navigator) {
-        AppShell.navigatorReady()
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         openLinkFrom(intent)
     }
 
+    /** Android 13's "Allow notifications?" (PushRegistrar.request). */
+    suspend fun askForNotificationPermission(): Boolean {
+        val answer = CompletableDeferred<Boolean>().also { notificationAnswer = it }
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        return answer.await()
+    }
+
     val currentNavigator: Navigator?
         get() = delegate.currentNavigator
 
-    /** cocoscout://open?path=/my/... from Stripe's return page (AppReturnsController). */
+    /**
+     * cocoscout://open?path=/my/... from Stripe's return page
+     * (AppReturnsController), or a tapped notification (push/Notifications).
+     */
     private fun openLinkFrom(intent: Intent?) {
         val uri = intent?.data ?: return
         if (uri.scheme == "cocoscout" && uri.host == "open") {

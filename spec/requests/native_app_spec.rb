@@ -239,6 +239,17 @@ RSpec.describe "The iOS app's web side", type: :request do
     expect(response.body).not_to include("bridge--push", "Turn on notifications")
   end
 
+  it "sends someone to their own phone's Settings to turn notifications off" do
+    sign_in
+    get account_notifications_path, headers: in_app
+    expect(response.body).to include("Open iPhone Settings", "Turned off in iPhone Settings")
+
+    android = { "User-Agent" => "Mozilla/5.0 (Linux; Android 16; Pixel 8) Hotwire Native Android; Turbo Native Android; bridge-components: [form menu push]" }
+    get account_notifications_path, headers: android
+    expect(response.body).to include("Open Settings", "Turned off in your phone&#39;s Settings")
+    expect(response.body).not_to include("iPhone")
+  end
+
   it "hands the door's camera to the app, which titles the page Door" do
     TicketingProfile.for(org).update!(enabled: true)
     listing = create(:ticket_listing, organization: org)

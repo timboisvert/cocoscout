@@ -24,6 +24,7 @@ open class WebFragment : HotwireWebFragment() {
         super.onVisitRendered(location)
         // A page can turn out to be sign-in after a redirect (/my, signed out).
         updateToolbar(location)
+        AppShell.pageRendered()
     }
 
     /**

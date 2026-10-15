@@ -3,8 +3,8 @@ import { Controller } from "@hotwired/stimulus"
 // Push notifications on this phone, in the app: the Notifications settings
 // row and the one-time card on Home. bridge/push_controller says where they
 // stand (push:status); this shows the matching part, each a [data-push-state]
-// target naming "ask" (never asked), "on", or "off" (turned off in iPhone
-// Settings). Stays hidden in a browser, where nothing ever says.
+// target naming "ask" (never asked), "on", or "off" (turned off in the
+// phone's Settings). Stays hidden in a browser, where nothing ever says.
 //
 // dismissKey: a card that "Not now" puts away for good on this phone.
 export default class extends Controller {

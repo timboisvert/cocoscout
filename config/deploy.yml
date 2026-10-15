@@ -120,6 +120,8 @@ env:
     - APNS_KEY_ID
     - APNS_TEAM_ID
     - APNS_PRIVATE_KEY
+    # ...and to the Android app (FcmClient): base64 of the Firebase key file.
+    - FCM_SERVICE_ACCOUNT_JSON
   clear:
     # Job processing is handled by the dedicated job server (bin/jobs)
     SOLID_QUEUE_IN_PUMA: false

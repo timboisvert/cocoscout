@@ -55,6 +55,18 @@ RSpec.describe "Push notifications on a phone", type: :request do
     expect(DeviceToken.exists?(token: token)).to be(false)
   end
 
+  it "files an Android phone's Firebase token as it came, capitals and all" do
+    fcm_token = "dX7kQ2:APA91bH#{'Zq9_-x' * 24}"
+    sign_in
+    post my_push_token_path, params: { token: fcm_token, platform: "android" }, as: :json
+    expect(response).to have_http_status(:no_content)
+    expect(DeviceToken.find_by!(token: fcm_token)).to have_attributes(platform: "android", user: user, session: user.sessions.last)
+    expect(user.push_enabled?).to be(true)
+
+    delete my_push_token_path, params: { token: fcm_token, platform: "android" }, as: :json
+    expect(DeviceToken.exists?(token: fcm_token)).to be(false)
+  end
+
   it "turns away anything that isn't a phone's token, and anyone signed out" do
     post my_push_token_path, params: { token: token }, as: :json
     expect(DeviceToken.count).to eq(0)

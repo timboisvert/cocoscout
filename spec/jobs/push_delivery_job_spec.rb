@@ -29,6 +29,28 @@ RSpec.describe PushDeliveryJob do
     expect(DeviceToken.exists?(test_phone.id)).to be(false)
   end
 
+  it "sends Android phones the notification as data, and forgets phones Google says are gone" do
+    android = create(:device_token, user: user, platform: "android", token: "fcm-token:#{'a' * 140}")
+    uninstalled = create(:device_token, user: user, platform: "android", token: "fcm-gone:#{'b' * 140}")
+    allow(ApnsClient).to receive(:configured?).and_return(false)
+    allow(FcmClient).to receive(:configured?).and_return(true)
+    allow_any_instance_of(FcmClient).to receive(:close)
+    sent = []
+    allow_any_instance_of(FcmClient).to receive(:deliver) do |_fcm, token, data|
+      sent << [ token, data ]
+      token == uninstalled.token ? FcmClient::Result.new(status: 404, reason: "UNREGISTERED") : FcmClient::Result.new(status: 200, reason: nil)
+    end
+
+    described_class.perform_now(user.id, notification)
+
+    expect(sent.map(&:first)).to contain_exactly(android.token, uninstalled.token)
+    expect(sent.first.last).to eq("path" => "/my/messages/5", "title" => "Andie", "subtitle" => "Spring Revue",
+                                  "body" => "Call time is 7", "badge" => "2")
+    expect(DeviceToken.exists?(android.id)).to be(true)
+    expect(DeviceToken.exists?(uninstalled.id)).to be(false)
+    expect(DeviceToken.exists?(phone.id)).to be(true)
+  end
+
   it "sends nothing until the APNs key is set" do
     allow(ApnsClient).to receive(:configured?).and_return(false)
     expect_any_instance_of(ApnsClient).not_to receive(:deliver)

@@ -52,7 +52,7 @@ class User < ApplicationRecord
   # A phone with the app checked in this month with notifications on, so new
   # messages reach them straight away (the unread-messages email waits longer).
   def push_enabled?
-    device_tokens.where(platform: "ios").recent.exists?
+    device_tokens.recent.exists?
   end
 
   def unread_message_count

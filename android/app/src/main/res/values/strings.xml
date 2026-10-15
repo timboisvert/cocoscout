@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">CocoScout</string>
+    <!-- The notification kind people see in the app's Android settings. -->
+    <string name="notification_channel_messages">Messages</string>
 </resources>

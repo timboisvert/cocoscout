@@ -6,8 +6,9 @@
   </div>
 
   <%# In the app: push notifications on this phone. Turning them on asks
-      iPhone; turning them off is iPhone Settings' job (apps can't switch
-      their own permission off). Shows once the app says where they stand. %>
+      the phone; turning them off is the phone's Settings' job (apps can't
+      switch their own permission off). Shows once the app says where they
+      stand. %>
   <% if turbo_native_app? %>
     <div class="hidden bg-white border border-gray-200 rounded-lg overflow-hidden mb-6"
          data-controller="push-settings" data-action="push:status@window->push-settings#update">
@@ -23,17 +24,17 @@
         </div>
         <div class="hidden" data-push-settings-target="state" data-push-state="on">
           <p class="text-sm font-medium text-gray-700">On</p>
-          <p class="text-sm text-gray-600 mt-1">New messages arrive as notifications on this phone. To turn them off, use iPhone Settings.</p>
+          <p class="text-sm text-gray-600 mt-1">New messages arrive as notifications on this phone. To turn them off, use <%= native_settings_name %>.</p>
           <div class="mt-4">
-            <%= render "shared/button", text: "Open iPhone Settings", variant: "secondary", size: "medium", type: :button,
+            <%= render "shared/button", text: native_android? ? "Open Settings" : "Open iPhone Settings", variant: "secondary", size: "medium", type: :button,
                   data: { action: "push-settings#openSettings" } %>
           </div>
         </div>
         <div class="hidden" data-push-settings-target="state" data-push-state="off">
-          <p class="text-sm font-medium text-gray-700">Turned off in iPhone Settings</p>
+          <p class="text-sm font-medium text-gray-700">Turned off in <%= native_settings_name %></p>
           <p class="text-sm text-gray-600 mt-1">Turn them back on there to hear about new messages straight away.</p>
           <div class="mt-4">
-            <%= render "shared/button", text: "Open iPhone Settings", variant: "secondary", size: "medium", type: :button,
+            <%= render "shared/button", text: native_android? ? "Open Settings" : "Open iPhone Settings", variant: "secondary", size: "medium", type: :button,
                   data: { action: "push-settings#openSettings" } %>
           </div>
         </div>
