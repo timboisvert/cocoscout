@@ -175,16 +175,18 @@ RSpec.describe "Public marketing site", type: :request do
   end
 
   describe "auth pages" do
-    it "sign in renders persona cards linking to Find a Mic" do
+    # One single-column shell (shared/auth/_shell); the pitch lives on the
+    # marketing pages, not here.
+    it "sign in renders, with a way in for people an organization invited" do
       get signin_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(%(href="#{mics_home_path}"))
+      expect(response.body).to include("Invited by an organization?", %(href="#{password_path}"))
     end
 
     it "sign up renders" do
       get signup_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Producer")
+      expect(response.body).to include("Create your account", "Free to join · No card needed")
     end
   end
 end
