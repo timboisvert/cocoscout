@@ -10,6 +10,8 @@ serialization = "1.9.0"
 coil = "2.7.0"
 lifecycle = "2.9.4"
 browser = "1.8.0"
+camerax = "1.6.2"
+mlkitBarcode = "17.3.0"
 
 [libraries]
 hotwire-core = { group = "dev.hotwire", name = "core", version.ref = "hotwire" }
@@ -25,6 +27,11 @@ activity-compose = { group = "androidx.activity", name = "activity-compose", ver
 lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+camerax-mlkit = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "camerax" }
+mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

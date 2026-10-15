@@ -1,6 +1,7 @@
 package com.cocoscout.app
 
 import android.app.Application
+import com.cocoscout.app.bridge.DoorScannerComponent
 import com.cocoscout.app.bridge.FormComponent
 import com.cocoscout.app.bridge.MenuComponent
 import com.cocoscout.app.routing.OpenAsDocumentRouteDecisionHandler
@@ -29,7 +30,8 @@ class CocoScoutApplication : Application() {
         // native_bridge_component? reads this app the same way.
         Hotwire.registerBridgeComponents(
             BridgeComponentFactory("form", ::FormComponent),
-            BridgeComponentFactory("menu", ::MenuComponent)
+            BridgeComponentFactory("menu", ::MenuComponent),
+            BridgeComponentFactory("door-scanner", ::DoorScannerComponent)
         )
 
         // The page rules' "open_in" first (the phone's browser, or a document

@@ -57,6 +57,13 @@ dependencies {
     implementation(libs.lifecycle.runtime)
     implementation(libs.browser)
 
+    // The door's scanner: CameraX with ML Kit's on-device barcode reader.
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.camerax.mlkit)
+    implementation(libs.mlkit.barcode)
+
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)
