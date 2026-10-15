@@ -49,7 +49,7 @@ RSpec.describe "Signup bot defense", type: :request do
         post handle_signup_path, params: { user: { email_address: "fast@example.com", password: password }, signup_token: token }
       end.not_to change { user_count }
       expect(response).to have_http_status(:unprocessable_content)
-      expect(response.body).to include("Please click Create Account again")
+      expect(response.body).to include("Please click Create account again")
       expect(response.body).to include(%(value="#{token}"))
 
       travel(SignupFormToken::MIN_AGE + 1.second) do

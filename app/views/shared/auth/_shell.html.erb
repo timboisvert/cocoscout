@@ -1,0 +1,88 @@
+<%#
+  The one shell for every sign-in-ish page: sign in, create account, forgot
+  and reset password, and the invitation pages. Single column everywhere:
+  back link → lockup → optional context strip → card (notices, title, lede,
+  pill, then the form you pass as the block) → a small footer.
+
+  On desktop the card is a bordered 400px panel on the warm page background;
+  on phones the card loses its border and becomes the page. In the app the
+  back link goes to the welcome screen and the page sits on the app's own
+  background.
+
+  Render with a block:
+
+    render layout: "shared/auth/shell", locals: { title: "Sign in", lede: "…" } do
+      … the form …
+    end
+
+  Locals:
+    title    (required) the card's heading
+    lede     two or three lines on what this page is for, for the person on it
+    pill     short text in a pink pill under the lede ("Free to join · No card needed")
+    strip    captured HTML shown above the card (shared/auth/_strip)
+    notices  captured HTML shown at the top of the card (shared/auth/_notice)
+    legal    the verb in "By … you agree to the Terms…": "continuing" (default),
+             "creating an account", "joining", or false for no legal line
+    footer   captured HTML for the footer instead of the legal line
+    back     { text:, path: } for the top-left link; defaults to cocoscout.com
+             on the web and Back (to the welcome screen) in the app
+%>
+<%
+  title   = local_assigns.fetch(:title)
+  lede    = local_assigns[:lede]
+  pill    = local_assigns[:pill]
+  strip   = local_assigns[:strip]
+  notices = local_assigns[:notices]
+  legal   = local_assigns.fetch(:legal, "continuing")
+  footer  = local_assigns[:footer]
+  native  = auth_native_app?
+  back    = local_assigns.fetch(:back) { native ? { text: "Back", path: welcome_path } : { text: "cocoscout.com", path: root_path } }
+%>
+<div class="<%= native ? "" : "min-h-screen bg-white sm:bg-[#f9f9f7]" %>">
+  <div class="<%= native ? "pt-1 pb-6" : "mx-auto max-w-[432px] px-5 pt-2 pb-10 sm:px-0 sm:pt-6" %>">
+
+    <% if back %>
+      <%= link_to back[:path], class: "-ml-1 inline-flex items-center gap-1 py-2.5 pr-3 #{native ? 'text-[15px] font-medium text-slate-600' : 'text-sm text-slate-500'} hover:text-pink-600" do %>
+        <svg class="<%= native ? 'h-[22px] w-[22px]' : 'h-4 w-4' %>" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        <%= back[:text] %>
+      <% end %>
+    <% end %>
+
+    <div class="mt-2 mb-6 flex flex-col items-center gap-1.5">
+      <%= render "shared/cocoscout_logo", size: :auth %>
+      <div class="coustard-regular text-2xl leading-none text-pink-500 sm:text-[28px]">CocoScout</div>
+    </div>
+
+    <% if strip.present? %>
+      <div class="mb-4"><%= strip %></div>
+    <% end %>
+
+    <div class="space-y-5 sm:rounded-xl sm:border sm:border-slate-200 sm:bg-white sm:p-8 sm:shadow-sm">
+      <% if notices.present? %>
+        <div class="space-y-3"><%= notices %></div>
+      <% end %>
+
+      <div>
+        <h1 class="text-[26px] font-bold leading-tight text-slate-900 sm:text-2xl"><%= title %></h1>
+        <% if lede.present? %>
+          <p class="mt-2 text-[15px] leading-relaxed text-slate-600"><%= lede %></p>
+        <% end %>
+        <% if pill.present? %>
+          <span class="mt-3 inline-block rounded-full bg-pink-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-pink-800"><%= pill %></span>
+        <% end %>
+      </div>
+
+      <%= yield %>
+    </div>
+
+    <% if footer.present? %>
+      <div class="mt-6 text-center text-xs leading-relaxed text-slate-500"><%= footer %></div>
+    <% elsif legal %>
+      <p class="mt-6 text-center text-xs leading-relaxed text-slate-500">
+        By <%= legal %> you agree to the
+        <%= link_to "Terms of Service", terms_path, class: "underline hover:text-pink-600", target: "_blank" %> and
+        <%= link_to "Privacy Policy", privacy_path, class: "underline hover:text-pink-600", target: "_blank" %>.
+      </p>
+    <% end %>
+  </div>
+</div>

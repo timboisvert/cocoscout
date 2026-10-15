@@ -8,6 +8,7 @@
           - :medium -> w-20 sm:w-24 (welcome headers, default)
           - :large  -> w-32 (navigation sidebars)
           - :hero   -> w-56 (the app's welcome screen)
+          - :auth   -> w-14 sm:w-16 (the sign-in shell's lockup)
     class: String - Additional CSS classes to add
 %>
 <%
@@ -20,6 +21,7 @@
     when :medium then "w-20 sm:w-24"
     when :large then "w-32"
     when :hero then "w-56"
+    when :auth then "w-14 sm:w-16"
     else "w-20 sm:w-24"
   end
 

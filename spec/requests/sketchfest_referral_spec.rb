@@ -69,15 +69,15 @@ RSpec.describe "SketchFest referral attribution", type: :request do
       get sketchfest_path
       get signup_path
 
-      expect(response.body).to include("FREE FOR SKETCH TEAMS")
-      expect(response.body).to include("Get your team organized")
+      expect(response.body).to include("Welcome from SketchFest.")
+      expect(response.body).to include("Put your run in once")
     end
 
     it "leaves the default multi-persona signup panel alone otherwise" do
       get signup_path
 
-      expect(response.body).to include("Create your CocoScout account")
-      expect(response.body).not_to include("FREE FOR SKETCH TEAMS")
+      expect(response.body).to include("One account for everything you do in live entertainment")
+      expect(response.body).not_to include("Welcome from SketchFest.")
     end
 
     it "asks a sketch signup what their team is called, not their organization" do
