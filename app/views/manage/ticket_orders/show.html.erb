@@ -42,8 +42,6 @@
         <div class="min-w-0">
           <h2 class="text-lg font-semibold text-gray-900"><%= @order.buyer_name.presence || "No name" %></h2>
           <p class="text-sm text-gray-600"><%= [ @order.buyer_email, @order.buyer_phone ].compact_blank.join(" · ").presence || "No contact details" %></p>
-          <%= render "shared/button", text: @order.buyer_email.present? ? "Change email" : "Add email", variant: "ghost", size: "small", type: :button,
-                classes: "-ml-2 mt-1", data: { controller: "modal", action: "click->modal#open", modal_id: "change-buyer-email" } %>
           <%# The show and its date, one link to the show's ticketing page. %>
           <p class="text-sm mt-2">
             <%= link_to manage_ticket_listing_path(listing), class: "text-gray-600 hover:text-pink-600" do %>
@@ -72,14 +70,18 @@
           <%= link_to "order #{exchange.to_order.code}", manage_ticket_order_path(exchange.to_order_id), class: "font-medium text-pink-600 hover:text-pink-700" %>
         </p>
       <% end %>
-      <% if @order.buyer_email.present? && @order.paid? %>
-        <div class="mt-4 flex flex-wrap gap-2">
+      <div class="mt-4 flex flex-wrap gap-2">
+        <% if @order.buyer_email.present? && @order.paid? %>
           <%= render "shared/button", text: "Resend tickets", variant: "secondary", size: "small",
                 path: manage_ticket_order_resend_path(@order.id), method: :post %>
+        <% end %>
+        <%= render "shared/button", text: @order.buyer_email.present? ? "Change email" : "Add email", variant: "secondary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "change-buyer-email" } %>
+        <% if @order.buyer_email.present? && @order.paid? %>
           <%= render "shared/button", text: "Buyer's tickets page", variant: "ghost", size: "small",
                 path: tickets_order_path(token: @order.token), target: "_blank", rel: "noopener" %>
-        </div>
-      <% end %>
+        <% end %>
+      </div>
     </div>
 
     <%# Changing the buyer's email: its own form, since it carries an input. %>
