@@ -77,6 +77,32 @@ RSpec.describe MyShiftPay do
     end
   end
 
+  it "adds each day's card tips to that day, so the days add up to the deposit" do
+    entries = [ worked(9, 6), worked(10, 6) ]
+    item = sent(entries, paid_at: Time.zone.local(2026, 10, 11, 10))
+    tips = [ { "date" => "2026-10-09", "amount_cents" => 3_545 }, { "date" => "2026-10-10", "amount_cents" => 2_000 } ]
+    PayoutContribution.create!(payout_batch: item.payout_batch, payout_batch_item: item, payee: person, category: "staffing",
+                               label: "Tips", amount_cents: 5_545, worksheet: tips)
+    PayoutContribution.create!(payout_batch: item.payout_batch, payout_batch_item: item, payee: person, category: "staffing",
+                               label: "Cash tips (recorded)", amount_cents: 4_000, excluded_from_payout: true,
+                               worksheet: [ { "date" => "2026-10-10", "amount_cents" => 4_000 } ])
+
+    travel_to(Time.zone.local(2026, 10, 12, 12)) do
+      days = described_class.new([ person.id ]).days.first(2)
+      expect(days.map { |d| [ d.date.day, d.cents, d.tips_cents ] }).to eq([ [ 10, 14_000, 2_000 ], [ 9, 15_545, 3_545 ] ])
+    end
+  end
+
+  it "puts a tips total with no worksheet on the run's one day" do
+    item = sent([ worked(10, 6) ], paid_at: Time.zone.local(2026, 10, 11, 10))
+    PayoutContribution.create!(payout_batch: item.payout_batch, payout_batch_item: item, payee: person, category: "staffing",
+                               label: "Tips", amount_cents: 1_500)
+
+    travel_to(Time.zone.local(2026, 10, 12, 12)) do
+      expect(described_class.new([ person.id ]).days.first).to have_attributes(cents: 13_500, tips_cents: 1_500)
+    end
+  end
+
   it "says deposited once the payout provider says so, and only sent when it never does" do
     item = sent([ worked(10, 6) ], paid_at: Time.zone.local(2026, 10, 11, 10))
 

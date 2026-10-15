@@ -6,12 +6,15 @@
 # on its way, deposited. Pay we sent without the payout provider confirming
 # the deposit reads "sent", never "paid" (PayoutBatchItem#deposit_stage).
 #
-# A day's pay is worked out from its hours and role (the run's actual line can
-# carry tips and extras); the big number is the real amount of a payment.
+# A day's pay is its hours at the role's rate plus the card tips the payout
+# run put on that date (the tips worksheet), so the days add up to what was
+# deposited (Tim, 2026-10-15). Cash tips were in hand, never paid by us.
+# Bonuses and reimbursements aren't for a day; My Payments lists them.
 class MyShiftPay
   # stage: :waiting, :approved, :on_its_way, :deposited, :sent, :paid_directly
   # on: the date that goes with the stage (goes out, expected, deposited, sent)
-  Day = Data.define(:date, :hours, :cents, :stage, :on)
+  # cents: hours plus tips_cents
+  Day = Data.define(:date, :hours, :cents, :tips_cents, :stage, :on)
 
   # stage: :on_its_way, :approved, :waiting or :caught_up (the last payment,
   # deposited or sent: settled_as). on: expected / goes-out / deposited date.
@@ -35,7 +38,16 @@ class MyShiftPay
   end
 
   def days
-    @days ||= recent_entries.first(DAYS).map { |entry| day_for(entry) }
+    @days ||= begin
+      tipped = {}
+      recent_entries.first(DAYS).map do |entry|
+        # Two stints on one date share that date's tips: the first carries them.
+        key = [ entry.payout_batch_id, entry.started_at.to_date ]
+        tips = entry.payout_batch_id && !tipped[key] ? tips_by_day[key].to_i : 0
+        tipped[key] = true
+        day_for(entry, tips)
+      end
+    end
   end
 
   private
@@ -84,7 +96,7 @@ class MyShiftPay
 
   # --- Each day -----------------------------------------------------------
 
-  def day_for(entry)
+  def day_for(entry, tips_cents = 0)
     stage, on =
       if entry.offline_paid_at
         [ :paid_directly, entry.offline_paid_at.to_date ]
@@ -96,7 +108,8 @@ class MyShiftPay
         [ :waiting, nil ]
       end
     cents = entry.offline_paid_at ? (entry.offline_total_cents || price(entry)) : price(entry)
-    Day.new(date: entry.started_at.to_date, hours: entry.hours.to_d, cents: cents, stage: stage, on: on)
+    Day.new(date: entry.started_at.to_date, hours: entry.hours.to_d, cents: cents + tips_cents, tips_cents: tips_cents,
+            stage: stage, on: on)
   end
 
   # Hours in a payout run: where the person's payment in that run stands.
@@ -120,6 +133,31 @@ class MyShiftPay
     @items ||= PayoutBatchItem.where(payee_type: "Person", payee_id: @people_ids, status: %w[pending paid failed])
                               .includes(payout_batch: :organization).to_a
                               .select { |i| i.paid? || PayoutBatchService::UNSETTLED_BATCH_STATUSES.include?(i.payout_batch.status) }
+  end
+
+  # Card tips each run pays, by [run, date], from the Tips line's per-day
+  # worksheet. A Tips line typed as one total with no worksheet goes on the
+  # day when the run holds only one of this person's days; otherwise it isn't
+  # any one day's.
+  def tips_by_day
+    @tips_by_day ||= begin
+      by_day = Hash.new(0)
+      dates_by_run = entries.select(&:payout_batch_id).group_by(&:payout_batch_id)
+                            .transform_values { |list| list.map { |e| e.started_at.to_date }.uniq }
+      PayoutContribution.where(payout_batch_item_id: items.map(&:id), label: "Tips", excluded_from_payout: false).find_each do |tips|
+        dated = tips.worksheet_entries.filter_map do |row|
+          [ Date.parse(row["date"].to_s), row["amount_cents"].to_i ]
+        rescue Date::Error
+          nil
+        end
+        if dated.any?
+          dated.each { |date, cents| by_day[[ tips.payout_batch_id, date ]] += cents }
+        elsif (dates = dates_by_run[tips.payout_batch_id]) && dates.one?
+          by_day[[ tips.payout_batch_id, dates.first ]] += tips.amount_cents
+        end
+      end
+      by_day
+    end
   end
 
   # In a payout run that hasn't gone out yet.
