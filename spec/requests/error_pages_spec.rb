@@ -27,14 +27,16 @@ RSpec.describe "Error pages", type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
-    # These are the exact paths the credential scanner hit on 2026-08-08.
+    # The paths the credential scanner hit on 2026-08-08, but
+    # /.well-known/assetlinks.json, which is real since the Android app
+    # (AndroidAssetLinksController); another .well-known JSON stands in.
     %w[
       /api_keys.json
       /aliyun_config.json
       /config/aliyun.json
       /.aliyun/config.json
       /swagger/v1/swagger.json
-      /.well-known/assetlinks.json
+      /.well-known/nodeinfo.json
     ].each do |path|
       it "returns 404, not 500, for #{path}" do
         get path
