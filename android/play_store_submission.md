@@ -22,24 +22,16 @@ instructions:
 - Username: `app.review@demo.cocoscout.com`
 - Password: `Lantern-Street-2026!` (the reviewer block's default in
   `ios/app_store_submission.md`)
-- Any other information:
+- Any other information (500 characters at most; this is 482):
 
-> CocoScout is a free companion app for performers and crew. This account is
-> a performer cast in upcoming shows at a sample organization.
->
-> - Sign in with the email and password. The pink button (bottom right)
->   opens the menu: Calendar, Messages, Shows, and so on.
-> - Messages has a thread from the organization's manager; replies work.
-> - "Manage" (the organization's side: casting, ticketing, payouts) is a
->   website, not part of the app. Links to it open in the browser.
->   Nothing is sold to the user inside the app.
-> - Door: the account has box-office access to the sample shows. Menu →
->   "Work the door" (bottom) → the show. "Scan" opens the camera (that is
->   the camera permission). The list has two parties to check in by
->   tapping. "Sell" records cash and comp sales; "Card or phone pay" shows a
->   QR code for the buyer's own phone, and says card payments aren't set up
->   (the sample organization has none). That's expected.
-> - Account deletion: Settings → Delete my account.
+```
+Free app for performers and crew. This account is a performer at a sample organization.
+- Menu: pink cat button, bottom right.
+- Messages: a thread from the manager; replies work.
+- Door: Menu > Work the door > the show. Scan opens the camera (the camera permission). Tap a party to check it in. Sell records cash and comp sales; card payments aren't set up for this sample.
+- Organization tools are a website and open in the browser.
+- Delete account: Settings > Delete my account.
+```
 
 The sample shows on sale are dated from the day the reviewer block last ran
 (Oct 15 and Oct 18, 2026). **Re-run the block the day you send the app for
