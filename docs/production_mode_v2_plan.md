@@ -390,6 +390,7 @@ These are web components (ERB partial + Stimulus), so they also improve mobile w
    - Casting board; vacancies; "Can't make it".
    - Ticketing dashboard, show page → Door; orders.
    - Contacts.
+   - Notifications (§9): the model, ticketing's groups first, the Notifications list.
    - Staffing hub (Find cover), Approve Hours.
    - Money hub, settlement, show payouts, payout run.
    - Contract detail; course show, attendance, add student.
@@ -477,3 +478,45 @@ Fable checked the load-bearing claims against the code; all of them held. Change
 5. Keep the Exit shortcut in the switch notice?
 
 Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions in 8 files.
+
+---
+
+## 9. Notifications, separate from Messages (added 2026-10-16)
+
+*Tim, 2026-10-16: "maybe messages should just become messages between people." Moved here from the ticketing notifications plan, which it absorbs.*
+
+**Why.** Today 31 places in 24 services send automated notices as Messages (`system_generated: true`): payout sent or returned, contract countersigned and signature reminders, casting, vacancies, sign-ups, auditions, course registrations and cancellations, staff onboarding, W-9 requests, availability nudges, mics, and more. They all land in the same inbox as real conversations, so the inbox reads like a log. Separately, Ticketing's notices are email-only and set in a grid of boxes (12 kinds × every manager, one manager filling it in for everyone).
+
+**The split**
+- **Messages:** people talking to people. Cast and team threads, DMs, replies. A new one still pushes.
+- **Notifications:** automated events. Each is a short line with a link to the thing it's about ("Dan signed the contract", "Your pay is on its way", "A ticket sold"). It reaches you by **push**, **email**, and a **Notifications list** in the app and on the web, depending on what you chose for its group.
+- **Replies:** some automated notices get answered today (a performer replying to a casting notice; replies to system messages go to the production team). Those notifications carry a **Reply** that opens a real message thread with the team. The notice itself is never the thread.
+
+**The model**
+- One `Notification` record per person: kind, group, title, body, link path, what it's about, read time.
+- Per-person preferences: a few **groups**, each with **Push** and **Email** switches, plus sensible defaults. The list always shows everything.
+- Each person picks their own (Tim, 2026-10-16). Nobody manages a grid for the team.
+- All copy stays in ContentTemplates (subject, body, `push_body`).
+- Delivery: `PushNotificationService.notify` (push without a Message) and the existing mailers.
+
+**Ticketing goes first** (the ticketing notifications plan of 2026-10-16, built on this model):
+
+| Group | Notices (`TicketingNotifications::KINDS`) | Default push | Default email |
+|---|---|---|---|
+| Each sale | sale | on | off |
+| Daily summaries | daily_summary, show_day, after_show | off | on |
+| Selling out | almost_sold_out, sold_out, sales_opened | on | on |
+| Money | refund_issued, withdrawal, cancellation_done | off | on |
+| Problems | refund_problem, dispute | on | on |
+
+- A push only goes to someone with the app and notifications on. Disputes still also email CocoScout's superadmins.
+- **Box office inboxes:** org-level addresses with the groups they get, email only.
+- Ticketing settings → Notifications becomes "Your notifications" (5 groups × Push / Email), "Box office inboxes", and a read-only line per teammate. The grid goes.
+- Migration: each manager's ticked kinds turn on email for those groups; push starts at the defaults; extra addresses keep their groups.
+- Tim's channel decision for ticketing: push and email (and the Notifications list), never the Messages inbox.
+
+**Then the rest, one area at a time:** payouts and payments, contracts, casting and vacancies, sign-ups and auditions, courses, staffing (onboarding, W-9s, availability), mics. Each area gets its groups, moves its senders off `system_generated` Messages, and keeps every email it sends today. When the last one moves, Messages is people only.
+
+**In the apps:** a Notifications screen in the menu with an unread count, opening each notification's link. Pushes from notifications open their link. iOS and Android both: the server pieces are shared, and the list is a web page like everything else.
+
+**Design work first:** the settings screen (phone and desktop), the Notifications list, and a few pushes as they'd arrive. Then build ticketing, then move the other areas.
