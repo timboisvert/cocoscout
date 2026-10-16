@@ -43,7 +43,8 @@ class ContractServicesChange
     merged = Array(lines).map do |line|
       next line unless line["per_event"]
 
-      kept = Array(find_line(current, line)&.dig("events")).select(&locked)
+      old = find_line(current, line)
+      kept = Array(old&.dig("events")).select(&locked).map { |event| priced_as_billed(event, old, line) }
       with_events(line, Array(line["events"]).reject(&locked) + kept)
     end
 
@@ -104,6 +105,8 @@ class ContractServicesChange
       when 1 then times.first.strftime("%a, %b %-d")
       else times.map { |t| t.strftime("%b %-d") }.to_sentence
       end
+      # "Mar 5 and Mar 6: Booth Tech $50.00 to $120.00 each"
+      words = "#{words} each" if times.size > 1 && words.include?(" to ")
       Change.new(words: [ label, words ].compact.join(": "), delta: group.sum { |row| row[2] }.round(2), direction: direction)
     end.sort_by { |c| c.words }
   end
@@ -128,6 +131,15 @@ class ContractServicesChange
   end
 
   private
+
+  # A settled date keeps the price it was billed at, even when the line's
+  # usual price changes for the open dates.
+  def priced_as_billed(event, old_line, new_line)
+    return event if event.key?("unit_price")
+
+    was = old_line["unit_price"].to_f.round(2)
+    was == new_line["unit_price"].to_f.round(2) ? event : event.merge("unit_price" => was)
+  end
 
   def find_line(lines, sample)
     lines.find { |l| line_key(l) == line_key(sample) }

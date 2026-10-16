@@ -130,15 +130,19 @@ module ContractDateTerms
     end
   end
 
-  # A per-event deal's amended payments, each date at its show's own fee.
+  # The amended payments with each show's own terms: a per-event deal's date
+  # at its own fee, a show's own share in its settlement's words.
   def apply_show_terms_to_payments(payments)
-    return payments unless per_event_deal?
+    return payments unless per_event_deal? || revenue_share?
 
     shows = Show.where(space_rental_id: space_rentals.select(:id)).includes(:space_rental).to_a
-    own = shows.each_with_object({}) do |show, h|
-      h[show.space_rental.starts_at.to_date] = show.contract_terms["amount"].to_f if show.contract_terms.key?("amount")
+    own, shares = {}, {}
+    shows.each do |show|
+      date = show.space_rental.starts_at.to_date
+      own[date] = show.contract_terms["amount"].to_f if show.contract_terms.key?("amount")
+      shares[date] = show.contract_terms["share"].to_f if show.contract_terms.key?("share")
     end
-    apply_date_terms_to_draft_payments(payments, own: own, count: shows.size)
+    apply_date_terms_to_draft_payments(payments, own: own, count: shows.size, shares: shares)
   end
 
   # The payments to bill: the deal's own list (draft_payments, as Financials
@@ -149,8 +153,15 @@ module ContractDateTerms
     apply_date_terms_to_draft_payments(draft_payments)
   end
 
-  # own: { Date => that date's fee }, from the draft's dates unless given.
-  def apply_date_terms_to_draft_payments(payments, own: nil, count: nil)
+  # own: { Date => that date's fee }, shares: { Date => our share }, from
+  # the draft's dates unless given.
+  def apply_date_terms_to_draft_payments(payments, own: nil, count: nil, shares: nil)
+    shares ||= draft_bookings.each_with_object({}) do |booking, h|
+      terms = date_terms_for_booking(booking["starts_at"])
+      date = parse_term_date(booking["starts_at"])
+      h[date] = terms["share"].to_f if date && terms.key?("share")
+    end
+    payments = relabel_share_payments(payments, shares)
     return payments unless per_event_deal?
 
     own ||= draft_bookings.each_with_object({}) do |booking, h|
@@ -224,6 +235,28 @@ module ContractDateTerms
 
   # "Revenue share" / "30% of ticket sales to us", and when this date differs,
   # "0% this show" with "Usually 30%". [line, sub, changed?]
+  # A revenue share settled night by night says each night's share: "Mar 5 —
+  # 100% to them" for a show that's 0% to us. (Weekly and monthly settlements
+  # cover several nights, so they keep the deal's words.)
+  def relabel_share_payments(payments, shares)
+    settlement = draft_payment_config["revenue_settlement"].presence || "same_day"
+    return payments unless revenue_share? && shares.any? && %w[same_day next_day].include?(settlement)
+
+    offset = settlement == "next_day" ? 1 : 0
+    Array(payments).map do |payment|
+      next payment if payment["extra"] || payment["source"] != "Revenue share"
+
+      date = parse_term_date(payment["due_date"])&.-(offset)
+      next payment unless date && shares.key?(date)
+
+      ours = shares[date]
+      words = payment["description"].to_s.sub(/\d+(?:\.\d+)?% to (them|us)\z/) do
+        Regexp.last_match(1) == "them" ? "#{number_for(100 - ours)}% to them" : "#{number_for(ours)}% to us"
+      end
+      payment.merge("description" => words)
+    end
+  end
+
   def parse_term_date(value)
     parse_term_time(value)&.to_date
   end

@@ -70,21 +70,22 @@
       <div class="divide-y divide-gray-100">
         <% rows.each_with_index do |row, i| %>
           <% modal_id = "date-terms-#{i}" %>
-          <div class="px-4 py-3 flex flex-col gap-2 @3xl:grid @3xl:grid-cols-[1.25rem_minmax(0,12rem)_6.5rem_minmax(0,1fr)_7rem_4rem] @3xl:items-center @3xl:gap-4"
-               data-contract-dates-target="row" data-kind="<%= row.event_type %>">
-            <div class="flex items-center gap-3 @3xl:contents">
-              <% if row.field %>
-                <input type="checkbox" name="dates[]" value="<%= row.starts_at %>" form="date-terms-several"
-                       aria-label="Select <%= row.at.strftime('%b %-d') %>" data-contract-dates-target="check" data-kind="<%= row.event_type %>"
-                       data-action="contract-dates#changed" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-              <% else %>
-                <span class="hidden @3xl:block"></span>
-              <% end %>
-              <span class="flex-1 min-w-0 flex flex-col">
-                <span class="text-sm font-medium text-gray-900"><%= row.at.strftime("%a, %b %-d · %-l:%M %p") %></span>
-                <span class="text-xs text-gray-500"><%= [ date_length_words(row.hours), row.place ].compact.join(" · ") %></span>
-              </span>
-              <span class="@3xl:hidden inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= row.kind %></span>
+          <%# hidden goes on this plain wrapper: on the grid row itself, @3xl:grid would win. %>
+          <div data-contract-dates-target="row" data-kind="<%= row.event_type %>">
+            <div class="px-4 py-3 flex flex-col gap-2 @3xl:grid @3xl:grid-cols-[1.25rem_minmax(0,12rem)_6.5rem_minmax(0,1fr)_7rem_4rem] @3xl:items-center @3xl:gap-4">
+              <div class="flex items-center gap-3 @3xl:contents">
+                <% if row.field %>
+                  <input type="checkbox" name="dates[]" value="<%= row.starts_at %>" form="date-terms-several"
+                         aria-label="Select <%= row.at.strftime('%b %-d') %>" data-contract-dates-target="check" data-kind="<%= row.event_type %>"
+                         data-action="contract-dates#changed" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                <% else %>
+                  <span class="hidden @3xl:block"></span>
+                <% end %>
+                <span class="flex-1 min-w-0 flex flex-col">
+                  <span class="text-sm font-medium text-gray-900"><%= row.at.strftime("%a, %b %-d · %-l:%M %p") %></span>
+                  <span class="text-xs text-gray-500"><%= [ date_length_words(row.hours), row.place ].compact.join(" · ") %></span>
+                </span>
+                <span class="@3xl:hidden inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= row.kind %></span>
             </div>
             <span class="hidden @3xl:inline-flex"><span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= row.kind %></span></span>
             <span class="flex flex-col min-w-0">
@@ -102,6 +103,7 @@
                   <span class="text-xs text-gray-500">Settled</span>
                 <% end %>
               </span>
+            </div>
             </div>
           </div>
           <% if row.field %>
@@ -127,9 +129,10 @@
         <span class="text-gray-900">
           <% parts = [] %>
           <% parts << "Fixed charges #{number_to_currency(fixed_total)}" if rows.any?(&:fixed_amount) %>
-          <% parts << "plus our share of sales on #{pluralize(share_rows.size, 'show')}" if share_rows.any? %>
-          <% parts << "plus our fee on #{pluralize(fee_rows.size, 'show')}" if fee_rows.any? %>
-          <%= parts.join(", ").presence || "Terms come from the deal" %>
+          <% parts << "our share of sales on #{pluralize(share_rows.size, 'show')}" if share_rows.any? %>
+          <% parts << "our fee on #{pluralize(fee_rows.size, 'show')}" if fee_rows.any? %>
+          <%# "Fixed charges $50.00, plus our share of sales on 2 shows"; "Our share of sales on 2 shows" %>
+          <%= parts.any? ? parts.join(", plus ").upcase_first : "Terms come from the deal" %>
         </span>
       </div>
     </div>

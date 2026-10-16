@@ -17,11 +17,29 @@ export default class extends Controller {
 
     // ----- the services on top -----
 
+    // Ticking a service at the top puts it where it usually goes (unless some
+    // dates already have it from before).
     serviceToggled(event) {
         const service = event.currentTarget.closest("[data-contract-services-target=service]")
         const body = service.querySelector("[data-contract-services-target=body]")
         if (body) body.classList.toggle("hidden", !event.currentTarget.checked)
+        const anyOn = this.slotsFor(service.dataset.index).some(slot => slot.querySelector("[data-role=on]")?.checked)
+        if (event.currentTarget.checked && !anyOn) this.applyUsual(service)
         this.refresh()
+    }
+
+    // A service ticked on a date (its Edit, or several at once) that isn't on
+    // the contract yet goes on for those dates only.
+    includeFor(service, dates) {
+        if (this.included(service)) return
+        const include = service.querySelector("[data-contract-services-target=include]")
+        include.checked = true
+        service.querySelector("[data-contract-services-target=body]")?.classList.remove("hidden")
+        this.slotsFor(service.dataset.index).forEach(slot => {
+            if (dates.includes(slot.dataset.date) || this.dateRow(slot.dataset.date)?.dataset.locked) return
+            const on = slot.querySelector("[data-role=on]")
+            if (on) on.checked = false
+        })
     }
 
     // A new price reaches every date that doesn't have its own.
@@ -29,6 +47,7 @@ export default class extends Controller {
         const service = event.currentTarget.closest("[data-contract-services-target=service]")
         const price = event.currentTarget.value
         this.slotsFor(service.dataset.index).forEach(slot => {
+            if (this.dateRow(slot.dataset.date)?.dataset.locked) return // settled: stays as it is
             const field = slot.querySelector("[data-role=price]")
             if (field && field.dataset.own !== "1") field.value = price
         })
@@ -38,9 +57,13 @@ export default class extends Controller {
     // "Usually on" puts the service on every date of that kind (or every date,
     // or none), at the usual hours; "Some dates" leaves the dates as they are.
     usualChanged(event) {
-        const service = event.currentTarget.closest("[data-contract-services-target=service]")
+        this.applyUsual(event.currentTarget.closest("[data-contract-services-target=service]"))
+        this.refresh()
+    }
+
+    applyUsual(service) {
         const usual = service.querySelector("[data-contract-services-target=usual]")?.value
-        if (!usual || usual === "some") return this.refresh()
+        if (!usual || usual === "some") return
 
         const hours = service.querySelector("[data-contract-services-target=defaultHours]")?.value
         this.slotsFor(service.dataset.index).forEach(slot => {
@@ -50,6 +73,22 @@ export default class extends Controller {
             if (on) on.checked = usual === "all" || usual === date?.dataset.kind
             const hoursField = slot.querySelector("[data-role=hours]")
             if (hoursField && hours && hoursField.type !== "hidden") hoursField.value = hours
+        })
+    }
+
+    // New usual hours go on every open date that had the old usual hours; a
+    // date given its own hours keeps them, and which dates it's on stays put.
+    hoursChanged(event) {
+        const input = event.currentTarget
+        const service = input.closest("[data-contract-services-target=service]")
+        const hours = input.value
+        const before = input.dataset.previous ?? input.defaultValue
+        input.dataset.previous = hours
+        if (!hours) return
+        this.slotsFor(service.dataset.index).forEach(slot => {
+            if (this.dateRow(slot.dataset.date)?.dataset.locked) return
+            const field = slot.querySelector("[data-role=hours]")
+            if (field && field.type !== "hidden" && parseFloat(field.value) === parseFloat(before)) field.value = hours
         })
         this.refresh()
     }
@@ -65,7 +104,10 @@ export default class extends Controller {
     }
 
     cancelDate(event) {
-        const modal = event.currentTarget.closest("[data-contract-services-target=dateModal]")
+        this.cancelModal(event.currentTarget.closest("[data-contract-services-target=dateModal]"))
+    }
+
+    cancelModal(modal) {
         ;(modal?._snapshot || []).forEach(([ input, checked, value, own ]) => {
             input.checked = checked
             input.value = value
@@ -76,7 +118,11 @@ export default class extends Controller {
     }
 
     saveDate(event) {
-        event.currentTarget.closest("[data-contract-services-target=dateModal]")?.classList.add("hidden")
+        const modal = event.currentTarget.closest("[data-contract-services-target=dateModal]")
+        modal?.querySelectorAll("[data-contract-services-target=slot]").forEach(slot => {
+            if (slot.querySelector("[data-role=on]")?.checked) this.includeFor(this.service(slot.dataset.index), [ slot.dataset.date ])
+        })
+        modal?.classList.add("hidden")
         this.matchUsual()
         this.refresh()
     }
@@ -166,6 +212,7 @@ export default class extends Controller {
             const on = row.querySelector("[data-role=on]").checked
             const hours = row.querySelector("[data-role=hours]")?.value
             const price = row.querySelector("[data-role=price]")?.value
+            if (on) this.includeFor(this.service(row.dataset.index), dates)
             dates.forEach(date => {
                 const slot = this.slot(row.dataset.index, date)
                 if (!slot) return
@@ -180,8 +227,24 @@ export default class extends Controller {
             })
         })
         this.closeSeveral()
+        // Done with those dates: clear the ticks.
+        this.dateCheckTargets.forEach(box => { box.checked = false })
+        if (this.hasAllTarget) this.allTarget.checked = false
+        this.datesTicked()
         this.matchUsual()
         this.refresh()
+    }
+
+    // Escape, or a click on the dimmed backdrop, is Cancel.
+    escape() {
+        this.dateModalTargets.filter(m => !m.classList.contains("hidden")).forEach(m => this.cancelModal(m))
+        if (this.hasSeveralModalTarget && !this.severalModalTarget.classList.contains("hidden")) this.closeSeveral()
+    }
+
+    backdrop(event) {
+        if (event.target !== event.currentTarget) return
+        if (event.currentTarget === this.severalModalTarget) this.closeSeveral()
+        else this.cancelModal(event.currentTarget)
     }
 
     // ----- keeping it all in step -----

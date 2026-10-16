@@ -106,6 +106,22 @@ RSpec.describe "Amend: change services and prices", type: :request do
     expect(events.map { |e| [ Time.zone.parse(e["starts_at"]), e["hours"] ] }).to eq([ [ times[0], 2.0 ], [ times[2], 3.0 ] ])
   end
 
+  it "keeps the settled date at the price it was billed at when the usual price changes" do
+    post stage_amend_services_manage_contract_path(contract), params: { services: { "0" => {
+      include: "1", service_id: booth.id, name: "Booth Tech", unit: "hourly", per_event: "1", unit_price: "20", direction: "incoming", settlement: "direct",
+      events: { "1" => row(times[1], hours: 2, price: 20), "2" => row(times[2], hours: 2, price: 20) }
+    } } }
+    follow_redirect!
+    html = response.body.gsub(/\s+/, " ")
+    expect(html).to include("Nov 6 and Nov 7: Booth Tech $50.00 to $40.00 each")
+    expect(html).not_to include("Nov 5")
+
+    post apply_amend_services_manage_contract_path(contract)
+    events = contract.reload.draft_services.first["events"]
+    expect(events.first).to eq("starts_at" => times[0].iso8601, "hours" => 2.0, "unit_price" => 25.0)
+    expect(Contract.service_line_total(contract.draft_services.first)).to eq(130.0)
+  end
+
   it "says so when nothing changed" do
     post stage_amend_services_manage_contract_path(contract), params: { services: { "0" => {
       include: "1", service_id: booth.id, name: "Booth Tech", unit: "hourly", per_event: "1", unit_price: "25", direction: "incoming", settlement: "direct",

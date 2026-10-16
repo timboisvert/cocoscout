@@ -554,7 +554,8 @@ module Manage
       @services_change = ContractServicesChange.new(@contract)
       staged = @contract.draft_data["services_change"]
       @service_options = Current.organization.house_services.offered_on_contracts.ordered.includes(:house_roles)
-      @existing_services = staged ? staged["services"] : @contract.draft_services
+      # Staged edits, with every settled date put back the way the contract has it.
+      @existing_services = staged ? @services_change.merge(staged["services"]) : @contract.draft_services
       @reason = staged&.dig("reason")
       @bookings = @services_change.bookings
       @settled = @services_change.settled_times
@@ -878,6 +879,7 @@ module Manage
 
       # Dates with terms of their own, as staged against what the shows have.
       @date_term_changes = amended_date_term_changes
+      @amend_bookings = effective_amend_bookings
 
       @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @moves.any? || @financials_changed ||
                      @ticketing_changed || @services_changed || @production_name_changed || @date_term_changes.any?

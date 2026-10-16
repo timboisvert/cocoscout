@@ -71,6 +71,18 @@ RSpec.describe "Contract date terms", type: :model do
     expect(contract.settled_share_amount([ first, second ])).to eq(1_700.0) # theirs: 100% + 70%
   end
 
+  it "says a night's own share on its night-by-night settlement" do
+    contract = create(:contract, organization: org, draft_data: {
+      "bookings" => show_times.map { |t| booking(t, "show") },
+      "payment_structure" => "revenue_share",
+      "payment_config" => { "who_sells_tickets" => "org", "settlement_basis" => "revenue_share", "revenue_our_share" => 30, "revenue_settlement" => "same_day" },
+      "payments" => show_times.map { |t| { "description" => "#{t.strftime('%b %-d')} — 70% to them", "amount" => 0, "amount_tbd" => true, "direction" => "outgoing",
+                                           "source" => "Revenue share", "due_date" => t.to_date.to_s } }
+    })
+    contract.set_draft_date_terms!([ show_times.first.iso8601 ], value: "0", note: nil, field: :share)
+    expect(contract.reload.billed_draft_payments.map { |p| p["description"] }).to eq([ "Oct 10 — 100% to them", "Oct 17 — 70% to them" ])
+  end
+
   it "prices a per-show fee by each show's own" do
     contract = create(:contract, :active, organization: org, draft_data: {
       "payment_structure" => "flat_fee",

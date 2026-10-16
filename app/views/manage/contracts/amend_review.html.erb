@@ -120,7 +120,8 @@
       <%= render "shared/section_heading", padding: "px-4 py-3", title: "Payments", intro: "The schedule after this amendment. Payments already paid or on a payout run are kept as they are; pending ones are re-priced or replaced by this list." %>
       <div class="p-4 space-y-2">
         <% if @financials_changed %>
-          <% staged_payments = @amend_data["payments"] || [] %>
+          <%# Each date at its own terms (its fee, its share's words), as they'll be billed. %>
+          <% staged_payments = @contract.amend_terms_view(@amend_bookings).billed_draft_payments %>
           <% if staged_payments.any? %>
             <% staged_payments.each do |payment| %>
               <% incoming = payment["direction"] == "incoming" %>
@@ -246,6 +247,10 @@
         <div>
           <span class="text-pink-700">Ticketing:</span>
           <span class="font-medium text-pink-900"><%= @ticketing_changed ? "Updated" : "No changes" %></span>
+        </div>
+        <div>
+          <span class="text-pink-700">Dates with their own terms:</span>
+          <span class="font-medium text-pink-900"><%= @date_term_changes.any? ? pluralize(@date_term_changes.size, "change") : "No changes" %></span>
         </div>
         <div>
           <span class="text-pink-700">Services:</span>

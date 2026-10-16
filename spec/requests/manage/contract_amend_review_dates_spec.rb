@@ -58,8 +58,16 @@ RSpec.describe "Amend: Review the dates", type: :request do
     html = response.body.gsub(/\s+/, " ")
     expect(html).to include("Dates with their own terms", "Fri, Nov 6 · Show", "0% this show", "Benefit night")
 
+    # The deal's own night-by-night settlements, as Financials staged them.
+    payments = times.map { |t| { "description" => "#{t.strftime('%b %-d')} — 70% to them", "amount" => 0, "amount_tbd" => true,
+                                 "direction" => "outgoing", "source" => "Revenue share", "due_date" => t.to_date.to_s } }
+    contract.reload.update_amend_data(contract.amend_data.merge("payment_structure" => "revenue_share",
+                                                         "payment_config" => contract.draft_payment_config.merge("revenue_settlement" => "same_day"),
+                                                         "payments" => payments))
+
     post apply_amendments_manage_contract_path(contract)
     expect(shows.first.reload.contract_terms).to eq("share" => 0.0, "note" => "Benefit night")
+    expect(contract.reload.contract_payments.order(:due_date).pluck(:description)).to eq([ "Nov 6 — 100% to them", "Nov 7 — 70% to them" ])
     expect(shows.last.reload.contract_terms).to eq({})
     expect(contract.reload.contract_versions.order(:version_number).last.change_summary).to include("date terms")
   end

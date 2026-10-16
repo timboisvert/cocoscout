@@ -49,6 +49,10 @@
   usual_choices = [ [ "Every date", "all" ] ] + kinds.map { |type, ds| [ "Every #{ds.first[:kind].downcase}", type ] } + [ [ "No dates", "none" ] ]
 
   hours_text = ->(n) { n.to_f % 1 == 0 ? n.to_i.to_s : n.to_f.to_s } # 2, not 2.0
+  usual_hours = lambda do |events|
+    open = Array(events&.reject { |key, _| locked.include?(key) }&.values).presence || Array(events&.values)
+    open.map { |e| e["hours"].to_f }.tally.max_by { |hours, count| [ count, hours ] }&.first
+  end
   lines = service_options.each_with_index.map do |option, i|
     chosen = chosen_by_id[option.id] || chosen_by_name[option.name.downcase]
     prefilled = chosen.nil? && already_needed.include?(option.id)
@@ -72,13 +76,14 @@
     { option: option, index: i, chosen: chosen, on: chosen.present? || prefilled, prefilled: prefilled, per_event: per_event,
       price: chosen ? chosen["unit_price"].to_f : option.contract_price, events: events, usual: usual, settlement: settlement,
       direction: chosen ? chosen["direction"] : option.contract_direction,
-      default_hours: hours_text.(events&.values&.first&.dig("hours") || 2) }
+      # The usual hours: what most open dates have (settled ones don't count).
+      default_hours: hours_text.(usual_hours.(events) || 2) }
   end
   per_event_lines = lines.select { |l| l[:per_event] }
 %>
 
 <% if service_options.any? %>
-  <div data-controller="contract-services">
+  <div data-controller="contract-services" data-action="keydown.esc@window->contract-services#escape">
     <div class="rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100 mb-4">
       <% lines.each do |line| %>
         <% option = line[:option]; i = line[:index] %>
@@ -141,7 +146,7 @@
                 <div class="w-20">
                   <label class="block text-xs font-medium text-gray-600 mb-1">Hours</label>
                   <input type="number" step="0.5" min="0" value="<%= line[:default_hours] %>" class="<%= input %>"
-                         data-contract-services-target="defaultHours" data-action="change->contract-services#usualChanged" aria-label="<%= option.name %>: usual hours">
+                         data-contract-services-target="defaultHours" data-action="change->contract-services#hoursChanged" aria-label="<%= option.name %>: usual hours">
                 </div>
               <% end %>
             <% else %>
@@ -196,30 +201,33 @@
             <% end %>
             <% dates.each_with_index do |date, j| %>
               <% frozen = locked.include?(date[:key]) %>
-              <div class="<%= 'hidden bg-gray-50/60' if frozen %> px-4 py-3 flex flex-col gap-2 @3xl:grid @3xl:grid-cols-[1.25rem_minmax(0,12rem)_6.5rem_minmax(0,1fr)_6rem_4rem] @3xl:items-center @3xl:gap-4"
-                   data-contract-services-target="date" data-date="<%= j %>" data-kind="<%= date[:type] %>" data-hours="<%= date[:hours] %>"<%= ' data-locked="1"'.html_safe if frozen %>>
-                <div class="flex items-center gap-3 @3xl:contents">
-                  <% if frozen %>
-                    <span class="hidden @3xl:block"></span>
-                  <% else %>
-                    <input type="checkbox" aria-label="Select <%= date[:at].strftime('%b %-d') %>" data-contract-services-target="dateCheck"
-                           data-date="<%= j %>" data-action="contract-services#datesTicked" class="<%= check %>">
-                  <% end %>
-                  <span class="flex-1 min-w-0 text-sm font-medium text-gray-900"><%= date[:at].strftime("%a, %b %-d") %> · <span class="whitespace-nowrap"><%= date[:at].strftime("%-l:%M %p") %></span></span>
-                  <span class="@3xl:hidden inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= date[:kind] %></span>
-                </div>
-                <span class="hidden @3xl:inline-flex"><span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= date[:kind] %></span></span>
-                <span class="flex flex-wrap gap-1.5" data-contract-services-target="chips" data-date="<%= j %>"></span>
-                <div class="flex items-center justify-between gap-3 @3xl:contents">
-                  <span class="text-sm font-semibold text-gray-900 tabular-nums @3xl:text-right" data-contract-services-target="dateCost" data-date="<%= j %>"></span>
-                  <span class="@3xl:text-right">
+              <%# hidden goes on this plain wrapper: on the grid row itself, @3xl:grid would win. %>
+              <div class="<%= 'hidden' if frozen %>" data-contract-services-target="date" data-date="<%= j %>" data-kind="<%= date[:type] %>"
+                   data-hours="<%= date[:hours] %>"<%= ' data-locked="1"'.html_safe if frozen %>>
+                <div class="<%= 'bg-gray-50/60' if frozen %> px-4 py-3 flex flex-col gap-2 @3xl:grid @3xl:grid-cols-[1.25rem_minmax(0,12rem)_6.5rem_minmax(0,1fr)_6rem_4rem] @3xl:items-center @3xl:gap-4">
+                  <div class="flex items-center gap-3 @3xl:contents">
                     <% if frozen %>
-                      <span class="text-xs text-gray-500">Settled</span>
+                      <span class="hidden @3xl:block"></span>
                     <% else %>
-                      <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
-                            data: { action: "contract-services#openDate", date: j } %>
+                      <input type="checkbox" aria-label="Select <%= date[:at].strftime('%b %-d') %>" data-contract-services-target="dateCheck"
+                             data-date="<%= j %>" data-action="contract-services#datesTicked" class="<%= check %>">
                     <% end %>
-                  </span>
+                    <span class="flex-1 min-w-0 text-sm font-medium text-gray-900"><%= date[:at].strftime("%a, %b %-d") %> · <span class="whitespace-nowrap"><%= date[:at].strftime("%-l:%M %p") %></span></span>
+                    <span class="@3xl:hidden inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= date[:kind] %></span>
+                  </div>
+                  <span class="hidden @3xl:inline-flex"><span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= date[:kind] %></span></span>
+                  <span class="flex flex-wrap gap-1.5" data-contract-services-target="chips" data-date="<%= j %>"></span>
+                  <div class="flex items-center justify-between gap-3 @3xl:contents">
+                    <span class="text-sm font-semibold text-gray-900 tabular-nums @3xl:text-right" data-contract-services-target="dateCost" data-date="<%= j %>"></span>
+                    <span class="@3xl:text-right">
+                      <% if frozen %>
+                        <span class="text-xs text-gray-500">Settled</span>
+                      <% else %>
+                        <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
+                              data: { action: "contract-services#openDate", date: j } %>
+                      <% end %>
+                    </span>
+                  </div>
                 </div>
               </div>
             <% end %>
@@ -241,7 +249,7 @@
         <% dates.each_with_index do |date, j| %>
           <% frozen = locked.include?(date[:key]) %>
           <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
-               data-contract-services-target="dateModal" data-date="<%= j %>">
+               data-contract-services-target="dateModal" data-date="<%= j %>" data-action="click->contract-services#backdrop">
             <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
               <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
                 <h3 class="text-lg font-semibold text-white"><%= date[:at].strftime("%a, %b %-d") %> · <%= date[:kind] %></h3>
@@ -256,7 +264,9 @@
                     <%
                       option = line[:option]; i = line[:index]
                       saved = line[:events] && line[:events][date[:key]]
-                      on = line[:events] ? saved.present? : (line[:usual] == "all" || line[:usual] == date[:type])
+                      # A service not on the contract starts off on every date; ticking it
+                      # here (or at the top) is what adds it.
+                      on = line[:on] && (line[:events] ? saved.present? : (line[:usual] == "all" || line[:usual] == date[:type]))
                       hours = saved ? hours_text.(saved["hours"]) : (option.hourly? ? line[:default_hours] : 1)
                       own_price = saved && saved.key?("unit_price") ? saved["unit_price"].to_f : nil
                     %>
@@ -298,7 +308,8 @@
         <% end %>
 
         <%# Several ticked dates at once: these set every ticked date's services. Not submitted themselves. %>
-        <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4" data-contract-services-target="severalModal">
+        <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4" data-contract-services-target="severalModal"
+             data-action="click->contract-services#backdrop">
           <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
             <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
               <h3 class="text-lg font-semibold text-white">Edit the ticked dates</h3>
