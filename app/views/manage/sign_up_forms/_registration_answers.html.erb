@@ -1,0 +1,24 @@
+<%# What someone answered on the form's questions (SignUpAnswers), folded
+    under their name on the roster and the assign queue. Nothing when they
+    answered nothing. Locals: registration (answers and questions preloaded). %>
+<% answers = registration.answers.sort_by { |answer| answer.question.position.to_i } %>
+<% if answers.any? %>
+  <details class="group/answers mt-0.5">
+    <summary class="list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1 text-xs font-medium text-pink-600 hover:text-pink-700 cursor-pointer">
+      <%= pluralize(answers.size, "answer") %>
+      <svg class="w-3 h-3 transition-transform group-open/answers:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </summary>
+    <dl class="mt-2 mb-1 space-y-2 text-sm">
+      <% answers.each do |answer| %>
+        <div>
+          <dt class="text-xs text-gray-500"><%= answer.question.text %></dt>
+          <% if answer.question.question_type == "textarea" %>
+            <dd class="text-gray-900 break-words whitespace-pre-line"><%= answer.value %></dd>
+          <% else %>
+            <dd class="text-gray-900 break-words"><%= render_question_answer(answer) %></dd>
+          <% end %>
+        </div>
+      <% end %>
+    </dl>
+  </details>
+<% end %>

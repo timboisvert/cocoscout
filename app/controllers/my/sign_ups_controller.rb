@@ -3,6 +3,9 @@
 module My
   class SignUpsController < ApplicationController
     allow_unauthenticated_access only: %i[entry form submit_form success inactive lock_slot unlock_slot slot_locks]
+    # On a form that doesn't require signing in, someone signed in still signs
+    # up as themselves, not as a guest.
+    before_action :resume_session
     before_action :set_sign_up_form
 
     def entry
@@ -82,7 +85,7 @@ module My
       end
 
       @slots = @instance&.sign_up_slots&.includes(:sign_up_registrations)&.order(:position) || []
-      @questions = SignUpForm::CUSTOM_QUESTIONS ? @sign_up_form.questions.order(:position) : Question.none
+      @questions = SignUpAnswers.questions_for(@sign_up_form)
       @show = @instance&.show
       @my_registrations = find_user_registrations
       @my_registration = @my_registrations.first # For backward compatibility
@@ -152,6 +155,12 @@ module My
         redirect_to my_sign_up_success_path(@code) and return
       end
 
+      answers = SignUpAnswers.read(SignUpAnswers.questions_for(@sign_up_form), params)
+      if answers.problem
+        flash[:alert] = answers.problem
+        redirect_to my_sign_up_form_path(@code, instance_id: @instance&.id) and return
+      end
+
       # New registration
       begin
         registration = slot.register!(
@@ -159,6 +168,7 @@ module My
           guest_name: params[:guest_name],
           guest_email: params[:guest_email]
         )
+        answers.save!(registration)
 
         # Send confirmation email to registrant
         SignUpRegistrantNotificationJob.perform_later(registration.id, :confirmation)
@@ -361,7 +371,9 @@ module My
 
     def registrations_remaining_for_user(existing_registrations = nil)
       return 0 unless @instance
-      return 0 unless Current.user&.person # Guests can only register once
+      # A guest (the form doesn't require signing in) signs up once at a time:
+      # there's no account to count their earlier sign-ups against.
+      return (@sign_up_form.require_login ? 0 : 1) unless Current.user&.person
 
       max_allowed = @sign_up_form.registrations_per_person || 1
       current_count = existing_registrations ? existing_registrations.count : find_user_registrations.count
@@ -383,12 +395,20 @@ module My
         end
       end
 
+      answers = SignUpAnswers.read(SignUpAnswers.questions_for(@sign_up_form), params)
+      if answers.problem
+        flash[:alert] = answers.problem
+        redirect_to my_sign_up_form_path(@code, instance_id: @instance&.id)
+        return
+      end
+
       begin
         registration = @instance.register_to_queue!(
           person: Current.user&.person,
           guest_name: params[:guest_name],
           guest_email: params[:guest_email]
         )
+        answers.save!(registration)
 
         # Send queued email to registrant
         SignUpRegistrantNotificationJob.perform_later(registration.id, :queued)

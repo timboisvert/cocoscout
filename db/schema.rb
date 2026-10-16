@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_16_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -119,12 +119,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_150000) do
 
   create_table "answers", force: :cascade do |t|
     t.integer "question_id", null: false
-    t.integer "audition_request_id", null: false
+    t.integer "audition_request_id"
     t.string "value"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "sign_up_registration_id"
     t.index ["audition_request_id"], name: "index_answers_on_audition_request_id"
     t.index ["question_id"], name: "index_answers_on_question_id"
+    t.index ["sign_up_registration_id"], name: "index_answers_on_sign_up_registration_id"
+    t.check_constraint "num_nonnulls(audition_request_id, sign_up_registration_id) = 1", name: "answers_one_owner"
   end
 
   create_table "app_sessions", force: :cascade do |t|
@@ -4044,6 +4047,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_150000) do
   add_foreign_key "agreement_templates", "organizations"
   add_foreign_key "answers", "audition_requests"
   add_foreign_key "answers", "questions"
+  add_foreign_key "answers", "sign_up_registrations"
   add_foreign_key "app_sessions", "users"
   add_foreign_key "audition_cycles", "productions"
   add_foreign_key "audition_email_assignments", "audition_cycles"

@@ -50,7 +50,7 @@ class StorageKeyGeneratorService
       when ActionText::RichText
         build_action_text_key(record, blob_key)
       when Answer
-        build_audition_answer_key(record, blob_key)
+        record.sign_up_registration_id ? build_sign_up_answer_key(record, blob_key) : build_audition_answer_key(record, blob_key)
       when QuestionnaireAnswer
         build_questionnaire_answer_key(record, blob_key)
       else
@@ -112,6 +112,16 @@ class StorageKeyGeneratorService
       return nil unless production
 
       "organizations/#{production.organization_id}/productions/#{production.id}/audition_cycles/#{cycle.id}/requests/#{answer.audition_request_id}/answers/#{blob_key}"
+    end
+
+    # A file uploaded with a sign-up, filed under the form it was signed up on.
+    def build_sign_up_answer_key(answer, blob_key)
+      registration = answer.sign_up_registration
+      form = registration&.sign_up_slot&.sign_up_form || registration&.sign_up_form_instance&.sign_up_form
+      organization_id = form&.production&.organization_id
+      return nil unless organization_id
+
+      "organizations/#{organization_id}/sign_up_forms/#{form.id}/registrations/#{registration.id}/answers/#{blob_key}"
     end
 
     # A file uploaded with a questionnaire response, filed under the org's

@@ -641,7 +641,7 @@ module Manage
         @preview_show = nil
         @slots = @sign_up_form.sign_up_slots.order(:position)
       end
-      @questions = SignUpForm::CUSTOM_QUESTIONS ? @sign_up_form.questions.order(:position) : Question.none
+      @questions = SignUpAnswers.questions_for(@sign_up_form)
     end
 
     def print_list
@@ -668,6 +668,8 @@ module Manage
         @slots = @current_instance&.sign_up_slots&.order(:position) || @sign_up_form.sign_up_slots.order(:position)
         @show = nil
       end
+
+      @slots = @slots.includes(sign_up_registrations: [ :person, { answers: :question } ]) if @slots.is_a?(ActiveRecord::Relation)
 
       render layout: "print"
     end
@@ -809,7 +811,7 @@ module Manage
       return unless @instance
 
       @slots = @instance.sign_up_slots.order(:position).includes(:sign_up_registrations)
-      @queue = @instance.queued_registrations.includes(:person)
+      @queue = @instance.queued_registrations.includes(:person, answers: [ :question, { file_attachment: :blob } ])
       @assigned = @instance.sign_up_registrations.active.assigned.includes(:person, :sign_up_slot)
     end
 

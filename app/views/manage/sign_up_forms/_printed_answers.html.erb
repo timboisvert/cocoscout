@@ -1,0 +1,6 @@
+<%# Someone's answers to the form's questions, a line each under their name
+    on the printed list. Locals: registration (answers and questions preloaded). %>
+<% registration.answers.sort_by { |answer| answer.question.position.to_i }.each do |answer| %>
+  <% asked = answer.question.text.to_s.strip %>
+  <div class="mt-0.5 text-xs font-normal text-gray-700"><span class="text-gray-500"><%= asked.end_with?("?", ":", ".") ? asked : "#{asked}:" %></span> <%= question_answer_text(answer) %></div>
+<% end %>

@@ -47,6 +47,11 @@ export default class extends Controller {
         const slotElement = event.currentTarget
         const slotId = slotElement.dataset.slotId
 
+        // Don't hold a slot while the details (name, questions) still need filling in
+        const actionString = slotElement.dataset.action || ''
+        const confirmation = this.application.getControllerForElementAndIdentifier(this.element, 'sign-up-confirmation')
+        if (!actionString.includes('changeSlot') && confirmation && !confirmation.detailsReady()) return
+
         // Hide expired overlay if visible (user is trying again)
         if (this.hasExpiredOverlayTarget) {
             this.expiredOverlayTarget.classList.add('hidden')

@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { confirmDialog } from "controllers/lib/confirm_dialog"
 
 export default class extends Controller {
-  static targets = ["modal", "slotName", "slotInfo", "hiddenSlotId", "confirmButton", "changeSlotSection", "formSection", "slotList", "lockedSlot", "modalTitle", "modalForm"]
+  static targets = ["modal", "slotName", "slotInfo", "hiddenSlotId", "confirmButton", "changeSlotSection", "formSection", "slotList", "lockedSlot", "modalTitle", "modalForm", "details"]
   static values = {
     submitUrl: String,
     changeMode: Boolean,
@@ -171,8 +171,65 @@ export default class extends Controller {
     setTimeout(() => this.confirmButtonTarget.focus(), 100)
   }
 
+  // The details form (guest name, the form's questions) is never sent by
+  // itself: Enter in one of its fields mustn't post it anywhere.
+  holdSubmit(event) {
+    event.preventDefault()
+  }
+
+  // Whether the details form is filled in well enough to sign up; if not,
+  // shows what's missing. The browser checks typed fields and yes/no; a
+  // required pick-one, pick-several or file question has no check of its own.
+  detailsReady() {
+    if (!this.hasDetailsTarget) return true
+    if (!this.detailsTarget.reportValidity()) return false
+
+    const unanswered = Array.from(this.detailsTarget.querySelectorAll('[data-required-answer]')).find(group => !this.answered(group))
+    if (!unanswered) return true
+
+    const note = unanswered.querySelector('[data-required-note]')
+    note?.classList.remove('hidden')
+    unanswered.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    unanswered.addEventListener('change', () => note?.classList.add('hidden'), { once: true })
+    return false
+  }
+
+  answered(group) {
+    return Array.from(group.querySelectorAll('input, textarea, select')).some(field => {
+      if (field.type === 'file') return field.files.length > 0
+      if (field.type === 'checkbox' || field.type === 'radio') return field.checked
+      return field.value.trim() !== ''
+    })
+  }
+
+  // Copies the details form's fields, files too, into the form being sent.
+  copyDetails(form) {
+    if (!this.hasDetailsTarget) return
+
+    form.querySelectorAll('[data-copied-detail]').forEach(field => field.remove())
+    for (const [name, value] of new FormData(this.detailsTarget)) {
+      const field = document.createElement('input')
+      field.name = name
+      field.dataset.copiedDetail = ''
+      if (value instanceof File) {
+        if (!value.name) continue // a file field left empty
+        const files = new DataTransfer()
+        files.items.add(value)
+        field.type = 'file'
+        field.hidden = true
+        field.files = files.files
+      } else {
+        field.type = 'hidden'
+        field.value = value
+      }
+      form.appendChild(field)
+    }
+    form.enctype = 'multipart/form-data'
+  }
+
   selectSlot(event) {
     event.preventDefault()
+    if (!this.detailsReady()) return
 
     const slotId = event.currentTarget.dataset.slotId
     const slotName = event.currentTarget.dataset.slotName
@@ -242,15 +299,17 @@ export default class extends Controller {
       Confirming...
     `
 
-    // Submit the form
+    // Submit the form, with the details unless it's moving a slot
     const form = this.confirmButtonTarget.closest('form')
     if (form) {
+      if (!this.changeModeValue) this.copyDetails(form)
       form.submit()
     }
   }
 
   joinQueue(event) {
     event.preventDefault()
+    if (!this.detailsReady()) return
 
     const button = event.currentTarget
     button.disabled = true
@@ -261,10 +320,6 @@ export default class extends Controller {
       </svg>
       Joining Queue...
     `
-
-    // Get guest info if present
-    const guestNameInput = document.getElementById('guest_name')
-    const guestEmailInput = document.getElementById('guest_email')
 
     // Submit to the queue endpoint
     const form = document.createElement('form')
@@ -280,21 +335,7 @@ export default class extends Controller {
       form.appendChild(tokenInput)
     }
 
-    if (guestNameInput?.value) {
-      const nameInput = document.createElement('input')
-      nameInput.type = 'hidden'
-      nameInput.name = 'guest_name'
-      nameInput.value = guestNameInput.value
-      form.appendChild(nameInput)
-    }
-
-    if (guestEmailInput?.value) {
-      const emailInput = document.createElement('input')
-      emailInput.type = 'hidden'
-      emailInput.name = 'guest_email'
-      emailInput.value = guestEmailInput.value
-      form.appendChild(emailInput)
-    }
+    this.copyDetails(form)
 
     document.body.appendChild(form)
     form.submit()

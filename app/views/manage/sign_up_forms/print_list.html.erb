@@ -68,7 +68,7 @@
                 <%# Held slot - show empty row(s) with just the position number %>
                 <% capped.call(slot.capacity).times do %>
                   <tr class="border-b border-gray-100">
-                    <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
+                    <td class="py-2 px-2 align-top text-gray-500"><%= slot.name.presence || slot.position %></td>
                     <td colspan="2"></td>
                   </tr>
                 <% end %>
@@ -81,15 +81,15 @@
                 <% if registrations.any? %>
                   <% registrations.each do |registration| %>
                     <tr class="border-b border-gray-100">
-                      <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
-                      <td class="py-2 px-2 font-medium text-gray-900"><%= registration.display_name %></td>
-                      <td class="py-2 px-2 text-gray-600"><%= registration.display_email %></td>
+                      <td class="py-2 px-2 align-top text-gray-500"><%= slot.name.presence || slot.position %></td>
+                      <td class="py-2 px-2 align-top font-medium text-gray-900"><%= registration.display_name %><%= render "manage/sign_up_forms/printed_answers", registration: registration %></td>
+                      <td class="py-2 px-2 align-top text-gray-600"><%= registration.display_email %></td>
                     </tr>
                   <% end %>
                   <%# Show remaining capacity as empty rows (capped) %>
                   <% capped.call(slot.capacity - registrations.size).times do %>
                     <tr class="border-b border-gray-100">
-                      <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
+                      <td class="py-2 px-2 align-top text-gray-500"><%= slot.name.presence || slot.position %></td>
                       <td colspan="2"></td>
                     </tr>
                   <% end %>
@@ -97,7 +97,7 @@
                   <%# Empty slot - show all capacity slots (capped) %>
                   <% capped.call(slot.capacity).times do %>
                     <tr class="border-b border-gray-100">
-                      <td class="py-2 px-2 text-gray-500"><%= slot.name.presence || slot.position %></td>
+                      <td class="py-2 px-2 align-top text-gray-500"><%= slot.name.presence || slot.position %></td>
                       <td colspan="2"></td>
                     </tr>
                   <% end %>
@@ -112,8 +112,8 @@
             %>
             <% all_registrations.each do |registration| %>
               <tr class="border-b border-gray-100">
-                <td class="py-2 px-2 font-medium text-gray-900"><%= registration.display_name %></td>
-                <td class="py-2 px-2 text-gray-600"><%= registration.display_email %></td>
+                <td class="py-2 px-2 align-top font-medium text-gray-900"><%= registration.display_name %><%= render "manage/sign_up_forms/printed_answers", registration: registration %></td>
+                <td class="py-2 px-2 align-top text-gray-600"><%= registration.display_email %></td>
               </tr>
             <% end %>
             <%# Show empty rows for remaining capacity (capped). For "unlimited"
@@ -121,8 +121,8 @@
                 row per unit would hang the browser. %>
             <% capped.call(total_capacity - all_registrations.size).times do %>
               <tr class="border-b border-gray-100">
-                <td class="py-2 px-2">&nbsp;</td>
-                <td class="py-2 px-2"></td>
+                <td class="py-2 px-2 align-top">&nbsp;</td>
+                <td class="py-2 px-2 align-top"></td>
               </tr>
             <% end %>
           <% end %>

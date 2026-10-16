@@ -22,4 +22,19 @@ module QuestionsHelper
       locals: { answer: answer }
     )
   end
+
+  # An answer as one line of plain text, for a printed list: picks and
+  # rankings joined with commas, a file by its name.
+  def question_answer_text(answer)
+    case answer.question.question_type
+    when "file_upload"
+      answer.respond_to?(:file) && answer.file.attached? ? answer.file.filename.to_s : answer.value.to_s
+    when "yesno"
+      answer.value.to_s.capitalize
+    when "multiple-multiple", "ranking"
+      answer.value_as_array.join(", ")
+    else
+      answer.value.to_s.squish
+    end
+  end
 end

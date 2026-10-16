@@ -6,6 +6,17 @@ that came up while finishing V1.
 
 ## 1. Sign-up question answers (build it properly)
 
+**Done 2026-10-16.** Answers belong to the registration (`answers` gains
+`sign_up_registration_id`; each answer has exactly one owner), saved by
+`SignUpAnswers` from `submit_form` and the queue, required ones checked on
+the page and again on the server, before anyone is registered. Producers see
+them folded under each name on the roster and the assign queue, and a line
+each on the printed list. The `CUSTOM_QUESTIONS` switch is gone. Building it
+turned up three older bugs on the same path, fixed with it: a guest's name
+never reached the server, guests were allowed no sign-ups at all, and on a
+form that doesn't require signing in, someone signed in was treated as a
+guest (and the roster crashed on a guest's sign-up).
+
 Custom questions on sign-up forms are switched off
 (`SignUpForm::CUSTOM_QUESTIONS = false`, 2026-10-15). The sign-up page showed
 them, but nothing saved what people typed: the questions sat outside the
@@ -23,6 +34,9 @@ To build:
 - Then set `CUSTOM_QUESTIONS` back to true (it brings back the Questions tab).
 
 ## 2. Payee details asked once, up front
+
+**Done 2026-10-16 (e1e3b528).** After it deploys, a console block marks who
+already has details coming due (`people.payout_details_due`).
 
 Stripe wants date of birth and the last four of the SSN from each person
 CocoScout pays once they've been paid $3,000; the app only asks for what's

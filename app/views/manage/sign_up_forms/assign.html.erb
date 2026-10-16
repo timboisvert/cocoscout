@@ -277,9 +277,9 @@
                    draggable="<%= supports_drag %>"
                    data-assign-drag-target="queueItem"
                    data-registration-id="<%= registration.id %>">
-                <div class="flex items-center gap-3">
+                <div class="flex items-start gap-3">
                   <% if supports_drag %>
-                    <svg class="w-4 h-4 text-gray-400 cursor-grab" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 mt-1.5 text-gray-400 cursor-grab" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
                     </svg>
                   <% end %>
@@ -291,15 +291,16 @@
                       <%= registration.display_name.first.upcase %>
                     </div>
                   <% end %>
-                  <div>
+                  <div class="min-w-0">
                     <% if registration.person.present? %>
-                      <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline" %>
+                      <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm leading-7 text-gray-900 hover:text-pink-600 hover:underline" %>
                     <% else %>
-                      <span class="text-sm text-gray-900"><%= registration.display_name %></span>
+                      <span class="text-sm leading-7 text-gray-900"><%= registration.display_name %></span>
                     <% end %>
                     <% if registration.guest? %>
                       <span class="text-xs text-gray-500 ml-1">(Guest)</span>
                     <% end %>
+                    <%= render "manage/sign_up_forms/registration_answers", registration: registration %>
                   </div>
                 </div>
                 <% remove_queue_cid = "confirm-remove-queue-#{registration.id}" %>

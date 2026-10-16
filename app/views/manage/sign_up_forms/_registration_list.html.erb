@@ -31,7 +31,7 @@
 <% if slots.any? %>
   <div class="divide-y divide-gray-100">
     <% slots.each do |slot| %>
-      <% registrations_in_slot = slot.sign_up_registrations.active.includes(:person).order(:position).to_a %>
+      <% registrations_in_slot = slot.sign_up_registrations.active.includes(:person, answers: [ :question, { file_attachment: :blob } ]).order(:position).to_a %>
       <% registrations_by_position = registrations_in_slot.index_by(&:position) %>
 
       <%# Determine label width - wider for named slots or time_based %>
@@ -63,8 +63,8 @@
           <div class="flex-1 divide-y divide-gray-50">
             <% registrations_in_slot.each do |registration| %>
               <%# Filled position %>
-              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2 hover:bg-gray-50">
-                <div class="flex items-center gap-3">
+              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between px-4 py-2 hover:bg-gray-50">
+                <div class="flex items-start gap-3">
                   <% headshot = registration.person&.safe_headshot_variant(:thumb) %>
                   <% if headshot %>
                     <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
@@ -73,13 +73,16 @@
                       <%= registration.display_name.first.upcase %>
                     </div>
                   <% end %>
-                  <% if registration.person.present? %>
-                    <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline" %>
-                  <% else %>
-                    <span class="text-sm text-gray-900"><%= registration.display_name %></span>
-                  <% end %>
+                  <div class="min-w-0">
+                    <% if registration.person.present? %>
+                      <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm leading-7 text-gray-900 hover:text-pink-600 hover:underline" %>
+                    <% else %>
+                      <span class="text-sm leading-7 text-gray-900"><%= registration.display_name %></span>
+                    <% end %>
+                    <%= render "manage/sign_up_forms/registration_answers", registration: registration %>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1 mt-2 sm:mt-0">
+                <div class="flex items-center gap-1 mt-2 sm:mt-0.5">
                   <% headshot_url = headshot ? url_for(headshot) : nil %>
                   <button type="button"
                           class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-pointer"
@@ -136,8 +139,8 @@
           <%# Right side: registrations %>
           <div class="flex-1 divide-y divide-gray-50">
             <% registrations_in_slot.each do |registration| %>
-              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2 hover:bg-gray-50">
-                <div class="flex items-center gap-3">
+              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between px-4 py-2 hover:bg-gray-50">
+                <div class="flex items-start gap-3">
                   <% headshot = registration.person&.safe_headshot_variant(:thumb) %>
                   <% if headshot %>
                     <%= image_tag headshot, class: "w-7 h-7 rounded-lg object-cover" %>
@@ -146,13 +149,16 @@
                       <%= registration.display_name.first.upcase %>
                     </div>
                   <% end %>
-                  <% if registration.person.present? %>
-                    <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm text-gray-900 hover:text-pink-600 hover:underline" %>
-                  <% else %>
-                    <span class="text-sm text-gray-900"><%= registration.display_name %></span>
-                  <% end %>
+                  <div class="min-w-0">
+                    <% if registration.person.present? %>
+                      <%= link_to registration.display_name, manage_person_path(registration.person), class: "text-sm leading-7 text-gray-900 hover:text-pink-600 hover:underline" %>
+                    <% else %>
+                      <span class="text-sm leading-7 text-gray-900"><%= registration.display_name %></span>
+                    <% end %>
+                    <%= render "manage/sign_up_forms/registration_answers", registration: registration %>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1 mt-2 sm:mt-0">
+                <div class="flex items-center gap-1 mt-2 sm:mt-0.5">
                   <% if show_slot_label %>
                     <% headshot_url = headshot ? url_for(headshot) : nil %>
                     <button type="button"
