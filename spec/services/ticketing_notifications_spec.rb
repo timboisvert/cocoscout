@@ -97,6 +97,21 @@ RSpec.describe "Ticketing notifications" do
     expect(html(summary)).not_to include("Coming up")
   end
 
+  it "counts tickets sold on other sites in the summary's Now and the show-day note" do
+    listing.show.update!(date_and_time: Time.current.end_of_day - 2.hours)
+    travel_to(1.day.ago) { sell(3) }
+    tailor = TicketSource.create!(organization: org, name: "Ticket Tailor")
+    TicketOutsideSale.create!(organization: org, ticket_listing: listing, ticket_tier: general, ticket_source: tailor,
+                              tickets_sold: 4, amount_cents: 8_000)
+
+    perform_enqueued_jobs { TicketingDailyNoticesJob.perform_now }
+    summary = mails_to("manager@sg.example").find { |m| m.subject.start_with?("Ticket sales for") }
+    expect(html(summary)).to include("3 tickets sold", ">Now<", "7 of 10")
+    today = mails_to("manager@sg.example").find { |m| m.subject.start_with?("Today:") }
+    expect(today.subject).to include("7 of 10 sold")
+    expect(html(today)).to include("7 of 10", "$140.00", "Includes 4 on Ticket Tailor.")
+  end
+
   it "sends no digest on a day nothing sold, even with shows coming up" do
     listing.show.update!(date_and_time: 3.days.from_now)
     travel_to(3.days.ago) { sell(2) }

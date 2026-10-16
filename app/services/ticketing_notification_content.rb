@@ -31,8 +31,16 @@ class TicketingNotificationContent
     }
   end
 
+  # Every ticket sold, here or on another site, of the seats to sell once
+  # comps are set aside: the show page's Sold tile (Tim, 2026-10-10: never
+  # CocoScout's count alone).
   def self.sold_line(stats)
-    stats.capacity ? "#{stats.sold} of #{stats.capacity} sold" : "#{stats.sold} sold"
+    stats.sold_words
+  end
+
+  # "12 of 50", or "12" with no seat limit, the same way.
+  def self.sold_count(stats)
+    stats.seats_to_sell ? "#{stats.sold_anywhere} of #{stats.seats_to_sell}" : stats.sold_anywhere.to_s
   end
 
   # "3 Champagne bottles and 2 Programs", or "" when none.
@@ -62,8 +70,11 @@ class TicketingNotificationContent
   def self.sales_table(stats, checked_in: false)
     head = [ "Ticket", "Sold", "Sales" ]
     head.insert(2, "In") if checked_in
-    rows = stats.by_tier.reject { |r| r.tier.archived_at && r.sold.zero? }.map do |row|
-      cells = [ h(row.tier.name), row.seats ? "#{row.sold} of #{row.seats}" : row.sold.to_s, money(row.gross_cents) ]
+    # Each type's tickets sold here or on other sites (and their money, as
+    # typed), comps on their own row: the show page's numbers.
+    rows = stats.by_tier.reject { |r| r.tier.archived_at && r.sold.zero? && r.outside.zero? }.map do |row|
+      sold = row.seats_to_sell ? "#{row.sold_anywhere} of #{row.seats_to_sell}" : row.sold_anywhere.to_s
+      cells = [ h(row.tier.name), sold, money(row.gross_cents + stats.outside_cents(tier: row.tier)) ]
       cells.insert(2, stats.held_tickets.count { |t| t.ticket_tier_id == row.tier.id && t.checked_in? }.to_s) if checked_in
       cells
     end
@@ -73,10 +84,11 @@ class TicketingNotificationContent
       cells.insert(2, "#{row.handed_over} delivered") if checked_in
       rows << cells
     end
-    total = [ "Total", (stats.sold + stats.products_sold).to_s, money(stats.gross_cents + stats.product_cents) ]
+    total = [ "Total", (stats.sold_anywhere + stats.comps + stats.products_sold).to_s, money(stats.sales_anywhere_cents + stats.product_cents) ]
     total.insert(2, stats.checked_in.to_s) if checked_in
     rows << { cells: total }
-    table(head, rows)
+    elsewhere = stats.outside_sold.positive? ? %(<p style="font-size:13px;color:#6b7280;margin:8px 0 0">Includes #{h(stats.outside_words)}.</p>) : ""
+    table(head, rows) + elsewhere
   end
 
   def self.sale(order)
@@ -211,7 +223,7 @@ class TicketingNotificationContent
       mine = items.select { |i| ids.include?(i.ticket_order_id) }
       s = stats[listing.id]
       [ label.call(listing), count.to_s, mine.any? ? mine.sum(&:quantity).to_s : "—", money(os.sum { |o| o.subtotal_cents - o.discount_cents }),
-        s.capacity ? "#{s.sold} of #{s.capacity}" : s.sold.to_s ]
+        sold_count(s) ]
     end
     yesterday_rows << { cells: [ "Total", tickets.to_s, products_sold.positive? ? products_sold.to_s : "—", money(sales), "" ] } if yesterday_rows.size > 1
     # No products sold that day: no Products column, one less to squeeze.
