@@ -38,12 +38,16 @@ due now, so their pay would pause then. 129 accounts were flagged on
 
 ## 3. Door messages that say "Stripe"
 
+**Done 2026-10-16 (46c41f92).**
+
 Reword for door staff, per the same rule: "Stripe hasn't confirmed the
 payment yet", "Stripe took $X, not this sale's total", "Stripe couldn't start
 that sale" (`app/services/tap_to_pay.rb`, `app/controllers/door_controller.rb`)
 and "Confirming with Stripe…" (`door_tap_controller.js`).
 
 ## 4. "Sold elsewhere" modal on mobile
+
+**Done 2026-10-16 (76a37e99).**
 
 The Sold elsewhere modal on a show's ticketing page
 (`manage/ticket_listings/_outside_sales_modal.html.erb`, with
@@ -52,6 +56,8 @@ phone-first: one row per line that stacks instead of a cramped grid, inputs
 at 16px so iPhone doesn't zoom, the save button always reachable.
 
 ## 5. Downloading the ticketing QR code on mobile web
+
+**Done 2026-10-16 (164bd9fc).**
 
 The QR modal's Download (`shared/_qr_modal.html.erb` →
 `qr_code_controller.js#download`) clicks a link to a PNG data URL. On a
