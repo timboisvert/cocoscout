@@ -10,7 +10,8 @@ RSpec.describe "Show services on Scheduling", type: :request do
   let(:owner) { create(:user, password: password) }
   let!(:org) { create(:organization, :pro, owner: owner, alert_uncovered_show_roles: true) }
   let(:production) { create(:production, organization: org, name: "Halloween o' Weens") }
-  let(:week_start) { Date.current.beginning_of_week }
+  # Next week, so the show is always still to come (the summary skips past ones).
+  let(:week_start) { Date.current.next_week.beginning_of_week }
   let!(:show) { create(:show, production: production, date_and_time: (week_start + 2).in_time_zone.change(hour: 20), duration_minutes: 90) }
 
   let!(:booth_role) { create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific, include_in_role_call: false) }
@@ -94,6 +95,34 @@ RSpec.describe "Show services on Scheduling", type: :request do
     Shift.destroy_all
     post manage_create_staffing_shift_path, params: params.merge(anyone: "1", person_id: stranger.id)
     expect(ShiftAssignment.count).to eq(0)
+  end
+
+  it "sums up what's still to staff this week, and adds the missing shifts in one go" do
+    html = page_html
+    expect(html).to include("Still to staff this week", "2 services on 1 show", "Booth Tech on 1 show and Ticket taking on 1 show", "Add the 2 shifts")
+
+    post manage_add_staffing_service_shifts_path(week_start: week_start.to_s)
+    expect(flash[:notice]).to eq("Added 2 shifts. Now pick who works them.")
+    expect(Shift.where(source: show).map { |s| [ s.house_role.name, s.starts_at, s.ends_at, s.assigned_count ] })
+      .to contain_exactly([ "Booth Tech", show.date_and_time, show.ends_at, 0 ], [ "Front of House", show.date_and_time, show.ends_at, 0 ])
+
+    # Shifts exist now, so nothing more to add, but they still need people.
+    expect(page_html).to include("Their shifts are added: pick who works them.")
+    expect(page_html).not_to include("Add the 2 shifts")
+    post manage_add_staffing_service_shifts_path(week_start: week_start.to_s)
+    expect(flash[:notice]).to eq("Every service already has its shift.")
+  end
+
+  it "keeps the summary off with Role Call off" do
+    org.update!(alert_uncovered_show_roles: false)
+    expect(page_html).not_to include("Still to staff this week")
+    expect(page_html).to include("What this show needs")
+  end
+
+  it "names a service once when an every-show role shares its name" do
+    booth_role.update!(include_in_role_call: true)
+    expect(page_html).to include("needs Booth Tech")
+    expect(page_html).not_to include("Booth Tech and Booth Tech")
   end
 
   it "says nothing about services without Pro" do

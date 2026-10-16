@@ -159,6 +159,27 @@
     <% end %>
   <% end %>
 
+  <%# Still to staff this week (after-V1 #6; Role Call on): the services the
+      week's shows need that nobody's on, and one button for the shifts that
+      don't exist yet. %>
+  <% if @still_to_staff.present? %>
+    <%
+      show_count = @still_to_staff.map(&:first).uniq.size
+      by_service = @still_to_staff.group_by { |_show, need| need[:service].name }
+                                  .map { |name, rows| "#{name} on #{pluralize(rows.map(&:first).uniq.size, 'show')}" }
+      missing = @missing_service_shifts.size
+    %>
+    <%= render "shared/alert_panel", eyebrow: "Still to staff this week",
+          headline: "#{pluralize(@still_to_staff.size, 'service')} on #{pluralize(show_count, 'show')}",
+          body: "#{by_service.to_sentence}. " + if missing == 1 then "Add the shift here, then pick who works it."
+                                                 elsif missing.positive? then "Add the shifts here, then pick who works them."
+                                                 else "Their shifts are added: pick who works them."
+                                                 end,
+          actions: missing.positive? ? [ { text: missing == 1 ? "Add the shift" : "Add the #{missing} shifts",
+                                          path: manage_add_staffing_service_shifts_path(week_start: @week_start.to_s),
+                                          method: :post, data: { turbo_method: :post } } ] : [] %>
+  <% end %>
+
   <%# === Day rows === %>
   <div class="space-y-4">
     <% days.each do |day| %>

@@ -113,8 +113,13 @@ module Manage
       if @role_call_enabled
         @show_needs.each do |show_id, needs|
           missing = needs.select { |n| n[:needed] && !n[:covered] }.map { |n| n[:service].name }
-          @uncovered_roles_by_show[show_id] = missing + Array(@uncovered_roles_by_show[show_id]) if missing.any?
+          # A service and an every-show role can share a name (Booth Tech); say it once.
+          @uncovered_roles_by_show[show_id] = (missing + Array(@uncovered_roles_by_show[show_id])).uniq if missing.any?
         end
+        # "Still to staff this week": the services nobody's on, from now on,
+        # and how many have no shift at all yet (one button adds those).
+        @still_to_staff = unstaffed_services(@show_needs)
+        @missing_service_shifts = @still_to_staff.reject { |_show, need| need[:has_shift] }
       end
 
       # Regulars (opt-in via Staffing settings): the org's standing rules
@@ -265,6 +270,32 @@ module Manage
 
       redirect_to scheduling_return_url,
                   notice: ids.include?(role.id) ? "#{show.display_name} won't be flagged for #{role.name} coverage." : "#{show.display_name} needs #{role.name} coverage again."
+    end
+
+    # "Add the N shifts" (after-V1 #6): one open shift per service a show this
+    # week needs that has no shift yet, on the service's first role, for the
+    # show's own hours. People are picked after, as with any open shift.
+    def add_service_shifts
+      unless Current.organization.services_available_to?(Current.user)
+        return redirect_to(scheduling_return_url, alert: "Services are part of CocoScout Pro.")
+      end
+
+      @week_start = parse_week_start(params[:week_start])
+      @week_end = @week_start + 6.days
+      @shows_by_day = shows_in_range(@week_start..@week_end).group_by { |s| s.date_and_time.to_date }
+      shifts = Current.organization.shifts.for_week(@week_start)
+                      .includes(:house_role, :source, :shows, :shift_assignments, shift_additional_roles: :house_role).to_a
+
+      created = 0
+      unstaffed_services(service_coverage_by_show(shifts)).reject { |_show, need| need[:has_shift] }.each do |show, need|
+        role = need[:service].house_roles.min_by { |r| [ r.position, r.name ] }
+        shift = Current.organization.shifts.new(house_role: role, source: show, starts_at: show.date_and_time, ends_at: show.ends_at,
+                                                required_count: need[:people_count], coverage_mode: :needs_assignment)
+        created += 1 if shift.save
+      end
+
+      redirect_to manage_staffing_scheduling_path(week_start: @week_start.to_s),
+                  notice: created.zero? ? "Every service already has its shift." : "Added #{helpers.pluralize(created, 'shift')}. Now pick who works them."
     end
 
     # One show, one service, from the show's panel (after-V1 #6): "Not this
@@ -648,9 +679,21 @@ module Manage
           end
           people = on.flat_map { |shift| shift.shift_assignments.map(&:person) }.compact.uniq
           { service: need.service, people_count: need.people_count, source: need.source, needed: need.needed?,
-            staffed_by: people, covered: people.size >= need.people_count }
+            staffed_by: people, covered: people.size >= need.people_count, has_shift: on.any? }
         end
       end
+    end
+
+    # [[show, need], ...]: each service a show from now on needs that nobody's
+    # on yet, soonest first.
+    def unstaffed_services(show_needs)
+      shows = @shows_by_day.values.flatten.index_by(&:id)
+      show_needs.flat_map do |show_id, needs|
+        show = shows[show_id]
+        next [] unless show && show.date_and_time >= Time.current
+
+        needs.select { |n| n[:needed] && !n[:covered] }.map { |need| [ show, need ] }
+      end.sort_by { |show, need| [ show.date_and_time, need[:service].position ] }
     end
 
     # Everyone on staff, for the add-shift modal's "Someone else": the people
