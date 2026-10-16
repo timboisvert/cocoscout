@@ -1200,6 +1200,8 @@ Rails.application.routes.draw do
     resources :productions, except: [ :new, :create ] do
       member do
         get :confirm_delete
+        post :archive
+        post :unarchive
         post :check_url_availability
         patch :update_public_key
         # Production team management

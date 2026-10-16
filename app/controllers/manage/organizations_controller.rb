@@ -90,7 +90,7 @@ module Manage
         @team_invitations = @organization.team_invitations.where(accepted_at: nil, production_id: nil)
         @locations = @organization.locations.order(:created_at)
         @team_invitation = TeamInvitation.new
-        @productions = @organization.productions.order(:name)
+        @productions = @organization.productions.active.order(:name)
         @agreement_templates = @organization.agreement_templates.order(:name)
         render :show, status: :unprocessable_content
       end

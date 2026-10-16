@@ -791,6 +791,32 @@
 
     <!-- Danger Zone Tab -->
     <div data-tabs-target="panel" class="hidden">
+      <% if org_manager %>
+        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <% if @production.archived? %>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">This production is archived</h3>
+            <p class="text-sm text-gray-600 mb-4">
+              It's hidden from your production lists and pickers. Nothing was deleted: its dates, people, money and documents are all still here.
+            </p>
+            <%= render "shared/button", text: "Unarchive", variant: "primary", size: "medium",
+                  path: unarchive_manage_production_path(@production), method: :post %>
+          <% else %>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Archive this production</h3>
+            <p class="text-sm text-gray-600 mb-4">
+              Done with this one? Archiving hides it from your production lists and pickers. Nothing is deleted, and you can unarchive it from the Productions page any time.
+            </p>
+            <%= render "shared/button", text: "Archive this production", variant: "primary", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-production" } %>
+          <% end %>
+        </div>
+        <% unless @production.archived? %>
+          <%= render "shared/confirm_modal", id: "confirm-archive-production",
+                title: "Archive #{@production.name}?",
+                message: "It disappears from your production lists and pickers. Nothing is deleted, and you can bring it back from the Productions page under Archived.",
+                confirm_text: "Archive",
+                url: archive_manage_production_path(@production), method: :post %>
+        <% end %>
+      <% end %>
       <div class="bg-red-50 border border-red-200 rounded-lg p-6">
         <div class="flex items-start gap-4">
           <div class="flex-shrink-0">

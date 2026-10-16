@@ -9,26 +9,56 @@
     links: current_user_is_global_manager? ? [{ text: "Add a Production", path: manage_productions_wizard_path }] : []
   } %>
 
-  <%= render "shared/filters/filter_bar", filter_groups: [
+  <% archived_view = @status == "archived" %>
+  <% status_param = archived_view ? "archived" : nil %>
+  <% filter_groups = [
     {
       label: "Type",
       filters: [
-        { text: "All", path: manage_productions_path(filter: "all"), active: @filter == "all" },
-        { text: "First-party", path: manage_productions_path(filter: "first_party"), active: @filter == "first_party" },
-        { text: "Contract", path: manage_productions_path(filter: "contract"), active: @filter == "contract" },
-        { text: "Course", path: manage_productions_path(filter: "course"), active: @filter == "course" }
+        { text: "All", path: manage_productions_path(filter: "all", status: status_param), active: @filter == "all" },
+        { text: "First-party", path: manage_productions_path(filter: "first_party", status: status_param), active: @filter == "first_party" },
+        { text: "Contract", path: manage_productions_path(filter: "contract", status: status_param), active: @filter == "contract" },
+        { text: "Course", path: manage_productions_path(filter: "course", status: status_param), active: @filter == "course" }
       ]
     }
   ] %>
+  <% if @can_archive %>
+    <% filter_groups << {
+      label: "Status",
+      filters: [
+        { text: "Active", path: manage_productions_path(filter: @filter), active: !archived_view },
+        { text: "Archived", path: manage_productions_path(filter: @filter, status: "archived"), active: archived_view }
+      ]
+    } %>
+  <% end %>
+  <%= render "shared/filters/filter_bar", filter_groups: filter_groups %>
 
 <% if @productions.any? %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     <% @productions.each do |production| %>
+      <% if archived_view %>
+        <%# Archived: the card still opens the production, with Unarchive under it. %>
+        <div class="flex flex-col items-center p-4 border rounded-lg bg-white border-gray-200">
+          <%= link_to "#{edit_manage_production_path(production)}#tab-0", class: "flex flex-col items-center opacity-60 hover:opacity-100 transition-all" do %>
+            <%= render "shared/production_image", production: production, width: "w-20", classes: "mb-3", initials_class: "text-lg" %>
+            <span class="font-medium text-gray-900 text-center text-sm"><%= production.name %></span>
+          <% end %>
+          <div class="mt-3">
+            <%= render "shared/button", text: "Unarchive", variant: "secondary", size: "small",
+                  path: unarchive_manage_production_path(production), method: :post %>
+          </div>
+        </div>
+      <% else %>
         <%= link_to "#{edit_manage_production_path(production)}#tab-0", class: "flex flex-col items-center p-4 border rounded-lg hover:border-gray-400 transition-all group bg-white border-gray-200" do %>
         <%= render "shared/production_image", production: production, width: "w-20", classes: "mb-3", initials_class: "text-lg" %>
         <span class="font-medium text-gray-900 text-center text-sm"><%= production.name %></span>
         <% end %>
+      <% end %>
     <% end %>
+    </div>
+<% elsif archived_view %>
+    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <p class="text-gray-600">No archived productions.</p>
     </div>
 <% else %>
     <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">

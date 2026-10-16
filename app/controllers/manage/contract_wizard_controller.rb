@@ -585,14 +585,15 @@ module Manage
         .first
     end
 
-    # Active productions not already tied to a contract — candidates a new contract
-    # can attach to instead of creating a duplicate production.
-    # Active productions a new contract can attach to instead of creating a
-    # duplicate. Productions that already carry a contract ARE included — a
-    # production can be the subject of several contracts over time (e.g. a new
-    # contract extending the same show with the same or a different contractor).
+    # Productions a new contract can attach to instead of creating a duplicate.
+    # Productions that already carry a contract ARE included — a production can
+    # be the subject of several contracts over time (e.g. a new contract
+    # extending the same show with the same or a different contractor). So are
+    # archived ones, listed after the active ones: a finished contract archives
+    # its production, and the next contract for the same show brings it back
+    # (Contract#activate! unarchives it).
     def linkable_productions
-      Current.organization.productions.active.order(:name)
+      Current.organization.productions.order(Arel.sql("archived_at IS NOT NULL"), :name)
     end
 
     def contractor_params

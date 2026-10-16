@@ -62,5 +62,13 @@ RSpec.describe "Contract#activate!", type: :model do
       linked_contract.activate!
       expect(existing.reload.production_type).to eq("in_house")
     end
+
+    it "brings an archived production back when a new contract links to it" do
+      existing.archive!
+
+      expect(linked_contract.activate!).to be(true)
+      expect(existing.reload).not_to be_archived
+      expect(linked_contract.reload.production).to eq(existing)
+    end
   end
 end

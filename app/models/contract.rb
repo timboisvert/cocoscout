@@ -2636,6 +2636,10 @@ class Contract < ApplicationRecord
         contact_email: contractor_email
       )
 
+      # A new contract for a shelved show brings it back (finishing a contract
+      # archives its production; see complete!).
+      production.unarchive! if production.archived?
+
       # Attach this contract to that production (a production can carry many contracts).
       update!(production: production) unless self.production_id == production.id
 

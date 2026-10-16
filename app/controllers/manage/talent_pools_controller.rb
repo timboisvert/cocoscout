@@ -31,7 +31,7 @@ module Manage
     # Show confirmation modal for switching to single mode
     def org_switch_to_single_confirm
       @organization = Current.organization
-      @productions = @organization.productions.castable.order(:name)
+      @productions = @organization.productions.active.castable.order(:name)
       @all_members = @organization.all_talent_pool_members
 
       render :org_switch_to_single_confirm
@@ -95,7 +95,7 @@ module Manage
     # Show confirmation modal for switching to per-production mode
     def org_switch_to_per_production_confirm
       @organization = Current.organization
-      @productions = @organization.productions.castable.order(:name)
+      @productions = @organization.productions.active.castable.order(:name)
       @org_pool = @organization.organization_talent_pool
 
       # Calculate what each production's pool currently has

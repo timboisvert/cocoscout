@@ -254,7 +254,7 @@ module Manage
     end
 
     def selected_productions
-      @selected_productions ||= Current.organization.productions
+      @selected_productions ||= Current.organization.productions.active
                                        .where(id: @wizard_state[:production_ids])
                                        .order(:name).to_a
     end

@@ -2,16 +2,21 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
     before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_services]
     # Performer pay and agreements are Pro, and Pro is the organization's
     # managers' — a production's own manager (a producer) doesn't get them.
-    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_services]
+    # Archiving is the organization's call too: a production's own producer can't shelve it.
+    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_services archive unarchive]
 
     def index
       @filter = params[:filter] || "all"
-      @productions = Current.user.accessible_productions
+      # Archived productions sit behind a Status filter that only the
+      # organization's owners and managers see (they're the ones who archive).
+      @can_archive = Current.user.superadmin? || Current.organization.manageable_by?(Current.user)
+      @status = @can_archive && params[:status] == "archived" ? "archived" : "active"
+      @productions = Current.user.accessible_productions(archived: @status == "archived")
         .where(organization: Current.organization)
         .includes(posters: { image_attachment: :blob })
         .order(:name)
@@ -192,6 +197,22 @@ module Manage
       ContractPayment.where(show_id: show_ids).update_all(show_id: nil) if show_ids.any?
       Show.without_contract_payment_sync { @production.destroy! }
       redirect_to manage_productions_path, notice: "Production was successfully deleted", status: :see_other and return
+    end
+
+    # Archiving hides a production from every list and picker (see
+    # User#accessible_productions) without deleting anything. The production
+    # stays openable by URL for managers, and comes back with unarchive.
+    def archive
+      @production.archive!
+      forget_production_in_session(@production)
+      redirect_to manage_productions_path,
+                  notice: "#{@production.name} archived. Find it under Archived to bring it back.",
+                  status: :see_other
+    end
+
+    def unarchive
+      @production.unarchive!
+      redirect_to manage_productions_path, notice: "#{@production.name} is back.", status: :see_other
     end
 
     # Production Team Management Actions
@@ -475,6 +496,16 @@ module Manage
       end
 
       sync_current_production(@production)
+    end
+
+    # Drop the production from the user's current selection when it's the one
+    # just archived, so the sidebar doesn't stay in production mode for it.
+    def forget_production_in_session(production)
+      selections = session[:current_production_id_for_organization]
+      return unless selections.is_a?(Hash)
+
+      key = "#{Current.user&.id}_#{Current.organization&.id}"
+      selections[key] = nil if selections[key].to_i == production.id
     end
 
     def set_production_in_session

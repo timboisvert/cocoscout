@@ -222,11 +222,12 @@ class User < ApplicationRecord
   # Returns all productions the user has access to in the current organization
   # Eager loads logo attachments for efficient rendering in navigation
   # Excludes archived productions by default
-  def accessible_productions
+  def accessible_productions(archived: false)
     return Production.none unless Current.organization
 
-    # Start with active (non-archived) productions
-    base_scope = Current.organization.productions.active
+    # Start with active (non-archived) productions — or, for the Archived view
+    # on the Productions page, only the archived ones.
+    base_scope = archived ? Current.organization.productions.archived : Current.organization.productions.active
 
     # If user has manager or viewer as default role, they have access to all productions
     role = default_role
