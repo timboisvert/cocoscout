@@ -101,7 +101,10 @@ RSpec.describe "Contracts — change the basic info", type: :request do
       body = response.body
       expect(body).to include("Nuns4Fun", "Old words", "Change in the contract", amend_basics_manage_contract_path(contract))
       expect(body).to include("These change through the contract with Habit Theater")
-      expect(body).not_to include('name="production[name]"', 'name="production[description]"', "Save Changes")
+      # The Basic Information tab has nothing to save; the Production Team tab
+      # (which contracted productions have too) keeps its own Save Changes.
+      basic_tab = body.split('data-tabs-target="panel"')[1]
+      expect(basic_tab).not_to include('name="production[name]"', 'name="production[description]"', "Save Changes")
     end
 
     it "edits them in place once the contract is finished" do

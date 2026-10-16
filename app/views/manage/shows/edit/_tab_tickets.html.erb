@@ -31,9 +31,9 @@
       <div class="mt-1 text-sm font-medium text-gray-900"><%= inherited %></div>
       <p class="mt-1 text-xs text-gray-500">
         <% if production.tickets_mode == "unset" %>
-          Set where people get tickets for <%= production.name %> on <%= link_to "Production Settings → Tickets", edit_manage_production_path(production, tab: (production.type_third_party? ? 3 : 7)), class: "text-pink-600 hover:text-pink-700 font-medium" %>.
+          Set where people get tickets for <%= production.name %> on <%= link_to "Production Settings → Tickets", edit_manage_production_path(production, tab: production_tickets_tab(production)), class: "text-pink-600 hover:text-pink-700 font-medium" %>.
         <% else %>
-          Set on <%= link_to "Production Settings → Tickets", edit_manage_production_path(production, tab: (production.type_third_party? ? 3 : 7)), class: "text-pink-600 hover:text-pink-700 font-medium" %>; every date follows it unless it answers for itself below.
+          Set on <%= link_to "Production Settings → Tickets", edit_manage_production_path(production, tab: production_tickets_tab(production)), class: "text-pink-600 hover:text-pink-700 font-medium" %>; every date follows it unless it answers for itself below.
         <% end %>
       </p>
     </div>

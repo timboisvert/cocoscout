@@ -42,14 +42,17 @@
         </button>
         <button type="button" data-tabs-target="tab" data-index="8" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
       <% else %>
-        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+        <%# A production booked by a contract still has a team (Tim, 2026-10-16):
+            the people who signed can be given access to it. %>
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
+        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
           Tickets
           <%= render "shared/pro_marker" %>
           <% unless @production.organization.feature_available?(:ticketing) %>
             <%= render "shared/pro_marker", kind: :lock %>
           <% end %>
         </button>
-        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
       <% end %>
     </nav>
 
@@ -405,12 +408,12 @@
       </div>
     </div>
 
-    <% unless @production.type_third_party? %>
-      <!-- Tab 4: Team -->
-      <div data-tabs-target="panel" class="hidden">
-        <%= render "team_permissions" %>
-      </div>
+    <!-- Tab 4: Team (every production, contracted ones too) -->
+    <div data-tabs-target="panel" class="hidden">
+      <%= render "team_permissions" %>
+    </div>
 
+    <% unless @production.type_third_party? %>
       <!-- Tab 5: Agreement -->
       <div data-tabs-target="panel" class="hidden">
         <% templates = @production.organization.agreement_templates.active.order(:name) %>
@@ -757,7 +760,7 @@
           <p class="text-sm text-gray-600">Tickets for <%= @production.name %> are set up by your organization's managers.</p>
         <% elsif @production.organization.feature_available?(:ticketing) %>
           <%= render "shared/ticketing/tickets_question", production: @production, cocoscout_fields: false,
-                return_to: edit_manage_production_path(@production, tab: (@production.type_third_party? ? 3 : 7)) %>
+                return_to: edit_manage_production_path(@production, tab: production_tickets_tab(@production)) %>
           <p class="mt-4 text-xs text-gray-500">Every date of <%= @production.name %> follows this. A date can answer for itself on its own Tickets tab.</p>
         <% else %>
           <%= render "manage/billing/upgrade", paywall: Manage::PaidFeatureGate::FEATURE_DETAILS[:ticketing], feature: :ticketing %>

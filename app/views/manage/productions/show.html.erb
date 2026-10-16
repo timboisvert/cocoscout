@@ -294,7 +294,7 @@
 
   <%# Where this production's tickets are (Round 9 §3). Set on Production Settings → Tickets. %>
   <% if (Current.organization&.manageable_by?(Current.user) || Current.user&.superadmin?) && !@production.type_course? %>
-    <% tickets_tab = edit_manage_production_path(@production, tab: (@production.type_third_party? ? 3 : 7)) %>
+    <% tickets_tab = edit_manage_production_path(@production, tab: production_tickets_tab(@production)) %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
       <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>
         <%= link_to tickets_tab do %>
