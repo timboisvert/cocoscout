@@ -15,13 +15,17 @@
     service_options   (the organization's HouseServices offered on contracts)
     existing_services (Array of saved line hashes)
     bookings          (Array of booking hashes: starts_at, duration, event_type)
-    locked_dates      (optional: starts_at values that can't change, settled)
+    locked_dates      (optional: settled dates' start times, which can't change:
+                       shown collapsed, read-only, and never posted)
 %>
 <%
   service_options ||= []
   existing_services ||= []
   bookings ||= []
-  locked = Array(local_assigns[:locked_dates]).map(&:to_s).to_set
+  # Dates are matched by their moment, not their text: a booking's and a
+  # rental's ISO strings can differ for the same start.
+  time_key = ->(t) { ContractServicesChange.time_key(t) }
+  locked = Array(local_assigns[:locked_dates]).filter_map { |t| time_key.(t) }.to_set
   input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   small_input = "px-2 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
   check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
@@ -39,7 +43,7 @@
     next unless at
     type = b["event_type"].presence || "show"
     hours = b["duration"].to_f.positive? ? b["duration"].to_f : 2.0
-    { iso: b["starts_at"].to_s, at: at, type: type, kind: EventTypes.labels[type] || type.titleize, hours: hours }
+    { iso: b["starts_at"].to_s, key: at.to_i, at: at, type: type, kind: EventTypes.labels[type] || type.titleize, hours: hours }
   }.sort_by { |d| d[:at] }
   kinds = dates.group_by { |d| d[:type] }
   usual_choices = [ [ "Every date", "all" ] ] + kinds.map { |type, ds| [ "Every #{ds.first[:kind].downcase}", type ] } + [ [ "No dates", "none" ] ]
@@ -49,7 +53,7 @@
     chosen = chosen_by_id[option.id] || chosen_by_name[option.name.downcase]
     prefilled = chosen.nil? && already_needed.include?(option.id)
     per_event = option.contract_per_event? && dates.any?
-    events = chosen && chosen["per_event"] ? Array(chosen["events"]).index_by { |e| e["starts_at"].to_s } : nil
+    events = chosen && chosen["per_event"] ? Array(chosen["events"]).index_by { |e| time_key.(e["starts_at"]) } : nil
     # Where it usually goes: what the saved dates add up to, or (fresh) every
     # date, or every show for one the production's shows already need.
     usual = if events.nil?
@@ -59,7 +63,7 @@
     elsif events.size == dates.size
       "all"
     else
-      kinds.keys.find { |type| events.keys.sort == kinds[type].map { |d| d[:iso] }.sort } || "some"
+      kinds.keys.find { |type| events.keys.sort == kinds[type].map { |d| d[:key] }.sort } || "some"
     end
     settlement = if !can_deduct then "direct"
     elsif chosen then (chosen["settlement"].presence || "direct")
@@ -178,10 +182,22 @@
             <span>Date</span><span>Kind</span><span>Services</span><span class="text-right">Cost</span><span></span>
           </div>
           <div class="divide-y divide-gray-100">
+            <% settled = dates.select { |d| locked.include?(d[:key]) } %>
+            <% if settled.any? %>
+              <div class="px-4 py-3 bg-gray-50 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
+                <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M8 11V7a4 4 0 018 0v4"/></svg>
+                <span class="flex-1 min-w-0">
+                  <%= settled.size == 1 ? "1 date already settled, #{settled.first[:at].strftime('%b %-d')}." : "#{settled.size} dates already settled, #{settled.first[:at].strftime('%b %-d')} to #{settled.last[:at].strftime('%b %-d')}." %>
+                  They stay as they are.
+                </span>
+                <%= render "shared/button", text: "Show them", variant: "ghost", size: "small", type: :button, classes: "text-pink-600",
+                      data: { action: "contract-services#toggleSettled", contract_services_target: "settledToggle" } %>
+              </div>
+            <% end %>
             <% dates.each_with_index do |date, j| %>
-              <% frozen = locked.include?(date[:iso]) %>
-              <div class="px-4 py-3 flex flex-col gap-2 @3xl:grid @3xl:grid-cols-[1.25rem_minmax(0,12rem)_6.5rem_minmax(0,1fr)_6rem_4rem] @3xl:items-center @3xl:gap-4"
-                   data-contract-services-target="date" data-date="<%= j %>" data-kind="<%= date[:type] %>" data-hours="<%= date[:hours] %>">
+              <% frozen = locked.include?(date[:key]) %>
+              <div class="<%= 'hidden bg-gray-50/60' if frozen %> px-4 py-3 flex flex-col gap-2 @3xl:grid @3xl:grid-cols-[1.25rem_minmax(0,12rem)_6.5rem_minmax(0,1fr)_6rem_4rem] @3xl:items-center @3xl:gap-4"
+                   data-contract-services-target="date" data-date="<%= j %>" data-kind="<%= date[:type] %>" data-hours="<%= date[:hours] %>"<%= ' data-locked="1"'.html_safe if frozen %>>
                 <div class="flex items-center gap-3 @3xl:contents">
                   <% if frozen %>
                     <span class="hidden @3xl:block"></span>
@@ -224,6 +240,7 @@
         <%# Each date's Edit (every per-event service, its hours and its price that
             date). Outside the list: a query container would trap a fixed overlay. %>
         <% dates.each_with_index do |date, j| %>
+          <% frozen = locked.include?(date[:key]) %>
           <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
                data-contract-services-target="dateModal" data-date="<%= j %>">
             <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
@@ -239,30 +256,30 @@
                   <% per_event_lines.each do |line| %>
                     <%
                       option = line[:option]; i = line[:index]
-                      saved = line[:events] && line[:events][date[:iso]]
+                      saved = line[:events] && line[:events][date[:key]]
                       on = line[:events] ? saved.present? : (line[:usual] == "all" || line[:usual] == date[:type])
                       hours = saved ? hours_text.(saved["hours"]) : (option.hourly? ? line[:default_hours] : 1)
                       own_price = saved && saved.key?("unit_price") ? saved["unit_price"].to_f : nil
                     %>
                     <div class="px-3 py-2.5 flex flex-wrap items-center gap-3 min-h-14" data-contract-services-target="slot" data-index="<%= i %>" data-date="<%= j %>">
-                      <input type="hidden" name="services[<%= i %>][events][<%= j %>][starts_at]" value="<%= date[:iso] %>">
+                      <input <%= "disabled" if frozen %> type="hidden" name="services[<%= i %>][events][<%= j %>][starts_at]" value="<%= date[:iso] %>">
                       <label class="flex-1 min-w-[8rem] flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" name="services[<%= i %>][events][<%= j %>][include]" value="1" class="<%= check %>"
+                        <input <%= "disabled" if frozen %> type="checkbox" name="services[<%= i %>][events][<%= j %>][include]" value="1" class="<%= check %>"
                                data-role="on" data-action="change->contract-services#slotChanged" <%= "checked" if on %>>
                         <span class="text-sm font-medium text-gray-900"><%= option.name %></span>
                       </label>
                       <% if option.hourly? %>
                         <span class="flex items-center gap-1.5">
-                          <input type="number" step="0.5" min="0" name="services[<%= i %>][events][<%= j %>][hours]" value="<%= hours %>"
+                          <input <%= "disabled" if frozen %> type="number" step="0.5" min="0" name="services[<%= i %>][events][<%= j %>][hours]" value="<%= hours %>"
                                  aria-label="<%= option.name %> hours" data-role="hours" data-action="input->contract-services#slotChanged" class="w-16 <%= small_input %>">
                           <span class="text-xs text-gray-500">hrs</span>
                         </span>
                       <% else %>
-                        <input type="hidden" name="services[<%= i %>][events][<%= j %>][hours]" value="1" data-role="hours">
+                        <input <%= "disabled" if frozen %> type="hidden" name="services[<%= i %>][events][<%= j %>][hours]" value="1" data-role="hours">
                       <% end %>
                       <span class="relative w-28">
                         <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
-                        <input type="number" step="0.01" min="0" name="services[<%= i %>][events][<%= j %>][unit_price]"
+                        <input <%= "disabled" if frozen %> type="number" step="0.01" min="0" name="services[<%= i %>][events][<%= j %>][unit_price]"
                                value="<%= format('%.2f', own_price || line[:price]) %>" aria-label="<%= option.name %> price this date"
                                data-role="price" data-own="<%= own_price ? 1 : 0 %>" data-action="input->contract-services#slotPriced" class="w-full pl-6 pr-2 <%= small_input.sub('px-2 ', '') %>">
                       </span>

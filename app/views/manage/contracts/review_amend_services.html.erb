@@ -1,0 +1,42 @@
+<%# Confirm a services-and-prices change: what's different, date by date,
+    and why. Nothing has changed until Apply. %>
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Confirm services and prices", width: "max-w-5xl" } do %>
+  <h2 class="text-2xl coustard-regular text-gray-900 mb-1">Change services and prices</h2>
+  <p class="text-gray-600 mb-6">Nothing has been changed yet. Check the changes, then apply them.</p>
+
+  <% if @changes.empty? %>
+    <div class="rounded-lg border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600 mb-6">
+      These are the services and prices the contract already has. Go back to change something.
+    </div>
+  <% else %>
+    <div class="rounded-lg border border-pink-200 bg-pink-50 p-4 mb-6">
+      <h3 class="text-[15px] font-semibold text-pink-900 mb-2"><%= pluralize(@changes.size, "change") %></h3>
+      <ul class="space-y-1.5">
+        <% @changes.each do |change| %>
+          <li class="flex items-start justify-between gap-4 text-sm text-pink-900">
+            <span class="min-w-0"><%= change.words %><%= " (we pay them)" if change.direction == "outgoing" %></span>
+            <b class="flex-shrink-0 tabular-nums"><%= change.delta.negative? ? "−" : "+" %><%= number_to_currency(change.delta.abs) %></b>
+          </li>
+        <% end %>
+      </ul>
+      <p class="mt-3 pt-3 border-t border-pink-200 text-[13px] leading-5 text-pink-800">
+        The pending payments for these dates change to match, and their pay links show the new amounts. Nothing that's paid changes.
+      </p>
+    </div>
+  <% end %>
+
+  <%= form_with url: apply_amend_services_manage_contract_path(@contract), method: :post, local: true do %>
+    <label class="block">
+      <span class="block text-sm font-medium text-gray-700 mb-1">Why the change? <span class="font-normal text-gray-500">(kept in the contract's history)</span></span>
+      <textarea name="reason" rows="2"
+                class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= @reason %></textarea>
+    </label>
+
+    <div class="flex justify-between items-center gap-3 pt-6 mt-6 border-t border-gray-200">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_services_manage_contract_path(@contract) %>
+      <% if @changes.any? %>
+        <%= render "shared/button", text: "Apply changes", variant: "primary", size: "medium", type: :submit %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

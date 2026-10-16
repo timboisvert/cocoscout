@@ -1737,6 +1737,12 @@ Rails.application.routes.draw do
         # different space at the same venue. No repapering.
         get "amend/space", action: :amend_space, as: :amend_space
         post "amend/space", action: :apply_amend_space, as: :apply_amend_space
+        # Which services each date gets and what they cost, on dates not
+        # settled yet. The deal stays as it is. Staged by POST, then a review.
+        get "amend/services", action: :amend_services, as: :amend_services
+        post "amend/services", action: :stage_amend_services, as: :stage_amend_services
+        get "amend/services/review", action: :review_amend_services, as: :review_amend_services
+        post "amend/services/apply", action: :apply_amend_services, as: :apply_amend_services
         get "amend/bookings", action: :amend_bookings, as: :amend_bookings
         post "amend/bookings", action: :save_amend_bookings, as: :save_amend_bookings
         get "amend/events", action: :amend_events, as: :amend_events

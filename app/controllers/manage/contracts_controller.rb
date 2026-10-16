@@ -547,6 +547,59 @@ module Manage
       redirect_to amend_space_manage_contract_path(@contract), alert: "Couldn't change those rooms: #{e.message}"
     end
 
+    # Services and prices only: which services each date gets and what they
+    # cost, on the dates not settled yet (settled ones keep what they had). The
+    # deal stays as it is; pending payments are re-billed to match.
+    def amend_services
+      @services_change = ContractServicesChange.new(@contract)
+      staged = @contract.draft_data["services_change"]
+      @service_options = Current.organization.house_services.offered_on_contracts.ordered.includes(:house_roles)
+      @existing_services = staged ? staged["services"] : @contract.draft_services
+      @reason = staged&.dig("reason")
+      @bookings = @services_change.bookings
+      @settled = @services_change.settled_times
+    end
+
+    def stage_amend_services
+      change = ContractServicesChange.new(@contract)
+      lines = change.merge(Contract.normalize_service_rows(params[:services]))
+      @contract.update!(draft_data: @contract.draft_data.merge(
+        "services_change" => { "services" => lines, "reason" => params[:reason].to_s.strip }
+      ))
+      redirect_to review_amend_services_manage_contract_path(@contract)
+    end
+
+    def review_amend_services
+      staged = @contract.draft_data["services_change"]
+      return redirect_to(amend_services_manage_contract_path(@contract)) unless staged
+
+      @services_change = ContractServicesChange.new(@contract)
+      @lines = @services_change.merge(staged["services"])
+      @changes = @services_change.changes(@lines)
+      @reason = staged["reason"]
+    end
+
+    def apply_amend_services
+      if @contract.signing_out_for_signature? || @contract.amendment_pending?
+        redirect_to manage_contract_path(@contract),
+                    alert: "There's an amendment waiting to be signed. Withdraw it before changing services." and return
+      end
+      staged = @contract.draft_data["services_change"]
+      return redirect_to(amend_services_manage_contract_path(@contract)) unless staged
+
+      change = ContractServicesChange.new(@contract)
+      if change.changes(change.merge(staged["services"])).empty?
+        @contract.update!(draft_data: @contract.draft_data.except("services_change"))
+        redirect_to manage_contract_path(@contract), notice: "No changes to services or prices." and return
+      end
+
+      version = change.apply!(staged["services"], reason: params[:reason].presence || staged["reason"], user: Current.user)
+      GenerateContractPdfJob.perform_later(@contract.id, version.id)
+      redirect_to manage_contract_path(@contract), notice: "Services and prices changed, recorded as #{version.label}."
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotDestroyed => e
+      redirect_to review_amend_services_manage_contract_path(@contract), alert: "Couldn't change the services: #{e.message}"
+    end
+
     # Cut the version this amendment produced. Only e-sign contracts can be
     # asked to re-sign; an offline one has no signature machinery to re-engage,
     # so it's always recorded as an internal correction.
@@ -719,6 +772,8 @@ module Manage
       # (Never the creation wizard's draft bookings; those go stale the moment
       # an amendment touches the schedule.)
       @bookings = effective_amend_bookings
+      # Settled dates are locked here too, the same as Change services and prices.
+      @settled = ContractServicesChange.new(@contract).settled_times
     end
 
     def save_amend_ticketing_tech
@@ -726,7 +781,8 @@ module Manage
 
       # Same parser as the wizard — this path used to hand-roll the hash and
       # silently dropped the settlement choice on every amendment.
-      services = Contract.normalize_service_rows(params[:services])
+      # Settled dates aren't posted (they're locked); they keep what they had.
+      services = ContractServicesChange.new(@contract).merge(Contract.normalize_service_rows(params[:services]))
 
       existing_amend = @contract.amend_data
       @contract.update_amend_data(existing_amend.merge(

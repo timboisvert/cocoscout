@@ -1,4 +1,4 @@
-<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Financials" } do %>
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "Financials", width: "max-w-5xl" } do %>
   <%
     rows = contract_date_rows(@contract, @bookings, locations_map: @locations_map, spaces_map: @spaces_map)
     edit_path = manage_review_dates_contract_wizard_path(@contract)

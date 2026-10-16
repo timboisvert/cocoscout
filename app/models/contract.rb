@@ -1043,7 +1043,7 @@ class Contract < ApplicationRecord
 
   def version_deal_snapshot
     {
-      "draft_data" => draft_data.except("amend"),
+      "draft_data" => draft_data.except("amend", "services_change"),
       "appendixes" => contract_appendixes.ordered.map { |a| { "title" => a.title, "position" => a.position, "body_html" => a.body_html } }
     }
   end

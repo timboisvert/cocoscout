@@ -1,0 +1,23 @@
+<%# Change services and prices: which services each date gets and what they
+    cost, on any date not settled yet. The deal stays as it is. %>
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Change services and prices", width: "max-w-5xl" } do %>
+  <h2 class="text-2xl coustard-regular text-gray-900 mb-1">Change services and prices</h2>
+  <p class="text-gray-600 mb-6">Which services each date gets and what they cost. Dates that are settled stay as they are.</p>
+
+  <%# novalidate: an unticked service keeps its inputs in a hidden body. %>
+  <%= form_with url: stage_amend_services_manage_contract_path(@contract), method: :post, local: true, html: { novalidate: true } do %>
+    <%= render "manage/contracts/services_fields", service_options: @service_options, existing_services: @existing_services,
+          bookings: @bookings, locked_dates: @settled %>
+
+    <label class="block mt-6">
+      <span class="block text-sm font-medium text-gray-700 mb-1">Why the change? <span class="font-normal text-gray-500">(kept in the contract's history)</span></span>
+      <textarea name="reason" rows="2"
+                class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= @reason %></textarea>
+    </label>
+
+    <div class="flex justify-between items-center gap-3 pt-6 mt-6 border-t border-gray-200">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_choose_manage_contract_path(@contract) %>
+      <%= render "shared/button", text: "Review changes", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

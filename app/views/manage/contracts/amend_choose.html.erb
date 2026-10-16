@@ -39,6 +39,24 @@
         </div>
       <% end %>
 
+      <%# Services and prices on the open dates. The deal isn't regenerated,
+          and a settled date keeps what it had. %>
+      <%= link_to amend_services_manage_contract_path(@contract),
+            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
+        <div class="flex items-start gap-4">
+          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>
+          </span>
+          <div>
+            <p class="font-semibold text-gray-900">Change services and prices</p>
+            <p class="text-sm text-gray-600 mt-0.5">
+              Which services each date gets and what they cost, on any date that isn't settled yet: add a
+              booth tech to one night, change its hours, or its price, down to $0. The deal stays as it is.
+            </p>
+          </div>
+        </div>
+      <% end %>
+
       <%# Smaller again: the contract names the venue, not the room, so moving
           them between spaces is ours to do without new paper. Always offered —
           a venue with one room today may have two tomorrow. %>
@@ -67,7 +85,7 @@
           <div>
             <p class="font-semibold text-gray-900">Change the deal</p>
             <p class="text-sm text-gray-600 mt-0.5">
-              The split or the fee, ticketing, services, or the booking pattern. Walks the full amendment
+              The split or the fee, for every date or just one, ticketing, or the booking pattern. Walks the full amendment
               and rebuilds the payment schedule around what's changed.
             </p>
           </div>

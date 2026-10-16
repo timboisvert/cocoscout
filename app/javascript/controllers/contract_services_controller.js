@@ -8,7 +8,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["service", "include", "body", "price", "usual", "defaultHours",
                       "pill", "all", "date", "dateCheck", "chips", "dateCost", "dateModal", "slot",
-                      "summary", "hint", "several", "total", "severalModal", "severalRow"]
+                      "summary", "hint", "several", "total", "severalModal", "severalRow", "settledToggle"]
 
     connect() {
         this.money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
@@ -45,6 +45,7 @@ export default class extends Controller {
         const hours = service.querySelector("[data-contract-services-target=defaultHours]")?.value
         this.slotsFor(service.dataset.index).forEach(slot => {
             const date = this.dateRow(slot.dataset.date)
+            if (date?.dataset.locked) return // settled: stays as it is
             const on = slot.querySelector("[data-role=on]")
             if (on) on.checked = usual === "all" || usual === date?.dataset.kind
             const hoursField = slot.querySelector("[data-role=hours]")
@@ -92,11 +93,20 @@ export default class extends Controller {
         this.refresh()
     }
 
+    // Settled dates sit collapsed under one line; "Show them" lists them, read-only.
+    toggleSettled(event) {
+        const rows = this.dateTargets.filter(row => row.dataset.locked)
+        const show = rows.some(row => row.classList.contains("hidden"))
+        rows.forEach(row => row.classList.toggle("hidden", !show))
+        const label = event.currentTarget.querySelector("span") || event.currentTarget
+        label.textContent = show ? "Hide them" : "Show them"
+    }
+
     // ----- several dates at once -----
 
     filter(event) {
         const kind = event.currentTarget.dataset.kind || ""
-        this.dateTargets.forEach(row => {
+        this.dateTargets.filter(row => !row.dataset.locked).forEach(row => {
             const hide = kind !== "" && row.dataset.kind !== kind
             row.classList.toggle("hidden", hide)
             if (hide) row.querySelectorAll("[data-contract-services-target=dateCheck]").forEach(box => { box.checked = false })
