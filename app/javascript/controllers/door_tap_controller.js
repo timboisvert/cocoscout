@@ -53,7 +53,7 @@ export default class extends Controller {
     }
 
     async settle(paymentIntentId) {
-        this.promptTarget.textContent = "Confirming with Stripe…"
+        this.promptTarget.textContent = "Confirming the payment…"
         try {
             const token = document.querySelector("meta[name='csrf-token']")?.content
             const response = await fetch(this.settleUrlValue, {
@@ -63,7 +63,7 @@ export default class extends Controller {
             })
             const data = await response.json()
             if (data.status === "paid") this.show("paid", data.message)
-            else this.fail(data.error || "Stripe hasn't confirmed the payment yet.")
+            else this.fail(data.error || "The payment isn't confirmed yet.")
         } catch (_e) {
             this.fail("Lost the connection while confirming. Try again.")
         }

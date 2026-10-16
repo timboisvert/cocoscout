@@ -91,13 +91,13 @@ class TapToPay
     intent = Stripe::PaymentIntent.retrieve(intent_id)
     raise Error, "That payment isn't for this sale." unless intent.metadata&.[]("ticket_order_id").to_s == order.id.to_s
     unless intent.status == "succeeded"
-      raise Error, "Stripe hasn't confirmed the payment yet (#{intent.status.to_s.humanize.downcase}). Try again in a moment."
+      raise Error, "Our payment provider hasn't confirmed the payment yet (#{intent.status.to_s.humanize.downcase}). Try again in a moment."
     end
 
     # A payment for the wrong amount is refunded there and the sale canceled.
     TicketOrderSettlement.settle!(order, payment_intent_id: intent.id, charge_id: intent.latest_charge, amount_cents: intent.amount)
     unless order.reload.paid?
-      raise Error, "Stripe took #{format('$%.2f', intent.amount / 100.0)}, not this sale's total, so it was refunded and nobody was checked in. Start the sale again."
+      raise Error, "The card was charged #{format('$%.2f', intent.amount / 100.0)}, not this sale's total, so it was refunded and nobody was checked in. Start the sale again."
     end
 
     order

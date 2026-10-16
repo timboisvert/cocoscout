@@ -128,7 +128,7 @@ class DoorController < ApplicationController
     redirect_to door_path(@listing), alert: e.message
   rescue Stripe::StripeError => e
     Rails.logger.error("[door sell] #{e.class}: #{e.message}")
-    redirect_to door_path(@listing), alert: "Stripe couldn't start that sale. Nothing was charged; try again or take it another way."
+    redirect_to door_path(@listing), alert: "That sale couldn't start. Nothing was charged; try again or take it another way."
   end
 
   # The door phone taking the tap: the app's Terminal SDK collects the card
