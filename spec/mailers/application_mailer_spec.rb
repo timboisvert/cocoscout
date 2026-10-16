@@ -12,6 +12,24 @@ RSpec.describe ApplicationMailer do
     end
   end
 
+  class FooterTestMailer < ApplicationMailer
+    def hello
+      mail(to: 'someone@example.com', subject: 'Hello') do |format|
+        format.html { render html: '<p>hi</p>'.html_safe, layout: 'mailer' }
+      end
+    end
+  end
+
+  # Email apps drop web fonts, so the footer's CocoScout in Coustard is an
+  # inline image, not text that falls back to Times (Tim, 2026-10-16).
+  it 'signs the footer with the Coustard wordmark as an inline image' do
+    message = FooterTestMailer.hello.message
+    wordmark = message.attachments['cocoscout_wordmark.png']
+    expect(wordmark).to be_present
+    expect(wordmark).to be_inline
+    expect(message.html_part.decoded).to include(%(src="cid:#{wordmark.content_id.delete('<>')}"), 'alt="CocoScout"')
+  end
+
   describe 'invalid recipient gate' do
     it 'sends to a valid address' do
       message = RecipientGateTestMailer.hello('someone@example.com').message

@@ -11,9 +11,14 @@ class ApplicationMailer < ActionMailer::Base
   # A small copy made for email (240px, 32 KB, shown at 120px); the site's
   # cocoscout.png is 970 KB and rode along on every email (Tim, 2026-10-12).
   EMAIL_LOGO = Rails.root.join("app", "assets", "images", "cocoscout_email.png")
+  # The footer's CocoScout in Coustard, drawn as an image: email apps (Gmail
+  # above all) drop web fonts, so the text fell back to Times (Tim,
+  # 2026-10-16). 500×84, shown at 168×28.
+  EMAIL_WORDMARK = Rails.root.join("app", "assets", "images", "cocoscout_wordmark_email.png")
 
   def attach_logo
     attachments.inline["cocoscout.png"] = File.binread(EMAIL_LOGO)
+    attachments.inline["cocoscout_wordmark.png"] = File.binread(EMAIL_WORDMARK)
   end
 
   # Who the footer says the email is for ("Sent by CocoScout for Stars &

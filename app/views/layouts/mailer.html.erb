@@ -98,11 +98,14 @@
       margin: 0;
     }
     .footer a {
-      font-family: 'Coustard', serif;
-      font-size: 28px;
       color: #ec4899;
       text-decoration: none;
       display: inline-block;
+    }
+    .wordmark {
+      width: 168px;
+      height: 28px;
+      border: 0;
     }
     /* Phones: most of the screen for the email, and tighter table cells. */
     @media only screen and (max-width: 600px) {
@@ -134,7 +137,8 @@
       <% if @storefront_organization %>
         <p class="footer-note">Tickets by <a href="https://www.cocoscout.com">CocoScout</a></p>
       <% else %>
-        <a href="https://www.cocoscout.com">CocoScout</a>
+        <%# An image, not text: email apps drop the Coustard web font. %>
+        <a href="https://www.cocoscout.com"><% if attachments["cocoscout_wordmark.png"] %><img src="<%= attachments['cocoscout_wordmark.png'].url %>" alt="CocoScout" width="168" height="28" class="wordmark" /><% else %>CocoScout<% end %></a>
         <p class="footer-note">
           Sent by CocoScout<%= " for #{@footer_organization_name}" if @footer_organization_name.present? %>.
           <a href="<%= @email_settings_url %>">Email settings</a> &middot;
