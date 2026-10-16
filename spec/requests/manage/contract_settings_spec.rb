@@ -17,17 +17,17 @@ RSpec.describe "Manage::ContractSettings", type: :request do
     expect(response.body).to include("How contractors may pay you")
     expect(response.body).to include(manage_contract_settings_section_path(section: "services"))
     # Sections load only their own data.
-    expect(response.body).not_to include("Services catalog")
+    expect(response.body).not_to include("Offered on contracts")
   end
 
-  it "renders the services catalog in its own section" do
-    org.contract_service_options.create!(name: "Technical services", default_price_cents: 2500, unit: "hourly")
+  it "lists the organization's services to offer on contracts, in its own section" do
+    org.house_services.create!(name: "Technical services", default_price_cents: 2500, unit: "hourly")
 
     get manage_contract_settings_section_path(section: "services")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Services catalog")
-    expect(response.body).to include("Technical services")
+    expect(response.body).to include("Offered on contracts", "Technical services", "Default: $25.00/hr",
+                                     section_manage_organization_path(org, section: "services"))
     expect(response.body).not_to include("How contractors may pay you")
   end
 
@@ -66,28 +66,25 @@ RSpec.describe "Manage::ContractSettings", type: :request do
     end
   end
 
-  it "adds a service (dollars → cents)" do
-    expect {
-      post manage_contract_settings_services_path, params: {
-        contract_service_option: { name: "Booth tech", default_price: "40.00", unit: "hourly", default_direction: "incoming" }
-      }
-    }.to change(ContractServiceOption, :count).by(1)
-    expect(org.contract_service_options.last.default_price_cents).to eq(4000)
+  it "chooses which services contracts offer and their terms; a blank price is the default" do
+    tech = org.house_services.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly")
+    security = org.house_services.create!(name: "Security", default_price_cents: 5000, offered_on_contracts: true, contract_price_cents: 4000)
+
+    patch manage_contract_settings_services_path, params: { services: {
+      tech.id.to_s => { offered: "1", price: "", direction: "incoming", booking_mode: "per_event" },
+      security.id.to_s => { offered: "0", price: "60", direction: "outgoing", booking_mode: "once" }
+    } }
+
+    expect(response).to redirect_to(manage_contract_settings_section_path(section: "services"))
+    expect(tech.reload).to have_attributes(offered_on_contracts: true, contract_price_cents: nil, contract_booking_mode: "per_event")
+    expect(tech.contract_price_cents_or_default).to eq(2500)
+    expect(security.reload).to have_attributes(offered_on_contracts: false, contract_price_cents: 6000, contract_direction: "outgoing")
   end
 
-  it "updates a service" do
-    svc = org.contract_service_options.create!(name: "Tech", default_price_cents: 2500, unit: "hourly")
-    patch manage_contract_settings_service_path(svc), params: {
-      contract_service_option: { name: "Tech", default_price: "30", unit: "hourly", default_direction: "incoming" }
-    }
-    expect(svc.reload.default_price_cents).to eq(3000)
-  end
-
-  it "removes a service" do
-    svc = org.contract_service_options.create!(name: "Tech", default_price_cents: 2500, unit: "hourly")
-    expect {
-      delete manage_contract_settings_service_path(svc)
-    }.to change(ContractServiceOption, :count).by(-1)
+  it "never touches another organization's services" do
+    theirs = create(:organization).house_services.create!(name: "Theirs", offered_on_contracts: false)
+    patch manage_contract_settings_services_path, params: { services: { theirs.id.to_s => { offered: "1" } } }
+    expect(theirs.reload.offered_on_contracts).to be(false)
   end
 
   describe "the notifications section" do

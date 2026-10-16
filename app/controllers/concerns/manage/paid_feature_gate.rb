@@ -59,6 +59,8 @@ module Manage
       "manage/ticket_products" => :ticketing,
       "manage/ticket_sales_viewers" => :ticketing,
       "manage/short_links" => :ticketing,
+      # Services a show needs (Organization settings → Services)
+      "manage/house_services" => :services,
       "manage/books" => :money
     }.freeze
 
@@ -67,7 +69,7 @@ module Manage
     # production-team member (a producer with access to their own production)
     # keeps the free modules. Casting tables are the exception: a production's
     # manager casts their own shows there, under that controller's own rules.
-    MANAGER_ONLY_FEATURES = %i[money contracts reports agreements staffing ticketing].freeze
+    MANAGER_ONLY_FEATURES = %i[money contracts reports agreements staffing ticketing services].freeze
 
     # What every Pro plan includes, shown as reinforcement on each upgrade screen.
     PRO_INCLUDES = [

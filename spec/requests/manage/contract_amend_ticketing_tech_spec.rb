@@ -15,7 +15,7 @@ RSpec.describe "Manage::Contracts amend ticketing & tech", type: :request do
     })
   end
   let!(:service_option) do
-    org.contract_service_options.create!(name: "Technical services", default_price_cents: 2500, unit: "hourly", default_direction: "incoming")
+    org.house_services.create!(name: "Technical services", default_price_cents: 2500, unit: "hourly", offered_on_contracts: true)
   end
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
@@ -88,8 +88,8 @@ RSpec.describe "Manage::Contracts amend ticketing & tech", type: :request do
   # plus dates being added in this amendment, minus dates being removed.
   describe "per-event services date list" do
     let!(:per_event_option) do
-      org.contract_service_options.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly",
-                                           default_direction: "incoming", booking_mode: "per_event")
+      org.house_services.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly",
+                                 offered_on_contracts: true, contract_booking_mode: "per_event")
     end
     let!(:rental) do
       create(:space_rental, contract: contract,

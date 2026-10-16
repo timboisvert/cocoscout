@@ -20,11 +20,12 @@ module Manage
 
     # The organization page is a settings page: each topic is a routed section,
     # so only that section's data loads and links name the section they want.
-    SECTIONS = %w[basic team locations agreements billing danger].freeze
+    SECTIONS = %w[basic team locations services agreements billing danger].freeze
     SECTION_LABELS = {
       "basic" => "Basic Information",
       "team" => "Team Members",
       "locations" => "Locations",
+      "services" => "Services",
       "agreements" => "Agreements",
       "billing" => "Billing & Plan",
       "danger" => "Danger Zone"
@@ -139,9 +140,15 @@ module Manage
 
     private
 
-    # Danger Zone is the owner's alone, so it isn't even in the strip for anyone else.
+    # Danger Zone is the owner's alone, so it isn't even in the strip for anyone
+    # else. Services are Pro and, unlike other Pro tabs, absent without it (Tim,
+    # 2026-10-16): they only set up contracts and staffing, so there's nothing
+    # to pitch on their own.
     def available_sections
-      @is_owner ? SECTIONS : SECTIONS - [ "danger" ]
+      hidden = []
+      hidden << "danger" unless @is_owner
+      hidden << "services" unless @organization.feature_available?(:services)
+      SECTIONS - hidden
     end
 
     def sections
@@ -154,6 +161,7 @@ module Manage
           section[:feature] = :agreements
           section[:locked] = !@organization.feature_available?(:agreements)
         end
+        section[:feature] = :services if key == "services"
         section
       end
     end
@@ -175,6 +183,9 @@ module Manage
         @team_invitation = TeamInvitation.new
       when "locations"
         @locations = @organization.locations.order(:created_at)
+      when "services"
+        @house_services = @organization.house_services.ordered.includes(:house_roles)
+        @house_roles = @organization.house_roles.active.ordered
       when "agreements"
         @agreement_templates = @organization.agreement_templates.order(:name)
       when "danger"

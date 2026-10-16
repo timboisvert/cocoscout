@@ -208,7 +208,7 @@ module Manage
     # Per-event services need the booked dates to hang themselves on.
     def tech
       @step = 6
-      @service_options = Current.organization.contract_service_options.ordered
+      @service_options = Current.organization.house_services.offered_on_contracts.ordered.includes(:house_roles)
       @existing_services = @contract.draft_services
       @bookings = @contract.draft_bookings || []
     end

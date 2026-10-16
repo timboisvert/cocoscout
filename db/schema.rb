@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_16_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1123,6 +1123,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_180000) do
     t.index ["organization_id"], name: "index_house_roles_on_organization_id"
   end
 
+  create_table "house_service_roles", force: :cascade do |t|
+    t.bigint "house_service_id", null: false
+    t.bigint "house_role_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["house_role_id"], name: "index_house_service_roles_on_house_role_id"
+    t.index ["house_service_id", "house_role_id"], name: "index_house_service_roles_unique", unique: true
+    t.index ["house_service_id"], name: "index_house_service_roles_on_house_service_id"
+  end
+
+  create_table "house_services", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "name", null: false
+    t.integer "default_price_cents", default: 0, null: false
+    t.string "unit", default: "flat", null: false
+    t.integer "position", default: 0, null: false
+    t.boolean "offered_on_contracts", default: false, null: false
+    t.integer "contract_price_cents"
+    t.string "contract_direction", default: "incoming", null: false
+    t.string "contract_booking_mode", default: "once", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "organization_id, lower((name)::text)", name: "index_house_services_on_org_and_name", unique: true
+    t.index ["organization_id"], name: "index_house_services_on_organization_id"
+  end
+
   create_table "journal_entries", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.string "source_type"
@@ -2058,6 +2084,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_180000) do
     t.index ["user_id"], name: "index_production_permissions_on_user_id"
   end
 
+  create_table "production_service_needs", force: :cascade do |t|
+    t.bigint "production_id", null: false
+    t.bigint "house_service_id", null: false
+    t.integer "people_count", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["house_service_id"], name: "index_production_service_needs_on_house_service_id"
+    t.index ["production_id", "house_service_id"], name: "index_production_service_needs_unique", unique: true
+    t.index ["production_id"], name: "index_production_service_needs_on_production_id"
+  end
+
   create_table "production_ticketing_products", force: :cascade do |t|
     t.bigint "production_ticketing_id", null: false
     t.bigint "ticket_product_id", null: false
@@ -2702,6 +2739,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_180000) do
     t.index ["show_id", "role_id", "assignable_type", "assignable_id"], name: "idx_unique_show_role_assignable", unique: true, where: "(assignable_id IS NOT NULL)"
     t.index ["show_id", "role_id", "position"], name: "idx_assignments_show_role_position"
     t.index ["show_id"], name: "index_show_person_role_assignments_on_show_id"
+  end
+
+  create_table "show_service_changes", force: :cascade do |t|
+    t.bigint "show_id", null: false
+    t.bigint "house_service_id", null: false
+    t.boolean "needed", default: true, null: false
+    t.integer "people_count", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["house_service_id"], name: "index_show_service_changes_on_house_service_id"
+    t.index ["show_id", "house_service_id"], name: "index_show_service_changes_unique", unique: true
+    t.index ["show_id"], name: "index_show_service_changes_on_show_id"
   end
 
   create_table "shows", force: :cascade do |t|
@@ -4148,6 +4197,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_180000) do
   add_foreign_key "group_memberships", "people"
   add_foreign_key "house_roles", "locations"
   add_foreign_key "house_roles", "organizations"
+  add_foreign_key "house_service_roles", "house_roles"
+  add_foreign_key "house_service_roles", "house_services"
+  add_foreign_key "house_services", "organizations"
   add_foreign_key "journal_entries", "journal_entries", column: "reversal_of_id"
   add_foreign_key "journal_entries", "organizations"
   add_foreign_key "journal_lines", "journal_entries"
@@ -4229,6 +4281,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_180000) do
   add_foreign_key "production_notification_settings", "users"
   add_foreign_key "production_permissions", "productions"
   add_foreign_key "production_permissions", "users"
+  add_foreign_key "production_service_needs", "house_services"
+  add_foreign_key "production_service_needs", "productions"
   add_foreign_key "production_ticketing_products", "production_ticketings"
   add_foreign_key "production_ticketing_products", "ticket_products"
   add_foreign_key "production_ticketing_shows", "production_ticketings"
@@ -4290,6 +4344,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_180000) do
   add_foreign_key "show_person_role_assignments", "people"
   add_foreign_key "show_person_role_assignments", "roles"
   add_foreign_key "show_person_role_assignments", "shows"
+  add_foreign_key "show_service_changes", "house_services"
+  add_foreign_key "show_service_changes", "shows"
   add_foreign_key "shows", "course_offerings"
   add_foreign_key "shows", "event_linkages"
   add_foreign_key "shows", "location_spaces"

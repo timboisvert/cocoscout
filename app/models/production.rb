@@ -13,6 +13,8 @@ class Production < ApplicationRecord
   has_many :shows, dependent: :destroy
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :scheduling_rules, dependent: :destroy
+  # What every show of it needs (Services tab; see ShowServices).
+  has_many :production_service_needs, dependent: :destroy
   has_many :event_linkages, dependent: :destroy
   has_many :audition_cycles, dependent: :destroy
   has_many :audition_requests, through: :audition_cycles

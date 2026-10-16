@@ -1,0 +1,43 @@
+<%# A service's fields, for adding one and for editing one on Organization
+    settings → Services. Locals: service, input, check (classes), unit_options. %>
+<% field_id = service.persisted? ? "house_service_#{service.id}" : "house_service_new" %>
+<div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_8rem_9rem] gap-3">
+  <div>
+    <label for="<%= field_id %>_name" class="block text-xs font-medium text-gray-700 mb-1">Name</label>
+    <%= text_field_tag "house_service[name]", service.name, id: "#{field_id}_name", required: true, maxlength: 100,
+          placeholder: "e.g. Booth Tech", class: input %>
+  </div>
+  <div>
+    <label for="<%= field_id %>_price" class="block text-xs font-medium text-gray-700 mb-1">Default price</label>
+    <div class="relative">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+      <%= number_field_tag "house_service[default_price]", (service.persisted? ? format("%.2f", service.default_price) : nil),
+            id: "#{field_id}_price", step: "0.01", min: "0", placeholder: "0.00", class: "#{input} pl-7" %>
+    </div>
+  </div>
+  <div>
+    <label for="<%= field_id %>_unit" class="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+    <%= select_tag "house_service[unit]", options_for_select(unit_options, service.unit), id: "#{field_id}_unit", class: input %>
+  </div>
+</div>
+<div>
+  <p class="text-xs font-medium text-gray-700 mb-1.5">Roles that do it <span class="font-normal text-gray-500">(one or more, or none for equipment or a fee)</span></p>
+  <%= hidden_field_tag "house_service[house_role_ids][]", "", id: nil %>
+  <% if @house_roles.any? %>
+    <div class="flex flex-wrap gap-2">
+      <% chosen = service.house_role_ids %>
+      <% @house_roles.each do |role| %>
+        <label class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 cursor-pointer has-[:checked]:border-pink-300 has-[:checked]:bg-pink-50">
+          <%= check_box_tag "house_service[house_role_ids][]", role.id, chosen.include?(role.id), id: "#{field_id}_role_#{role.id}", class: check %>
+          <%= role.name %>
+        </label>
+      <% end %>
+      <%= link_to "Make a new role", manage_staffing_house_roles_path, class: "self-center text-sm font-medium text-pink-600 hover:text-pink-700 ml-1" %>
+    </div>
+  <% else %>
+    <p class="text-sm text-gray-500">
+      No roles yet. <%= link_to "Add them on Staffing's Roles page", manage_staffing_house_roles_path, class: "font-medium text-pink-600 hover:text-pink-700" %>,
+      or leave it with none for equipment or a fee.
+    </p>
+  <% end %>
+</div>

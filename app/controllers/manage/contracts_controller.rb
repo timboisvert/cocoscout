@@ -712,7 +712,7 @@ module Manage
     def amend_ticketing_tech
       @amend_data = @contract.amend_data
       @ticketing = @amend_data["ticketing"] || @contract.draft_ticketing
-      @service_options = Current.organization.contract_service_options.ordered
+      @service_options = Current.organization.house_services.offered_on_contracts.ordered.includes(:house_roles)
       @existing_services = @amend_data["services"] || @contract.draft_services
       # The contract's live dates as amended so far: surviving rentals plus any
       # dates added in the schedule step — per-event services pick from these.

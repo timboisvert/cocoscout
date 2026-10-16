@@ -637,6 +637,8 @@ class Contract < ApplicationRecord
 
       line = {
         "name" => name,
+        # The organization service it came from (HouseService), when there is one.
+        "service_id" => row["service_id"].presence&.to_i,
         "unit" => row["unit"].presence || "flat",
         "unit_price" => row["unit_price"].to_f,
         "direction" => row["direction"].presence || "incoming",
@@ -664,7 +666,7 @@ class Contract < ApplicationRecord
         quantity = 1 if quantity <= 0
         line["quantity"] = quantity
       end
-      line
+      line.compact
     end
   end
 

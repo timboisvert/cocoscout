@@ -1096,6 +1096,11 @@ Rails.application.routes.draw do
       end
     end
 
+    # The organization's services (Organization settings → Services; Pro).
+    post   "services",     to: "house_services#create",  as: "house_services"
+    patch  "services/:id", to: "house_services#update",  as: "house_service"
+    delete "services/:id", to: "house_services#destroy"
+
     # Reports (Pro tier)
     scope path: "reports" do
       get "/",                     to: "reports#index",                 as: "reports"
@@ -1688,9 +1693,8 @@ Rails.application.routes.draw do
                                               as: "contract_settings_signing"
     patch  "contracts/settings/invoices",     to: "contract_settings#update_invoices",
                                               as: "contract_settings_invoices"
-    post   "contracts/settings/services",     to: "contract_settings#create_service", as: "contract_settings_services"
-    patch  "contracts/settings/services/:id", to: "contract_settings#update_service", as: "contract_settings_service"
-    delete "contracts/settings/services/:id", to: "contract_settings#destroy_service"
+    # Which of the organization's services contracts offer, and their terms.
+    patch  "contracts/settings/services",     to: "contract_settings#update_services", as: "contract_settings_services"
     # Contract-document templates. The list is the "Templates" tab of Contract
     # Settings (contract_settings#show); this owns the form pages + mutations.
     # Pathed under "contracts/templates" so it never collides with a contract :id.

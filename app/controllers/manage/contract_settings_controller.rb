@@ -9,7 +9,6 @@ module Manage
     DEFAULT_SECTION = "payments"
 
     before_action :set_section, only: %i[show]
-    before_action :set_service, only: %i[update_service destroy_service]
 
     def show
       case @section
@@ -19,8 +18,7 @@ module Manage
         @invoice_defaults = Current.organization.defaults_for_invoices
         @invoice_details = Hash(Current.organization.invoice_details)
       when "services"
-        @services = Current.organization.contract_service_options.ordered
-        @service = Current.organization.contract_service_options.new(unit: "hourly", default_direction: "incoming")
+        @services = Current.organization.house_services.ordered.includes(:house_roles)
       when "templates"
         @contract_templates = Current.organization.contract_templates.order(:name)
       when "signing"
@@ -72,26 +70,27 @@ module Manage
       redirect_to section_path("signing"), notice: "Contracts now expire #{days} days after they're sent."
     end
 
-    def create_service
-      service = Current.organization.contract_service_options.new(service_params)
-      if service.save
-        redirect_to section_path("services"), notice: "Service added."
-      else
-        redirect_to section_path("services"), alert: service.errors.full_messages.join(", ")
-      end
-    end
+    # Which of the organization's services contracts offer, with each one's
+    # usual terms. The services themselves (name, default price, roles) live in
+    # Organization settings → Services.
+    def update_services
+      rows = params.fetch(:services, {})
+      HouseService.transaction do
+        Current.organization.house_services.each do |service|
+          row = rows[service.id.to_s]
+          next unless row
 
-    def update_service
-      if @service.update(service_params)
-        redirect_to section_path("services"), notice: "Service updated."
-      else
-        redirect_to section_path("services"), alert: @service.errors.full_messages.join(", ")
+          service.update!(
+            offered_on_contracts: row[:offered] == "1",
+            contract_price_cents: HouseService.cents_from(row[:price]),
+            contract_direction: row[:direction].presence_in(HouseService::DIRECTIONS) || service.contract_direction,
+            contract_booking_mode: row[:booking_mode].presence_in(HouseService::BOOKING_MODES) || service.contract_booking_mode
+          )
+        end
       end
-    end
-
-    def destroy_service
-      @service.destroy
-      redirect_to section_path("services"), notice: "Service removed."
+      redirect_to section_path("services"), notice: "Services on contracts saved."
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to section_path("services"), alert: e.record.errors.full_messages.to_sentence
     end
 
     private
@@ -112,17 +111,6 @@ module Manage
     def set_section
       @section = params[:section].presence || DEFAULT_SECTION
       redirect_to section_path(DEFAULT_SECTION) unless @section.in?(SECTIONS)
-    end
-
-    def set_service
-      @service = Current.organization.contract_service_options.find(params[:id])
-    end
-
-    def service_params
-      permitted = params.require(:contract_service_option).permit(:name, :unit, :default_direction, :default_price, :booking_mode)
-      price = permitted.delete(:default_price)
-      permitted[:default_price_cents] = (price.to_f * 100).round if price.present?
-      permitted
     end
   end
 end

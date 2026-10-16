@@ -48,7 +48,7 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
   end
 
   it "a fresh service line defaults its settlement to the payout deduction when the deal pays them" do
-    org.contract_service_options.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly", default_direction: "incoming")
+    org.house_services.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly", offered_on_contracts: true)
     contract.update!(draft_data: contract.draft_data.merge("payment_config" => { "flat_fee_direction" => "outgoing" }))
 
     get manage_tech_contract_wizard_path(contract)
@@ -57,7 +57,7 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
   end
 
   it "offers no settlement choice on a deal where they pay us — the service is a direct charge folded into the event's payment" do
-    org.contract_service_options.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly", default_direction: "incoming")
+    org.house_services.create!(name: "Booth Tech", default_price_cents: 2500, unit: "hourly", offered_on_contracts: true)
 
     get manage_tech_contract_wizard_path(contract)
     expect(response.body).not_to include("Taken out of their payout")

@@ -3,12 +3,12 @@
   service reveals its config; per-event services list the contract's booked
   dates (all checked by default) with hours per date and a live cost estimate.
 
-  Posts services[i][include|name|unit|per_event|quantity|unit_price|direction|settlement]
+  Posts services[i][include|service_id|name|unit|per_event|quantity|unit_price|direction|settlement]
   and, for per-event lines, services[i][events][j][include|starts_at|hours].
   The caller supplies the surrounding <form> and nav buttons.
 
   Locals:
-    service_options   (ContractServiceOption relation)
+    service_options   (the organization's HouseServices offered on contracts)
     existing_services (Array of saved line hashes)
     bookings          (Array of draft_bookings hashes; optional)
 %>
@@ -17,7 +17,10 @@
   existing_services ||= []
   bookings ||= []
   input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  chosen_by_name = existing_services.index_by { |s| s["name"] }
+  # A saved line names its organization service (service_id) once it was made
+  # from one; older lines only carry the name.
+  chosen_by_id = existing_services.select { |s| s["service_id"].present? }.index_by { |s| s["service_id"].to_i }
+  chosen_by_name = existing_services.index_by { |s| s["name"].to_s.downcase }
   dir_options = [ [ "They pay us", "incoming" ], [ "We pay them", "outgoing" ] ]
 
   # The contract's booked dates, oldest first, with a sensible default-hours
@@ -36,12 +39,12 @@
   <div class="space-y-3 mb-4">
     <% service_options.each_with_index do |option, i| %>
       <%
-        chosen = chosen_by_name[option.name]
+        chosen = chosen_by_id[option.id] || chosen_by_name[option.name.downcase]
         chosen_events = chosen && chosen["per_event"] ? Array(chosen["events"]).index_by { |e| e["starts_at"].to_s } : nil
         # Per-event only works when there are dates to hang it on.
-        per_event = option.per_event? && event_entries.any?
-        line_price = chosen ? chosen["unit_price"].to_f : option.default_price
-        line_direction = chosen ? chosen["direction"] : option.default_direction
+        per_event = option.contract_per_event? && event_entries.any?
+        line_price = chosen ? chosen["unit_price"].to_f : option.contract_price
+        line_direction = chosen ? chosen["direction"] : option.contract_direction
         # "Taken out of their payout" only exists on a deal that pays them
         # something; on a they-pay-us deal every service is a direct charge that
         # folds into the event's payment, so the choice isn't shown at all.
@@ -66,12 +69,16 @@
                  <%= "checked" if chosen %>>
           <span class="font-medium text-gray-900"><%= option.name %></span>
           <span class="text-xs text-gray-500">
-            <%= number_to_currency(option.default_price) %><%= option.unit == "hourly" ? "/hr" : "" %>
+            <%= number_to_currency(option.contract_price) %><%= option.unit == "hourly" ? "/hr" : "" %>
             <%= " · per event" if per_event %>
+          </span>
+          <span class="hidden sm:inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
+            <%= option.staffed? ? "Done by #{option.roles_label}" : "Equipment" %>
           </span>
           <span class="ml-auto text-sm font-semibold text-gray-900 tabular-nums"
                 data-contract-service-line-target="headerTotal"></span>
         </label>
+        <input type="hidden" name="services[<%= i %>][service_id]" value="<%= option.id %>">
         <input type="hidden" name="services[<%= i %>][name]" value="<%= option.name %>">
         <input type="hidden" name="services[<%= i %>][unit]" value="<%= option.unit %>">
         <input type="hidden" name="services[<%= i %>][per_event]" value="<%= per_event ? "1" : "0" %>">
@@ -176,11 +183,16 @@
       </div>
     <% end %>
   </div>
-  <p class="text-xs text-gray-500">Manage your list of services, default prices, and whether each is booked per event in <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "services"), class: "text-pink-600 hover:text-pink-700" %>.</p>
+  <p class="text-xs text-gray-500">
+    Prices start from <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "services"), class: "text-pink-600 hover:text-pink-700" %>,
+    which start from your <%= link_to "organization's services", section_manage_organization_path(Current.organization, section: "services"), class: "text-pink-600 hover:text-pink-700" %>.
+  </p>
 <% else %>
   <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 text-sm text-gray-600">
-    You haven't set up any services yet. Add them in
-    <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "services"), class: "text-pink-600 hover:text-pink-700 font-medium" %>
-    (like technical services at an hourly rate), then they'll show here to add to a contract.
+    No services are offered on contracts yet. Add your organization's services in
+    <%= link_to "Organization settings", section_manage_organization_path(Current.organization, section: "services"), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+    (like a booth tech at an hourly rate), tick them in
+    <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "services"), class: "text-pink-600 hover:text-pink-700 font-medium" %>,
+    and they'll show here to add to a contract.
   </div>
 <% end %>

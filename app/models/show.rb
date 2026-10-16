@@ -21,6 +21,8 @@ class Show < ApplicationRecord
   has_many :messages, dependent: :nullify
   # Extra shows a merged staffing shift covers (the join rows die with the show).
   has_many :shift_shows, dependent: :destroy
+  # Where this show differs from what its production needs (ShowServices).
+  has_many :show_service_changes, dependent: :destroy
   has_many :show_person_role_assignments, dependent: :destroy
 
   # Polymorphic associations for cast members (people or groups)

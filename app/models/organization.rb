@@ -19,7 +19,9 @@ class Organization < ApplicationRecord
   has_many :productions, dependent: :destroy
   has_many :contracts, dependent: :destroy
   has_many :contractors, dependent: :destroy
-  has_many :contract_service_options, dependent: :destroy
+  # What the organization offers its productions (Organization settings →
+  # Services): booth tech, ticket taking, a projector. Contracts pick from it.
+  has_many :house_services, dependent: :destroy
   # Where this org sells tickets, named in Money settings and picked per line
   # when a show's ticket sales are entered.
   has_many :ticket_sources, dependent: :destroy
@@ -105,7 +107,7 @@ class Organization < ApplicationRecord
   # Modules that require the Pro tier. Everything else (Shows,
   # Casting, Auditions, Availability, basic Sign-ups, Messages, Contacts,
   # Documents, and Courses) is included on the Producer plan.
-  PAID_FEATURES = %i[money contracts staffing casting_table reports agreements ticketing].freeze
+  PAID_FEATURES = %i[money contracts staffing casting_table reports agreements ticketing services].freeze
 
   # Producer plan may schedule at most this many (non-canceled) shows/events per
   # calendar month, counting every event type including rehearsals.

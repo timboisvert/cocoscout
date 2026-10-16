@@ -8,6 +8,9 @@ class HouseRole < ApplicationRecord
   has_many :shifts, dependent: :destroy
   has_many :staff_role_qualifications, dependent: :destroy
   has_many :scheduling_rules, dependent: :destroy
+  # The services this role does (ticket taking, for Front of House).
+  has_many :house_service_roles, dependent: :destroy
+  has_many :house_services, through: :house_service_roles
 
   # :house     → one shift spans the whole evening (first show start → last
   #              show end), e.g. bartender, FOH, security.
