@@ -30,6 +30,7 @@ export default class extends Controller {
     }
 
     async open() {
+        this.resetPressAndHold()
         this.modalTarget.classList.remove('hidden')
         document.body.classList.add('overflow-hidden')
 
@@ -103,11 +104,55 @@ export default class extends Controller {
         }
     }
 
-    download() {
+    // Phones get their share sheet (Save Image, AirDrop, Messages): a download
+    // of an in-memory image lands nowhere a phone shows you. Where a phone
+    // can't share a file (some in-app web views), the code turns into a plain
+    // image to press and hold. Computers download the file as before.
+    async download() {
         const canvas = this.canvasTarget
-        const link = document.createElement('a')
-        link.download = this.filenameValue
-        link.href = canvas.toDataURL('image/png')
-        link.click()
+        if (!window.matchMedia('(pointer: coarse)').matches) {
+            const link = document.createElement('a')
+            link.download = this.filenameValue
+            link.href = canvas.toDataURL('image/png')
+            link.click()
+            return
+        }
+
+        const file = await new Promise(resolve => canvas.toBlob(blob =>
+            resolve(blob ? new File([blob], this.filenameValue, { type: 'image/png' }) : null), 'image/png'))
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file] })
+                return
+            } catch (error) {
+                if (error.name === 'AbortError') return
+            }
+        }
+        this.showPressAndHold(canvas)
+    }
+
+    showPressAndHold(canvas) {
+        if (this.pressAndHold) return
+
+        const image = document.createElement('img')
+        image.src = canvas.toDataURL('image/png')
+        image.alt = 'QR code'
+        image.width = canvas.width
+        image.height = canvas.height
+        image.className = canvas.className
+        const hint = document.createElement('p')
+        hint.className = 'text-sm text-gray-700 text-center mt-2'
+        hint.textContent = 'Press and hold the code to save it.'
+        canvas.classList.add('hidden')
+        canvas.after(image, hint)
+        this.pressAndHold = [ image, hint ]
+    }
+
+    resetPressAndHold() {
+        if (!this.pressAndHold) return
+
+        this.pressAndHold.forEach(element => element.remove())
+        this.pressAndHold = null
+        this.canvasTarget.classList.remove('hidden')
     }
 }
