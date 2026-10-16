@@ -1,200 +1,336 @@
 <%#
-  Services picker: the org's catalog as progressive line items. Checking a
-  service reveals its config; per-event services list the contract's booked
-  dates (all checked by default) with hours per date and a live cost estimate.
+  A contract's services (2026-10-16 redesign): on top, the organization's
+  services offered on contracts, each ticked with its price, who pays and
+  where it usually goes ("Usually on: every show"); below, "Each date": every
+  booked date with the services it gets, Edit to change one date (which
+  services, hours, its own price, down to $0) or several ticked together.
 
-  Posts services[i][include|service_id|name|unit|per_event|quantity|unit_price|direction|settlement]
-  and, for per-event lines, services[i][events][j][include|starts_at|hours].
-  The caller supplies the surrounding <form> and nav buttons.
+  Posts the same rows as before, so the wizard and amend parsers are unchanged:
+  services[i][include|service_id|name|unit|per_event|quantity|unit_price|direction|settlement]
+  and, per date, services[i][events][j][include|starts_at|hours|unit_price].
+  Each date's inputs live in that date's Edit; contract-services keeps the
+  chips and totals in step. The caller supplies the <form> and nav buttons.
 
   Locals:
     service_options   (the organization's HouseServices offered on contracts)
     existing_services (Array of saved line hashes)
-    bookings          (Array of draft_bookings hashes; optional)
+    bookings          (Array of booking hashes: starts_at, duration, event_type)
+    locked_dates      (optional: starts_at values that can't change, settled)
 %>
 <%
   service_options ||= []
   existing_services ||= []
   bookings ||= []
-  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  # A saved line names its organization service (service_id) once it was made
-  # from one; older lines only carry the name.
+  locked = Array(local_assigns[:locked_dates]).map(&:to_s).to_set
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  small_input = "px-2 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
   chosen_by_id = existing_services.select { |s| s["service_id"].present? }.index_by { |s| s["service_id"].to_i }
   chosen_by_name = existing_services.index_by { |s| s["name"].to_s.downcase }
+  dir_options = [ [ "They pay us", "incoming" ], [ "We pay them", "outgoing" ] ]
+  can_deduct = local_assigns.fetch(:can_deduct) { @contract&.can_net_services_from_payout? }
   # A contract for a production whose shows already need some services starts
   # with those ticked (only before any service has been chosen here).
   production = local_assigns.fetch(:production) { @contract&.production }
   already_needed = existing_services.empty? && production ? production.production_service_needs.pluck(:house_service_id).to_set : Set.new
-  dir_options = [ [ "They pay us", "incoming" ], [ "We pay them", "outgoing" ] ]
 
-  # The contract's booked dates, oldest first, with a sensible default-hours
-  # guess per date (the booking's own duration).
-  event_entries = bookings.filter_map { |b|
-    starts_at = (Time.zone.parse(b["starts_at"].to_s) rescue nil)
-    next unless starts_at
-    duration = b["duration"].to_f
-    { iso: b["starts_at"].to_s,
-      label: starts_at.strftime("%a, %b %-d · %-l:%M %p"),
-      default_hours: duration.positive? ? duration : 2.0 }
-  }.sort_by { |e| e[:iso] }
+  dates = bookings.filter_map { |b|
+    at = (Time.zone.parse(b["starts_at"].to_s) rescue nil)
+    next unless at
+    type = b["event_type"].presence || "show"
+    hours = b["duration"].to_f.positive? ? b["duration"].to_f : 2.0
+    { iso: b["starts_at"].to_s, at: at, type: type, kind: EventTypes.labels[type] || type.titleize, hours: hours }
+  }.sort_by { |d| d[:at] }
+  kinds = dates.group_by { |d| d[:type] }
+  usual_choices = [ [ "Every date", "all" ] ] + kinds.map { |type, ds| [ "Every #{ds.first[:kind].downcase}", type ] } + [ [ "No dates", "none" ] ]
+
+  hours_text = ->(n) { n.to_f % 1 == 0 ? n.to_i.to_s : n.to_f.to_s } # 2, not 2.0
+  lines = service_options.each_with_index.map do |option, i|
+    chosen = chosen_by_id[option.id] || chosen_by_name[option.name.downcase]
+    prefilled = chosen.nil? && already_needed.include?(option.id)
+    per_event = option.contract_per_event? && dates.any?
+    events = chosen && chosen["per_event"] ? Array(chosen["events"]).index_by { |e| e["starts_at"].to_s } : nil
+    # Where it usually goes: what the saved dates add up to, or (fresh) every
+    # date, or every show for one the production's shows already need.
+    usual = if events.nil?
+      prefilled && kinds.key?("show") ? "show" : "all"
+    elsif events.empty?
+      "none"
+    elsif events.size == dates.size
+      "all"
+    else
+      kinds.keys.find { |type| events.keys.sort == kinds[type].map { |d| d[:iso] }.sort } || "some"
+    end
+    settlement = if !can_deduct then "direct"
+    elsif chosen then (chosen["settlement"].presence || "direct")
+    else "payout_deduction"
+    end
+    { option: option, index: i, chosen: chosen, on: chosen.present? || prefilled, prefilled: prefilled, per_event: per_event,
+      price: chosen ? chosen["unit_price"].to_f : option.contract_price, events: events, usual: usual, settlement: settlement,
+      direction: chosen ? chosen["direction"] : option.contract_direction,
+      default_hours: hours_text.(events&.values&.first&.dig("hours") || 2) }
+  end
+  per_event_lines = lines.select { |l| l[:per_event] }
 %>
 
 <% if service_options.any? %>
-  <div class="space-y-3 mb-4">
-    <% service_options.each_with_index do |option, i| %>
-      <%
-        chosen = chosen_by_id[option.id] || chosen_by_name[option.name.downcase]
-        prefilled = chosen.nil? && already_needed.include?(option.id)
-        chosen_events = chosen && chosen["per_event"] ? Array(chosen["events"]).index_by { |e| e["starts_at"].to_s } : nil
-        # Per-event only works when there are dates to hang it on.
-        per_event = option.contract_per_event? && event_entries.any?
-        line_price = chosen ? chosen["unit_price"].to_f : option.contract_price
-        line_direction = chosen ? chosen["direction"] : option.contract_direction
-        # "Taken out of their payout" only exists on a deal that pays them
-        # something; on a they-pay-us deal every service is a direct charge that
-        # folds into the event's payment, so the choice isn't shown at all.
-        # Where it applies, fresh lines default to the deduction — most services
-        # are ours to net out of what we owe them. Saved rows keep their stored
-        # choice; rows saved before the choice existed (nil) stay direct.
-        can_deduct = local_assigns.fetch(:can_deduct) { @contract&.can_net_services_from_payout? }
-        line_settlement = if !can_deduct then "direct"
-        elsif chosen then (chosen["settlement"].presence || "direct")
-        else "payout_deduction"
-        end
-      %>
-      <div class="border border-gray-200 rounded-lg has-[.service-include:checked]:border-pink-300 has-[.service-include:checked]:bg-pink-50/30 transition-colors"
-           data-controller="contract-service-line"
-           data-contract-service-line-unit-value="<%= option.unit %>"
-           data-contract-service-line-per-event-value="<%= per_event %>">
-        <label class="flex items-center gap-2 p-4 cursor-pointer">
-          <input type="checkbox" name="services[<%= i %>][include]" value="1"
-                 class="service-include accent-pink-500 h-4 w-4"
-                 data-contract-service-line-target="include"
-                 data-action="change->contract-service-line#toggle"
-                 <%= "checked" if chosen || prefilled %>>
-          <span class="font-medium text-gray-900"><%= option.name %></span>
-          <span class="text-xs text-gray-500">
-            <%= number_to_currency(option.contract_price) %><%= option.unit == "hourly" ? "/hr" : "" %>
-            <%= " · per event" if per_event %>
-          </span>
-          <span class="hidden sm:inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
-            <%= option.staffed? ? "Done by #{option.roles_label}" : "Equipment" %>
-          </span>
-          <span class="ml-auto text-sm font-semibold text-gray-900 tabular-nums"
-                data-contract-service-line-target="headerTotal"></span>
-        </label>
-        <input type="hidden" name="services[<%= i %>][service_id]" value="<%= option.id %>">
-        <input type="hidden" name="services[<%= i %>][name]" value="<%= option.name %>">
-        <input type="hidden" name="services[<%= i %>][unit]" value="<%= option.unit %>">
-        <input type="hidden" name="services[<%= i %>][per_event]" value="<%= per_event ? "1" : "0" %>">
+  <div data-controller="contract-services">
+    <div class="rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100 mb-4">
+      <% lines.each do |line| %>
+        <% option = line[:option]; i = line[:index] %>
+        <div class="px-4 py-3 has-[.service-include:checked]:bg-pink-50/40"
+             data-contract-services-target="service" data-index="<%= i %>" data-name="<%= option.name %>"
+             data-unit="<%= option.unit %>" data-per-event="<%= line[:per_event] %>">
+          <input type="hidden" name="services[<%= i %>][service_id]" value="<%= option.id %>">
+          <input type="hidden" name="services[<%= i %>][name]" value="<%= option.name %>">
+          <input type="hidden" name="services[<%= i %>][unit]" value="<%= option.unit %>">
+          <input type="hidden" name="services[<%= i %>][per_event]" value="<%= line[:per_event] ? "1" : "0" %>">
+          <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" name="services[<%= i %>][include]" value="1" class="service-include mt-1 <%= check %>"
+                   data-contract-services-target="include" data-action="change->contract-services#serviceToggled" <%= "checked" if line[:on] %>>
+            <span class="flex-1 min-w-0">
+              <span class="flex flex-wrap items-baseline gap-x-2">
+                <span class="text-[15px] font-semibold text-gray-900"><%= option.name %></span>
+                <span class="text-sm text-gray-500"><%= number_to_currency(option.contract_price) %><%= option.hourly? ? "/hr" : (line[:per_event] ? " a date" : " flat") %></span>
+              </span>
+              <span class="block text-xs text-gray-500"><%= option.staffed? ? "Done by #{option.roles_label}" : "Equipment" %></span>
+              <% if line[:prefilled] %>
+                <span class="block text-sm text-pink-700">Ticked for you: <%= possessive(production.name) %> shows need <%= option.name %>.</span>
+              <% end %>
+            </span>
+          </label>
 
-        <%# Config reveals when the service is checked. %>
-        <% if prefilled %>
-          <p class="-mt-2 px-4 pb-2 pl-10 text-sm text-pink-700">Ticked for you: <%= possessive(production.name) %> shows need <%= option.name %>.</p>
-        <% end %>
-        <div class="<%= "hidden" unless chosen || prefilled %> px-4 pb-4 pl-10 space-y-3" data-contract-service-line-target="body">
-          <div class="flex flex-wrap items-end gap-3">
-            <% unless per_event %>
-              <div class="w-24">
-                <label class="block text-xs font-medium text-gray-600 mb-1"><%= option.unit == "hourly" ? "Hours" : "Quantity" %></label>
-                <input type="number" step="0.5" min="0" name="services[<%= i %>][quantity]"
-                       value="<%= chosen && !chosen["per_event"] ? chosen["quantity"] : 1 %>"
-                       data-contract-service-line-target="quantity"
-                       data-action="input->contract-service-line#recalc" class="<%= input %>">
-              </div>
-            <% end %>
+          <div class="<%= 'hidden' unless line[:on] %> mt-3 pl-7 flex flex-wrap items-end gap-3" data-contract-services-target="body">
             <div class="w-28">
-              <label class="block text-xs font-medium text-gray-600 mb-1"><%= option.unit == "hourly" ? "Rate/hr" : "Price" %></label>
+              <label class="block text-xs font-medium text-gray-600 mb-1"><%= option.hourly? ? "Rate/hr" : "Price" %></label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
-                <input type="number" step="0.01" min="0" name="services[<%= i %>][unit_price]"
-                       value="<%= '%.2f' % line_price %>"
-                       data-contract-service-line-target="price"
-                       data-action="input->contract-service-line#recalc" class="<%= input %> pl-7">
+                <input type="number" step="0.01" min="0" name="services[<%= i %>][unit_price]" value="<%= format('%.2f', line[:price]) %>"
+                       data-contract-services-target="price" data-action="input->contract-services#priceChanged" class="<%= input %> pl-7">
               </div>
             </div>
             <div class="w-36">
               <label class="block text-xs font-medium text-gray-600 mb-1">Who pays</label>
-              <%= select_tag "services[#{i}][direction]", options_for_select(dir_options, line_direction),
-                    class: input,
-                    data: { "contract-service-line-target": "direction", action: "change->contract-service-line#directionChanged" } %>
+              <%= select_tag "services[#{i}][direction]", options_for_select(dir_options, line[:direction]), class: input,
+                    data: { contract_services_target: "direction", action: "change->contract-services#refresh" } %>
             </div>
             <% if can_deduct %>
-              <div class="w-52 <%= "hidden" if line_direction == "outgoing" %>" data-contract-service-line-target="settlementWrap">
+              <div class="w-60">
                 <label class="block text-xs font-medium text-gray-600 mb-1">How it's settled</label>
                 <%= select_tag "services[#{i}][settlement]",
-                      options_for_select([ [ "Taken out of their payout", "payout_deduction" ], [ "They pay it directly", "direct" ] ], line_settlement),
+                      options_for_select([ [ "Taken out of their payout", "payout_deduction" ], [ "They pay it directly", "direct" ] ], line[:settlement]),
                       class: input %>
               </div>
             <% else %>
               <%= hidden_field_tag "services[#{i}][settlement]", "direct", id: nil %>
             <% end %>
+            <% if line[:per_event] %>
+              <div class="w-44">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Usually on</label>
+                <select class="<%= input %>" data-contract-services-target="usual" data-action="change->contract-services#usualChanged" aria-label="<%= option.name %>: usually on">
+                  <% (usual_choices + (line[:usual] == "some" ? [ [ "Some dates", "some" ] ] : [])).each do |label, value| %>
+                    <option value="<%= value %>" <%= "selected" if value == line[:usual] %>><%= label %></option>
+                  <% end %>
+                </select>
+              </div>
+              <% if option.hourly? %>
+                <div class="w-20">
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Hours</label>
+                  <input type="number" step="0.5" min="0" value="<%= line[:default_hours] %>" class="<%= input %>"
+                         data-contract-services-target="defaultHours" data-action="change->contract-services#usualChanged" aria-label="<%= option.name %>: usual hours">
+                </div>
+              <% end %>
+            <% else %>
+              <div class="w-24">
+                <label class="block text-xs font-medium text-gray-600 mb-1"><%= option.hourly? ? "Hours" : "Quantity" %></label>
+                <input type="number" step="0.5" min="0" name="services[<%= i %>][quantity]"
+                       value="<%= line[:chosen] && !line[:chosen]["per_event"] ? line[:chosen]["quantity"] : 1 %>" class="<%= input %>">
+              </div>
+            <% end %>
           </div>
+        </div>
+      <% end %>
+    </div>
 
-          <% if per_event %>
-            <%# Which booked dates get this service — all on by default. %>
-            <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
-              <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between text-xs">
-                <span class="font-semibold text-gray-600 uppercase tracking-wide">Which events</span>
-                <span class="text-gray-500">
-                  <button type="button" class="text-pink-600 hover:text-pink-700 font-medium cursor-pointer" data-action="contract-service-line#checkAllEvents">All</button>
-                  <span class="text-gray-300">·</span>
-                  <button type="button" class="hover:text-gray-700 font-medium cursor-pointer" data-action="contract-service-line#checkNoEvents">None</button>
-                </span>
-              </div>
-              <div class="divide-y divide-gray-100">
-                <% event_entries.each_with_index do |entry, j| %>
-                  <%
-                    saved = chosen_events && chosen_events[entry[:iso]]
-                    # A brand-new line defaults every date on; a saved line
-                    # restores exactly the dates (and hours) it had.
-                    event_checked = chosen_events ? saved.present? : true
-                    event_hours = saved ? saved["hours"].to_f : entry[:default_hours]
-                  %>
-                  <div class="flex items-center gap-3 px-3 py-2">
-                    <input type="hidden" name="services[<%= i %>][events][<%= j %>][starts_at]" value="<%= entry[:iso] %>">
-                    <label class="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
-                      <input type="checkbox" name="services[<%= i %>][events][<%= j %>][include]" value="1"
-                             class="accent-pink-500 h-4 w-4"
-                             data-contract-service-line-target="eventInclude"
-                             data-action="change->contract-service-line#recalc"
-                             <%= "checked" if event_checked %>>
-                      <span class="text-sm text-gray-900 truncate"><%= entry[:label] %></span>
-                    </label>
-                    <% if option.unit == "hourly" %>
-                      <div class="flex items-center gap-1.5">
-                        <input type="number" step="0.5" min="0" name="services[<%= i %>][events][<%= j %>][hours]"
-                               value="<%= event_hours %>"
-                               data-contract-service-line-target="eventHours"
-                               data-action="input->contract-service-line#recalc"
-                               class="w-20 px-2 py-1.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-                        <span class="text-xs text-gray-500">hrs</span>
-                      </div>
-                    <% else %>
-                      <input type="hidden" name="services[<%= i %>][events][<%= j %>][hours]" value="1">
-                    <% end %>
-                    <span class="w-20 text-right text-sm text-gray-700 tabular-nums" data-contract-service-line-target="eventCost"></span>
-                  </div>
-                <% end %>
-              </div>
-              <div class="px-3 py-2 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-sm">
-                <span class="text-gray-600" data-contract-service-line-target="eventSummary"></span>
-                <span class="font-semibold text-gray-900 tabular-nums" data-contract-service-line-target="total"></span>
-              </div>
-            </div>
-          <% else %>
-            <div class="text-sm text-gray-600">
-              Estimated: <span class="font-semibold text-gray-900 tabular-nums" data-contract-service-line-target="total"></span>
+    <% if per_event_lines.any? %>
+      <div class="pt-4 border-t border-gray-200">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Each date</h3>
+            <p class="text-sm text-gray-600">Which services every booked date gets. Edit one to change just that date.</p>
+          </div>
+          <% if kinds.size > 1 %>
+            <div class="flex flex-wrap gap-2" role="group" aria-label="Show">
+              <button type="button" data-contract-services-target="pill" data-kind="" data-action="contract-services#filter"
+                      class="rounded-full border px-3 py-1.5 text-sm font-medium cursor-pointer border-pink-300 bg-pink-50 text-pink-700">All <%= dates.size %></button>
+              <% kinds.each do |type, ds| %>
+                <button type="button" data-contract-services-target="pill" data-kind="<%= type %>" data-action="contract-services#filter"
+                        class="rounded-full border px-3 py-1.5 text-sm font-medium cursor-pointer border-gray-300 bg-white text-gray-700"><%= ds.first[:kind].pluralize %> <%= ds.size %></button>
+              <% end %>
             </div>
           <% end %>
         </div>
+
+        <%# A table when the box is wide enough, cards when it isn't. %>
+        <div class="@container rounded-lg border border-gray-200 overflow-hidden bg-white">
+          <div class="hidden @3xl:grid grid-cols-[1.25rem_minmax(0,12rem)_6.5rem_minmax(0,1fr)_6rem_4rem] items-center gap-4 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <input type="checkbox" aria-label="Select every date" data-contract-services-target="all" data-action="contract-services#toggleAll" class="<%= check %>">
+            <span>Date</span><span>Kind</span><span>Services</span><span class="text-right">Cost</span><span></span>
+          </div>
+          <div class="divide-y divide-gray-100">
+            <% dates.each_with_index do |date, j| %>
+              <% frozen = locked.include?(date[:iso]) %>
+              <div class="px-4 py-3 flex flex-col gap-2 @3xl:grid @3xl:grid-cols-[1.25rem_minmax(0,12rem)_6.5rem_minmax(0,1fr)_6rem_4rem] @3xl:items-center @3xl:gap-4"
+                   data-contract-services-target="date" data-date="<%= j %>" data-kind="<%= date[:type] %>" data-hours="<%= date[:hours] %>">
+                <div class="flex items-center gap-3 @3xl:contents">
+                  <% if frozen %>
+                    <span class="hidden @3xl:block"></span>
+                  <% else %>
+                    <input type="checkbox" aria-label="Select <%= date[:at].strftime('%b %-d') %>" data-contract-services-target="dateCheck"
+                           data-date="<%= j %>" data-action="contract-services#datesTicked" class="<%= check %>">
+                  <% end %>
+                  <span class="flex-1 min-w-0 text-sm font-medium text-gray-900"><%= date[:at].strftime("%a, %b %-d") %> · <span class="whitespace-nowrap"><%= date[:at].strftime("%-l:%M %p") %></span></span>
+                  <span class="@3xl:hidden inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= date[:kind] %></span>
+                </div>
+                <span class="hidden @3xl:inline-flex"><span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= date[:kind] %></span></span>
+                <span class="flex flex-wrap gap-1.5" data-contract-services-target="chips" data-date="<%= j %>"></span>
+                <div class="flex items-center justify-between gap-3 @3xl:contents">
+                  <span class="text-sm font-semibold text-gray-900 tabular-nums @3xl:text-right" data-contract-services-target="dateCost" data-date="<%= j %>"></span>
+                  <span class="@3xl:text-right">
+                    <% if frozen %>
+                      <span class="text-xs text-gray-500">Settled</span>
+                    <% else %>
+                      <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
+                            data: { action: "contract-services#openDate", date: j } %>
+                    <% end %>
+                  </span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <span class="flex flex-wrap items-center gap-3 text-gray-600">
+              <span data-contract-services-target="summary"></span>
+              <span data-contract-services-target="hint">Tick dates to edit several at once.</span>
+              <span class="hidden" data-contract-services-target="several">
+                <%= render "shared/button", text: "Edit the ticked dates", variant: "primary", size: "small", type: :button,
+                      data: { action: "contract-services#openSeveral" } %>
+              </span>
+            </span>
+            <span class="text-gray-900" data-contract-services-target="total"></span>
+          </div>
+        </div>
+
+        <%# Each date's Edit (every per-event service, its hours and its price that
+            date). Outside the list: a query container would trap a fixed overlay. %>
+        <% dates.each_with_index do |date, j| %>
+          <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
+               data-contract-services-target="dateModal" data-date="<%= j %>">
+            <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
+              <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
+                <h3 class="text-lg font-semibold text-white"><%= date[:at].strftime("%a, %b %-d") %> · <%= date[:kind] %></h3>
+                <button type="button" data-action="contract-services#cancelDate" aria-label="Close" class="text-white/80 hover:text-white cursor-pointer p-1">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div class="flex-1 px-5 py-5 space-y-3 overflow-y-auto">
+                <p class="text-sm text-gray-600">Which services this date gets, and what each costs here.</p>
+                <div class="rounded-lg border border-gray-200 divide-y divide-gray-100">
+                  <% per_event_lines.each do |line| %>
+                    <%
+                      option = line[:option]; i = line[:index]
+                      saved = line[:events] && line[:events][date[:iso]]
+                      on = line[:events] ? saved.present? : (line[:usual] == "all" || line[:usual] == date[:type])
+                      hours = saved ? hours_text.(saved["hours"]) : (option.hourly? ? line[:default_hours] : 1)
+                      own_price = saved && saved.key?("unit_price") ? saved["unit_price"].to_f : nil
+                    %>
+                    <div class="px-3 py-2.5 flex flex-wrap items-center gap-3 min-h-14" data-contract-services-target="slot" data-index="<%= i %>" data-date="<%= j %>">
+                      <input type="hidden" name="services[<%= i %>][events][<%= j %>][starts_at]" value="<%= date[:iso] %>">
+                      <label class="flex-1 min-w-[8rem] flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="services[<%= i %>][events][<%= j %>][include]" value="1" class="<%= check %>"
+                               data-role="on" data-action="change->contract-services#slotChanged" <%= "checked" if on %>>
+                        <span class="text-sm font-medium text-gray-900"><%= option.name %></span>
+                      </label>
+                      <% if option.hourly? %>
+                        <span class="flex items-center gap-1.5">
+                          <input type="number" step="0.5" min="0" name="services[<%= i %>][events][<%= j %>][hours]" value="<%= hours %>"
+                                 aria-label="<%= option.name %> hours" data-role="hours" data-action="input->contract-services#slotChanged" class="w-16 <%= small_input %>">
+                          <span class="text-xs text-gray-500">hrs</span>
+                        </span>
+                      <% else %>
+                        <input type="hidden" name="services[<%= i %>][events][<%= j %>][hours]" value="1" data-role="hours">
+                      <% end %>
+                      <span class="relative w-28">
+                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+                        <input type="number" step="0.01" min="0" name="services[<%= i %>][events][<%= j %>][unit_price]"
+                               value="<%= format('%.2f', own_price || line[:price]) %>" aria-label="<%= option.name %> price this date"
+                               data-role="price" data-own="<%= own_price ? 1 : 0 %>" data-action="input->contract-services#slotPriced" class="w-full pl-6 pr-2 <%= small_input.sub('px-2 ', '') %>">
+                      </span>
+                      <span class="ml-auto w-20 text-right text-sm text-gray-900 tabular-nums" data-role="amount"></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-5 py-4 bg-gray-50 border-t border-gray-200">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, classes: "w-full sm:w-auto min-h-11 sm:min-h-0",
+                      data: { action: "contract-services#cancelDate" } %>
+                <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :button, classes: "w-full sm:w-auto min-h-11 sm:min-h-0",
+                      data: { action: "contract-services#saveDate" } %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Several ticked dates at once: these set every ticked date's services. Not submitted themselves. %>
+        <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4" data-contract-services-target="severalModal">
+          <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
+            <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
+              <h3 class="text-lg font-semibold text-white">Edit the ticked dates</h3>
+              <button type="button" data-action="contract-services#closeSeveral" aria-label="Close" class="text-white/80 hover:text-white cursor-pointer p-1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="flex-1 px-5 py-5 space-y-3 overflow-y-auto">
+              <p class="text-sm text-gray-600">These services, hours and prices go on every ticked date.</p>
+              <div class="rounded-lg border border-gray-200 divide-y divide-gray-100">
+                <% per_event_lines.each do |line| %>
+                  <% option = line[:option] %>
+                  <div class="px-3 py-2.5 flex flex-wrap items-center gap-3 min-h-14" data-contract-services-target="severalRow" data-index="<%= line[:index] %>">
+                    <label class="flex-1 min-w-[8rem] flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" class="<%= check %>" data-role="on">
+                      <span class="text-sm font-medium text-gray-900"><%= option.name %></span>
+                    </label>
+                    <% if option.hourly? %>
+                      <span class="flex items-center gap-1.5">
+                        <input type="number" step="0.5" min="0" value="<%= line[:default_hours] %>" data-role="hours" aria-label="<%= option.name %> hours" class="w-16 <%= small_input %>">
+                        <span class="text-xs text-gray-500">hrs</span>
+                      </span>
+                    <% end %>
+                    <span class="relative w-28">
+                      <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+                      <input type="number" step="0.01" min="0" value="<%= format('%.2f', line[:price]) %>" data-role="price" aria-label="<%= option.name %> price"
+                             class="w-full pl-6 pr-2 <%= small_input.sub('px-2 ', '') %>">
+                    </span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-5 py-4 bg-gray-50 border-t border-gray-200">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, classes: "w-full sm:w-auto min-h-11 sm:min-h-0",
+                    data: { action: "contract-services#closeSeveral" } %>
+              <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :button, classes: "w-full sm:w-auto min-h-11 sm:min-h-0",
+                    data: { action: "contract-services#saveSeveral" } %>
+            </div>
+          </div>
+        </div>
       </div>
     <% end %>
+
+    <p class="mt-4 text-xs text-gray-500">
+      Prices start from <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "services"), class: "text-pink-600 hover:text-pink-700" %>,
+      which start from your <%= link_to "organization's services", section_manage_organization_path(Current.organization, section: "services"), class: "text-pink-600 hover:text-pink-700" %>.
+    </p>
   </div>
-  <p class="text-xs text-gray-500">
-    Prices start from <%= link_to "Contract Settings", manage_contract_settings_section_path(section: "services"), class: "text-pink-600 hover:text-pink-700" %>,
-    which start from your <%= link_to "organization's services", section_manage_organization_path(Current.organization, section: "services"), class: "text-pink-600 hover:text-pink-700" %>.
-  </p>
 <% else %>
   <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 text-sm text-gray-600">
     No services are offered on contracts yet. Add your organization's services in

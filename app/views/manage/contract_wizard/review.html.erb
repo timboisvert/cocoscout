@@ -223,15 +223,12 @@
         </div>
         <ul class="space-y-2 text-sm">
           <% services.each do |service| %>
-            <% qty = service["quantity"].to_f %>
-            <% total = (qty * service["unit_price"].to_f) %>
+            <% total = Contract.service_line_total(service) %>
             <% incoming = (service["direction"].presence || "incoming") == "incoming" %>
             <li class="flex items-center justify-between gap-3">
               <span class="text-gray-700">
                 <%= service["name"] %>
-                <span class="text-xs text-gray-500">
-                  <%= qty %><%= service["unit"] == "hourly" ? " hr" : "" %> × <%= number_to_currency(service["unit_price"]) %>
-                </span>
+                <span class="text-xs text-gray-500"><%= Contract.service_line_detail(service) %></span>
               </span>
               <span class="font-medium <%= incoming ? 'text-green-600' : 'text-red-600' %>">
                 <%= incoming ? "They pay us" : "We pay them" %> <%= number_to_currency(total) %>

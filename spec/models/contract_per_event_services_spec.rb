@@ -28,16 +28,31 @@ RSpec.describe "Per-event contract services" do
       expect(line["quantity"]).to eq(4.5) # summed hours, for the PDF/summary
     end
 
-    it "falls back to a flat line when per_event is set but no dates were kept" do
+    # "Usually on: No dates" (2026-10-16): on no dates, it's not on the contract.
+    # It used to fall back to one flat charge nobody asked for.
+    it "drops a per-event service that's on no dates" do
       rows = { "0" => {
         "include" => "1", "name" => "Booth Tech", "unit" => "hourly", "per_event" => "1",
         "quantity" => "3", "unit_price" => "25", "direction" => "incoming",
         "events" => { "0" => { "include" => "0", "starts_at" => oct16.iso8601, "hours" => "2" } }
       } }
 
+      expect(Contract.normalize_service_rows(rows)).to be_empty
+    end
+
+    it "keeps a date's own price, down to $0, and prices the line by it" do
+      rows = { "0" => {
+        "include" => "1", "name" => "Booth Tech", "unit" => "hourly", "per_event" => "1",
+        "unit_price" => "25", "direction" => "incoming",
+        "events" => { "0" => { "include" => "1", "starts_at" => oct16.iso8601, "hours" => "2", "unit_price" => "25.00" },
+                      "1" => { "include" => "1", "starts_at" => (oct16 + 1.day).iso8601, "hours" => "3", "unit_price" => "0" } }
+      } }
+
       line = Contract.normalize_service_rows(rows).first
-      expect(line["per_event"]).to be_nil
-      expect(line["quantity"]).to eq(3.0)
+      expect(line["events"]).to eq([ { "starts_at" => oct16.iso8601, "hours" => 2.0 }, # the line's own price: nothing kept
+                                     { "starts_at" => (oct16 + 1.day).iso8601, "hours" => 3.0, "unit_price" => 0.0 } ])
+      expect(Contract.service_line_total(line)).to eq(50.0)
+      expect(Contract.service_line_detail(line)).to eq("2 events · 5 hrs · usually $25.00/hr")
     end
   end
 
@@ -78,6 +93,14 @@ RSpec.describe "Per-event contract services" do
 
       expect(contract.contract_payments.find_by(description: "Booth Tech — Oct 16, 2026").show_id).to eq(show.id)
       expect(contract.contract_payments.find_by(description: "Booth Tech — Oct 17, 2026").show_id).to be_nil
+    end
+
+    it "bills each date at its own price, and nothing for a $0 date" do
+      priced = line.merge("events" => [ { "starts_at" => oct16.iso8601, "hours" => 2.0, "unit_price" => 0.0 },
+                                        { "starts_at" => oct17.iso8601, "hours" => 2.0, "unit_price" => 40.0 } ])
+
+      expect { contract.bill_services!([ priced ]) }.to change { contract.contract_payments.count }.by(1)
+      expect(contract.contract_payments.find_by(description: "Booth Tech — Oct 17, 2026").amount.to_f).to eq(80.0)
     end
 
     it "bills a flat per-event service at its price per event" do

@@ -629,6 +629,35 @@ class Contract < ApplicationRecord
     bill_services!(event_rate_service_lines)
   end
 
+  # What a service line comes to: each of its dates at that date's own price
+  # when it has one (a date's Edit, down to $0), otherwise quantity × price.
+  def self.service_line_total(line)
+    price = line["unit_price"].to_f
+    events = line["per_event"] ? Array(line["events"]) : []
+    return (line["quantity"].to_f * price).round(2) if events.empty?
+
+    hourly = line["unit"] == "hourly"
+    events.sum { |e| (e["unit_price"] || price).to_f * (hourly ? e["hours"].to_f : 1) }.round(2)
+  end
+
+  # "2 events · 4 hrs × $30.00/hr"; "usually" when a date has its own price.
+  def self.service_line_detail(line)
+    helpers = ActionController::Base.helpers
+    price = helpers.number_to_currency(line["unit_price"])
+    hourly = line["unit"] == "hourly"
+    events = line["per_event"] ? Array(line["events"]) : []
+    qty = line["quantity"].to_f
+    qty_text = qty.to_i == qty ? qty.to_i.to_s : qty.to_s
+    return "#{qty_text}#{hourly ? ' hr' : ''} × #{price}" if events.empty?
+
+    count = helpers.pluralize(events.size, "event")
+    if events.any? { |e| e.key?("unit_price") }
+      hourly ? "#{count} · #{qty_text} hrs · usually #{price}/hr" : "#{count} · usually #{price}"
+    else
+      hourly ? "#{count} · #{qty_text} hrs × #{price}/hr" : "#{count} × #{price}"
+    end
+  end
+
   # Normalize the wizard/amend services form rows into draft_services line
   # hashes. One parser for both paths, so amendment can't drift (it used to
   # silently drop the settlement choice). Per-event rows carry their selected
@@ -660,10 +689,18 @@ class Contract < ApplicationRecord
 
         hours = ev["hours"].to_f
         hours = 1 if hours <= 0
-        { "starts_at" => ev["starts_at"].to_s, "hours" => hours }
+        entry = { "starts_at" => ev["starts_at"].to_s, "hours" => hours }
+        # A date priced its own way (each date's Edit), down to $0.
+        own = ev["unit_price"].to_s.delete("$,").presence
+        entry["unit_price"] = own.to_f.round(2) if own && own.to_f.round(2) != row["unit_price"].to_f.round(2)
+        entry
       end
 
-      if row["per_event"] == "1" && events.any?
+      # A per-event service on no dates bills nothing (it used to fall back to
+      # one flat charge).
+      next if row["per_event"] == "1" && events.empty?
+
+      if row["per_event"] == "1"
         line["per_event"] = true
         line["events"] = events
         line["quantity"] = events.sum { |e| e["hours"] }.round(2)
@@ -740,7 +777,7 @@ class Contract < ApplicationRecord
           end
         end
       else
-        amount = (service["quantity"].to_f * service["unit_price"].to_f).round(2)
+        amount = Contract.service_line_total(service)
         next unless amount.positive?
 
         due = contract_end_date || Date.current
@@ -2305,7 +2342,13 @@ class Contract < ApplicationRecord
         events = Array(s["events"])
         hours = events.sum { |e| e["hours"].to_f }
         detail = s["unit"] == "hourly" ? "#{events.size} events, #{hours.to_i == hours ? hours.to_i : hours} hrs total" : "#{events.size} events"
-        out << %(<li>#{esc.(s["name"])} — #{detail} — #{deal_money(s["unit_price"])}#{per}</li>)
+        # Some dates priced their own way: the rate is only usual, so say the total.
+        rate = if events.any? { |e| e.key?("unit_price") }
+          "usually #{deal_money(s["unit_price"])}#{per}, #{deal_money(Contract.service_line_total(s))} in all"
+        else
+          "#{deal_money(s["unit_price"])}#{per}"
+        end
+        out << %(<li>#{esc.(s["name"])} — #{detail} — #{rate}</li>)
       else
         qty = s["quantity"].to_f
         qty_label = qty > 1 ? " × #{qty.to_i == qty ? qty.to_i : qty}" : ""

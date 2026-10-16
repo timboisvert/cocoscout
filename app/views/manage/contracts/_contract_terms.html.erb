@@ -112,17 +112,9 @@
             <ul class="divide-y divide-gray-200">
               <% services.each do |service| %>
                 <%
-                  qty = service["quantity"].to_f
-                  qty_text = qty.to_i == qty ? qty.to_i.to_s : qty.to_s
-                  hourly = service["unit"] == "hourly"
-                  total = qty * service["unit_price"].to_f
+                  total = Contract.service_line_total(service)
                   incoming = (service["direction"].presence || "incoming") == "incoming"
-                  events = service["per_event"] ? Array(service["events"]) : []
-                  detail = if events.any?
-                    hourly ? "#{pluralize(events.size, 'event')} · #{qty_text} hrs × #{number_to_currency(service['unit_price'])}/hr" : "#{pluralize(events.size, 'event')} × #{number_to_currency(service['unit_price'])}"
-                  else
-                    "#{qty_text}#{hourly ? ' hr' : ''} × #{number_to_currency(service['unit_price'])}"
-                  end
+                  detail = Contract.service_line_detail(service)
                 %>
                 <li class="flex items-center justify-between gap-3 py-1.5 text-sm">
                   <span class="min-w-0">
