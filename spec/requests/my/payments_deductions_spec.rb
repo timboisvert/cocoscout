@@ -81,6 +81,27 @@ RSpec.describe "My Payments", type: :request do
     end
   end
 
+  # The payout provider wants a date of birth and SSN last four once pay
+  # reaches $3,000, and holds it until they're in (after-V1 #2).
+  it "asks for the two details once their pay passes $2,000, while the account still needs them" do
+    person.update!(stripe_account_status: "enabled")
+    batch = org.payout_batches.create!(kind: "performer", status: "completed", trigger: "manual", total_cents: 210_000)
+    batch.items.create!(payee: person, amount_cents: 214_000, status: "paid", paid_at: 1.week.ago, stripe_transfer_id: "tr_big")
+
+    get my_payments_path
+    expect(response.body).not_to include("Add two details")
+
+    person.update!(payout_details_due: true)
+    get my_payments_path
+    html = text(response.body)
+    expect(html).to include("Add two details before your pay reaches $3,000", "date of birth", "last four digits", "$2,140.00 so far", "Add the details")
+    expect(html).not_to include("Stripe")
+
+    batch.items.first.update!(amount_cents: 150_000)
+    get my_payments_path
+    expect(response.body).not_to include("Add two details")
+  end
+
   it "lists a show payout that's worked out but not in a run yet, and nets an advance" do
     show_production = create(:production, organization: org, name: "Bright Star Circus")
     show = create(:show, production: show_production, date_and_time: Time.zone.local(2026, 10, 3, 19))

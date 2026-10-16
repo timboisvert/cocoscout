@@ -40,6 +40,11 @@ class MyPaymentsSummary
   end
 
   HISTORY_LIMIT = 150
+  # The payout provider wants a payee's date of birth and SSN last four once
+  # their pay reaches $3,000, and pauses it until they're in; My Payments
+  # says so from $2,000 (after-V1 #2).
+  DETAILS_DUE_AT_CENTS = 300_000
+  DETAILS_HEADS_UP_CENTS = 200_000
 
   attr_reader :person
 
@@ -70,6 +75,18 @@ class MyPaymentsSummary
 
   def still_to_come_cents
     coming_total_cents - on_its_way_groups.sum(&:total_cents)
+  end
+
+  # Everything sent to their bank account through CocoScout, ever: what the
+  # provider counts toward its $3,000.
+  def sent_total_cents
+    @sent_total_cents ||= PayoutBatchItem.where(payee: person, status: "paid").sum(:amount_cents)
+  end
+
+  # Time to add the two details: the account says more is coming due, and
+  # their pay is close to the point the provider asks for it.
+  def details_heads_up?
+    person.payout_details_due && person.can_receive_payouts? && sent_total_cents >= DETAILS_HEADS_UP_CENTS
   end
 
   # Past payments: everything sent that isn't still on its way.

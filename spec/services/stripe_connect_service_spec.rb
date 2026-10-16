@@ -39,10 +39,12 @@ RSpec.describe StripeConnectService do
       expect(person.reload.stripe_account_id).to eq("acct_x")
     end
 
-    it "limits onboarding to currently-due fields so individuals aren't asked for business/website info" do
+    # Asking only for what was due then paused people's pay at $3,000, when
+    # the provider wants their date of birth and SSN last four (after-V1 #2).
+    it "asks for everything the account will need, up front" do
       allow(Stripe::Account).to receive(:create).and_return(stripe_account(id: "acct_x"))
       expect(Stripe::AccountLink).to receive(:create).with(
-        hash_including(collection_options: { fields: "currently_due", future_requirements: "omit" })
+        hash_including(collection_options: { fields: "eventually_due", future_requirements: "omit" })
       ).and_return(double("link", url: "https://connect.stripe.com/setup/x"))
       StripeConnectService.new(person).onboarding_link(return_url: "https://app/return", refresh_url: "https://app/refresh")
     end
@@ -95,6 +97,16 @@ RSpec.describe StripeConnectService do
     it "falls back to payouts_enabled for accounts that report no capabilities" do
       StripeConnectService.new(person).sync_account(stripe_account(payouts_enabled: true))
       expect(person.reload.can_receive_payouts?).to be(true)
+    end
+
+    it "remembers that more details are coming due, and forgets once they're in" do
+      reqs = double("requirements", disabled_reason: nil, currently_due: [], eventually_due: %w[individual.dob.day individual.ssn_last_4])
+      StripeConnectService.new(person).sync_account(double("account", id: "acct_123", payouts_enabled: true, requirements: reqs))
+      expect(person.reload.payout_details_due).to be(true)
+
+      reqs = double("requirements", disabled_reason: nil, currently_due: [], eventually_due: [])
+      StripeConnectService.new(person).sync_account(double("account", id: "acct_123", payouts_enabled: true, requirements: reqs))
+      expect(person.reload.payout_details_due).to be(false)
     end
 
     it "fetches from Stripe when no account object is passed" do

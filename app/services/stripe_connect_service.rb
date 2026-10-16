@@ -88,7 +88,12 @@ class StripeConnectService
       return_url: return_url,
       refresh_url: refresh_url,
       type: "account_onboarding",
-      collection_options: { fields: "currently_due", future_requirements: "omit" }
+      # Everything the account will need, not just what's due today: the
+      # date of birth and last four of the SSN fall due once someone's pay
+      # reaches $3,000, and asking only then paused their pay (after-V1 #2).
+      # The account's product description stands in for a website, so
+      # individuals still aren't asked for business details.
+      collection_options: { fields: "eventually_due", future_requirements: "omit" }
     ).url
   rescue Stripe::StripeError => e
     raise Error, e.message
@@ -123,14 +128,24 @@ class StripeConnectService
     return @payee if @payee.stripe_account_id.blank?
 
     account = stripe_account || Stripe::Account.retrieve(@payee.stripe_account_id)
-    @payee.update!(
-      payouts_enabled: self.class.transferable?(account),
-      stripe_account_status: derive_status(account),
-      stripe_account_synced_at: Time.current
-    )
+    attrs = { payouts_enabled: self.class.transferable?(account), stripe_account_status: derive_status(account),
+              stripe_account_synced_at: Time.current }
+    attrs[:payout_details_due] = self.class.details_coming_due?(account) if @payee.has_attribute?(:payout_details_due)
+    @payee.update!(attrs)
     @payee
   rescue Stripe::StripeError => e
     raise Error, e.message
+  end
+
+  # Will the account need more from them later than it needs today (the
+  # date of birth and SSN last four at $3,000 of pay)?
+  def self.details_coming_due?(account)
+    reqs = account.respond_to?(:requirements) ? account.requirements : nil
+    return false unless reqs
+
+    eventually = reqs.respond_to?(:eventually_due) ? Array(reqs.eventually_due) : []
+    currently = reqs.respond_to?(:currently_due) ? Array(reqs.currently_due) : []
+    (eventually - currently).any?
   end
 
   # Can money actually reach this account right now?

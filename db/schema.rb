@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_15_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1866,6 +1866,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_230000) do
     t.datetime "stripe_account_synced_at"
     t.date "availability_confirmed_through"
     t.datetime "availability_confirmed_at"
+    t.boolean "payout_details_due", default: false, null: false
     t.index ["archived_at"], name: "index_people_on_archived_at"
     t.index ["created_at"], name: "index_people_on_created_at"
     t.index ["email"], name: "index_people_on_email"

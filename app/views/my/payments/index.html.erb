@@ -11,6 +11,16 @@
 
   <%= render "my/payments/bank_connect_banner" %>
 
+  <%# Two details the payout provider will want once their pay reaches
+      $3,000, asked for before it pauses anything (after-V1 #2). %>
+  <% if @summary.details_heads_up? %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Getting paid",
+          headline: "Add two details before your pay reaches #{number_to_currency(MyPaymentsSummary::DETAILS_DUE_AT_CENTS / 100, precision: 0)}",
+          body: "Our payment provider needs your date of birth and the last four digits of your Social Security number by then, and would hold your pay until they're in. Yours is #{number_to_currency(@summary.sent_total_cents / 100.0)} so far.",
+          actions: [ { text: "Add the details", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } } ] %>
+  <% end %>
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <%# Main column, in the payee's words (Tim, 2026-10-15): what's on its way
         to their bank, what's still to be paid, and past payments. Nothing says
