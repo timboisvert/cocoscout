@@ -65,7 +65,17 @@
         <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-gray-500"><%= need[:service].name %></p>
-          <p class="text-xs text-gray-400">Not needed for this show</p>
+          <% if need[:contract] %>
+            <%# Staffing and billing are separate: dropping it here doesn't take it off the contract. %>
+            <p class="text-xs text-gray-500">
+              Not needed for this show, but <%= possessive(need[:contract].contractor_name) %> contract still bills it.
+              <% if need[:contract].status_active? %>
+                <%= link_to "Change services and prices", amend_services_manage_contract_path(need[:contract]), class: "font-medium text-pink-600 hover:text-pink-700" %>
+              <% end %>
+            </p>
+          <% else %>
+            <p class="text-xs text-gray-400">Not needed for this show</p>
+          <% end %>
         </div>
         <%= form_with url: manage_staffing_show_service_path(show, service_id: need[:service].id, needed: "1"), method: :patch, class: "flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0" do %>
           <%= render "shared/button", text: "Needs it again", variant: "secondary", size: "small", type: :submit %>

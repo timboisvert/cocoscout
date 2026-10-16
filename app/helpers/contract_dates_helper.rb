@@ -33,6 +33,34 @@ module ContractDatesHelper
     end
   end
 
+  # The event page's Contract box: the services this date gets from its
+  # contract, each with what it costs here: [{ name:, hours:, amount: }].
+  def contract_services_for_show(contract, show)
+    key = show.space_rental&.starts_at&.to_i
+    return [] unless contract && key
+
+    contract.draft_services.filter_map do |line|
+      next unless line["per_event"]
+
+      event = Array(line["events"]).find { |e| ContractServicesChange.time_key(e["starts_at"]) == key }
+      next unless event
+
+      hourly = line["unit"] == "hourly"
+      price = (event["unit_price"] || line["unit_price"]).to_f
+      { name: line["name"], hours: (event["hours"].to_f if hourly), amount: (price * (hourly ? event["hours"].to_f : 1)).round(2) }
+    end
+  end
+
+  # This date's payments on its contract (not cancelled): the ones tied to
+  # the show, or due that day with no show of their own.
+  def contract_payments_for_show(contract, show)
+    return [] unless contract
+
+    payments = contract.contract_payments.where.not(status: "cancelled")
+    tied = payments.where(show_id: show.id).order(:due_date, :id).to_a
+    tied.presence || payments.where(show_id: nil, due_date: show.date_and_time.to_date).order(:id).to_a
+  end
+
   # "3 hrs" / "90 min".
   def date_length_words(hours)
     return nil unless hours&.positive?

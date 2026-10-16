@@ -173,21 +173,74 @@
             <% end %>
 
             <% if has_contract %>
-              <%# Contract info box %>
+              <%# Contract box: this date's services and payment from its contract
+                  (2026-10-16), with the way to change them. %>
+              <%
+                contract = @show.space_rental&.contract || @production.contract
+                contracts_ok = @production.organization.feature_available?(:contracts)
+                can_manage_contract = Current.user&.superadmin? || @production.organization.manageable_by?(Current.user)
+                date_services = contracts_ok ? contract_services_for_show(contract, @show) : []
+                date_payments = contracts_ok ? contract_payments_for_show(contract, @show) : []
+                own_terms = contracts_ok && @show.contract_terms.present? ? contract.date_terms_words(@show.event_type, @show.contract_terms) : nil
+              %>
               <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
-                <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contract" %>
-                <div class="p-4">
-                  <div class="mb-3">
-                    <div class="text-sm font-medium text-gray-900"><%= @production.contract.contractor_name %></div>
-                  </div>
-                  <% contracts_ok = @production.organization.feature_available?(:contracts) %>
-                  <div class="flex flex-wrap gap-2 items-center">
-                    <% if Current.user&.superadmin? || @production.organization.manageable_by?(Current.user) %>
-                      <%= render "shared/button", text: "View Contract", path: manage_contract_path(@production.contract), variant: "primary", size: "small",
+                <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contract" do %>
+                  <%= render "shared/pro_marker", kind: (contracts_ok ? :pill : :lock) %>
+                <% end %>
+                <div class="p-4 space-y-3">
+                  <div class="text-sm font-medium text-gray-900"><%= contract.contractor_name %></div>
+
+                  <% if own_terms&.last %>
+                    <p class="text-sm text-gray-700"><%= own_terms[0] %> <span class="text-xs text-gray-500"><%= own_terms[1] %></span></p>
+                    <% if @show.contract_terms["note"].present? %><p class="text-xs italic text-gray-500 -mt-2"><%= @show.contract_terms["note"] %></p><% end %>
+                  <% end %>
+
+                  <% if date_services.any? || date_payments.any? %>
+                    <div class="rounded-lg border border-gray-200 px-3 py-2">
+                      <% if date_services.any? %>
+                        <p class="py-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Services for this date</p>
+                        <% date_services.each do |service| %>
+                          <div class="flex items-center justify-between gap-3 py-1.5 text-sm">
+                            <span class="text-gray-600"><%= service[:name] %><%= ", #{service[:hours] % 1 == 0 ? service[:hours].to_i : service[:hours]} #{'hr'.pluralize(service[:hours])}" if service[:hours] %></span>
+                            <span class="text-gray-900 tabular-nums"><%= number_to_currency(service[:amount]) %></span>
+                          </div>
+                        <% end %>
+                      <% end %>
+                      <% date_payments.each do |payment| %>
+                        <% incoming = payment.direction_incoming? %>
+                        <div class="<%= 'border-t border-gray-200 mt-1 pt-2.5' if date_services.any? || payment != date_payments.first %> pb-1">
+                          <div class="flex items-center justify-between gap-3 text-sm">
+                            <span class="text-gray-600"><%= date_payments.size == 1 ? "This date's payment" : payment.description %></span>
+                            <span class="flex items-center gap-2.5">
+                              <span class="font-semibold text-gray-900 tabular-nums"><%= payment.amount_tbd? && payment.amount.to_f.zero? ? "TBD" : number_to_currency(payment.amount) %></span>
+                              <% if can_manage_contract %>
+                                <%= link_to "See the payment",
+                                      (incoming && @production.organization.feature_available?(:money) ? manage_money_incoming_payment_path(payment) : manage_contract_path(contract)),
+                                      class: "text-[13px] font-medium text-pink-600 hover:text-pink-700" %>
+                              <% end %>
+                            </span>
+                          </div>
+                          <p class="text-xs text-gray-500">
+                            <%= incoming ? "They pay us" : "We pay them" %>.
+                            <%= payment.status_paid? ? "Paid." : "Due #{payment.due_date.strftime('%b %-d')}." %>
+                            <% if payment.service_components.any? %>
+                              Includes <%= payment.service_components.map { |c| "#{c['name']} #{number_to_currency(c['amount'])}" }.to_sentence %>.
+                            <% end %>
+                          </p>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+
+                  <% if can_manage_contract %>
+                    <div class="flex flex-wrap gap-2 items-center">
+                      <%= render "shared/button", text: "View Contract", path: manage_contract_path(contract), variant: "primary", size: "small",
                           data: (contracts_ok ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
-                    <% end %>
-                    <%= render "shared/pro_marker", kind: (contracts_ok ? :pill : :lock) %>
-                  </div>
+                      <% if contracts_ok && contract.status_active? %>
+                        <%= render "shared/button", text: "Change services and prices", path: amend_services_manage_contract_path(contract), variant: "secondary", size: "small" %>
+                      <% end %>
+                    </div>
+                  <% end %>
                 </div>
               </div>
             <% end %>

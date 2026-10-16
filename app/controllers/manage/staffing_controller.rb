@@ -672,6 +672,8 @@ module Manage
         needs = resolver.for(show).select(&:staffed?)
         next if needs.empty?
 
+        # A contract service dropped here is still on the contract's bill.
+        contract = (resolver.contract_for(show) if needs.any? { |n| n.source == :contract })
         result[show.id] = needs.map do |need|
           role_ids = need.service.house_roles.map(&:id)
           on = covering[show.id].select do |shift|
@@ -679,7 +681,8 @@ module Manage
           end
           people = on.flat_map { |shift| shift.shift_assignments.map(&:person) }.compact.uniq
           { service: need.service, people_count: need.people_count, source: need.source, needed: need.needed?,
-            staffed_by: people, covered: people.size >= need.people_count, has_shift: on.any? }
+            staffed_by: people, covered: people.size >= need.people_count, has_shift: on.any?,
+            contract: (contract if need.source == :contract) }
         end
       end
     end
