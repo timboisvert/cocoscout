@@ -104,6 +104,32 @@ created it:
 Needs a design pass with Tim first (the service ↔ house role mapping, per
 show vs per production, pricing for in-house shows).
 
+**Design, 2026-10-16** (canvas "Services a show needs",
+https://claude.ai/artifact/3YLGg63hQ4SSpqNhApMGNF). Decided with Tim:
+- Services are the organization's, defined once in Organization settings →
+  Services (beside Locations): a name, who on staff does it (a per-show
+  Staffing role, or nobody: equipment or a fee), and a default price.
+- Not every role is a service (Tim): bartenders, front of house, house
+  managers are roles only. A service points at its role, never the reverse.
+- Contract Settings → Services becomes "Offered on contracts": tick which
+  organization services contracts can include, with who pays and once/per
+  event. The price defaults to the service's default (blank = default, as
+  production ticketing does with products); each contract can change it.
+- A production (our own) picks what every show needs from the organization's
+  services, with a count; no price, it costs the staff pay. A contracted
+  production's needs come from its contract, plus "also needed, not billed".
+- One show can add or drop a service from its panel on Scheduling ("Not this
+  show", "Remove"), replacing today's per-show "Not needed here".
+- Always a chain back up, the ticketing way: the show says what it inherits
+  and links "Change them for every show" to the production; the production
+  links to the organization's services; Contract Settings links to them too.
+- Role Call checks each show's services, plus a short "roles every show
+  needs" list for roles that aren't services (a house manager).
+- Scheduling: a "Still to staff this week" panel that adds the open shifts.
+- At launch every production starts needing what Role Call checks today, so
+  nothing changes until someone edits; today's Booth Tech line becomes the
+  first organization service. Contracts already written keep their terms.
+
 ## 7. "Paid" when the money is still on its way
 
 **Done 2026-10-15 (670db423, 9ee668c7), with 8.** Words: waiting for approval →
