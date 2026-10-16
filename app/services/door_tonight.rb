@@ -48,6 +48,31 @@ module DoorTonight
     scope.where("shows.date_and_time >= ? OR ticket_listings.id IN (?)", at.beginning_of_day, late.presence || [ 0 ])
   end
 
+  # Where a show stands for the door (Tim, 2026-10-16), so pages lead with
+  # the Door when it matters instead of a sales page that has closed:
+  #   :before   the door hasn't opened yet
+  #   :presale  the door is open and online sales are still on (show day,
+  #             before they close)
+  #   :door     the door is open and online sales are over: people arriving
+  #             now buy at the door
+  #   :after    the door has closed
+  # nil for a listing that isn't live (a draft, canceled, or its show
+  # canceled).
+  def self.phase(listing, at: Time.current)
+    show = listing.show
+    return nil if show.nil? || show.canceled || listing.status.in?(%w[draft canceled])
+
+    window = window(show, listing.organization&.ticketing_profile)
+    return :before if at < window.begin
+    return :after if at > window.end
+
+    listing.selling?(at) ? :presale : :door
+  end
+
+  def self.door_open?(listing, at: Time.current)
+    phase(listing, at: at).in?(%i[presale door])
+  end
+
   def self.window(show, profile = nil)
     starts = show.date_and_time
     opens = if profile&.door_hours_before

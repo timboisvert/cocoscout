@@ -1,0 +1,31 @@
+<%# Ticketing home's "Door open now" (Tim, 2026-10-16): every show whose door
+    is open right now (TicketingDashboard#door_open), one to a row however
+    many there are, each with its Work the door. Its X puts it away on this
+    device until tomorrow (dismissible_controller). Locals: rows ([listing, stats]). %>
+<% at = ->(time) { time.strftime("%-l:%M %p") } %>
+<section class="border-2 border-pink-200 rounded-lg bg-white overflow-hidden"
+         data-controller="dismissible" data-dismissible-key-value="door-open-<%= Current.organization.id %>-<%= Date.current.iso8601 %>">
+  <div class="flex items-center justify-between gap-3 bg-pink-50 pl-4 sm:pl-5 pr-2 py-2">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-pink-700">Door open now · <%= pluralize(rows.size, "show") %></h2>
+    <button type="button" data-action="dismissible#dismiss" aria-label="Close"
+            class="rounded-full p-1.5 text-pink-700 hover:bg-pink-100 transition-colors cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="divide-y divide-pink-100">
+    <% rows.each do |listing, stats| %>
+      <% starts = listing.show.date_and_time %>
+      <div class="flex items-center justify-between gap-3 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_10rem_9rem_auto] sm:gap-4 sm:px-5">
+        <div class="min-w-0 sm:contents">
+          <%= link_to listing.display_title, manage_ticket_listing_path(listing), class: "block text-[15px] font-semibold text-gray-900 truncate hover:text-pink-700" %>
+          <div class="text-sm text-gray-600 sm:contents">
+            <span class="whitespace-nowrap"><%= starts <= Time.current ? "Started" : "Starts" %> <%= at.(starts) %></span><span class="sm:hidden"> · </span><span class="whitespace-nowrap tabular-nums"><%= stats.sold_words %></span>
+          </div>
+        </div>
+        <div class="flex-shrink-0">
+          <%= render "shared/button", text: "Work the door", variant: "primary", size: "small", path: door_path(listing) %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</section>

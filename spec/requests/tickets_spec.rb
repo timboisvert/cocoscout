@@ -24,6 +24,47 @@ RSpec.describe "Public ticketing", type: :request do
     TicketOrder.order(:id).last
   end
 
+  # Andy opened the show's sales link after curtain and found sales closed
+  # (Tim, 2026-10-16): someone who works this door is sent to it instead.
+  describe "for someone who works the door" do
+    let(:password) { "Password123!" }
+
+    def sign_in(user)
+      post handle_signin_path, params: { email_address: user.email_address, password: password }
+    end
+
+    it "says Work the door at the top while the door is open, on the date's page and the production's" do
+      staff = create(:user, password: password)
+      org.ticketing_access_grants.create!(user: staff, access_level: "box_office")
+      sign_in(staff)
+
+      travel_to(show.date_and_time + 20.minutes) do
+        get event_path
+        expect(response.body).to include("Work the door", door_path(listing), "Started 7:30 PM")
+        get tickets_event_path(org: "starsandgarters", event: production.public_key)
+        expect(response.body).to include(door_path(listing))
+        get event_path, params: { embed: "1" }
+        expect(response.body).not_to include(door_path(listing))
+      end
+
+      travel_to(show.date_and_time - 3.days) do
+        get event_path
+        expect(response.body).not_to include(door_path(listing))
+      end
+    end
+
+    it "never shows it to buyers, signed in or not" do
+      travel_to(show.date_and_time + 20.minutes) do
+        get event_path
+        expect(response.body).not_to include(door_path(listing))
+
+        sign_in(create(:user, password: password))
+        get event_path
+        expect(response.body).not_to include(door_path(listing), "Work the door")
+      end
+    end
+  end
+
   describe "the box office" do
     it "lists what's on sale, with the lowest all-in price" do
       draft = TicketListing.create!(show: create(:show, production: production, date_and_time: 6.days.from_now))

@@ -15,6 +15,7 @@
 
   <%= render "shared/module_header",
         title: "Ticketing",
+        lead: (render("manage/ticketing/door_open_now", rows: d.door_open) if d.door_open.any?),
         description: "<p>Sell tickets to your shows right here: your own box office page, checkout, and the door. Ticket money lands in your CocoScout balance, where it pays your people first and fills in each show's financials for you.</p>",
         actions: [
           { icon: "calendar", text: "Productions", description: "Each one you sell, and how its dates are going", path: manage_ticket_listings_path, badge: d.drafts_soon.count },

@@ -33,6 +33,7 @@ class TicketsController < ApplicationController
     end
 
     check_code(@listing)
+    @door_banner_listing = door_banner_for(@listing)
     @tiers = @listing.ticket_tiers.active.select(&:listed?).reject { |t| t.hidden? && t.unlock_code != @code }
     @inventory = @listing.inventory
     @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
@@ -62,6 +63,10 @@ class TicketsController < ApplicationController
     @listing = @listings.find { |l| l.slug == wanted || l.show.date_and_time.to_date.iso8601 == wanted || ShortLink.date_suffix(l.show) == wanted } ||
                @listings.find { |l| l.selling? && !l.inventory.sold_out? } || @listings.first
     check_code(@listing)
+    # The date it opens on lists only what's still selling online, so a
+    # show whose online sales are over (the night's, after curtain) is found
+    # by its own door.
+    @door_banner_listing = door_banner_for(@listing) || (door_banner_for(door_open_listing(production)) if authenticated? && !embed?)
     if @listing
       @tiers = @listing.ticket_tiers.active.select(&:listed?).reject { |t| t.hidden? && t.unlock_code != @code }
       @inventory = @listing.inventory
@@ -112,6 +117,23 @@ class TicketsController < ApplicationController
     @selling_passes ||= @organization.ticket_passes.on_sale.includes(:coverages).to_a
                                      .select { |pass| pass.credit_kind? ? pass.selling_credits? : pass.selling? }
                                      .sort_by { |pass| pass.rows.first&.ticket_listing&.starts_at || Time.current }
+  end
+
+  # A show's page, opened while its door is open by someone who can work that
+  # door, says to sell there (Tim, 2026-10-16: Andy tapped the sales link
+  # after curtain, found sales closed, and took the card at the bar).
+  # Buyers, signed out or not, never see it; nor does the embed.
+  def door_banner_for(listing)
+    return nil if listing.nil? || embed? || !authenticated?
+    return nil unless DoorTonight.door_open?(listing)
+
+    TicketingDoorAccess.level_for(Current.user, listing.organization) ? listing : nil
+  end
+
+  def door_open_listing(production)
+    @organization.ticket_listings.where(production_id: production.id).joins(:show)
+                 .where(shows: { date_and_time: 1.day.ago..1.day.from_now }).includes(:show).order("shows.date_and_time")
+                 .find { |listing| DoorTonight.door_open?(listing) }
   end
 
   # Who may see a closed box office or a draft page: the organization's own

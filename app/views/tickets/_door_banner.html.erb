@@ -1,0 +1,14 @@
+<%# The top of a show's public page for someone who works its door, while
+    the door is open: the show, when, and Work the door. Locals: listing. %>
+<% starts = listing.show.date_and_time %>
+<div class="bg-pink-50 border-b border-pink-200">
+  <div class="mx-auto max-w-4xl px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+    <div class="min-w-0">
+      <div class="text-sm font-semibold text-gray-900 truncate"><%= listing.display_title %></div>
+      <div class="text-[13px] text-gray-600"><%= starts <= Time.current ? "Started" : "Starts" %> <%= starts.strftime("%-l:%M %p") %></div>
+    </div>
+    <div class="flex-shrink-0">
+      <%= render "shared/button", text: "Work the door", variant: "primary", size: "small", path: door_path(listing) %>
+    </div>
+  </div>
+</div>

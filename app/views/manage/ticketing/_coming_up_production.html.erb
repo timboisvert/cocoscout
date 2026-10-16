@@ -8,8 +8,7 @@
   glance = later.first(3).map { |listing, _| listing.show.date_and_time.strftime("%a %b %-d") }
 %>
 <div>
-  <%= render "shared/show_row", show: row.next_listing.show, link_path: manage_ticket_listing_path(row.next_listing), show_production: true,
-        show_canceled: true, right_panel: :ticket_sales, ticket_listing: row.next_listing, ticket_stats: row.next_stats %>
+  <%= render "manage/ticketing/coming_up_row", listing: row.next_listing, stats: row.next_stats %>
   <% if later.any? %>
     <details class="group mx-3">
       <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center gap-2 rounded-b-lg group-open:rounded-none border border-t-0 border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 transition-colors">

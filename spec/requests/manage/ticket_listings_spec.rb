@@ -38,6 +38,38 @@ RSpec.describe "Manage ticket listings", type: :request do
     let!(:listing) { TicketListing.create!(show: friday) }
     let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60) }
 
+    # Andy opened this page after curtain, tapped its sales link and found
+    # sales closed (Tim, 2026-10-16). While the door is open it leads with it.
+    it "leads with the Door while it's open, folding online sales away before curtain and dropping them after" do
+      listing.update!(status: "on_sale")
+      door = door_path(listing)
+
+      travel_to(friday.date_and_time - 4.days) do
+        get manage_ticket_listing_path(listing)
+        expect(response.body).not_to include("data-door-card")
+        expect(response.body.gsub(/\s+/, " ")).to include("<span>Visit</span>", "Pause sales")
+      end
+
+      travel_to(friday.date_and_time.change(hour: 17)) do
+        get manage_ticket_listing_path(listing)
+        expect(response.body).to include(%(data-door-card="presale"), "The door is open", "The show starts at 7:30 PM",
+                                         "Online sales close at 7:30 PM", %(href="#{door}"))
+        expect(response.body).to include("Visit", "Pause sales") # folded under the Door, still there
+      end
+
+      travel_to(friday.date_and_time + 40.minutes) do
+        get manage_ticket_listing_path(listing)
+        expect(response.body).to include(%(data-door-card="door"), "Selling at the door", "The show started at 7:30 PM",
+                                         "Online sales closed when it started.", %(href="#{door}"))
+        expect(response.body.gsub(/\s+/, " ")).not_to include("Pause sales", "Close online sales", "<span>Visit</span>")
+      end
+
+      travel_to(friday.date_and_time.tomorrow.change(hour: 3)) do
+        get manage_ticket_listing_path(listing)
+        expect(response.body).not_to include("data-door-card")
+      end
+    end
+
     it "says a title of its own on its page, and only one of its own" do
       get manage_ticket_listing_path(listing)
       expect(response.body).not_to include("This date's own title")

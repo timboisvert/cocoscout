@@ -80,6 +80,12 @@ class TicketingDashboard
                                        .order("shows.date_and_time"))
   end
 
+  # Shows whose door is open now (DoorTonight.door_open?), soonest first:
+  # Ticketing home leads with them (Tim, 2026-10-16).
+  def door_open
+    @door_open ||= tonight.select { |listing, _| DoorTonight.door_open?(listing) }
+  end
+
   # Before today, but not one that's still on tonight.
   def just_played
     @just_played ||= with_stats(listings.where.not(status: %w[canceled draft])

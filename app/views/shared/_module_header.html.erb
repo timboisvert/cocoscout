@@ -28,6 +28,12 @@
     <h1 class="text-4xl coustard-regular text-gray-900"><%= title %></h1>
   <% end %>
 
+  <%# lead: something that matters more right now than the description and
+      sections (Ticketing's Door open now), right under the title. %>
+  <% if local_assigns[:lead].present? %>
+    <div class="<%= 'mt-4' if show_title %>"><%= lead %></div>
+  <% end %>
+
   <%# Description %>
   <% if local_assigns[:description] && description.present? %>
     <div class="text-sm text-gray-600 max-w-3xl space-y-2 <%= 'mt-4' if show_title %>">

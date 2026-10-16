@@ -41,7 +41,7 @@ RSpec.describe "Ticketing dashboard", type: :request do
 
     get manage_ticketing_path(period: "all_time")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Tickets sold", "Ticket sales", "$140.00", "Coming up", "of 50", "· $60",
+    expect(response.body).to include("Tickets sold", "Ticket sales", "$140.00", "Coming up", "3 of 50 sold",
                                       "Just played", "4 sold", "/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}", "Sales tax", "Embed on your website")
     expect(response.body).to include(manage_ticket_listing_path(upcoming), manage_ticket_listing_path(played))
     expect(response.body).not_to include("Latest orders", "this week")
@@ -112,6 +112,24 @@ RSpec.describe "Ticketing dashboard", type: :request do
       dashboard = TicketingDashboard.new(org)
       expect(dashboard.tonight).to be_empty
       expect(dashboard.just_played.map(&:first)).to eq([ late, timed ])
+    end
+  end
+
+  it "leads with every show whose door is open, each with its Work the door, and the row says it too" do
+    tonight = listing_at(Time.zone.local(2026, 11, 6, 19, 30))
+    later = listing_at(Time.zone.local(2026, 11, 13, 19, 30))
+
+    travel_to(Time.zone.local(2026, 11, 6, 20, 15)) do
+      get manage_ticketing_path
+      html = response.body.gsub(/\s+/, " ")
+      expect(html).to include("Door open now · 1 show", "Started 7:30 PM", "Tonight · 7:30 PM")
+      expect(html.scan(%(href="#{door_path(tonight)}")).size).to eq(2) # the panel and its row
+      expect(html).not_to include(door_path(later))
+    end
+
+    travel_to(Time.zone.local(2026, 11, 5, 12)) do
+      get manage_ticketing_path
+      expect(response.body).not_to include("Door open now", door_path(tonight))
     end
   end
 

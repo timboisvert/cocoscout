@@ -35,13 +35,19 @@
     links: []
   } %>
 
-  <%# Where it stands, and the one thing to do next. %>
-  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 mb-6">
+  <%# Where it stands, and the one thing to do next. While the door is open,
+      that's the Door (manage/ticket_listings/_door_card, DoorTonight.phase):
+      before curtain the sales controls fold under it; once online sales are
+      over they go, so nobody lands on a sales page that has closed. %>
+  <% door_phase = DoorTonight.phase(@listing) %>
+  <% sales = capture do %>
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2 min-w-0">
-        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
-        <span class="text-sm text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></span>
-      </div>
+      <% unless door_phase == :presale %>
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
+          <span class="text-sm text-gray-900"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></span>
+        </div>
+      <% end %>
       <%= render "manage/ticket_listings/status_actions", listing: @listing %>
     </div>
     <%# A title of its own, said where it can't be missed (Tim, 2026-10-08). %>
@@ -56,7 +62,12 @@
     <% end %>
     <%# Just the short address: the production's code with this date picked. %>
     <%= render "shared/copy_url", url: short_url, show_qr: true, qr_title: "Scan for tickets" %>
-  </div>
+  <% end %>
+  <% if door_phase.in?(%i[presale door]) %>
+    <%= render "manage/ticket_listings/door_card", listing: @listing, stats: @stats, phase: door_phase, sales: sales %>
+  <% else %>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4 mb-6"><%= sales %></div>
+  <% end %>
 
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-6">
     <div class="space-y-6 min-w-0">

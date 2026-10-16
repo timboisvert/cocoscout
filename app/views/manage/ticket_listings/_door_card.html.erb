@@ -1,0 +1,67 @@
+<%# The top of a show's ticketing page while its door is open (Tim,
+    2026-10-16): the Door first. Andy opened this page after curtain, tapped
+    the sales link at the top, found sales closed, and took the card at the
+    bar; the Door was far down the page.
+
+    :presale  the door is open, online sales still on: the Door, then the
+              online sales (status, pause/close, the link) folded into one row
+    :door     online sales are over: the Door, and no link to a sales page
+              that has closed (reopening is in Settings)
+
+    Locals: listing, stats (Ticketing::ListingStats), phase, sales (the
+    usual sales controls, shown folded when presale). %>
+<%
+  show = listing.show
+  starts = show.date_and_time
+  at = ->(time) { time.strftime("%-l:%M %p") }
+  started = starts <= Time.current
+  checked_in = stats.checked_in
+  still_to_come = stats.held_tickets.count { |t| !t.checked_in? }
+  at_the_door = stats.held_tickets.count { |t| t.order_channel.to_s.start_with?("door") }
+  closed_words =
+    if listing.status == "closed" then "Online sales are closed."
+    elsif listing.off_sale_at && listing.off_sale_at == starts then "Online sales closed when it started."
+    elsif listing.off_sale_at then "Online sales closed at #{at.(listing.off_sale_at)}."
+    else "Online sales are over."
+    end
+%>
+<div class="bg-white border-2 border-pink-200 rounded-lg overflow-hidden mb-6" data-door-card="<%= phase %>">
+  <div class="p-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+    <div class="min-w-0">
+      <div class="text-xs font-semibold uppercase tracking-wider text-pink-700"><%= phase == :door ? "Selling at the door" : "The door is open" %></div>
+      <div class="text-xl font-bold text-gray-900 mt-1">The show <%= started ? "started" : "starts" %> at <%= at.(starts) %></div>
+      <% if phase == :door %>
+        <p class="text-[15px] text-gray-600 mt-1"><%= closed_words %> Anyone arriving now buys at the door.</p>
+        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-700">
+          <span><strong class="text-gray-900 tabular-nums"><%= checked_in %></strong> in</span>
+          <span><strong class="text-gray-900 tabular-nums"><%= still_to_come %></strong> still to come</span>
+          <% if at_the_door.positive? %><span><strong class="text-gray-900 tabular-nums"><%= at_the_door %></strong> sold at the door</span><% end %>
+        </div>
+      <% else %>
+        <p class="text-[15px] text-gray-600 mt-1">
+          <%= stats.sold_anywhere %> sold, <%= checked_in.zero? ? "nobody in yet" : "#{checked_in} in" %>.
+        </p>
+      <% end %>
+    </div>
+    <%# Full width and tall on a phone; the usual size beside the words on a computer. %>
+    <div class="lg:hidden">
+      <%= render "shared/button", text: "Work the door", variant: "primary", size: "jumbo", icon: "qr-code", path: door_path(listing) %>
+    </div>
+    <div class="hidden lg:block flex-shrink-0">
+      <%= render "shared/button", text: "Work the door", variant: "primary", size: "medium", icon: "qr-code", path: door_path(listing) %>
+    </div>
+  </div>
+  <% if phase == :presale && sales.present? %>
+    <details class="group border-t border-gray-100">
+      <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer px-5 py-3 flex items-center justify-between gap-3 hover:bg-gray-50">
+        <span class="flex items-center gap-2 min-w-0 text-sm text-gray-700">
+          <% status_label, status_classes = ticket_listing_status_badge(listing, stats.inventory) %>
+          <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium flex-shrink-0 <%= status_classes %>"><%= status_label %></span>
+          <span class="truncate"><%= listing.off_sale_at ? "Online sales close at #{at.(listing.off_sale_at)}" : "Online sales are on" %></span>
+        </span>
+        <svg class="w-4 h-4 text-gray-500 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </summary>
+      <div class="px-5 pb-5 pt-1 space-y-4"><%= sales %></div>
+    </details>
+  <% end %>
+</div>

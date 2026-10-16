@@ -31,6 +31,11 @@
     storefront_brand = @storefront_brand || "Tickets by CocoScout"
   %>
   <body class="inter-regular text-slate-700 bg-white">
+    <%# Someone who works this door, on its show's page while the door is
+        open: where to sell instead (TicketsController#door_banner_for). %>
+    <% if @door_banner_listing %>
+      <%= render "tickets/door_banner", listing: @door_banner_listing %>
+    <% end %>
     <% if storefront_organization %>
       <header class="border-b border-gray-200">
         <div class="mx-auto max-w-4xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
