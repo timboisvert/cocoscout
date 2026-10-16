@@ -119,12 +119,20 @@ https://claude.ai/artifact/3YLGg63hQ4SSpqNhApMGNF). Decided with Tim:
   services, with a count; no price, it costs the staff pay. A contracted
   production's needs come from its contract, plus "also needed, not billed".
 - One show can add or drop a service from its panel on Scheduling ("Not this
-  show", "Remove"), replacing today's per-show "Not needed here".
+  show", "Remove"), replacing today's per-show "Not needed here", and from a
+  **Services tab on the show's Settings page** (Pro pill), which follows that
+  page's "Save to all N" series switch, so a change can cover a whole
+  recurring series.
+- **No pay on the Services tab** (Tim): it says what a show needs ("Done by
+  Booth Tech"), not what it costs; staff pay varies by person and is a
+  different question.
 - Always a chain back up, the ticketing way: the show says what it inherits
   and links "Change them for every show" to the production; the production
   links to the organization's services; Contract Settings links to them too.
 - Role Call checks each show's services, plus a short "roles every show
-  needs" list for roles that aren't services (a house manager).
+  needs" list for roles that aren't services (a house manager). Staffing
+  Settings: a Role Call box whose one control is the on/off toggle, then its
+  own "More roles every show needs" box below, one Save at the very bottom.
 - Scheduling: a "Still to staff this week" panel that adds the open shifts.
 - A service is done by **one or more roles**, "Roles that do it" (never "who":
   that reads as people). Ticket taking ($25 flat): Front of House or House
