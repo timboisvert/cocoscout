@@ -5,13 +5,15 @@
     and the sums feed the show's financials rows.
     Locals: id, listing, sources (hand-made, active), rows ({ [source_id, tier_id] => TicketOutsideSale }). %>
 <%
-  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  # 16px on phones: iPhone zooms in on any smaller text box it's typing in.
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   tiers = listing.ticket_tiers.active.reject(&:bundle?)
   site_block = lambda do |key, heading|
     capture do
 %>
       <div class="space-y-2" data-outside-sales-target="site" data-outside-sales-site data-source="<%= key %>">
-        <div class="flex items-center justify-between gap-3">
+        <%# Wraps on a phone: the new-site name gets the full width, its Add under it. %>
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <%= heading %>
           <%# A plain wrapper carries `hidden`: the button itself is inline-flex. %>
           <span data-outside-sales-add>
@@ -43,21 +45,23 @@
     end
   end
 %>
-<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+<%# On a phone it's a sheet from the bottom, the full width, with Save always
+    in reach under the scrolling sites; from sm up, the usual centered modal. %>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4"
      data-controller="modal" data-action="click->modal#closeOnBackdrop">
-  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
-    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 sm:px-6 py-4 flex-shrink-0">
       <h3 class="text-lg font-semibold text-white">Sold elsewhere</h3>
       <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <%= form_with url: manage_ticket_listing_outside_sales_path(listing), method: :patch, data: { turbo: false, controller: "outside-sales",
+    <%= form_with url: manage_ticket_listing_outside_sales_path(listing), method: :patch, class: "flex flex-col min-h-0 flex-1", data: { turbo: false, controller: "outside-sales",
           outside_sales_tiers_value: tiers.map { |t| { id: t.id, name: t.name } }.to_json } do %>
       <template data-outside-sales-target="rowTemplate">
         <%= render "manage/ticket_listings/outside_sales_row", source_key: "__SOURCE__", tier_id: "__TIER__", tier_name: "__TIER_NAME__", tickets: nil, amount: nil, input_class: input_class %>
       </template>
-      <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+      <div class="p-5 sm:p-6 space-y-5 overflow-y-auto min-h-0 flex-1">
         <p class="text-sm text-gray-600">
           Tickets for <%= ticket_listing_date_label(listing) %> sold on other sites. Each ticket type has that many fewer seats here, and the counts go straight into this show's financials.
           <% if sources.empty? %>Name the site first; it joins your ticket sources for every show.<% end %>
@@ -66,10 +70,10 @@
           <%= site_block.call(source.id.to_s, %(<div class="text-sm font-semibold text-gray-900">#{ERB::Util.html_escape(source.name)}</div>).html_safe) %>
         <% end %>
         <div class="rounded-lg border border-dashed border-gray-300 p-3">
-          <%= site_block.call("new", text_field_tag(:new_source_name, nil, placeholder: (sources.any? ? "Add another site" : "The site, like Ticket Tailor"), "aria-label": "New site", class: "#{input_class} max-w-xs")) %>
+          <%= site_block.call("new", text_field_tag(:new_source_name, nil, placeholder: (sources.any? ? "Add another site" : "The site, like Ticket Tailor"), "aria-label": "New site", class: "#{input_class} sm:max-w-xs min-w-0")) %>
         </div>
       </div>
-      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+      <div class="px-5 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2 flex-shrink-0">
         <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
         <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
       </div>

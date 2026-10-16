@@ -1,15 +1,33 @@
 <%# One ticket type's row for one site in the Sold elsewhere modal: the type,
     how many sold there, the money (optional), Remove. Also the modal's
     template, with __SOURCE__ / __TIER__ / __TIER_NAME__ for the JS to fill.
+    On a phone it's a small card: the type and Remove on top, the two fields
+    side by side under their own labels. From sm up, one line (the wrappers
+    turn into `contents`, so their children are the grid's cells).
     Locals: source_key, tier_id, tier_name, tickets, amount, input_class. %>
-<div class="grid grid-cols-[minmax(0,1fr)_5.5rem_7rem_auto] gap-x-2 items-center" data-tier-id="<%= tier_id %>">
-  <label for="outside_tickets_<%= source_key %>_<%= tier_id %>" class="text-sm text-gray-900 truncate"><%= tier_name %></label>
-  <%= number_field_tag "sales[#{source_key}][#{tier_id}][tickets]", tickets, id: "outside_tickets_#{source_key}_#{tier_id}", min: 0, inputmode: "numeric", placeholder: "0",
-        "aria-label": "#{tier_name} sold there", class: "#{input_class} text-right" %>
-  <div class="relative">
-    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
-    <%= text_field_tag "sales[#{source_key}][#{tier_id}][amount]", amount, id: "outside_amount_#{source_key}_#{tier_id}", inputmode: "decimal", placeholder: "Later",
-          "aria-label": "#{tier_name} sales there", class: "#{input_class} pl-7 text-right" %>
+<div class="rounded-lg border border-gray-200 p-3 sm:rounded-none sm:border-0 sm:p-0 sm:grid sm:grid-cols-[minmax(0,1fr)_5.5rem_7rem_auto] sm:gap-x-2 sm:items-center" data-tier-id="<%= tier_id %>">
+  <div class="flex items-center justify-between gap-2 sm:contents">
+    <label for="outside_tickets_<%= source_key %>_<%= tier_id %>" class="min-w-0 text-sm font-medium text-gray-900 truncate sm:font-normal"><%= tier_name %></label>
+    <span class="sm:hidden">
+      <%= render "shared/button", text: "Remove", variant: "ghost", size: "xs", type: :button, data: { action: "click->outside-sales#remove" } %>
+    </span>
   </div>
-  <%= render "shared/button", text: "Remove", variant: "ghost", size: "xs", type: :button, data: { action: "click->outside-sales#remove" } %>
+  <div class="mt-2 grid grid-cols-2 gap-2 sm:mt-0 sm:contents">
+    <div>
+      <span class="block text-xs text-gray-500 mb-1 sm:hidden" aria-hidden="true">Tickets</span>
+      <%= number_field_tag "sales[#{source_key}][#{tier_id}][tickets]", tickets, id: "outside_tickets_#{source_key}_#{tier_id}", min: 0, inputmode: "numeric", placeholder: "0",
+            "aria-label": "#{tier_name} sold there", class: "#{input_class} text-right" %>
+    </div>
+    <div>
+      <span class="block text-xs text-gray-500 mb-1 sm:hidden" aria-hidden="true">Money</span>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">$</span>
+        <%= text_field_tag "sales[#{source_key}][#{tier_id}][amount]", amount, id: "outside_amount_#{source_key}_#{tier_id}", inputmode: "decimal", placeholder: "Later",
+              "aria-label": "#{tier_name} sales there", class: "#{input_class} pl-7 text-right" %>
+      </div>
+    </div>
+  </div>
+  <span class="hidden sm:block">
+    <%= render "shared/button", text: "Remove", variant: "ghost", size: "xs", type: :button, data: { action: "click->outside-sales#remove" } %>
+  </span>
 </div>
