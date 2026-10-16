@@ -12,11 +12,13 @@
     { label: "Location", partial: "tab_location" },
     { label: "Casting & Visibility", partial: "tab_visibility" },
     { label: "Visual Assets", partial: "tab_media" },
-    { label: "Tickets", partial: "tab_tickets", pro: true },
+    { label: "Tickets", partial: "tab_tickets", pro: true, locked: !@production.organization.feature_available?(:ticketing) },
+    # What this show needs (after-V1 #6): Pro and the managers', and no tab at
+    # all otherwise. Sits at ProductionsHelper::SHOW_SERVICES_TAB.
+    ({ label: "Services", partial: "tab_services", pro: true } if @production.organization.services_available_to?(Current.user)),
     { label: "Linked Events", partial: "tab_linked", save: false },
     { label: "Danger Zone", partial: "tab_danger", danger: true, save: false }
-  ]
-  ticketing_locked = !@production.organization.feature_available?(:ticketing)
+  ].compact
 %>
 <div class="w-full mb-10" data-controller="location-modal tabs" data-tabs-plain-value="true"
      data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>" data-location-modal-spaces-value="<%= location_spaces_map.to_json %>">
@@ -66,7 +68,7 @@
           <%= tab[:label] %>
           <% if tab[:pro] %>
             <%= render "shared/pro_marker" %>
-            <%= render "shared/pro_marker", kind: :lock if ticketing_locked %>
+            <%= render "shared/pro_marker", kind: :lock if tab[:locked] %>
           <% end %>
         </button>
       <% end %>
@@ -75,7 +77,7 @@
     <% edit_tabs.each_with_index do |tab, i| %>
       <div data-tabs-target="panel" class="space-y-6 <%= 'hidden' unless i.zero? %>">
         <%= render "manage/shows/edit/#{tab[:partial]}", form: form, input_class: input_class, location_spaces_map: location_spaces_map %>
-        <% unless tab[:save] == false || (tab[:pro] && ticketing_locked) %>
+        <% unless tab[:save] == false || tab[:locked] %>
           <div class="flex justify-end">
             <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
           </div>

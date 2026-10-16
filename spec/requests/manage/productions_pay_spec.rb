@@ -52,12 +52,14 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
     it "keeps Danger Zone as the last tab" do
       get edit_manage_production_path(production)
 
+      # Pay, Tickets, then Services (Pro, after-V1 #6), then Danger Zone.
       pay_at = response.body.index('data-index="6"')
       tickets_at = response.body.index('data-index="7"')
-      danger_at = response.body.index('data-index="8"')
-      expect(pay_at).to be < tickets_at
-      expect(tickets_at).to be < danger_at
+      services_at = response.body.index('data-index="8"')
+      danger_at = response.body.index('data-index="9"')
+      expect([ pay_at, tickets_at, services_at, danger_at ]).to eq([ pay_at, tickets_at, services_at, danger_at ].sort)
       expect(response.body[tickets_at, 200]).to include("Tickets")
+      expect(response.body[services_at, 250]).to include("Services")
       expect(response.body[danger_at, 200]).to include("Danger Zone")
     end
 

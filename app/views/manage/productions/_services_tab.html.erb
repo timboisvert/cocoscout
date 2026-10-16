@@ -1,0 +1,134 @@
+<%# Production Settings → Services (after-V1 #6; Pro, managers): what every
+    show of this production needs, from the organization's services. A
+    production booked by a contract shows the contract's services first (they
+    change through the contract) and then the extras it doesn't charge for.
+    Below, the shows that differ, each a link to its own Services tab.
+    Locals: production. %>
+<%
+  org = production.organization
+  services = org.house_services.ordered.includes(:house_roles).to_a
+  needs = production.production_service_needs.index_by(&:house_service_id)
+  org_services_path = section_manage_organization_path(org, section: "services")
+  link_class = "font-medium text-pink-600 hover:text-pink-700"
+  check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+  select_class = "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  contract = production.type_third_party? ? production.contracts.where(status: ShowServices::LIVE_CONTRACT_STATUSES).order(:created_at).last : nil
+  upcoming = production.shows.where("date_and_time >= ?", Time.current.beginning_of_day).where(canceled: [ false, nil ]).order(:date_and_time).to_a
+  changed_ids = ShowServiceChange.where(show_id: upcoming.map(&:id)).distinct.pluck(:show_id).to_set
+  changed_shows = upcoming.select { |show| changed_ids.include?(show.id) }
+  resolver = ShowServices.new(changed_shows)
+%>
+
+<% if production.type_third_party? %>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <%= render "shared/section_heading", title: "From the contract",
+          intro: contract ? "Your contract with #{contract.contractor_name.presence || 'them'} decides what these shows need. To change it, amend the contract." : "Once this production's contract is signed, the services it includes show here." do %>
+      <% if contract&.status_active? %>
+        <%= render "shared/button", text: "Amend Contract", variant: "secondary", size: "small", path: amend_choose_manage_contract_path(contract) %>
+      <% end %>
+    <% end %>
+    <% lines = contract ? contract.draft_services : [] %>
+    <% if lines.any? %>
+      <div class="divide-y divide-gray-100">
+        <% lines.each do |line| %>
+          <%
+            per_hour = line["unit"] == "hourly"
+            price = "$#{format('%.2f', line['unit_price'].to_f)}#{per_hour ? '/hr' : ' flat'}"
+            who = line["direction"] == "outgoing" ? "we pay them" : "they pay us"
+            dates = Array(line["events"]).filter_map { |e| Time.zone.parse(e["starts_at"].to_s) rescue nil }.sort
+          %>
+          <div class="px-6 py-4 flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-[15px] font-medium text-gray-900"><%= line["name"] %></p>
+              <p class="text-sm text-gray-500"><%= price %> · <%= who %></p>
+              <% if line["per_event"] && dates.any? %>
+                <p class="text-sm text-gray-500"><%= dates.map { |d| d.strftime("%a, %b %-d") }.join(" · ") %></p>
+              <% end %>
+            </div>
+            <span class="text-sm text-gray-700 whitespace-nowrap"><%= line["per_event"] ? pluralize(dates.size, "date") : "Every date" %></span>
+          </div>
+        <% end %>
+      </div>
+    <% elsif contract %>
+      <p class="px-6 py-5 text-sm text-gray-500">The contract doesn't include any services.</p>
+    <% end %>
+  </div>
+<% end %>
+
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+  <% if production.type_third_party? %>
+    <%= render "shared/section_heading", title: "Also needed, not billed",
+          intro: "Anything you staff for these shows that the contract doesn't charge for, like your own security." %>
+  <% else %>
+    <%= render "shared/section_heading", title: "What every show needs",
+          intro: "Every show of #{production.name} needs these. Role Call flags a show until each one has someone on it." %>
+  <% end %>
+  <p class="px-6 pt-3 text-sm"><%= link_to "Manage your organization's services", org_services_path, class: link_class %></p>
+
+  <% if services.any? %>
+    <%= form_with url: update_services_manage_production_path(production), method: :patch do %>
+      <div class="divide-y divide-gray-100 mt-2">
+        <% services.each do |service| %>
+          <% need = needs[service.id] %>
+          <div class="px-4 sm:px-6 py-3 flex items-center gap-3 sm:gap-4">
+            <%= hidden_field_tag "needs[#{service.id}][needed]", "0", id: nil %>
+            <label class="flex-1 min-w-0 flex items-center gap-3 cursor-pointer">
+              <%= check_box_tag "needs[#{service.id}][needed]", "1", need.present?, id: "need_#{service.id}", class: check %>
+              <span class="min-w-0">
+                <span class="block text-[15px] font-medium text-gray-900"><%= service.name %></span>
+                <span class="block text-sm text-gray-500"><%= service.staffed? ? "Done by #{service.roles_label}" : "Equipment" %></span>
+              </span>
+            </label>
+            <% if service.staffed? %>
+              <%= select_tag "needs[#{service.id}][people]",
+                    options_for_select((1..6).map { |n| [ pluralize(n, "person", plural: "people"), n ] }, need&.people_count || 1),
+                    class: select_class, "aria-label": "#{service.name}: how many people per show" %>
+            <% else %>
+              <%= hidden_field_tag "needs[#{service.id}][people]", 1, id: nil %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-gray-500">Changes reach every show except the ones below that differ.</p>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  <% else %>
+    <p class="px-6 py-5 text-sm text-gray-600">
+      Your organization hasn't added any services yet.
+      <%= link_to "Add them in Organization settings", org_services_path, class: link_class %>, then pick here what every show needs.
+    </p>
+  <% end %>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <%= render "shared/section_heading", title: "Shows that differ",
+        intro: "Change one show from its own Services tab, or its panel on Scheduling. Every other show keeps the list above." %>
+  <% differing = changed_shows.filter_map do |show|
+       bases = resolver.base(show)
+       changes = resolver.for(show).filter_map do |need|
+         base = bases[need.service.id]
+         if need.dropped then "No #{need.service.name}"
+         elsif need.source == :show then "Also needs #{need.service.name}"
+         elsif base && base.people_count != need.people_count then "#{need.service.name}: #{pluralize(need.people_count, 'person', plural: 'people')}"
+         end
+       end
+       [ show, changes ] if changes.any?
+     end %>
+  <% if differing.any? %>
+    <div class="divide-y divide-gray-100">
+      <% differing.each do |show, changes| %>
+        <div class="px-4 sm:px-6 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <span class="sm:w-52 flex-shrink-0 text-sm font-medium text-gray-900"><%= show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></span>
+          <span class="flex-1 text-sm text-gray-700"><%= changes.to_sentence %></span>
+          <span class="flex-shrink-0">
+            <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: manage_edit_show_path(production, show, tab: show_services_tab) %>
+          </span>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="px-6 py-5 text-sm text-gray-500">None. Every upcoming show needs the same.</p>
+  <% end %>
+</div>

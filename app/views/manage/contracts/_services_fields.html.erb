@@ -21,6 +21,10 @@
   # from one; older lines only carry the name.
   chosen_by_id = existing_services.select { |s| s["service_id"].present? }.index_by { |s| s["service_id"].to_i }
   chosen_by_name = existing_services.index_by { |s| s["name"].to_s.downcase }
+  # A contract for a production whose shows already need some services starts
+  # with those ticked (only before any service has been chosen here).
+  production = local_assigns.fetch(:production) { @contract&.production }
+  already_needed = existing_services.empty? && production ? production.production_service_needs.pluck(:house_service_id).to_set : Set.new
   dir_options = [ [ "They pay us", "incoming" ], [ "We pay them", "outgoing" ] ]
 
   # The contract's booked dates, oldest first, with a sensible default-hours
@@ -40,6 +44,7 @@
     <% service_options.each_with_index do |option, i| %>
       <%
         chosen = chosen_by_id[option.id] || chosen_by_name[option.name.downcase]
+        prefilled = chosen.nil? && already_needed.include?(option.id)
         chosen_events = chosen && chosen["per_event"] ? Array(chosen["events"]).index_by { |e| e["starts_at"].to_s } : nil
         # Per-event only works when there are dates to hang it on.
         per_event = option.contract_per_event? && event_entries.any?
@@ -66,7 +71,7 @@
                  class="service-include accent-pink-500 h-4 w-4"
                  data-contract-service-line-target="include"
                  data-action="change->contract-service-line#toggle"
-                 <%= "checked" if chosen %>>
+                 <%= "checked" if chosen || prefilled %>>
           <span class="font-medium text-gray-900"><%= option.name %></span>
           <span class="text-xs text-gray-500">
             <%= number_to_currency(option.contract_price) %><%= option.unit == "hourly" ? "/hr" : "" %>
@@ -84,7 +89,10 @@
         <input type="hidden" name="services[<%= i %>][per_event]" value="<%= per_event ? "1" : "0" %>">
 
         <%# Config reveals when the service is checked. %>
-        <div class="<%= "hidden" unless chosen %> px-4 pb-4 pl-10 space-y-3" data-contract-service-line-target="body">
+        <% if prefilled %>
+          <p class="-mt-2 px-4 pb-2 pl-10 text-sm text-pink-700">Ticked for you: <%= possessive(production.name) %> shows need <%= option.name %>.</p>
+        <% end %>
+        <div class="<%= "hidden" unless chosen || prefilled %> px-4 pb-4 pl-10 space-y-3" data-contract-service-line-target="body">
           <div class="flex flex-wrap items-end gap-3">
             <% unless per_event %>
               <div class="w-24">

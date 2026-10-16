@@ -2,12 +2,12 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_services]
     # Performer pay and agreements are Pro, and Pro is the organization's
     # managers' — a production's own manager (a producer) doesn't get them.
-    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay]
+    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_services]
 
     def index
       @filter = params[:filter] || "all"
@@ -93,6 +93,33 @@ module Manage
     # destructive: the production keeps its calculation rows, they just don't
     # resolve while pay is off; turning it back on picks them up again. Pro
     # only — a free org sees the tab locked.
+    # What every show of the production needs (Services tab; after-V1 #6):
+    # needs[service_id] = { needed: "1", people: "2" } for each of the
+    # organization's services. On a production booked by a contract these are
+    # the extras the contract doesn't charge for.
+    def update_services
+      unless Current.organization.services_available_to?(Current.user)
+        redirect_to edit_manage_production_path(@production), alert: "Services are part of CocoScout Pro." and return
+      end
+
+      rows = params.fetch(:needs, {})
+      ProductionServiceNeed.transaction do
+        Current.organization.house_services.each do |service|
+          row = rows[service.id.to_s]
+          next unless row
+
+          need = @production.production_service_needs.find_or_initialize_by(house_service: service)
+          if row[:needed] == "1"
+            need.update!(people_count: row[:people].to_i.clamp(1, 20))
+          elsif need.persisted?
+            need.destroy!
+          end
+        end
+      end
+      redirect_to edit_manage_production_path(@production, tab: helpers.production_services_tab(@production)),
+                  notice: "What every #{@production.name} show needs is saved."
+    end
+
     def update_pay
       unless Current.organization.feature_available?(:money)
         redirect_to pay_return_path,

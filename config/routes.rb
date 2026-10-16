@@ -1214,6 +1214,8 @@ Rails.application.routes.draw do
         post :send_agreement_reminders
         # Performer pay (Pay tab): paid or not, and which payout scheme is the default
         patch :update_pay
+        # What every show needs (Services tab; Pro)
+        patch :update_services
       end
 
       # Production documents & handbooks (rich text, per-audience sharing).

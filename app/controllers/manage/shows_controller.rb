@@ -481,6 +481,7 @@ module Manage
     end
 
     def update
+      save_show_services
       # Check if this is a recurring event and what scope to edit
       if @show.recurring? && params[:show][:recurrence_edit_scope] == "all"
         # Check if recurrence pattern is being changed
@@ -1726,6 +1727,20 @@ module Manage
     end
 
     # Only allow a list of trusted parameters through.
+    # The Services tab rides on the page's one form (after-V1 #6): this show's
+    # changes from what its production and contract say, or every event's in
+    # the series when the series switch is on. Pro and managers only.
+    def save_show_services
+      return unless params.key?(:show_services)
+      return unless Current.organization.services_available_to?(Current.user)
+
+      services = Current.organization.house_services.to_a
+      all = @show.recurring? && params.dig(:show, :recurrence_edit_scope) == "all"
+      (all ? @show.recurrence_group.to_a : [ @show ]).each do |show|
+        ShowServices.save!(show, params[:show_services], services: services)
+      end
+    end
+
     def show_params
       # No production_id: it let an update move a show into another org's
       # production. Moving a show between productions is the Transfer flow.

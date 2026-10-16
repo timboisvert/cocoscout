@@ -295,6 +295,14 @@ class Organization < ApplicationRecord
     owned_by?(user) || organization_roles.exists?(user: user, company_role: "manager")
   end
 
+  # Services a show needs (after-V1 #6) are Pro and the managers', and absent
+  # rather than locked without Pro: they only set up contracts and staffing.
+  def services_available_to?(user)
+    return false unless feature_available?(:services)
+
+    user&.superadmin? || manageable_by?(user)
+  end
+
   # ---- Subscription / entitlements ------------------------------------------
 
   # Single source of truth for Pro access. True when comped (indefinitely or

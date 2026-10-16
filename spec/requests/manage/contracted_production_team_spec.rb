@@ -18,12 +18,12 @@ RSpec.describe "Production Team on a production booked by a contract", type: :re
     get manage_path
   end
 
-  it "shows the tab, with Tickets and the Danger Zone after it" do
+  it "shows the tab, with Tickets, Services and the Danger Zone after it" do
     get edit_manage_production_path(production)
     expect(response).to have_http_status(:ok)
     tabs = response.body.scan(/data-index="(\d+)"[^>]*>\s*([A-Z][A-Za-z ]+)/).map { |index, label| [ index.to_i, label.strip ] }
-    expect(tabs).to include([ 3, "Production Team" ], [ 4, "Tickets" ], [ 5, "Danger Zone" ])
-    expect(response.body.scan('data-tabs-target="panel"').size).to eq(6)
+    expect(tabs).to include([ 3, "Production Team" ], [ 4, "Tickets" ], [ 5, "Services" ], [ 6, "Danger Zone" ])
+    expect(response.body.scan('data-tabs-target="panel"').size).to eq(7)
     expect(response.body).not_to include(">Agreement", ">Public Listing", ">Pay")
   end
 

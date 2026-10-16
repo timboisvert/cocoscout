@@ -2,6 +2,8 @@
 <%# Pay, Agreement and Tickets are Pro, and Pro is the organization's managers':
     a producer editing their production sees a note there, never the controls. %>
 <% org_manager = Current.user&.superadmin? || @production.organization.manageable_by?(Current.user) %>
+<%# Services (after-V1 #6): Pro and the managers', and no tab at all otherwise. %>
+<% services_on = @production.organization.services_available_to?(Current.user) %>
 
 <div class="w-full">
 
@@ -40,7 +42,13 @@
             <%= render "shared/pro_marker", kind: :lock %>
           <% end %>
         </button>
-        <button type="button" data-tabs-target="tab" data-index="8" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <% if services_on %>
+          <button type="button" data-tabs-target="tab" data-index="8" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+            Services
+            <%= render "shared/pro_marker" %>
+          </button>
+        <% end %>
+        <button type="button" data-tabs-target="tab" data-index="<%= services_on ? 9 : 8 %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
       <% else %>
         <%# A production booked by a contract still has a team (Tim, 2026-10-16):
             the people who signed can be given access to it. %>
@@ -52,7 +60,13 @@
             <%= render "shared/pro_marker", kind: :lock %>
           <% end %>
         </button>
-        <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <% if services_on %>
+          <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+            Services
+            <%= render "shared/pro_marker" %>
+          </button>
+        <% end %>
+        <button type="button" data-tabs-target="tab" data-index="<%= services_on ? 6 : 5 %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
       <% end %>
     </nav>
 
@@ -767,6 +781,13 @@
         <% end %>
       </div>
     </div>
+
+    <% if services_on %>
+      <!-- Services (Pro): what every show needs -->
+      <div data-tabs-target="panel" class="hidden">
+        <%= render "manage/productions/services_tab", production: @production %>
+      </div>
+    <% end %>
 
     <!-- Danger Zone Tab -->
     <div data-tabs-target="panel" class="hidden">

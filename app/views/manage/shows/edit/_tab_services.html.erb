@@ -1,0 +1,73 @@
+<%# A show's Settings → Services (after-V1 #6; Pro, managers): what this show
+    needs, starting from its production's services and its contract's, with
+    this show's own changes. Saved with the rest of the page, so the series
+    switch above sends it to every event in a series (ShowServices.save!).
+    Locals: form, input_class. %>
+<%
+  services = @production.organization.house_services.ordered.includes(:house_roles).to_a
+  resolver = ShowServices.new([ @show ])
+  base = resolver.base(@show)
+  current = resolver.for(@show).index_by { |need| need.service.id }
+  every_show = base.values.map { |need| need.service.name }
+  check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+  select_class = "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  production_link = link_to "Change them for every show", edit_manage_production_path(@production, tab: production_services_tab(@production)),
+                            class: "font-medium text-pink-600 hover:text-pink-700"
+%>
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <%= render "shared/section_heading", title: "What this show needs" %>
+  <p class="px-6 pt-4 text-sm text-gray-600">
+    <% if every_show.any? %>
+      Every <%= @production.name %> show needs <%= every_show.to_sentence %>.
+    <% else %>
+      <%= @production.name %>'s shows don't need any services yet.
+    <% end %>
+    Change it here for this show<%= ", or for the whole series with the switch above" if @show.recurring? %>.
+    <%= production_link %>
+  </p>
+
+  <% if services.any? %>
+    <div class="divide-y divide-gray-100 mt-3 border-t border-gray-100">
+      <% services.each do |service| %>
+        <%
+          from = base[service.id]
+          need = current[service.id]
+          needed = need.present? && need.needed?
+          dropped = from.present? && !needed
+          key = "show_services[#{service.id}]"
+        %>
+        <div class="px-4 sm:px-6 py-3 flex items-center gap-3 sm:gap-4 <%= 'bg-amber-50' if dropped %>">
+          <%= hidden_field_tag "#{key}[needed]", "0", id: nil %>
+          <label class="flex-1 min-w-0 flex items-center gap-3 cursor-pointer">
+            <%= check_box_tag "#{key}[needed]", "1", needed, id: "show_service_#{service.id}", class: check %>
+            <span class="min-w-0">
+              <span class="flex flex-wrap items-center gap-2">
+                <span class="text-[15px] font-medium text-gray-900"><%= service.name %></span>
+                <% if from %>
+                  <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">From the <%= from.source == :contract ? "contract" : "production" %></span>
+                <% end %>
+              </span>
+              <% if dropped %>
+                <span class="block text-sm text-amber-800">Not this show. Every other show still has it.</span>
+              <% else %>
+                <span class="block text-sm text-gray-500"><%= service.staffed? ? "Done by #{service.roles_label}" : "Equipment" %></span>
+              <% end %>
+            </span>
+          </label>
+          <% if service.staffed? %>
+            <%= select_tag "#{key}[people]",
+                  options_for_select((1..6).map { |n| [ pluralize(n, "person", plural: "people"), n ] }, need&.people_count || from&.people_count || 1),
+                  class: select_class, "aria-label": "#{service.name}: how many people for this show" %>
+          <% else %>
+            <%= hidden_field_tag "#{key}[people]", 1, id: nil %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="px-6 py-5 text-sm text-gray-600">
+      Your organization hasn't added any services yet.
+      <%= link_to "Add them in Organization settings", section_manage_organization_path(@production.organization, section: "services"), class: "font-medium text-pink-600 hover:text-pink-700" %>.
+    </p>
+  <% end %>
+</div>
