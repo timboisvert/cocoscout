@@ -91,8 +91,9 @@ tabs; Scheduling lists each show's services with Staff it ("Someone else"
 too), Role Call flags the ones nobody's on, and "Still to staff this week"
 adds the missing shifts. Role Call's own settings are two boxes and one Save.
 After deploying, run the retrofit console block (dry run first) so existing
-Contract Settings services become organization services; then drop the
-contract_service_options table next release.
+Contract Settings services become organization services (done on prod
+2026-10-16). Dropping the old contract_service_options table waits about a
+month (Tim, 2026-10-16): not before mid-November 2026, and only with his OK.
 
 The biggest gap (Tim): knowing which shows need our services. Some shows'
 contracts say they need a booth tech; shows we produce ourselves (about
