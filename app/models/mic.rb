@@ -11,7 +11,7 @@
 # the linked SignUpForm. The Mic's own recurrence/sign-up columns are kept
 # in place as immutable history.
 #
-# Who sees what, and where: docs/mics_url_architecture.md.
+# See docs/mics_finder_plan.md for the full spec.
 class Mic < ApplicationRecord
   belongs_to :venue
   belongs_to :production, optional: true
