@@ -1,0 +1,11 @@
+<%# Change the deal, Financials' second screen: every date as it'll be after
+    this amendment, with its terms. The same screen as a new contract's. %>
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Review the dates", current: 3, width: "max-w-5xl" } do %>
+  <%= render "manage/contracts/review_dates", contract: @terms_contract,
+        rows: contract_date_rows(@terms_contract, @bookings, locations_map: @locations_map, spaces_map: @spaces_map, settled: @settled),
+        edit_path: amend_review_dates_manage_contract_path(@contract),
+        schedule_path: amend_bookings_manage_contract_path(@contract),
+        deal_path: amend_payments_manage_contract_path(@contract),
+        next_label: "Next: Ticketing & Services",
+        footnote: "A date's services and their prices change on the next step, or with Change services and prices." %>
+<% end %>

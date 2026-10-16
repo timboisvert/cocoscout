@@ -619,6 +619,7 @@ module Manage
       parts << "financials" if @amend_data.key?("payment_structure") || @amend_data.key?("payment_config")
       parts << "ticketing" if @amend_data.key?("ticketing")
       parts << "services" if @amend_data.key?("services")
+      parts << "date terms" if amended_date_term_changes.any?
       parts << "dates" if (@amend_data["new_bookings"] || []).any? || (@amend_data["removed_rental_ids"] || []).any? ||
                           (@amend_data["moved_rentals"] || {}).any?
       parts.any? ? "Amended #{parts.to_sentence}" : "Amended"
@@ -756,6 +757,48 @@ module Manage
         "payments" => payments_data
       ))
 
+      # Then every date, and what the deal means for it (Review the dates).
+      redirect_to amend_review_dates_manage_contract_path(@contract)
+    end
+
+    # Financials' second screen, as in a new contract: every date as it'll be
+    # after this amendment, with its terms. One show's split or one
+    # rehearsal's rate changes here; it lands on the show when applied.
+    def amend_review_dates
+      @bookings = effective_amend_bookings.sort_by { |b| b["starts_at"].to_s }
+      @terms_contract = @contract.amend_terms_view(@bookings)
+      # A settled date keeps its terms: the money for it has already moved.
+      @settled = ContractServicesChange.new(@contract).settled_times
+      locations = Current.organization.locations.includes(:location_spaces)
+      @locations_map = locations.index_by(&:id)
+      @spaces_map = locations.flat_map(&:location_spaces).index_by(&:id)
+    end
+
+    # dates[] are the dates' starts_at, values[event_type] the new figure for
+    # each kind among them (blank is the deal's), note beside them all.
+    def save_amend_review_dates
+      bookings = effective_amend_bookings
+      view = @contract.amend_terms_view(bookings)
+      settled = ContractServicesChange.new(@contract).settled_times.map(&:to_i).to_set
+      dates = Array(params[:dates]).compact_blank.reject { |d| settled.include?(ContractServicesChange.time_key(d)) }
+      types = bookings.to_h { |b| [ b["starts_at"].to_s, b["event_type"].presence || "show" ] }
+      terms = view.draft_date_terms
+      saved = 0
+      params.fetch(:values, {}).each do |type, value|
+        field = view.date_term_field(type)
+        picked = dates.select { |d| types[d] == type }
+        next unless field && picked.any?
+
+        view.draft_data["payment_config"]["date_terms"] = terms
+        terms = view.next_date_terms(picked, value: value, note: params[:note], field: field)
+        saved += picked.size
+      end
+      @contract.update_amend_data(@contract.amend_data.merge("date_terms" => terms)) if saved.positive?
+      redirect_to amend_review_dates_manage_contract_path(@contract),
+                  notice: saved.zero? ? "Nothing to change on those dates." : "#{helpers.pluralize(saved, 'date')} saved."
+    end
+
+    def finish_amend_review_dates
       redirect_to amend_ticketing_tech_manage_contract_path(@contract)
     end
 
@@ -833,8 +876,11 @@ module Manage
       @production_name_changed = staged_name.present? && staged_name != @contract.production_name.to_s
       @new_production_name = staged_name if @production_name_changed
 
+      # Dates with terms of their own, as staged against what the shows have.
+      @date_term_changes = amended_date_term_changes
+
       @has_changes = @new_bookings.any? || @removed_rental_ids.any? || @moves.any? || @financials_changed ||
-                     @ticketing_changed || @services_changed || @production_name_changed
+                     @ticketing_changed || @services_changed || @production_name_changed || @date_term_changes.any?
     end
 
     def apply_amendments
@@ -1028,11 +1074,13 @@ module Manage
     # An internal correction: no signature, so it takes effect at once.
     def apply_amendment_now!(force_overlap)
       @contract.ensure_baseline_version!(created_by: Current.user)
+      # What changed, read before applying: afterwards the staged changes are
+      # what the contract already has.
+      summary = amendment_change_summary
       @contract.transaction { @contract.apply_amendment!(@amend_data, force_overlap: force_overlap) }
       @contract.clear_amend_data
 
-      version = @contract.cut_version!(requires_signature: false, created_by: Current.user,
-                                       change_summary: amendment_change_summary)
+      version = @contract.cut_version!(requires_signature: false, created_by: Current.user, change_summary: summary)
       GenerateContractPdfJob.perform_later(@contract.id, version.id)
       redirect_to manage_contract_path(@contract),
                   notice: "Contract amended — recorded as #{version.label}."
@@ -1078,15 +1126,38 @@ module Manage
     # The bookings the amend steps should reflect: the rentals that survive
     # this amendment plus any newly-added ones. Shaped like draft bookings
     # ({ "starts_at" => iso, "duration" => hours }) for the shared partials.
+    # [{ at:, kind:, line:, sub: }] for each date whose own terms this
+    # amendment changes, in the words Review the dates uses.
+    def amended_date_term_changes
+      amend = @contract.amend_data
+      return [] unless amend.key?("date_terms")
+
+      bookings = effective_amend_bookings
+      view = @contract.amend_terms_view(bookings)
+      live = @contract.live_date_terms(bookings)
+      staged = Hash(amend["date_terms"])
+      bookings.filter_map do |booking|
+        key = booking["starts_at"].to_s
+        next if (staged[key] || {}) == (live[key] || {})
+
+        type = booking["event_type"].presence || "show"
+        line, sub = view.date_terms_words(type, staged[key] || {})
+        { at: Time.zone.parse(key), kind: EventTypes.labels[type] || type.titleize, line: line, sub: sub, note: staged.dig(key, "note") }
+      end.sort_by { |c| c[:at] }
+    end
+
     def effective_amend_bookings
       amend = @contract.amend_data
       removed = amend["removed_rental_ids"] || []
       remaining = @contract.space_rentals.where.not(id: removed).includes(:shows).order(:starts_at)
       remaining.map do |r|
         { "starts_at" => r.starts_at.iso8601, "duration" => ((r.ends_at - r.starts_at) / 1.hour).round(1),
-          "event_type" => r.shows.first&.event_type || "show" }
+          "event_type" => r.shows.first&.event_type || "show", "location_id" => r.location_id, "space_id" => r.location_space_id }
       end +
-        (amend["new_bookings"] || []).map { |b| { "starts_at" => b["starts_at"], "duration" => b["duration"], "event_type" => b["event_type"].presence || "show" } }
+        (amend["new_bookings"] || []).map do |b|
+          { "starts_at" => b["starts_at"], "duration" => b["duration"], "event_type" => b["event_type"].presence || "show",
+            "location_id" => b["location_id"], "space_id" => b["space_id"] }
+        end
     end
 
     # The real scheduling conflicts this amendment's new events would create: a

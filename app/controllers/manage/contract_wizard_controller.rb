@@ -262,7 +262,8 @@ module Manage
       # cases. By-hand extras keep the direction chosen in the add-payment modal.
       direction = @contract.settlement_direction
       payments_data = payments_data.map { |p| p["extra"] ? p : p.merge("direction" => direction) }
-      @contract.update_draft_step(:payments, @contract.apply_date_terms_to_draft_payments(payments_data))
+      # The deal's own list; each date's own fee is applied when it's billed.
+      @contract.update_draft_step(:payments, payments_data)
 
       # Auto-set contract dates from bookings
       if @contract.contract_start_date.blank? || @contract.contract_end_date.blank?

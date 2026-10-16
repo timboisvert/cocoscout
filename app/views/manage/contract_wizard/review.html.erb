@@ -134,14 +134,15 @@
     <%# Payments this contract will create %>
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="font-medium text-gray-900">Payments (<%= @contract.draft_payments.count %>)</h3>
+        <% billed_payments = @contract.billed_draft_payments %>
+        <h3 class="font-medium text-gray-900">Payments (<%= billed_payments.count %>)</h3>
         <%= link_to manage_payments_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
           Edit
         <% end %>
       </div>
-      <% if @contract.draft_payments.any? %>
+      <% if billed_payments.any? %>
         <ul class="space-y-2 text-sm">
-          <% @contract.draft_payments.each do |payment| %>
+          <% billed_payments.each do |payment| %>
             <% incoming = payment["direction"] == "incoming" %>
             <li class="flex items-center justify-between gap-3">
               <span class="text-gray-700 min-w-0">

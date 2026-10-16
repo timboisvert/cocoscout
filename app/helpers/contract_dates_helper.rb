@@ -5,9 +5,12 @@
 # costs, and what Edit can change.
 module ContractDatesHelper
   DateRow = Struct.new(:starts_at, :at, :event_type, :kind, :hours, :place, :field, :usual, :terms,
-                       :line, :sub, :changed, :cost, :fixed_amount, keyword_init: true)
+                       :line, :sub, :changed, :cost, :fixed_amount, :settled, keyword_init: true)
 
-  def contract_date_rows(contract, bookings, locations_map:, spaces_map:)
+  # settled: start times (Time or epoch) of dates already settled, which keep
+  # their terms: no Edit, no tick (an amendment's list).
+  def contract_date_rows(contract, bookings, locations_map:, spaces_map:, settled: [])
+    settled = Array(settled).map(&:to_i).to_set
     bookings.filter_map do |booking|
       at = (Time.zone.parse(booking["starts_at"].to_s) rescue nil)
       next unless at
@@ -18,14 +21,15 @@ module ContractDatesHelper
       location = locations_map[booking["location_id"].to_i]
       terms = contract.date_terms_for_booking(booking["starts_at"])
       line, sub, changed = contract.date_terms_words(type, terms)
-      field = contract.date_term_field(type)
+      locked = settled.include?(at.to_i)
+      field = (contract.date_term_field(type) unless locked)
       fixed = fixed_amount_for(contract, type, terms, hours)
 
       DateRow.new(starts_at: booking["starts_at"].to_s, at: at, event_type: type,
                   kind: EventTypes.labels[type] || type.titleize, hours: hours,
                   place: (space&.name || location&.name), field: field, usual: contract.usual_date_term(type),
                   terms: terms, line: line, sub: sub, changed: changed,
-                  cost: cost_words(contract, type, terms, fixed), fixed_amount: fixed)
+                  cost: cost_words(contract, type, terms, fixed), fixed_amount: fixed, settled: locked)
     end
   end
 

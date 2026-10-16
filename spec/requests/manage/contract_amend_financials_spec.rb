@@ -35,7 +35,7 @@ RSpec.describe "Manage::Contracts amend financials & conflicts", type: :request 
         offline_payment_methods: [ "check" ]
       }
 
-      expect(response).to redirect_to(amend_ticketing_tech_manage_contract_path(contract))
+      expect(response).to redirect_to(amend_review_dates_manage_contract_path(contract)) # then every date
       amend = contract.reload.amend_data
       expect(amend["payment_structure"]).to eq("revenue_share")
       expect(amend["payment_config"]["who_sells_tickets"]).to eq("contractor")

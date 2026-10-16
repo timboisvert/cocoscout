@@ -97,6 +97,23 @@
       </div>
     </div>
 
+    <%# Dates with terms of their own (Review the dates): one show's split, one
+        rehearsal's rate, down to $0. They land on the shows when applied. %>
+    <% if @date_term_changes.any? %>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Dates with their own terms" %>
+        <ul class="p-4 space-y-2">
+          <% @date_term_changes.each do |change| %>
+            <li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 text-sm">
+              <span class="font-medium text-gray-900"><%= change[:at].strftime("%a, %b %-d") %> · <%= change[:kind] %></span>
+              <span class="text-gray-700"><%= change[:line] %><% if change[:sub] %> <span class="text-xs text-gray-500">(<%= change[:sub] %>)</span><% end %></span>
+              <% if change[:note].present? %><span class="basis-full text-xs italic text-gray-500"><%= change[:note] %></span><% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
     <%# Payment Changes — the full set of payments after this amendment (paid
         payments are preserved; the pending ones are replaced by this list). %>
     <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">

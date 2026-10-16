@@ -101,6 +101,42 @@ RSpec.describe "Contract date terms", type: :model do
     contract.set_draft_date_terms!([ times.first ], value: "0", note: nil, field: :amount)
     contract.set_draft_date_terms!([ times.last ], value: "150", note: nil, field: :amount)
 
-    expect(contract.reload.draft_payments.map { |p| [ p["due_date"], p["amount"] ] }).to eq([ [ show_times.last.to_date.to_s, 150.0 ] ])
+    expect(contract.reload.billed_draft_payments.map { |p| [ p["due_date"], p["amount"] ] }).to eq([ [ show_times.last.to_date.to_s, 150.0 ] ])
+    expect(contract.draft_payments.size).to eq(2) # the deal's own list is never rewritten
+
+    # Back to the deal's fee: its payment is back too.
+    contract.set_draft_date_terms!([ times.first ], value: "200", note: nil, field: :amount)
+    expect(contract.reload.billed_draft_payments.map { |p| p["amount"] }).to eq([ 200, 150.0 ])
+
+    # Activation bills the dates as they stand.
+    contract.set_draft_date_terms!([ times.first ], value: "0", note: nil, field: :amount)
+    contract.update!(contract_start_date: show_times.first.to_date, contract_end_date: show_times.last.to_date)
+    contract.reload.activate!
+    expect(contract.contract_payments.map { |p| p.amount.to_f }).to eq([ 150.0 ])
+  end
+
+  it "matches a date's payment by the date it's for, when it's due days before" do
+    contract = create(:contract, organization: org, draft_data: {
+      "bookings" => show_times.map { |t| booking(t, "show") },
+      "payment_structure" => "per_event",
+      "payment_config" => { "settlement_basis" => "flat", "per_event_amount" => 200, "per_event_terms" => "before" },
+      "payments" => show_times.map { |t| { "description" => "#{t.strftime('%b %-d')} event", "amount" => 200, "direction" => "incoming", "source" => "Per event",
+                                           "due_date" => (t.to_date - 7).to_s, "event_date" => t.iso8601 } }
+    })
+    contract.set_draft_date_terms!([ show_times.first.iso8601 ], value: "50", note: nil, field: :amount)
+    expect(contract.reload.billed_draft_payments.map { |p| p["amount"] }).to eq([ 50.0, 200 ])
+  end
+
+  it "adds the dates up on one upfront payment" do
+    contract = create(:contract, organization: org, draft_data: {
+      "bookings" => show_times.map { |t| booking(t, "show") },
+      "payment_structure" => "per_event",
+      "payment_config" => { "settlement_basis" => "flat", "per_event_amount" => 200, "per_event_timing" => "upfront" },
+      "payments" => [ { "description" => "2 events @ $200.00 each, paid upfront", "amount" => 400, "direction" => "incoming", "source" => "Per event",
+                        "due_date" => "2026-10-01" } ]
+    })
+    contract.set_draft_date_terms!([ show_times.first.iso8601 ], value: "0", note: nil, field: :amount)
+    expect(contract.reload.billed_draft_payments).to eq([ { "description" => "2 events, paid upfront", "amount" => 200.0, "direction" => "incoming",
+                                                            "source" => "Per event", "due_date" => "2026-10-01" } ])
   end
 end

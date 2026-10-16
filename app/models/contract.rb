@@ -476,7 +476,7 @@ class Contract < ApplicationRecord
   # Same idea for the money: the live payment rows (cancelled ones are
   # history) once the contract is active, the wizard's draft payments before.
   def document_payments
-    return draft_payments if status_draft?
+    return billed_draft_payments if status_draft?
 
     ContractPayment.where(contract_id: id).where.not(status: "cancelled").order(:due_date, :id).map do |payment|
       {
@@ -1076,6 +1076,11 @@ class Contract < ApplicationRecord
       production&.update!(name: staged_name)
     end
 
+    # Each date's own terms (Change the deal → Review the dates), on the
+    # nights as they stand before any move, so a moved night keeps its own.
+    existing_rental_ids = space_rentals.pluck(:id)
+    stamp_amended_date_terms!(amend["date_terms"], space_rentals.to_a) if amend.key?("date_terms")
+
     # A night only changing time moves in place ("Change time" on the bookings
     # step), so its show keeps its ticket buyers, cast, staffing and payments.
     # Removing it and adding another would throw all of that away.
@@ -1113,9 +1118,14 @@ class Contract < ApplicationRecord
     # amendment can name its own (a rehearsal alongside the shows).
     default_event_type = (draft_data["production"] || {})["event_type"].presence || "show"
     new_bookings.each { |booking| create_amended_booking!(booking, default_event_type, force_overlap) }
+    # The nights this amendment added take their terms too.
+    if amend.key?("date_terms")
+      stamp_amended_date_terms!(amend["date_terms"], space_rentals.reload.where.not(id: existing_rental_ids).to_a)
+    end
 
-    # After shows exist, so per-event payments can link to them.
-    reconcile_amended_payments!(amend["payments"]) if amend.key?("payments")
+    # After shows exist, so per-event payments can link to them; each date at
+    # its own fee on a per-event deal.
+    reconcile_amended_payments!(apply_show_terms_to_payments(amend["payments"])) if amend.key?("payments")
 
     # Rates for non-ticketed nights bill from the shows as they now stand.
     if previous_rated_types.any? || separately_rated_event_types.any?
@@ -2596,9 +2606,9 @@ class Contract < ApplicationRecord
       rentals << { rental: rental, event_type: event_type, terms: date_terms_for_booking(booking["starts_at"]) }
     end
 
-    # Create payments from draft payments
+    # Create payments from draft payments, each date at its own fee.
     created_payments = []
-    draft_payments.each do |payment|
+    billed_draft_payments.each do |payment|
       created_payments << contract_payments.create!(
         description: payment["description"],
         amount: payment["amount"],

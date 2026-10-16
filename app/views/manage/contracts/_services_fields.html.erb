@@ -237,8 +237,7 @@
           </div>
         </div>
 
-        <%# Each date's Edit (every per-event service, its hours and its price that
-            date). Outside the list: a query container would trap a fixed overlay. %>
+        <%# Each date's Edit: every per-event service, its hours and its price that date. %>
         <% dates.each_with_index do |date, j| %>
           <% frozen = locked.include?(date[:key]) %>
           <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
