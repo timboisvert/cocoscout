@@ -83,6 +83,17 @@ keeps the plain download. In the app, the same share sheet.
 
 ## 6. Services a show needs (contracts, productions and staffing)
 
+**Built 2026-10-16 (c4b49058, b3f43e87, 15fcabef, f6be4189).** HouseService
+is the organization's list (Organization settings → Services); Contract
+Settings → Services ticks which contracts offer; ShowServices works out what
+each show needs; Production Settings and a show's Settings page have Services
+tabs; Scheduling lists each show's services with Staff it ("Someone else"
+too), Role Call flags the ones nobody's on, and "Still to staff this week"
+adds the missing shifts. Role Call's own settings are two boxes and one Save.
+After deploying, run the retrofit console block (dry run first) so existing
+Contract Settings services become organization services; then drop the
+contract_service_options table next release.
+
 The biggest gap (Tim): knowing which shows need our services. Some shows'
 contracts say they need a booth tech; shows we produce ourselves (about
 half) never say, so at staffing time nobody can tell which shows need
