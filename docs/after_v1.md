@@ -136,6 +136,14 @@ https://claude.ai/artifact/3YLGg63hQ4SSpqNhApMGNF). Decided with Tim:
 - At launch every production starts needing what Role Call checks today, so
   nothing changes until someone edits. Contracts already written keep their
   terms.
+- **Services are Pro, managers only** (Tim). An organization without Pro
+  never sees them: no Services tab in Organization settings, none on the
+  production page, nothing on shows (Contracts and Staffing are already
+  gated, and that's where the upgrade pitch lives). On Pro the tabs carry the
+  Pro pill; a production-team member who isn't a manager doesn't get them.
+  This is a deliberate exception to the usual "show the pill and the lock"
+  rule (shared/pro_marker): services are setup for contracts and staffing,
+  useless on their own. Data stays if an organization drops Pro.
 - **Retrofit (Tim): as if it had always worked this way.** Every
   organization's Contract Settings services become organization services
   (name, default price, unit, roles matched by name: Booth Tech → the Booth
