@@ -126,9 +126,23 @@ https://claude.ai/artifact/3YLGg63hQ4SSpqNhApMGNF). Decided with Tim:
 - Role Call checks each show's services, plus a short "roles every show
   needs" list for roles that aren't services (a house manager).
 - Scheduling: a "Still to staff this week" panel that adds the open shifts.
+- A service is done by **one or more roles**, "Roles that do it" (never "who":
+  that reads as people). Ticket taking ($25 flat): Front of House or House
+  Manager. Equipment or a fee has none.
+- Staffing a service ("Staff it"): pick which of its roles (the role sets the
+  pay), then the people who hold one of those roles, with busy and
+  unavailable badges; below them, "Someone else" searches everyone on staff,
+  paid as the chosen role for that shift.
 - At launch every production starts needing what Role Call checks today, so
-  nothing changes until someone edits; today's Booth Tech line becomes the
-  first organization service. Contracts already written keep their terms.
+  nothing changes until someone edits. Contracts already written keep their
+  terms.
+- **Retrofit (Tim): as if it had always worked this way.** Every
+  organization's Contract Settings services become organization services
+  (name, default price, unit, roles matched by name: Booth Tech → the Booth
+  Tech role), offered on contracts with their direction and once/per event.
+  Each contract's saved service lines link to their organization service by
+  name, keeping their own prices; a line naming a service no catalog has gets
+  one made for it. Shipped as a console block (dry run first) with the build.
 
 ## 7. "Paid" when the money is still on its way
 
