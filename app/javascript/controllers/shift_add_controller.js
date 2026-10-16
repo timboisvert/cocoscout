@@ -12,8 +12,9 @@ export default class extends Controller {
     static targets = ["modal", "form", "subtitle", "roleSelect", "details",
                       "startInput", "endInput", "startTimeInput", "endTimeInput", "timeHint",
                       "sourceTypeInput", "sourceIdInput", "showRow", "showList", "showIdsWrap",
-                      "people", "personIdInput", "submitWrap"]
-    static values = { createUrl: String }
+                      "people", "personIdInput", "anyoneInput", "submitWrap", "roleHint",
+                      "otherSearch", "otherList"]
+    static values = { createUrl: String, allStaff: Array }
 
     open(event) {
         if (event) event.preventDefault()
@@ -35,7 +36,9 @@ export default class extends Controller {
         if (this.hasSubtitleTarget) this.subtitleTarget.textContent = btn.dataset.dayLabel || ""
         if (this.hasFormTarget && this.hasCreateUrlValue) this.formTarget.action = this.createUrlValue
 
-        // Fresh start: no role chosen yet, everything else tucked away.
+        // Fresh start: no role chosen yet, everything else tucked away, every
+        // role on offer again.
+        this.limitRoles(null, "")
         if (this.hasRoleSelectTarget) this.roleSelectTarget.value = ""
         this.clearPerson()
         this.roleChanged()
@@ -48,7 +51,15 @@ export default class extends Controller {
     // in and its qualified people already showing.
     openForRole(event) {
         this.open(event)
-        const roleId = event.currentTarget.dataset.preselectRoleId || ""
+        const data = event.currentTarget.dataset
+        // A service's "Staff it" (after-V1 #6) offers only the roles that do it;
+        // which one sets the pay.
+        if (data.allowedRoleIds) {
+            const ids = this.parse(data.allowedRoleIds, null)
+            const hint = ids && ids.length > 1 ? `${data.serviceName} is done by ${data.serviceRoles}. The role sets the pay.` : ""
+            this.limitRoles(ids, hint)
+        }
+        const roleId = data.preselectRoleId || ""
         if (this.hasRoleSelectTarget && roleId) {
             this.roleSelectTarget.value = roleId
             this.roleChanged()
@@ -181,33 +192,73 @@ export default class extends Controller {
         if (this.hasSourceIdInputTarget)   this.sourceIdInputTarget.value   = showId || ""
     }
 
+    // Offer only these roles in the picker (null = all), with a line under it.
+    limitRoles(roleIds, hint) {
+        if (this.hasRoleSelectTarget) {
+            const allowed = roleIds ? roleIds.map(String) : null
+            Array.from(this.roleSelectTarget.options).forEach(option => {
+                const hide = !!allowed && option.value !== "" && !allowed.includes(option.value)
+                option.hidden = hide
+                option.disabled = hide
+            })
+        }
+        if (this.hasRoleHintTarget) {
+            this.roleHintTarget.textContent = hint || ""
+            this.roleHintTarget.classList.toggle("hidden", !hint)
+        }
+    }
+
     // ----- person picker -----
 
+    // The people on the chosen role, then "Someone else": anyone else on
+    // staff, found by name, put on it anyway (Tim, 2026-10-16).
     renderPeople(roleId) {
         if (!this.hasPeopleTarget) return
         const pool = this.staffByRole[roleId] || []
-        if (pool.length === 0) {
-            this.peopleTarget.innerHTML = `<p class="col-span-2 text-xs text-gray-400 py-2">No one is qualified for this role yet.</p>`
-            return
-        }
+        const poolIds = new Set(pool.map(p => String(p.id)))
+        this.others = (this.allStaffValue || []).filter(p => !poolIds.has(String(p.id)))
 
-        this.peopleTarget.innerHTML = pool.map(p => {
-            const badge = this.badgeFor(p.id)
-            const avatar = p.headshot_url
-                ? `<img src="${this.h(p.headshot_url)}" class="w-7 h-7 rounded-lg object-cover flex-shrink-0" alt="">`
-                : `<span class="w-7 h-7 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-[10px] flex-shrink-0">${this.h(p.initials || (p.name || "?")[0])}</span>`
-            return `
-                <button type="button"
-                        data-person-id="${p.id}"
-                        data-action="click->shift-add#togglePerson"
-                        class="relative flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 bg-white hover:border-pink-400 hover:bg-pink-50 transition-colors cursor-pointer text-left">
-                    ${avatar}
-                    <span class="min-w-0">
-                        <span class="block text-xs font-medium text-gray-900 truncate">${this.h(p.name || "(no name)")}${p.pronouns ? ` <span class="font-normal text-gray-500">(${this.h(p.pronouns)})</span>` : ""}</span>
-                        ${badge}
-                    </span>
-                </button>`
-        }).join("")
+        let html = pool.length
+            ? pool.map(p => this.personButton(p, false)).join("")
+            : `<p class="col-span-2 text-xs text-gray-400 py-2">No one is on this role yet.</p>`
+        if (this.others.length) {
+            html += `
+                <div class="col-span-2 mt-1 pt-2 border-t border-gray-100">
+                    <label class="block text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Someone else</label>
+                    <input type="search" placeholder="Search everyone on staff" autocomplete="off"
+                           data-shift-add-target="otherSearch" data-action="input->shift-add#searchOthers"
+                           class="block w-full text-base sm:text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500">
+                </div>
+                <div class="col-span-2 grid grid-cols-2 gap-1.5" data-shift-add-target="otherList"></div>`
+        }
+        this.peopleTarget.innerHTML = html
+    }
+
+    searchOthers() {
+        if (!this.hasOtherSearchTarget || !this.hasOtherListTarget) return
+        const q = this.otherSearchTarget.value.trim().toLowerCase()
+        const matches = q ? this.others.filter(p => (p.name || "").toLowerCase().includes(q)).slice(0, 8) : []
+        this.otherListTarget.innerHTML = matches.map(p => this.personButton(p, true)).join("")
+    }
+
+    personButton(p, outsider) {
+        const badge = outsider
+            ? `<span class="block text-[10px] text-gray-500">Not on this role yet</span>`
+            : this.badgeFor(p.id)
+        const avatar = p.headshot_url
+            ? `<img src="${this.h(p.headshot_url)}" class="w-7 h-7 rounded-lg object-cover flex-shrink-0" alt="">`
+            : `<span class="w-7 h-7 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-[10px] flex-shrink-0">${this.h(p.initials || (p.name || "?")[0])}</span>`
+        return `
+            <button type="button"
+                    data-person-id="${p.id}" ${outsider ? 'data-outsider="1"' : ""}
+                    data-action="click->shift-add#togglePerson"
+                    class="relative flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 bg-white hover:border-pink-400 hover:bg-pink-50 transition-colors cursor-pointer text-left">
+                ${avatar}
+                <span class="min-w-0">
+                    <span class="block text-xs font-medium text-gray-900 truncate">${this.h(p.name || "(no name)")}${p.pronouns ? ` <span class="font-normal text-gray-500">(${this.h(p.pronouns)})</span>` : ""}</span>
+                    ${badge}
+                </span>
+            </button>`
     }
 
     badgeFor(personId) {
@@ -233,12 +284,14 @@ export default class extends Controller {
         this.clearPerson()
         if (selecting) {
             if (this.hasPersonIdInputTarget) this.personIdInputTarget.value = id
+            if (this.hasAnyoneInputTarget) this.anyoneInputTarget.value = btn.dataset.outsider === "1" ? "1" : "0"
             btn.classList.add("ring-2", "ring-pink-500", "border-pink-400", "bg-pink-50")
         }
     }
 
     clearPerson() {
         if (this.hasPersonIdInputTarget) this.personIdInputTarget.value = ""
+        if (this.hasAnyoneInputTarget) this.anyoneInputTarget.value = "0"
         if (this.hasPeopleTarget) {
             this.peopleTarget.querySelectorAll("button").forEach(b =>
                 b.classList.remove("ring-2", "ring-pink-500", "border-pink-400", "bg-pink-50"))

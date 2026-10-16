@@ -1,0 +1,95 @@
+<%# A show's services in its panel on Scheduling (after-V1 #6): each one it
+    needs with who's on it, "Staff it" straight into the Add-shift modal on
+    the service's roles, "Not this show" / "Remove" / "Needs it again" for
+    this show alone, and adding one just for it. Links up to the production.
+    Locals: show, needs (StaffingController#service_coverage_by_show rows),
+    staff_it_data (the day payloads the Add-shift modal reads). %>
+<%
+  production = show.production
+  needed = needs.select { |n| n[:needed] }
+  dropped = needs.reject { |n| n[:needed] }
+  addable = @org_services.select(&:staffed?).reject { |service| needs.any? { |n| n[:service].id == service.id } }
+  add_cid = "add-show-service-#{show.id}"
+  source_words = { production: "from the production", contract: "from the contract", show: "just this show" }
+%>
+<div class="pt-4 border-t border-gray-200">
+  <div class="flex items-start justify-between gap-3 mb-1">
+    <span class="text-base font-semibold text-gray-900">What this show needs</span>
+  </div>
+  <p class="text-xs text-gray-500 mb-3">
+    What every <%= production.name %> show needs, plus anything added for this one. Changes here are for this show only.
+    <%= link_to "Change them for every show", edit_manage_production_path(production, tab: production_services_tab(production)), class: "font-medium text-pink-600 hover:text-pink-700" %>
+  </p>
+
+  <div class="space-y-2">
+    <% needed.each do |need| %>
+      <% service = need[:service] %>
+      <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 rounded-lg border <%= need[:covered] ? 'border-gray-200' : 'border-amber-200 bg-amber-50' %>">
+        <% if need[:covered] %>
+          <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        <% else %>
+          <svg class="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+        <% end %>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-900">
+            <%= service.name %><%= " · #{pluralize(need[:people_count], 'person', plural: 'people')}" if need[:people_count] > 1 %>
+          </p>
+          <% if need[:covered] %>
+            <p class="text-xs text-green-700"><%= need[:staffed_by].map(&:name).to_sentence %></p>
+          <% else %>
+            <p class="text-xs text-amber-800 font-medium">
+              <%= need[:staffed_by].any? ? "#{need[:staffed_by].size} of #{need[:people_count]} staffed" : "Not staffed yet" %> · <%= source_words[need[:source]] %>
+            </p>
+          <% end %>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0">
+          <% unless need[:covered] %>
+            <%= render "shared/button", text: "Staff it", variant: "primary", size: "small", type: :button,
+                  data: staff_it_data.merge(
+                    action: "click->modal#close click->shift-add#openForRole",
+                    "preselect-role-id": service.house_roles.first&.id,
+                    "allowed-role-ids": service.house_roles.map(&:id).to_json,
+                    "service-name": service.name,
+                    "service-roles": service.roles_label
+                  ) %>
+          <% end %>
+          <%= form_with url: manage_staffing_show_service_path(show, service_id: service.id, needed: "0"), method: :patch do %>
+            <%= render "shared/button", text: need[:source] == :show ? "Remove" : "Not this show", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% dropped.each do |need| %>
+      <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 rounded-lg border border-gray-200 bg-gray-50/60">
+        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-500"><%= need[:service].name %></p>
+          <p class="text-xs text-gray-400">Not needed for this show</p>
+        </div>
+        <%= form_with url: manage_staffing_show_service_path(show, service_id: need[:service].id, needed: "1"), method: :patch, class: "flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0" do %>
+          <%= render "shared/button", text: "Needs it again", variant: "secondary", size: "small", type: :submit %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if needs.empty? %>
+      <p class="text-sm text-gray-500 px-1">Nothing yet.</p>
+    <% end %>
+
+    <% if addable.any? %>
+      <div data-controller="disclosure">
+        <%= render "shared/button", text: "Add a service for this show", variant: "dashed", size: "small", type: :button,
+              classes: "w-full", data: { action: "click->disclosure#toggle" } %>
+        <div class="hidden mt-2" data-disclosure-target="content">
+          <%= form_with url: manage_staffing_show_service_path(show, needed: "1"), method: :patch, class: "flex flex-wrap items-center gap-2" do %>
+            <label for="<%= add_cid %>" class="sr-only">Service</label>
+            <%= select_tag :service_id, options_for_select(addable.map { |service| [ service.name, service.id ] }), id: add_cid,
+                  class: "flex-1 min-w-0 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

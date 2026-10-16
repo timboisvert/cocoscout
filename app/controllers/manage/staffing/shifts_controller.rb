@@ -220,6 +220,10 @@ module Manage
         redirect_to scheduling_return_url, notice: notice, alert: alert
       end
 
+      def on_staff?(person)
+        OrganizationStaffMember.active.exists?(organization: Current.organization, person: person)
+      end
+
       def qualified_for_shift?(person, shift)
         member = OrganizationStaffMember.active.find_by(organization: Current.organization, person: person)
         member.present? && member.house_role_ids.include?(shift.house_role_id)
@@ -227,14 +231,18 @@ module Manage
 
       # The add-shift modal can name a person to put straight onto the new
       # shift. Optional — an unassigned shift is perfectly valid — and guarded
-      # by the same staff/qualification rule as assign.
+      # by the same staff/qualification rule as assign, except for "Someone
+      # else" (anyone=1): anyone on staff, picked for a role they aren't on
+      # (Tim, 2026-10-16).
       def assign_initial_person
         person_id = params[:person_id].to_i
         return nil if person_id.zero?
 
         person = Current.organization.people.find_by(id: person_id)
         return "Couldn't assign: person not found." unless person
-        return "Couldn't assign #{person.name}: not on staff or not qualified for this role." unless qualified_for_shift?(person, @shift)
+
+        allowed = params[:anyone] == "1" ? on_staff?(person) : qualified_for_shift?(person, @shift)
+        return "Couldn't assign #{person.name}: not on staff or not qualified for this role." unless allowed
 
         @shift.shift_assignments.create!(person: person, position: 1)
         "Assigned #{person.name}.#{availability_note(person, @shift)}"

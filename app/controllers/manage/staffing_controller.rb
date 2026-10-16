@@ -104,6 +104,19 @@ module Manage
         h[show_id] = missing if missing.any?
       end
 
+      # What each show needs (after-V1 #6; Pro, managers): its production's,
+      # contract's and own services, each with who's on it. Always listed in
+      # the show's panel; Role Call, when it's on, flags the ones nobody's on.
+      @services_on = Current.organization.services_available_to?(Current.user)
+      @show_needs = @services_on ? service_coverage_by_show(shifts) : {}
+      @org_services = @services_on ? Current.organization.house_services.ordered.includes(:house_roles).to_a : []
+      if @role_call_enabled
+        @show_needs.each do |show_id, needs|
+          missing = needs.select { |n| n[:needed] && !n[:covered] }.map { |n| n[:service].name }
+          @uncovered_roles_by_show[show_id] = missing + Array(@uncovered_roles_by_show[show_id]) if missing.any?
+        end
+      end
+
       # Regulars (opt-in via Staffing settings): the org's standing rules
       # matched against this week, ready for the Apply-regulars modal. Reuses
       # the shows/shifts already loaded above rather than querying again.
@@ -132,6 +145,7 @@ module Manage
       @house_role_count = @house_roles.size
       @staff_count = Current.organization.organization_staff_members.active.count
       @staff_by_role_payload = build_staff_by_role_payload
+      @all_staff_payload = build_all_staff_payload
 
       # Collision-detection payloads (consumed by the assign modal): the time
       # span + label of every shift this week, and which shift ids each person
@@ -251,6 +265,28 @@ module Manage
 
       redirect_to scheduling_return_url,
                   notice: ids.include?(role.id) ? "#{show.display_name} won't be flagged for #{role.name} coverage." : "#{show.display_name} needs #{role.name} coverage again."
+    end
+
+    # One show, one service, from the show's panel (after-V1 #6): "Not this
+    # show" (needed=0), "Remove" for one added just here, "Needs it again", or
+    # "Add a service for this show" (needed=1).
+    def update_show_service
+      unless Current.organization.services_available_to?(Current.user)
+        return redirect_to(scheduling_return_url, alert: "Services are part of CocoScout Pro.")
+      end
+
+      show = ::Show.joins(:production)
+                   .where(productions: { organization_id: Current.organization.id })
+                   .find_by(id: params[:id])
+      return redirect_to(scheduling_return_url, alert: "We couldn't find that show.") unless show
+
+      service = Current.organization.house_services.find_by(id: params[:service_id])
+      return redirect_to(scheduling_return_url, alert: "Pick a service.") unless service
+
+      needed = params[:needed] == "1"
+      ShowServices.change!(show, service, needed: needed)
+      redirect_to scheduling_return_url,
+                  notice: needed ? "#{show.display_name} needs #{service.name}." : "#{show.display_name} won't need #{service.name}."
     end
 
     public
@@ -582,6 +618,52 @@ module Manage
         end
       end
       payload
+    end
+
+    # Each show this week that needs a staffed service: [{ service:, people_count:,
+    # source:, needed:, staffed_by: [Person], covered: }]. A shift counts for a
+    # show when it's tied to that show, or (an evening shift tied to none)
+    # when it overlaps the show; its role, or a role it also covers there,
+    # must be one of the service's.
+    def service_coverage_by_show(shifts)
+      shows = @shows_by_day.values.flatten
+      return {} if shows.empty?
+
+      resolver = ShowServices.new(shows)
+      covering = Hash.new { |h, k| h[k] = [] }
+      shifts.each do |shift|
+        anchored = shift.covered_shows
+        targets = anchored.any? ? anchored : shows.select { |show| shift.starts_at < show.ends_at && shift.ends_at > show.date_and_time }
+        targets.each { |show| covering[show.id] << shift }
+      end
+
+      shows.each_with_object({}) do |show, result|
+        needs = resolver.for(show).select(&:staffed?)
+        next if needs.empty?
+
+        result[show.id] = needs.map do |need|
+          role_ids = need.service.house_roles.map(&:id)
+          on = covering[show.id].select do |shift|
+            role_ids.include?(shift.house_role_id) || shift.additional_roles_for(show).any? { |r| role_ids.include?(r.id) }
+          end
+          people = on.flat_map { |shift| shift.shift_assignments.map(&:person) }.compact.uniq
+          { service: need.service, people_count: need.people_count, source: need.source, needed: need.needed?,
+            staffed_by: people, covered: people.size >= need.people_count }
+        end
+      end
+    end
+
+    # Everyone on staff, for the add-shift modal's "Someone else": the people
+    # who aren't on the shift's role, picked anyway (Tim, 2026-10-16).
+    def build_all_staff_payload
+      Current.organization.organization_staff_members.active
+             .includes(person: HEADSHOT_PRELOAD).order("people.name").references(:person)
+             .map do |member|
+        p = member.person
+        variant = p.respond_to?(:safe_headshot_variant) ? p.safe_headshot_variant(:thumb) : nil
+        { id: p.id, name: p.name, pronouns: member.display_pronouns, initials: p.initials,
+          headshot_url: variant ? url_for(variant) : nil }
+      end
     end
 
     def build_staff_by_role_payload

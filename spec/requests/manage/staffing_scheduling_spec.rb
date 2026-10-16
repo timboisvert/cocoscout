@@ -442,9 +442,16 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       let!(:video) { create(:house_role, organization: org, name: "Videographer", role_type: :show_specific) }
       let!(:bar) { create(:house_role, organization: org, name: "Bartender", role_type: :house) }
 
-      it "isn't shown while Role Call is off" do
+      # Its own box below the on/off switch, one Save for both (Tim, 2026-10-16).
+      it "is its own box, shown with Role Call off too, and saves with the switch" do
         get manage_staffing_settings_section_path(section: "role_call")
-        expect(response.body).not_to include("Which roles get checked")
+        expect(response.body).to include("Run Role Call on my shows", "More roles every show needs", "role_call_role_#{tech.id}")
+        expect(response.body.scan(%(type="submit")).size).to eq(1)
+
+        patch manage_staffing_settings_path, params: { updating_coverage: "1", alert_uncovered_show_roles: "1",
+                                                       updating_role_call_roles: "1", role_call_role_ids: [ video.id.to_s ] }
+        expect(org.reload.alert_uncovered_show_roles).to be(true)
+        expect([ tech.reload.include_in_role_call, video.reload.include_in_role_call ]).to eq([ false, true ])
       end
 
       context "with Role Call on" do
@@ -452,7 +459,7 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
 
         it "lists per-show roles only, checked by default" do
           get manage_staffing_settings_section_path(section: "role_call")
-          expect(response.body).to include("Which roles get checked")
+          expect(response.body).to include("More roles every show needs")
           expect(response.body).to include("Booth Tech")
           expect(response.body).to include("Videographer")
           # A house role is never checked by Role Call, so it has no switch here.

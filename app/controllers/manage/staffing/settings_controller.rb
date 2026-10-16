@@ -137,11 +137,14 @@ module Manage
       # show-specific roles and flags the ones still missing coverage.
       # (updating_coverage is a marker param so an unchecked box still routes
       # here and turns it off.)
+      # The Role Call page saves its two boxes together (the switch, and the
+      # roles every show needs), so both markers arrive in one request.
       def update_coverage_alerts
         enabled = params[:alert_uncovered_show_roles].present?
         Current.organization.update!(alert_uncovered_show_roles: enabled)
+        apply_role_call_roles if params[:updating_role_call_roles].present?
         redirect_to section_path("role_call"),
-                    notice: enabled ? "Role Call is on — scheduling now checks every show for its roles." : "Role Call turned off."
+                    notice: enabled ? "Role Call is on: Scheduling checks every show for what it needs." : "Role Call turned off."
       end
 
       # Which per-show roles Role Call actually checks. The submitted set is the
@@ -150,6 +153,17 @@ module Manage
       # roles or quietly flip a house role. (updating_role_call_roles is a marker
       # param so an all-unchecked submit still routes here.)
       def update_role_call_roles
+        left_out = apply_role_call_roles
+        redirect_to section_path("role_call"),
+                    notice: if left_out.zero?
+                              "Role Call is checking every per-show role."
+                            else
+                              "#{helpers.pluralize(left_out, 'role')} now sitting Role Call out."
+                            end
+      end
+
+      # Returns how many per-show roles now sit Role Call out.
+      def apply_role_call_roles
         scope = Current.organization.house_roles.active.where(role_type: ::HouseRole.role_types[:show_specific])
         included_ids = Array(params[:role_call_role_ids]).map(&:to_i).reject(&:zero?)
         now = Time.current
@@ -157,14 +171,7 @@ module Manage
              .update_all(include_in_role_call: true, updated_at: now)
         scope.where.not(id: included_ids).where(include_in_role_call: true)
              .update_all(include_in_role_call: false, updated_at: now)
-
-        left_out = scope.where(include_in_role_call: false).count
-        redirect_to section_path("role_call"),
-                    notice: if left_out.zero?
-                              "Role Call is checking every per-show role."
-                            else
-                              "#{helpers.pluralize(left_out, 'role')} now sitting Role Call out."
-                            end
+        scope.where(include_in_role_call: false).count
       end
 
       # Regulars: when on, the scheduling page can match the org's standing

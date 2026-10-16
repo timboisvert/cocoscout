@@ -27,7 +27,8 @@
      data-shift-edit-update-url-template-value="<%= manage_update_staffing_shift_path(":id") %>"
      data-shift-edit-unassign-url-template-value="<%= manage_unassign_staffing_shift_path(id: "SHIFT_ID", person_id: "PERSON_ID") %>"
      data-shift-split-split-url-template-value="<%= manage_split_staffing_shift_path(":id") %>"
-     data-shift-add-create-url-value="<%= manage_create_staffing_shift_path %>">
+     data-shift-add-create-url-value="<%= manage_create_staffing_shift_path %>"
+     data-shift-add-all-staff-value="<%= @all_staff_payload.to_json %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%
@@ -704,6 +705,19 @@
                           <% end %>
                         </div>
 
+                        <%# What this show needs (after-V1 #6): its production's,
+                            contract's and own services, who's on each, and the
+                            changes for this show alone. Every level links up. %>
+                        <% if @services_on %>
+                          <% needs = @show_needs[show.id] || [] %>
+                          <%= render "manage/staffing/show_services_panel", show: show, needs: needs,
+                                staff_it_data: {
+                                  "day-label": day_label, "day-iso": day.iso8601,
+                                  "role-defaults": role_defaults_for_day.to_json, "source-show-id": show.id,
+                                  "show-defaults": show_defaults_for_day.to_json, "day-shows": day_shows_options.to_json
+                                } %>
+                        <% end %>
+
                         <%# Role Call — the named feature, so it gets a badge, its own
                             framed block and a way through to its settings. Only here
                             when Role Call is switched on for the org. %>
@@ -720,7 +734,7 @@
                                 <% end %>
                               </span>
                             </div>
-                            <p class="text-xs text-gray-500 mb-3">The show-specific roles this show is checked for. Excuse any this show genuinely doesn't need.</p>
+                            <p class="text-xs text-gray-500 mb-3">The roles every show needs, whatever its services. Excuse any this show genuinely doesn't need.</p>
 
                             <%# Each role flips on its own — a show can skip the booth
                                 tech and still be checked for the door person. %>
@@ -1070,6 +1084,7 @@
                     { include_blank: "Choose a role…" },
                     data: { "shift-add-target": "roleSelect", action: "change->shift-add#roleChanged" },
                     class: "block w-full text-sm shadow-sm rounded border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500" %>
+              <p class="hidden text-[11px] text-gray-500 mt-1" data-shift-add-target="roleHint"></p>
             </div>
 
             <%# Everything below reveals once a role is chosen. %>
@@ -1110,7 +1125,7 @@
                   rendered by JS with busy/unavailable badges. %>
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Who's working it <span class="font-normal text-gray-400">(optional — leave blank to staff later)</span></label>
-                <div data-shift-add-target="people" class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto"></div>
+                <div data-shift-add-target="people" class="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto"></div>
               </div>
             </div>
 
@@ -1125,6 +1140,8 @@
                 more than one show is checked. %>
             <span data-shift-add-target="showIdsWrap"></span>
             <%= hidden_field_tag :person_id, nil, data: { "shift-add-target": "personIdInput" } %>
+            <%# 1 when the person picked is "Someone else", not on this role. %>
+            <%= hidden_field_tag :anyone, "0", data: { "shift-add-target": "anyoneInput" } %>
             <%= f.hidden_field :required_count, value: 1 %>
             <%= f.hidden_field :coverage_mode,  value: "needs_assignment" %>
           </div>
