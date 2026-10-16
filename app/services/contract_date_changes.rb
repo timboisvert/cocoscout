@@ -65,8 +65,13 @@ class ContractDateChanges
     def retime!(contract:, rental:, starts_at:, ends_at:, event_starts_at: nil, event_ends_at: nil)
       shows = shows_for(contract, rental)
       was_show_start = rental.effective_event_starts_at
+      was_rental_start = rental.starts_at
 
       rental.update!(starts_at: starts_at, ends_at: ends_at, event_starts_at: event_starts_at, event_ends_at: event_ends_at)
+
+      # The date's per-event services are keyed by when it starts, so they move
+      # with it; left behind, the next amendment's Services step dropped them.
+      move_service_dates!(contract, from: [ was_rental_start, was_show_start ].uniq, offset: starts_at - was_rental_start)
 
       offset = rental.effective_event_starts_at - was_show_start
       shows.each do |show|
@@ -85,6 +90,28 @@ class ContractDateChanges
       end
 
       starts_at.strftime("%b %-d")
+    end
+
+    # Every per-event service line (and a staged amendment's) on this contract
+    # whose date started at one of `from` moves by `offset`.
+    def move_service_dates!(contract, from:, offset:)
+      return if offset.zero?
+
+      data = contract.draft_data || {}
+      shift = lambda do |lines|
+        Array(lines).map do |line|
+          next line unless line["per_event"] && line["events"].present?
+
+          line.merge("events" => line["events"].map do |event|
+            at = (Time.zone.parse(event["starts_at"].to_s) rescue nil)
+            at && from.any? { |t| (t - at).abs < 60 } ? event.merge("starts_at" => (at + offset).iso8601) : event
+          end)
+        end
+      end
+
+      updated = data.merge("services" => shift.call(data["services"]))
+      updated["amend"] = data["amend"].merge("services" => shift.call(data["amend"]["services"])) if data.dig("amend", "services")
+      contract.update_columns(draft_data: updated) unless updated == data
     end
 
     # The four times from a night's fields (shared/_night_times_fields): the
