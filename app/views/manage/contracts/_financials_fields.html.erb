@@ -519,10 +519,11 @@
 
   <div class="flex justify-between">
     <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: back_path %>
-    <%# What's next depends on who's selling, so the label follows the choice. %>
-    <div data-contract-payments-target="nextButton">
+    <%# What's next depends on who's selling, so the label follows the choice,
+        unless the caller names the next screen (the wizard's Review the dates). %>
+    <div data-contract-payments-target="nextButton" <%= "data-fixed-label" if local_assigns[:next_label] %>>
       <%= render "shared/button",
-            text: contract.org_sells_tickets? ? "Next: Ticketing" : "Next: Services",
+            text: local_assigns[:next_label] || (contract.org_sells_tickets? ? "Next: Ticketing" : "Next: Services"),
             variant: "primary", size: "medium", type: :submit %>
     </div>
   </div>

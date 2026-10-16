@@ -1,0 +1,55 @@
+<%# Edit one date's terms, or several ticked together (Review the dates). A
+    field per kind of date being edited (a rehearsal's rate, our share of a
+    show), an optional note, Cancel / Save. On a phone it's a full-height sheet.
+
+    Locals: id, url, method, title, sections ([{ event_type:, value:, copy:
+    { label:, unit:, help: }, several: }]), dates (booking starts_at values;
+    empty when the ticked rows carry them, through form_id), note, form_id. %>
+<% form_id = local_assigns[:form_id] %>
+<div id="<%= id %>" class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white w-full sm:max-w-lg sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
+      <h3 class="text-lg font-semibold text-white leading-snug"><%= title %></h3>
+      <button type="button" data-action="click->modal#close" aria-label="Close" class="text-white/80 hover:text-white cursor-pointer p-1">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: url, method: method, id: form_id, class: "flex-1 flex flex-col" do %>
+      <% Array(dates).each do |starts_at| %>
+        <%= hidden_field_tag "dates[]", starts_at, id: nil %>
+      <% end %>
+      <div class="flex-1 px-5 py-5 space-y-5 overflow-y-auto">
+        <% sections.each do |section| %>
+          <% input_id = "#{id}-#{section[:event_type]}" %>
+          <%
+            unit = section[:copy][:unit]
+            value = section[:value].to_f
+            shown = unit == "%" ? (value % 1 == 0 ? value.to_i : value) : format("%.2f", value)
+            data = section[:several] ? { contract_dates_target: "section", kind: section[:event_type] } : {}
+          %>
+          <%= content_tag :div, class: [ "space-y-1.5", ("hidden" if section[:several]) ], data: data do %>
+            <label for="<%= input_id %>" class="block text-sm font-medium text-gray-700"><%= section[:copy][:label] %></label>
+            <div class="flex items-center gap-1 w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-pink-500 focus-within:border-pink-500">
+              <% if unit == "$" %><span class="text-sm text-gray-400">$</span><% end %>
+              <%= number_field_tag "values[#{section[:event_type]}]", shown, id: input_id, step: "0.01", min: "0", max: (unit == "%" ? "100" : nil),
+                    disabled: section[:several], class: "w-full border-0 p-0 text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-0" %>
+              <% if unit == "%" %><span class="text-sm text-gray-400">%</span><% end %>
+            </div>
+            <p class="text-sm text-gray-500"><%= section[:copy][:help] %></p>
+          <% end %>
+        <% end %>
+        <div class="space-y-1.5">
+          <label for="<%= id %>-note" class="block text-sm font-medium text-gray-700">Note <span class="font-normal text-gray-500">(optional)</span></label>
+          <%= text_field_tag :note, local_assigns[:note], id: "#{id}-note", maxlength: 200,
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          <p class="text-sm text-gray-500">Shows beside this date on the contract.</p>
+        </div>
+      </div>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-5 py-4 bg-gray-50 border-t border-gray-200">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, classes: "w-full sm:w-auto min-h-11 sm:min-h-0", data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit, classes: "w-full sm:w-auto min-h-11 sm:min-h-0" %>
+      </div>
+    <% end %>
+  </div>
+</div>

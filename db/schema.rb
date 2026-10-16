@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_16_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2787,6 +2787,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_200000) do
     t.string "casting_mode"
     t.string "tickets_url"
     t.string "tickets_mode"
+    t.jsonb "contract_terms", default: {}, null: false
     t.index ["casting_mode"], name: "index_shows_on_casting_mode"
     t.index ["casting_source"], name: "index_shows_on_casting_source"
     t.index ["course_offering_id"], name: "index_shows_on_course_offering_id"

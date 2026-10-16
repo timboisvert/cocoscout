@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Contract < ApplicationRecord
+  # Each date's own terms: Review the dates (see the concern).
+  include ContractDateTerms
+
   # An amendment tried to remove a night people hold tickets for.
   class TicketsSoldError < StandardError; end
 
@@ -593,7 +596,10 @@ class Contract < ApplicationRecord
 
       events = shows.map do |show|
         hours = show.duration_minutes.to_i.positive? ? (show.duration_minutes / 60.0).round(2) : 1
-        { "starts_at" => show.date_and_time.iso8601, "hours" => hours }
+        event = { "starts_at" => show.date_and_time.iso8601, "hours" => hours }
+        # A date with its own rate (Review the dates); $0 bills nothing.
+        own = terms_for(show)["amount"]
+        own.nil? ? event : event.merge("unit_price" => own.to_f)
       end
       { "name" => EventTypes.labels[rate["event_type"]] || rate["event_type"].to_s.titleize,
         "unit" => rate["unit"] == "hourly" ? "hourly" : "flat",
@@ -710,11 +716,8 @@ class Contract < ApplicationRecord
           starts_at = (Time.zone.parse(event["starts_at"].to_s) rescue nil)
           next unless starts_at
 
-          amount = if service["unit"] == "hourly"
-            (event["hours"].to_f * service["unit_price"].to_f).round(2)
-          else
-            service["unit_price"].to_f.round(2)
-          end
+          price = (event["unit_price"] || service["unit_price"]).to_f
+          amount = service["unit"] == "hourly" ? (event["hours"].to_f * price).round(2) : price.round(2)
           next unless amount.positive?
 
           date = starts_at.to_date
@@ -1343,15 +1346,15 @@ class Contract < ApplicationRecord
       elsif revenue.nil?
         nil
       elsif revenue_share?
-        ours = (revenue * revenue_share_percentage.to_f / 100.0).round(2)
+        ours = (revenue * our_share_for(show) / 100.0).round(2)
         if sells
-          lines << [ "#{counterparty}'s #{number_for(contractor_share_percentage)}% share", -(revenue - ours).round(2) ]
+          lines << [ "#{counterparty}'s #{number_for(their_share_for(show))}% share", -(revenue - ours).round(2) ]
         else
-          lines << [ "Your #{number_for(revenue_share_percentage)}% share", ours ]
+          lines << [ "Your #{number_for(our_share_for(show))}% share", ours ]
         end
         ours
       elsif ticket_revenue_minus_fee?
-        fee = flat_fee_for_shows(1)
+        fee = flat_fee_for_shows([ show ])
         remainder = (revenue - fee).round(2)
         if remainder.positive?
           lines << [ "Handed back to #{counterparty}", -remainder ]
@@ -1509,8 +1512,9 @@ class Contract < ApplicationRecord
     pending_shows = all_shows - confirmed_shows
 
     confirmed_revenue = confirmed_shows.sum { |s| s.show_financials.total_revenue }
-    our_share_amount = (confirmed_revenue * revenue_share_percentage / 100.0).round(2)
-    contractor_share_amount = (confirmed_revenue * contractor_share_percentage / 100.0).round(2)
+    # Show by show: a date can have its own share (Review the dates).
+    our_share_amount = confirmed_shows.sum { |s| s.show_financials.total_revenue * our_share_for(s) / 100.0 }.round(2)
+    contractor_share_amount = (confirmed_revenue - our_share_amount).round(2)
 
     @revenue_share_summary = {
       confirmed_revenue: confirmed_revenue,
@@ -1535,7 +1539,7 @@ class Contract < ApplicationRecord
     # The fee is charged per show, so what we've actually earned so far tracks
     # the shows whose numbers are in — it doesn't sit at the full contract fee
     # while half the run is still unreported.
-    fee = flat_fee_for_shows(confirmed_shows.count)
+    fee = flat_fee_for_shows(confirmed_shows)
 
     # Each settlement stands on its own, exactly as its payment does: a night
     # that sold above the fee hands back the difference, and a night that sold
@@ -1569,7 +1573,7 @@ class Contract < ApplicationRecord
     return 0.0 if shows.empty?
 
     revenue = shows.sum { |s| s.show_financials&.total_revenue.to_f }
-    (revenue - flat_fee_for_shows(shows.size)).round(2)
+    (revenue - flat_fee_for_shows(shows)).round(2)
   end
 
   # The shows this contract settles together, one group per settlement, oldest
@@ -1617,15 +1621,23 @@ class Contract < ApplicationRecord
   def fee_held_back_for(payment)
     return nil unless ticket_revenue_minus_fee?
 
-    count = settlement_shows_for(payment).size
-    return nil if count.zero?
+    shows = settlement_shows_for(payment)
+    return nil if shows.empty?
 
-    fee = flat_fee_for_shows(count)
+    fee = flat_fee_for_shows(shows)
     fee.positive? ? fee : nil
   end
 
-  def flat_fee_for_shows(count)
-    count = count.to_i
+  # Pass the shows themselves where you have them: a per-show fee then counts
+  # each show's own (Review the dates can set one, down to $0).
+  def flat_fee_for_shows(shows_or_count)
+    if shows_or_count.respond_to?(:each)
+      shows = shows_or_count.to_a
+      return shows.sum { |show| fee_for_show(show) }.round(2) if flat_fee_basis == "per_show" && shows.any?
+
+      shows_or_count = shows.size
+    end
+    count = shows_or_count.to_i
     return 0.0 unless count.positive?
     return (flat_fee_per_show * count).round(2) if flat_fee_basis == "per_show"
 
@@ -2538,7 +2550,7 @@ class Contract < ApplicationRecord
       })
 
       event_type = booking["event_type"] || "show"
-      rentals << { rental: rental, event_type: event_type }
+      rentals << { rental: rental, event_type: event_type, terms: date_terms_for_booking(booking["starts_at"]) }
     end
 
     # Create payments from draft payments
@@ -2584,7 +2596,8 @@ class Contract < ApplicationRecord
           location: rental.location,
           location_space: rental.location_space,
           space_rental: rental,
-          event_type: info[:event_type]
+          event_type: info[:event_type],
+          contract_terms: info[:terms]
         )
         created_shows << show
       end

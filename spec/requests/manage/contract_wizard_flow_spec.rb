@@ -23,8 +23,8 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
 
   it "renders each step of the new flow" do
     { bookings: :manage_bookings_contract_wizard_path,
-      schedule_preview: :manage_schedule_preview_contract_wizard_path,
       deal: :manage_payments_contract_wizard_path,
+      dates: :manage_review_dates_contract_wizard_path,
       services: :manage_tech_contract_wizard_path,
       documents: :manage_documents_contract_wizard_path,
       review: :manage_review_contract_wizard_path }.each do |_name, helper|
@@ -33,11 +33,11 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
     end
   end
 
-  it "the financials step is titled 'Financials' and asks who sells, with Services next" do
+  it "the financials step is titled 'Financials' and asks who sells, with Review the dates next" do
     get manage_payments_contract_wizard_path(contract)
     expect(response.body).to include("Financials")
     expect(response.body).to include("Who sells the tickets?")
-    expect(response.body).to include("Next: Services")
+    expect(response.body).to include("Next: Review the dates")
   end
 
   it "the services step replaces Tech and is skippable" do
@@ -64,14 +64,18 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
     expect(response.body).to include(%(name="services[0][settlement]" value="direct"))
   end
 
-  it "reorders the redirect chain: schedule → financials → services → documents → review" do
-    # schedule preview → the deal
-    post manage_schedule_preview_contract_wizard_path(contract)
+  it "reorders the redirect chain: schedule → financials → review the dates → services → documents → review" do
+    # the old schedule preview just lands on the deal
+    get manage_schedule_preview_contract_wizard_path(contract)
     expect(response).to redirect_to(manage_payments_contract_wizard_path(contract))
 
-    # the deal → services (nobody's selling tickets here, so Ticketing is skipped)
+    # the deal → its dates
     post manage_payments_contract_wizard_path(contract),
          params: { payments: [].to_json, payment_structure: "flat_fee", payment_config: {}.to_json }
+    expect(response).to redirect_to(manage_review_dates_contract_wizard_path(contract))
+
+    # the dates → services (nobody's selling tickets here, so Ticketing is skipped)
+    post manage_review_dates_contract_wizard_path(contract)
     expect(response).to redirect_to(manage_tech_contract_wizard_path(contract))
 
     # services → documents
@@ -89,6 +93,7 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
 
     it "slots in between Financials and Services when we're the ones selling" do
       choose_who_sells("org")
+      post manage_review_dates_contract_wizard_path(contract)
 
       expect(response).to redirect_to(manage_ticketing_contract_wizard_path(contract))
       expect(contract.reload).to be_org_sells_tickets
@@ -100,9 +105,11 @@ RSpec.describe "Manage::ContractWizard reordered flow", type: :request do
 
     it "is skipped entirely when they sell, or when there are no tickets" do
       choose_who_sells("contractor")
+      post manage_review_dates_contract_wizard_path(contract)
       expect(response).to redirect_to(manage_tech_contract_wizard_path(contract))
 
       choose_who_sells("")
+      post manage_review_dates_contract_wizard_path(contract)
       expect(response).to redirect_to(manage_tech_contract_wizard_path(contract))
     end
 

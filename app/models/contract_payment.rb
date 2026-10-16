@@ -582,12 +582,16 @@ class ContractPayment < ApplicationRecord
     suggested = case structure
     when "revenue_share"
       pct = direction_incoming? ? config["revenue_our_share"].to_f : config["revenue_their_share"].to_f
-      calculated = (total_revenue * pct / 100.0).round(2)
+      # Show by show: a date can have its own share (Review the dates).
+      calculated = shows_with_data.sum do |show|
+        show_pct = direction_incoming? ? contract.our_share_for(show) : contract.their_share_for(show)
+        show.show_financials.total_revenue * show_pct / 100.0
+      end.round(2)
       { amount: calculated, explanation: "#{pct.round(0)}% of revenue" }
     when "per_event"
       per_event_amt = config["per_event_amount"].to_f
       if per_event_amt > 0
-        { amount: per_event_amt * linked_shows.size, explanation: "$#{'%.2f' % per_event_amt} per event" }
+        { amount: linked_shows.sum { |show| contract.per_event_amount_for(show) }.round(2), explanation: "$#{'%.2f' % per_event_amt} per event" }
       end
     when "flat_fee"
       flat_amt = config["flat_fee_amount"].to_f
@@ -595,7 +599,7 @@ class ContractPayment < ApplicationRecord
       if fee_direction == "ticket_revenue_minus_fee" && flat_amt > 0
         # Only the fee for the shows this payment settles, so a weekly
         # settlement deducts that week's shows rather than the whole run's.
-        fee = contract.flat_fee_for_shows(shows_with_data.size)
+        fee = contract.flat_fee_for_shows(shows_with_data)
         contractor_amount = [ (total_revenue - fee).round(2), 0 ].max
         { amount: contractor_amount, explanation: "Ticket revenue minus $#{'%.2f' % fee} fee" }
       elsif flat_amt > 0

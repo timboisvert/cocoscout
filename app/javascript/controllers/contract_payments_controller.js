@@ -188,7 +188,7 @@ export default class extends Controller {
     }
 
     updateNextLabel() {
-        if (!this.hasNextButtonTarget) return
+        if (!this.hasNextButtonTarget || "fixedLabel" in this.nextButtonTarget.dataset) return
         const button = this.nextButtonTarget.querySelector("button")
         if (!button) return
         const weSell = this.whoSellsTickets === "org"

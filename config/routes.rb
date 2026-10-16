@@ -1781,8 +1781,12 @@ Rails.application.routes.draw do
     post "contracts/:contract_id/wizard/contractor", to: "contract_wizard#save_contractor"
     get  "contracts/:contract_id/wizard/bookings", to: "contract_wizard#bookings", as: "bookings_contract_wizard"
     post "contracts/:contract_id/wizard/bookings", to: "contract_wizard#save_bookings"
+    # The old "Review your schedule" step: now just lands on Financials.
     get  "contracts/:contract_id/wizard/schedule_preview", to: "contract_wizard#schedule_preview", as: "schedule_preview_contract_wizard"
-    post "contracts/:contract_id/wizard/schedule_preview", to: "contract_wizard#save_schedule_preview"
+    # Financials' second screen: every date and its terms.
+    get   "contracts/:contract_id/wizard/review_dates", to: "contract_wizard#review_dates", as: "review_dates_contract_wizard"
+    patch "contracts/:contract_id/wizard/review_dates", to: "contract_wizard#save_review_dates"
+    post  "contracts/:contract_id/wizard/review_dates", to: "contract_wizard#finish_review_dates"
     get  "contracts/:contract_id/wizard/ticketing", to: "contract_wizard#ticketing", as: "ticketing_contract_wizard"
     post "contracts/:contract_id/wizard/ticketing", to: "contract_wizard#save_ticketing"
     get  "contracts/:contract_id/wizard/tech", to: "contract_wizard#tech", as: "tech_contract_wizard"

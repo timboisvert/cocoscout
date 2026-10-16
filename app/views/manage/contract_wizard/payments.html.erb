@@ -5,11 +5,12 @@
   <%= render "manage/contracts/financials_fields",
         contract: @contract,
         form_url: manage_payments_contract_wizard_path(@contract),
-        back_path: manage_schedule_preview_contract_wizard_path(@contract),
+        back_path: manage_bookings_contract_wizard_path(@contract),
         existing_payments: @existing_payments,
         existing_payment_structure: @existing_payment_structure,
         existing_payment_config: @existing_payment_config,
         bookings: @bookings,
         bookings_count: @bookings_count,
-        offline_payment_methods: @offline_payment_methods %>
+        offline_payment_methods: @offline_payment_methods,
+        next_label: "Next: Review the dates" %>
 <% end %>

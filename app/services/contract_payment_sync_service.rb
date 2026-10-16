@@ -149,8 +149,8 @@ class ContractPaymentSyncService
     if @contract.ticket_revenue_minus_fee?
       @contract.settlement_remainder(shows)
     else
-      revenue = shows.sum { |s| s.show_financials.total_revenue }
-      (revenue * share_pct_for(nil) / 100.0).round(2)
+      # Show by show, since a date can have its own share (Review the dates).
+      @contract.settled_share_amount(shows)
     end
   end
 
@@ -167,7 +167,7 @@ class ContractPaymentSyncService
     label = period_label_for(payment, shows)
     if remainder.negative?
       revenue = shows.sum { |s| s.show_financials.total_revenue }
-      fee = @contract.flat_fee_for_shows(shows.size)
+      fee = @contract.flat_fee_for_shows(shows)
       money = ActionController::Base.helpers.method(:number_to_currency)
       payment.update!(
         direction: "incoming", auto_shortfall: true, settlement_method: "direct",
@@ -203,18 +203,6 @@ class ContractPaymentSyncService
   # a one-off added by hand), so we only ever reset those back to TBD.
   def settlement_payment?(payment)
     @contract.ticket_revenue_minus_fee? || payment.revenue_share?
-  end
-
-  # The slice of ticket revenue this payment settles. When the contractor sells
-  # their own tickets (Case 2, v2 config), they hold the money and owe us our
-  # cut, so the payment settles OUR share. Otherwise we hold the money and owe
-  # them theirs (Case 1), so it settles the contractor's share.
-  def share_pct_for(_payment)
-    if @contract.draft_payment_config["who_sells_tickets"] == "contractor"
-      @contract.revenue_share_percentage
-    else
-      @contract.contractor_share_percentage
-    end
   end
 
   def update_payment(payment, amount, show_details, pending_count: 0)

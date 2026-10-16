@@ -166,28 +166,16 @@ module Manage
       end
 
       @contract.update_draft_step(:booking_rules, rules)
-      @contract.update_column(:wizard_step, [ 3, @contract.wizard_step ].max)
-      redirect_to manage_schedule_preview_contract_wizard_path(@contract)
-    end
-
-    # Step 3: Schedule Preview (generated from rules)
-    def schedule_preview
-      @step = 3
-      @locations = Current.organization.locations.includes(:location_spaces)
-      rules = @contract.draft_booking_rules || {}
-      @generated_bookings = generate_bookings_from_rules(rules)
-
-      # Build lookup maps for display
-      @locations_map = @locations.index_by(&:id)
-      @spaces_map = @locations.flat_map(&:location_spaces).index_by(&:id)
-    end
-
-    def save_schedule_preview
-      # Generate and save the actual bookings from rules
-      rules = @contract.draft_booking_rules || {}
-      bookings = generate_bookings_from_rules(rules)
-      @contract.update_draft_step(:bookings, bookings)
+      # The dates themselves, straight from the rules: Financials' Review the
+      # dates shows them (the old "Review your schedule" step is gone).
+      @contract.update_draft_step(:bookings, generate_bookings_from_rules(rules))
       @contract.update_column(:wizard_step, [ 4, @contract.wizard_step ].max)
+      redirect_to manage_payments_contract_wizard_path(@contract)
+    end
+
+    # The old "Review your schedule" step: the dates now show on Financials'
+    # Review the dates, so an old link lands on the deal.
+    def schedule_preview
       redirect_to manage_payments_contract_wizard_path(@contract)
     end
 
@@ -263,6 +251,8 @@ module Manage
       payment_config["accepted_payment_methods"] = [ "online" ] + offline
       # Non-ticketed events with their own rate (a rehearsal fee).
       payment_config["event_rates"] = Contract.normalize_event_rates(params[:event_rates] || {})
+      # Dates with terms of their own (Review the dates) keep them.
+      payment_config["date_terms"] = @contract.draft_date_terms if @contract.draft_date_terms.any?
 
       @contract.update_draft_step(:payment_structure, payment_structure)
       @contract.update_draft_step(:payment_config, payment_config)
@@ -272,7 +262,7 @@ module Manage
       # cases. By-hand extras keep the direction chosen in the add-payment modal.
       direction = @contract.settlement_direction
       payments_data = payments_data.map { |p| p["extra"] ? p : p.merge("direction" => direction) }
-      @contract.update_draft_step(:payments, payments_data)
+      @contract.update_draft_step(:payments, @contract.apply_date_terms_to_draft_payments(payments_data))
 
       # Auto-set contract dates from bookings
       if @contract.contract_start_date.blank? || @contract.contract_end_date.blank?
@@ -284,6 +274,41 @@ module Manage
         end
       end
 
+      # Then every date, and what the deal means for it (Review the dates).
+      redirect_to manage_review_dates_contract_wizard_path(@contract)
+    end
+
+    # Financials, second screen (2026-10-16): every booked date with its terms,
+    # each editable for that date alone, down to $0. Replaces the old "Review
+    # your schedule" step.
+    def review_dates
+      @step = 4
+      @bookings = (@contract.draft_bookings || []).sort_by { |b| b["starts_at"].to_s }
+      @locations = Current.organization.locations.includes(:location_spaces)
+      @locations_map = @locations.index_by(&:id)
+      @spaces_map = @locations.flat_map(&:location_spaces).index_by(&:id)
+    end
+
+    # Edit one date's terms, or several ticked together: dates[] are booking
+    # starts_at values, values[event_type] the new figure for each kind of date
+    # among them (blank is the deal's), note beside them all.
+    def save_review_dates
+      dates = Array(params[:dates]).compact_blank
+      types = @contract.draft_bookings.to_h { |b| [ b["starts_at"].to_s, b["event_type"].presence || "show" ] }
+      saved = 0
+      params.fetch(:values, {}).each do |type, value|
+        field = @contract.date_term_field(type)
+        picked = dates.select { |d| types[d] == type }
+        next unless field && picked.any?
+
+        @contract.set_draft_date_terms!(picked, value: value, note: params[:note], field: field)
+        saved += picked.size
+      end
+      redirect_to manage_review_dates_contract_wizard_path(@contract),
+                  notice: saved.zero? ? "Nothing to change on those dates." : "#{helpers.pluralize(saved, 'date')} saved."
+    end
+
+    def finish_review_dates
       # Ticketing is its own step, and only when we're the ones selling.
       @contract.update_column(:wizard_step, [ 5, @contract.wizard_step ].max)
       if @contract.org_sells_tickets?
@@ -591,8 +616,7 @@ module Manage
     def wizard_step_path(step)
       case step
       when 1, 2 then manage_bookings_contract_wizard_path(@contract)
-      when 3 then manage_schedule_preview_contract_wizard_path(@contract)
-      when 4 then manage_payments_contract_wizard_path(@contract)   # Financials
+      when 3, 4 then manage_payments_contract_wizard_path(@contract)   # Financials
       when 5 then manage_ticketing_contract_wizard_path(@contract)  # only when we sell
       when 6 then manage_tech_contract_wizard_path(@contract)       # Services
       when 7 then manage_documents_contract_wizard_path(@contract)
