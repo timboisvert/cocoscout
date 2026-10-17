@@ -560,23 +560,28 @@
             <% end %>
           <% end %>
         <% end %>
-        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+        <%# Two tiles like the Manage show page's: every ticket sold anywhere,
+            here and on other sites, of the seats to sell once comps are set
+            aside (ListingStats#sold_words), with where its sales stand; and
+            this date's link. %>
+        <% badge_label, badge_classes = ticket_listing_status_badge(@ticket_listing, @ticket_stats.inventory) %>
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
           <div class="rounded-lg border border-gray-200 p-3">
             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tickets sold</div>
             <div class="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
               <%= @ticket_stats.sold_words %><% if @ticket_level == :full && @ticket_stats.comps.positive? %> <span class="text-sm font-normal text-gray-500">· <%= pluralize(@ticket_stats.comps, "comp") %></span><% end %>
             </div>
-            <p class="mt-1.5 text-xs text-gray-500">
+            <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium <%= badge_classes %>"><%= badge_label %></span>
               <% if @ticket_sales_path %>
-                Who's coming<%= ", and your comps," if TicketSalesAccess.comp_allowance(Current.user, @ticket_listing) %> are in Ticket sales.
-              <% else %>
-                Your link for this date. Share it with your people.
+                <span>Who's coming<%= ", and your comps," if TicketSalesAccess.comp_allowance(Current.user, @ticket_listing) %> are in Ticket sales.</span>
               <% end %>
-            </p>
+            </div>
           </div>
           <% if @ticket_link&.url.present? %>
             <div class="min-w-0">
-              <%= render "shared/copy_url", url: @ticket_link.url, layout: :tile, label: "Ticket link", show_qr: false %>
+              <%= render "shared/copy_url", url: @ticket_link.url, layout: :tile, label: "Ticket link", show_qr: false,
+                    help_text: "Your link for this date. Share it with your people." %>
             </div>
           <% end %>
         </div>
