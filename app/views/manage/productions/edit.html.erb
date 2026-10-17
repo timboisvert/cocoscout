@@ -48,7 +48,9 @@
             <%= render "shared/pro_marker" %>
           </button>
         <% end %>
-        <button type="button" data-tabs-target="tab" data-index="<%= services_on ? 9 : 8 %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <% if org_manager %>
+          <button type="button" data-tabs-target="tab" data-index="<%= services_on ? 9 : 8 %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <% end %>
       <% else %>
         <%# A production booked by a contract still has a team (Tim, 2026-10-16):
             the people who signed can be given access to it. %>
@@ -66,7 +68,9 @@
             <%= render "shared/pro_marker" %>
           </button>
         <% end %>
-        <button type="button" data-tabs-target="tab" data-index="<%= services_on ? 6 : 5 %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <% if org_manager %>
+          <button type="button" data-tabs-target="tab" data-index="<%= services_on ? 6 : 5 %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+        <% end %>
       <% end %>
     </nav>
 
@@ -792,7 +796,9 @@
       </div>
     <% end %>
 
-    <!-- Danger Zone Tab -->
+    <%# Danger Zone tab: the organization's managers' only (Tim, 2026-10-17); a
+        production team member gets neither the tab nor the panel. %>
+    <% if org_manager %>
     <div data-tabs-target="panel" class="hidden">
       <% if org_manager %>
         <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
@@ -847,6 +853,7 @@
         </div>
       </div>
     </div>
+    <% end %>
   </div>
 
 </div>

@@ -8,7 +8,7 @@ module Manage
     # Performer pay and agreements are Pro, and Pro is the organization's
     # managers' — a production's own manager (a producer) doesn't get them.
     # Archiving is the organization's call too: a production's own producer can't shelve it.
-    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_services archive unarchive]
+    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_services archive unarchive destroy confirm_delete]
 
     def index
       @filter = params[:filter] || "all"

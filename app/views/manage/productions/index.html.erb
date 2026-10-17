@@ -11,6 +11,9 @@
 
   <% archived_view = @status == "archived" %>
   <% status_param = archived_view ? "archived" : nil %>
+  <%# The filters are for the organization's people, who see every production;
+      a production team member just gets their productions (Tim, 2026-10-17). %>
+  <% org_wide = Current.user&.superadmin? || %w[manager viewer].include?(Current.user&.default_role) %>
   <% filter_groups = [
     {
       label: "Type",
@@ -31,7 +34,9 @@
       ]
     } %>
   <% end %>
-  <%= render "shared/filters/filter_bar", filter_groups: filter_groups %>
+  <% if org_wide %>
+    <%= render "shared/filters/filter_bar", filter_groups: filter_groups %>
+  <% end %>
 
 <% if @productions.any? %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -68,6 +68,33 @@ RSpec.describe "Pro modules are for managers", type: :request do
     expect(response.body).not_to include(manage_agreement_templates_path)
   end
 
+  # Tim, 2026-10-17: archiving and deleting a production is the organization's
+  # managers' business; a production team member gets no Danger Zone tab, and
+  # the productions list without the organization's filters.
+  it "keeps a producer out of the Danger Zone and off the productions filters" do
+    sign_in(producer)
+    get edit_manage_production_path(production)
+    expect(response.body).not_to include("Danger Zone")
+    expect(response.body.scan('data-tabs-target="tab"').size).to eq(response.body.scan('data-tabs-target="panel"').size)
+
+    delete manage_production_path(production)
+    expect(response).to redirect_to(manage_path)
+    expect(Production.exists?(production.id)).to be(true)
+    get confirm_delete_manage_production_path(production)
+    expect(response).to redirect_to(manage_path)
+
+    get manage_productions_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(production.name)
+    expect(response.body).not_to include(">First-party<", ">Contract<", ">Course<")
+
+    sign_in(owner)
+    get edit_manage_production_path(production)
+    expect(response.body).to include("Danger Zone")
+    get manage_productions_path
+    expect(response.body).to include(">First-party<")
+  end
+
   it "keeps a producer from taking a date off CocoScout sales on the show page" do
     sign_in(producer)
 
