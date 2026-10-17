@@ -81,9 +81,11 @@ RSpec.describe "Manage a show's tickets", type: :request do
     get manage_ticket_listing_path(listing)
     expect(response.body).to include('data-modal-id="comps-modal"', 'id="comps-modal"', 'name="name"', 'name="quantity"')
     expect(response.body).not_to include("One person per line")
-    # One ticket type: said, not chosen. Emailing asks for their email, and needs it.
+    # One ticket type: said, not chosen. Emailing is off until switched on
+    # (Tim, 2026-10-17); on, it asks for their email, and needs it.
     expect(response.body).to include(%(type="hidden" name="tier_id" id="comp_tier_id" value="#{general.id}"), "General ($20.00) · 40 left",
                                      "Email them their tickets", 'name="email_them"')
+    expect(response.body).not_to match(/id="comp_email_them"[^>]*checked/)
     expect(response.body).to match(/id="comp_email"[^>]*required="required"/)
     expect(response.body).not_to include('<select name="tier_id"')
     listing.ticket_tiers.create!(name: "VIP", price_cents: 3_500, quantity: 10)

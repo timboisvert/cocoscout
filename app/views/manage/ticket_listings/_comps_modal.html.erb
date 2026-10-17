@@ -1,8 +1,9 @@
 <%# Give tickets (comps): one person at a time, from the Comps tile on the
     show's page. Free, no fees; they take seats. Name, how many and which
     ticket on one line (no choosing when there's one type), a note, then
-    "Email them their tickets", which asks for their email and needs it
-    (Tim, 2026-10-09). A production team manager gets the same modal on
+    "Email them their tickets", off by default (Tim, 2026-10-17: most comps
+    are handed over, not emailed); switched on, it asks for their email and
+    needs it (Tim, 2026-10-09). A production team manager gets the same modal on
     their sales page, within their allowance (TicketSalesAccess).
     Locals: id, listing; url (where it posts; default the manager's),
     max (the most they may give now, optional), allowance_note (a sentence
@@ -73,17 +74,17 @@
           <%= text_field_tag :note, nil, id: "comp_note", placeholder: "Guest of the cast", class: input_class %>
         </div>
 
-        <%# Emailing their tickets needs their email: off, there's nothing to fill in. %>
+        <%# Emailing their tickets needs their email: off (the default), there's nothing to fill in. %>
         <div class="pt-5 border-t border-gray-200 space-y-4" data-controller="toggle-section fieldset-toggle">
           <div class="flex items-center justify-between gap-4">
             <div>
               <div class="text-sm font-medium text-gray-900">Email them their tickets</div>
               <div class="text-xs text-gray-600 mt-0.5">The usual email with their QR codes. Off, you hand them over yourself.</div>
             </div>
-            <%= render "shared/toggle_switch", name: "email_them", checked: true, hidden_false: true, id: "comp_email_them", aria_label: "Email them their tickets",
+            <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "comp_email_them", aria_label: "Email them their tickets",
                   data: { toggle_section_target: "toggle", fieldset_toggle_target: "switch", action: "change->toggle-section#toggle change->fieldset-toggle#toggle" } %>
           </div>
-          <fieldset data-toggle-section-target="content" data-fieldset-toggle-target="fields" class="min-w-0">
+          <fieldset data-toggle-section-target="content" data-fieldset-toggle-target="fields" class="min-w-0 hidden">
             <label for="comp_email" class="<%= label_class %>">Their email</label>
             <%= email_field_tag :email, nil, id: "comp_email", placeholder: "their@email.com", required: true, autocomplete: "off", class: input_class %>
           </fieldset>
