@@ -123,14 +123,13 @@ RSpec.describe "Show services on Scheduling", type: :request do
     booth_role.update!(include_in_role_call: true)
     expect(page_html).to include("needs Booth Tech")
     expect(page_html).not_to include("Booth Tech and Booth Tech")
-    # The service row says Booth Tech; with no other every-show role, there's
-    # no Role Call block to say it again.
-    expect(page_html).not_to include("The roles every show needs")
+    # The service row says Booth Tech; the one Role Call list has no second row for it.
+    expect(page_html.scan(%r{<p class="text-sm font-medium text-gray-900">Booth Tech</p>})).to be_empty
 
-    # An every-show role no service carries still gets its Role Call row.
+    # An every-show role no service carries joins the same list.
     create(:house_role, organization: org, name: "House Manager", role_type: :show_specific, include_in_role_call: true)
     html = page_html
-    expect(html).to include("The roles every show needs", "House Manager", "Not covered yet")
+    expect(html).to include("House Manager", "Not covered yet · every show", "Not needed here")
     expect(html.scan(%r{<p class="text-sm font-medium text-gray-900">Booth Tech</p>})).to be_empty
   end
 

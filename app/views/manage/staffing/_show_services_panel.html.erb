@@ -1,35 +1,64 @@
-<%# A show's services in its panel on Scheduling (after-V1 #6): each one it
-    needs with who's on it, "Staff it" straight into the Add-shift modal on
-    the service's roles, "Not this show" / "Remove" / "Needs it again" for
-    this show alone, and adding one just for it. Links up to the production.
+<%# Role Call, a show's one block on Scheduling (after-V1 #6; Tim, 2026-10-16:
+    it used to be two, a services list with a Role Call list under it saying
+    the same thing). What the show needs, each with who's on it: its
+    production's, contract's and own services, then any every-show role its
+    services don't carry (a house manager). "Staff it" goes straight into the
+    Add-shift modal; "Not this show" / "Remove" / "Not needed here" and
+    "Needs it again" are for this show alone; a service can be added just for
+    it. With Role Call off it's the plain list, titled What this show needs.
     Locals: show, needs (StaffingController#service_coverage_by_show rows),
+    coverage (#show_coverage_by_show's entry, or nil), role_call (on?),
     staff_it_data (the day payloads the Add-shift modal reads). %>
 <%
   production = show.production
   needed = needs.select { |n| n[:needed] }
   dropped = needs.reject { |n| n[:needed] }
+  roles = coverage ? coverage[:roles] : []
+  open_roles = roles.reject { |r| r[:exempt] }
+  exempt_roles = roles.select { |r| r[:exempt] }
   addable = @org_services.select(&:staffed?).reject { |service| needs.any? { |n| n[:service].id == service.id } }
   add_cid = "add-show-service-#{show.id}"
   source_words = { production: "from the production", contract: "from the contract", show: "just this show" }
+  check = %(<svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>).html_safe
+  warn = %(<svg class="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>).html_safe
+  dash = %(<svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>).html_safe
+  row_classes = ->(covered) { "flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 rounded-lg border #{covered ? 'border-gray-200' : 'border-amber-200 bg-amber-50'}" }
+  off_row_classes = "flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 rounded-lg border border-gray-200 bg-gray-50/60"
 %>
 <div class="pt-4 border-t border-gray-200">
-  <div class="flex items-start justify-between gap-3 mb-1">
-    <span class="text-base font-semibold text-gray-900">What this show needs</span>
-  </div>
+  <% if role_call %>
+    <%# The named feature: its badge and the way through to its settings. %>
+    <div class="flex items-center gap-2 mb-1">
+      <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </span>
+      <span class="text-base text-gray-900 coustard-regular">Role Call</span>
+      <span class="ml-auto flex-shrink-0">
+        <%= link_to manage_staffing_settings_section_path(section: "role_call") do %>
+          <%= render "shared/button", text: "Settings", variant: "secondary", size: "xs" %>
+        <% end %>
+      </span>
+    </div>
+  <% else %>
+    <div class="flex items-start justify-between gap-3 mb-1">
+      <span class="text-base font-semibold text-gray-900">What this show needs</span>
+    </div>
+  <% end %>
   <p class="text-xs text-gray-500 mb-3">
-    What every <%= production.name %> show needs, plus anything added for this one. Changes here are for this show only.
-    <%= link_to "Change them for every show", edit_manage_production_path(production, tab: production_services_tab(production)), class: "font-medium text-pink-600 hover:text-pink-700" %>
+    <% if @services_on %>
+      <%= role_call ? "What this show needs, each with who's on it: what every #{production.name} show needs, plus anything added for this one." : "What every #{production.name} show needs, plus anything added for this one." %>
+      Changes here are for this show only.
+      <%= link_to "Change them for every show", edit_manage_production_path(production, tab: production_services_tab(production)), class: "font-medium text-pink-600 hover:text-pink-700" %>
+    <% else %>
+      The roles every show needs. Excuse any this show genuinely doesn't need.
+    <% end %>
   </p>
 
   <div class="space-y-2">
     <% needed.each do |need| %>
       <% service = need[:service] %>
-      <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 rounded-lg border <%= need[:covered] ? 'border-gray-200' : 'border-amber-200 bg-amber-50' %>">
-        <% if need[:covered] %>
-          <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-        <% else %>
-          <svg class="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-        <% end %>
+      <div class="<%= row_classes.call(need[:covered]) %>">
+        <%= need[:covered] ? check : warn %>
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-gray-900">
             <%= service.name %><%= " · #{pluralize(need[:people_count], 'person', plural: 'people')}" if need[:people_count] > 1 %>
@@ -60,9 +89,35 @@
       </div>
     <% end %>
 
+    <%# Every-show roles no service carries, in the same rows. Each flips on
+        its own: a show can skip the house manager and still be checked for
+        the rest. %>
+    <% open_roles.each do |role| %>
+      <div class="<%= row_classes.call(role[:covered]) %>">
+        <%= role[:covered] ? check : warn %>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-900"><%= role[:name] %></p>
+          <% if role[:covered] %>
+            <p class="text-xs text-green-700">Covered</p>
+          <% else %>
+            <p class="text-xs text-amber-800 font-medium">Not covered yet · every show</p>
+          <% end %>
+        </div>
+        <% unless role[:covered] %>
+          <div class="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0">
+            <%= render "shared/button", text: "Staff it", variant: "primary", size: "small", type: :button,
+                  data: staff_it_data.merge(action: "click->modal#close click->shift-add#openForRole", "preselect-role-id": role[:id]) %>
+            <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch do %>
+              <%= render "shared/button", text: "Not needed here", variant: "secondary", size: "small", type: :submit %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
     <% dropped.each do |need| %>
-      <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 rounded-lg border border-gray-200 bg-gray-50/60">
-        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+      <div class="<%= off_row_classes %>">
+        <%= dash %>
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-gray-500"><%= need[:service].name %></p>
           <% if need[:contract] %>
@@ -83,7 +138,20 @@
       </div>
     <% end %>
 
-    <% if needs.empty? %>
+    <% exempt_roles.each do |role| %>
+      <div class="<%= off_row_classes %>">
+        <%= dash %>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-500"><%= role[:name] %></p>
+          <p class="text-xs text-gray-400">Not needed for this show</p>
+        </div>
+        <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0" do %>
+          <%= render "shared/button", text: "Needs it again", variant: "secondary", size: "small", type: :submit %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if needs.empty? && roles.empty? %>
       <p class="text-sm text-gray-500 px-1">Nothing yet.</p>
     <% end %>
 
