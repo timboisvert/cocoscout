@@ -29,6 +29,16 @@ module Manage
       when "course"
         @productions = @productions.where(production_type: "course")
       end
+
+      # Each row carries the production team's headshots (Tim, 2026-10-17:
+      # "so I can see the production teams and which ones don't have one"),
+      # the invitations still waiting, and the next date.
+      ids = @productions.map(&:id)
+      @team_by_production = ProductionPermission.where(production_id: ids)
+        .includes(user: { default_person: { profile_headshots: { image_attachment: :blob } } })
+        .order(:role, :id).group_by(&:production_id)
+      @invites_by_production = TeamInvitation.where(production_id: ids, accepted_at: nil).order(:created_at).group_by(&:production_id)
+      @next_show_by_production = Show.where(production_id: ids, canceled: false).upcoming.group(:production_id).minimum(:date_and_time)
     end
 
     def show

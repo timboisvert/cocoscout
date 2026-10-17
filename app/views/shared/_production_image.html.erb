@@ -11,11 +11,14 @@
     width:         - Tailwind width class for the container (default "w-12")
     classes:       - optional extra classes for the outer container
     initials_class: - text size class for the initials fallback (default "text-base")
+    fallback_aspect: - "square" (default) or "poster": draw the initials box at
+                      3:4 too, so rows with and without posters stay one height
 %>
 <%
   width = local_assigns.fetch(:width, "w-12")
   extra = local_assigns.fetch(:classes, "")
   initials_class = local_assigns.fetch(:initials_class, "text-base")
+  fallback_aspect = local_assigns.fetch(:fallback_aspect, "square") == "poster" ? "aspect-[3/4]" : "aspect-square"
   primary_poster_variant = production.safe_poster_variant(:small)
 %>
 <% if primary_poster_variant %>
@@ -23,7 +26,7 @@
     <%= image_tag primary_poster_variant, alt: production.name, class: "w-full h-full object-cover" %>
   </div>
 <% else %>
-  <div class="<%= width %> aspect-square rounded bg-pink-100 flex items-center justify-center <%= extra %>">
+  <div class="<%= width %> <%= fallback_aspect %> rounded bg-pink-100 flex items-center justify-center <%= extra %>">
     <span class="<%= initials_class %> font-bold text-pink-600"><%= production.initials %></span>
   </div>
 <% end %>
