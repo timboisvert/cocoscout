@@ -35,7 +35,7 @@
       <% if codes.any? %>
         <ul class="divide-y divide-gray-100">
           <% codes.each do |code| %>
-            <%= render "manage/ticketing/code_row", code: code, share_url: manage_ticket_listing_code_path(listing, code_id: code.id), remove_modal_id: "confirm-remove-code-#{code.id}" %>
+            <%= render "manage/ticketing/code_row", code: code, share_form: manage_ticket_listing_code_path(listing, code_id: code.id), remove_modal_id: "confirm-remove-code-#{code.id}" %>
           <% end %>
         </ul>
       <% else %>

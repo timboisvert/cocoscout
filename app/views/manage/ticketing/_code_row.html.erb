@@ -1,6 +1,6 @@
 <%# One discount code in a Codes tab's list: the code, what it takes off,
     its uses, who it's shared with (a select), and Remove. Locals: code,
-    share_url (PATCH), remove_modal_id. %>
+    share_form (where the share select posts), remove_modal_id. %>
 <li class="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
   <div class="min-w-0">
     <span class="font-mono text-sm font-semibold text-gray-900"><%= code.code %></span>
@@ -8,7 +8,7 @@
     <span class="text-xs text-gray-500"> · used <%= pluralize(code.uses_count, "time") %><%= " of #{code.max_uses}" if code.max_uses %></span>
   </div>
   <div class="flex items-center gap-2">
-    <%= form_with url: share_url, method: :patch, data: { controller: "auto-submit" } do %>
+    <%= form_with url: share_form, method: :patch, data: { controller: "auto-submit" } do %>
       <%= select_tag :shared_with, options_for_select(TicketDiscountCode::SHARED_WITH_LABELS.invert, code.shared_with),
             "aria-label": "Who sees #{code.code}", class: "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500",
             data: { action: "change->auto-submit#submit" } %>
