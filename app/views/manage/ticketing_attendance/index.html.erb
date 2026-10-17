@@ -1,0 +1,120 @@
+<% content_for :title, "Attendance" %>
+<%
+  a = @attendance
+  total = a.total
+  custom = !Manage::TicketingAttendanceController::PERIODS.key?(@filter)
+  range_words = @from.year == @to.year ? "#{@from.strftime('%a %b %-d')} to #{@to.strftime('%a %b %-d')}" : "#{@from.strftime('%b %-d, %Y')} to #{@to.strftime('%b %-d, %Y')}"
+  people_words = ->(n) { "#{n} #{'person'.pluralize(n)}" }
+  dates_words = ->(n) { "#{n} #{'date'.pluralize(n)}" }
+  breakdown = lambda do |here, outside, comps, came, so_far|
+    parts = [ "#{here} sold here", "#{outside} on other #{'site'.pluralize(outside == 1 ? 1 : 2)}#{', so far' if so_far}", "#{comps} #{'comp'.pluralize(comps)}" ]
+    parts << "#{came} came through the door" if came.positive?
+    parts.join(" · ")
+  end
+  columns = "grid grid-cols-[minmax(0,1fr)_4rem] sm:grid-cols-[minmax(0,1fr)_4rem_5.5rem_4rem_4.5rem] gap-x-3 items-baseline"
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ], text: "Attendance", links: [] } %>
+
+  <%= render "shared/filters/filter_bar", filter_groups: [
+    { label: "Period", filters: Manage::TicketingAttendanceController::PERIODS.map { |key, label|
+        { text: label, path: manage_ticketing_attendance_path(filter: key, production: @production_id), active: @filter == key } } +
+        [ { text: custom ? range_words : "Any dates", path: "#custom-range", active: custom, data: { controller: "modal", action: "click->modal#open", modal_id: "custom-range" } } ] },
+    { separator: true },
+    { partial: "shared/filters/production_dropdown_filter", locals: {
+        label: "Production", name: "production", selected: @production_id.to_s,
+        options: [ { value: "", text: "All productions" } ] + @productions.map { |p| { value: p.id.to_s, text: p.name, type: p.production_type } },
+        data_attributes: { filter_select_param_value: "production", filter_select_filter_value: @filter } } }
+  ] %>
+
+  <%# Any two dates: a small pink modal with the form, so the bar stays a bar. %>
+  <div id="custom-range" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="w-full max-w-sm rounded-lg bg-white shadow-xl overflow-hidden">
+      <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-3 flex items-center justify-between">
+        <h3 class="text-white font-semibold">Any dates</h3>
+        <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <%= form_with url: manage_ticketing_attendance_path, method: :get, class: "p-5 space-y-4" do |f| %>
+        <%= hidden_field_tag :production, @production_id, id: nil %>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <%= label_tag :from, "From", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= date_field_tag :from, (custom ? @from : @from), class: "w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm" %>
+          </div>
+          <div>
+            <%= label_tag :to, "To", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= date_field_tag :to, @to, class: "w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-sm" %>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Show these dates", variant: "primary", size: "small", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white px-5 py-4 mb-4">
+    <div class="text-2xl font-bold text-gray-900 tabular-nums"><%= people_words.call(total.people) %> across <%= dates_words.call(total.dates) %></div>
+    <div class="text-sm text-gray-600 mt-0.5"><%= range_words %><%= " · #{breakdown.call(total.here, total.outside, total.comps, total.came, total.so_far)}" if total.dates.positive? %></div>
+  </div>
+
+  <% if a.rows.empty? %>
+    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center text-sm text-gray-600">No dates with tickets <%= range_words %>.</div>
+  <% else %>
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <div class="<%= columns %> px-4 py-2 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+        <span>Date</span>
+        <span class="text-right hidden sm:block">Here</span>
+        <span class="text-right hidden sm:block">Other sites</span>
+        <span class="text-right hidden sm:block">Comps</span>
+        <span class="text-right">People</span>
+      </div>
+      <% a.groups.each do |group| %>
+        <div class="<%= columns %> px-4 py-2 border-t border-gray-200 bg-white text-sm font-semibold text-gray-900 tabular-nums">
+          <span class="truncate"><%= group.production.name %> <span class="font-normal text-gray-500">· <%= dates_words.call(group.dates) %></span></span>
+          <span class="text-right hidden sm:block"><%= group.here %></span>
+          <span class="text-right hidden sm:block"><%= group.outside %><%= "*" if group.so_far %></span>
+          <span class="text-right hidden sm:block"><%= group.comps %></span>
+          <span class="text-right"><%= group.people %></span>
+        </div>
+        <% group.rows.each do |row| %>
+          <div data-controller="disclosure" class="border-t border-gray-100">
+            <button type="button" data-action="click->disclosure#toggle" class="<%= columns %> w-full text-left pl-4 pr-4 py-2 text-sm text-gray-900 tabular-nums hover:bg-gray-50 cursor-pointer">
+              <span class="truncate">
+                <svg data-disclosure-target="icon" class="inline w-3.5 h-3.5 text-gray-400 mr-1.5 -mt-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                <%= row.show.date_and_time.strftime("%a %b %-d · %-l:%M %p") %>
+                <%# The date's own title only when it says more than the production's name. %>
+                <% title = row.listing.display_title.to_s %>
+                <% if title.present? && !title.downcase.start_with?(group.production.name.downcase) %><span class="text-gray-500">· <%= title %></span><% end %>
+                <% if row.upcoming %><span class="text-xs text-gray-500">· upcoming</span><% end %>
+              </span>
+              <span class="text-right hidden sm:block"><%= row.here %></span>
+              <span class="text-right hidden sm:block"><%= row.outside %><%= "*" if row.so_far %></span>
+              <span class="text-right hidden sm:block"><%= row.comps %></span>
+              <span class="text-right font-medium"><%= row.people %></span>
+            </button>
+            <div data-disclosure-target="content" class="hidden bg-pink-50 border-t border-pink-100 pl-9 pr-4 py-3 text-sm text-pink-900">
+              <% if row.sources.any? %>
+                <div class="flex flex-wrap gap-x-5 gap-y-1">
+                  <% row.sources.each do |name, count| %><span><%= name %> · <%= count %></span><% end %>
+                  <% if row.came.positive? %><span>Came through the door · <%= row.came %></span><% end %>
+                </div>
+              <% else %>
+                <div>No tickets yet.</div>
+              <% end %>
+              <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                <%= link_to "This date's ticketing", manage_ticket_listing_path(row.listing), class: "text-pink-700 hover:text-pink-800 underline" %>
+                <% if row.so_far %><span class="text-pink-700">* Other sites with tickets noted but no sales entered yet.</span><% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

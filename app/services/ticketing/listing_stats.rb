@@ -172,6 +172,11 @@ module Ticketing
       gross_cents + outside_cents
     end
 
+    # Tickets held, by where they were bought: { "online" => 31, "door_cash" => 5, "comp" => 4 }.
+    def by_channel
+      held_tickets.group_by(&:order_channel).transform_values(&:size)
+    end
+
     def checked_in
       held_tickets.count(&:checked_in?)
     end

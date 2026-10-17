@@ -46,6 +46,7 @@ module Manage
       "manage/agreement_templates" => :agreements,
       # Ticketing
       "manage/ticketing" => :ticketing,
+      "manage/ticketing_attendance" => :ticketing,
       "manage/ticketing_settings" => :ticketing,
       "manage/ticket_listings" => :ticketing,
       "manage/production_ticketings" => :ticketing,

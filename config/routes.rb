@@ -1313,6 +1313,7 @@ Rails.application.routes.draw do
     get  "staffing/org-chart",                    to: "staffing#org_chart",              as: "staffing_org_chart"
     # Ticketing (Pro; superadmin-only while it's experimental).
     get   "ticketing",                            to: "ticketing#index",                 as: "ticketing"
+    get   "ticketing/attendance",                 to: "ticketing_attendance#index",      as: "ticketing_attendance"
     get   "ticketing/settings",                   to: "ticketing_settings#show",         as: "ticketing_settings"
     patch "ticketing/settings",                   to: "ticketing_settings#update"
     patch "ticketing/settings/tax",               to: "ticketing_settings#update_tax",   as: "ticketing_settings_tax"
