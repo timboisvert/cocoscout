@@ -1,16 +1,22 @@
 <% content_for :title, "Join #{@team_invitation.organization.name}" %>
 <%
-  # An invitation onto an organization's team (managers). @existing_user is
-  # the User with this email, if there is one: they sign in; anyone else
-  # chooses a password and the account is created.
+  # An invitation onto an organization's team (managers), a production's
+  # team, or a contract (a contract person, docs/contract_people_plan.md).
+  # @existing_user is the User with this email, if there is one: they sign
+  # in; anyone else chooses a password and the account is created.
   inv = @team_invitation
   org = inv.organization
   existing = @existing_user.present?
   profile = inv.person
+  onto_contract = inv.contract_invite?
 %>
 <% strip = capture do %>
   <%= render layout: "shared/auth/strip", locals: { image: (org.logo if org.logo.attached?), initial: org.name } do %>
-    <strong class="font-semibold text-slate-900"><%= org.name %></strong> invited you to their team on CocoScout.
+    <% if onto_contract %>
+      <strong class="font-semibold text-slate-900"><%= org.name %></strong> put you on <%= inv.contract.contractor_name %>'s contract with them, on CocoScout.
+    <% else %>
+      <strong class="font-semibold text-slate-900"><%= org.name %></strong> invited you to their team on CocoScout.
+    <% end %>
   <% end %>
 <% end %>
 <% notices = capture do %>
@@ -23,8 +29,12 @@
   <% end %>
 <% end %>
 <%
-  title = existing ? "Sign in to join the team" : "Choose your password"
-  lede = if existing
+  title = existing ? (onto_contract ? "Sign in to see the contract" : "Sign in to join the team") : "Choose your password"
+  lede = if onto_contract && existing
+    "Enter the password for #{inv.email} and you're on the contract: its dates, how tickets are selling, who's coming and what it pays, on your My pages."
+  elsif onto_contract
+    "You're on #{inv.contract.contractor_name}'s contract with #{org.name}. Pick a password and you'll see its dates, how tickets are selling, who's coming and what it pays."
+  elsif existing
     "Enter the password for #{inv.email} and you're on #{org.name}'s team: their productions, casting and scheduling, yours to work on too."
   else
     "#{org.name} set you up as part of their team. Pick a password and you're in; their productions, casting and scheduling are yours to work on too."

@@ -22,8 +22,8 @@
     data_steps = [
       # "About" (step 1) covers the two setup micro-steps: production + signing.
       { num: 1, name: "About", path: persisted ? manage_production_contract_wizard_path(@contract) : nil },
-      # The production's team (its own step, after About: Tim, 2026-10-16); 12 is its own number, placed here.
-      { num: 12, name: "Team", path: persisted ? manage_team_contract_wizard_path(@contract) : nil },
+      # Who's on the contract (its own step, after About: Tim, 2026-10-16); 12 is its own number, placed here.
+      { num: 12, name: "People", path: persisted ? manage_people_contract_wizard_path(@contract) : nil },
       { num: 2, name: "Schedule", path: persisted ? manage_bookings_contract_wizard_path(@contract) : nil },
       { num: 4, name: "Financials", path: persisted ? manage_payments_contract_wizard_path(@contract) : nil }
     ]

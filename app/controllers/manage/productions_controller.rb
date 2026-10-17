@@ -38,6 +38,17 @@ module Manage
         .includes(user: { default_person: { profile_headshots: { image_attachment: :blob } } })
         .order(:role, :id).group_by(&:production_id)
       @invites_by_production = TeamInvitation.where(production_id: ids, accepted_at: nil).order(:created_at).group_by(&:production_id)
+      # And the people on a production's live contracts (the contractor's
+      # person and the people they brought, docs/contract_people_plan.md),
+      # told apart from the production team: [ [ person, contract ], ... ].
+      headshots = { profile_headshots: { image_attachment: :blob } }
+      @contract_people_by_production = Contract.where(production_id: ids).where.not(status: %w[draft cancelled])
+        .includes(contractor: { person: headshots }, contract_people: { person: headshots }).order(:id)
+        .group_by(&:production_id)
+        .transform_values do |contracts|
+          contracts.flat_map { |contract| ([ contract.contractor&.person ] + contract.contract_people.map(&:person)).compact.map { |person| [ person, contract ] } }
+                   .uniq { |person, _contract| person.id }
+        end
       @next_show_by_production = Show.where(production_id: ids, canceled: false).upcoming.group(:production_id).minimum(:date_and_time)
     end
 

@@ -2,6 +2,8 @@
 
 module Manage
   class ContractsController < ManageController
+    include CrossOrgPersonLookup
+
     before_action :set_contract, except: %i[index all new create completed]
 
     # How long a freshly signed (or activated) contract stays in the hub's
@@ -432,6 +434,42 @@ module Manage
     rescue ActiveRecord::RecordInvalid => e
       @error = e.record.errors.full_messages.to_sentence
       render :amend_basics, status: :unprocessable_content
+    end
+
+    # Who's on the contract besides the contractor (contract people,
+    # docs/contract_people_plan.md): the people on the contractor's side who
+    # see its dates, sales and money on My. Takes effect at once; nothing on
+    # the signed contract moves.
+    def amend_people
+      load_contract_people
+    end
+
+    def add_amend_person
+      result = if params[:person_id].present?
+        person = find_person_for_attach(params[:person_id])
+        ContractPeopleAdder.add!(@contract, by: Current.user, person: person) if person
+      elsif params[:email].present?
+        ContractPeopleAdder.add!(@contract, by: Current.user, email: params[:email], name: params[:name])
+      end
+      return redirect_to(amend_people_manage_contract_path(@contract), alert: "Pick someone, or enter their name and email.") unless result
+
+      notice = case result.outcome
+      when :added then "#{result.name} is on the contract."
+      when :invited then "Invited #{result.name}. They're on the contract once they accept."
+      else "#{result.name} is already on it."
+      end
+      redirect_to amend_people_manage_contract_path(@contract), notice: notice
+    rescue ArgumentError
+      redirect_to amend_people_manage_contract_path(@contract), alert: "Pick someone, or enter their name and email."
+    end
+
+    def remove_amend_person
+      if params[:person_id].present?
+        @contract.contract_people.find_by(person_id: params[:person_id])&.destroy
+      elsif params[:invitation_id].present?
+        TeamInvitation.find_by(id: params[:invitation_id], contract_id: @contract.id, accepted_at: nil)&.destroy
+      end
+      redirect_to amend_people_manage_contract_path(@contract)
     end
 
     # Dates only: add, remove or move events. The deal is not touched.
@@ -932,6 +970,11 @@ module Manage
     #
     # The spaces come off the contract's own rentals, so nothing here can be
     # pointed at another org's venue by a crafted id.
+    def load_contract_people
+      @contract_people = @contract.contract_people.includes(:person).order(:created_at)
+      @people_invitations = TeamInvitation.where(contract_id: @contract.id, accepted_at: nil).order(:created_at)
+    end
+
     def load_space_amendment
       all_rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
       @rentals = all_rentals.select { |r| r.starts_at >= Time.current }

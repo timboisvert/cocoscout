@@ -21,6 +21,24 @@
         </div>
       <% end %>
 
+      <%# Who's on the contract besides the contractor: the people who see it
+          on My (docs/contract_people_plan.md). Nothing on paper moves. %>
+      <%= link_to amend_people_manage_contract_path(@contract),
+            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
+        <div class="flex items-start gap-4">
+          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
+            <%= icon("users", class: "w-5 h-5") %>
+          </span>
+          <div>
+            <p class="font-semibold text-gray-900">Change who's on it</p>
+            <p class="text-sm text-gray-600 mt-0.5">
+              The people on <%= @contract.contractor_name %>'s side who see the dates, the ticket sales and what the
+              contract pays. The contract itself stays exactly as it is.
+            </p>
+          </div>
+        </div>
+      <% end %>
+
       <%# The common case, and the safe one: nothing about the money is
           regenerated, so a settled date can't sprout a second payment. %>
       <%= link_to amend_dates_manage_contract_path(@contract),

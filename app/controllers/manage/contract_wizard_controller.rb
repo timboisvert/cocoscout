@@ -86,57 +86,54 @@ module Manage
       @contract.signing_mode = mode
       @contract.draft_data = @contract.draft_data.merge("signing_chosen" => true)
       @contract.save!
-      redirect_to manage_team_contract_wizard_path(@contract)
+      redirect_to manage_people_contract_wizard_path(@contract)
     end
 
-    # Step "Team" (Tim, 2026-10-16): the production's team, added or invited
-    # the moment the contract is activated (Contract#apply_draft_team!,
-    # ProductionTeamAdder). Staged in draft_data["team"] as user_id or email,
-    # a display name and a role; never an outsider's email. The contract's
-    # signer is suggested first. Everyone is a viewer (Tim, 2026-10-17).
-    TEAM_STEP = 12
+    # Step "Who's on this contract" (Tim, 2026-10-16 as the Team step;
+    # 2026-10-17 contract people, docs/contract_people_plan.md): the people
+    # the contractor brings, put on the contract the moment it's activated
+    # (Contract#apply_draft_people!, ContractPeopleAdder) as contract people,
+    # never production team members. Staged in draft_data["people"] as
+    # user_id or email and a display name; never an outsider's email. The
+    # contract's signer is suggested first.
+    PEOPLE_STEP = 12
 
-    def team
-      @step = TEAM_STEP
-      stage_suggested_team_member! unless @contract.draft_data.key?("team")
-      @team = draft_team
-      user_ids = @team.filter_map { |member| member["user_id"] }
-      @team_users = User.where(id: user_ids).includes(:default_person, :organization_roles).index_by(&:id)
+    def people
+      @step = PEOPLE_STEP
+      stage_suggested_person! unless @contract.draft_data.key?("people") || @contract.draft_data.key?("team")
+      @people = @contract.draft_people
+      user_ids = @people.filter_map { |member| member["user_id"] }
+      @people_users = User.where(id: user_ids).includes(:default_person, :organization_roles).index_by(&:id)
     end
 
-    def save_team
+    def save_people
       redirect_to manage_bookings_contract_wizard_path(@contract)
     end
 
-    def add_team_member
-      role = "viewer"
+    def add_person
       entry = if params[:person_id].present?
-        # Anyone on CocoScout with an account, found by search (the Team tab's
-        # own flow does the same); only their user id and name are kept.
+        # Anyone on CocoScout with an account, found by search; only their
+        # user id and name are kept.
         person = find_person_for_attach(params[:person_id])
-        { "user_id" => person.user_id, "name" => person.name, "role" => role } if person&.user_id
+        { "user_id" => person.user_id, "name" => person.name } if person&.user_id
       elsif params[:email].present?
         email = params[:email].to_s.strip.downcase
         if (user = User.find_by(email_address: email))
-          { "user_id" => user.id, "name" => user.person&.name.presence || params[:name].to_s.squish.presence || "New team member", "role" => role }
+          { "user_id" => user.id, "name" => user.person&.name.presence || params[:name].to_s.squish.presence || "Someone new" }
         elsif email.match?(URI::MailTo::EMAIL_REGEXP)
-          { "email" => email, "name" => params[:name].to_s.squish.presence, "role" => role }
+          { "email" => email, "name" => params[:name].to_s.squish.presence }
         end
       end
-      return redirect_to(manage_team_contract_wizard_path(@contract), alert: "Pick someone, or enter their name and email.") unless entry
+      return redirect_to(manage_people_contract_wizard_path(@contract), alert: "Pick someone, or enter their name and email.") unless entry
 
-      team = draft_team.reject { |member| same_team_member?(member, entry) } + [ entry ]
-      @contract.draft_data = @contract.draft_data.merge("team" => team)
-      @contract.save!
-      redirect_to manage_team_contract_wizard_path(@contract), notice: "#{entry['name'] || entry['email']} is on the team."
+      stage_people!(@contract.draft_people.reject { |member| same_person?(member, entry) } + [ entry ])
+      redirect_to manage_people_contract_wizard_path(@contract), notice: "#{entry['name'] || entry['email']} is on the contract."
     end
 
-    def remove_team_member
+    def remove_person
       gone = { "user_id" => params[:user_id].presence&.to_i, "email" => params[:email].presence }
-      team = draft_team.reject { |member| same_team_member?(member, gone) }
-      @contract.draft_data = @contract.draft_data.merge("team" => team)
-      @contract.save!
-      redirect_to manage_team_contract_wizard_path(@contract)
+      stage_people!(@contract.draft_people.reject { |member| same_person?(member, gone) })
+      redirect_to manage_people_contract_wizard_path(@contract)
     end
 
     # Resume a draft contract at its last step. The two "About" micro-steps come
@@ -665,32 +662,33 @@ module Manage
       permitted
     end
 
-    def draft_team
-      Array(@contract.draft_data["team"]).select { |member| member.is_a?(Hash) }
+    # Writes the staged people under "people" (and retires a pre-2026-10-17
+    # draft's "team" key, which Contract#draft_people still reads).
+    def stage_people!(people)
+      @contract.draft_data = @contract.draft_data.except("team").merge("people" => people)
+      @contract.save!
     end
 
-    def same_team_member?(a, b)
+    def same_person?(a, b)
       (a["user_id"].present? && a["user_id"].to_i == b["user_id"].to_i) || (a["email"].present? && a["email"] == b["email"])
     end
 
-    # The contract's signer, suggested as the production's first manager: the
-    # person it's sent to when they have an account, else an invitation to
-    # the contractor's email.
-    def stage_suggested_team_member!
+    # The contract's signer, suggested first: the person it's sent to when
+    # they have an account, else an invitation to the contractor's email.
+    def stage_suggested_person!
       person = @contract.signer_person_record
       email = (person&.email.presence || @contract.contractor_email).to_s.strip.downcase
       entry = if person&.user_id
-        { "user_id" => person.user_id, "name" => person.name, "role" => "viewer", "suggested" => true }
+        { "user_id" => person.user_id, "name" => person.name, "suggested" => true }
       elsif email.match?(URI::MailTo::EMAIL_REGEXP)
-        { "email" => email, "name" => (person&.name.presence || @contract.contractor_name.presence), "role" => "viewer", "suggested" => true }
+        { "email" => email, "name" => (person&.name.presence || @contract.contractor_name.presence), "suggested" => true }
       end
-      @contract.draft_data = @contract.draft_data.merge("team" => [ entry ].compact)
-      @contract.save!
+      stage_people!([ entry ].compact)
     end
 
     def wizard_step_path(step)
       case step
-      when TEAM_STEP then manage_team_contract_wizard_path(@contract)
+      when PEOPLE_STEP then manage_people_contract_wizard_path(@contract)
       when 1, 2 then manage_bookings_contract_wizard_path(@contract)
       when 3, 4 then manage_payments_contract_wizard_path(@contract)   # Financials
       when 5 then manage_ticketing_contract_wizard_path(@contract)  # only when we sell

@@ -66,6 +66,18 @@ module Manage
       end
       user.update!(default_person: person) if user.default_person.nil?
 
+      # Onto a contract (a contract person, docs/contract_people_plan.md):
+      # they live on My. No role in the organization, no production
+      # permission, not one of the organization's people.
+      if @team_invitation.contract_invite?
+        contract = @team_invitation.contract
+        ContractPerson.find_or_create_by!(contract: contract, person: person)
+        @team_invitation.update(accepted_at: Time.current)
+        start_new_session_for user
+        return redirect_to my_contracts_path, status: :see_other,
+                           notice: "You're on #{contract.contractor_name}'s contract with #{contract.organization.name}."
+      end
+
       # Add the person to the organization if not already added
       unless person.organizations.include?(@team_invitation.organization)
         person.organizations << @team_invitation.organization

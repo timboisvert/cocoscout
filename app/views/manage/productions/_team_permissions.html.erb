@@ -1,5 +1,24 @@
 <div data-controller="production-team-modals">
   <div class="mt-4">
+    <%# A production under contract (docs/contract_people_plan.md): the
+        contractor's side isn't on this team. They see the production on My
+        through the contract, and that's where they're added or dropped. The
+        team below is for the organization's own people, usually nobody. %>
+    <% live_contracts = @production.contracts.where.not(status: %w[draft cancelled]).includes(:contractor, contract_people: :person).order(:id).to_a %>
+    <% live_contracts.each do |contract| %>
+      <% people = ([ contract.contractor&.person ] + contract.contract_people.map(&:person)).compact.uniq %>
+      <div class="mb-3 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm" data-contract-people-panel>
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <span class="text-gray-800">
+            <span class="font-medium text-gray-900"><%= contract.contractor_name %></span> sees this production through
+            <%= link_to "their contract", manage_contract_path(contract), class: "font-medium text-pink-600 hover:text-pink-700" %>, not this team<%= people.any? ? ": #{people.map(&:name).to_sentence}." : "." %>
+          </span>
+          <% if contract.status_active? %>
+            <%= link_to "Change who's on it", amend_people_manage_contract_path(contract), class: "text-[13px] font-medium text-pink-600 hover:text-pink-700 flex-shrink-0" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
     <% production_permissions = @production.production_permissions.includes(user: :default_person) %>
     <% if production_permissions.any? %>
       <div class="space-y-1 mb-1">
@@ -62,7 +81,7 @@
         <% end %>
       </div>
     <% else %>
-      <p class="text-sm text-gray-400 mb-4">No production team members added yet.</p>
+      <p class="text-sm text-gray-400 mb-4"><%= live_contracts.any? ? "Nobody from #{Current.organization.name} on this team. The contract's people see the production on My." : "No production team members added yet." %></p>
     <% end %>
 
     <%# Pending invitations for this production %>

@@ -197,6 +197,17 @@
 
   <div class="space-y-4">
 
+    <% if @my_contract %>
+      <%# Theirs by contract (contract people, docs/contract_people_plan.md):
+          the deal for this date read their way, "You get", with the services
+          that come out of it. Money goes to the contractor; anyone else on
+          the contract is told so. %>
+      <%= render "shared/contract_date_box", contract: @my_contract, show: @show, voice: :you,
+            picture: (@my_contract.organization.feature_available?(:contracts) ? contract_date_picture(@my_contract, @show) : nil),
+            heading_link: link_to("My Contracts", my_contracts_path, class: "text-[13px] font-medium text-pink-600 hover:text-pink-700 flex-shrink-0"),
+            payee_note: (@my_contract.payee_among?(@people.map(&:id)) ? nil : "Payments go to #{@my_contract.contractor_name}.") %>
+    <% end %>
+
     <!-- Cast Section - 50/50 layout when both exist -->
     <% if @show.casting_enabled %>
       <%

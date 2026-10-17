@@ -10,6 +10,8 @@ module Manage
   # managers' (they're sent to it from here); this is the view a team gets by
   # role, gated here on Pro and an open box office.
   class ProductionSalesController < Manage::ManageController
+    include GivesComps
+
     before_action :set_production
     before_action :check_production_access
     before_action :require_sales_level!
@@ -38,30 +40,9 @@ module Manage
     end
 
     # A comp from a production team manager, within their allowance; the
-    # same form as the manager's (Manage::TicketCompsController#create).
+    # same form as the manager's (GivesComps).
     def create_comp
-      allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
-      unless allowance && (allowance[:left].nil? || allowance[:left].positive?)
-        return redirect_to(sale_path, alert: "You can't give comps for this date.")
-      end
-
-      quantity = params[:quantity].to_i
-      if allowance[:left] && quantity > allowance[:left]
-        return redirect_to(sale_path, alert: "You can give #{helpers.pluralize(allowance[:left], 'more comp')} for this date.")
-      end
-
-      tier = @listing.ticket_tiers.active.find { |t| t.id == params[:tier_id].to_i }
-      email = params[:email].to_s.strip.downcase.presence
-      email_them = params[:email_them] == "1"
-      if email_them && email.blank?
-        return redirect_to(sale_path, alert: "Add their email to send their tickets, or switch off Email them their tickets.")
-      end
-
-      guest = TicketComps::Guest.new(name: params[:name].to_s.squish, email: email, tier: tier, quantity: quantity)
-      order = TicketComps.give!(@listing, [ guest ], by: Current.user, note: params[:note], email_them: email_them).sole
-      redirect_to sale_path, notice: "Gave #{helpers.pluralize(order.tickets.size, 'ticket')} to #{guest.name}. They're on the list."
-    rescue TicketComps::Error => e
-      redirect_to sale_path, alert: e.message
+      give_comp_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing), back: sale_path)
     end
 
     private

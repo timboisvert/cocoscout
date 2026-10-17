@@ -47,6 +47,7 @@ Nothing in this plan is built this week.
 - **Pro with several productions:** "Productions" moves from the account menu into the nav with a count.
 - **Producer plan (free):** Pro modules stay in the nav with today's grey padlock (`shared/pro_marker`, `kind: :lock`), and today's plan meter sits under them.
 - **Team access as today:** non-managers see the free modules and no Pro heading; audition reviewers see Sign-ups only.
+- **Contract people aren't production mode's audience** (2026-10-17, `docs/contract_people_plan.md`): contractors and the people they bring never enter the Production Dashboard; their dates, sales, comps and contract are on My. Production mode is for the organization and its in-house production teams.
 - **The address decides the mode.** A link into `/manage` switches by itself and says so in a soft pink notice with an Exit button (`shared/button`, secondary, small); the app opens in the last mode used.
 - **Counts:** only Messages and Tasks carry a count in the nav, as today.
 - **The app:**

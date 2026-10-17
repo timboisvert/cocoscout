@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -590,6 +590,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
     t.index ["show_id"], name: "index_contract_payments_on_show_id"
     t.index ["status"], name: "index_contract_payments_on_status"
     t.index ["stripe_checkout_session_id"], name: "index_contract_payments_on_stripe_checkout_session_id", unique: true
+  end
+
+  create_table "contract_people", force: :cascade do |t|
+    t.bigint "contract_id", null: false
+    t.bigint "person_id", null: false
+    t.bigint "added_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["added_by_id"], name: "index_contract_people_on_added_by_id"
+    t.index ["contract_id", "person_id"], name: "index_contract_people_on_contract_id_and_person_id", unique: true
+    t.index ["contract_id"], name: "index_contract_people_on_contract_id"
+    t.index ["person_id"], name: "index_contract_people_on_person_id"
   end
 
   create_table "contract_service_options", force: :cascade do |t|
@@ -3433,6 +3445,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
     t.bigint "production_id"
     t.string "invitation_role", default: "viewer"
     t.bigint "person_id"
+    t.bigint "contract_id"
+    t.index ["contract_id"], name: "index_team_invitations_on_contract_id"
     t.index ["organization_id"], name: "index_team_invitations_on_organization_id"
     t.index ["production_id"], name: "index_team_invitations_on_production_id"
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
@@ -4169,6 +4183,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
   add_foreign_key "contract_invoices", "organizations"
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
+  add_foreign_key "contract_people", "contracts"
+  add_foreign_key "contract_people", "people"
+  add_foreign_key "contract_people", "users", column: "added_by_id"
   add_foreign_key "contract_service_options", "organizations"
   add_foreign_key "contract_signatures", "contract_templates"
   add_foreign_key "contract_signatures", "contract_versions"
@@ -4438,6 +4455,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
   add_foreign_key "tax_lines", "tax_rates"
   add_foreign_key "tax_rates", "organizations"
   add_foreign_key "tax_rules", "organizations"
+  add_foreign_key "team_invitations", "contracts"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
   add_foreign_key "ticket_discount_codes", "organizations"

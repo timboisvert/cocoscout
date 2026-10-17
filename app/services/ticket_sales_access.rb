@@ -2,8 +2,9 @@
 
 # Who may see a show's ticket sales, and how much of them:
 #   - the theater's managers (they have the whole module);
-#   - the contractor of a contract that includes the show, unless the
-#     contract says not (shares_ticket_sales);
+#   - the contractor of a contract that includes the show, and the people
+#     on that contract (ContractPerson), unless the contract says not
+#     (shares_ticket_sales);
 #   - anyone the theater shared the show, or its whole production, with
 #     (TicketSalesViewer);
 #   - and, by the box office's Who sees sales settings (TicketingProfile),
@@ -87,12 +88,22 @@ class TicketSalesAccess
   #   left        what this manager can still give (nil: no limit)
   # nil for everyone else, when comps are off, and once the date has started
   # (Tim, 2026-10-17: no comps for a show that's already happened).
+  # Someone on a contract that includes the date (the contractor's person or
+  # a contract person) gives comps for their own show too, up to what the
+  # date can still give away; the team's share doesn't apply to them.
   def self.comp_allowance(user, listing)
     return nil unless user && listing && open_for?(listing)
     return nil if listing.show.date_and_time <= Time.current
     return nil if listing.organization.manageable_by?(user)
+    return nil unless listing.effective_comps_enabled
+
+    if on_contract_for?(user, listing)
+      date_left = listing.comps_left
+      return { date_left: date_left, team_limit: nil, team_given: 0, left: date_left, contract: true }
+    end
+
     return nil unless team_role(user, listing.production) == "manager" && team_level(user, listing.production) == :full
-    return nil unless listing.effective_comps_enabled && listing.effective_team_comps
+    return nil unless listing.effective_team_comps
 
     date_left = listing.comps_left
     team_limit = case listing.effective_team_comps_limit
@@ -154,10 +165,23 @@ class TicketSalesAccess
   def self.contract_productions(user)
     return [] unless user
 
-    people_ids = user.people.select(:id)
-    Contract.joins(:contractor).where(contractors: { person_id: people_ids }).where(shares_ticket_sales: true)
-            .where.not(status: %w[draft cancelled]).includes(:production).filter_map(&:production).uniq
+    sharing_contracts(user).includes(:production).filter_map(&:production).uniq
   end
+
+  # Whether the user is on a contract that includes this date and shares its
+  # sales: the contractor's person, or a contract person.
+  def self.on_contract_for?(user, listing)
+    return false unless user && listing
+
+    contract_show_ids(user).include?(listing.show_id)
+  end
+
+  # The live contracts the user is on (Contract.visible_to) that share their
+  # ticket sales.
+  def self.sharing_contracts(user)
+    Contract.visible_to(user).where(shares_ticket_sales: true).where.not(status: %w[draft cancelled])
+  end
+  private_class_method :sharing_contracts
 
   # The user's role on a production's team, found through the production's
   # own organization (not Current.organization: the My pages have none):
@@ -235,9 +259,7 @@ class TicketSalesAccess
   private_class_method :granted
 
   def self.contract_show_ids(user)
-    people_ids = user.people.select(:id)
-    Contract.joins(:contractor).where(contractors: { person_id: people_ids }).where(shares_ticket_sales: true)
-            .where.not(status: %w[draft cancelled]).flat_map { |contract| contract.contract_shows.pluck(:id) }
+    sharing_contracts(user).flat_map { |contract| contract.contract_shows.pluck(:id) }
   end
   private_class_method :contract_show_ids
 end

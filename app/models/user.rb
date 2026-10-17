@@ -389,8 +389,9 @@ class User < ApplicationRecord
     @sees_ticket_sales = TicketSalesAccess.listings_for(self).exists?
   end
 
+  # As the contractor's person or as a contract person (Contract.visible_to).
   def has_contracts?
-    Contract.joins(:contractor).where(contractors: { person_id: people.select(:id) }).exists?
+    Contract.visible_to(self).exists?
   end
 
 

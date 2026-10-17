@@ -24,6 +24,20 @@ class Contract < ApplicationRecord
   has_many :contract_signatures, dependent: :destroy
   has_many :contract_versions, dependent: :destroy
   has_many :contract_appendixes, dependent: :destroy
+  # The people the contractor brings (docs/contract_people_plan.md): the
+  # contractor's visibility on My, never a production permission. The
+  # contractor's own person isn't a row here; Contract.for_people counts both.
+  has_many :contract_people, dependent: :destroy
+  has_many :people, through: :contract_people
+
+  # The contracts these people are on: as the contractor's person or as a
+  # contract person. Status is the caller's to filter (My Contracts shows a
+  # draft out for signature; sales access never does).
+  scope :for_people, ->(people_ids) {
+    where(contractor_id: Contractor.where(person_id: people_ids).select(:id))
+      .or(where(id: ContractPerson.where(person_id: people_ids).select(:contract_id)))
+  }
+  scope :visible_to, ->(user) { for_people(user.people.select(:id)) }
 
   # Status enum
   enum :status, {
@@ -2639,8 +2653,8 @@ class Contract < ApplicationRecord
       # Attach this contract to that production (a production can carry many contracts).
       update!(production: production) unless self.production_id == production.id
 
-      # The production team staged on the wizard's Team step.
-      apply_draft_team!(production)
+      # The people staged on the wizard's "Who's on this contract" step.
+      apply_draft_people!
 
       rentals.each do |info|
         rental = info[:rental]
@@ -2672,26 +2686,41 @@ class Contract < ApplicationRecord
     TicketListingSync.for_contract(self)
   end
 
-  # The production team staged on the wizard's Team step (draft_data["team"]:
-  # user_id or email, name, role), added or invited the moment the contract
-  # takes effect (ProductionTeamAdder), always as viewers: someone under
-  # contract sees the production, never changes it (Tim, 2026-10-17), even
-  # on a draft staged as a manager before then. One bad entry, a user since deleted
-  # or a dead address, never blocks activation; e-sign activation has no
-  # Current.user, so the adder's `by` may be nil.
-  def apply_draft_team!(production)
-    Array(draft_data["team"]).each do |member|
-      next unless member.is_a?(Hash)
-
+  # The people staged on the wizard's "Who's on this contract" step
+  # (draft_people: user_id or email, and a name), put on the contract the
+  # moment it takes effect (ContractPeopleAdder): contract people, never
+  # production team members (Tim, 2026-10-17), even on a draft staged
+  # before then under the old Team step. One bad entry, a user since
+  # deleted or a dead address, never blocks activation; e-sign activation
+  # has no Current.user, so the adder's `by` may be nil.
+  def apply_draft_people!
+    draft_people.each do |member|
       user = member["user_id"].present? ? User.find_by(id: member["user_id"]) : nil
       next if user.nil? && member["email"].blank?
 
-      ProductionTeamAdder.add!(production, role: "viewer",
-                                           by: Current.user, user: user, email: member["email"], name: member["name"])
+      ContractPeopleAdder.add!(self, by: Current.user, user: user, email: member["email"], name: member["name"])
     rescue StandardError => e
-      Rails.logger.warn("[contract #{id}] couldn't add #{member['name'] || member['email']} to #{production.name}'s team: #{e.message}")
+      Rails.logger.warn("[contract #{id}] couldn't put #{member['name'] || member['email']} on the contract: #{e.message}")
     end
   end
+
+  # The wizard's staged people. Drafts from before 2026-10-17 staged them
+  # under "team"; they count the same.
+  def draft_people
+    Array(draft_data["people"] || draft_data["team"]).select { |member| member.is_a?(Hash) }
+  end
+
+  # Everyone who sees this contract on My: the contractor's person, then the
+  # contract people, each once.
+  def people_with_access
+    ([ contractor&.person ] + contract_people.includes(:person).map(&:person)).compact.uniq
+  end
+
+  # Whether one of these people is the contractor (the payee), not just on the contract.
+  def payee_among?(people_ids)
+    contractor&.person_id.present? && people_ids.map(&:to_i).include?(contractor.person_id)
+  end
+  public :draft_people, :people_with_access, :payee_among?
 
   # Link per-event contract payments to their corresponding shows by matching dates
   def link_payments_to_shows(payments, shows)

@@ -1,8 +1,10 @@
 # Contract people: contractors live on My, not the Production Dashboard
 
-Decided with Tim, 2026-10-17. Status: **plan agreed, not started.** The
-viewer-proofing of the Production Dashboard (commit 5493242f and the
-hide-buttons sweep after it) stays: it's for in-house production teams.
+Decided with Tim, 2026-10-17, and built the same day (all at once, at Tim's
+asking). The viewer-proofing of the Production Dashboard (commit 5493242f
+and the hide-buttons sweep after it) stays: it's for in-house production
+teams. Still to do: move Carded and Dan over (the console block below, with
+Tim watching).
 
 ## The problem
 
@@ -88,6 +90,13 @@ New:
    to <contractor name>." Otherwise someone on Carded's side will look for
    "their" bank.
 
+5. **The Productions list shows both** (Tim, 2026-10-17): each row carries
+   the production team's headshots as before and, after them, the people on
+   its live contracts under a small pink "Contract" label (the contractor's
+   person and the people they brought), names on hover, linking to the
+   contract. A production with neither still says "No production team
+   assigned".
+
 ## Setting them up
 
 - **The wizard's Team step becomes "Who's on this contract".** Same
@@ -147,7 +156,34 @@ table of who moves and who stays.
   in-house teams; contract people aren't its audience. Add one line there
   saying so when this ships; no other change.
 
-## Order of work
+## What was built (2026-10-17)
+
+- `ContractPerson` (`contract_people`: contract, person, added_by; unique per
+  pair); `Contract.for_people` / `.visible_to(user)`; `Contract#draft_people`,
+  `#apply_draft_people!`, `#people_with_access`, `#payee_among?`.
+- `ContractPeopleAdder.add!` (person, user or email → added / invited /
+  already); `TeamInvitation#contract_id` + `#contract_invite?`; the
+  `contract_person_invitation` email (`ContractPeopleTemplates`);
+  `Manage::TeamMailer#contract_invite`; accepting one makes a contract
+  person and lands on My Contracts, with no organization role.
+- Wizard step "People" (`contract_wizard#people`, `draft_data["people"]`,
+  old drafts' `"team"` still read); Amend → "Change who's on it"
+  (`contracts#amend_people`, add/remove at once); the contract page lists
+  who's on it; `manage/contracts/_people_picker` is the one picker.
+- `TicketSalesAccess`: contract people see sales like the contractor;
+  `comp_allowance` gives anyone on the date's contract comps up to what the
+  date can give (`on_contract_for?`); comps on My Ticket Sales
+  (`my/ticket_sales#create_comp`, `GivesComps` shared with the team's page).
+- My shows & events: contract dates as a source, the "Your contract"
+  marker, no "Can't make it" on them; the date page's Contract box
+  (`shared/_contract_date_box`, voice :you, "Payments go to …" for
+  non-payees); access rule 7.
+- My Contracts lists contract people's contracts without the pay buttons,
+  signature or sales-report prompts, and says who's paid.
+- Productions list: team, then "Contract" people. Who sees sales names the
+  contract's people.
+
+## Order of work (as planned)
 
 1. `ContractPerson`, `Contract.visible_to`, widen the four lookups
    (My Contracts, sales access, dashboard, who-sees-sales). Specs: a contract

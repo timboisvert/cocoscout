@@ -48,17 +48,20 @@
           <div class="space-y-4">
             <% group_sorted.each do |contract| %>
         <%
+          # The contractor signs, pays and is paid; anyone else on the contract
+          # (a contract person) reads the same card without the money to-dos.
+          payee = @payee_contract_ids.include?(contract.id)
           outgoing = contract.contract_payments.select(&:direction_outgoing?)
           received_total = outgoing.select(&:status_paid?).sum { |p| p.amount.to_f }
           pending_total  = outgoing.reject(&:status_paid?).sum { |p| p.amount.to_f }
-          to_pay = contract.contract_payments.select(&:collectable_online?).sort_by(&:due_date)
+          to_pay = payee ? contract.contract_payments.select(&:collectable_online?).sort_by(&:due_date) : []
           # The bill that matters is what's already due. Money still ahead of
           # its date is a schedule, not a to-do — it folds away below.
           due_now, scheduled = to_pay.partition { |p| p.due_date <= Date.current }
           due_now_total = due_now.sum { |p| p.amount.to_f }
           scheduled_total = scheduled.sum { |p| p.amount.to_f }
-          needs_signature = contract.signing_out_for_signature?
-          reports_sales = contract.pending_sales_report?
+          needs_signature = payee && contract.signing_out_for_signature?
+          reports_sales = payee && contract.pending_sales_report?
           has_overdue = due_now.any?
           has_action = needs_signature || reports_sales || to_pay.any?
           border = needs_signature ? "border-amber-300" : (has_overdue ? "border-amber-300" : "border-gray-200")
@@ -115,10 +118,13 @@
             <% if received_total > 0 || pending_total > 0 || to_pay.any? %>
               <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                 <% if received_total > 0 %><span><span class="text-gray-500">Received</span> <span class="font-semibold text-green-600"><%= number_to_currency(received_total) %></span></span><% end %>
-                <% if pending_total > 0 %><span><span class="text-gray-500">Coming to you</span> <span class="font-semibold text-gray-900"><%= number_to_currency(pending_total) %></span></span><% end %>
+                <% if pending_total > 0 %><span><span class="text-gray-500"><%= payee ? "Coming to you" : "Coming to #{contract.contractor_name}" %></span> <span class="font-semibold text-gray-900"><%= number_to_currency(pending_total) %></span></span><% end %>
                 <% if due_now_total > 0 %><span><span class="text-gray-500">Due now</span> <span class="font-semibold text-amber-600"><%= number_to_currency(due_now_total) %></span></span><% end %>
                 <% if scheduled_total > 0 %><span><span class="text-gray-500">Scheduled</span> <span class="font-semibold text-gray-900"><%= number_to_currency(scheduled_total) %></span></span><% end %>
               </div>
+            <% end %>
+            <% unless payee %>
+              <p class="mt-2 text-xs text-gray-500" data-contract-payee>Payments go to <%= contract.contractor_name %>. You're on this contract to see its dates, ticket sales and terms.</p>
             <% end %>
           </div>
 

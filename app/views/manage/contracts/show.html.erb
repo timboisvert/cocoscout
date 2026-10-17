@@ -162,6 +162,22 @@
                 <dd class="mt-1 text-sm text-gray-900 whitespace-pre-line"><%= @contract.contractor_address %></dd>
               </div>
             <% end %>
+            <%# Who sees this contract on My besides the contractor (contract
+                people, docs/contract_people_plan.md), and who's still invited. %>
+            <% contract_people = @contract.contract_people.includes(:person).map(&:person) %>
+            <% people_invites = TeamInvitation.where(contract_id: @contract.id, accepted_at: nil).order(:created_at) %>
+            <% unless @contract.status_draft? %>
+              <div class="col-span-2">
+                <dt class="text-sm font-medium text-gray-500">On this contract</dt>
+                <dd class="mt-1 text-sm text-gray-900">
+                  <% names = contract_people.map(&:name) + people_invites.map { |invite| "#{invite.email} (invited)" } %>
+                  <%= names.any? ? names.to_sentence : "Nobody besides #{@contract.contractor_name}." %>
+                  <% if @contract.status_active? %>
+                    <%= link_to "Change who's on it", amend_people_manage_contract_path(@contract), class: "ml-1 text-pink-600 hover:text-pink-700" %>
+                  <% end %>
+                </dd>
+              </div>
+            <% end %>
           </dl>
         </div>
       </div>

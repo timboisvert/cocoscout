@@ -1,0 +1,41 @@
+<%# Step "Who's on this contract" (Tim, 2026-10-16 as Team; 2026-10-17 contract
+    people, docs/contract_people_plan.md): the people the contractor brings,
+    put on the contract the moment it's activated. They see its dates, ticket
+    sales and money on My; they never join the production team. The contract's
+    signer is suggested first; anyone else is found by name or email
+    (invite-search), and invited by email only after a search finds nobody. %>
+<%
+  production_name = @contract.production_name.presence || "the production"
+  rows = @people.map do |member|
+    user = member["user_id"] && @people_users[member["user_id"].to_i]
+    name = member["name"].presence || user&.person&.name.presence || member["email"]
+    detail = if member["email"].present?
+               "Will be invited by email#{"; signs this contract for #{@contract.contractor_name}" if member["suggested"]}"
+             elsif member["suggested"] then "Signs this contract for #{@contract.contractor_name}"
+             else "On CocoScout"
+             end
+    { name: name, detail: detail, badge: (member["suggested"] ? "From the contract" : nil),
+      remove_params: { user_id: member["user_id"], email: member["email"] }.compact }
+  end
+%>
+<%= render layout: "manage/contract_wizard/wizard_layout", locals: { step_name: "People", width: "max-w-3xl" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2">Who's on this contract</h2>
+  <p class="text-gray-600 mb-6">
+    The people on <%= possessive(@contract.contractor_name) %> side. They see <%= possessive(production_name) %> dates, how tickets are selling, who's coming and what the contract pays, on their own My pages.
+    Nothing of yours, and nothing they can change. <%= @contract.contractor_name %> stays the one party to the contract: they sign it and are paid. Everyone here is added the moment the contract is activated.
+  </p>
+
+  <%= render "manage/contracts/people_picker", rows: rows,
+        add_url: manage_people_members_contract_wizard_path(@contract),
+        remove_url: manage_people_members_contract_wizard_path(@contract),
+        empty_words: "Nobody yet. The person who signs the contract usually goes first.",
+        question: "Who else is on this contract?",
+        invite_blurb: "they get an email, make a free account, and find #{production_name} waiting." %>
+
+  <%= form_with url: manage_people_contract_wizard_path(@contract), method: :post, local: true do %>
+    <div class="flex items-center justify-between">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_signing_contract_wizard_path(@contract) %>
+      <%= render "shared/button", text: "Next: Schedule", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

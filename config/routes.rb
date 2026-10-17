@@ -438,6 +438,7 @@ Rails.application.routes.draw do
     get   "/ticket-sales",                  to: "ticket_sales#index",       as: "ticket_sales"
     patch "/ticket-sales/daily-email",      to: "ticket_sales#daily_email", as: "ticket_sales_daily_email"
     get   "/ticket-sales/:id",              to: "ticket_sales#show",        as: "ticket_sale"
+    post  "/ticket-sales/:id/comps",        to: "ticket_sales#create_comp", as: "ticket_sale_comps"
 
     # Slim account screen for the mobile app. Routes /my/account → AccountsController#show.
     get   "/account",                       to: "accounts#show",            as: "account"
@@ -1738,6 +1739,9 @@ Rails.application.routes.draw do
         # ticket page describes it. No dates, no money, no new paper.
         get "amend/basics", action: :amend_basics, as: :amend_basics
         post "amend/basics", action: :apply_amend_basics, as: :apply_amend_basics
+        get "amend/people", action: :amend_people, as: :amend_people
+        post "amend/people", action: :add_amend_person, as: :add_amend_person
+        delete "amend/people", action: :remove_amend_person, as: :remove_amend_person
         # Changing dates is its own job — no financial regeneration at all.
         # The form GETs review (a preview, no side effects — and a POST that
         # renders 200 HTML would be ignored by Turbo); confirming posts the
@@ -1799,10 +1803,10 @@ Rails.application.routes.draw do
     post "contracts/:contract_id/wizard/production", to: "contract_wizard#save_production"
     get  "contracts/:contract_id/wizard/signing", to: "contract_wizard#signing", as: "signing_contract_wizard"
     post "contracts/:contract_id/wizard/signing", to: "contract_wizard#save_signing"
-    get  "contracts/:contract_id/wizard/team", to: "contract_wizard#team", as: "team_contract_wizard"
-    post "contracts/:contract_id/wizard/team", to: "contract_wizard#save_team"
-    post "contracts/:contract_id/wizard/team/members", to: "contract_wizard#add_team_member", as: "team_members_contract_wizard"
-    delete "contracts/:contract_id/wizard/team/members", to: "contract_wizard#remove_team_member"
+    get  "contracts/:contract_id/wizard/people", to: "contract_wizard#people", as: "people_contract_wizard"
+    post "contracts/:contract_id/wizard/people", to: "contract_wizard#save_people"
+    post "contracts/:contract_id/wizard/people/members", to: "contract_wizard#add_person", as: "people_members_contract_wizard"
+    delete "contracts/:contract_id/wizard/people/members", to: "contract_wizard#remove_person"
     get  "contracts/:contract_id/wizard/contractor", to: "contract_wizard#contractor", as: "contractor_contract_wizard"
     post "contracts/:contract_id/wizard/contractor", to: "contract_wizard#save_contractor"
     get  "contracts/:contract_id/wizard/bookings", to: "contract_wizard#bookings", as: "bookings_contract_wizard"

@@ -123,6 +123,17 @@ module My
         all_talent_pool_show_ids.merge(group_assigned_show_ids)
       end
 
+      # Step 1d: the dates under a live contract one of the selected people is
+      # on, as the contractor's person or a contract person
+      # (docs/contract_people_plan.md): theirs by contract, not by casting.
+      @contract_show_ids = Set.new
+      if selected_person_ids.any?
+        Contract.for_people(selected_person_ids).where.not(status: %w[draft cancelled]).find_each do |contract|
+          @contract_show_ids.merge(contract.contract_shows.where("date_and_time >= ?", Time.current).pluck(:id))
+        end
+        all_talent_pool_show_ids.merge(@contract_show_ids)
+      end
+
       # Load all shows from talent pool with includes
       all_shows = Show.where(id: all_talent_pool_show_ids)
                       .includes(:production, :location, :event_linkage)
@@ -165,15 +176,17 @@ module My
       show_data_by_id = {}
 
       if @filter == "my_assignments"
-        # Only include shows where the user has an assignment OR a sign-up registration
+        # Only include shows where the user has an assignment, a sign-up
+        # registration, or a contract
         all_shows.each do |show|
           show_assignments = assignments_by_show[show.id]
           show_sign_ups = @sign_up_registrations_by_show[show.id]
-          next if show_assignments.empty? && show_sign_ups.empty?
+          next if show_assignments.empty? && show_sign_ups.empty? && !@contract_show_ids.include?(show.id)
           show_data_by_id[show.id] = {
             show: show,
             assignments: show_assignments,
-            sign_up_registrations: show_sign_ups
+            sign_up_registrations: show_sign_ups,
+            contract: @contract_show_ids.include?(show.id)
           }
         end
       else
@@ -182,7 +195,8 @@ module My
           show_data_by_id[show.id] = {
             show: show,
             assignments: assignments_by_show[show.id],
-            sign_up_registrations: @sign_up_registrations_by_show[show.id]
+            sign_up_registrations: @sign_up_registrations_by_show[show.id],
+            contract: @contract_show_ids.include?(show.id)
           }
         end
       end
@@ -286,6 +300,11 @@ module My
       @show = Show.includes(event_linkage: :shows).find(params[:id])
       @production = @show.production
 
+      # The live contract this date is under that one of their people is on
+      # (the contractor's person or a contract person): the date is theirs by
+      # contract, and the page reads the deal their way.
+      @my_contract = contract_for_date(@show, people_ids)
+
       # Check access - user can view if they have:
       # 1. Organization manager/viewer role for this production's org
       # 2. Production manager/viewer permission for this production
@@ -293,7 +312,8 @@ module My
       # 4. Direct role assignment on this show
       # 5. Open vacancy for this show
       # 6. Sign-up registration for this show
-      unless user_can_access_show?(@show, people_ids, group_ids)
+      # 7. A contract that includes this show
+      unless @my_contract || user_can_access_show?(@show, people_ids, group_ids)
         raise ActiveRecord::RecordNotFound
       end
 
@@ -562,9 +582,19 @@ module My
       @ticket_stats = Ticketing::ListingStats.of(listing)
       @ticket_link = TicketLink.for(@show, listing: listing)
       team_level = TicketSalesAccess.team_level_for(Current.user, @production)
-      @ticket_sales_path = manage_production_sale_path(@production, listing) if team_level == :full
+      @ticket_sales_path = if @my_contract && TicketSalesAccess.can_see?(Current.user, listing)
+        # Theirs by contract: who's coming and their comps are on My Ticket Sales.
+        my_ticket_sale_path(listing)
+      elsif team_level == :full
+        manage_production_sale_path(@production, listing)
+      end
       # Discount codes to pass along: the team's, or the ones shared with the cast.
       @ticket_codes = TicketDiscountCode.shared_for(listing, cast: team_level.nil? && !TicketSalesAccess.can_see?(Current.user, listing))
+    end
+
+    def contract_for_date(show, people_ids)
+      Contract.for_people(people_ids).where.not(status: %w[draft cancelled]).includes(:contractor, :organization)
+              .detect { |contract| contract.contract_shows.exists?(id: show.id) }
     end
 
     def user_can_access_show?(show, people_ids, group_ids)

@@ -40,14 +40,14 @@
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200">
           <h2 class="text-lg font-semibold text-gray-900">Automatically</h2>
-          <p class="text-sm text-gray-600 mt-1">The other side of a contract that includes <%= on_date ? "this show" : "a date" %> sees its sales, unless you say not.</p>
+          <p class="text-sm text-gray-600 mt-1">The other side of a contract that includes <%= on_date ? "this show" : "a date" %>, and the people on that contract, see its sales, unless you say not.</p>
         </div>
         <ul class="divide-y divide-gray-100">
           <% @contracts.each do |contract| %>
             <li class="flex items-center justify-between gap-3 px-6 py-3">
               <div class="min-w-0">
                 <div class="text-sm font-medium text-gray-900"><%= contract.contractor&.person&.name || contract.contractor&.name || "Contractor" %></div>
-                <div class="text-xs text-gray-500"><%= link_to "Contract", manage_contract_path(contract), class: "hover:text-pink-600" %> · <%= contract.contractor&.person&.user_id ? "has a CocoScout account" : "no CocoScout account yet" %></div>
+                <div class="text-xs text-gray-500"><%= link_to "Contract", manage_contract_path(contract), class: "hover:text-pink-600" %> · <%= contract.contractor&.person&.user_id ? "has a CocoScout account" : "no CocoScout account yet" %><% if (others = contract.contract_people.includes(:person).map { |cp| cp.person.name }).any? %> · with <%= others.to_sentence %><% end %></div>
               </div>
               <%= form_with url: contract_path.call(contract), method: :patch, data: { controller: "auto-submit" } do |f| %>
                 <%= hidden_field_tag :shares_ticket_sales, "0", id: nil %>

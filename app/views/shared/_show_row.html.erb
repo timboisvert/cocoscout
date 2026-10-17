@@ -43,6 +43,8 @@
   show_linked = local_assigns.fetch(:show_linked, false)
   show_production = local_assigns.fetch(:show_production, false)
   show_event_type = local_assigns.fetch(:show_event_type, false)
+  # A date that's theirs by contract (contract people, docs/contract_people_plan.md), not by casting.
+  contract_marker = local_assigns.fetch(:contract_marker, false)
   show_location = local_assigns.fetch(:show_location, true)
   show_cant_make_it = local_assigns.fetch(:show_cant_make_it, false)
   cant_make_it_person = local_assigns.fetch(:cant_make_it_person, nil)
@@ -172,6 +174,9 @@
         </span>
         <% if show_event_type && show.event_type.present? %>
           <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium <%= show.event_type == "show" ? "bg-pink-50 text-pink-700" : "bg-gray-100 text-gray-600" %>"><%= EventTypes.labels[show.event_type] || show.event_type.titleize %></span>
+        <% end %>
+        <% if contract_marker %>
+          <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-pink-50 text-pink-700 ring-1 ring-inset ring-pink-200" data-contract-marker>Your contract</span>
         <% end %>
         <% if show_recurring && show.recurring? %>
           <%# Not an <a>: the whole row is already a link, and a nested anchor

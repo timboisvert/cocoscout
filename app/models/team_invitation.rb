@@ -4,6 +4,9 @@ class TeamInvitation < ApplicationRecord
   belongs_to :organization
   belongs_to :production, optional: true
   belongs_to :person, optional: true
+  # An invitation onto a contract (a contract person, ContractPeopleAdder)
+  # rather than onto a production's team.
+  belongs_to :contract, optional: true
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 
@@ -19,6 +22,10 @@ class TeamInvitation < ApplicationRecord
 
   def production_invite?
     production_id.present?
+  end
+
+  def contract_invite?
+    contract_id.present?
   end
 
   private

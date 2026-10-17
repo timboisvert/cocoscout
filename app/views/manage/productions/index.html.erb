@@ -49,6 +49,7 @@
       <%
         team = @team_by_production[production.id] || []
         invites = @invites_by_production[production.id] || []
+        contract_people = @contract_people_by_production[production.id] || []
         next_at = @next_show_by_production[production.id]
         details = []
         details << type_words[production.production_type] if org_wide
@@ -65,6 +66,9 @@
         <% end %>
 
         <%= link_to team_path, class: "flex items-center gap-1 flex-wrap md:w-80 md:flex-shrink-0 md:border-l border-gray-200 md:pl-4 border-t md:border-t-0 pt-2 md:pt-0" do %>
+          <% if contract_people.any? && (team.any? || invites.any?) %>
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mr-1">Team</span>
+          <% end %>
           <% team.each do |permission| %>
             <%
               user = permission.user
@@ -91,7 +95,7 @@
               <%= invite.person&.initials.presence || invite.email.first.upcase %>
             </div>
           <% end %>
-          <% if team.empty? && invites.empty? %>
+          <% if team.empty? && invites.empty? && contract_people.empty? %>
             <div class="w-10 h-10 rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center text-gray-300">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
@@ -99,6 +103,30 @@
             </div>
             <span class="text-xs text-gray-400 ml-1">No production team assigned</span>
           <% end %>
+        <% end %>
+
+        <%# The people on its contracts (docs/contract_people_plan.md): the
+            contractor's side, who see the production on My. Not the team;
+            each head opens their contract. %>
+        <% if contract_people.any? %>
+          <div class="flex items-center gap-1 flex-wrap md:flex-shrink-0" data-contract-people>
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-pink-500 mr-1">Contract</span>
+            <% contract_people.each do |person, contract| %>
+              <%
+                mine = person.user_id.present? && person.user_id == Current.user.id
+                tooltip = "#{mine ? 'You' : person.name} · on the contract with #{contract.contractor_name}"
+                headshot = person.safe_headshot_variant(:thumb)
+                ring = mine ? " ring-2 ring-pink-400" : ""
+              %>
+              <%= link_to manage_contract_path(contract), data: { controller: "tooltip", tooltip_text: tooltip } do %>
+                <% if headshot %>
+                  <%= image_tag headshot, alt: person.name, class: "w-10 h-10 rounded-lg object-cover#{ring}" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-pink-50 text-pink-700 flex items-center justify-center font-bold text-xs<%= ring %>"><%= person.initials %></div>
+                <% end %>
+              <% end %>
+            <% end %>
+          </div>
         <% end %>
 
         <% if archived_view %>

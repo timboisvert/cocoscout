@@ -1,0 +1,38 @@
+<%# Amend → Change who's on it (contract people, docs/contract_people_plan.md):
+    add or drop the people on the contractor's side. Takes effect at once;
+    nothing on the signed contract moves. %>
+<%
+  production_name = @contract.production_name.presence || @contract.production&.name || "the production"
+  rows = []
+  if (signer = @contract.contractor&.person)
+    rows << { name: signer.name, detail: "Signs this contract for #{@contract.contractor_name}", badge: "The contractor", remove_params: nil }
+  end
+  @contract_people.each do |contract_person|
+    rows << { name: contract_person.person.name, detail: "On CocoScout", remove_params: { person_id: contract_person.person_id } }
+  end
+  @people_invitations.each do |invitation|
+    rows << { name: invitation.email, detail: "Invited, not yet accepted", remove_params: { invitation_id: invitation.id } }
+  end
+%>
+<%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Change who's on it", width: "max-w-3xl" } do %>
+    <h2 class="text-2xl coustard-regular text-gray-900 mb-1">Who's on this contract</h2>
+    <p class="text-gray-600 mb-6">
+      <%= @contract.contractor_name %> is the other party: they sign the contract and are paid. The people here see
+      <%= possessive(production_name) %> dates, how tickets are selling, who's coming and what the contract pays, on
+      their own My pages. Nothing of yours, and nothing they can change. Changes take effect at once; the contract
+      itself stays exactly as it is.
+    </p>
+
+    <%= render "manage/contracts/people_picker", rows: rows,
+          add_url: add_amend_person_manage_contract_path(@contract),
+          remove_url: remove_amend_person_manage_contract_path(@contract),
+          empty_words: "Nobody yet besides #{@contract.contractor_name}.",
+          question: "Who else is on this contract?",
+          invite_blurb: "they get an email, make a free account, and find #{production_name} waiting." %>
+
+    <div class="flex items-center justify-between gap-3 mt-2 flex-wrap">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left",
+            path: amend_choose_manage_contract_path(@contract) %>
+      <%= render "shared/button", text: "Done", variant: "primary", size: "medium", path: manage_contract_path(@contract) %>
+    </div>
+<% end %>

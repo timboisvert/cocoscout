@@ -4,9 +4,14 @@ module My
   # The ticket sales a theater shares with a producer or performer
   # (TicketSalesAccess): their shows and how each is selling, and one show
   # in full — sold of seats, sales, refunds, and the guest list as names
-  # only. Nothing here can be changed, and no buyer's email ever shows.
+  # only. Nothing here can be changed, and no buyer's email ever shows,
+  # except that someone on a contract that includes the date gives comps for
+  # their own show (TicketSalesAccess.comp_allowance).
   class TicketSalesController < ApplicationController
+    include GivesComps
+
     before_action :require_authentication
+    before_action :set_listing, only: %i[show create_comp]
 
     def index
       @show_my_sidebar = true
@@ -22,10 +27,17 @@ module My
 
     def show
       @show_my_sidebar = true
-      @listing = TicketSalesAccess.listings_for(Current.user).includes(:organization, :production, show: :location).find(params[:id])
       @stats = Ticketing::ListingStats.of(@listing)
+      @allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
       @guest_orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass bundle_tier])
                               .order(:buyer_name, :id).to_a.select { |o| o.tickets.any? { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
+    end
+
+    # A comp from someone on the date's contract, within what the date can
+    # still give away; the same form as the manager's.
+    def create_comp
+      give_comp_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing),
+                                 back: my_ticket_sale_path(@listing, anchor: "guests"))
     end
 
     # A morning email on how their shows are selling, on or off for every
@@ -41,6 +53,12 @@ module My
       end
       TicketSalesViewer.active.where(user_id: Current.user.id).update_all(daily_email: on, updated_at: Time.current)
       redirect_to my_ticket_sales_path, notice: on ? "You'll get a note each morning on how your shows are selling." : "No more daily emails."
+    end
+
+    private
+
+    def set_listing
+      @listing = TicketSalesAccess.listings_for(Current.user).includes(:organization, :production, show: :location).find(params[:id])
     end
   end
 end

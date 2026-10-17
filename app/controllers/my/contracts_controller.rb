@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 module My
-  # Talent-side "My Contracts" — the contracts a signed-in contractor (a Person
-  # backing a Contractor) holds, with their terms and how to get paid.
+  # Talent-side "My Contracts" — the contracts a signed-in person is on, as
+  # the contractor (the Person backing a Contractor: signs, is paid, reports
+  # sales) or as one of the people on it (ContractPerson,
+  # docs/contract_people_plan.md: the contractor's visibility, nothing to pay
+  # or sign), with their terms and, for the contractor, how to get paid.
   class ContractsController < ApplicationController
     before_action :require_authentication
     before_action :set_reportable_contract, only: [ :report_sales, :save_sales_report ]
@@ -12,8 +15,11 @@ module My
       @contracts = my_contracts.to_a
       # Make sure executed contracts have their signed PDF generated (idempotent).
       @contracts.each(&:ensure_signed_pdf!)
-      # Whether they still need to connect a bank to be paid.
-      @needs_bank = Current.user.people.select(&:can_receive_payouts?).empty?
+      # The contracts they're the contractor on: the ones with money to receive or pay.
+      @people_ids = person_ids.map(&:id)
+      @payee_contract_ids = @contracts.select { |contract| contract.payee_among?(@people_ids) }.map(&:id).to_set
+      # Whether they still need to connect a bank to be paid, when there's a contract that pays them.
+      @needs_bank = @payee_contract_ids.any? && Current.user.people.select(&:can_receive_payouts?).empty?
       # Live ticket sales for the contracts' upcoming shows, when the theater
       # sells them on CocoScout and shares the numbers (TicketSalesAccess).
       @ticket_sales = ticket_sales_by_contract
@@ -82,8 +88,7 @@ module My
     end
 
     def my_contracts
-      Contract.joins(:contractor)
-              .where(contractors: { person_id: person_ids })
+      Contract.visible_to(Current.user)
               # Show real contracts (active/completed/etc.) and e-sign contracts that
               # have actually been sent to them — but not drafts the org is still
               # preparing (unsent / awaiting_send).
@@ -97,6 +102,8 @@ module My
     def person_ids
       Current.user.people.select(:id)
     end
+
+    # { contract_id => [[listing, stats], ...] } for upcoming dates, soonest first.
 
     # Only contracts the signed-in person actually holds, and only the Case-2
     # kind they're allowed to report on.
