@@ -1075,7 +1075,9 @@ class SuperadminController < ApplicationController
           @indexes << {
             table: table_name,
             name: index.name,
-            columns: index.columns,
+            # An expression index (lower(name) on house_services) comes back
+            # with its columns as one string, not an array.
+            columns: Array(index.columns),
             unique: index.unique
           }
         end
