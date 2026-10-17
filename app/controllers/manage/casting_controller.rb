@@ -62,10 +62,10 @@ module Manage
       @can_go_prev = @first_month.present? && @prev_month >= @first_month
       @can_go_next = @last_month.present? && @next_month <= @last_month
 
-      # Scope shows to the selected month
+      # Scope shows to the selected month; past shows run newest first
       @shows = date_bounds
                 .where("shows.date_and_time >= ? AND shows.date_and_time <= ?", @current_month, month_end)
-                .order(Arel.sql("shows.date_and_time ASC"))
+                .order(Arel.sql(@filter == "past" ? "shows.date_and_time DESC" : "shows.date_and_time ASC"))
                 .to_a
 
       # Preload roles per production (one query for all productions)
