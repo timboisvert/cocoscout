@@ -30,7 +30,9 @@
     <% pending_stages = @cast_assignment_stages.select(&:pending?) %>
 
     <%= render "casting_changes", has_sent_notifications: has_sent_notifications, notified_stages: notified_stages, pending_stages: pending_stages %>
-    <%= render "finalize_notify", audition_cycle: audition_cycle, has_sent_notifications: has_sent_notifications, notified_stages: notified_stages %>
+    <% if current_user_can_manage?(@production) %>
+      <%= render "finalize_notify", audition_cycle: audition_cycle, has_sent_notifications: has_sent_notifications, notified_stages: notified_stages %>
+    <% end %>
 
   <% end %>
 </div>

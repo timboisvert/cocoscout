@@ -4,17 +4,17 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      [@production.name, edit_manage_production_path(@production)],
+      [@production.name, current_user_can_manage?(@production) ? edit_manage_production_path(@production) : manage_production_path(@production)],
       [ "Documents", manage_production_documents_path(@production) ]
     ],
     text: @document.title,
-    links: [
+    links: current_user_can_manage?(@production) ? [
       { text: "Sharing", icon: "share", variant: "secondary", type: :button,
         data: { controller: "modal", action: "click->modal#open", "modal-id": "sharing-modal-#{@document.id}" } },
       { text: "Edit", icon: "pencil", variant: "secondary", path: edit_manage_production_document_path(@production, @document) },
       { text: "Delete", icon: "trash", variant: "secondary", type: :button,
         data: { controller: "modal", action: "click->modal#open", "modal-id": "delete-modal-#{@document.id}" } }
-    ]
+    ] : []
   } %>
 
   <%# Reader view — a pinned contents rail on the left; the document scrolls. %>

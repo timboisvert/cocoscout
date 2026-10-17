@@ -21,7 +21,8 @@
 
   # Check if this instance is still open for adding registrations
   # Only allow adding if the instance is currently open (not scheduled, not closed, not past)
-  can_add_registrations = instance.nil? || instance.open?
+  can_manage = current_user_can_manage?(production)
+  can_add_registrations = can_manage && (instance.nil? || instance.open?)
 
   # Get all active registrations grouped by slot
   all_registrations = slots.flat_map { |s| s.sign_up_registrations.active.includes(:person).to_a }
@@ -82,6 +83,7 @@
                     <%= render "manage/sign_up_forms/registration_answers", registration: registration %>
                   </div>
                 </div>
+                <% if can_manage %>
                 <div class="flex items-center gap-1 mt-2 sm:mt-0.5">
                   <% headshot_url = headshot ? url_for(headshot) : nil %>
                   <button type="button"
@@ -105,6 +107,7 @@
                         message: "Remove this registration?", confirm_text: "Remove",
                         url: manage_cancel_registration_signups_form_path(production, sign_up_form, registration_id: registration.id), method: :delete %>
                 </div>
+                <% end %>
               </div>
             <% end %>
             <% if can_add_registrations %>
@@ -158,6 +161,7 @@
                     <%= render "manage/sign_up_forms/registration_answers", registration: registration %>
                   </div>
                 </div>
+                <% if can_manage %>
                 <div class="flex items-center gap-1 mt-2 sm:mt-0.5">
                   <% if show_slot_label %>
                     <% headshot_url = headshot ? url_for(headshot) : nil %>
@@ -183,6 +187,7 @@
                         message: "Remove this registration?", confirm_text: "Remove",
                         url: manage_cancel_registration_signups_form_path(production, sign_up_form, registration_id: registration.id), method: :delete %>
                 </div>
+                <% end %>
               </div>
             <% end %>
           </div>

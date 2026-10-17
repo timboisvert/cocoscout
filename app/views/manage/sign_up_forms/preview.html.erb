@@ -10,9 +10,9 @@
       [@sign_up_form.name, manage_signups_form_path(@production, @sign_up_form)]
     ],
     text: "Preview Sign-up Form",
-    links: [
+    links: current_user_can_manage?(@production) ? [
       { text: "Edit Form", path: manage_edit_signups_form_path(@production, @sign_up_form) }
-    ]
+    ] : []
   } %>
 
   <!-- Shareable Link -->

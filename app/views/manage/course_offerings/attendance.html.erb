@@ -49,7 +49,9 @@
         </table>
       </div>
       <div class="mt-4 flex flex-wrap gap-2">
-        <%= render "shared/button", text: "Save attendance", variant: "primary", size: "medium", type: :submit %>
+        <% if current_user_can_manage?(@production) %>
+          <%= render "shared/button", text: "Save attendance", variant: "primary", size: "medium", type: :submit %>
+        <% end %>
         <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_course_offering_path(@course_offering) %>
       </div>
     <% end %>

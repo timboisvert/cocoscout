@@ -468,10 +468,12 @@
             { name: "Manage Auditions & Sign-ups", path: manage_signups_auditions_path(@production) }
           ]
         end
-        links += [
-          { name: "View and Manage Visual Assets", path: manage_production_visual_assets_path(@production) },
-          { name: "Production Settings", path: edit_manage_production_path(@production) }
-        ] %>
+        if current_user_can_manage?(@production)
+          links += [
+            { name: "View and Manage Visual Assets", path: manage_production_visual_assets_path(@production) },
+            { name: "Production Settings", path: edit_manage_production_path(@production) }
+          ]
+        end %>
         <% links.each do |link| %>
           <div>
             <%= link_to link[:name], link[:path], class: "text-pink-500 hover:text-pink-600 underline block py-1 text-sm" %>

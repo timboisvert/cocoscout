@@ -10,11 +10,11 @@
     text: @production.name,
     links: [
       { text: "Questionnaires", path: manage_contacts_questionnaires_path, icon: "clipboard-list" },
-      { text: "Casting Settings", path: manage_casting_settings_path(@production), icon: "cog", variant: "secondary" }
+      *([ { text: "Casting Settings", path: manage_casting_settings_path(@production), icon: "cog", variant: "secondary" } ] if current_user_can_manage?(@production))
     ]
   } %>
 
-  <% if production_needs_per_act_calculation_nudge?(@production) %>
+  <% if current_user_can_manage?(@production) && production_needs_per_act_calculation_nudge?(@production) %>
     <div class="mt-4">
       <%= render "manage/casting/pay_calculation_nudge", production: @production %>
     </div>

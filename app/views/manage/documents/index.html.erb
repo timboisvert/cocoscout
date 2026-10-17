@@ -4,12 +4,12 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
-      [@production.name, edit_manage_production_path(@production)]
+      [@production.name, current_user_can_manage?(@production) ? edit_manage_production_path(@production) : manage_production_path(@production)]
     ],
     text: "Documents",
-    links: [
+    links: current_user_can_manage?(@production) ? [
       { text: "New document", icon: "plus", path: manage_new_org_document_path(production_id: @production.id) }
-    ]
+    ] : []
   } %>
 
   <% if @documents.any? %>
@@ -36,9 +36,13 @@
     </div>
   <% else %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-      <p class="text-sm text-gray-600 mb-3">No documents yet. Create a performer handbook or any document your team needs.</p>
-      <%= link_to manage_new_org_document_path(production_id: @production.id) do %>
-        <%= render "shared/button", text: "Create your first document", variant: "primary", size: "medium" %>
+      <% if current_user_can_manage?(@production) %>
+        <p class="text-sm text-gray-600 mb-3">No documents yet. Create a performer handbook or any document your team needs.</p>
+        <%= link_to manage_new_org_document_path(production_id: @production.id) do %>
+          <%= render "shared/button", text: "Create your first document", variant: "primary", size: "medium" %>
+        <% end %>
+      <% else %>
+        <p class="text-sm text-gray-600">No documents yet.</p>
       <% end %>
     </div>
   <% end %>

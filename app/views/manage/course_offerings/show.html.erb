@@ -23,6 +23,7 @@
     has_capacity = @course_offering.capacity.present?
     spots_remaining = @course_offering.spots_remaining
     registration_url = "#{request.base_url}/c/#{@course_offering.short_code}"
+    can_manage = current_user_can_manage?(@production)
   %>
 
   <% delete_course_cid = "confirm-delete-course-#{@course_offering.id}" %>
@@ -33,19 +34,23 @@
     contracts_ok = Current.organization.feature_available?(:contracts)
     top_links = [
       # Financials lives in Money (Pro): marked as such, and locked when the plan doesn't include it.
-      { text: "Financials", path: manage_money_production_financials_path(@production), feature: :money, locked: !money_ok },
-      { text: "Edit Course", path: manage_edit_course_offering_path(@course_offering) },
-      { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
+      { text: "Financials", path: manage_money_production_financials_path(@production), feature: :money, locked: !money_ok }
     ]
+    if can_manage
+      top_links << { text: "Edit Course", path: manage_edit_course_offering_path(@course_offering) }
+      top_links << { text: "Manage Questionnaire", path: manage_course_offering_questionnaire_path(@course_offering) }
+    end
     # A contract-backed run is cancelled through its contract; anything else
     # that hasn't already been cancelled can be.
-    if !@course_offering.contract_id? && !@course_offering.cancelled? && !@course_offering.archived?
+    if can_manage && !@course_offering.contract_id? && !@course_offering.cancelled? && !@course_offering.archived?
       top_links << { text: "Cancel Course", type: :button,
                      data: { controller: "modal", action: "click->modal#open", modal_id: cancel_course_cid } }
     end
-    top_links << { text: @course_offering.archived? ? "Restore" : "Archive", type: :button,
-                   data: { controller: "modal", action: "click->modal#open", modal_id: archive_course_cid } }
-    unless @course_offering.contract_id?
+    if can_manage
+      top_links << { text: @course_offering.archived? ? "Restore" : "Archive", type: :button,
+                     data: { controller: "modal", action: "click->modal#open", modal_id: archive_course_cid } }
+    end
+    if can_manage && !@course_offering.contract_id?
       top_links << { text: "Delete Course", type: :button,
                      data: { controller: "modal", action: "click->modal#open", modal_id: delete_course_cid },
                      variant: "primary" }
@@ -149,7 +154,8 @@
         </div>
         <%# Desktop buttons %>
         <div class="hidden sm:flex items-center gap-2">
-          <% if @course_offering.draft? || @course_offering.closed? %>
+          <% if !can_manage %>
+          <% elsif @course_offering.draft? || @course_offering.closed? %>
             <%= form_with url: manage_open_course_offering_path(@course_offering), method: :post do %>
               <%= render "shared/button", text: "Open Registration", variant: "primary", size: "small", type: :submit %>
             <% end %>
@@ -158,7 +164,8 @@
               <%= render "shared/button", text: "Close Registration", variant: "secondary", size: "small", type: :submit %>
             <% end %>
           <% end %>
-          <% if @course_offering.closed? %>
+          <% if !can_manage %>
+          <% elsif @course_offering.closed? %>
             <%= form_with url: manage_complete_course_offering_path(@course_offering), method: :post do %>
               <%= render "shared/button", text: "Mark completed", variant: "secondary", size: "small", type: :submit %>
             <% end %>
@@ -171,7 +178,8 @@
       </div>
       <%# Mobile buttons %>
       <div class="flex sm:hidden items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-        <% if @course_offering.draft? || @course_offering.closed? %>
+        <% if !can_manage %>
+        <% elsif @course_offering.draft? || @course_offering.closed? %>
           <%= form_with url: manage_open_course_offering_path(@course_offering), method: :post do %>
             <%= render "shared/button", text: "Open Registration", variant: "primary", size: "small", type: :submit %>
           <% end %>
@@ -228,7 +236,7 @@
     <script type="application/json" id="contact-registrants-data-<%= @course_offering.id %>"><%= contact_registrants_data.to_json.html_safe %></script>
   <% end %>
   <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 mb-6 flex flex-wrap items-center gap-2">
-    <% unless @course_offering.cancelled? || @course_offering.archived? %>
+    <% if can_manage && !(@course_offering.cancelled? || @course_offering.archived?) %>
       <%= render "shared/button", text: "Add a student", variant: "primary", size: "small", path: manage_new_course_offering_student_path(@course_offering) %>
     <% end %>
     <% if @registrations.any? %>
@@ -499,15 +507,17 @@
                 <span class="font-medium text-gray-900">Est. Net to Organization</span>
                 <span class="font-bold text-gray-900"><%= number_to_currency((gross_revenue - fee_cents) / 100.0) %></span>
               </div>
-              <div class="pt-2">
-                <%= form_with url: manage_course_offering_payout_calculate_path(@course_offering), method: :post do %>
-                  <% if has_contract %>
-                    <%= render "shared/button", text: "Calculate Payout", variant: "primary", size: "small", type: :submit %>
-                  <% else %>
-                    <%= render "shared/button", text: "Set Up Payouts", variant: "primary", size: "small", type: :submit %>
+              <% if can_manage %>
+                <div class="pt-2">
+                  <%= form_with url: manage_course_offering_payout_calculate_path(@course_offering), method: :post do %>
+                    <% if has_contract %>
+                      <%= render "shared/button", text: "Calculate Payout", variant: "primary", size: "small", type: :submit %>
+                    <% else %>
+                      <%= render "shared/button", text: "Set Up Payouts", variant: "primary", size: "small", type: :submit %>
+                    <% end %>
                   <% end %>
-                <% end %>
-              </div>
+                </div>
+              <% end %>
             <% else %>
               <p class="text-sm text-gray-500 text-center py-2">No confirmed revenue yet.</p>
             <% end %>
@@ -585,6 +595,7 @@
 
       <%# Action panel %>
       <div data-registrant-modal-target="actionPanel" class="px-6 py-4 space-y-2">
+        <% if can_manage %>
         <div data-cancel-section>
           <button type="button"
                   class="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-left cursor-pointer"
@@ -633,6 +644,7 @@
             </div>
           </button>
         </div>
+        <% end %>
       </div>
 
       <%# Confirmation panel (hidden by default) %>

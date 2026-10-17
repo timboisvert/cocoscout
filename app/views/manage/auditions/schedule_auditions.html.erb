@@ -52,9 +52,11 @@
       <div class="flex items-center gap-3">
         <%= link_to "Finish without notifying", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
               class: "text-sm text-gray-500 hover:text-gray-700 underline whitespace-nowrap" %>
-        <%= render partial: "shared/button", locals: {
-              text: "Review & notify", variant: "primary", type: :button,
-              data: { action: "click->audition-notify#open" } } %>
+        <% if current_user_can_manage?(@production) %>
+          <%= render partial: "shared/button", locals: {
+                text: "Review & notify", variant: "primary", type: :button,
+                data: { action: "click->audition-notify#open" } } %>
+        <% end %>
       </div>
     </div>
   </div>

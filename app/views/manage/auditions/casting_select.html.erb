@@ -29,7 +29,7 @@
           <p class="text-sm text-gray-600 sm:hidden">Tap + to add auditionees to your talent pool.</p>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <% if @cast_assignment_stages.any? %>
+          <% if @cast_assignment_stages.any? && current_user_can_manage?(@production) %>
             <% clear_id = "clear-decided-#{@audition_cycle.id}" %>
             <%= render "shared/button", text: "Clear decided", variant: "secondary", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: clear_id } %>

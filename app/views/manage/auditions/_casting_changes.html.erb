@@ -60,7 +60,9 @@
         <% end %>
       </div>
 
-      <%= render partial: "shared/button", locals: { text: "Add More Cast Members", path: manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <% if current_user_can_manage?(@production) %>
+        <%= render partial: "shared/button", locals: { text: "Add More Cast Members", path: manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <% end %>
     <% else %>
       <%# Before notifications sent - show pending changes by decision type %>
       <p class="text-sm text-gray-500 mb-4">Click "Make Decisions" to identify people you want to add to your talent pool or reject.</p>
@@ -119,7 +121,9 @@
         </div>
       <% end %>
 
-      <%= render partial: "shared/button", locals: { text: "Make Decisions", path: manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <% if current_user_can_manage?(@production) %>
+        <%= render partial: "shared/button", locals: { text: "Make Decisions", path: manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary" } %>
+      <% end %>
     <% end %>
   </div>
 </div>

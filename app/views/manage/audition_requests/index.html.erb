@@ -14,7 +14,7 @@
   <%= render partial: "manage/auditions/cycle_status_panel" %>
   <%= render partial: "manage/auditions/topical_nav", locals: { current_topic: :requests } %>
 
-  <% if current_user_has_role?(@production) %>
+  <% if current_user_can_manage?(@production) %>
     <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
@@ -72,7 +72,7 @@
           <% vote_counts = audition_request.vote_counts if current_user_can_review?(@production) %>
 
           <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-pink-400 transition-all group bg-white border-gray-200 cursor-pointer [&_*]:cursor-pointer">
-            <% if current_user_has_role?(@production) %>
+            <% if current_user_can_manage?(@production) %>
               <div class="flex items-center mr-3">
                 <input type="checkbox"
                        value="<%= audition_request.id %>"
@@ -149,7 +149,7 @@
           </div>
         <% end %>
 
-        <% if current_user_has_role?(@production) %>
+        <% if current_user_can_manage?(@production) %>
           <!-- Bulk Archive Action Bar -->
           <div data-bulk-select-target="actionBar" class="hidden mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between">
             <div class="flex items-center gap-3">

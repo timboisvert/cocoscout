@@ -179,8 +179,10 @@
     <p class="text-gray-600 text-sm mb-6">
       Create a course to start selling registrations online.
     </p>
-    <%= link_to manage_course_wizard_start_path do %>
-      <%= render "shared/button", text: "Create Course", variant: "primary", size: "medium" %>
+    <% if Current.user&.manager? %>
+      <%= link_to manage_course_wizard_start_path do %>
+        <%= render "shared/button", text: "Create Course", variant: "primary", size: "medium" %>
+      <% end %>
     <% end %>
   </div>
 <% end %>
@@ -198,8 +200,10 @@
               <%= link_to offering.title, manage_course_offering_path(offering), class: "font-medium text-gray-900 hover:text-pink-600 truncate" %>
               <div class="text-xs text-gray-400"><%= offering.production.name %></div>
             </div>
-            <%= form_with url: manage_unarchive_course_offering_path(offering), method: :post do %>
-              <%= render "shared/button", text: "Restore", variant: "secondary", size: "small", type: :submit %>
+            <% if current_user_can_manage?(offering.production) %>
+              <%= form_with url: manage_unarchive_course_offering_path(offering), method: :post do %>
+                <%= render "shared/button", text: "Restore", variant: "secondary", size: "small", type: :submit %>
+              <% end %>
             <% end %>
           </div>
         <% end %>

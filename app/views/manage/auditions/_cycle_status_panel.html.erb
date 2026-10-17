@@ -86,7 +86,9 @@
       <div class="text-2xl font-semibold text-gray-900"><%= total_requests %></div>
     <% end %>
 
-    <%= link_to manage_signups_auditions_cycle_sessions_path(@production, cycle), class: "bg-gray-50 rounded-lg border border-gray-200 p-3 hover:border-pink-400 transition-colors no-underline" do %>
+    <%# Sessions are managers' page; a viewer sees the count without the link. %>
+    <% sessions_link = current_user_can_manage?(@production) %>
+    <%= content_tag(sessions_link ? :a : :div, href: (manage_signups_auditions_cycle_sessions_path(@production, cycle) if sessions_link), class: "bg-gray-50 rounded-lg border border-gray-200 p-3 #{'hover:border-pink-400 transition-colors no-underline' if sessions_link}") do %>
       <div class="text-xs text-gray-500 mb-1">Scheduled for an Audition</div>
       <div class="text-2xl font-semibold text-gray-900"><%= scheduled %><span class="text-gray-400 text-base"> of <%= total_requests %></span></div>
     <% end %>

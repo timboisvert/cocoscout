@@ -79,6 +79,9 @@
             <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center">
               <div>
                 <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Availability</div>
+                <% if !current_user_can_manage?(production) %>
+                  <div class="text-sm text-gray-700"><%= current_status == "unset" ? "No response" : current_status.humanize %></div>
+                <% else %>
                 <div class="flex gap-0">
                   <%
                     [:available, :unavailable].each do |status|
@@ -117,6 +120,7 @@
                     <% end %>
                   <% end %>
                 </div>
+                <% end %>
                 <% if availability&.note.present? && current_status == 'available' %>
                   <div class="text-xs italic text-gray-500 mt-1 truncate" title="<%= availability.note %>"><%= availability.note %></div>
                 <% end %>

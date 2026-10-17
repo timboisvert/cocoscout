@@ -57,6 +57,75 @@ RSpec.describe "Production team viewers", type: :request do
     expect(response.body).not_to include("Make Changes", "Add Guest")
   end
 
+  # Every production page a viewer can open, read-only: none of the buttons
+  # that lead to "You do not have permission". A manager sees them all.
+  describe "the rest of the production pages" do
+    let(:form) { create(:sign_up_form, :with_show, production: production, show: show) }
+    let(:course) { create(:course_offering, production: production) }
+    let(:role) { create(:role, production: production) }
+    let(:vacancy) { create(:role_vacancy, :with_vacated_by, show: show, role: role) }
+    let(:cycle) { create(:audition_cycle, production: production) }
+    let(:document) { ProductionDocument.create!(production: production, title: "Handbook", body: "Be kind.") }
+
+    before { create(:audition_request, audition_cycle: cycle) }
+
+    # [page, the write controls on it]
+    def pages
+      [
+        [ manage_signups_forms_path(production), [ "Create a Sign-up Form" ] ],
+        [ manage_signups_form_path(production, form),
+          [ manage_toggle_active_signups_form_path(production, form), manage_settings_signups_form_path(production, form),
+            manage_edit_signups_form_path(production, form), manage_archive_signups_form_path(production, form) ] ],
+        [ manage_preview_signups_form_path(production, form), [ manage_edit_signups_form_path(production, form) ] ],
+        [ manage_course_offering_path(course),
+          [ manage_edit_course_offering_path(course), manage_close_course_offering_path(course), "Add a student" ] ],
+        [ manage_casting_production_path(production), [ manage_casting_settings_path(production) ] ],
+        [ manage_casting_vacancy_path(production, vacancy),
+          [ manage_cancel_casting_vacancy_path(production, vacancy), manage_reclaim_casting_vacancy_path(production, vacancy) ] ],
+        [ manage_signups_auditions_cycle_requests_path(production, cycle),
+          [ "Archive Selected", manage_toggle_voting_signups_auditions_cycle_path(production, cycle) ] ],
+        [ manage_production_documents_path(production), [ manage_new_org_document_path(production_id: production.id) ] ],
+        [ manage_production_document_path(production, document), [ edit_manage_production_document_path(production, document) ] ],
+        [ manage_production_path(production), [ edit_manage_production_path(production) ] ],
+        [ manage_signups_auditions_path(production), [ manage_form_signups_auditions_cycle_path(production, cycle) ] ],
+        [ manage_casting_signups_auditions_cycle_path(production, cycle),
+          [ manage_casting_select_signups_auditions_cycle_path(production, cycle), "Email Notifications" ] ],
+        [ manage_schedule_auditions_signups_auditions_cycle_path(production, cycle), [ "Review &amp; notify" ] ]
+      ]
+    end
+
+    it "renders the rest of what a viewer can open" do
+      [ viewer, producer ].each do |user|
+        sign_in(user)
+        [ manage_signups_forms_archived_path(production), manage_course_offerings_path,
+          manage_course_offering_attendance_path(course), manage_casting_availability_path(production),
+          manage_show_modal_casting_availability_path(production, show),
+          manage_casting_select_signups_auditions_cycle_path(production, cycle) ].each do |path|
+          get path
+          expect(response).to have_http_status(:ok), "#{path} gave #{response.status} for #{user == viewer ? 'viewer' : 'manager'}"
+        end
+      end
+    end
+
+    it "shows a viewer each page without its write buttons" do
+      sign_in(viewer)
+      pages.each do |path, controls|
+        get path
+        expect(response).to have_http_status(:ok), "#{path} gave #{response.status}"
+        controls.each { |control| expect(response.body).not_to include(control), "#{path} still shows #{control}" }
+      end
+    end
+
+    it "shows a production's manager the same pages with them" do
+      sign_in(producer)
+      pages.each do |path, controls|
+        get path
+        expect(response).to have_http_status(:ok), "#{path} gave #{response.status}"
+        controls.each { |control| expect(response.body).to include(control), "#{path} is missing #{control}" }
+      end
+    end
+  end
+
   it "refuses a viewer's changes to casting, settings, sign-ups, people and the organization's settings" do
     person = create(:person)
     org.people << person
