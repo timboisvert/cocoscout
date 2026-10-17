@@ -14,7 +14,10 @@ module Manage
     def index
       @contracts = @listing ? TicketSalesAccess.contracts_for(@listing) : TicketSalesAccess.contracts_for_production(@production)
       @viewers = (@listing ? TicketSalesAccess.viewers_for(@listing) : TicketSalesAccess.viewers_for_production(@production)).to_a
-      @candidates = team_and_cast.reject { |person| manager_user_ids.include?(person.user_id) || viewing_user_ids.include?(person.user_id) }
+      @candidates = team_and_cast.reject do |person|
+        manager_user_ids.include?(person.user_id) || viewing_user_ids.include?(person.user_id) || sees_by_role?(person)
+      end
+      @profile = ticketing_profile
     end
 
     def search
@@ -126,6 +129,20 @@ module Manage
 
     def manager_user_ids
       @manager_user_ids ||= Current.organization.organization_roles.where(company_role: "manager").pluck(:user_id) + [ Current.organization.owner_id ]
+    end
+
+    # Someone the production's team or cast rule already shows these sales to
+    # (TicketSalesAccess, by Who sees sales) isn't offered a share.
+    def sees_by_role?(person)
+      user = person.user
+      return false unless user
+
+      if @listing
+        TicketSalesAccess.level_for(user, @listing).present?
+      else
+        TicketSalesAccess.team_level_for(user, @production).present? ||
+          (ticketing_profile.cast_sales == "production_cast" && person.in_talent_pool_for?(@production))
+      end
     end
 
     # People on the production with CocoScout accounts: its team, then its cast.

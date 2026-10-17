@@ -1,4 +1,7 @@
-<%# Goal 1: when do I work. Uses @rows_by_day, @has_any, @people. %>
+<%# Goal 1: when do I work. Uses @rows_by_day, @has_any, @people, @expected_by_shift.
+    Under the organization, one line per show the shift covers, with how
+    many people to expect where the organization shows it (Tim, 2026-10-16:
+    just the show time, the show's name and the count; no box, no total). %>
 <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
   <%= render "shared/section_heading", padding: "px-5 py-4", title: "Upcoming shifts" %>
 
@@ -14,44 +17,49 @@
                 <% assignment = row[:assignment] %>
                 <% org = shift.organization %>
                 <% location_name = shift.source.try(:location).try(:name) %>
-                <div class="flex items-center gap-4 p-3 rounded-lg border <%= assignment.declined? ? "bg-pink-50 border-pink-200" : "bg-gray-50 border-gray-100" %>">
-                  <div class="flex-shrink-0 w-12 flex items-center gap-1">
-                    <span class="text-lg leading-none font-bold text-gray-900"><%= shift.starts_at.strftime("%-d") %></span>
-                    <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= shift.starts_at.strftime("%b") %></span>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-900 truncate <%= "line-through text-gray-500" if assignment.declined? %>"><%= shift.role_label %></div>
-                    <div class="text-sm text-gray-600 tabular-nums"><%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></div>
-                    <div class="text-xs text-gray-500 truncate">
-                      <% if org %><%= org.name %><% end %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %>
-                      <% if @people.size > 1 %> · <%= row[:person].name %><% end %>
+                <%
+                  # The shows this shift covers: with counts where the organization
+                  # shows them; otherwise, for a show-tied shift, just the shows.
+                  show_lines = (@expected_by_shift || {})[shift.id]
+                  if show_lines.nil? && (shift.house_role&.show_specific? || shift.shows.any?)
+                    show_lines = shift.covered_shows.map { |cs| ShiftExpectedAttendance::Line.new(show: cs, expected: nil) }
+                  end
+                %>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 rounded-lg border <%= assignment.declined? ? "bg-pink-50 border-pink-200" : "bg-gray-50 border-gray-100" %>">
+                  <div class="flex items-start gap-4 flex-1 min-w-0">
+                    <div class="flex-shrink-0 w-12 flex items-center gap-1 pt-0.5">
+                      <span class="text-lg leading-none font-bold text-gray-900"><%= shift.starts_at.strftime("%-d") %></span>
+                      <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= shift.starts_at.strftime("%b") %></span>
                     </div>
-                    <%# Show-tied shifts (per-show roles, or merged shifts covering
-                        several shows) name what they're covering. House shifts that
-                        merely anchor to a show for scheduling stay quiet. %>
-                    <% if shift.house_role&.show_specific? || shift.shows.any? %>
-                      <% covered = shift.covered_shows %>
-                      <% if covered.any? %>
-                        <div class="text-xs text-gray-600">
-                          Covering: <%= covered.map { |cs| "#{cs.date_and_time.strftime('%-l:%M %p')} #{cs.production&.name}".strip }.join(" · ") %>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium text-gray-900 truncate <%= "line-through text-gray-500" if assignment.declined? %>"><%= shift.role_label %></div>
+                      <div class="text-sm text-gray-600 tabular-nums"><%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></div>
+                      <div class="text-xs text-gray-500 truncate">
+                        <% if org %><%= org.name %><% end %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %>
+                        <% if @people.size > 1 %> · <%= row[:person].name %><% end %>
+                      </div>
+                      <% Array(show_lines).each do |line| %>
+                        <div class="text-xs text-gray-600 mt-0.5" data-show-line>
+                          <span class="font-semibold text-gray-800"><%= line.words %></span><% if line.expected %> · <span class="tabular-nums"><%= line.expected %> expected</span><% end %>
                         </div>
                       <% end %>
-                    <% end %>
-                    <% if assignment.declined? %>
-                      <div class="mt-1 text-xs text-pink-700 font-medium">
-                        You told them you can't make it<% if assignment.decline_reason.present? %> — “<%= assignment.decline_reason %>”<% end %>
-                      </div>
-                    <% end %>
+                      <% if assignment.declined? %>
+                        <div class="mt-1 text-xs text-pink-700 font-medium">
+                          You told them you can't make it<% if assignment.decline_reason.present? %> — “<%= assignment.decline_reason %>”<% end %>
+                        </div>
+                      <% end %>
+                    </div>
                   </div>
 
-                  <div class="flex-shrink-0">
+                  <div class="flex-shrink-0 sm:self-center">
                     <% if assignment.declined? %>
                       <%= button_to "I'm back on", my_undo_decline_shift_path(assignment), method: :post,
                             class: "text-xs text-gray-600 hover:text-gray-900 underline bg-transparent border-0 cursor-pointer p-0" %>
                     <% else %>
                       <% cid = "cant-make-it-#{assignment.id}" %>
-                      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>"
-                              class="text-xs text-pink-600 hover:text-pink-700 font-medium bg-transparent border-0 cursor-pointer whitespace-nowrap">I can't make it</button>
+                      <%= render "shared/button", text: "I can't make it", variant: "primary", size: "small", type: :button,
+                            classes: "w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0",
+                            data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
 
                       <div id="<%= cid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
                            data-controller="modal" data-action="click->modal#closeOnBackdrop">

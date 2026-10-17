@@ -10,7 +10,9 @@
 # user and an invitation token until they accept (DoorInvitationsController).
 class TicketingAccessGrant < ApplicationRecord
   LEVELS = %w[check_in box_office].freeze
-  LEVEL_LABELS = { "check_in" => "Check in", "box_office" => "Box office" }.freeze
+  # One level includes the other (Tim, 2026-10-16): the second is the first
+  # plus selling.
+  LEVEL_LABELS = { "check_in" => "Check people in", "box_office" => "Check people in and sell tickets" }.freeze
 
   belongs_to :organization
   belongs_to :user, optional: true

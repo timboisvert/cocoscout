@@ -144,6 +144,9 @@ module My
       # Group shows by month for the calendar view
       @calendar_shows_by_month = @calendar_shows.group_by { |show| show.date_and_time.beginning_of_month }
 
+      # The Tickets card: the production's link, for sharing (TicketSalesAccess).
+      @ticket_link_url = production_ticket_link_url(@production)
+
       # Load messages for this production (where production is a regardable)
       production_message_ids = MessageRegard.where(regardable: @production).pluck(:message_id)
       @production_messages = Message.where(id: production_message_ids)
@@ -257,6 +260,23 @@ module My
     end
 
     private
+
+    # The production's ticket link for someone on it (Tim, 2026-10-16): its
+    # production team, or everyone in its talent pool when Who sees sales
+    # says so. Only with Pro, the box office open, and dates on sale; each
+    # show's page carries that date's own link and count.
+    def production_ticket_link_url(production)
+      org = production.organization
+      profile = org.ticketing_profile
+      return nil unless org.feature_available?(:ticketing) && profile&.enabled?
+      return nil unless production.ticket_listings.where.not(status: %w[draft canceled]).exists?
+
+      level = TicketSalesAccess.team_level_for(Current.user, production)
+      level ||= :numbers if org.manageable_by?(Current.user) || profile.cast_sales == "production_cast"
+      return nil unless level
+
+      short_link_url(code: ShortLink.canonical_for!(production).code)
+    end
 
     def notify_producers_of_departure(groups_removed)
       # Get all users with notifications enabled for this production

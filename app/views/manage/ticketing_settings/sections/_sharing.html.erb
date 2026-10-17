@@ -1,0 +1,61 @@
+<%# Ticketing settings → Who sees sales: what a production team manager, a
+    production team viewer and the cast see of a production's sales
+    (TicketSalesAccess). Managers always see everything. %>
+<%
+  profile = ticketing_profile
+  radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500 flex-shrink-0"
+  card_class = "flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50"
+  groups = [
+    { field: :team_manager_sales, title: "Production team managers",
+      intro: "People added to a production's team as managers. They see it in their Production Dashboard, and on each show's page in My Shows & Events.",
+      choices: [
+        [ "everything", "Everything", "How each date is selling, who's coming by name, the ticket link, and comps within the allowance on the Comps tab." ],
+        [ "numbers", "Numbers and the link", "Sold of seats and the ticket link. No names, no money, no comps." ],
+        [ "nothing", "Nothing", "Ticketing stays with your managers." ]
+      ] },
+    { field: :team_viewer_sales, title: "Production team viewers",
+      intro: "Team members with the viewer role. Anyone with the viewer role across your whole organization counts as a viewer on every production.",
+      choices: [
+        [ "numbers", "Numbers and the link", "Sold of seats and the ticket link. No names, no money." ],
+        [ "nothing", "Nothing", "They see the production, not its sales." ]
+      ] },
+    { field: :cast_sales, title: "Cast",
+      intro: "Performers, on each show's page in their My Shows & Events: the count and the link to share. Never names or money.",
+      choices: [
+        [ "production_cast", "Everyone on the production", "Anyone in the production's talent pool sees every date's count and link." ],
+        [ "show_cast", "The cast of each date", "Only the people cast in a show see that show's." ],
+        [ "nothing", "Nothing", "The cast sees no ticket numbers." ]
+      ] }
+  ]
+%>
+<%= form_with url: manage_ticketing_settings_sharing_path, method: :patch, class: "space-y-6" do %>
+  <p class="text-sm text-gray-600">Managers always see everything. Everyone else sees what you choose here, and only for productions they're part of. Buyers' emails never leave the box office.</p>
+
+  <% groups.each do |group| %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", title: group[:title], intro: group[:intro] %>
+      <fieldset class="px-6 py-4">
+        <legend class="sr-only"><%= group[:title] %></legend>
+        <div class="grid grid-cols-1 <%= group[:choices].size == 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3' %> gap-2">
+          <% group[:choices].each do |value, title, explanation| %>
+            <label class="<%= card_class %>">
+              <%= radio_button_tag "ticketing_profile[#{group[:field]}]", value, profile.public_send(group[:field]) == value,
+                    id: "ticketing_profile_#{group[:field]}_#{value}", class: radio_class %>
+              <span>
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+      </fieldset>
+    </div>
+  <% end %>
+
+  <p class="text-sm text-gray-600">
+    Staff see how many people to expect on their shifts: <%= link_to "Staffing settings → Ticketing", manage_staffing_settings_section_path(section: "ticketing"), class: "text-pink-600 hover:text-pink-700 underline" %>.
+    To share one show with someone outside the production, use that show's Visibility page.
+  </p>
+
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>

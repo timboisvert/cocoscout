@@ -30,6 +30,8 @@
     <%= render "manage/ticket_listings/settings/page", listing: @listing, setup: setup %>
   <% when "codes" %>
     <%= render "manage/ticket_listings/settings/codes", listing: @listing, setup: setup %>
+  <% when "comps" %>
+    <%= render "manage/ticket_listings/settings/comps", listing: @listing, setup: setup %>
   <% else %>
     <%= render "manage/ticket_listings/settings/tickets", listing: @listing, setup: setup %>
   <% end %>

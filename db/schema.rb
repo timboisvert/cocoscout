@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_16_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1707,6 +1707,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_220000) do
     t.jsonb "billing_contact_emails", default: [], null: false
     t.date "sales_tax_set_aside_since", default: -> { "CURRENT_DATE" }
     t.string "stripe_terminal_location_id"
+    t.boolean "staff_see_ticket_counts", default: true, null: false
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
@@ -2145,6 +2146,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_220000) do
     t.boolean "refund_fees"
     t.text "refund_policy_note"
     t.integer "minimum_age"
+    t.boolean "own_comps", default: false, null: false
+    t.boolean "comps_enabled"
+    t.string "comps_limit"
+    t.integer "comps_per_show"
+    t.boolean "team_comps"
+    t.string "team_comps_limit"
+    t.integer "team_comps_per_show"
     t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
     t.index ["production_id"], name: "index_production_ticketings_on_production_id", unique: true
   end
@@ -3495,6 +3503,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_220000) do
     t.boolean "sell_products", default: true, null: false
     t.integer "low_stock_threshold"
     t.integer "minimum_age"
+    t.boolean "own_comps", default: false, null: false
+    t.boolean "comps_enabled"
+    t.string "comps_limit"
+    t.integer "comps_per_show"
+    t.boolean "team_comps"
+    t.string "team_comps_limit"
+    t.integer "team_comps_per_show"
     t.index ["contract_id"], name: "index_ticket_listings_on_contract_id"
     t.index ["organization_id", "slug"], name: "index_ticket_listings_on_organization_id_and_slug", unique: true
     t.index ["organization_id", "status"], name: "index_ticket_listings_on_organization_id_and_status"
@@ -3926,6 +3941,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_220000) do
     t.text "refund_policy_note"
     t.string "door_in_app", default: "smart", null: false
     t.integer "door_hours_before"
+    t.string "team_manager_sales", default: "everything", null: false
+    t.string "team_viewer_sales", default: "numbers", null: false
+    t.string "cast_sales", default: "production_cast", null: false
+    t.boolean "comps_enabled", default: true, null: false
+    t.string "comps_limit", default: "unlimited", null: false
+    t.integer "comps_per_show", default: 10, null: false
+    t.boolean "team_comps", default: true, null: false
+    t.string "team_comps_limit", default: "all", null: false
+    t.integer "team_comps_per_show", default: 2, null: false
     t.index ["organization_id"], name: "index_ticketing_profiles_on_organization_id", unique: true
     t.index ["previous_slugs"], name: "index_ticketing_profiles_on_previous_slugs", using: :gin
     t.index ["slug"], name: "index_ticketing_profiles_on_slug", unique: true

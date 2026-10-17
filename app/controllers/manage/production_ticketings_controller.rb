@@ -8,7 +8,7 @@ module Manage
   # performances, some event types, or dates picked by hand.
   class ProductionTicketingsController < Manage::TicketingBaseController
     SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales & page", "refunds" => "Refunds",
-                 "codes" => "Discount codes" }.freeze
+                 "codes" => "Discount codes", "comps" => "Comps" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -56,6 +56,7 @@ module Manage
       when "sales" then update_sales
       when "refunds" then update_refunds
       when "products" then update_products
+      when "comps" then update_comps
       else redirect_to section_path("codes")
       end
     rescue ActiveRecord::RecordInvalid => e
@@ -153,6 +154,16 @@ module Manage
       @setup.update!(attrs)
       notice = @setup.refund_policy.present? ? "Saved. #{@production.name} has its own refund policy." : "Saved. #{@production.name} follows your box office's refund policy."
       redirect_to section_path("refunds"), notice: notice
+    end
+
+    # The Comps tab: its own comp rules (the switch on), or the box office's
+    # (off: every field cleared). Its dates follow it (CompRules).
+    def update_comps
+      raw = params.require(:production_ticketing).permit(:own_comps, *CompRules::FIELDS)
+      own = raw[:own_comps] == "1"
+      @setup.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
+      notice = own ? "Saved. #{@production.name} has its own comp rules: #{@setup.comp_rules_words}." : "Saved. #{@production.name} follows your box office's comp rules."
+      redirect_to section_path("comps"), notice: notice
     end
 
     # Which of the org's products this production upsells, and (with the

@@ -82,6 +82,13 @@ class TicketDoor
   def sell(quantities, kind:, buyer_name: nil, products: {})
     raise ArgumentError, "kind must be cash or comp" unless %w[cash comp].include?(kind)
     raise TicketCheckout::Error, "This show was canceled." if @listing.status == "canceled" || @listing.show.canceled
+    if kind == "comp"
+      # The comp rules (CompRules) hold at the door too.
+      raise TicketCheckout::Error, "Comps are off for this show." unless @listing.effective_comps_enabled
+      if (left = @listing.comps_left) && left < quantities.to_h.values.sum(&:to_i)
+        raise TicketCheckout::Error, left.zero? ? "This date has no comps left to give." : "This date has #{left} #{'comp'.pluralize(left)} left to give."
+      end
+    end
 
     # A type marked sold out or hidden for this date isn't sold at the door either.
     tiers = @listing.ticket_tiers.active.select(&:available?).index_by(&:id)

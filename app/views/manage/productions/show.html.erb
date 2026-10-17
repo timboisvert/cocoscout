@@ -292,8 +292,13 @@
     </div>
   <% end %>
 
-  <%# Where this production's tickets are (Round 9 §3). Set on Production Settings → Tickets. %>
-  <% if (Current.organization&.manageable_by?(Current.user) || Current.user&.superadmin?) && !@production.type_course? %>
+  <%# Where this production's tickets are (Round 9 §3). Set on Production Settings → Tickets.
+      A production team member sees how it's selling and the link instead
+      (TicketSalesAccess, by Who sees sales). %>
+  <% team_sales_level = TicketSalesAccess.team_level_for(Current.user, @production) unless Current.organization&.manageable_by?(Current.user) || Current.user&.superadmin? %>
+  <% if team_sales_level && !@production.type_course? %>
+    <%= render "manage/production_sales/production_card", production: @production, level: team_sales_level %>
+  <% elsif (Current.organization&.manageable_by?(Current.user) || Current.user&.superadmin?) && !@production.type_course? %>
     <% tickets_tab = edit_manage_production_path(@production, tab: production_tickets_tab(@production)) %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
       <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>

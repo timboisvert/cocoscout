@@ -87,6 +87,15 @@ module TicketingHelper
     counts.map { |n| [ "When #{n} or fewer are left#{' (the usual)' if n == TicketListing::LOW_STOCK_DEFAULT}", n ] } + [ [ "Never", 0 ] ]
   end
 
+  # Where a date's comp rules come from (CompRules), for "comps are off on …".
+  def comp_rules_where(listing)
+    case listing.comp_rules_source
+    when :listing then "this date's Comps tab"
+    when :production then "#{possessive(listing.production.name)} Comps tab"
+    else "Ticketing settings → Comps"
+    end
+  end
+
   # "$20.00" / "Free"
   def ticket_price(cents)
     cents.to_i.zero? ? "Free" : number_to_currency(cents / 100.0)

@@ -302,6 +302,8 @@ module My
                                            .includes(:role)
                                            .to_a
 
+      load_ticket_card
+
       # Preload polymorphic assignables with headshots
       ActiveRecord::Associations::Preloader.new(
         records: @show_person_role_assignments.select { |a| a.assignable_type == "Person" },
@@ -545,6 +547,26 @@ module My
     end
 
     private
+
+    # The Tickets card (TicketSalesAccess, by Who sees sales): the count and
+    # this date's link to share. A production team manager at Everything also
+    # gets the comps count and a button to the date's sales page in the
+    # Production Dashboard; someone the show was shared with, one to My →
+    # Ticket Sales.
+    def load_ticket_card
+      listing = @show.ticket_listing
+      @ticket_level = listing && TicketSalesAccess.level_for(Current.user, listing)
+      return unless @ticket_level
+
+      @ticket_listing = listing
+      @ticket_stats = Ticketing::ListingStats.of(listing)
+      @ticket_link = TicketLink.for(@show, listing: listing)
+      @ticket_sales_path = if TicketSalesAccess.team_level_for(Current.user, @production) == :full
+        manage_production_sale_path(@production, listing)
+      elsif TicketSalesAccess.can_see?(Current.user, listing)
+        my_ticket_sale_path(listing)
+      end
+    end
 
     def user_can_access_show?(show, people_ids, group_ids)
       production = show.production

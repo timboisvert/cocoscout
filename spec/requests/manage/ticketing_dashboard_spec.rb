@@ -130,14 +130,14 @@ RSpec.describe "Ticketing dashboard", type: :request do
     travel_to(Time.zone.local(2026, 11, 6, 20, 15)) do
       get manage_ticketing_path
       html = response.body.gsub(/\s+/, " ")
-      expect(html).to include("Door open now · 1 show", "Started 7:30 PM", "Tonight · 7:30 PM")
+      expect(html).to include("Today's door · 1 show", "Started 7:30 PM", "Tonight · 7:30 PM")
       expect(html.scan(%(href="#{door_path(tonight)}")).size).to eq(2) # the panel and its row
       expect(html).not_to include(door_path(later))
     end
 
     travel_to(Time.zone.local(2026, 11, 5, 12)) do
       get manage_ticketing_path
-      expect(response.body).not_to include("Door open now", door_path(tonight))
+      expect(response.body).not_to include("Today's door", door_path(tonight))
     end
   end
 

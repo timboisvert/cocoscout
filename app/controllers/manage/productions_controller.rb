@@ -255,100 +255,31 @@ module Manage
              locals: { already_on_production: already_on_production, org_users: org_users, global_users: global_users, query: q, show_invite: show_invite, production: @production }
     end
 
+    # Adds someone to the production team (ProductionTeamAdder): a CocoScout
+    # user picked from the search, or an email, invited when nobody has it.
     def add_team_member
       role = params[:role]
-
       unless %w[manager viewer].include?(role)
         redirect_to edit_manage_production_path(@production, tab: 3), alert: "Role is required" and return
       end
 
-      # If a user_id was provided (existing CocoScout user selected from search)
-      if params[:user_id].present?
-        user = User.find(params[:user_id]) # rubocop:disable CocoScout/UnscopedFind -- intentional cross-org add from global search; audit-logged below
-
-        # Adding a user from outside the org is a legit flow (they were picked
-        # from the global search), but leave an audit trail — and never echo
-        # their email back, so this can't be used as an id→email oracle.
-        display_name = user.person&.name || "New team member"
-        unless OrganizationRole.exists?(user: user, organization: Current.organization)
-          Rails.logger.info(
-            "[cross_org_user_attach] user=#{Current.user&.id} org=#{Current.organization&.id} " \
-            "attached_user=#{user.id} via=#{self.class.name}#add_team_member"
-          )
-        end
-
-        if user.role_for_production(@production).present?
-          redirect_to edit_manage_production_path(@production, tab: 3),
-                      alert: "#{display_name} already has access to this production" and return
-        end
-
-        # Ensure they have an org role
-        OrganizationRole.find_or_create_by!(user: user, organization: Current.organization) do |r|
-          r.company_role = "member"
-        end
-
-        ProductionPermission.create!(
-          user: user,
-          production: @production,
-          role: role
-        )
-
-        # Enable notifications for this user on this production by default
-        ProductionNotificationSetting.find_or_create_by!(user: user, production: @production) do |s|
-          s.enabled = true
-        end
-
-        redirect_to edit_manage_production_path(@production, tab: 3),
-                    notice: "#{display_name} added to production team"
-      elsif params[:email].present?
-        email = params[:email].strip.downcase
-
-        # Check if user exists by email
-        user = User.find_by(email_address: email)
-        if user
-          if user.role_for_production(@production).present?
-            redirect_to edit_manage_production_path(@production, tab: 3),
-                        alert: "#{email} already has access to this production" and return
-          end
-
-          OrganizationRole.find_or_create_by!(user: user, organization: Current.organization) do |r|
-            r.company_role = "member"
-          end
-
-          ProductionPermission.create!(
-            user: user,
-            production: @production,
-            role: role
-          )
-
-          ProductionNotificationSetting.find_or_create_by!(user: user, production: @production) do |s|
-            s.enabled = true
-          end
-
-          redirect_to edit_manage_production_path(@production, tab: 3),
-                      notice: "#{user.person&.name || user.email_address} added to production team"
-        else
-          # User doesn't exist - create invitation
-          existing_invite = TeamInvitation.find_by(email: email, organization: Current.organization, production: @production)
-          if existing_invite
-            redirect_to edit_manage_production_path(@production, tab: 3),
-                        alert: "An invitation has already been sent to #{email}" and return
-          end
-
-          invitation = TeamInvitation.create!(
-            email: email,
-            organization: Current.organization,
-            production: @production,
-            invitation_role: role
-          )
-
-          Manage::TeamMailer.production_invite(invitation).deliver_later
-
-          redirect_to edit_manage_production_path(@production, tab: 3),
-                      notice: "Invitation sent to #{email}"
-        end
-      else
+      # A user picked from the global search is a legit cross-org add; the
+      # adder logs it, and never echoes their email back (no id→email oracle).
+      user = User.find(params[:user_id]) if params[:user_id].present? # rubocop:disable CocoScout/UnscopedFind -- intentional cross-org add from global search; audit-logged by ProductionTeamAdder
+      if user.nil? && params[:email].blank?
         redirect_to edit_manage_production_path(@production, tab: 3), alert: "Email is required" and return
+      end
+
+      result = ProductionTeamAdder.add!(@production, role: role, by: Current.user, user: user, email: params[:email])
+      case result.outcome
+      when :added
+        redirect_to edit_manage_production_path(@production, tab: 3), notice: "#{result.name} added to production team"
+      when :already
+        redirect_to edit_manage_production_path(@production, tab: 3), alert: "#{result.name} already has access to this production"
+      when :invited
+        redirect_to edit_manage_production_path(@production, tab: 3), notice: "Invitation sent to #{result.name}"
+      else
+        redirect_to edit_manage_production_path(@production, tab: 3), alert: "An invitation has already been sent to #{result.name}"
       end
     rescue ActiveRecord::RecordInvalid => e
       redirect_to edit_manage_production_path(@production, tab: 3),

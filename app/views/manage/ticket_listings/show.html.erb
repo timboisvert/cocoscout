@@ -87,7 +87,17 @@
               actions: [ { text: "Tell buyers", path: manage_ticket_listing_change_path(@listing) } ] %>
       <% end %>
 
-      <%= render "shared/ticketing/show_numbers", stats: @stats, comps_modal: ("comps-modal" if live), outside_modal: ("outside-sales-modal" if live) %>
+      <%
+        # The Comps tile opens the modal while comps are on for this date and
+        # it has some left to give (CompRules); otherwise it says why not.
+        comps_left = @listing.comps_left
+        comps_open = live && @listing.effective_comps_enabled && (comps_left.nil? || comps_left.positive?)
+        comps_note = if !@listing.effective_comps_enabled then "Given away free · off on #{comp_rules_where(@listing)}"
+                     elsif live && comps_left == 0 then "Given away free · none left to give"
+                     elsif comps_open && comps_left then "Given away free · give #{comps_left} more"
+                     end
+      %>
+      <%= render "shared/ticketing/show_numbers", stats: @stats, comps_modal: ("comps-modal" if comps_open), comps_note: comps_note, outside_modal: ("outside-sales-modal" if live) %>
 
       <div id="guests" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div class="px-5 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
@@ -112,7 +122,7 @@
     <aside class="space-y-6">
       <%= render "shared/action_list", items: actions %>
       <% if live %>
-        <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing %>
+        <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing if comps_open %>
         <%= render "manage/ticket_listings/outside_sales_modal", id: "outside-sales-modal", listing: @listing,
               sources: @outside_sources, rows: @outside_rows %>
       <% end %>

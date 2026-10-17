@@ -43,7 +43,7 @@ module Manage
       else
         user = User.new(email_address: @team_invitation.email.downcase)
         user.password = params[:password]
-        user.person = person
+        # Their profile is linked below (person.user = user), once the user exists.
 
         unless user.valid?
           @user = user
@@ -64,6 +64,7 @@ module Manage
         person.save!
         AuthMailer.signup(person.user).deliver_later
       end
+      user.update!(default_person: person) if user.default_person.nil?
 
       # Add the person to the organization if not already added
       unless person.organizations.include?(@team_invitation.organization)
@@ -85,10 +86,12 @@ module Manage
         end
         existing_role.update!(updates) if updates.any?
       else
+        # An organization invite makes a viewer; a production invite makes a
+        # member, whose access is the production permission below.
         OrganizationRole.create!(
           user: user,
           organization: @team_invitation.organization,
-          company_role: "viewer",
+          company_role: @team_invitation.production_invite? ? "member" : "viewer",
           person_id: person&.id
         )
       end

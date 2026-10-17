@@ -1,5 +1,6 @@
-<%# Ticketing home's "Door open now" (Tim, 2026-10-16): every show whose door
-    is open right now (TicketingDashboard#door_open), one to a row however
+<%# Ticketing home's "Today's door" (Tim, 2026-10-16; named for the day's
+    shows, 2026-10-17): every show whose door is open right now
+    (TicketingDashboard#door_open), one to a row however
     many there are, each with its Work the door. Its X puts it away on this
     device until tomorrow (dismissible_controller). From sm up a row is one
     line: title, start, sold, button. On a phone (Tim, 2026-10-16: the start
@@ -10,7 +11,7 @@
 <section class="border-2 border-pink-200 rounded-lg bg-white overflow-hidden"
          data-controller="dismissible" data-dismissible-key-value="door-open-<%= Current.organization.id %>-<%= Date.current.iso8601 %>">
   <div class="flex items-center justify-between gap-3 bg-pink-50 pl-4 sm:pl-5 pr-2 py-2">
-    <h2 class="text-xs font-semibold uppercase tracking-wider text-pink-700">Door open now · <%= pluralize(rows.size, "show") %></h2>
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-pink-700">Today's door · <%= pluralize(rows.size, "show") %></h2>
     <button type="button" data-action="dismissible#dismiss" aria-label="Close"
             class="rounded-full p-1.5 text-pink-700 hover:bg-pink-100 transition-colors cursor-pointer">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>

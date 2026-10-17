@@ -17,7 +17,7 @@
       </div>
     </div>
     <div class="flex flex-wrap gap-4">
-      <% [ [ "check_in", "Check in" ], [ "box_office", "Box office" ] ].each_with_index do |(value, label), index| %>
+      <% TicketingAccessGrant::LEVEL_LABELS.each_with_index do |(value, label), index| %>
         <label class="flex items-center gap-2 text-sm text-gray-900">
           <%= radio_button_tag :access_level, value, index.zero?, id: "invite_level_#{value}", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %> <%= label %>
         </label>

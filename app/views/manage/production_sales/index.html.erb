@@ -1,0 +1,46 @@
+<%# A production team's view of its production's sales (ProductionSalesController):
+    the link to share, and every date with how it's selling. Locals from the
+    controller: @production, @level, @filter, @listings, @stats, @link_url. %>
+<% content_for :title, "#{@production.name} · Ticket sales" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Shows & Events", manage_shows_path ], [ @production.name, manage_production_path(@production) ] ],
+    text: "Ticket sales",
+    links: []
+  } %>
+
+  <p class="text-sm text-gray-600 mb-6">
+    How <%= @production.name %> is selling, date by date. You can look<%= ", give comps within your allowance" if @level == :full %>, and share the link.
+    Prices, refunds and settings stay with <%= Current.organization.name %>.
+  </p>
+
+  <div class="max-w-4xl space-y-6">
+    <%= render "shared/copy_url", url: @link_url, label: "Ticket link", show_qr: true, qr_title: "Scan for tickets" %>
+
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-200">
+        <h2 class="text-sm font-semibold text-gray-900">Dates <span class="font-normal text-gray-500">· <%= pluralize(@listings.size, @filter == "past" ? "past date" : "date") %></span></h2>
+      </div>
+      <div class="px-5 py-3 border-b border-gray-100">
+        <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+          { label: "Show", filters: [
+            { text: "Upcoming", path: manage_production_sales_path(@production), active: @filter == "upcoming" },
+            { text: "Past", path: manage_production_sales_path(@production, dates: "past"), active: @filter == "past" }
+          ] }
+        ] %>
+      </div>
+      <% if @listings.any? %>
+        <div class="p-3 space-y-2">
+          <% @listings.each do |listing| %>
+            <%= render "shared/show_row", show: listing.show, link_path: manage_production_sale_path(@production, listing), show_canceled: true,
+                  right_panel: :ticket_sales, ticket_listing: listing, ticket_stats: @stats[listing.id] %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="px-5 py-8 text-center text-sm text-gray-600"><%= @filter == "past" ? "No past dates were sold here." : "No dates are on sale." %></p>
+      <% end %>
+    </div>
+  </div>
+</div>

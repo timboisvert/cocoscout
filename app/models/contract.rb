@@ -2639,6 +2639,9 @@ class Contract < ApplicationRecord
       # Attach this contract to that production (a production can carry many contracts).
       update!(production: production) unless self.production_id == production.id
 
+      # The production team staged on the wizard's Team step.
+      apply_draft_team!(production)
+
       rentals.each do |info|
         rental = info[:rental]
         # The show represents the event, so it runs at the event time when one
@@ -2667,6 +2670,25 @@ class Contract < ApplicationRecord
 
     # The production's ticketing, when it asked to sell on CocoScout.
     TicketListingSync.for_contract(self)
+  end
+
+  # The production team staged on the wizard's Team step (draft_data["team"]:
+  # user_id or email, name, role), added or invited the moment the contract
+  # takes effect (ProductionTeamAdder). One bad entry, a user since deleted
+  # or a dead address, never blocks activation; e-sign activation has no
+  # Current.user, so the adder's `by` may be nil.
+  def apply_draft_team!(production)
+    Array(draft_data["team"]).each do |member|
+      next unless member.is_a?(Hash)
+
+      user = member["user_id"].present? ? User.find_by(id: member["user_id"]) : nil
+      next if user.nil? && member["email"].blank?
+
+      ProductionTeamAdder.add!(production, role: member["role"].to_s.presence_in(ProductionTeamAdder::ROLES) || "manager",
+                                           by: Current.user, user: user, email: member["email"], name: member["name"])
+    rescue StandardError => e
+      Rails.logger.warn("[contract #{id}] couldn't add #{member['name'] || member['email']} to #{production.name}'s team: #{e.message}")
+    end
   end
 
   # Link per-event contract payments to their corresponding shows by matching dates

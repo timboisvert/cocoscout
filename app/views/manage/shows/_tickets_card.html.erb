@@ -2,15 +2,21 @@
     Money box, for reading only (Round 9 §3; Tim: the show page shows, the
     edit pages change). Pro, like Money. Nothing is drawn when there's
     nothing to say: the production's answer lives on Production Settings →
-    Tickets, a date's own on its Tickets tab. Locals: show, production. %>
+    Tickets, a date's own on its Tickets tab.
+    The organization's managers get the tile linked to Ticketing. Everyone
+    else sees what Who sees sales gives them (TicketSalesAccess): at
+    Everything the tile links to the date's sales page, with "See who's
+    coming" and "Give comps" under it; at Numbers the count and the link,
+    no money, no comps; at Nothing, no card. Locals: show, production. %>
 <%
   listing = show.ticket_listing
   listing = nil if listing&.status == "canceled"
   link = TicketLink.for(show, listing: listing)
-  # Ticketing's pages are the organization's managers'. Everyone else reads
-  # the tile, no link. No Door tile here (Tim, 2026-10-10): check-ins live in
-  # Ticketing and the Door, not on the show page.
   can_manage_ticketing = Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
+  level = if can_manage_ticketing then :manager
+          elsif listing then TicketSalesAccess.level_for(Current.user, listing)
+          end
+  sales_path = (manage_production_sale_path(production, listing) if listing && level.in?(%i[full numbers]))
   tile = lambda do |path, allowed, &block|
     if allowed
       link_to(path, class: "block rounded-lg border border-gray-200 p-3 hover:border-pink-300 hover:bg-gray-50 transition", &block)
@@ -19,7 +25,7 @@
     end
   end
 %>
-<% if listing || link.outside? %>
+<% if (listing && level) || (listing.nil? && link.outside? && (can_manage_ticketing || level)) %>
   <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
     <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>
       <%= render "shared/pro_marker" %>
@@ -31,8 +37,7 @@
         <%
           stats = Ticketing::ListingStats.of(listing)
           label, classes = ticket_listing_status_badge(listing, stats.inventory)
-        %>
-        <%
+          with_money = level != :numbers
           # Every ticket sold, here and on other sites, of the seats there are
           # to sell once comps are set aside, the way a producer reads the
           # night (Tim, 2026-10-10: Clay saw only CocoScout's count). Where
@@ -40,25 +45,26 @@
           by_site = stats.outside_by_site
           places = by_site.any? ? [ [ "CocoScout", stats.paid_sold, stats.gross_cents ] ] + by_site : []
           sales_cents = stats.gross_cents + by_site.sum { |_, _, cents| cents }
+          tile_path = level == :manager ? manage_ticket_listing_path(listing) : sales_path
         %>
-        <%= tile.call(manage_ticket_listing_path(listing), can_manage_ticketing) do %>
+        <%= tile.call(tile_path, tile_path.present?) do %>
           <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tickets sold</div>
           <div class="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
-            <%= stats.sold_anywhere %><% if stats.seats_to_sell %> <span class="text-sm font-normal text-gray-500">of <%= stats.seats_to_sell %></span><% end %> sold<% if stats.comps.positive? %><span class="text-sm font-normal text-gray-500"> · <%= pluralize(stats.comps, "comp") %></span><% end %>
+            <%= stats.sold_anywhere %><% if stats.seats_to_sell %> <span class="text-sm font-normal text-gray-500">of <%= stats.seats_to_sell %></span><% end %> sold<% if with_money && stats.comps.positive? %><span class="text-sm font-normal text-gray-500"> · <%= pluralize(stats.comps, "comp") %></span><% end %>
           </div>
           <% if places.any? %>
             <ul class="mt-1 space-y-0.5 text-xs text-gray-600" data-ticket-places>
               <% places.each do |name, count, cents| %>
                 <li class="flex items-baseline justify-between gap-3 tabular-nums">
                   <span class="min-w-0 truncate"><%= count %> on <%= name %></span>
-                  <% if cents.positive? %><span class="flex-shrink-0 text-gray-500"><%= number_to_currency(cents / 100.0) %></span><% end %>
+                  <% if with_money && cents.positive? %><span class="flex-shrink-0 text-gray-500"><%= number_to_currency(cents / 100.0) %></span><% end %>
                 </li>
               <% end %>
             </ul>
           <% end %>
           <div class="text-xs text-gray-500 mt-1.5 flex items-center gap-2">
             <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium <%= classes %>"><%= label %></span>
-            <span class="tabular-nums"><%= number_to_currency(sales_cents / 100.0) %> in sales</span>
+            <% if with_money %><span class="tabular-nums"><%= number_to_currency(sales_cents / 100.0) %> in sales</span><% end %>
           </div>
         <% end %>
       <% else %>
@@ -74,5 +80,16 @@
         </div>
       <% end %>
     </div>
+    <% if listing && level == :full %>
+      <%# A production team manager's two things to do, on the date's sales page. %>
+      <% allowance = TicketSalesAccess.comp_allowance(Current.user, listing) %>
+      <div class="px-4 pb-4 flex flex-wrap gap-2">
+        <%= render "shared/button", text: "See who's coming", variant: "secondary", size: "small", path: manage_production_sale_path(production, listing, anchor: "guests") %>
+        <% if allowance && (allowance[:left].nil? || allowance[:left].positive?) %>
+          <%= render "shared/button", text: allowance[:left] ? "Give comps · #{allowance[:left]} of #{allowance[:team_limit] || allowance[:date_left]} left" : "Give comps",
+                variant: "secondary", size: "small", path: manage_production_sale_path(production, listing) %>
+        <% end %>
+      </div>
+    <% end %>
   </div>
 <% end %>

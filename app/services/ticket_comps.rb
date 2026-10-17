@@ -28,6 +28,12 @@ class TicketComps
   def self.give!(listing, guests, by:, note: nil, email_them: true)
     raise Error, "Add at least one person." if guests.empty?
     raise Error, "This show was canceled." if listing.status == "canceled" || listing.show.canceled
+    # The comp rules (CompRules): off, nobody gives any; a date with a limit
+    # gives no more than it has left, whoever is giving.
+    raise Error, "Comps are off for this show." unless listing.effective_comps_enabled
+    if (left = listing.comps_left) && left < guests.sum { |g| g.quantity.to_i }
+      raise Error, left.zero? ? "This date has no comps left to give." : "This date has #{left} #{'comp'.pluralize(left)} left to give."
+    end
 
     bad = guests.find { |g| g.name.blank? || g.quantity.to_i < 1 || g.tier.nil? || (g.email.present? && !g.email.match?(URI::MailTo::EMAIL_REGEXP)) }
     raise Error, "Check #{bad.name.presence || 'each row'}: every person needs a name, a ticket type and a count, and a valid email if there is one." if bad

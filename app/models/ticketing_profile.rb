@@ -15,6 +15,19 @@ class TicketingProfile < ApplicationRecord
   DOOR_HOURS_BEFORE = [ 1, 2, 3, 4, 6, 8, 12 ].freeze
   # Path words under /tickets that an org's slug must never shadow.
   RESERVED_SLUGS = %w[orders checkout embed embed-js v p go door api assets help admin pass-checkout my-pass].freeze
+  # Who sees sales (Ticketing settings → Who sees sales), by role
+  # (TicketSalesAccess): a production team manager sees everything (who's
+  # coming by name, comps too), the numbers and the link, or nothing; a
+  # production team viewer the numbers or nothing; the cast the count and
+  # the link for every date of their production, only the dates they're
+  # cast in, or nothing.
+  TEAM_MANAGER_SALES = %w[everything numbers nothing].freeze
+  TEAM_VIEWER_SALES = %w[numbers nothing].freeze
+  CAST_SALES = %w[production_cast show_cast nothing].freeze
+  # The comp rules (Ticketing settings → Comps): how many comps a date can
+  # give away in all, and how many of them its production team may give.
+  COMPS_LIMITS = %w[unlimited fixed per_performer].freeze
+  TEAM_COMPS_LIMITS = %w[all fixed per_performer].freeze
 
   belongs_to :organization
   has_many :short_links, as: :target, dependent: :destroy
@@ -40,6 +53,36 @@ class TicketingProfile < ApplicationRecord
   validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
   validates :door_in_app, inclusion: { in: DOOR_IN_APP }
   validates :door_hours_before, inclusion: { in: DOOR_HOURS_BEFORE }, allow_nil: true
+  validates :team_manager_sales, inclusion: { in: TEAM_MANAGER_SALES }
+  validates :team_viewer_sales, inclusion: { in: TEAM_VIEWER_SALES }
+  validates :cast_sales, inclusion: { in: CAST_SALES }
+  include CompRules
+  validates :comps_limit, inclusion: { in: COMPS_LIMITS }
+  validates :team_comps_limit, inclusion: { in: TEAM_COMPS_LIMITS }
+  validates :comps_per_show, :team_comps_per_show, numericality: { only_integer: true, in: 0..10_000 }
+
+  # What a production team role sees of its productions' sales.
+  def team_level(role)
+    case role
+    when "manager" then { "everything" => :full, "numbers" => :numbers }[team_manager_sales]
+    when "viewer" then (:numbers if team_viewer_sales == "numbers")
+    end
+  end
+
+  # What the cast sees: the count and the link, or nothing.
+  def cast_level
+    :numbers unless cast_sales == "nothing"
+  end
+
+  # Who sees sales, read back in one sentence.
+  def sharing_words
+    manager = { "everything" => "everything", "numbers" => "the numbers and the link", "nothing" => "nothing" }[team_manager_sales]
+    viewer = { "numbers" => "the numbers and the link", "nothing" => "nothing" }[team_viewer_sales]
+    cast = { "production_cast" => "everyone on a production sees its dates' counts and links",
+             "show_cast" => "the cast of each date sees its count and link",
+             "nothing" => "the cast sees no ticket numbers" }[cast_sales]
+    "Production team managers see #{manager}, production team viewers #{viewer}, and #{cast}."
+  end
 
   def refund_policy_object
     RefundPolicy.of_profile(self)

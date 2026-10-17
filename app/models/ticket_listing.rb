@@ -154,6 +154,61 @@ class TicketListing < ApplicationRecord
     low_stock_threshold || production_ticketing&.low_stock_threshold || LOW_STOCK_DEFAULT
   end
 
+  # --- Comps -----------------------------------------------------------------
+  #
+  # The comp rules this date follows: its own (own_comps on), else its
+  # production's own, else the box office's (TicketingProfile). Each
+  # effective_* reads the whole rule from that one place, never a mix.
+  include CompRules
+
+  def comp_rules_source
+    return :listing if own_comps
+    return :production if production_ticketing&.own_comps
+
+    :profile
+  end
+
+  def comp_rules
+    case comp_rules_source
+    when :listing then self
+    when :production then production_ticketing
+    else profile || TicketingProfile.new
+    end
+  end
+
+  def effective_comps_enabled
+    comp_rules.comps_enabled != false
+  end
+
+  def effective_comps_limit
+    comp_rules.comps_limit.presence || "unlimited"
+  end
+
+  def effective_comps_per_show
+    comp_rules.comps_per_show || 10
+  end
+
+  def effective_team_comps
+    comp_rules.team_comps != false
+  end
+
+  def effective_team_comps_limit
+    comp_rules.team_comps_limit.presence || "all"
+  end
+
+  def effective_team_comps_per_show
+    comp_rules.team_comps_per_show || 2
+  end
+
+  # How many comps this date can still give away, whoever gives them: nil
+  # when there's no limit. People cast counts each person once.
+  def comps_left
+    return nil if effective_comps_limit == "unlimited"
+
+    limit = effective_comps_limit == "fixed" ? effective_comps_per_show : show.show_person_role_assignments.visible_to_performers.distinct.count(:assignable_id)
+    [ limit - Ticketing::ListingStats.of(self).comps, 0 ].max
+  end
+
   # "Only 3 left" when a count is at or under the threshold, else nil.
   def low_stock_note(left)
     "Only #{left} left" if left && left.positive? && left <= effective_low_stock_threshold

@@ -14,7 +14,7 @@ module Manage
 
     GUEST_FILTERS = %w[all waiting in comps refunded].freeze
     # A date's Settings, a tab each with its own Save.
-    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes" }.freeze
+    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes", "comps" => "Comps" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
@@ -114,6 +114,8 @@ module Manage
     end
 
     def update
+      return update_comps if @section == "comps"
+
       attrs = listing_params
       notice = "Saved."
       # The Tickets tab's switch: this date's own prices, or the production's.
@@ -271,6 +273,16 @@ module Manage
       @listing.update!(inherits_tiers: true)
       own.each(&:retire!)
       ProductionTicketingSync.sync!(@listing, setup)
+    end
+
+    # The Comps tab: this date's own comp rules (the switch on), or the ones
+    # it follows, its production's or the box office's (CompRules).
+    def update_comps
+      raw = params.require(:ticket_listing).permit(:own_comps, *CompRules::FIELDS)
+      own = raw[:own_comps] == "1"
+      @listing.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
+      notice = own ? "Saved. This date has its own comp rules: #{@listing.comp_rules_words}." : "Saved. This date follows #{@listing.comp_rules_source == :production ? "#{helpers.possessive(@listing.production.name)} comp rules" : "your box office's comp rules"}."
+      redirect_to settings_path("comps"), notice: notice
     end
 
     def set_settings_section

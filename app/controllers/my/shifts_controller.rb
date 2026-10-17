@@ -28,6 +28,9 @@ module My
 
       @rows = assignments.map { |a| { assignment: a, shift: a.shift, person: a.person } }
       @rows_by_day = @rows.group_by { |r| r[:shift].starts_at.to_date }
+      # How many people to expect at the shows each shift covers, where the
+      # organization shows its staff the count (ShiftExpectedAttendance).
+      @expected_by_shift = ShiftExpectedAttendance.for(@rows.map { |r| r[:shift] })
       @has_any = @rows.any?
       @upcoming_count = @rows.size
 

@@ -124,9 +124,11 @@ RSpec.describe "The Tickets question", type: :request do
       get manage_production_show_path(production, tonight)
       box = response.body[%r{>Tickets</h2>.*?Scan for tickets}m].gsub(/\s+/, " ")
       # 2 here + 7 + 3 elsewhere = 12 sold, of the 57 seats left to sell once 3 comps are set aside.
-      expect(box).to include("Tickets sold", "12 <span class=\"text-sm font-normal text-gray-500\">of 57</span> sold", "3 comps")
-      expect(box).to include("2 on CocoScout", "7 on Ticket Tailor", "$140.00", "3 on DoMore")
-      expect(box).to include("in sales")
+      # Who sees sales (2026-10-17): a viewer gets the numbers and where they
+      # sold, never the money or the comps (TicketSalesAccess :numbers).
+      expect(box).to include("Tickets sold", "12 <span class=\"text-sm font-normal text-gray-500\">of 57</span> sold")
+      expect(box).to include("2 on CocoScout", "7 on Ticket Tailor", "3 on DoMore")
+      expect(box).not_to include("3 comps", "$140.00", "in sales")
       expect(box).not_to include(">Door<", "check people in", "sm:row-span-2")
     end
   end

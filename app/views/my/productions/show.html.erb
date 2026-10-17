@@ -62,6 +62,18 @@
     </div>
   </div>
 
+  <%# Tickets (Tim, 2026-10-16): the production's link, for sharing. Each
+      show's page has that date's own, and how it's selling. %>
+  <% if @ticket_link_url %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-4" data-tickets-card>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" %>
+      <div class="p-4 space-y-2">
+        <%= render "shared/copy_url", url: @ticket_link_url, show_qr: false %>
+        <p class="text-xs text-gray-500">The production's link: every date, for sharing. Each show's page has that date's own, and how it's selling.</p>
+      </div>
+    </div>
+  <% end %>
+
   <!-- Tabs Section -->
   <div class="w-full" data-controller="tabs my-messages" data-tabs-plain-value="true">
     <%# Scrolls inside its own strip on a phone; the page never goes wider. %>

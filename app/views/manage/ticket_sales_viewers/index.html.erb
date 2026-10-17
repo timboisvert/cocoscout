@@ -21,7 +21,18 @@
 
   <div class="max-w-2xl space-y-6">
     <p class="text-sm text-gray-600">
-      Producers and performers can watch how <%= what %> is selling — sold of seats, sales, and who's coming by name — without being able to change anything or see anyone's email. Managers always see everything.
+      Anyone outside the production can watch how <%= what %> is selling — sold of seats, sales, and who's coming by name — without being able to change anything or see anyone's email. Managers always see everything.
+    </p>
+    <%
+      # What the production's own team and cast already see by role (Who sees sales).
+      profile = @profile || ticketing_profile
+      managers_words = { "everything" => "everything", "numbers" => "the numbers", "nothing" => "nothing" }[profile.team_manager_sales]
+      viewers_words = { "numbers" => "the numbers", "nothing" => "nothing" }[profile.team_viewer_sales]
+      cast_words = { "production_cast" => "the count and the link", "show_cast" => "the count and the link for the dates they're cast in", "nothing" => "nothing" }[profile.cast_sales]
+    %>
+    <p class="text-sm text-gray-600 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
+      <%= possessive(@production.name) %> production team already sees these sales by role: its managers <%= managers_words %>, its viewers <%= viewers_words %>, and the cast <%= cast_words %>.
+      Change that for every production in <%= link_to "Who sees sales", manage_ticketing_settings_section_path(section: "sharing"), class: "text-pink-600 hover:text-pink-700 underline" %>.
     </p>
 
     <%# The contractor: automatic, with a switch per contract. %>

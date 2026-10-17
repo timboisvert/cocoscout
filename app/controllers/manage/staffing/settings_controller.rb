@@ -9,11 +9,11 @@ module Manage
     # redirects back here), who's hidden from the Pay People grid, and the
     # org's payer details for W-9s and 1099s.
     class SettingsController < Manage::ManageController
-      SECTIONS = %w[agreements pay_people role_call regulars work_times notifications taxes].freeze
+      SECTIONS = %w[agreements pay_people role_call regulars work_times notifications taxes ticketing].freeze
       SECTION_LABELS = { "agreements" => "Staff agreements", "pay_people" => "Pay People list",
                          "role_call" => "Role Call", "regulars" => "Regulars",
                          "work_times" => "Work times", "notifications" => "Notifications",
-                         "taxes" => "Taxes" }.freeze
+                         "taxes" => "Taxes", "ticketing" => "Ticketing" }.freeze
       DEFAULT_SECTION = "agreements"
 
       before_action :set_section, only: %i[show]
@@ -64,6 +64,8 @@ module Manage
           update_notification_recipients
         elsif params[:updating_taxes].present?
           update_tax_setting
+        elsif params[:updating_ticketing].present?
+          update_ticket_counts
         else
           update_required_agreement
         end
@@ -194,6 +196,17 @@ module Manage
         selected = Array(params[:notification_user_ids]).map(&:to_i) & manager_ids
         Current.organization.update!(staffing_notification_user_ids: selected)
         redirect_to section_path("notifications"), notice: "Notification recipients updated."
+      end
+
+      # Ticketing: whether staff see how many people to expect on their shifts
+      # (ShiftExpectedAttendance). The one thing staff get from Ticketing.
+      # (updating_ticketing is a marker param so an unchecked switch still
+      # routes here and turns it off.)
+      def update_ticket_counts
+        on = params[:staff_see_ticket_counts].present?
+        Current.organization.update!(staff_see_ticket_counts: on)
+        redirect_to section_path("ticketing"),
+                    notice: on ? "Staff see how many people to expect on their shifts." : "Staff don't see ticket counts on their shifts."
       end
 
       # Payer details (who issues the 1099s) and whether staff must give a W-9.

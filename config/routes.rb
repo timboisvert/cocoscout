@@ -624,6 +624,11 @@ Rails.application.routes.draw do
   post "/guides/:key/restore", to: "guides#restore", as: "guide_restore", constraints: { key: /[a-z_]+/ }
 
   namespace :manage do
+    # A production team's view of its ticket sales (not under /manage/ticketing:
+    # the module is the organization's managers'; this is by role).
+    get    "/productions/:production_id/sales",           to: "production_sales#index",       as: "production_sales"
+    get    "/productions/:production_id/sales/:id",       to: "production_sales#show",        as: "production_sale"
+    post   "/productions/:production_id/sales/:id/comps", to: "production_sales#create_comp", as: "production_sale_comps"
     get "/",                              to: "manage#index"
 
     # Messages
@@ -1314,6 +1319,8 @@ Rails.application.routes.draw do
     patch "ticketing/settings/refunds",           to: "ticketing_settings#update_refunds", as: "ticketing_settings_refunds"
     post  "ticketing/settings/open",              to: "ticketing_settings#open_box_office", as: "ticketing_open_box_office"
     patch "ticketing/settings/notifications",     to: "ticketing_settings#update_notifications", as: "ticketing_settings_notifications"
+    patch "ticketing/settings/sharing",           to: "ticketing_settings#update_sharing", as: "ticketing_settings_sharing"
+    patch "ticketing/settings/comps",             to: "ticketing_settings#update_comps",   as: "ticketing_settings_comps"
     get   "ticketing/settings/:section",          to: "ticketing_settings#show",         as: "ticketing_settings_section"
     get    "ticketing/settings/door/search",      to: "ticketing_settings#door_search",  as: "ticketing_door_search"
     post   "ticketing/settings/door",             to: "ticketing_settings#grant_door_access", as: "ticketing_door_access"
@@ -1789,6 +1796,10 @@ Rails.application.routes.draw do
     post "contracts/:contract_id/wizard/production", to: "contract_wizard#save_production"
     get  "contracts/:contract_id/wizard/signing", to: "contract_wizard#signing", as: "signing_contract_wizard"
     post "contracts/:contract_id/wizard/signing", to: "contract_wizard#save_signing"
+    get  "contracts/:contract_id/wizard/team", to: "contract_wizard#team", as: "team_contract_wizard"
+    post "contracts/:contract_id/wizard/team", to: "contract_wizard#save_team"
+    post "contracts/:contract_id/wizard/team/members", to: "contract_wizard#add_team_member", as: "team_members_contract_wizard"
+    delete "contracts/:contract_id/wizard/team/members", to: "contract_wizard#remove_team_member"
     get  "contracts/:contract_id/wizard/contractor", to: "contract_wizard#contractor", as: "contractor_contract_wizard"
     post "contracts/:contract_id/wizard/contractor", to: "contract_wizard#save_contractor"
     get  "contracts/:contract_id/wizard/bookings", to: "contract_wizard#bookings", as: "bookings_contract_wizard"

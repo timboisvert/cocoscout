@@ -6,9 +6,9 @@ module Manage
   # on tickets, who can work the door, and the code for selling on the
   # theater's own website. No branding in v1 — every org gets the same pages.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office refunds tax notifications door embed].freeze
+    SECTIONS = %w[box_office refunds tax notifications door sharing comps embed].freeze
     SECTION_LABELS = { "box_office" => "Box office", "refunds" => "Refunds", "tax" => "Tax", "notifications" => "Notifications",
-                       "door" => "Door", "embed" => "Your website" }.freeze
+                       "door" => "Door", "sharing" => "Who sees sales", "comps" => "Comps", "embed" => "Your website" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -46,6 +46,32 @@ module Manage
         redirect_to section_path("refunds"), notice: "Refund policy saved."
       else
         @section = "refunds"
+        flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
+        render :show, status: :unprocessable_content
+      end
+    end
+
+    # Who sees sales: what a production team manager, a production team
+    # viewer and the cast see of a production's sales (TicketSalesAccess).
+    def update_sharing
+      attrs = params.require(:ticketing_profile).permit(:team_manager_sales, :team_viewer_sales, :cast_sales)
+      if ticketing_profile.update(attrs)
+        redirect_to section_path("sharing"), notice: "Saved. #{ticketing_profile.sharing_words}"
+      else
+        @section = "sharing"
+        flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
+        render :show, status: :unprocessable_content
+      end
+    end
+
+    # The box office's comp rules (CompRules): on at all, how many a date can
+    # give away, and the production team's share of them.
+    def update_comps
+      raw = params.require(:ticketing_profile).permit(*CompRules::FIELDS)
+      if ticketing_profile.update(CompRules.attributes_from(raw))
+        redirect_to section_path("comps"), notice: "Saved. #{ticketing_profile.comp_rules_words.upcase_first}."
+      else
+        @section = "comps"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
         render :show, status: :unprocessable_content
       end
@@ -117,7 +143,7 @@ module Manage
       notice = if added.zero?
         "They're managers here, so they can already work the door."
       else
-        "#{added == 1 ? users.first.person&.name || 'They' : "#{added} people"} can now #{level == 'box_office' ? 'work the box office' : 'check people in'} at the door."
+        "#{added == 1 ? users.first.person&.name || 'They' : "#{added} people"} can now #{level == 'box_office' ? 'check people in and sell tickets' : 'check people in'} at the door."
       end
       redirect_to section_path("door"), notice: notice
     end
@@ -228,6 +254,10 @@ module Manage
       @door_grants = door_grants.includes(user: :default_person).to_a.sort_by { |grant| grant.display_name.to_s.downcase }
       granted = @door_grants.map(&:user_id)
       managers = manager_user_ids
+      # The organization's managers, named at the top of the list: they can
+      # always check people in and sell tickets (Tim, 2026-10-16).
+      @door_managers = User.where(id: managers.uniq).includes(:default_person).to_a
+                           .map { |user| user.person&.name.presence || user.email_address }.sort_by(&:downcase)
       @door_staff = Current.organization.organization_staff_members.active.includes(person: :user).to_a
                            .reject { |member| member.person&.user_id.in?(granted) || member.person&.user_id.in?(managers) }
                            .sort_by { |member| member.display_name.to_s.downcase }

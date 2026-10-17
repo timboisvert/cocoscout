@@ -39,7 +39,7 @@ RSpec.describe "Manage ticketing door access", type: :request do
 
     post manage_ticketing_door_access_path, params: { staff_member_ids: members.map(&:id), access_level: "box_office" }
     expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "door"))
-    expect(flash[:notice]).to eq("2 people can now work the box office at the door.")
+    expect(flash[:notice]).to eq("2 people can now check people in and sell tickets at the door.")
     expect(org.ticketing_access_grants.active.pluck(:user_id, :access_level, :granted_by_id))
       .to contain_exactly([ sam_user.id, "box_office", superadmin.id ], [ lee_user.id, "box_office", superadmin.id ])
   end

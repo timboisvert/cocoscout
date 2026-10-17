@@ -17,16 +17,19 @@
     checked      - true/false (required)
     id, data, aria_label - optional
     hidden_false - also send "0" when off, like form.check_box does (optional)
+    disabled     - greyed and unclickable, in either mode (optional)
 %>
 <%
   cb_options = { class: "sr-only peer" }
   cb_options[:checked] = local_assigns[:checked] if local_assigns.key?(:checked)
+  # disabled: greyed and unclickable (a setting the organization can't use yet).
+  cb_options[:disabled] = true if local_assigns[:disabled]
   cb_options[:data] = local_assigns[:data] if local_assigns[:data].present?
   checked_value = local_assigns[:checked_value] || "1"
   unchecked_value = local_assigns[:unchecked_value]
   form = local_assigns[:form]
 %>
-<label class="relative inline-flex items-center cursor-pointer">
+<label class="relative inline-flex items-center <%= local_assigns[:disabled] ? 'cursor-not-allowed opacity-50' : 'cursor-pointer' %>">
   <% if form.nil? %>
     <% if local_assigns[:name] && local_assigns[:hidden_false] %>
       <%= hidden_field_tag local_assigns[:name], "0", id: nil %>

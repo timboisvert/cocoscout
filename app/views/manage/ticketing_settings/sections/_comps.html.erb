@@ -1,0 +1,14 @@
+<%# Ticketing settings → Comps: the box office's comp rules (CompRules). A
+    production can have its own on its Comps tab, and a date its own again. %>
+<%
+  profile = ticketing_profile
+  example = "With these rules, #{profile.comp_rules_words.sub(/\Acomps on · /, '').sub(' · ', ', and its ')}."
+  example = "With these rules, comps are off: nobody gives any." if profile.comps_enabled == false
+%>
+<%= form_with url: manage_ticketing_settings_comps_path, method: :patch, class: "space-y-6" do %>
+  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticketing_profile", rules: profile,
+        off_words: "Off, nobody gives comps: not managers, not the door, not a production team.",
+        intro_tail: "These are your organization's rules; a production can have its own, and a single date its own again.",
+        example: example %>
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>

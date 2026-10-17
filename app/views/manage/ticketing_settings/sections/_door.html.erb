@@ -1,9 +1,10 @@
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   select_class = "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  # Two levels, the second including the first (Tim, 2026-10-16).
   level_choices = [
-    [ "check_in", "Check in", "Scan tickets, find people by name, and check them in." ],
-    [ "box_office", "Box office", "Everything in Check in, plus cash sales and comps at the door." ]
+    [ "check_in", TicketingAccessGrant::LEVEL_LABELS["check_in"], "Scan tickets, find people by name, and check them in." ],
+    [ "box_office", TicketingAccessGrant::LEVEL_LABELS["box_office"], "All of that, plus cash sales and comps at the door." ]
   ]
   staff_with_accounts, staff_without_accounts = @door_staff.partition { |member| member.person&.user_id.present? }
   in_app_choices = [
@@ -49,7 +50,14 @@
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
       <h2 class="text-lg font-semibold text-gray-900">Who can work the door</h2>
-      <p class="text-sm text-gray-600 mt-1">Managers can always work the door. Give access to anyone else who checks people in or sells at the door on show nights. They sign in to CocoScout on their phone and open <span class="font-medium text-gray-900">cocoscout.com/door</span>. Refunds, prices and settings stay with managers.</p>
+      <p class="text-sm text-gray-600 mt-1">Give access to anyone who checks people in or sells on show nights. They sign in to CocoScout on their phone and open <span class="font-medium text-gray-900">cocoscout.com/door</span>. Refunds, prices and settings stay with managers.</p>
+    </div>
+
+    <%# The organization's managers, first and greyed: always the whole door
+        (Tim, 2026-10-16). Who they are is the organization's team page. %>
+    <div class="px-6 py-3 bg-gray-50 border-b border-gray-100 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-gray-500" data-door-managers>
+      <span class="min-w-0"><span class="font-medium text-gray-600"><%= @door_managers.to_sentence %></span> · organization managers can always check people in and sell tickets.</span>
+      <%= link_to "Organization team", section_manage_organization_path(Current.organization, section: "team"), class: "text-pink-600 hover:text-pink-700 underline flex-shrink-0" %>
     </div>
 
     <% if @door_grants.any? %>

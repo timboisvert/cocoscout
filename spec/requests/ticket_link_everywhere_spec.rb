@@ -31,9 +31,10 @@ RSpec.describe "The ticket link everywhere", type: :request do
     expect(response.body).not_to include("Where do people get tickets", "Tickets · Eventbrite", "data-tooltip-text=\"Get tickets\"")
   end
 
-  # Not on the cast's side yet: a ticket module for cast members is coming
-  # (Tim, 2026-10-12).
-  it "keeps tickets off My Shows & Events and a show's page in My" do
+  # The cast's side (Tim, 2026-10-16): the list stays clean; a show's page
+  # and the production's page carry a Tickets card by Who sees sales
+  # (spec/requests/my/shows_cast_tickets_spec.rb has the rules).
+  it "keeps tickets off the My Shows & Events list, and puts the card on a show's page and the production's" do
     sell!
     performer = create(:user, password: password)
     person = create(:person, user: performer).tap { |p| performer.update!(default_person: p) }
@@ -45,14 +46,15 @@ RSpec.describe "The ticket link everywhere", type: :request do
 
     get my_show_path(show)
     expect(response).to have_http_status(:ok)
-    expect(response.body).not_to include("Get tickets", ">Tickets<")
+    expect(response.body).to include(">Tickets<", "0 of 60 sold", "/t/#{ShortLink.canonical_for!(production).code}/#{ShortLink.date_suffix(show)}")
+    expect(response.body).not_to include("Get tickets")
 
-    # Nor on the production's page in My (its assignments list).
+    # The production's page in My: its own link, and the assignments list stays clean.
     create(:show_person_role_assignment, show: show, assignable: person, role: create(:role, production: production))
     get my_production_path(production)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(show.display_name)
-    expect(response.body).not_to include("data-tooltip-text=\"Get tickets\"", "/t/#{ShortLink.canonical_for!(production).code}")
+    expect(response.body).to include(show.display_name, "data-tickets-card", "/t/#{ShortLink.canonical_for!(production).code}")
+    expect(response.body).not_to include("data-tooltip-text=\"Get tickets\"")
   end
 
   it "puts Get tickets on the public production and show pages, only while the box office is open" do

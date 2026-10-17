@@ -1,0 +1,107 @@
+<%# One date's sales for a production team member (ProductionSalesController#show).
+    At :full, the numbers, who's coming by name, the link, and comps within
+    the allowance; at :numbers, sold of seats and the link, nothing else. %>
+<% show = @listing.show %>
+<% content_for :title, "#{@listing.display_title} · #{show.date_and_time.strftime('%a, %b %-d')} · Ticket sales" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Shows & Events", manage_shows_path ], [ @production.name, manage_production_path(@production) ], [ "Ticket sales", manage_production_sales_path(@production) ] ],
+    text: show.date_and_time.strftime("%a, %b %-d"),
+    links: []
+  } %>
+
+  <p class="text-sm text-gray-600 mb-6"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %> · <%= Current.organization.name %><%= " · #{show.location.name}" if show.location %></p>
+
+  <div class="max-w-4xl space-y-6">
+    <% if @level == :full %>
+      <%
+        can_comp = @allowance.present? && (@allowance[:left].nil? || @allowance[:left].positive?)
+        comps_note = if @allowance.nil? then nil
+                     elsif @allowance[:left].nil? then "Given away free · give tickets"
+                     elsif @allowance[:left].positive? then "Given away free · give #{@allowance[:left]} more"
+                     else "Given away free · none left for you to give"
+                     end
+      %>
+      <%= render "shared/ticketing/show_numbers", stats: @stats, read_only: true, comps_modal: ("comps-modal" if can_comp), comps_note: comps_note %>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <% if @link&.url.present? %>
+          <%= render "shared/copy_url", url: @link.url, layout: :tile, label: "Ticket link", show_qr: true, qr_title: "Scan for tickets" %>
+        <% end %>
+        <% if @allowance %>
+          <div class="rounded-lg border border-gray-200 p-3 min-w-0">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Your comps for this date</div>
+            <p class="mt-1 text-sm text-gray-700">
+              <% if @allowance[:team_limit] %>
+                <%= @allowance[:team_given] %> of <%= @allowance[:team_limit] %> given.
+              <% elsif @allowance[:date_left] %>
+                <%= pluralize(@allowance[:date_left], "comp") %> left on this date.
+              <% else %>
+                No limit, up to the seats left.
+              <% end %>
+              Each one takes a seat and says it came from you.
+            </p>
+            <div class="mt-2">
+              <% if can_comp %>
+                <%= render "shared/button", text: @allowance[:left] ? "Give comps · #{@allowance[:left]} of #{@allowance[:team_limit] || @allowance[:date_left]} left" : "Give comps",
+                      variant: "primary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "comps-modal" } %>
+              <% else %>
+                <span class="text-xs text-gray-500">None left to give.</span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <div id="guests" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-200">
+          <h2 class="text-sm font-semibold text-gray-900">Who's coming <span class="font-normal text-gray-500">· <%= pluralize(@stats.sold, "ticket") %></span></h2>
+        </div>
+        <%= render "shared/ticketing/guest_list", orders: @guest_orders, read_only: true %>
+      </div>
+
+      <% if can_comp %>
+        <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing,
+              url: manage_production_sale_comps_path(@production, @listing), max: @allowance[:left],
+              allowance_note: (@allowance[:left] ? "You can give #{@allowance[:left]} more for this date." : nil),
+              note_label: "Note for the box office" %>
+      <% end %>
+    <% else %>
+      <%# Numbers and the link: sold of seats by ticket type, no names, no money, no comps. %>
+      <%
+        seats = @stats.seats_to_sell
+        percent = seats.to_i.positive? ? [ (@stats.sold_anywhere * 100.0 / seats).round, 100 ].min : nil
+        label, classes = ticket_listing_status_badge(@listing, @stats.inventory)
+      %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="rounded-lg border border-gray-200 bg-white px-4 py-3">
+          <div class="text-xs text-gray-500">Tickets sold</div>
+          <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= @stats.sold_words %></div>
+          <% if percent %>
+            <div class="mt-2 h-1.5 w-full rounded-full bg-gray-100"><div class="h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></div></div>
+          <% end %>
+          <div class="mt-2"><span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium <%= classes %>"><%= label %></span></div>
+        </div>
+        <% if @link&.url.present? %>
+          <%= render "shared/copy_url", url: @link.url, layout: :tile, label: "Ticket link", show_qr: true, qr_title: "Scan for tickets" %>
+        <% end %>
+      </div>
+      <% rows = @stats.by_tier.reject { |row| row.tier.bundle? || (row.tier.archived_at && row.sold.zero?) } %>
+      <% if rows.many? %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="px-5 py-3 border-b border-gray-200"><h2 class="text-sm font-semibold text-gray-900">By ticket type</h2></div>
+          <ul class="divide-y divide-gray-100">
+            <% rows.each do |row| %>
+              <li class="px-5 py-2.5 flex items-center justify-between gap-3 text-sm">
+                <span class="text-gray-900"><%= row.tier.name %></span>
+                <span class="tabular-nums text-gray-700"><%= row.sold_anywhere %><% if row.seats_to_sell %> <span class="text-gray-500">of <%= row.seats_to_sell %></span><% end %> sold</span>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

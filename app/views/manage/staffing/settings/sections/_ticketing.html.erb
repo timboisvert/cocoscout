@@ -1,0 +1,41 @@
+<%# Staffing settings → Ticketing (Tim, 2026-10-16): the one thing staff get
+    from Ticketing, how many people to expect on a shift (ShiftExpectedAttendance).
+    Greyed without Pro, or while the box office is closed. %>
+<%
+  org = Current.organization
+  pro = org.feature_available?(:ticketing)
+  open = pro && org.ticketing_profile&.enabled? == true
+%>
+<%= form_with url: manage_staffing_settings_path, method: :patch, class: "space-y-6" do %>
+  <%# Marker, so an unchecked switch still saves. %>
+  <%= hidden_field_tag :updating_ticketing, "1" %>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/section_heading", title: "What staff see", intro: "Your staff don't see Ticketing. This is the one thing they get from it." do %>
+      <% unless pro %><%= render "shared/pro_marker" %><% end %>
+    <% end %>
+    <div class="px-6 py-4 flex items-center justify-between gap-6 <%= 'opacity-60' unless open %>">
+      <div>
+        <p class="text-[15px] font-medium text-gray-900">Show staff how many people to expect</p>
+        <p class="text-sm text-gray-500">On each shift in My Shifts: "35 expected", everyone holding a ticket for the shows the shift covers, comps and tickets sold elsewhere included. Just the number: no names, no money.</p>
+      </div>
+      <%= render "shared/toggle_switch", name: "staff_see_ticket_counts", checked: org.staff_see_ticket_counts?, id: "staff_see_ticket_counts",
+            aria_label: "Show staff how many people to expect", disabled: !open %>
+    </div>
+    <% if !pro %>
+      <p class="px-6 py-3 border-t border-gray-100 bg-gray-50 text-sm text-gray-600">
+        Ticketing is part of Pro. <%= link_to "See what Pro includes", manage_billing_path, class: "text-pink-600 hover:text-pink-700 underline" %>.
+      </p>
+    <% elsif !open %>
+      <p class="px-6 py-3 border-t border-gray-100 bg-gray-50 text-sm text-gray-600">
+        Your box office is closed, so there's nothing to count yet. <%= link_to "Open your box office", manage_ticketing_settings_path, class: "text-pink-600 hover:text-pink-700 underline" %> in Ticketing settings, and this is on.
+      </p>
+    <% end %>
+  </div>
+
+  <% if open %>
+    <div class="flex justify-end">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

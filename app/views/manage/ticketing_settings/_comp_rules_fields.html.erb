@@ -1,0 +1,101 @@
+<%# The comp rules card (CompRules), the same at every level: the box office
+    (Ticketing settings → Comps), a production's own and a date's own. Four
+    parts: comps on at all; how many a date can give away; whether production
+    team managers give some; and how many of them.
+    Locals: scope (the param prefix: ticketing_profile, production_ticketing
+    or ticket_listing), rules (anything with the six fields; nil means the
+    default), off_words (what "off" means here), intro_tail (optional, one
+    more sentence for the intro), example (optional, the closing sentence),
+    heading (optional, default "Comps"). %>
+<%
+  input_class = "block w-20 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500 flex-shrink-0"
+  card_class = "flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50"
+  enabled = rules.comps_enabled != false
+  comps_limit = rules.comps_limit.presence || "unlimited"
+  comps_per_show = rules.comps_per_show || 10
+  team_comps = rules.team_comps != false
+  team_comps_limit = rules.team_comps_limit.presence || "all"
+  team_comps_per_show = rules.team_comps_per_show || 2
+  per_date_choices = [
+    [ "unlimited", "No limit", "As many as there are seats." ],
+    [ "fixed", "A set number", "The same on every date." ],
+    [ "per_performer", "One per performer", "As many as there are people cast in that date." ]
+  ]
+  team_choices = [
+    [ "all", "All of them", "Up to the date's comps, whatever is left." ],
+    [ "fixed", "A set number", "Their own allowance on every date." ],
+    [ "per_performer", "One per performer", "As many as there are people cast in that date." ]
+  ]
+%>
+<div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-controller="dim-toggle">
+  <%= render "shared/section_heading", title: local_assigns[:heading] || "Comps",
+        intro: "Free tickets for guests, with no fees. They take seats, and every one says who gave it. #{off_words}#{" #{local_assigns[:intro_tail]}" if local_assigns[:intro_tail].present?}" do %>
+    <%= render "shared/toggle_switch", name: "#{scope}[comps_enabled]", checked: enabled, hidden_false: true,
+          id: "#{scope}_comps_enabled", aria_label: "Comps on",
+          data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
+  <% end %>
+
+  <div class="divide-y divide-gray-100" data-dim-toggle-target="dimmed">
+    <fieldset class="px-6 py-4" data-controller="pick-radio">
+      <legend class="text-sm font-medium text-gray-900">Comps per date</legend>
+      <p class="text-xs text-gray-600 mt-0.5 mb-3">How many a date can give away in all, whoever gives them.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <% per_date_choices.each do |value, title, explanation| %>
+          <label class="<%= card_class %>">
+            <%= radio_button_tag "#{scope}[comps_limit]", value, comps_limit == value, id: "#{scope}_comps_limit_#{value}", class: radio_class %>
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+              <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              <% if value == "fixed" %>
+                <span class="mt-2 flex items-center gap-2">
+                  <%= number_field_tag "#{scope}[comps_per_show]", comps_per_show, id: "#{scope}_comps_per_show", min: 0, max: 10_000, step: 1,
+                        class: input_class, "aria-label": "Comps per date", data: { action: "focus->pick-radio#pick" } %>
+                  <span class="text-xs text-gray-600">per date</span>
+                </span>
+              <% end %>
+            </span>
+          </label>
+        <% end %>
+      </div>
+    </fieldset>
+
+    <div data-controller="dim-toggle">
+      <div class="px-6 py-4 flex items-center justify-between gap-6">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Production team managers can give comps</p>
+          <p class="text-xs text-gray-600 mt-0.5">From their own Production Dashboard, on their own productions. Managers always can.</p>
+        </div>
+        <%= render "shared/toggle_switch", name: "#{scope}[team_comps]", checked: team_comps, hidden_false: true,
+              id: "#{scope}_team_comps", aria_label: "Production team managers can give comps",
+              data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
+      </div>
+      <fieldset class="px-6 pb-5" data-dim-toggle-target="dimmed" data-controller="pick-radio">
+        <legend class="text-sm font-medium text-gray-900">How many of them a production team may give</legend>
+        <p class="text-xs text-gray-600 mt-0.5 mb-3">Their part of the date's comps. Never more than the date has.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <% team_choices.each do |value, title, explanation| %>
+            <label class="<%= card_class %>">
+              <%= radio_button_tag "#{scope}[team_comps_limit]", value, team_comps_limit == value, id: "#{scope}_team_comps_limit_#{value}", class: radio_class %>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+                <% if value == "fixed" %>
+                  <span class="mt-2 flex items-center gap-2">
+                    <%= number_field_tag "#{scope}[team_comps_per_show]", team_comps_per_show, id: "#{scope}_team_comps_per_show", min: 0, max: 10_000, step: 1,
+                          class: input_class, "aria-label": "Comps the production team may give per date", data: { action: "focus->pick-radio#pick" } %>
+                    <span class="text-xs text-gray-600">per date</span>
+                  </span>
+                <% end %>
+              </span>
+            </label>
+          <% end %>
+        </div>
+      </fieldset>
+    </div>
+
+    <% if local_assigns[:example].present? %>
+      <p class="px-6 py-3 text-sm text-gray-600 bg-gray-50"><%= local_assigns[:example] %></p>
+    <% end %>
+  </div>
+</div>

@@ -29,11 +29,11 @@
   <p class="text-sm text-gray-600 mb-4">How tickets are selling for the shows a theater shares with you. You can look, not change: sold of seats, sales, and who's coming by name.</p>
 
   <% if @upcoming.any? %>
-    <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Coming up</h2>
+    <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Upcoming</h2>
     <div class="space-y-2 mb-8"><% @upcoming.each { |listing| concat row.call(listing) } %></div>
   <% end %>
   <% if @past.any? %>
-    <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Played</h2>
+    <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Past</h2>
     <div class="space-y-2 mb-8"><% @past.first(60).each { |listing| concat row.call(listing) } %></div>
   <% end %>
   <% if @upcoming.empty? && @past.empty? %>

@@ -1,0 +1,33 @@
+<%# This production's own comp rules, or (switch off) the box office's; its
+    dates follow it (CompRules). One strip names what it follows, one switch
+    gives it its own (Tim, 2026-10-16). Locals: setup, production. %>
+<%
+  own = setup.own_comps
+  profile = ticketing_profile
+  rules = own ? setup : profile
+  example = if !own then nil
+            elsif setup.comps_enabled == false then "With these rules, nobody gives comps on #{production.name}."
+            else "With these rules, #{setup.comp_rules_words.sub(/\Acomps on · /, '').sub(' · ', ', and its ')}. A single date can still have its own rules."
+            end
+%>
+<%= form_with url: manage_update_production_ticketing_path(production, section: "comps"), method: :patch, class: "space-y-6" do %>
+  <div class="space-y-4" data-controller="fieldset-toggle">
+    <div class="rounded-lg border border-pink-200 bg-pink-50 px-5 py-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+      <p class="text-sm text-pink-900 min-w-0 flex-1">
+        <span class="font-medium">Your box office's rules:</span> <%= profile.comp_rules_words %>. Switch on to give <%= production.name %> its own.
+      </p>
+      <label class="flex items-center gap-3 text-sm font-medium text-gray-900 whitespace-nowrap">
+        <%= possessive(production.name) %> own rules
+        <%= render "shared/toggle_switch", name: "production_ticketing[own_comps]", checked: own, hidden_false: true,
+              id: "production_ticketing_own_comps", aria_label: "#{possessive(production.name)} own comp rules",
+              data: { fieldset_toggle_target: "switch", action: "change->fieldset-toggle#toggle" } %>
+      </label>
+    </div>
+    <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields" class="disabled:opacity-50">
+      <%= render "manage/ticketing_settings/comp_rules_fields", scope: "production_ticketing", rules: rules,
+            off_words: "Off, nobody gives comps on #{production.name}.", example: example %>
+    </fieldset>
+  </div>
+
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>
