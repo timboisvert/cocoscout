@@ -2,10 +2,9 @@
 
 require "rails_helper"
 
-# The event page's Contract box (2026-10-16; read the producer's way,
-# 2026-10-17): the date's terms, what they get and when it's known, each
-# service and how it's settled, with View Contract and Change services and
-# prices. And on Scheduling, a contract service dropped for one show says
+# The event page's Contract box (2026-10-16; made small, 2026-10-17): their
+# share, the services that come out of it in one row that opens, what they
+# get and when it's known, and a link to the contract. And on Scheduling, a contract service dropped for one show says
 # it's still billed.
 RSpec.describe "A contracted date's Contract box", type: :request do
   let(:password) { "Password123!" }
@@ -38,10 +37,9 @@ RSpec.describe "A contracted date's Contract box", type: :request do
     get manage_show_path(production, show)
     html = response.body.gsub(/\s+/, " ")
     payment = contract.contract_payments.sole
-    expect(html).to include("Nuns4Fun", "Services this date", "Booth Tech, 2 hrs", "$50.00", "They pay us. Due #{at.strftime('%b %-d')}.",
-                            "See the payment", manage_money_incoming_payment_path(payment),
-                            "View Contract", "Change services and prices", amend_services_manage_contract_path(contract))
-    expect(html).not_to include("Services for this date", "This date&#39;s payment", "What they get")
+    expect(html).to include("Nuns4Fun", "data-contract-services", "Booth Tech, 2 hrs", "$50.00", "They pay us. Due #{at.strftime('%b %-d')}.",
+                            "See the payment", manage_money_incoming_payment_path(payment), "View contract", manage_contract_path(contract))
+    expect(html).not_to include("Services for this date", "This date&#39;s payment", "What they get", "Change services and prices")
     expect(html.scan("Booth Tech").size).to eq(1)
   end
 
@@ -51,6 +49,7 @@ RSpec.describe "A contracted date's Contract box", type: :request do
   it "reads a revenue share as what they get, with the services that come out of it" do
     night = (week_start + 4).in_time_zone.change(hour: 20)
     deal = create(:contract, :active, organization: org, production: production, contractor_name: "Dan Feltey", draft_data: {
+      "payment_structure" => "revenue_share", "payment_config" => { "revenue_our_share" => 50, "revenue_their_share" => 50 },
       "services" => [ { "name" => "Booth Tech", "service_id" => booth.id, "per_event" => true, "unit" => "hourly", "unit_price" => 25.0,
                         "direction" => "incoming", "settlement" => "payout_deduction", "quantity" => 2.0,
                         "events" => [ { "starts_at" => night.iso8601, "hours" => 2.0 } ] } ]
@@ -63,10 +62,16 @@ RSpec.describe "A contracted date's Contract box", type: :request do
 
     get manage_show_path(production, gig)
     html = response.body.gsub(/\s+/, " ")
-    expect(html).to include("Dan Feltey", "What they get", "TBD", "Known once ticket sales are final.", "Less $50.00 for the services below.",
-                            "Services this date", "Booth Tech, 2 hrs", "Out of their share.")
-    expect(html).not_to include("They pay us", "We pay them", "night", "Due #{night.strftime('%b %-d')}")
+    expect(html).to include("Dan Feltey", "50% of ticket sales", "−$50.00", "Booth Tech, 2 hrs",
+                            "They get", "TBD", "Known once ticket sales are final.")
+    expect(html).not_to include("They pay us", "We pay them", "night", "Due #{night.strftime('%b %-d')}", "What they get", "Less $50.00")
     expect(html.scan("Booth Tech").size).to eq(1)
+
+    # Once ticket sales are in: their share, less the services, is what they get.
+    deal.contract_payments.direction_outgoing.sole.update!(amount: 80, amount_tbd: false)
+    get manage_show_path(production, gig)
+    html = response.body.gsub(/\s+/, " ")
+    expect(html).to include("$80.00", "−$50.00", "$30.00", "Due #{night.strftime('%b %-d')}.")
   end
 
   it "says on Scheduling that a contract service dropped for this show is still billed" do

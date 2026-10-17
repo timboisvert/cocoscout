@@ -6,7 +6,8 @@
     The organization's managers get the tile linked to Ticketing. Everyone
     else sees what Who sees sales gives them (TicketSalesAccess): at
     Everything the tile links to the date's sales page, with "See who's
-    coming" and "Give comps" under it; at Numbers the count and the link,
+    coming" and "Give comps" under it ("See who came" and no comps once the
+    date has started); at Numbers the count and the link,
     no money, no comps; at Nothing, no card. Locals: show, production. %>
 <%
   listing = show.ticket_listing
@@ -92,7 +93,7 @@
       <%# A production team manager's two things to do, on the date's sales page. %>
       <% allowance = TicketSalesAccess.comp_allowance(Current.user, listing) %>
       <div class="px-4 pb-4 flex flex-wrap gap-2">
-        <%= render "shared/button", text: "See who's coming", variant: "secondary", size: "small", path: manage_production_sale_path(production, listing, anchor: "guests") %>
+        <%= render "shared/button", text: (show.date_and_time <= Time.current ? "See who came" : "See who's coming"), variant: "secondary", size: "small", path: manage_production_sale_path(production, listing, anchor: "guests") %>
         <% if allowance && (allowance[:left].nil? || allowance[:left].positive?) %>
           <%= render "shared/button", text: allowance[:left] ? "Give comps · #{allowance[:left]} of #{allowance[:team_limit] || allowance[:date_left]} left" : "Give comps",
                 variant: "secondary", size: "small", path: manage_production_sale_path(production, listing) %>

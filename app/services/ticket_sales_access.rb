@@ -85,9 +85,11 @@ class TicketSalesAccess
   #   team_limit  the team's share of a date's comps (nil: all of them)
   #   team_given  comps already given by people who aren't the theater's managers
   #   left        what this manager can still give (nil: no limit)
-  # nil for everyone else, and when comps are off.
+  # nil for everyone else, when comps are off, and once the date has started
+  # (Tim, 2026-10-17: no comps for a show that's already happened).
   def self.comp_allowance(user, listing)
     return nil unless user && listing && open_for?(listing)
+    return nil if listing.show.date_and_time <= Time.current
     return nil if listing.organization.manageable_by?(user)
     return nil unless team_role(user, listing.production) == "manager" && team_level(user, listing.production) == :full
     return nil unless listing.effective_comps_enabled && listing.effective_team_comps

@@ -158,6 +158,12 @@ RSpec.describe TicketSalesAccess do
       expect(described_class.can_comp?(manager, listing)).to be(false)
     end
 
+    # Tim, 2026-10-17: no comps for a show that's already started.
+    it "is nil once the date has started" do
+      show.update_columns(date_and_time: 1.hour.ago)
+      expect(described_class.comp_allowance(manager, listing.reload)).to be_nil
+    end
+
     it "counts the team's comps against a set number, within what the date has left" do
       profile.update!(team_comps_limit: "fixed", team_comps_per_show: 2)
       expect(described_class.comp_allowance(manager, listing)).to eq(date_left: nil, team_limit: 2, team_given: 0, left: 2)
