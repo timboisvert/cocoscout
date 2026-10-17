@@ -53,9 +53,13 @@ class TicketDiscountCode < ApplicationRecord
   # and shared with them. The production team sees the ones shared with the
   # team and with everyone; the cast only the ones shared with everyone.
   def self.shared_for(listing, cast: false)
-    shared(listing.organization_id, cast: cast)
-      .where("ticket_listing_id = :l OR production_id = :p OR (ticket_listing_id IS NULL AND production_id IS NULL)", l: listing.id, p: listing.production_id)
-      .order(:code).to_a.select(&:usable?)
+    scope = shared(listing.organization_id, cast: cast)
+    scope = if listing.own_codes?
+      scope.where("ticket_listing_id = :l OR (ticket_listing_id IS NULL AND production_id IS NULL)", l: listing.id)
+    else
+      scope.where("ticket_listing_id = :l OR production_id = :p OR (ticket_listing_id IS NULL AND production_id IS NULL)", l: listing.id, p: listing.production_id)
+    end
+    scope.order(:code).to_a.select(&:usable?)
   end
 
   # For a production's own page: its codes and the organization's.
@@ -82,7 +86,8 @@ class TicketDiscountCode < ApplicationRecord
   def applies_to?(listing, tier = nil)
     return false unless listing.organization_id == organization_id
     return false if ticket_listing_id && ticket_listing_id != listing.id
-    return false if production_id && production_id != listing.production_id
+    # A date with its own codes (TicketListing#own_codes) doesn't take its production's.
+    return false if production_id && (production_id != listing.production_id || listing.own_codes?)
     return true if tier.nil? || ticket_tier_ids.blank?
 
     ids = ticket_tier_ids.map(&:to_i)

@@ -115,6 +115,7 @@ module Manage
 
     def update
       return update_comps if @section == "comps"
+      return update_own_codes if @section == "codes"
 
       attrs = listing_params
       notice = "Saved."
@@ -169,10 +170,20 @@ module Manage
     def create_code
       code = Current.organization.ticket_discount_codes.new(code_params.merge(ticket_listing: @listing))
       if code.save
+        # A date with a code of its own is on its own codes (TicketListing#own_codes).
+        @listing.update!(own_codes: true) unless @listing.own_codes?
         redirect_to settings_path("codes"), notice: "Added #{code.code}."
       else
         redirect_to settings_path("codes"), alert: code.errors.full_messages.to_sentence
       end
+    end
+
+    # The Codes tab's switch: this date's own codes instead of the production's.
+    def update_own_codes
+      own = params.dig(:ticket_listing, :own_codes) == "1"
+      @listing.update!(own_codes: own)
+      name = helpers.possessive(@listing.production.name)
+      redirect_to settings_path("codes"), notice: own ? "This date uses its own codes; #{name} don't work on it." : "This date uses #{name} codes."
     end
 
     # Who sees the code beside the ticket link (TicketDiscountCode::SHARED_WITH).

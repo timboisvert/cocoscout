@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_17_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3511,6 +3511,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_180000) do
     t.boolean "team_comps"
     t.string "team_comps_limit"
     t.integer "team_comps_per_show"
+    t.boolean "own_codes", default: false, null: false
     t.index ["contract_id"], name: "index_ticket_listings_on_contract_id"
     t.index ["organization_id", "slug"], name: "index_ticket_listings_on_organization_id_and_slug", unique: true
     t.index ["organization_id", "status"], name: "index_ticket_listings_on_organization_id_and_status"

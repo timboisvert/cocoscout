@@ -49,6 +49,34 @@ RSpec.describe "Discount codes shared with the team and the cast", type: :reques
     expect(org.ticket_discount_codes.find_by!(code: "TONIGHT5").shared_with).to eq("team_and_cast")
   end
 
+  it "adds codes from a modal, and a date on its own codes stops taking the production's" do
+    sign_in(owner)
+    org.ticket_discount_codes.create!(production: production, code: "EVERYONE", kind: "percent", percent: 20)
+    get manage_edit_production_ticketing_path(production, section: "codes")
+    expect(response.body).to include('id="add-code-modal"', "Add a discount code", "every date of Stargazers", "EVERYONE", 'data-modal-id="add-code-modal"')
+
+    get manage_edit_ticket_listing_path(listing, section: "codes")
+    expect(response.body).to include("Stargazers&#39; codes:", "EVERYONE (20% off)", "This date's own codes", "No codes of its own yet", "<fieldset disabled", 'id="add-code-modal"')
+    expect(TicketCheckout.find_discount(listing, "EVERYONE")).to be_present
+
+    patch manage_ticket_listing_path(listing, section: "codes"), params: { ticket_listing: { own_codes: "1" } }
+    expect(response).to redirect_to(manage_edit_ticket_listing_path(listing, section: "codes"))
+    expect(flash[:notice]).to eq("This date uses its own codes; Stargazers' don't work on it.")
+    expect(listing.reload.own_codes).to be(true)
+    expect(TicketCheckout.find_discount(listing, "EVERYONE")).to be_nil
+    post manage_ticket_listing_codes_path(listing), params: { ticket_discount_code: { code: "tonight", kind: "fixed", amount: "3" } }
+    expect(TicketCheckout.find_discount(listing, "TONIGHT")).to be_present
+    get manage_edit_ticket_listing_path(listing, section: "codes")
+    expect(response.body).to include("TONIGHT", "$3.00 off")
+    expect(response.body).not_to include("<fieldset disabled")
+    expect(TicketDiscountCode.shared_for(listing).map(&:code)).to eq([ "TONIGHT" ])
+
+    patch manage_ticket_listing_path(listing, section: "codes"), params: { ticket_listing: { own_codes: "0" } }
+    expect(listing.reload.own_codes).to be(false)
+    expect(TicketCheckout.find_discount(listing, "EVERYONE")).to be_present
+    expect(TicketDiscountCode.shared_for(listing).map(&:code)).to eq(%w[EVERYONE TONIGHT])
+  end
+
   it "shows the production team their codes, the cast only the ones shared with everyone, and nobody the rest" do
     org.ticket_discount_codes.create!(production: production, code: "EVERYONE", kind: "percent", percent: 20, shared_with: "team_and_cast")
     org.ticket_discount_codes.create!(production: production, code: "TEAMONLY", kind: "fixed", amount_cents: 500, shared_with: "team")

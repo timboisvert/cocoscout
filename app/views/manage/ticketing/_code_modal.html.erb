@@ -1,0 +1,24 @@
+<%# Add a discount code, in a modal (Tim, 2026-10-17): the tab shows the
+    list; this is where a new one is typed. Locals: id, url (where it
+    posts), what ("every date of Stargazers" / "this date only"), input_class. %>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Add a discount code</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with scope: :ticket_discount_code, url: url, method: :post, data: { turbo: false } do |cf| %>
+      <div class="p-6 space-y-5">
+        <p class="text-sm text-gray-600">Buyers enter it at checkout. Good for <%= what %>.</p>
+        <%= render "manage/ticketing/code_fields", cf: cf, input_class: input_class %>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Add code", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>
