@@ -6,7 +6,8 @@
     [ "Ticketing", manage_ticketing_path ]
   ],
   sections: sections,
-  current: @section
+  current: @section,
+  width: (%w[sharing comps door].include?(@section) ? "max-w-5xl" : nil)
 } do %>
   <% case @section %>
   <% when "refunds" %>

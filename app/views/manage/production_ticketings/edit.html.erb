@@ -9,7 +9,7 @@
   ],
   sections: sections,
   current: @section,
-  width: "max-w-3xl"
+  width: (@section == "comps" ? "max-w-5xl" : "max-w-3xl")
 } do %>
   <% case @section %>
   <% when "tickets" %>

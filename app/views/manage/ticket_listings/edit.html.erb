@@ -19,7 +19,7 @@
   sections: settings_sections,
   current: @section,
   banner: banner,
-  width: "max-w-3xl"
+  width: (@section == "comps" ? "max-w-5xl" : "max-w-3xl")
 } do %>
   <% case @section %>
   <% when "products" %>
