@@ -177,10 +177,10 @@ class TicketSalesAccess
   end
   private_class_method :team_level
 
-  # The cast rule for one date: everyone in the production's talent pool
-  # (production_cast), or only the people cast in that show (show_cast),
-  # for any of the user's people or groups. Someone cast in the date who
-  # isn't in the pool counts either way.
+  # The cast rule for one date: everyone on the production (production_cast:
+  # in its talent pool, or cast in any of its dates), or only the people
+  # cast in that show (show_cast), for any of the user's people or groups.
+  # Someone cast in the date who isn't in the pool counts either way.
   def self.cast_level(user, listing, cache = {})
     level = listing.organization.ticketing_profile&.cast_level
     return nil unless level
@@ -195,13 +195,16 @@ class TicketSalesAccess
     return level if cast
     return nil if listing.organization.ticketing_profile.cast_sales == "show_cast"
 
-    in_pool = cache[[ :pool, listing.production_id ]] ||= begin
+    on_production = cache[[ :production, listing.production_id ]] ||= begin
       pool = listing.production.effective_talent_pool
-      pool.present? && TalentPoolMembership.where(talent_pool_id: pool.id)
-                                           .where("(member_type = 'Person' AND member_id IN (:p)) OR (member_type = 'Group' AND member_id IN (:g))",
-                                                  p: people_ids.presence || [ 0 ], g: group_ids.presence || [ 0 ]).exists?
+      in_pool = pool.present? && TalentPoolMembership.where(talent_pool_id: pool.id)
+                                                     .where("(member_type = 'Person' AND member_id IN (:p)) OR (member_type = 'Group' AND member_id IN (:g))",
+                                                            p: people_ids.presence || [ 0 ], g: group_ids.presence || [ 0 ]).exists?
+      in_pool || ShowPersonRoleAssignment.visible_to_performers.where(shows: { production_id: listing.production_id })
+                                         .where("(assignable_type = 'Person' AND assignable_id IN (:p)) OR (assignable_type = 'Group' AND assignable_id IN (:g))",
+                                                p: people_ids.presence || [ 0 ], g: group_ids.presence || [ 0 ]).exists?
     end
-    level if in_pool
+    level if on_production
   end
   private_class_method :cast_level
 

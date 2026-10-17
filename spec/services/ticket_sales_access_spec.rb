@@ -83,9 +83,15 @@ RSpec.describe TicketSalesAccess do
       expect(described_class.level_for(on_date, listing)).to eq(:numbers)
       expect(described_class.level_for(stranger, listing)).to be_nil
 
+      # Cast in another date of the production, not in its pool: on the production, not on this date.
+      other_date = create(:show, production: production, date_and_time: 12.days.from_now)
+      elsewhere = performer(in_pool: false, cast_in: other_date)
+      expect(described_class.level_for(elsewhere, listing)).to eq(:numbers)
+
       profile.update!(cast_sales: "show_cast")
       expect(described_class.level_for(in_pool, listing)).to be_nil
       expect(described_class.level_for(on_date, listing)).to eq(:numbers)
+      expect(described_class.level_for(elsewhere, listing)).to be_nil
 
       profile.update!(cast_sales: "nothing")
       expect(described_class.level_for(on_date, listing)).to be_nil
