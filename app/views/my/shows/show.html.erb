@@ -110,36 +110,6 @@
             <% end %>
           </div>
 
-          <%# Tickets (Tim, 2026-10-16), by Who sees sales: the count and this
-              date's link for the cast and the production team; a production
-              team manager at Everything also sees the comps and goes to the
-              date's sales page. Nothing without a level (TicketSalesAccess). %>
-          <% if @ticket_level %>
-            <div class="mt-5 border border-gray-200 rounded-lg overflow-hidden bg-white" data-tickets-card>
-              <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>
-                <% if @ticket_sales_path %>
-                  <%= link_to @ticket_sales_path do %>
-                    <%= render "shared/button", text: "Ticket sales", variant: "secondary", size: "small" %>
-                  <% end %>
-                <% end %>
-              <% end %>
-              <div class="p-4 space-y-3">
-                <div class="text-lg font-semibold text-gray-900 tabular-nums">
-                  <%= @ticket_stats.sold_words %><% if @ticket_level == :full && @ticket_stats.comps.positive? %> <span class="text-sm font-normal text-gray-500">· <%= pluralize(@ticket_stats.comps, "comp") %></span><% end %>
-                </div>
-                <% if @ticket_link&.url.present? %>
-                  <%= render "shared/copy_url", url: @ticket_link.url, show_qr: false %>
-                <% end %>
-                <p class="text-xs text-gray-500">
-                  <% if @ticket_sales_path && @ticket_level == :full %>
-                    Who's coming<%= ", and your comps," if TicketSalesAccess.comp_allowance(Current.user, @ticket_listing) %> are a click away in Ticket sales.
-                  <% else %>
-                    Your link for this date. Share it with your people.
-                  <% end %>
-                </p>
-              </div>
-            </div>
-          <% end %>
         </div>
       </div>
     </div>
@@ -571,6 +541,44 @@
               <div class="text-sm text-gray-500">No cast members assigned yet</div>
             <% end %>
           </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Tickets (Tim, 2026-10-17): a plain content box under the cast row,
+        never in the hero. By Who sees sales (TicketSalesAccess): the count
+        and this date's link for the cast and the production team; a
+        production team manager at Everything also sees the comps and has a
+        button to the date's sales page in the Production Dashboard. Nothing
+        else links out of here, and nothing is drawn without a level. %>
+    <% if @ticket_level %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-tickets-card>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>
+          <% if @ticket_sales_path %>
+            <%= link_to @ticket_sales_path do %>
+              <%= render "shared/button", text: "Ticket sales", variant: "secondary", size: "small" %>
+            <% end %>
+          <% end %>
+        <% end %>
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+          <div class="rounded-lg border border-gray-200 p-3">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tickets sold</div>
+            <div class="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
+              <%= @ticket_stats.sold_words %><% if @ticket_level == :full && @ticket_stats.comps.positive? %> <span class="text-sm font-normal text-gray-500">· <%= pluralize(@ticket_stats.comps, "comp") %></span><% end %>
+            </div>
+            <p class="mt-1.5 text-xs text-gray-500">
+              <% if @ticket_sales_path %>
+                Who's coming<%= ", and your comps," if TicketSalesAccess.comp_allowance(Current.user, @ticket_listing) %> are in Ticket sales.
+              <% else %>
+                Your link for this date. Share it with your people.
+              <% end %>
+            </p>
+          </div>
+          <% if @ticket_link&.url.present? %>
+            <div class="min-w-0">
+              <%= render "shared/copy_url", url: @ticket_link.url, layout: :tile, label: "Ticket link", show_qr: false %>
+            </div>
+          <% end %>
         </div>
       </div>
     <% end %>

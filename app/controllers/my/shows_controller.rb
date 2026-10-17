@@ -548,11 +548,11 @@ module My
 
     private
 
-    # The Tickets card (TicketSalesAccess, by Who sees sales): the count and
-    # this date's link to share. A production team manager at Everything also
-    # gets the comps count and a button to the date's sales page in the
-    # Production Dashboard; someone the show was shared with, one to My →
-    # Ticket Sales.
+    # The Tickets box (TicketSalesAccess, by Who sees sales): the count and
+    # this date's link to share, and nothing more on this page (Tim,
+    # 2026-10-17). A production team manager at Everything also gets the
+    # comps count and a button to the date's sales page in the Production
+    # Dashboard.
     def load_ticket_card
       listing = @show.ticket_listing
       @ticket_level = listing && TicketSalesAccess.level_for(Current.user, listing)
@@ -561,11 +561,7 @@ module My
       @ticket_listing = listing
       @ticket_stats = Ticketing::ListingStats.of(listing)
       @ticket_link = TicketLink.for(@show, listing: listing)
-      @ticket_sales_path = if TicketSalesAccess.team_level_for(Current.user, @production) == :full
-        manage_production_sale_path(@production, listing)
-      elsif TicketSalesAccess.can_see?(Current.user, listing)
-        my_ticket_sale_path(listing)
-      end
+      @ticket_sales_path = manage_production_sale_path(@production, listing) if TicketSalesAccess.team_level_for(Current.user, @production) == :full
     end
 
     def user_can_access_show?(show, people_ids, group_ids)
