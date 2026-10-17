@@ -111,6 +111,18 @@ module Manage
       @show_needs = @services_on ? service_coverage_by_show(shifts) : {}
       @org_services = @services_on ? Current.organization.house_services.ordered.includes(:house_roles).to_a : []
       if @role_call_enabled
+        # A role one of the show's services carries (Booth Tech, when the
+        # production needs the Booth Tech service) is that service's row in
+        # the panel; Role Call lists only the roles its services don't explain
+        # (Tim, 2026-10-16: the modal said Booth Tech twice). A show with none
+        # left has no Role Call block at all.
+        @show_needs.each do |show_id, needs|
+          next unless @show_coverage[show_id]
+
+          explained = needs.select { |n| n[:needed] }.flat_map { |n| n[:service].house_roles.map(&:id) }.to_set
+          @show_coverage[show_id][:roles].reject! { |role| explained.include?(role[:id]) }
+          @show_coverage.delete(show_id) if @show_coverage[show_id][:roles].empty?
+        end
         @show_needs.each do |show_id, needs|
           missing = needs.select { |n| n[:needed] && !n[:covered] }.map { |n| n[:service].name }
           # A service and an every-show role can share a name (Booth Tech); say it once.
