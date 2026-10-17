@@ -263,8 +263,21 @@ class ContractDateChanges
       return false unless financials
 
       financials.data_confirmed? ||
-        financials.ticket_revenue.to_f.positive? ||
-        financials.flat_fee.to_f.positive?
+        financials.flat_fee.to_f.positive? ||
+        hand_entered_ticket_revenue?(financials)
+    end
+
+    # Ticket revenue only counts when someone typed it. CocoScout's own sales
+    # fill the "CocoScout Tickets" line by themselves (TicketSalesSync), so
+    # one advance sale was enough to call a night settled before it happened,
+    # and lock it against a late booth-tech fee (Tim, 2026-10-16). A line for
+    # any other source is hand-entered; so is a typed total on a row from
+    # before the lines existed.
+    def hand_entered_ticket_revenue?(financials)
+      lines = financials.ticket_sales_lines.to_a
+      return financials.ticket_revenue.to_f.positive? if lines.empty?
+
+      lines.any? { |line| !line.ticket_source&.built_in? && line.amount.to_f.positive? }
     end
 
     # Only pending, uncommitted payments for this date come off. Anything paid

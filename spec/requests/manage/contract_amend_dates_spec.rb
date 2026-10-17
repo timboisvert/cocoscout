@@ -114,6 +114,35 @@ RSpec.describe "Contracts — change dates", type: :request do
       expect(Show.find(show.id).canceled).to be(true)
       expect(flash[:notice]).to include("already settled")
     end
+
+    # CocoScout's own sales fill the "CocoScout Tickets" line by themselves.
+    # Counted as money moved, one advance sale settled a night before it
+    # happened and locked it against a late booth-tech fee (Tim, 2026-10-16).
+    it "does not count CocoScout's own ticket sales as settled" do
+      rental, show = booked_date!(future)
+      financials = show.create_show_financials!(revenue_type: "ticket_sales")
+      financials.ticket_sales_lines.create!(ticket_source: TicketSalesSync.source_for(org), tickets_sold: 20, amount: 400)
+      expect(financials.reload.ticket_revenue.to_f).to eq(400.0)
+
+      post apply_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "remove" } } }
+
+      expect(Show.exists?(show.id)).to be(false)
+      expect(flash[:notice]).not_to include("already settled")
+    end
+
+    it "but ticket sales someone typed in for another source do" do
+      rental, show = booked_date!(future)
+      financials = show.create_show_financials!(revenue_type: "ticket_sales")
+      eventbrite = org.ticket_sources.create!(name: "Eventbrite")
+      financials.ticket_sales_lines.create!(ticket_source: eventbrite, tickets_sold: 20, amount: 400)
+
+      post apply_amend_dates_manage_contract_path(contract),
+           params: { dates: { rental.id.to_s => { action: "remove" } } }
+
+      expect(Show.find(show.id).canceled).to be(true)
+      expect(flash[:notice]).to include("already settled")
+    end
   end
 
   describe "moving a date" do
