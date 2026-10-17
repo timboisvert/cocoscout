@@ -54,6 +54,10 @@
           <% end %>
         </div>
       <% end %>
+      <%# The "Work the door" bar under the talent menu, as in the app (door_bar_item). %>
+      <% if context == :talent && (door_bar = door_bar_item(Current.user)) %>
+        <%= render "shared/navigation/door_bar", item: door_bar, size: :mobile %>
+      <% end %>
     </div>
 
     <%# ===== FOOTER (pinned) ===== %>

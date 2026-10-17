@@ -1,7 +1,8 @@
 <%# Desktop sidebar nav rendered from the shared dashboard_nav_sections helper.
     Local: context (:production | :talent | :account | :superadmin).
     Text-only links with an unread pill and a Pro lock — matching the previous
-    per-context sidebars exactly. %>
+    per-context sidebars exactly. The talent menu ends with the "Work the
+    door" bar while a show the person can work is on (door_bar_item). %>
 <% dashboard_nav_sections(context).each do |section| %>
   <% if section[:label].present? %>
     <div class="px-4 mt-4 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400"><%= section[:label] %></div>
@@ -18,4 +19,7 @@
             locked: item[:locked], upgrade_feature: (item[:locked] ? item[:feature] : nil) %>
     <% end %>
   <% end %>
+<% end %>
+<% if context == :talent && (door_bar = door_bar_item(Current.user)) %>
+  <%= render "shared/navigation/door_bar", item: door_bar, size: :sidebar %>
 <% end %>

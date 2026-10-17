@@ -113,26 +113,10 @@ module NativeAppHelper
     { id: id, title: title, path: path, icon: icon, badge: item[:badge].to_i }
   end
 
-  # The Door, while a show is on: always the list of shows to work (someone
-  # early for the second of three shows picks theirs; Tim, 2026-10-15), with
-  # today's on top. subtitle says which and when. An organization set to keep
-  # it all the time (Ticketing settings → Door) names the next show when
-  # nothing's on.
+  # The Door, while a show is on: the same bar the website draws under the
+  # menu (NavigationHelper#door_bar_item).
   def native_door_item(user)
-    listings = DoorTonight.listings_for(user)
-    subtitle = if listings.one?
-      listing = listings.first
-      starts = listing.show.date_and_time
-      "#{listing.display_title} · #{starts <= Time.current ? 'Started' : 'Starts'} #{starts.strftime('%-l:%M %p')}"
-    elsif listings.any?
-      "#{listings.size} shows on now"
-    elsif DoorTonight.always?(user)
-      upcoming = DoorTonight.next_listing(user)
-      upcoming ? "Next: #{upcoming.display_title} · #{upcoming.show.date_and_time.strftime('%a, %b %-d')}" : "No shows coming up"
-    end
-    return nil unless subtitle
-
-    { id: "door", title: "Work the door", path: door_index_path, icon: "qrcode.viewfinder", badge: 0, subtitle: subtitle }
+    door_bar_item(user)
   end
 
   # Groups are a niche corner; the menu only offers them to someone in one.

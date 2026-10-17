@@ -100,6 +100,32 @@ module NavigationHelper
 
   # --- Talent --------------------------------------------------------------
   # Mirrors shared/navigation/_my exactly.
+  # The "Work the door" bar under the talent menu, the same on the website
+  # and in the app (NativeAppHelper#native_menu): only while a show someone
+  # can work is on (DoorTonight), always the list of shows to work (someone
+  # early for the second of three shows picks theirs; Tim, 2026-10-15), with
+  # today's on top. subtitle says which and when. An organization set to
+  # keep it all the time (Ticketing settings → Door) names the next show
+  # when nothing's on. nil when there's nothing to work.
+  def door_bar_item(user)
+    return nil unless user
+
+    listings = DoorTonight.listings_for(user)
+    subtitle = if listings.one?
+      listing = listings.first
+      starts = listing.show.date_and_time
+      "#{listing.display_title} · #{starts <= Time.current ? 'Started' : 'Starts'} #{starts.strftime('%-l:%M %p')}"
+    elsif listings.any?
+      "#{listings.size} shows on now"
+    elsif DoorTonight.always?(user)
+      upcoming = DoorTonight.next_listing(user)
+      upcoming ? "Next: #{upcoming.display_title} · #{upcoming.show.date_and_time.strftime('%a, %b %-d')}" : "No shows coming up"
+    end
+    return nil unless subtitle
+
+    { id: "door", title: "Work the door", path: door_index_path, icon: "qrcode.viewfinder", badge: 0, subtitle: subtitle }
+  end
+
   def talent_nav_sections
     items = [
       { label: "Home", path: my_dashboard_path, icon: "home", active: controller_name == "dashboard" },
@@ -110,7 +136,8 @@ module NavigationHelper
       { label: "My Shows & Events", path: my_shows_path, icon: "shows", active: controller_name == "shows" }
     ]
     items << { label: "My Shifts", path: my_shifts_path, icon: "shifts", active: controller_name == "shifts" } if Current.user&.shows_my_shifts?
-    items << { label: "Door", path: door_index_path, icon: "ticketing", active: controller_name == "door" } if Current.user&.works_the_door?
+    # No Door item here (Tim, 2026-10-17): the Door is the "Work the door"
+    # bar under the menu (door_bar_item), on the website as in the app.
     # No Ticket Sales entry here (Tim, 2026-10-17): ticket information lives
     # on a show's own page in My; the shared-sales page is reached by link only.
     items += [
