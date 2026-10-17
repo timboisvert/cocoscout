@@ -2,8 +2,8 @@
 
 <%
   courses_actions = [
-    { icon: "clipboard-list", text: "Add a Course", description: "Start a new course, or add a run of an existing one", path: manage_course_wizard_start_path },
-    { icon: "cog", text: "Course Settings", description: "Your bank and how payouts work", path: manage_course_settings_path }
+    *([ { icon: "clipboard-list", text: "Add a Course", description: "Start a new course, or add a run of an existing one", path: manage_course_wizard_start_path },
+        { icon: "cog", text: "Course Settings", description: "Your bank and how payouts work", path: manage_course_settings_path } ] if Current.user&.manager?)
   ]
 %>
 
@@ -31,8 +31,8 @@
         title: "How courses work",
         body: courses_guide_body,
         actions: [
-          { text: "Add a course", path: manage_course_wizard_start_path },
-          { text: "Course settings", path: manage_course_settings_path }
+          *([ { text: "Add a course", path: manage_course_wizard_start_path },
+              { text: "Course settings", path: manage_course_settings_path } ] if Current.user&.manager?)
         ] %>
 
   <div class="border-t border-gray-200 pt-6 mt-2">

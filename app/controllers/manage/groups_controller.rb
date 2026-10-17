@@ -4,6 +4,7 @@ module Manage
   class GroupsController < Manage::ManageController
     before_action :set_group,
                   only: %i[show update_availability availability_modal remove_from_organization destroy]
+    before_action :ensure_user_is_global_manager, only: %i[update_availability remove_from_organization destroy]
 
     def show
       @members = @group.members.includes(profile_headshots_attachment: :blob)

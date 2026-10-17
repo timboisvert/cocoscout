@@ -4,6 +4,8 @@ module Manage
   class CourseOfferingPayoutsController < Manage::ManageController
     before_action :load_course_offering
     before_action :load_payout, except: [ :calculate ]
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager, except: %i[show]
 
     def show
       # Keep the revenue summary current with registrations (safe: no line-item

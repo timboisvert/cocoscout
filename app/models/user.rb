@@ -246,6 +246,19 @@ class User < ApplicationRecord
     end
   end
 
+  # The accessible productions this user manages (role_for_production is
+  # "manager"): a production permission wins over the organization role, so
+  # an organization manager who's a viewer on one production doesn't manage
+  # it. For hiding what viewers can't do (Tim, 2026-10-17).
+  def managed_productions(archived: false)
+    scope = accessible_productions(archived: archived)
+    if default_role == "manager"
+      scope.where.not(id: production_permissions.where(role: "viewer").select(:production_id))
+    else
+      scope.where(id: production_permissions.where(role: "manager").select(:production_id))
+    end
+  end
+
   # Authorization check for a single production. Unlike accessible_productions
   # (which powers dropdowns/lists and is intentionally limited to *active*
   # productions), this answers "is the user allowed to open this production?" and

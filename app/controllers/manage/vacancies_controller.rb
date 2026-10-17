@@ -5,6 +5,8 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_vacancy, only: %i[show send_invitations cancel reclaim]
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager, except: %i[show]
 
     def show
       @invitations = @vacancy.invitations.includes(:person).order(created_at: :desc)

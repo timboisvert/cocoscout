@@ -268,8 +268,9 @@
           </div>
         <% end %>
 
-        <% unless has_contract %>
-          <%# Standard manage show box — only for productions NOT governed by a contract %>
+        <% if !has_contract && current_user_can_manage?(@production) %>
+          <%# Standard manage show box — only for productions NOT governed by a
+              contract, and only for its managers (viewers look). %>
           <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
             <%= render "shared/section_heading", padding: "px-4 py-3", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
             <div class="p-4">
@@ -422,7 +423,7 @@
 
         <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
           <%= render "shared/section_heading", padding: "px-4 py-3", title: "Casting" do %>
-            <%= render "shared/button", text: "Manage Cast", path: manage_casting_show_cast_path(@production, @show), variant: "primary", size: "small" %>
+            <%= render "shared/button", text: (current_user_can_manage?(@production) ? "Manage Cast" : "View Cast"), path: manage_casting_show_cast_path(@production, @show), variant: "primary", size: "small" %>
             <% cast_members = @show.people.distinct %>
             <% if cast_members.any? %>
               <% cast_members_json = cast_members.map { |p| { name: p.name, headshot: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : nil } }.to_json %>

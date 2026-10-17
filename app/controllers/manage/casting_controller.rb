@@ -9,6 +9,8 @@ module Manage
                   only: %i[show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting notify_cast reopen_casting copy_cast_to_linked
                            reorder_running_order create_running_order_act update_running_order_act destroy_running_order_act running_order_act_options
                            running_order_reset_preview reset_running_order]
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager, except: %i[index org_index show_cast search_people running_order_act_options]
 
     # Org-level casting index (moved from org_casting_controller)
     def org_index

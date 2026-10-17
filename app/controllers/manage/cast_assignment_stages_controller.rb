@@ -3,6 +3,8 @@
 module Manage
   class CastAssignmentStagesController < ManageController
     before_action :set_production
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager
     before_action :set_audition_cycle
     before_action :set_stage, only: %i[update destroy]
 

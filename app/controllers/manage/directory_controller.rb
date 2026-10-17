@@ -4,6 +4,8 @@ require "ostruct"
 
 module Manage
   class DirectoryController < Manage::ManageController
+    before_action :ensure_user_is_global_manager, only: %i[update_group_availability]
+
     def index
       # Get filter params (prioritize params, fall back to session, then defaults)
       @sort = params[:sort] || session[:directory_sort] || "name_asc"

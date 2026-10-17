@@ -2,6 +2,7 @@
 
 module Manage
   class CourseOfferingWizardController < ManageController
+    before_action :ensure_user_is_global_manager
     before_action :load_wizard_state
 
     # Step 0: Is this a brand-new course, or another run of an existing one?

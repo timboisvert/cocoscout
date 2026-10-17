@@ -5,6 +5,8 @@ module Manage
   # (BankSetupLink). Only the organization's own payees: its people, its
   # contractors and their people, and the instructors of its courses.
   class BankSetupEmailsController < Manage::ManageController
+    before_action :ensure_org_owner_or_manager
+
     def create
       payee = find_payee
       BankSetupLink.send!(organization: Current.organization, payee: payee, by: Current.user)

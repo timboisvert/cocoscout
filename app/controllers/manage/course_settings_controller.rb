@@ -12,6 +12,7 @@ module Manage
     DEFAULT_SECTION = "payments"
 
     before_action :set_section, only: %i[show]
+    before_action :ensure_org_owner_or_manager, except: %i[show]
 
     def show
       @organization = Current.organization

@@ -93,7 +93,7 @@ module Manage
     # the moment the contract is activated (Contract#apply_draft_team!,
     # ProductionTeamAdder). Staged in draft_data["team"] as user_id or email,
     # a display name and a role; never an outsider's email. The contract's
-    # signer is suggested first, as a manager.
+    # signer is suggested first. Everyone is a viewer (Tim, 2026-10-17).
     TEAM_STEP = 12
 
     def team
@@ -109,7 +109,7 @@ module Manage
     end
 
     def add_team_member
-      role = params[:role].to_s.presence_in(ProductionTeamAdder::ROLES) || "manager"
+      role = "viewer"
       entry = if params[:person_id].present?
         # Anyone on CocoScout with an account, found by search (the Team tab's
         # own flow does the same); only their user id and name are kept.
@@ -680,9 +680,9 @@ module Manage
       person = @contract.signer_person_record
       email = (person&.email.presence || @contract.contractor_email).to_s.strip.downcase
       entry = if person&.user_id
-        { "user_id" => person.user_id, "name" => person.name, "role" => "manager", "suggested" => true }
+        { "user_id" => person.user_id, "name" => person.name, "role" => "viewer", "suggested" => true }
       elsif email.match?(URI::MailTo::EMAIL_REGEXP)
-        { "email" => email, "name" => (person&.name.presence || @contract.contractor_name.presence), "role" => "manager", "suggested" => true }
+        { "email" => email, "name" => (person&.name.presence || @contract.contractor_name.presence), "role" => "viewer", "suggested" => true }
       end
       @contract.draft_data = @contract.draft_data.merge("team" => [ entry ].compact)
       @contract.save!

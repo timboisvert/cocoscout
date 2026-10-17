@@ -14,8 +14,8 @@
         path: manage_production_shows_path(@production, filter: @filter),
         icon: "list"
       },
-      { text: "Schedule Shows & Events", path: manage_shows_wizard_path(@production)}
-    ]
+      ({ text: "Schedule Shows & Events", path: manage_shows_wizard_path(@production) } if current_user_can_manage?(@production))
+    ].compact
   } %>
 
   <%= render "shared/filters/filter_bar", filter_groups: [

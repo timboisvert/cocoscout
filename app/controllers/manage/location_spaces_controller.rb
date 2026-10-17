@@ -2,6 +2,7 @@
 
 module Manage
   class LocationSpacesController < ManageController
+    before_action :ensure_user_is_global_manager, except: %i[index]
     before_action :set_location
     before_action :set_space, only: %i[update destroy set_default]
 

@@ -2674,7 +2674,9 @@ class Contract < ApplicationRecord
 
   # The production team staged on the wizard's Team step (draft_data["team"]:
   # user_id or email, name, role), added or invited the moment the contract
-  # takes effect (ProductionTeamAdder). One bad entry, a user since deleted
+  # takes effect (ProductionTeamAdder), always as viewers: someone under
+  # contract sees the production, never changes it (Tim, 2026-10-17), even
+  # on a draft staged as a manager before then. One bad entry, a user since deleted
   # or a dead address, never blocks activation; e-sign activation has no
   # Current.user, so the adder's `by` may be nil.
   def apply_draft_team!(production)
@@ -2684,7 +2686,7 @@ class Contract < ApplicationRecord
       user = member["user_id"].present? ? User.find_by(id: member["user_id"]) : nil
       next if user.nil? && member["email"].blank?
 
-      ProductionTeamAdder.add!(production, role: member["role"].to_s.presence_in(ProductionTeamAdder::ROLES) || "manager",
+      ProductionTeamAdder.add!(production, role: "viewer",
                                            by: Current.user, user: user, email: member["email"], name: member["name"])
     rescue StandardError => e
       Rails.logger.warn("[contract #{id}] couldn't add #{member['name'] || member['email']} to #{production.name}'s team: #{e.message}")

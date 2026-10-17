@@ -13,8 +13,8 @@
 
   <%= render "manage/shows/show_info_card", show: @show %>
 
-  <% if @show.casting_finalized? %>
-    <%# ===== FINALIZED STATE ===== %>
+  <% if @show.casting_finalized? || !current_user_can_manage?(@production) %>
+    <%# ===== FINALIZED STATE (and a viewer's read-only look) ===== %>
     <%= render "manage/casting/finalized_cast", show: @show, production: @production, roles: @roles, assignments_by_role_id: @assignments_by_role_id, people_by_id: @people_by_id, groups_by_id: @groups_by_id %>
   <% else %>
     <%# ===== EDITING STATE ===== %>

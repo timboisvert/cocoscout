@@ -1,5 +1,7 @@
-<%# Finalized cast view - read-only compact display %>
+<%# Finalized cast view - read-only compact display. A production team
+    viewer sees it for any show, finalized or not, with nothing to change. %>
 <%
+  manages = current_user_can_manage?(production)
   roles ||= show.available_roles.to_a
   assignments_by_role_id ||= show.show_person_role_assignments.group_by(&:role_id)
   people_by_id ||= {}
@@ -11,7 +13,7 @@
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-  <%= render "shared/section_heading", padding: "px-4 py-3", title: show.act_based? ? "Running Order Finalized" : "Casting Finalized" do %>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title: (show.casting_finalized? ? (show.act_based? ? "Running Order Finalized" : "Casting Finalized") : (show.act_based? ? "Running Order So Far" : "Cast So Far")) do %>
     <div data-controller="compose-message"
          data-compose-message-recipient-type-value="show_cast"
          data-compose-message-recipient-id-value="<%= show.id %>"
@@ -124,7 +126,7 @@
                   </div>
                 <% end %>
               </div>
-              <% if !is_guest && !cant_make_it_vacancy %>
+              <% if manages && !is_guest && !cant_make_it_vacancy %>
                 <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   <%= form_with url: manage_casting_show_create_vacancy_path(production, show), method: :post do |f| %>
                     <%= f.hidden_field :role_id, value: role.id %>
@@ -162,6 +164,7 @@
     </div>
 
     <%# Make Changes button %>
+    <% if manages %>
     <div class="flex items-center gap-3">
       <%= render "shared/button", text: "Make Changes", variant: "primary", size: "medium", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-reopen-casting-#{show.id}" } %>
@@ -176,5 +179,6 @@
         You'll need to finalize again after making changes.
       </span>
     </div>
+    <% end %>
   </div>
 </div>

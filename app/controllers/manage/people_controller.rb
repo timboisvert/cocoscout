@@ -3,7 +3,7 @@
 module Manage
   class PeopleController < Manage::ManageController
     before_action :set_person, only: %i[show update update_availability availability_modal history]
-    before_action :ensure_user_is_global_manager, except: %i[show remove_from_organization availability_modal history]
+    before_action :ensure_user_is_global_manager, except: %i[show availability_modal history]
 
     def show
       @profile_headshots = @person.profile_headshots.order(is_primary: :desc, position: :asc)

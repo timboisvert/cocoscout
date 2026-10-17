@@ -15,6 +15,8 @@ module Manage
       assign assign_registration unassign_registration auto_assign_queue auto_assign_one
       transfer
     ]
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager, except: %i[org_index index archived show preview print_list]
 
     # GET /signups/forms (org-wide)
     def org_index

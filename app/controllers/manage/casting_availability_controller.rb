@@ -4,6 +4,9 @@ module Manage
   class CastingAvailabilityController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_person_modal, :org_show_modal, :org_cast_person, :org_sign_up_person, :org_register_person, :org_pre_register, :org_pre_register_all, :org_set_availability ]
     before_action :check_not_course, except: [ :org_index, :org_person_modal, :org_show_modal, :org_cast_person, :org_sign_up_person, :org_register_person, :org_pre_register, :org_pre_register_all, :org_set_availability ]
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager, only: %i[update_show_availability]
+    before_action :ensure_manager_for_show, only: %i[org_cast_person org_sign_up_person org_register_person org_pre_register org_pre_register_all org_set_availability]
 
     def index
       # Get all future shows for this production, ordered by date
@@ -466,6 +469,14 @@ module Manage
     # The org_* actions carry no production_id in their routes, so the usual
     # production guard never runs for them — every show lookup must be scoped
     # to the current organization here.
+    # The org-wide grid's changes are for a manager of that show's production.
+    def ensure_manager_for_show
+      show = org_scoped_shows.find(params[:show_id])
+      return if Current.user.manager_for_production?(show.production)
+
+      render json: { success: false, error: "You do not have permission to change that." }, status: :forbidden
+    end
+
     def org_scoped_shows
       Show.joins(:production).where(productions: { organization_id: Current.organization.id })
     end

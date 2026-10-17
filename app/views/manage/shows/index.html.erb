@@ -10,8 +10,8 @@
     text: @production.name,
     links: [
       { text: "Calendar", path: manage_production_shows_calendar_path(@production, filter: @filter) },
-      { text: "Schedule Event", path: manage_shows_wizard_path(@production) }
-    ]
+      ({ text: "Schedule Event", path: manage_shows_wizard_path(@production) } if current_user_can_manage?(@production))
+    ].compact
   } %>
 
   <div class="border-t border-gray-200 pt-4 mt-2">

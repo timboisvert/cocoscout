@@ -15,6 +15,8 @@ module Manage
       new_student create_student resend_confirmation
       roster attendance save_attendance
     ]
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager, except: %i[index show roster attendance questionnaire]
 
     def index
       all_offerings = Current.user.accessible_productions

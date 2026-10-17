@@ -3,6 +3,8 @@
 module Manage
   class VacancyInvitationsController < ManageController
     before_action :set_production
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager
     before_action :set_vacancy
     before_action :set_invitation
 
@@ -15,10 +17,7 @@ module Manage
     private
 
     def set_production
-      @production = Production.joins(:organization)
-                              .where(organizations: { id: Current.user.organization_roles.select(:organization_id) })
-                              .or(Production.joins(:organization).where(organizations: { owner_id: Current.user.id }))
-                              .find(params[:production_id])
+      @production = Current.organization.productions.find(params[:production_id])
     end
 
     def set_vacancy

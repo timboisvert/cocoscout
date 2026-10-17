@@ -15,6 +15,8 @@ module Manage
     DEFAULT_SECTION = "source"
 
     before_action :set_production
+    # Production team viewers look; managers change things (Tim, 2026-10-17).
+    before_action :ensure_user_is_manager
     before_action :set_section, only: [ :show ]
     before_action :load_section_data, only: [ :show ]
 

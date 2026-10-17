@@ -2,9 +2,9 @@
 
 <%
   directory_actions = [
-    { icon: "user-plus", text: "Invite People", description: "Add new performers or staff", path: new_manage_person_path },
+    ({ icon: "user-plus", text: "Invite People", description: "Add new performers or staff", path: new_manage_person_path } if Current.user&.manager?),
     { icon: "clipboard-list", text: "Questionnaires", description: "Create and manage questionnaires", path: manage_contacts_questionnaires_path }
-  ]
+  ].compact
 
 %>
 
@@ -32,9 +32,9 @@
         title: "How contacts work",
         body: contacts_guide_body,
         actions: [
-          { text: "Invite people", path: new_manage_person_path },
+          ({ text: "Invite people", path: new_manage_person_path } if Current.user&.manager?),
           { text: "Create a questionnaire", path: manage_contacts_questionnaires_path }
-        ] %>
+        ].compact %>
 
   <div class="border-t border-gray-200 pt-4 mt-2">
   <%# Search Bar - Always Visible %>

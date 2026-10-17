@@ -5,7 +5,8 @@ require "rails_helper"
 # The contract wizard's Team step (Tim, 2026-10-16): the production's team,
 # staged on the draft and added or invited the moment the contract is
 # activated (Contract#apply_draft_team!, ProductionTeamAdder). The
-# contract's signer is suggested first, as a manager.
+# contract's signer is suggested first. Everyone joins as a viewer (Tim,
+# 2026-10-17: someone under contract sees the production, never changes it).
 RSpec.describe "Contract wizard: Team step", type: :request do
   include ActiveJob::TestHelper
 
@@ -28,7 +29,7 @@ RSpec.describe "Contract wizard: Team step", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  it "comes after About and before Schedule, suggesting the contract's signer as a manager" do
+  it "comes after About and before Schedule, suggesting the contract's signer as a viewer" do
     post manage_signing_contract_wizard_path(contract), params: { signing_mode: "offline" }
     expect(response).to redirect_to(manage_team_contract_wizard_path(contract))
 
@@ -37,7 +38,7 @@ RSpec.describe "Contract wizard: Team step", type: :request do
     expect(response.body).to include("Production team", "Clay Smith", "From the contract", "Signs this contract for Clay Smith Presents",
                                      "Who else is on the team?", "Add to the team", "Next: Schedule", ">Team<")
     expect(response.body).not_to include("coustard-regular\">Production team")
-    expect(contract.reload.draft_data["team"]).to eq([ { "user_id" => clay.id, "name" => "Clay Smith", "role" => "manager", "suggested" => true } ])
+    expect(contract.reload.draft_data["team"]).to eq([ { "user_id" => clay.id, "name" => "Clay Smith", "role" => "viewer", "suggested" => true } ])
 
     post manage_team_contract_wizard_path(contract)
     expect(response).to redirect_to(manage_bookings_contract_wizard_path(contract))
@@ -50,7 +51,7 @@ RSpec.describe "Contract wizard: Team step", type: :request do
     contract.update!(contractor_email: "sam@brightlights.org")
     get manage_team_contract_wizard_path(contract)
     expect(response.body).to include("sam@brightlights.org", "Will be invited by email", "From the contract")
-    expect(contract.reload.draft_data["team"].first).to include("email" => "sam@brightlights.org", "role" => "manager", "suggested" => true)
+    expect(contract.reload.draft_data["team"].first).to include("email" => "sam@brightlights.org", "role" => "viewer", "suggested" => true)
   end
 
   it "adds someone found by search, invites someone by email, removes, and lists them on Review" do
@@ -63,9 +64,9 @@ RSpec.describe "Contract wizard: Team step", type: :request do
     post manage_team_members_contract_wizard_path(contract), params: { email: "Sam@BrightLights.org", name: "Sam", role: "manager" }
     team = contract.reload.draft_data["team"]
     expect(team.map { |m| m.slice("user_id", "email", "name", "role") }).to eq([
-      { "user_id" => clay.id, "name" => "Clay Smith", "role" => "manager" },
+      { "user_id" => clay.id, "name" => "Clay Smith", "role" => "viewer" },
       { "user_id" => priya.id, "name" => "Priya Nair", "role" => "viewer" },
-      { "email" => "sam@brightlights.org", "name" => "Sam", "role" => "manager" }
+      { "email" => "sam@brightlights.org", "name" => "Sam", "role" => "viewer" }
     ])
 
     get manage_team_contract_wizard_path(contract)
@@ -84,10 +85,11 @@ RSpec.describe "Contract wizard: Team step", type: :request do
   end
 
   it "adds and invites the team when the contract is activated, and a bad entry never blocks it" do
+    # Clay was staged as a manager before contract teams became viewers only.
     contract.update!(draft_data: contract.draft_data.merge("team" => [
       { "user_id" => clay.id, "name" => "Clay Smith", "role" => "manager", "suggested" => true },
       { "user_id" => priya.id, "name" => "Priya Nair", "role" => "viewer" },
-      { "email" => "sam@brightlights.org", "name" => "Sam", "role" => "manager" },
+      { "email" => "sam@brightlights.org", "name" => "Sam", "role" => "viewer" },
       { "user_id" => 0, "name" => "Gone", "role" => "manager" }
     ]))
 
@@ -95,17 +97,17 @@ RSpec.describe "Contract wizard: Team step", type: :request do
     expect(response).to redirect_to(manage_contract_path(contract))
     production = contract.reload.production
     expect(production.name).to eq("Stargazers")
-    expect(ProductionPermission.find_by(user: clay, production: production).role).to eq("manager")
+    expect(ProductionPermission.find_by(user: clay, production: production).role).to eq("viewer")
     expect(ProductionPermission.find_by(user: priya, production: production).role).to eq("viewer")
     expect(OrganizationRole.find_by(user: clay, organization: org).company_role).to eq("member")
     invitation = TeamInvitation.find_by(email: "sam@brightlights.org", production: production)
-    expect(invitation.invitation_role).to eq("manager")
+    expect(invitation.invitation_role).to eq("viewer")
 
     # Accepting the invitation makes a member of the organization, not a viewer of all of it.
     get signout_path
     post do_accept_manage_team_invitations_path(invitation.token), params: { password: password }
     sam = User.find_by(email_address: "sam@brightlights.org")
     expect(OrganizationRole.find_by(user: sam, organization: org).company_role).to eq("member")
-    expect(ProductionPermission.find_by(user: sam, production: production).role).to eq("manager")
+    expect(ProductionPermission.find_by(user: sam, production: production).role).to eq("viewer")
   end
 end
