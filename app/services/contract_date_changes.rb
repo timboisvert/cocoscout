@@ -255,29 +255,16 @@ class ContractDateChanges
     end
 
     # A ShowFinancials row on its own proves nothing — one gets created just by
-    # opening a show's payout page. It's only settled once someone confirmed the
-    # numbers or entered actual revenue. Treating the bare row as settled meant a
-    # future show nobody had paid a cent for couldn't be deleted.
+    # opening a show's payout page — and neither does revenue typed on the
+    # worksheet. Ticket sales get there before the night happens: CocoScout
+    # fills its own line from advance sales, and the theater types in what
+    # Ticket Tailor sold. Counting any of it settled tonight's show while its
+    # payment was still pending, and locked it against a late booth-tech fee
+    # (Tim, 2026-10-16). What settles a date is the night being closed out:
+    # the contractor confirmed the numbers (data_confirmed), or the
+    # performers were paid off them.
     def financials_settled?(show)
-      financials = show.show_financials
-      return false unless financials
-
-      financials.data_confirmed? ||
-        financials.flat_fee.to_f.positive? ||
-        hand_entered_ticket_revenue?(financials)
-    end
-
-    # Ticket revenue only counts when someone typed it. CocoScout's own sales
-    # fill the "CocoScout Tickets" line by themselves (TicketSalesSync), so
-    # one advance sale was enough to call a night settled before it happened,
-    # and lock it against a late booth-tech fee (Tim, 2026-10-16). A line for
-    # any other source is hand-entered; so is a typed total on a row from
-    # before the lines existed.
-    def hand_entered_ticket_revenue?(financials)
-      lines = financials.ticket_sales_lines.to_a
-      return financials.ticket_revenue.to_f.positive? if lines.empty?
-
-      lines.any? { |line| !line.ticket_source&.built_in? && line.amount.to_f.positive? }
+      show.show_financials&.data_confirmed? || show.show_payout&.paid? || false
     end
 
     # Only pending, uncommitted payments for this date come off. Anything paid

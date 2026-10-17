@@ -115,14 +115,19 @@ RSpec.describe "Contracts — change dates", type: :request do
       expect(flash[:notice]).to include("already settled")
     end
 
-    # CocoScout's own sales fill the "CocoScout Tickets" line by themselves.
-    # Counted as money moved, one advance sale settled a night before it
-    # happened and locked it against a late booth-tech fee (Tim, 2026-10-16).
-    it "does not count CocoScout's own ticket sales as settled" do
+    # Ticket sales reach the worksheet before the night: CocoScout fills its
+    # own line from advance sales, and the theater types in what Ticket Tailor
+    # sold. Neither is money moved on the contract; counting them settled
+    # tonight's show while its payment was still pending, and locked it
+    # against a late booth-tech fee (Tim, 2026-10-16).
+    it "does not count ticket sales on the worksheet as settled, whoever sold them" do
       rental, show = booked_date!(future)
       financials = show.create_show_financials!(revenue_type: "ticket_sales")
-      financials.ticket_sales_lines.create!(ticket_source: TicketSalesSync.source_for(org), tickets_sold: 20, amount: 400)
-      expect(financials.reload.ticket_revenue.to_f).to eq(400.0)
+      financials.ticket_sales_lines.create!(ticket_source: TicketSalesSync.source_for(org), tickets_sold: 3, amount: 60)
+      financials.ticket_sales_lines.create!(ticket_source: org.ticket_sources.create!(name: "Ticket Tailor"), tickets_sold: 25, amount: 625)
+      expect(financials.reload.ticket_revenue.to_f).to eq(685.0)
+      contract.contract_payments.create!(description: "Oct 16 — 50% to them", amount: 342.5, direction: "outgoing",
+                                         due_date: future.to_date, show_id: show.id)
 
       post apply_amend_dates_manage_contract_path(contract),
            params: { dates: { rental.id.to_s => { action: "remove" } } }
@@ -131,11 +136,10 @@ RSpec.describe "Contracts — change dates", type: :request do
       expect(flash[:notice]).not_to include("already settled")
     end
 
-    it "but ticket sales someone typed in for another source do" do
+    it "but performers paid off the night do" do
       rental, show = booked_date!(future)
-      financials = show.create_show_financials!(revenue_type: "ticket_sales")
-      eventbrite = org.ticket_sources.create!(name: "Eventbrite")
-      financials.ticket_sales_lines.create!(ticket_source: eventbrite, tickets_sold: 20, amount: 400)
+      show.create_show_financials!(revenue_type: "ticket_sales", ticket_revenue: 400)
+      create(:show_payout, :paid, show: show)
 
       post apply_amend_dates_manage_contract_path(contract),
            params: { dates: { rental.id.to_s => { action: "remove" } } }
