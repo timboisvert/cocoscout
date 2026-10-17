@@ -88,7 +88,9 @@ RSpec.describe "Ticketing dashboard", type: :request do
 
   it "nudges about drafts coming up and a canceled show with ticket holders; tonight is only the Door's count" do
     tonight = listing_at(Time.current.end_of_day - 1.hour)
-    buy(tonight, 2, "Tonight Guest")
+    # Bought before the show, whatever the clock says: sales close at curtain,
+    # and a late run of the suite was buying after it (2026-10-16).
+    buy(tonight, 2, "Tonight Guest", at: tonight.show.date_and_time - 2.hours)
     listing_at(6.days.from_now, status: "draft")
     canceled = listing_at(9.days.from_now)
     buy(canceled, 1, "Holder")
