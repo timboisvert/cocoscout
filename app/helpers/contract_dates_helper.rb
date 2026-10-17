@@ -61,6 +61,42 @@ module ContractDatesHelper
     tied.presence || payments.where(show_id: nil, due_date: show.date_and_time.to_date).order(:id).to_a
   end
 
+  # One picture of a contract's deal for one date, for the show page's
+  # Contract box (Tim, 2026-10-17: a producer should read it and know what
+  # they get, that the amount waits on ticket sales, and that the services
+  # come out of it): the date's terms, the payment to them (payout), each
+  # service with how it's settled (:deducted from their share, :direct they
+  # pay us, :paid), the other money they owe, and the services' total that
+  # comes out of their share.
+  def contract_date_picture(contract, show)
+    services = contract_services_for_show(contract, show)
+    payments = contract_payments_for_show(contract, show)
+    payout = payments.find(&:direction_outgoing?)
+    incoming = payments.select(&:direction_incoming?)
+    rows = services.map do |service|
+      charge = incoming.find do |payment|
+        payment.description.to_s.start_with?("#{service[:name]} —") || payment.service_components.any? { |c| c["name"] == service[:name] }
+      end
+      how =
+        if charge.nil? then nil
+        elsif charge.settlement_method == "payout_deduction" then :deducted
+        elsif charge.status_paid? then :paid
+        else :direct
+        end
+      service.merge(charge: charge, how: how)
+    end
+    charged = rows.filter_map { |row| row[:charge] }.uniq
+    terms = show.contract_terms.presence || {}
+    {
+      terms: contract.date_terms_words(show.event_type, terms),
+      note: terms["note"].presence,
+      payout: payout,
+      services: rows,
+      other_incoming: incoming - charged,
+      deducted_total: rows.select { |row| row[:how] == :deducted }.sum { |row| row[:amount].to_f }.round(2)
+    }
+  end
+
   # "3 hrs" / "90 min".
   def date_length_words(hours)
     return nil unless hours&.positive?

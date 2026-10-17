@@ -173,15 +173,21 @@
             <% end %>
 
             <% if has_contract %>
-              <%# Contract box: this date's services and payment from its contract
-                  (2026-10-16), with the way to change them. %>
+              <%# Contract box: the deal for this date, read the way a producer
+                  needs it (Tim, 2026-10-17): the terms, what they get and when the
+                  amount is known, the services the date uses and how each is
+                  settled, the rest of what they owe, and the way to change it
+                  (contract_date_picture). %>
               <%
                 contract = @show.space_rental&.contract || @production.contract
                 contracts_ok = @production.organization.feature_available?(:contracts)
                 can_manage_contract = Current.user&.superadmin? || @production.organization.manageable_by?(Current.user)
-                date_services = contracts_ok ? contract_services_for_show(contract, @show) : []
-                date_payments = contracts_ok ? contract_payments_for_show(contract, @show) : []
-                own_terms = contracts_ok && @show.contract_terms.present? ? contract.date_terms_words(@show.event_type, @show.contract_terms) : nil
+                picture = contracts_ok ? contract_date_picture(contract, @show) : nil
+                payment_link = lambda do |payment|
+                  path = payment.direction_incoming? && @production.organization.feature_available?(:money) ? manage_money_incoming_payment_path(payment) : manage_contract_path(contract)
+                  link_to("See the payment", path, class: "text-[13px] font-medium text-pink-600 hover:text-pink-700") if can_manage_contract
+                end
+                money = ->(n) { number_to_currency(n) }
               %>
               <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
                 <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contract" do %>
@@ -190,46 +196,72 @@
                 <div class="p-4 space-y-3">
                   <div class="text-sm font-medium text-gray-900"><%= contract.contractor_name %></div>
 
-                  <% if own_terms&.last %>
-                    <p class="text-sm text-gray-700"><%= own_terms[0] %> <span class="text-xs text-gray-500"><%= own_terms[1] %></span></p>
-                    <% if @show.contract_terms["note"].present? %><p class="text-xs italic text-gray-500 -mt-2"><%= @show.contract_terms["note"] %></p><% end %>
-                  <% end %>
+                  <% if picture %>
+                    <% terms = picture[:terms] %>
+                    <% if terms %>
+                      <p class="text-sm text-gray-700"><%= terms[0] %><% if terms[1].present? %> <span class="text-xs text-gray-500"><%= terms[1] %></span><% end %></p>
+                      <% if picture[:note] %><p class="text-xs italic text-gray-500 -mt-2"><%= picture[:note] %></p><% end %>
+                    <% end %>
 
-                  <% if date_services.any? || date_payments.any? %>
-                    <div class="rounded-lg border border-gray-200 px-3 py-2">
-                      <% if date_services.any? %>
-                        <p class="py-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Services for this date</p>
-                        <% date_services.each do |service| %>
-                          <div class="flex items-center justify-between gap-3 py-1.5 text-sm">
-                            <span class="text-gray-600"><%= service[:name] %><%= ", #{service[:hours] % 1 == 0 ? service[:hours].to_i : service[:hours]} #{'hr'.pluralize(service[:hours])}" if service[:hours] %></span>
-                            <span class="text-gray-900 tabular-nums"><%= number_to_currency(service[:amount]) %></span>
+                    <% payout = picture[:payout] %>
+                    <% if payout %>
+                      <%# What they get: the amount, or that it waits on ticket sales, less the services taken out of it. %>
+                      <div class="rounded-lg border border-gray-200 px-3 py-2.5" data-contract-payout>
+                        <div class="flex items-center justify-between gap-3 text-sm">
+                          <span class="text-gray-600">What they get</span>
+                          <span class="flex items-center gap-2.5">
+                            <span class="font-semibold text-gray-900 tabular-nums"><%= payout.awaiting_amount? ? "TBD" : money.(payout.amount) %></span>
+                            <%= payment_link.call(payout) %>
+                          </span>
+                        </div>
+                        <p class="text-xs text-gray-500">
+                          <% if payout.awaiting_amount? %>Known once ticket sales are final.<% elsif payout.status_paid? %>Paid.<% else %>Due <%= payout.due_date.strftime("%b %-d") %>.<% end %>
+                          <% if picture[:deducted_total].positive? %><span class="block">Less <%= money.(picture[:deducted_total]) %> for the services below.</span><% end %>
+                        </p>
+                      </div>
+                    <% end %>
+
+                    <% if picture[:services].any? %>
+                      <div class="rounded-lg border border-gray-200 px-3 py-2" data-contract-services>
+                        <p class="py-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Services this date</p>
+                        <% picture[:services].each do |row| %>
+                          <%
+                            hours = row[:hours] && ", #{row[:hours] % 1 == 0 ? row[:hours].to_i : row[:hours]} #{'hr'.pluralize(row[:hours])}"
+                            how = case row[:how]
+                                  when :deducted then "Out of their share."
+                                  when :paid then "They paid it."
+                                  when :direct then "They pay us. Due #{row[:charge].due_date.strftime('%b %-d')}."
+                                  end
+                          %>
+                          <div class="py-1.5 text-sm">
+                            <div class="flex items-baseline justify-between gap-3">
+                              <span class="text-gray-600 min-w-0"><%= row[:name] %><%= hours %></span>
+                              <span class="text-gray-900 tabular-nums flex-shrink-0"><%= money.(row[:amount]) %></span>
+                            </div>
+                            <% if how %>
+                              <p class="text-xs text-gray-500"><%= how %><% if row[:how] != :deducted && can_manage_contract %> <%= payment_link.call(row[:charge]) %><% end %></p>
+                            <% end %>
                           </div>
                         <% end %>
-                      <% end %>
-                      <% date_payments.each do |payment| %>
-                        <% incoming = payment.direction_incoming? %>
-                        <div class="<%= 'border-t border-gray-200 mt-1 pt-2.5' if date_services.any? || payment != date_payments.first %> pb-1">
-                          <div class="flex items-center justify-between gap-3 text-sm">
-                            <span class="text-gray-600"><%= date_payments.size == 1 ? "This date's payment" : payment.description %></span>
-                            <span class="flex items-center gap-2.5">
-                              <span class="font-semibold text-gray-900 tabular-nums"><%= payment.amount_tbd? && payment.amount.to_f.zero? ? "TBD" : number_to_currency(payment.amount) %></span>
-                              <% if can_manage_contract %>
-                                <%= link_to "See the payment",
-                                      (incoming && @production.organization.feature_available?(:money) ? manage_money_incoming_payment_path(payment) : manage_contract_path(contract)),
-                                      class: "text-[13px] font-medium text-pink-600 hover:text-pink-700" %>
-                              <% end %>
-                            </span>
-                          </div>
-                          <p class="text-xs text-gray-500">
-                            <%= incoming ? "They pay us" : "We pay them" %>.
-                            <%= payment.status_paid? ? "Paid." : "Due #{payment.due_date.strftime('%b %-d')}." %>
-                            <% if payment.service_components.any? %>
-                              Includes <%= payment.service_components.map { |c| "#{c['name']} #{number_to_currency(c['amount'])}" }.to_sentence %>.
-                            <% end %>
-                          </p>
+                      </div>
+                    <% end %>
+
+                    <% picture[:other_incoming].each do |payment| %>
+                      <%# Money they owe for this date that isn't a service: rent, a fee. %>
+                      <div class="rounded-lg border border-gray-200 px-3 py-2.5">
+                        <div class="flex items-center justify-between gap-3 text-sm">
+                          <span class="text-gray-600">They pay us<%= " · #{payment.description}" if picture[:other_incoming].many? %></span>
+                          <span class="flex items-center gap-2.5">
+                            <span class="font-semibold text-gray-900 tabular-nums"><%= payment.awaiting_amount? ? "TBD" : money.(payment.amount) %></span>
+                            <%= payment_link.call(payment) %>
+                          </span>
                         </div>
-                      <% end %>
-                    </div>
+                        <p class="text-xs text-gray-500">
+                          <%= payment.status_paid? ? "Paid." : "Due #{payment.due_date.strftime('%b %-d')}." %>
+                          <% if payment.service_components.any? %><span class="block">Includes <%= payment.service_components.map { |c| "#{c['name']} #{money.(c['amount'])}" }.to_sentence %>.</span><% end %>
+                        </p>
+                      </div>
+                    <% end %>
                   <% end %>
 
                   <% if can_manage_contract %>
