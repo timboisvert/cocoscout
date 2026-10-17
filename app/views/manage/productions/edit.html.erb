@@ -122,7 +122,10 @@
         <% if @production.type_third_party? %>
           <%# Third-Party Contract Info %>
           <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-            <%= render "shared/section_heading", title: "Contract information" %>
+            <%# The Pro mark sits in the header, as on every Pro card (Tim, 2026-10-16). %>
+            <%= render "shared/section_heading", title: "Contract information" do %>
+              <%= render "shared/pro_marker", kind: :header %>
+            <% end %>
             <div class="p-6 pt-4">
               <% if @production.contract.present? %>
                 <div class="flex items-center justify-between">
@@ -140,7 +143,7 @@
                   <% if Current.user&.superadmin? || @production.organization.manageable_by?(Current.user) %>
                     <% contracts_ok = @production.organization.feature_available?(:contracts) %>
                     <span class="inline-flex items-center gap-1.5">
-                      <%= render "shared/pro_marker", kind: (contracts_ok ? :pill : :lock) %>
+                      <%= render "shared/pro_marker", kind: :lock unless contracts_ok %>
                       <%= render "shared/button", text: "View Contract", variant: "secondary", size: "small", path: manage_contract_path(@production.contract),
                             data: (contracts_ok ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
                     </span>
