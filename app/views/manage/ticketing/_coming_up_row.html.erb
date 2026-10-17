@@ -1,9 +1,10 @@
 <%# A production's next date on Ticketing home (Tim, 2026-10-16: the rows were
-    cluttered): when, what, how it's selling, its sales status only when it
-    isn't plainly on sale, and Work the door while that show's door is open.
-    From sm up: the title over its time, how it's selling and the button
-    beside them. On a phone (Tim, 2026-10-16: too squeezed, and the button
-    dropped to its own line): two short lines in smaller type, when and the
+    cluttered): its wide image, when, what, how it's selling, its sales
+    status only when it isn't plainly on sale, and Work the door while that
+    show's door is open. From sm up: the picture, the title over its time,
+    how it's selling and the button beside them. On a phone (Tim,
+    2026-10-16: too squeezed, and the button dropped to its own line): the
+    picture down the left, then two short lines in smaller type, when and the
     sold count on the first, the title and the button on the second, the
     title giving way to the button rather than wrapping. Locals: listing, stats. %>
 <%
@@ -17,14 +18,17 @@
   seats = stats.seats_to_sell
   percent = seats.to_i.positive? ? [ (stats.sold_anywhere * 100.0 / seats).round, 100 ].min : (seats&.zero? ? 100 : nil)
 %>
-<%# On a phone the grid places these in reading order: when, sold count, then
-    (order-3/order-4) the title and the button on the line below. %>
-<div class="bg-white border border-gray-200 rounded-lg px-4 py-3 sm:px-5 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 items-center sm:flex sm:gap-4">
-  <div class="contents sm:block sm:flex-1 sm:min-w-0">
-    <span class="block text-xs sm:text-sm text-gray-500 whitespace-nowrap"><%= when_words %></span>
-    <%= link_to listing.display_title, manage_ticket_listing_path(listing), class: "order-3 sm:order-none block min-w-0 text-sm sm:text-[15px] font-semibold text-gray-900 truncate hover:text-pink-700" %>
+<%# On a phone the grid places these by column and row: the picture spans
+    both rows, then when and the sold count, then the title and the button. %>
+<div class="bg-white border border-gray-200 rounded-lg px-4 py-3 sm:px-5 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 items-center sm:flex sm:gap-4">
+  <div class="row-span-2 sm:row-span-1">
+    <%= render "shared/wide_thumb", image: listing.show.wide_image_for_rows, name: listing.display_title, width: "w-16 sm:w-24" %>
   </div>
-  <span class="text-right text-xs sm:text-sm text-gray-700 tabular-nums whitespace-nowrap">
+  <div class="contents sm:block sm:flex-1 sm:min-w-0">
+    <span class="col-start-2 row-start-1 block text-xs sm:text-sm text-gray-500 whitespace-nowrap"><%= when_words %></span>
+    <%= link_to listing.display_title, manage_ticket_listing_path(listing), class: "col-start-2 row-start-2 block min-w-0 text-sm sm:text-[15px] font-semibold text-gray-900 truncate hover:text-pink-700" %>
+  </div>
+  <span class="col-start-3 row-start-1 text-right text-xs sm:text-sm text-gray-700 tabular-nums whitespace-nowrap">
     <%= stats.sold_words %>
     <% if percent %>
       <span class="block mt-1 ml-auto h-1.5 w-24 rounded-full bg-gray-100" title="<%= percent %>% sold"><span class="block h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></span></span>
@@ -32,7 +36,7 @@
     <% unless label == "On sale" %><span class="block mt-1 text-xs font-medium <%= badge_classes[/text-\S+/] %>"><%= label %></span><% end %>
   </span>
   <% if door_open %>
-    <div class="order-4 justify-self-end sm:order-none sm:flex-shrink-0">
+    <div class="col-start-3 row-start-2 justify-self-end sm:flex-shrink-0">
       <%= render "shared/button", text: "Work the door", variant: "primary", size: "small", path: door_path(listing) %>
     </div>
   <% end %>

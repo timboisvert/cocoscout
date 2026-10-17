@@ -25,9 +25,16 @@ RSpec.describe "Manage ticket listings", type: :request do
     end
     quiet = create(:production, organization: org, name: "Last Season")
     ProductionTicketing.for(quiet)
+    # The production's wide image (never a poster) leads its line, and a
+    # production without one leaves the space blank (Tim, 2026-10-16).
+    production.wide_image.attach(fixture_file_upload("test_image.png", "image/png"))
 
     get manage_ticket_listings_path
     body = response.body
+    expect(body.scan("aspect-video rounded overflow-hidden").size).to eq(1)
+    expect(body.scan(%(aspect-video" aria-hidden="true")).size).to eq(1)
+    # The drawer under a production hangs stepped in, as on Ticketing home.
+    expect(body).to include(%(<details class="group mx-3">))
     expect(body).to include("8 dates", "7 more dates", "All 8 dates of Improvised Animorphs",
                             manage_ticket_listing_path(dates.first), manage_ticket_listing_path(dates[5]), "No dates coming up", "Last Season")
     expect(body).not_to include(manage_ticket_listing_path(dates[6]), "this week")

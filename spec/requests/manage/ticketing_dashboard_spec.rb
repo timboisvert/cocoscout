@@ -60,8 +60,14 @@ RSpec.describe "Ticketing dashboard", type: :request do
     expect(rows.first.total).to eq(8)
     expect(rows.last.later).to be_empty
 
+    # Rows carry the production's wide image (never a poster), and leave the
+    # space blank without one (Tim, 2026-10-16).
+    production.wide_image.attach(fixture_file_upload("test_image.png", "image/png"))
+
     get manage_ticketing_path
     body = response.body
+    expect(body.scan("aspect-video rounded overflow-hidden").size).to eq(1)
+    expect(body.scan(%(aspect-video" aria-hidden="true")).size).to eq(1)
     expect(body).not_to include("2 productions, 9 dates")
     expect(body).to include("7 more dates", "All 8 dates of Improvised Animorphs",
                             manage_production_ticketing_path(production), manage_ticket_listing_path(first[5]))

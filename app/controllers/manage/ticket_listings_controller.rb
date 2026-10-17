@@ -26,7 +26,7 @@ module Manage
       ids = org.ticket_listings.distinct.pluck(:production_id) | ProductionTicketing.where(organization: org).pluck(:production_id)
       upcoming = Ticketing::ComingUp.new(org).upcoming
       @next_dates = upcoming.group(:production_id).minimum("shows.date_and_time")
-      @productions = org.productions.where(id: ids).includes(:production_ticketing, posters: { image_attachment: :blob }).to_a
+      @productions = org.productions.where(id: ids).includes(:production_ticketing, wide_image_attachment: :blob).to_a
                         .sort_by { |production| [ @next_dates[production.id] ? 0 : 1, @next_dates[production.id] || Time.current, production.name ] }
       # Each production's next date and the few after it, as on Ticketing's home page.
       @coming_up = Ticketing::ComingUp.by_production(org).index_by { |row| row.production.id }

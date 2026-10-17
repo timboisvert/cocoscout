@@ -469,6 +469,15 @@ class Show < ApplicationRecord
     found && PageImage.new(attachment: found[0], kind: found[1], owner: found[2])
   end
 
+  # A list row's picture (shared/wide_thumb): this show's wide image, or the
+  # production's. Wide ones only, never a poster (Tim, 2026-10-16); nil when
+  # there's neither, and the row leaves the space blank.
+  def wide_image_for_rows
+    return safe_wide_image_variant(:small) if wide_image.attached?
+
+    production&.wide_image&.attached? ? production.safe_wide_image_variant(:small) : nil
+  end
+
   def safe_poster_variant(variant_name)
     return nil unless poster.attached?
 

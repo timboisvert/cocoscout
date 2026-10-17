@@ -29,7 +29,8 @@ module Ticketing
       ranked = upcoming.select("ticket_listings.id, ROW_NUMBER() OVER (PARTITION BY ticket_listings.production_id ORDER BY shows.date_and_time, ticket_listings.id) AS place")
       ids = TicketListing.from(ranked, :ranked).where("ranked.place <= ?", dates_per_production).pluck("ranked.id")
       totals = upcoming.group("ticket_listings.production_id").count
-      listings = @organization.ticket_listings.joins(:show).includes(:production, show: %i[location location_space])
+      listings = @organization.ticket_listings.joins(:show)
+                              .includes(production: { wide_image_attachment: :blob }, show: [ :location, :location_space, { wide_image_attachment: :blob } ])
                               .where(id: ids).order("shows.date_and_time", :id).to_a
       stats = ListingStats.for(listings)
       listings.group_by(&:production_id).values.map do |dates|

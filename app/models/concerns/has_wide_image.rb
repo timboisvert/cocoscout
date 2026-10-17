@@ -15,6 +15,8 @@ module HasWideImage
   included do
     has_one_attached :wide_image, dependent: :purge_later do |attachable|
       attachable.variant :display, resize_to_limit: [ 1600, 1600 ], format: :jpeg, saver: { quality: 85 }, preprocessed: true
+      # A list row's thumbnail (shared/wide_thumb).
+      attachable.variant :small, resize_to_limit: [ 480, 480 ], format: :jpeg, saver: { quality: 80 }, preprocessed: true
     end
 
     validate :wide_image_is_a_usable_picture

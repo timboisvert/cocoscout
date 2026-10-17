@@ -1,0 +1,17 @@
+<%# A list row's picture: a wide image (16:9), whole and never cropped, in a
+    fixed 16:9 box so rows line up — and the same box left blank when there's
+    no wide image (Tim, 2026-10-16: wide ones in lists, never the poster, and
+    nothing in their place). Locals: image (a variant, or nil), name (alt),
+    width (Tailwind width classes, default "w-20"). %>
+<%
+  width = local_assigns.fetch(:width, "w-20")
+  image = local_assigns[:image]
+  name = local_assigns[:name].to_s
+%>
+<% if image %>
+  <div class="<%= width %> flex-shrink-0 aspect-video rounded overflow-hidden border border-gray-200 bg-white">
+    <%= image_tag image, alt: name, class: "w-full h-full object-contain" %>
+  </div>
+<% else %>
+  <div class="<%= width %> flex-shrink-0 aspect-video" aria-hidden="true"></div>
+<% end %>
