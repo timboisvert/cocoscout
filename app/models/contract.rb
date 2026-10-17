@@ -521,10 +521,6 @@ class Contract < ApplicationRecord
     single.is_a?(Hash) && single["code"].present? ? [ single ] : []
   end
 
-  def draft_tech
-    draft_data["tech"] || {}
-  end
-
   # Per-contract service line items: [{ "name", "quantity", "unit_price", "direction" }].
   def draft_services
     draft_data["services"] || []

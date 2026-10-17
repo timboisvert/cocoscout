@@ -23,7 +23,6 @@
   ticketing = contract.draft_ticketing || {}
   tiers = ticketing["tiers"] || []
   discounts = Contract.ticketing_discounts(ticketing)
-  tech = contract.draft_tech || {}
   documents = contract.contract_documents.to_a
 
   status_class = { "active" => "bg-green-100 text-green-700", "draft" => "bg-gray-100 text-gray-600",
@@ -145,23 +144,6 @@
             <% if (other_ways = contract.offline_payment_methods_sentence) %>
               <%# Only what this contract allows; online-only shows nothing extra. %>
               <p class="mt-2 text-xs text-gray-500">You can pay online, or by <%= other_ways %> — reach out to <%= org_name %> to arrange it.</p>
-            <% end %>
-          </div>
-        <% end %>
-
-        <%# Tech arrangement — only if the org provides it (affects the contractor's cut) %>
-        <% if tech["provider"].present? %>
-          <div>
-            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tech</h3>
-            <% if tech["provider"] == "us" %>
-              <p class="text-sm text-gray-700">
-                <%= contract.organization&.name.presence || "The organization" %> provides tech:
-                <span class="font-medium"><%= tech["hours"] %> hr × <%= number_to_currency(tech["hourly_rate"]) %>
-                = <%= number_to_currency(tech["hours"].to_f * tech["hourly_rate"].to_f) %></span>
-              </p>
-              <p class="text-sm text-gray-500 mt-1"><%= tech["payment_method"] == "from_cut" ? "Taken out of your cut" : "Paid separately" %></p>
-            <% else %>
-              <p class="text-sm text-gray-700">You provide your own tech.</p>
             <% end %>
           </div>
         <% end %>

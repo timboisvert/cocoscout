@@ -11,7 +11,6 @@
   tiers = contract.draft_ticketing["tiers"] || []
   discounts = Contract.ticketing_discounts(contract.draft_ticketing)
   services = contract.draft_services
-  tech = contract.draft_tech
   pdf_doc = contract.signed_pdf_document
 
   outgoing = contract.settlement_direction == "outgoing"
@@ -25,7 +24,7 @@
   details = lines - [ headline ].compact
 
   show_ticketing = contract.org_sells_tickets? || tiers.any? || discounts.any?
-  show_services = services.any? || tech["provider"].present?
+  show_services = services.any?
 %>
 <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
   <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contract Terms" do %>
@@ -127,17 +126,6 @@
                   <span class="flex-shrink-0 font-medium tabular-nums <%= incoming ? 'text-green-600' : 'text-red-600' %>">
                     <%= incoming ? "+" : "−" %><%= number_to_currency(total) %>
                   </span>
-                </li>
-              <% end %>
-              <% if tech["provider"].present? %>
-                <li class="py-1.5 text-sm">
-                  <% if tech["provider"] == "us" %>
-                    <span class="text-gray-900">We provide tech</span>
-                    <span class="text-xs text-gray-500"><%= tech["hours"] %> hr × <%= number_to_currency(tech["hourly_rate"]) %> = <%= number_to_currency(tech["hours"].to_f * tech["hourly_rate"].to_f) %></span>
-                    <span class="text-xs text-gray-400">· <%= tech["payment_method"] == "from_cut" ? "taken out of their cut" : "paid in cash" %></span>
-                  <% else %>
-                    <span class="text-gray-900">Contractor provides their own tech.</span>
-                  <% end %>
                 </li>
               <% end %>
             </ul>
