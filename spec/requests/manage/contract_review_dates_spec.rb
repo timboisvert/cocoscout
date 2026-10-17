@@ -44,6 +44,9 @@ RSpec.describe "Contract wizard: Review the dates", type: :request do
                             "Thu, Oct 22 · 6:00 PM", "3 hrs · Main Stage", "$50 per rehearsal", "$50.00",
                             "Revenue share", "30% of ticket sales to us", "30% of sales",
                             "Fixed charges $50.00, plus our share of sales on 2 shows", "Next: Ticketing")
+    # The kind filter is the shared filter bar's buttons, filtering in place.
+    expect(html).to include("All 3", "Rehearsals 1", "Shows 2", %(data-contract-dates-target="pill"), "bg-pink-500 text-white")
+    expect(html).not_to include("rounded-full border px-3")
   end
 
   it "changes one date, down to $0 with a note, and back" do

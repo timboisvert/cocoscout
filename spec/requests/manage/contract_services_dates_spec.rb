@@ -35,6 +35,9 @@ RSpec.describe "Contract services, each date", type: :request do
     expect(html).to include("Each date", "Usually on", "Every rehearsal", "Every show", "Thu, Oct 22 · <span class=\"whitespace-nowrap\">6:00 PM", "Fri, Oct 23",
                             %(name="services[0][events][0][starts_at]" value="#{rehearsal_time.iso8601}"),
                             %(name="services[0][events][1][unit_price]"), "Tick dates to edit several at once.")
+    # The kind filter is the shared filter bar's buttons, filtering in place.
+    expect(html).to include("All 2", "Rehearsals 1", "Shows 1", %(data-contract-services-target="pill"), "bg-pink-500 text-white")
+    expect(html).not_to include("rounded-full border px-3")
 
     post manage_tech_contract_wizard_path(contract), params: { services: { "0" => {
       include: "1", service_id: booth.id.to_s, name: "Booth Tech", unit: "hourly", per_event: "1", unit_price: "30", direction: "incoming", settlement: "direct",

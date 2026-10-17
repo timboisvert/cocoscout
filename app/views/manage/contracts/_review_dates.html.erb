@@ -35,25 +35,23 @@
       <%= link_to "Change the schedule", schedule_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
     </div>
 
-    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <% if kinds.size > 1 %>
-        <div class="flex flex-wrap gap-2" role="group" aria-label="Show">
-          <button type="button" data-contract-dates-target="pill" data-kind="" data-action="contract-dates#filter"
-                  class="rounded-full border px-3 py-1.5 text-sm font-medium cursor-pointer border-pink-300 bg-pink-50 text-pink-700">All <%= rows.size %></button>
-          <% kinds.each do |type, kind_rows| %>
-            <button type="button" data-contract-dates-target="pill" data-kind="<%= type %>" data-action="contract-dates#filter"
-                    class="rounded-full border px-3 py-1.5 text-sm font-medium cursor-pointer border-gray-300 bg-white text-gray-700"><%= kind_rows.first.kind.pluralize %> <%= kind_rows.size %></button>
-          <% end %>
-        </div>
-      <% else %>
-        <span></span>
-      <% end %>
-      <p class="text-sm text-gray-500">
-        <% money_line = contract.deal_summary.detect { |line| line[:label] == "How the money works" }&.dig(:value) %>
-        <%= "#{money_line} ·" if money_line %>
-        <%= link_to "Change the deal", deal_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
-      </p>
-    </div>
+    <p class="mb-3 text-sm text-gray-500">
+      <% money_line = contract.deal_summary.detect { |line| line[:label] == "How the money works" }&.dig(:value) %>
+      <%= "#{money_line} ·" if money_line %>
+      <%= link_to "Change the deal", deal_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
+    </p>
+
+    <%# The kind filter is the shared filter bar, as everywhere else (Tim,
+        2026-10-16): a bare bar right above the list, its buttons filtering in
+        place since the form around them holds unsaved edits. %>
+    <% if kinds.size > 1 %>
+      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [ {
+            filters: [ { text: "All #{rows.size}", path: "#", active: true,
+                         data: { action: "contract-dates#filter", kind: "", contract_dates_target: "pill" } } ] +
+                     kinds.map { |type, kind_rows| { text: "#{kind_rows.first.kind.pluralize} #{kind_rows.size}", path: "#", active: false,
+                                                     data: { action: "contract-dates#filter", kind: type, contract_dates_target: "pill" } } }
+          } ] %>
+    <% end %>
 
     <%# A table when the box is wide enough, cards when it isn't (the wizard's
         column is narrow even on a desktop). %>

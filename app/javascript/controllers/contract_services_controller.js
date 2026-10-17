@@ -151,6 +151,7 @@ export default class extends Controller {
     // ----- several dates at once -----
 
     filter(event) {
+        event.preventDefault()
         const kind = event.currentTarget.dataset.kind || ""
         this.dateTargets.filter(row => !row.dataset.locked).forEach(row => {
             const hide = kind !== "" && row.dataset.kind !== kind
@@ -160,8 +161,9 @@ export default class extends Controller {
         if (this.hasAllTarget) this.allTarget.checked = false
         this.pillTargets.forEach(pill => {
             const on = (pill.dataset.kind || "") === kind
-            ;[ "border-pink-300", "bg-pink-50", "text-pink-700" ].forEach(c => pill.classList.toggle(c, on))
-            ;[ "border-gray-300", "bg-white", "text-gray-700" ].forEach(c => pill.classList.toggle(c, !on))
+            // The shared filter bar's own active and idle looks.
+            ;[ "bg-pink-500", "text-white" ].forEach(c => pill.classList.toggle(c, on))
+            ;[ "bg-gray-100", "text-gray-700", "hover:bg-gray-200" ].forEach(c => pill.classList.toggle(c, !on))
         })
         this.datesTicked()
     }

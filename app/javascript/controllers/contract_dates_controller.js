@@ -7,6 +7,7 @@ export default class extends Controller {
     static targets = ["pill", "row", "check", "all", "hint", "several", "section"]
 
     filter(event) {
+        event.preventDefault()
         const kind = event.currentTarget.dataset.kind || ""
         this.rowTargets.forEach(row => {
             const hide = kind !== "" && row.dataset.kind !== kind
@@ -15,12 +16,9 @@ export default class extends Controller {
         })
         this.pillTargets.forEach(pill => {
             const on = (pill.dataset.kind || "") === kind
-            pill.classList.toggle("border-pink-300", on)
-            pill.classList.toggle("bg-pink-50", on)
-            pill.classList.toggle("text-pink-700", on)
-            pill.classList.toggle("border-gray-300", !on)
-            pill.classList.toggle("bg-white", !on)
-            pill.classList.toggle("text-gray-700", !on)
+            // The shared filter bar's own active and idle looks.
+            ;[ "bg-pink-500", "text-white" ].forEach(c => pill.classList.toggle(c, on))
+            ;[ "bg-gray-100", "text-gray-700", "hover:bg-gray-200" ].forEach(c => pill.classList.toggle(c, !on))
         })
         this.changed()
     }
