@@ -15,6 +15,11 @@
             <span class="text-sm text-gray-600"> · <%= code.kind == "percent" ? "#{format('%g', code.percent)}% off" : "#{number_to_currency(code.amount_cents / 100.0)} off" %></span>
             <span class="text-xs text-gray-500"> · used <%= pluralize(code.uses_count, "time") %><%= " of #{code.max_uses}" if code.max_uses %></span>
           </div>
+          <%= form_with url: manage_production_ticketing_code_path(production, code_id: code.id), method: :patch, data: { controller: "auto-submit" } do %>
+            <%= select_tag :shared_with, options_for_select(TicketDiscountCode::SHARED_WITH_LABELS.invert, code.shared_with),
+                  "aria-label": "Who sees #{code.code}", class: "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500",
+                  data: { action: "change->auto-submit#submit" } %>
+          <% end %>
           <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
                 data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-code-#{code.id}" } %>
         </div>

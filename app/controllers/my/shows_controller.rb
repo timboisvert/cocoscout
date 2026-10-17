@@ -561,7 +561,10 @@ module My
       @ticket_listing = listing
       @ticket_stats = Ticketing::ListingStats.of(listing)
       @ticket_link = TicketLink.for(@show, listing: listing)
-      @ticket_sales_path = manage_production_sale_path(@production, listing) if TicketSalesAccess.team_level_for(Current.user, @production) == :full
+      team_level = TicketSalesAccess.team_level_for(Current.user, @production)
+      @ticket_sales_path = manage_production_sale_path(@production, listing) if team_level == :full
+      # Discount codes to pass along: the team's, or the ones shared with the cast.
+      @ticket_codes = TicketDiscountCode.shared_for(listing, cast: team_level.nil? && !TicketSalesAccess.can_see?(Current.user, listing))
     end
 
     def user_can_access_show?(show, people_ids, group_ids)

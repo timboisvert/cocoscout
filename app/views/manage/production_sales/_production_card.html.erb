@@ -59,4 +59,7 @@
     </div>
     <%= render "shared/copy_url", url: link_url, layout: :tile, label: "Ticket link", show_qr: true, qr_title: "Scan for tickets" %>
   </div>
+  <% if (shared_codes = TicketDiscountCode.shared_for_production(production)).any? %>
+    <div class="px-4 pb-4"><%= render "shared/ticketing/shared_codes", codes: shared_codes %></div>
+  <% end %>
 </div>

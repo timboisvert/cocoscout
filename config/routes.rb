@@ -1376,6 +1376,7 @@ Rails.application.routes.draw do
     post   "ticketing/productions/:production_id/links", to: "short_links#create"
     delete "ticketing/productions/:production_id/links/:id", to: "short_links#destroy", as: "production_ticketing_link"
     delete "ticketing/productions/:production_id/codes/:code_id", to: "production_ticketings#destroy_code", as: "production_ticketing_code"
+    patch  "ticketing/productions/:production_id/codes/:code_id", to: "production_ticketings#update_code"
     get    "ticketing/shows/:id",                 to: "ticket_listings#show"
     get    "ticketing/shows/:id/guests",          to: "ticket_listings#guests",          as: "ticket_listing_guests"
     get    "ticketing/shows/:id/door-list",       to: "ticket_listings#door_list",       as: "ticket_listing_door_list"
@@ -1401,6 +1402,7 @@ Rails.application.routes.draw do
     post   "ticketing/shows/:id/status",          to: "ticket_listings#change_status",   as: "ticket_listing_status"
     post   "ticketing/shows/:id/codes",           to: "ticket_listings#create_code",     as: "ticket_listing_codes"
     delete "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#destroy_code",    as: "ticket_listing_code"
+    patch  "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#update_code"
     post   "ticketing/shows/:id/refund-buyers",   to: "ticket_listings#cancel",          as: "ticket_listing_cancel"
     patch  "ticketing/shows/:id/outside-sales",   to: "ticket_listings#outside_sales",   as: "ticket_listing_outside_sales"
     # One ticket type on this date: on sale, marked sold out, or hidden.

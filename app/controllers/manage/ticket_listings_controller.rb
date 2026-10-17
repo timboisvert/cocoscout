@@ -175,6 +175,14 @@ module Manage
       end
     end
 
+    # Who sees the code beside the ticket link (TicketDiscountCode::SHARED_WITH).
+    def update_code
+      code = @listing.ticket_discount_codes.find(params[:code_id])
+      shared_with = params[:shared_with].to_s.presence_in(TicketDiscountCode::SHARED_WITH)
+      code.update!(shared_with: shared_with) if shared_with
+      redirect_to settings_path("codes"), notice: "#{code.code} is shared with #{code.shared_with_words}."
+    end
+
     # Codes that have been used are switched off, never deleted: orders keep
     # saying which code they used.
     def destroy_code
@@ -344,7 +352,7 @@ module Manage
     end
 
     def code_params
-      TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(:code, :kind, :amount, :max_uses))
+      TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(:code, :kind, :amount, :max_uses, :shared_with))
     end
   end
 end

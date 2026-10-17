@@ -85,6 +85,9 @@
         </div>
       <% end %>
     </div>
+    <% if listing && level.in?(%i[full numbers]) && (shared_codes = TicketDiscountCode.shared_for(listing)).any? %>
+      <div class="px-4 pb-3"><%= render "shared/ticketing/shared_codes", codes: shared_codes %></div>
+    <% end %>
     <% if listing && level == :full %>
       <%# A production team manager's two things to do, on the date's sales page. %>
       <% allowance = TicketSalesAccess.comp_allowance(Current.user, listing) %>

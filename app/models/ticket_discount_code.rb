@@ -6,6 +6,12 @@
 # contract's shows are listed. Uses are counted from paid orders, never stored.
 class TicketDiscountCode < ApplicationRecord
   KINDS = %w[fixed percent].freeze
+  # Who sees the code beyond the organization's managers (Tim, 2026-10-17),
+  # beside the ticket link on their pages: the production team and the
+  # cast, the team only, or nobody. Buyers never see it unless someone
+  # gives it to them.
+  SHARED_WITH = %w[team_and_cast team nobody].freeze
+  SHARED_WITH_LABELS = { "team_and_cast" => "Production team and cast", "team" => "Production team only", "nobody" => "Nobody" }.freeze
 
   belongs_to :organization
   belongs_to :ticket_listing, optional: true
@@ -19,6 +25,7 @@ class TicketDiscountCode < ApplicationRecord
   validates :amount_cents, numericality: { only_integer: true, greater_than: 0 }, if: -> { kind == "fixed" }
   validates :percent, numericality: { greater_than: 0, less_than_or_equal_to: 100 }, if: -> { kind == "percent" }
   validates :max_uses, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+  validates :shared_with, inclusion: { in: SHARED_WITH }
   validate :one_scope
 
   # A code typed into a manager's form: "$ off" or "% off", an amount like
@@ -26,6 +33,7 @@ class TicketDiscountCode < ApplicationRecord
   def self.attributes_from_form(raw)
     amount = raw[:amount].to_s.delete("$,%").strip
     attrs = { code: raw[:code], kind: raw[:kind].presence_in(KINDS) || "fixed", max_uses: raw[:max_uses].presence }
+    attrs[:shared_with] = raw[:shared_with].presence_in(SHARED_WITH) if raw.key?(:shared_with)
     if attrs[:kind] == "percent"
       attrs[:percent] = amount.presence && BigDecimal(amount)
     else
@@ -38,6 +46,37 @@ class TicketDiscountCode < ApplicationRecord
 
   def uses_count
     ticket_orders.paid_like.count
+  end
+
+  # The codes to show the people who see a date's sales (TicketSalesAccess):
+  # this date's own, its production's and the organization's, still usable,
+  # and shared with them. The production team sees the ones shared with the
+  # team and with everyone; the cast only the ones shared with everyone.
+  def self.shared_for(listing, cast: false)
+    shared(listing.organization_id, cast: cast)
+      .where("ticket_listing_id = :l OR production_id = :p OR (ticket_listing_id IS NULL AND production_id IS NULL)", l: listing.id, p: listing.production_id)
+      .order(:code).to_a.select(&:usable?)
+  end
+
+  # For a production's own page: its codes and the organization's.
+  def self.shared_for_production(production, cast: false)
+    shared(production.organization_id, cast: cast)
+      .where("production_id = :p OR (ticket_listing_id IS NULL AND production_id IS NULL)", p: production.id)
+      .order(:code).to_a.select(&:usable?)
+  end
+
+  def self.shared(organization_id, cast:)
+    where(organization_id: organization_id, active: true, shared_with: cast ? %w[team_and_cast] : %w[team team_and_cast])
+  end
+  private_class_method :shared
+
+  # "20% off", "$5.00 off"
+  def off_words
+    kind == "percent" ? "#{format('%g', percent)}% off" : "#{ActiveSupport::NumberHelper.number_to_currency(amount_cents.to_i / 100.0)} off"
+  end
+
+  def shared_with_words
+    SHARED_WITH_LABELS.fetch(shared_with, "Nobody").downcase_first
   end
 
   def applies_to?(listing, tier = nil)

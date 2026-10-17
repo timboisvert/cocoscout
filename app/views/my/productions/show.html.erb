@@ -70,6 +70,7 @@
       <div class="p-4 space-y-2">
         <%= render "shared/copy_url", url: @ticket_link_url, show_qr: false %>
         <p class="text-xs text-gray-500">The production's link: every date, for sharing. Each show's page has that date's own, and how it's selling.</p>
+        <% if @ticket_codes.present? %><%= render "shared/ticketing/shared_codes", codes: @ticket_codes %><% end %>
       </div>
     </div>
   <% end %>

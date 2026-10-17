@@ -585,6 +585,9 @@
             </div>
           <% end %>
         </div>
+        <% if @ticket_codes.present? %>
+          <div class="px-4 pb-4"><%= render "shared/ticketing/shared_codes", codes: @ticket_codes %></div>
+        <% end %>
       </div>
     <% end %>
 

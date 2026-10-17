@@ -144,8 +144,13 @@ module My
       # Group shows by month for the calendar view
       @calendar_shows_by_month = @calendar_shows.group_by { |show| show.date_and_time.beginning_of_month }
 
-      # The Tickets card: the production's link, for sharing (TicketSalesAccess).
+      # The Tickets card: the production's link, for sharing (TicketSalesAccess),
+      # and the discount codes shared with them.
       @ticket_link_url = production_ticket_link_url(@production)
+      if @ticket_link_url
+        team = TicketSalesAccess.team_level_for(Current.user, @production).present? || @production.organization.manageable_by?(Current.user)
+        @ticket_codes = TicketDiscountCode.shared_for_production(@production, cast: !team)
+      end
 
       # Load messages for this production (where production is a regardable)
       production_message_ids = MessageRegard.where(regardable: @production).pluck(:message_id)

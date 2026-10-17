@@ -65,7 +65,7 @@ module Manage
 
     def create_code
       code = Current.organization.ticket_discount_codes.new(
-        production: @production, **TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(:code, :kind, :amount, :max_uses))
+        production: @production, **TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(:code, :kind, :amount, :max_uses, :shared_with))
       )
       if code.save
         redirect_to section_path("codes"), notice: "#{code.code} works for every date of #{@production.name}."
@@ -78,6 +78,14 @@ module Manage
       code = Current.organization.ticket_discount_codes.where(production: @production).find(params[:code_id])
       code.update!(active: false)
       redirect_to section_path("codes"), notice: "#{code.code} removed."
+    end
+
+    # Who sees the code beside the ticket link (TicketDiscountCode::SHARED_WITH).
+    def update_code
+      code = Current.organization.ticket_discount_codes.where(production: @production).find(params[:code_id])
+      shared_with = params[:shared_with].to_s.presence_in(TicketDiscountCode::SHARED_WITH)
+      code.update!(shared_with: shared_with) if shared_with
+      redirect_to section_path("codes"), notice: "#{code.code} is shared with #{code.shared_with_words}."
     end
 
     private

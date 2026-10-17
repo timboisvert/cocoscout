@@ -18,6 +18,9 @@
 
   <div class="max-w-5xl space-y-6">
     <%= render "shared/copy_url", url: @link_url, label: "Ticket link", show_qr: true, qr_title: "Scan for tickets" %>
+    <% if (shared_codes = TicketDiscountCode.shared_for_production(@production)).any? %>
+      <%= render "shared/ticketing/shared_codes", codes: shared_codes %>
+    <% end %>
 
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <div class="px-5 py-3 border-b border-gray-200">

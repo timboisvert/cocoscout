@@ -1,0 +1,10 @@
+<%# Discount codes shared with the people who see a date's sales
+    (TicketDiscountCode.shared_for; Tim, 2026-10-17), one short line beside
+    the ticket link: "Discount code to share: FRIENDS20 (20% off)".
+    Locals: codes. Nothing is drawn with none. %>
+<% if codes.any? %>
+  <p class="text-xs text-gray-600" data-shared-codes>
+    <span class="font-semibold text-gray-700">Discount <%= codes.many? ? "codes" : "code" %> to share:</span>
+    <% codes.each_with_index do |code, i| %><%= ", " if i.positive? %><span class="font-mono font-semibold text-gray-900"><%= code.code %></span> <span class="text-gray-500">(<%= code.off_words %>)</span><% end %>
+  </p>
+<% end %>
