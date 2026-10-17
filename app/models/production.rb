@@ -74,6 +74,7 @@ class Production < ApplicationRecord
   end
 
   include HasWideImage
+  include Monogram
 
   # Ticketing set up for the whole production, and each show's listing.
   has_one :production_ticketing, dependent: :destroy
@@ -264,12 +265,6 @@ class Production < ApplicationRecord
 
   def cast_assignment_stages
     active_audition_cycle&.cast_assignment_stages || CastAssignmentStage.none
-  end
-
-  def initials
-    return "" if name.blank?
-
-    name.split.map { |word| word[0] }.join.upcase
   end
 
   def next_show

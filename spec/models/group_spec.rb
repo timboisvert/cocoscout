@@ -152,9 +152,9 @@ RSpec.describe Group, type: :model do
   end
 
   describe '#initials' do
-    it 'returns first letters of each word' do
+    it 'returns the first letters of the first two words that carry the name' do
       group = build(:group, name: 'The Comedy Troupe')
-      expect(group.initials).to eq('TCT')
+      expect(group.initials).to eq('CT')
     end
 
     it 'returns empty string for blank names' do

@@ -61,9 +61,9 @@ RSpec.describe Production, type: :model do
       expect(production.initials).to eq('H')
     end
 
-    it 'returns initials for a multi-word name' do
+    it 'returns two letters for a multi-word name, articles dropped' do
       production = create(:production, name: 'The Lion King')
-      expect(production.initials).to eq('TLK')
+      expect(production.initials).to eq('LK')
     end
 
     it 'returns uppercase initials' do
@@ -76,9 +76,9 @@ RSpec.describe Production, type: :model do
       expect(production.initials).to eq('')
     end
 
-    it 'handles names with extra spaces' do
+    it 'handles names with extra spaces, and never gives more than two letters' do
       production = create(:production, name: 'West  Side  Story')
-      expect(production.initials).to eq('WSS')
+      expect(production.initials).to eq('WS')
     end
   end
 

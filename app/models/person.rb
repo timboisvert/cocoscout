@@ -2,6 +2,7 @@
 
 class Person < ApplicationRecord
   include CacheInvalidation
+  include Monogram
   include SuspiciousDetection
   include StripeConnectable
   invalidates_cache :person_card, :person_profile
@@ -126,12 +127,6 @@ class Person < ApplicationRecord
   before_validation :downcase_public_key
   before_save :track_email_change
   before_save :track_public_key_change
-
-  def initials
-    return "" if name.blank?
-
-    name.split.map { |word| word[0] }.join.upcase
-  end
 
   # Extract first name from full name
   def first_name

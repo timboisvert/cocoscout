@@ -2,6 +2,7 @@
 
 class Group < ApplicationRecord
   include CacheInvalidation
+  include Monogram
   invalidates_cache :group_card, :group_profile
 
   has_many :group_memberships, dependent: :destroy
@@ -77,12 +78,6 @@ class Group < ApplicationRecord
 
   def unarchive!
     update(archived_at: nil)
-  end
-
-  def initials
-    return "" if name.blank?
-
-    name.split.map { |word| word[0] }.join.upcase
   end
 
   def update_public_key(new_key)
