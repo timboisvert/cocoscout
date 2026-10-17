@@ -34,7 +34,7 @@ RSpec.describe "Discount codes shared with the team and the cast", type: :reques
     sign_in(owner)
     get manage_edit_production_ticketing_path(production, section: "codes")
     expect(response.body).to include("Share it with", "Production team and cast", "Production team only", "Nobody")
-    expect(response.body).to match(/id="ticket_discount_code_shared_with_team_and_cast"[^>]*checked/)
+    expect(response.body).to match(/checked="checked"[^>]*id="ticket_discount_code_shared_with_team_and_cast"/)
 
     post manage_production_ticketing_codes_path(production), params: { ticket_discount_code: { code: "friends20", kind: "percent", amount: "20", shared_with: "team" } }
     code = org.ticket_discount_codes.find_by!(code: "FRIENDS20")
