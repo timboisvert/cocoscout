@@ -19,6 +19,8 @@
   seats = stats.seats_to_sell
   elsewhere = outside_modal || outside.positive? || elsewhere_cents.positive?
   amounts = stats.outside_amounts
+  # Sites with tickets noted but no money yet: the money reads "so far" (Tim, 2026-10-17).
+  unreported = stats.outside_unreported_sites
   # The tiles, two rows (Tim, 2026-10-09): what sold here and its money, then
   # refunds; under them what sold elsewhere and its money, then comps. The
   # whole picture ("14 of 49 sold in all") rides under Sold here, what you
@@ -35,9 +37,9 @@
       stats.refunded_tickets.positive? ? "bg-amber-50 border-amber-200" : nil, nil, "order-5 lg:order-3" ],
     (elsewhere ? [ "Sold elsewhere", outside.to_s, outside.positive? ? stats.outside_words : "On other sites, off these seats",
                    outside.positive? ? "bg-violet-50 border-violet-200" : nil, outside_modal, "order-3 lg:order-4" ] : nil),
-    (elsewhere ? [ "Ticket sales elsewhere", money.call(elsewhere_cents),
-                   if amounts.any? then amounts.map { |name, cents| "#{brief.call(cents)} on #{name}" }.to_sentence
-                   elsif outside.positive? then "Add the amounts in Sold elsewhere"
+    (elsewhere ? [ "Ticket sales elsewhere", "#{money.call(elsewhere_cents)}#{' so far' if unreported.any?}",
+                   if amounts.any? then "#{amounts.map { |name, cents| "#{brief.call(cents)} on #{name}" }.to_sentence}#{"; #{unreported.to_sentence} not reported yet" if unreported.any?}"
+                   elsif outside.positive? then read_only ? "#{unreported.to_sentence} not reported yet" : "Add the amounts in Sold elsewhere"
                    else "What other sites took, as you enter it"
                    end,
                    elsewhere_cents.positive? ? "bg-violet-50 border-violet-200" : nil, outside_modal, "order-4 lg:order-5" ] : nil),

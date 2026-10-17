@@ -121,6 +121,17 @@ module Ticketing
       inventory.outside_cents(tier: tier)
     end
 
+    # Other sites with tickets noted but no money entered yet (Tim,
+    # 2026-10-17): their sales are still to come, so every money total that
+    # includes other sites reads "so far" while any of these remain.
+    def outside_unreported_sites(tier: nil)
+      outside_by_site(tier: tier).select { |_, count, cents| count.positive? && cents.zero? }.map(&:first)
+    end
+
+    def sales_so_far?
+      outside_unreported_sites.any?
+    end
+
     def held_tickets
       @tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     end

@@ -16,7 +16,7 @@
       })
       concat(content_tag(:div, class: "text-right flex-shrink-0") {
         concat content_tag(:div, stats.sold_words, class: "text-sm font-semibold tabular-nums text-gray-900")
-        concat content_tag(:div, "#{money.call(stats.sales_anywhere_cents)} in sales", class: "text-xs text-gray-500")
+        concat content_tag(:div, "#{money.call(stats.sales_anywhere_cents)} in sales#{' so far' if stats.sales_so_far?}", class: "text-xs text-gray-500")
       })
     end
   end

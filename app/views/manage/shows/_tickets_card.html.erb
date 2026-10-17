@@ -46,6 +46,9 @@
           by_site = stats.outside_by_site
           places = by_site.any? ? [ [ "CocoScout", stats.paid_sold, stats.gross_cents ] ] + by_site : []
           sales_cents = stats.gross_cents + by_site.sum { |_, _, cents| cents }
+          # A site with tickets noted but no money entered yet: its line says
+          # so, and the total is "so far" (Tim, 2026-10-17: never look under-reported).
+          unreported = stats.outside_unreported_sites
           tile_path = level == :manager ? manage_ticket_listing_path(listing) : sales_path
         %>
         <%= tile.call(tile_path, tile_path.present?) do %>
@@ -58,14 +61,15 @@
               <% places.each do |name, count, cents| %>
                 <li class="flex items-baseline justify-between gap-3 tabular-nums">
                   <span class="min-w-0 truncate"><%= count %> on <%= name %></span>
-                  <% if with_money && cents.positive? %><span class="flex-shrink-0 text-gray-500"><%= number_to_currency(cents / 100.0) %></span><% end %>
+                  <% if with_money && cents.positive? %><span class="flex-shrink-0 text-gray-500"><%= number_to_currency(cents / 100.0) %></span>
+                  <% elsif with_money && unreported.include?(name) %><span class="flex-shrink-0 text-gray-400 italic">not reported yet</span><% end %>
                 </li>
               <% end %>
             </ul>
           <% end %>
           <div class="text-xs text-gray-500 mt-1.5 flex items-center gap-2">
             <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium <%= classes %>"><%= label %></span>
-            <% if with_money %><span class="tabular-nums"><%= number_to_currency(sales_cents / 100.0) %> in sales</span><% end %>
+            <% if with_money %><span class="tabular-nums"><%= number_to_currency(sales_cents / 100.0) %> in sales<%= " so far" if unreported.any? %></span><% end %>
           </div>
         <% end %>
       <% else %>

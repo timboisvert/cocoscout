@@ -82,6 +82,21 @@ RSpec.describe "Production sales for the production team", type: :request do
     expect(response.body).not_to include('id="comps-modal"')
   end
 
+  it "says the money is so far while a site's amount isn't reported yet, so nobody reads it as under-reported" do
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    hottix = org.ticket_sources.create!(name: "HotTix")
+    TicketOutsideSales.record!(listing, { tailor.id.to_s => { general.id.to_s => { "tickets" => "7", "amount" => "$210" } },
+                                          hottix.id.to_s => { general.id.to_s => { "tickets" => "3", "amount" => "" } } })
+    sign_in(manager)
+    get manage_production_show_path(production, show)
+    expect(response.body).to include("$270.00 in sales so far", "3 on HotTix", "not reported yet")
+    get manage_production_sale_path(production, listing)
+    expect(response.body).to include("$210.00 so far", "$210 on Ticket Tailor; HotTix not reported yet")
+    expect(response.body).not_to include("Add the amounts")
+    get manage_production_sales_path(production)
+    expect(response.body).to include("$270 so far")
+  end
+
   it "shows a production team viewer the numbers and the link, with no names, money or comps" do
     sign_in(viewer)
     get manage_production_path(production)

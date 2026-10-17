@@ -2,7 +2,8 @@
     on CocoScout Ticketing is selling, the way a manager reads it at a
     glance: every ticket sold, here or on another site, of the seats there
     are to sell once comps are set aside ("7 of 37 sold · 3 comps"), a thin
-    bar, the money, and where its sales stand (Ticketing::ListingStats).
+    bar, the money here and on other sites ("so far" while a site's amount
+    isn't entered yet), and where its sales stand (Ticketing::ListingStats).
     Locals: listing (TicketListing), stats (optional: worked out if not given). %>
 <%
   stats = local_assigns[:stats] || Ticketing::ListingStats.of(listing)
@@ -15,7 +16,7 @@
   <div class="min-w-0 flex-1">
     <div class="text-sm text-gray-900">
       <span class="font-semibold tabular-nums"><%= sold %></span><% if seats %> <span class="text-gray-500">of <%= seats %></span><% end %> sold<% if stats.comps.positive? %> <span class="text-gray-500">· <%= pluralize(stats.comps, "comp") %></span><% end %>
-      <span class="text-gray-500">· <%= number_to_currency(stats.gross_cents / 100.0, precision: 0) %></span>
+      <span class="text-gray-500">· <%= number_to_currency(stats.sales_anywhere_cents / 100.0, precision: 0) %><%= " so far" if stats.sales_so_far? %></span>
     </div>
     <% if percent %>
       <div class="mt-1.5 h-1.5 w-full max-w-[12rem] rounded-full bg-gray-100">
