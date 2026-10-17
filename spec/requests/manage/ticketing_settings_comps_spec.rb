@@ -25,7 +25,7 @@ RSpec.describe "Ticketing settings: Comps", type: :request do
     get manage_ticketing_settings_section_path(section: "comps")
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Comps per date", "Production team managers can give comps", "How many of them a production team may give",
-                                     "With these rules, no limit per date, and its production team managers may give any of them.")
+                                     "With these rules, a date can give away as many comps as it has seats, and its production team managers may give any of them.")
     expect(response.body).to match(/id="ticketing_profile_comps_enabled"[^>]*checked/)
     expect(response.body).to match(/id="ticketing_profile_comps_limit_unlimited"[^>]*checked/)
     expect(response.body).to match(/id="ticketing_profile_team_comps_limit_all"[^>]*checked/)

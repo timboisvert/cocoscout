@@ -2,6 +2,8 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = ["input", "results", "inviteForm", "inviteName", "inviteEmail", "searchSection", "selectedPerson", "selectedPersonName", "selectedPersonEmail", "selectedPersonIdInput", "personDetailsSection",
+        // Optional: a submit button for each way in, so the form can say "Add" for someone found and "Invite" for someone new.
+        "pickSubmit", "inviteSubmit",
         // Add-a-person modal: a preview step between picking someone and sending.
         "step1", "step2", "previewContainer", "previewError"]
     static values = { url: String, previewUrl: String }
@@ -48,9 +50,16 @@ export default class extends Controller {
         if (email) {
             this.inviteEmailTarget.value = email
         }
+        this.showSubmit("invite")
 
         // Focus on name field
         this.inviteNameTarget.focus()
+    }
+
+    // Which submit button shows, when the form has one for each way in.
+    showSubmit(which) {
+        if (this.hasPickSubmitTarget) this.pickSubmitTarget.classList.toggle("hidden", which !== "pick")
+        if (this.hasInviteSubmitTarget) this.inviteSubmitTarget.classList.toggle("hidden", which !== "invite")
     }
 
     selectPerson(event) {
@@ -72,6 +81,7 @@ export default class extends Controller {
         this.selectedPersonNameTarget.textContent = personName
         this.selectedPersonEmailTarget.textContent = personEmail
         this.selectedPersonIdInputTarget.value = personId
+        this.showSubmit("pick")
 
         // Pre-fill the name and email
         this.inviteNameTarget.value = personName

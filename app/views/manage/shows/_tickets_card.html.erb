@@ -15,6 +15,7 @@
   can_manage_ticketing = Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
   level = if can_manage_ticketing then :manager
           elsif listing then TicketSalesAccess.level_for(Current.user, listing)
+          else TicketSalesAccess.team_level_for(Current.user, production)
           end
   sales_path = (manage_production_sale_path(production, listing) if listing && level.in?(%i[full numbers]))
   tile = lambda do |path, allowed, &block|

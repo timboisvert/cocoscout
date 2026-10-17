@@ -108,7 +108,12 @@
         </div>
       </fieldset>
       <div class="px-5 py-4 border-t border-gray-200 bg-gray-50">
-        <%= render "shared/button", text: "Add to the team", variant: "primary", size: "small", type: :submit %>
+        <div data-invite-search-target="pickSubmit">
+          <%= render "shared/button", text: "Add to the team", variant: "primary", size: "small", type: :submit %>
+        </div>
+        <div class="hidden" data-invite-search-target="inviteSubmit">
+          <%= render "shared/button", text: "Invite and add to the team", variant: "primary", size: "small", type: :submit %>
+        </div>
       </div>
     <% end %>
   </div>

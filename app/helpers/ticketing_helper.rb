@@ -87,6 +87,30 @@ module TicketingHelper
     counts.map { |n| [ "When #{n} or fewer are left#{' (the usual)' if n == TicketListing::LOW_STOCK_DEFAULT}", n ] } + [ [ "Never", 0 ] ]
   end
 
+  # The comp rules as one sentence, the way the Comps tabs read them back
+  # (CompRules): "With these rules, a date can give away as many comps as it
+  # has seats, and its production team managers may give any of them."
+  # subject: "a date", "a Stargazers date", "this date".
+  def comp_rules_sentence(rules, subject: "a date", single: false)
+    return "With these rules, nobody gives comps#{single ? ' on this date' : ''}." if rules.comps_enabled == false
+
+    per_date = case rules.comps_limit.presence || "unlimited"
+    when "fixed" then "#{subject} can give away #{pluralize(rules.comps_per_show || 10, 'comp')}"
+    when "per_performer" then "#{subject} can give away one comp per performer cast in it"
+    else "#{subject} can give away as many comps as it has seats"
+    end
+    team = if rules.team_comps == false
+      "its production team managers give none of them"
+    else
+      case rules.team_comps_limit.presence || "all"
+      when "fixed" then "its production team managers may give #{rules.team_comps_per_show || 2} of them"
+      when "per_performer" then "its production team managers may give one per performer"
+      else "its production team managers may give any of them"
+      end
+    end
+    "With these rules, #{per_date}, and #{team}."
+  end
+
   # Where a date's comp rules come from (CompRules), for "comps are off on …".
   def comp_rules_where(listing)
     case listing.comp_rules_source

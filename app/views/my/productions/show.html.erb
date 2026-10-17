@@ -489,7 +489,7 @@
           %>
           <%= render "shared/confirm_modal", id: leave_pool_cid,
                 title: "Leave talent pool?",
-                message: "Are you sure you want to leave #{@production.name}'s talent pool? You'll need to be re-added by a producer to rejoin.",
+                message: "Are you sure you want to leave #{@production.name}'s talent pool? You'll need the production team to add you again to rejoin.",
                 confirm_text: "Leave Talent Pool",
                 url: my_leave_production_path(@production), method: :delete %>
         </div>

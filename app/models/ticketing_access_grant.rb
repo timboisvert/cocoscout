@@ -50,7 +50,7 @@ class TicketingAccessGrant < ApplicationRecord
   end
 
   def access_description
-    box_office? ? "check people in and sell at the door" : "check people in"
+    box_office? ? "check people in and sell tickets at the door" : "check people in"
   end
 
   def revoked?

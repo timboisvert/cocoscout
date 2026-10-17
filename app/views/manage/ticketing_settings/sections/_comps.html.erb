@@ -2,8 +2,7 @@
     production can have its own on its Comps tab, and a date its own again. %>
 <%
   profile = ticketing_profile
-  example = "With these rules, #{profile.comp_rules_words.sub(/\Acomps on · /, '').sub(' · ', ', and its ')}."
-  example = "With these rules, comps are off: nobody gives any." if profile.comps_enabled == false
+  example = comp_rules_sentence(profile)
 %>
 <%= form_with url: manage_ticketing_settings_comps_path, method: :patch, class: "space-y-6" do %>
   <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticketing_profile", rules: profile,

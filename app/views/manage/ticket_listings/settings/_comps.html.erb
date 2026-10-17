@@ -5,10 +5,7 @@
   followed = setup&.own_comps ? setup : ticketing_profile
   followed_name = setup&.own_comps ? possessive(listing.production.name) : "Your box office's"
   rules = own ? listing : followed
-  example = if !own then nil
-            elsif listing.comps_enabled == false then "With these rules, nobody gives comps on this date."
-            else "With these rules, #{listing.comp_rules_words.sub(/\Acomps on · /, '').sub(' · ', ', and its ')}."
-            end
+  example = own ? comp_rules_sentence(listing, subject: "this date", single: true) : nil
 %>
 <%= form_with url: manage_ticket_listing_path(listing, section: "comps"), method: :patch, class: "space-y-6" do %>
   <div class="space-y-4" data-controller="fieldset-toggle">

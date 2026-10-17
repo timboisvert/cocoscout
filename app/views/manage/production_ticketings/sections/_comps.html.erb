@@ -5,10 +5,7 @@
   own = setup.own_comps
   profile = ticketing_profile
   rules = own ? setup : profile
-  example = if !own then nil
-            elsif setup.comps_enabled == false then "With these rules, nobody gives comps on #{production.name}."
-            else "With these rules, #{setup.comp_rules_words.sub(/\Acomps on · /, '').sub(' · ', ', and its ')}. A single date can still have its own rules."
-            end
+  example = own ? "#{comp_rules_sentence(setup, subject: "a #{production.name} date")} A single date can still have its own rules." : nil
 %>
 <%= form_with url: manage_update_production_ticketing_path(production, section: "comps"), method: :patch, class: "space-y-6" do %>
   <div class="space-y-4" data-controller="fieldset-toggle">
