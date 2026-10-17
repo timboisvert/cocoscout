@@ -18,12 +18,12 @@ module TicketingHelper
     case listing.status
     when "draft" then [ "Draft", "bg-gray-100 text-gray-600" ]
     when "paused" then [ "Paused", "bg-amber-100 text-amber-700" ]
-    when "closed" then [ "Sales closed", "bg-gray-100 text-gray-600" ]
+    when "closed" then [ "Online sales closed", "bg-gray-100 text-gray-600" ]
     when "canceled" then [ "Canceled", "bg-red-100 text-red-700" ]
     else
       if inventory.sold_out? then [ "Sold out", "bg-pink-100 text-pink-700" ]
       elsif listing.on_sale_at&.>(at) then [ "Opens #{listing.on_sale_at.strftime('%b %-d')}", "bg-blue-100 text-blue-700" ]
-      elsif listing.off_sale_at && listing.off_sale_at <= at then [ "Sales closed", "bg-gray-100 text-gray-600" ]
+      elsif listing.off_sale_at && listing.off_sale_at <= at then [ "Online sales closed", "bg-gray-100 text-gray-600" ]
       else [ "On sale", "bg-green-100 text-green-700" ]
       end
     end

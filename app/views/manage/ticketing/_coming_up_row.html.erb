@@ -12,7 +12,8 @@
   label, badge_classes = ticket_listing_status_badge(listing, stats.inventory)
   door_open = DoorTonight.door_open?(listing)
   # A mini bar under the sold words (Tim, 2026-10-16), the same math as the
-  # drawer's date lines; like theirs, it waits for a wider screen.
+  # drawer's date lines, on every screen size (Tim liked it on desktop and
+  # wanted it on his phone too).
   seats = stats.seats_to_sell
   percent = seats.to_i.positive? ? [ (stats.sold_anywhere * 100.0 / seats).round, 100 ].min : (seats&.zero? ? 100 : nil)
 %>
@@ -26,9 +27,9 @@
   <span class="text-right text-xs sm:text-sm text-gray-700 tabular-nums whitespace-nowrap">
     <%= stats.sold_words %>
     <% if percent %>
-      <span class="hidden sm:block mt-1 ml-auto h-1.5 w-24 rounded-full bg-gray-100" title="<%= percent %>% sold"><span class="block h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></span></span>
+      <span class="block mt-1 ml-auto h-1.5 w-24 rounded-full bg-gray-100" title="<%= percent %>% sold"><span class="block h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></span></span>
     <% end %>
-    <% unless label == "On sale" %><span class="block text-xs font-medium <%= badge_classes[/text-\S+/] %>"><%= label %></span><% end %>
+    <% unless label == "On sale" %><span class="block mt-1 text-xs font-medium <%= badge_classes[/text-\S+/] %>"><%= label %></span><% end %>
   </span>
   <% if door_open %>
     <div class="order-4 justify-self-end sm:order-none sm:flex-shrink-0">
