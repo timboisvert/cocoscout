@@ -573,20 +573,14 @@
         never in the hero. By Who sees sales (TicketSalesAccess): the count
         and this date's link for the cast and the production team; a
         production team manager at Everything also sees the comps and has a
-        button to the date's sales page in the Production Dashboard. Nothing
+        View ticket sales button in the sold tile. Nothing
         else links out of here, and nothing is drawn without a level. %>
     <% if @ticket_level %>
       <%# Once the date has happened there's no link to share; the box is the
           count, and for someone on the contract the way into how it sold. %>
       <% tickets_past = @show.date_and_time <= Time.current %>
       <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-tickets-card>
-        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>
-          <% if @ticket_sales_path %>
-            <%= link_to @ticket_sales_path do %>
-              <%= render "shared/button", text: "Ticket sales", variant: "secondary", size: "small" %>
-            <% end %>
-          <% end %>
-        <% end %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" %>
         <%# Two tiles like the Manage show page's: every ticket sold anywhere,
             here and on other sites, of the seats to sell once comps are set
             aside (ListingStats#sold_words), with where its sales stand; and
@@ -600,13 +594,10 @@
             </div>
             <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium <%= badge_classes %>"><%= badge_label %></span>
+              <%# The way into who's coming, the comps and how it sold (Tim, 2026-10-18): one button here, none in the header. %>
               <% if @ticket_sales_path %>
-                <% if tickets_past %>
-                  <span>How it sold, and who came, are in Ticket sales.</span>
-                <% elsif TicketSalesAccess.comp_allowance(Current.user, @ticket_listing) %>
-                  <span>Who's coming, and your comps, are in Ticket sales.</span>
-                <% else %>
-                  <span>Who's coming is in Ticket sales.</span>
+                <%= link_to @ticket_sales_path do %>
+                  <%= render "shared/button", text: "View ticket sales", variant: "secondary", size: "small" %>
                 <% end %>
               <% end %>
             </div>

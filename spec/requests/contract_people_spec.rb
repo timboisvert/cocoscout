@@ -122,7 +122,7 @@ RSpec.describe "Contract people", type: :request do
     listing = open_box_office
     sign_in(priya)
     get my_show_path(show)
-    expect(response.body).to include("data-tickets-card", my_ticket_sale_path(listing), "and your comps,")
+    expect(response.body).to include("data-tickets-card", my_ticket_sale_path(listing), "View ticket sales")
 
     get my_ticket_sale_path(listing)
     expect(response).to have_http_status(:ok)
@@ -141,7 +141,7 @@ RSpec.describe "Contract people", type: :request do
     # And the date's page says it has happened, with the way into how it sold and no link to share (Tim, 2026-10-18).
     get my_show_path(show)
     html = response.body.gsub(/\s+/, " ")
-    expect(html).to include('data-show-state="past"', "has already happened", my_ticket_sale_path(listing), "How it sold, and who came, are in Ticket sales.")
+    expect(html).to include('data-show-state="past"', "has already happened", my_ticket_sale_path(listing), "View ticket sales")
     expect(html).not_to include("Your link for this date", "Who's coming is in", "Who's coming, and your comps")
   end
 

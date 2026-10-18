@@ -42,7 +42,7 @@ RSpec.describe "My show page: Tickets for the cast", type: :request do
     get my_show_path(show)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("data-tickets-card", ">Tickets<", "2 of 79 sold", date_link, "Your link for this date")
-    expect(response.body).not_to include("Dana Scully", "dana@example.com", "1 comp", "qr-code", "$30", "Ticket sales")
+    expect(response.body).not_to include("Dana Scully", "dana@example.com", "1 comp", "qr-code", "$30", "Ticket sales", "View ticket sales")
   end
 
   it "reaches only the people cast in the date when the setting says so, and nobody at Nothing" do
@@ -81,7 +81,7 @@ RSpec.describe "My show page: Tickets for the cast", type: :request do
     sign_in(performer)
     get my_show_path(show)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("data-tickets-card", "2 of 79 sold", "1 comp", "Ticket sales", manage_production_sale_path(production, listing))
+    expect(response.body).to include("data-tickets-card", "2 of 79 sold", "1 comp", "View ticket sales", manage_production_sale_path(production, listing))
     expect(response.body).not_to include("Dana Scully")
   end
 end
