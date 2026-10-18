@@ -9,7 +9,8 @@
     links: []
   } %>
 
-  <p class="text-sm text-gray-600 mb-6"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %> · <%= @listing.organization.name %><%= " · #{show.location.name}" if show.location %></p>
+  <%# The date and where; the organization's name is the breadcrumb's (Tim, 2026-10-18). %>
+  <p class="text-sm text-gray-600 mb-6"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %><%= " · #{show.location.name}" if show.location %></p>
 
   <%
     # Comps for someone on the date's contract (contract people,
