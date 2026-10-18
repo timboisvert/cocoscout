@@ -37,8 +37,14 @@
   venue = show && [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
   address = show&.location && [ show.location.address1, show.location.city, show.location.state ].compact_blank.join(", ")
   map_url = address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ show.location.name, address ].compact.join(', '))}" : nil
-  # A chip's one word about the date: nothing while it's simply on sale.
+  # A date's one word about itself: nothing while it's simply on sale.
   chip_note = ->(listing) { public_listing_note(listing) }
+  # Many dates and none in the link: the list is open and nothing is chosen
+  # yet, so there's no card, no Close and no tickets until a date is picked
+  # (Tim, 2026-10-18, option C).
+  picking = @listings.many? && params[:date].blank?
+  by_month = @listings.group_by { |listing| listing.show.date_and_time.beginning_of_month }.sort_by { |month, _| month }
+  open_month = picking ? by_month.first&.first : selected&.show&.date_and_time&.beginning_of_month
 %>
 <% content_for :title, "#{share_title} · #{@organization.name}" %>
 <% content_for :head do %>
@@ -61,33 +67,15 @@
           class: wide ? "w-full h-auto rounded-2xl" : "mx-auto max-h-[28rem] w-auto h-auto rounded-2xl" %>
   <% end %>
 
+  <%# The name, then the date (when there's one date), where, the notes, and
+      the ages last (Tim, 2026-10-18). With many dates the chosen one is the
+      card below, said once. %>
   <div class="text-center space-y-1.5">
     <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= heading %></h1>
-    <% if ages %><p class="text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
-    <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
-  </div>
-
-  <% if @listings.empty? %>
-    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center text-gray-700">No dates on sale right now.</div>
-  <% else %>
-    <%# Pick a date: every upcoming date as a chip, the chosen one in pink.
-        One date needs no picking. %>
-    <nav class="flex flex-wrap justify-center gap-2 <%= 'hidden' if @listings.one? %>" aria-label="Pick a date">
-      <% @listings.each do |listing| %>
-        <% current = listing == selected %>
-        <% note = chip_note.call(listing) %>
-        <%= link_to date_path.call(listing), aria: { current: current ? "page" : nil },
-              class: "flex flex-col items-center min-w-[4.25rem] rounded-xl border px-3 py-2 leading-tight transition-colors #{current ? 'border-pink-500 bg-pink-500 text-white' : 'border-gray-200 bg-white text-gray-900 hover:border-pink-400'}" do %>
-          <span class="text-[11px] font-semibold uppercase <%= current ? 'text-pink-100' : 'text-pink-600' %>"><%= listing.show.date_and_time.strftime("%a") %></span>
-          <span class="text-xl font-bold"><%= listing.show.date_and_time.day %></span>
-          <span class="text-[11px] uppercase <%= current ? 'text-pink-100' : 'text-gray-500' %>"><%= listing.show.date_and_time.strftime("%b") %></span>
-          <% if note %><span class="mt-0.5 text-[10px] font-medium <%= current ? 'text-pink-100' : (note == 'Sold out' ? 'text-gray-500' : 'text-amber-700') %>"><%= note %></span><% end %>
-        <% end %>
-      <% end %>
-    </nav>
-
-    <div class="text-center space-y-1">
+    <% if show && @listings.one? %>
       <p class="text-base text-gray-800"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
+    <% end %>
+    <% if show && !picking %>
       <% if show.is_online %>
         <p class="text-sm text-gray-600">Online</p>
       <% elsif venue.present? %>
@@ -97,10 +85,76 @@
         </p>
       <% end %>
       <% if own_title %><p class="text-sm text-gray-600"><%= title %></p><% end %>
-    </div>
+    <% end %>
+    <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
+    <% if ages %><p class="text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
+  </div>
 
+  <% if @listings.empty? %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center text-gray-700">No dates on sale right now.</div>
+  <% else %>
+    <%# Pick a date (option C, Tim 2026-10-18): the chosen date is a card with
+        Change date; the list of every date, by month, takes its place while
+        choosing. One date needs no picking. %>
+    <% unless @listings.one? %>
+      <div data-controller="ticket-dates">
+        <% unless picking %>
+          <div data-ticket-dates-target="card">
+            <div class="rounded-2xl border border-gray-200 bg-white pl-4 pr-2.5 py-2.5 flex items-center gap-3" data-chosen-date>
+              <div class="flex-shrink-0 w-10 text-center leading-none">
+                <div class="text-[10px] font-semibold uppercase text-pink-600"><%= show.date_and_time.strftime("%a") %></div>
+                <div class="text-[22px] font-bold text-gray-900"><%= show.date_and_time.day %></div>
+                <div class="text-[10px] uppercase text-gray-500"><%= show.date_and_time.strftime("%b") %></div>
+              </div>
+              <div class="flex-1 min-w-0 font-semibold text-gray-900 truncate"><%= show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></div>
+              <%= render "shared/button", text: "Change date", variant: "secondary", size: "small", type: :button, data: { action: "click->ticket-dates#open" } %>
+            </div>
+          </div>
+        <% end %>
+        <div data-ticket-dates-target="list" class="<%= 'hidden' unless picking %>">
+          <nav class="rounded-2xl border border-gray-200 bg-white overflow-hidden" aria-label="Pick a date">
+            <div class="flex items-center justify-between px-4 py-3">
+              <h2 class="font-semibold text-gray-900">Select a date</h2>
+              <% unless picking %>
+                <%= render "shared/button", text: "Close", variant: "ghost", size: "small", type: :button, data: { action: "click->ticket-dates#close" } %>
+              <% end %>
+            </div>
+            <% by_month.each do |month, month_listings| %>
+              <details class="group border-t border-gray-100" <%= "open" if month == open_month %>>
+                <summary class="flex items-center justify-between px-4 py-2 bg-gray-50 cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  <span><%= month.strftime("%B") %><%= " #{month.year}" if month.year != Date.current.year %></span>
+                  <span class="text-xs font-semibold normal-case tracking-normal text-pink-700 group-open:hidden">Show <%= pluralize(month_listings.size, "date") %></span>
+                </summary>
+                <% month_listings.each do |listing| %>
+                  <% current = listing == selected %>
+                  <% note = chip_note.call(listing) %>
+                  <% sold_out = note == "Sold out" %>
+                  <% from = listing_from_price_cents(listing) %>
+                  <%= link_to date_path.call(listing), aria: { current: current ? "page" : nil },
+                        class: "flex items-center gap-3 px-4 py-2 border-t border-gray-100 whitespace-nowrap #{current ? 'bg-pink-50' : 'hover:bg-gray-50'} #{'text-gray-400' if sold_out}" do %>
+                    <span class="flex-shrink-0 w-10 text-center leading-none">
+                      <span class="block text-[10px] font-semibold uppercase <%= sold_out ? 'text-gray-400' : 'text-pink-600' %>"><%= listing.show.date_and_time.strftime("%b") %></span>
+                      <span class="block text-xl font-bold <%= sold_out ? 'text-gray-400' : 'text-gray-900' %>"><%= listing.show.date_and_time.day %></span>
+                      <span class="block text-[10px] uppercase text-gray-500"><%= listing.show.date_and_time.strftime("%a") %></span>
+                    </span>
+                    <span class="flex-1 min-w-0 text-sm font-semibold <%= sold_out ? 'text-gray-400' : 'text-gray-900' %>"><%= listing.show.date_and_time.strftime("%-l:%M %p") %></span>
+                    <span class="flex-shrink-0 flex items-baseline gap-2 text-xs">
+                      <% if note %><span class="font-medium <%= sold_out ? 'text-gray-500' : 'text-amber-700' %>"><%= note %></span><% end %>
+                      <% if from && !sold_out %><span class="font-semibold text-gray-900"><%= from.zero? ? "Free" : "From #{number_to_currency(from / 100.0)}" %></span><% end %>
+                    </span>
+                  <% end %>
+                <% end %>
+              </details>
+            <% end %>
+          </nav>
+        </div>
+      </div>
+    <% end %>
+
+    <% unless picking %>
     <%= render "tickets/picker", listing: selected, tiers: @tiers, inventory: @inventory, tax: @tax, code: @code, preview: @preview,
           profile: @ticketing_profile, code_url: tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: selected.slug, **embed_params) %>
+    <% end %>
   <% end %>
 
   <% if description.present? %>
@@ -110,5 +164,5 @@
     </div>
   <% end %>
 
-  <% if selected %><%= render "tickets/refund_policy", listing: selected, tiers: @tiers %><% end %>
+  <% if selected && !picking %><%= render "tickets/refund_policy", listing: selected, tiers: @tiers %><% end %>
 </div>

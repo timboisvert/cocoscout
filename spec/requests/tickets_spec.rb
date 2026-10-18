@@ -95,15 +95,24 @@ RSpec.describe "Public ticketing", type: :request do
       create(:ticket, ticket_order: create(:ticket_order, ticket_listing: later_listing, status: "paid", expires_at: nil),
                       ticket_tier: later_listing.ticket_tiers.first)
 
+      # No date in the link, many dates (Tim, 2026-10-18, option C): the list
+      # is open, nothing is chosen, so no Close and no tickets yet.
       get tickets_event_path(org: "starsandgarters", event: production.public_key)
       page = response.body
-      expect(page).to include("Every scene turns into an animal.", 'aria-label="Pick a date"', "Sold out", "Continue to checkout",
-                              %(name="quantities[#{general.id}]"), show.date_and_time.strftime("%A, %B %-d · %-l:%M %p"))
-      expect(page).to include(%(href="/tickets/starsandgarters/#{production.public_key}?date=#{later_listing.slug}"))
+      expect(page).to include("Every scene turns into an animal.", 'aria-label="Pick a date"', "Select a date", "Sold out",
+                              %(href="/tickets/starsandgarters/#{production.public_key}?date=#{later_listing.slug}"))
+      expect(page).not_to include("Continue to checkout", "Change date", ">Close<", "data-chosen-date")
       expect(production.public_key).to be_present
 
+      # A date in the link: the chosen date is a card with Change date, the list waits behind it, and the tickets follow.
+      get tickets_event_path(org: "starsandgarters", event: production.public_key, date: show.date_and_time.to_date.iso8601)
+      page = response.body
+      expect(page).to include("data-chosen-date", show.date_and_time.strftime("%a, %b %-d · %-l:%M %p"), "Change date", ">Close<",
+                              "Continue to checkout", %(name="quantities[#{general.id}]"), %(data-ticket-dates-target="list" class="hidden"))
+      expect(page).not_to include(show.date_and_time.strftime("%A, %B %-d · %-l:%M %p"))
+
       get tickets_event_path(org: "starsandgarters", event: production.public_key, date: later.date_and_time.to_date.iso8601)
-      expect(response.body).to include(later.date_and_time.strftime("%A, %B %-d · %-l:%M %p"), "Sold out")
+      expect(response.body).to include(later.date_and_time.strftime("%a, %b %-d · %-l:%M %p"), "Sold out")
       expect(response.body).not_to include("Continue to checkout")
 
       get event_path
@@ -113,10 +122,12 @@ RSpec.describe "Public ticketing", type: :request do
       get tickets_event_path(org: "starsandgarters", event: production.id.to_s)
       expect(response).to have_http_status(:not_found)
 
-      # One date needs no picking: the chips stay hidden.
+      # One date needs no picking: the date is said once, then where, then the ages, then the tickets.
       later_listing.update!(status: "draft")
       get tickets_event_path(org: "starsandgarters", event: production.public_key)
-      expect(response.body).to include(%(class="flex flex-wrap justify-center gap-2 hidden" aria-label="Pick a date"), "Continue to checkout")
+      page = response.body
+      expect(page).to include(show.date_and_time.strftime("%A, %B %-d · %-l:%M %p"), "Continue to checkout")
+      expect(page).not_to include("Pick a date", "Change date", "data-chosen-date")
     end
 
     it "says a date's own description and notes on its page (Tim, 2026-10-08)" do

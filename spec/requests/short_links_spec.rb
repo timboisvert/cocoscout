@@ -39,7 +39,7 @@ RSpec.describe "Short links", type: :request do
       get "/t/#{link.code}/#{suffix}"
       expect(response).to redirect_to("/tickets/starsandgarters/#{production.public_key}?date=#{suffix}")
       follow_redirect!
-      expect(response.body).to include(%(data-ticket-picker-listing-id-value="#{listing.id}")).or include(listing.slug)
+      expect(response.body).to include("Saturday, October 17 · 7:30 PM")
     end
   end
 
