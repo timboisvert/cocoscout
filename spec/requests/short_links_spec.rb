@@ -14,6 +14,10 @@ RSpec.describe "Short links", type: :request do
   let!(:listing) { TicketListing.create!(show: show, status: "on_sale") }
   let(:link) { production.reload.short_link }
 
+  # The show is on Oct 17, 2026; hold the clock before it so the date never passes.
+  before { travel_to Time.zone.local(2026, 10, 10, 12, 0) }
+  after { travel_back }
+
   it "gives a production one code when its ticketing is set up, and the box office one" do
     expect(link).to be_present
     expect(link.code).to match(/\A[A-Z0-9]{5}\z/)

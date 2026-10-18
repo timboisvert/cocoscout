@@ -5,15 +5,16 @@
         through the contract, and that's where they're added or dropped. The
         team below is for the organization's own people, usually nobody. %>
     <% live_contracts = @production.contracts.where.not(status: %w[draft cancelled]).includes(:contractor, contract_people: :person).order(:id).to_a %>
+    <% can_manage_contracts = Current.user&.superadmin? || Current.organization.manageable_by?(Current.user) %>
     <% live_contracts.each do |contract| %>
       <% people = ([ contract.contractor&.person ] + contract.contract_people.map(&:person)).compact.uniq %>
       <div class="mb-3 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm" data-contract-people-panel>
         <div class="flex flex-wrap items-baseline justify-between gap-2">
           <span class="text-gray-800">
             <span class="font-medium text-gray-900"><%= contract.contractor_name %></span> sees this production through
-            <%= link_to "their contract", manage_contract_path(contract), class: "font-medium text-pink-600 hover:text-pink-700" %>, not this team<%= people.any? ? ": #{people.map(&:name).to_sentence}." : "." %>
+            <%= can_manage_contracts ? link_to("their contract", manage_contract_path(contract), class: "font-medium text-pink-600 hover:text-pink-700") : "their contract" %>, not this team<%= people.any? ? ": #{people.map(&:name).to_sentence}." : "." %>
           </span>
-          <% if contract.status_active? %>
+          <% if contract.status_active? && can_manage_contracts %>
             <%= link_to "Change who's on it", amend_people_manage_contract_path(contract), class: "text-[13px] font-medium text-pink-600 hover:text-pink-700 flex-shrink-0" %>
           <% end %>
         </div>

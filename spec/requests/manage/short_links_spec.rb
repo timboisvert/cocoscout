@@ -17,6 +17,10 @@ RSpec.describe "Ticketing links", type: :request do
   let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60) }
   let(:code) { production.reload.short_link.code }
 
+  # The show is on Oct 17, 2026; hold the clock before it so the date never passes.
+  before { travel_to Time.zone.local(2026, 10, 10, 12, 0) }
+  after { travel_back }
+
   def sign_in_manager
     create(:organization_role, :manager, user: admin, organization: org)
     post handle_signin_path, params: { email_address: admin.email_address, password: password }
