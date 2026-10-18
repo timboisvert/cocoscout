@@ -174,6 +174,20 @@ RSpec.describe "Contract people", type: :request do
     post add_amend_person_manage_contract_path(contract), params: { person_id: dan_person.id }
     expect(flash[:notice]).to eq("Dan Feltey is already on it.")
 
+    # Someone in the contacts with no account (Tim, 2026-10-18: "search for Athena, see she's not there,
+    # create her account, send it to her"): invited to make one, and the invitation carries her profile.
+    athena = create(:person, name: "Athena Rae", email: "athena@example.com")
+    org.people << athena
+    expect { post add_amend_person_manage_contract_path(contract), params: { person_id: athena.id } }
+      .to have_enqueued_mail(Manage::TeamMailer, :contract_invite)
+    expect(flash[:notice]).to eq("Invited Athena Rae. They're on the contract once they accept.")
+    athena_invite = TeamInvitation.find_by(email: "athena@example.com", contract: contract)
+    expect(athena_invite.person).to eq(athena)
+    expect(contract.contract_people.where(person: athena)).not_to exist
+    get amend_people_manage_contract_path(contract)
+    expect(response.body).to include("athena@example.com", "Invited, not yet accepted")
+    athena_invite.destroy!
+
     delete remove_amend_person_manage_contract_path(contract), params: { person_id: priya_person.id }
     delete remove_amend_person_manage_contract_path(contract), params: { invitation_id: invitation.id }
     expect(contract.contract_people.reload.map(&:person)).to eq([ sam_person ])

@@ -2696,9 +2696,10 @@ class Contract < ApplicationRecord
   def apply_draft_people!
     draft_people.each do |member|
       user = member["user_id"].present? ? User.find_by(id: member["user_id"]) : nil
-      next if user.nil? && member["email"].blank?
+      person = member["person_id"].present? ? Person.find_by(id: member["person_id"]) : nil
+      next if user.nil? && person.nil? && member["email"].blank?
 
-      ContractPeopleAdder.add!(self, by: Current.user, user: user, email: member["email"], name: member["name"])
+      ContractPeopleAdder.add!(self, by: Current.user, user: user, person: person, email: member["email"], name: member["name"])
     rescue StandardError => e
       Rails.logger.warn("[contract #{id}] couldn't put #{member['name'] || member['email']} on the contract: #{e.message}")
     end

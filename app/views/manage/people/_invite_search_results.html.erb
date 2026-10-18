@@ -16,7 +16,14 @@
         Invite <%= query %>
       </button>
     <% else %>
-      <p class="text-xs text-gray-400">Try searching by email to invite someone new</p>
+      <p class="text-xs text-gray-400 mb-3">Not on CocoScout yet?</p>
+      <button type="button"
+              class="text-pink-600 hover:text-pink-700 text-sm font-medium"
+              data-action="invite-search#showInviteForm"
+              data-name="<%= query %>">
+        <%= icon("user-plus", class: "w-4 h-4 inline mr-1") %>
+        Invite <%= query %>
+      </button>
     <% end %>
   </div>
 <% else %>

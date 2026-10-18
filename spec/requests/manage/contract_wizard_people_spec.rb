@@ -83,18 +83,29 @@ RSpec.describe "Contract wizard: People step", type: :request do
 
     post manage_people_members_contract_wizard_path(contract), params: { email: "not an email" }
     expect(flash[:alert]).to eq("Pick someone, or enter their name and email.")
+
+    # A profile with no account is staged by its profile, to be invited on activation.
+    athena = create(:person, name: "Athena Rae", email: "athena@example.com")
+    org.people << athena
+    post manage_people_members_contract_wizard_path(contract), params: { person_id: athena.id }
+    expect(contract.reload.draft_data["people"].last).to eq({ "person_id" => athena.id, "email" => "athena@example.com", "name" => "Athena Rae" })
+    get manage_people_contract_wizard_path(contract)
+    expect(response.body).to include("Athena Rae", "Will be invited by email")
   end
 
   it "puts them on the contract when it's activated, never on the production team, and a bad entry never blocks it" do
+    athena = create(:person, name: "Athena Rae", email: "athena@example.com")
     # A draft from before 2026-10-17, staged under "team" with roles, counts the same.
     contract.update!(draft_data: contract.draft_data.merge("team" => [
       { "user_id" => clay.id, "name" => "Clay Smith", "role" => "manager", "suggested" => true },
       { "user_id" => priya.id, "name" => "Priya Nair", "role" => "viewer" },
       { "email" => "sam@brightlights.org", "name" => "Sam", "role" => "viewer" },
+      { "person_id" => athena.id, "email" => "athena@example.com", "name" => "Athena Rae" },
       { "user_id" => 0, "name" => "Gone", "role" => "manager" }
     ]))
 
-    expect { post manage_activate_contract_wizard_path(contract) }.to have_enqueued_mail(Manage::TeamMailer, :contract_invite)
+    expect { post manage_activate_contract_wizard_path(contract) }.to have_enqueued_mail(Manage::TeamMailer, :contract_invite).twice
+    expect(TeamInvitation.find_by(email: "athena@example.com", contract: contract).person).to eq(athena)
     expect(response).to redirect_to(manage_contract_path(contract))
     production = contract.reload.production
     expect(production.name).to eq("Stargazers")

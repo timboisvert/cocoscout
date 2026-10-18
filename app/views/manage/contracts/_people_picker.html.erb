@@ -46,6 +46,11 @@
     <input id="people-search" type="search" autocomplete="off" placeholder="Name or email" class="<%= input_class %>"
            data-invite-search-target="input" data-action="input->invite-search#search">
     <div class="mt-3" data-invite-search-target="results"></div>
+    <%# Not on CocoScout yet: the invite form, with what was typed carried over (invite-search#showInviteForm). %>
+    <p class="mt-3 text-sm text-gray-600">
+      Not on CocoScout yet?
+      <button type="button" class="font-medium text-pink-600 hover:text-pink-700" data-action="invite-search#showInviteForm">Invite someone new</button>
+    </p>
   </div>
 
   <%= form_with url: add_url, method: :post, class: "hidden", data: { invite_search_target: "inviteForm" } do %>
@@ -58,7 +63,7 @@
       <%= render "shared/button", text: "Choose someone else", variant: "ghost", size: "small", type: :button, data: { action: "click->invite-search#backToSearch" } %>
     </div>
     <div class="px-5 pt-4 space-y-3" data-invite-search-target="personDetailsSection">
-      <p class="text-sm text-gray-700">No one on CocoScout has that address. Invite them: <%= invite_blurb %></p>
+      <p class="text-sm text-gray-700">Invite them: <%= invite_blurb %></p>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label for="people_invite_name" class="block text-sm font-medium text-gray-700 mb-1.5">Name</label>

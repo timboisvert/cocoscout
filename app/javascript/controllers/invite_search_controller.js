@@ -35,7 +35,14 @@ export default class extends Controller {
     }
 
     showInviteForm(event) {
-        const email = event.currentTarget.dataset.email || ""
+        // What they typed carries over: an address fills the email, anything else the name.
+        const typed = this.hasInputTarget ? this.inputTarget.value.trim() : ""
+        let email = event.currentTarget.dataset.email || ""
+        let name = event.currentTarget.dataset.name || ""
+        if (!email && !name && typed) {
+            if (typed.includes("@")) email = typed
+            else name = typed
+        }
 
         // Hide search section, show invite form
         this.searchSectionTarget.classList.add("hidden")
@@ -46,9 +53,12 @@ export default class extends Controller {
             this.personDetailsSectionTarget.classList.remove("hidden")
         }
 
-        // Pre-fill email if provided
+        // Pre-fill what we know
         if (email) {
             this.inviteEmailTarget.value = email
+        }
+        if (name && this.hasInviteNameTarget && !this.inviteNameTarget.value) {
+            this.inviteNameTarget.value = name
         }
         this.showSubmit("invite")
 

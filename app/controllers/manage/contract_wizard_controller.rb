@@ -115,7 +115,12 @@ module Manage
         # Anyone on CocoScout with an account, found by search; only their
         # user id and name are kept.
         person = find_person_for_attach(params[:person_id])
-        { "user_id" => person.user_id, "name" => person.name } if person&.user_id
+        if person&.user_id
+          { "user_id" => person.user_id, "name" => person.name }
+        elsif person && person.email.present?
+          # A profile with no account: invited to make one when the contract is activated.
+          { "person_id" => person.id, "email" => person.email.strip.downcase, "name" => person.name }
+        end
       elsif params[:email].present?
         email = params[:email].to_s.strip.downcase
         if (user = User.find_by(email_address: email))
@@ -670,7 +675,8 @@ module Manage
     end
 
     def same_person?(a, b)
-      (a["user_id"].present? && a["user_id"].to_i == b["user_id"].to_i) || (a["email"].present? && a["email"] == b["email"])
+      (a["user_id"].present? && a["user_id"].to_i == b["user_id"].to_i) || (a["email"].present? && a["email"] == b["email"]) ||
+        (a["person_id"].present? && a["person_id"].to_i == b["person_id"].to_i)
     end
 
     # The contract's signer, suggested first: the person it's sent to when
