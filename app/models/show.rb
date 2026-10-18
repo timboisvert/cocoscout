@@ -183,6 +183,12 @@ class Show < ApplicationRecord
   validate :location_or_online_required
   validate :location_in_production_organization, if: :will_save_change_to_location_id?
   validate :within_free_event_limit, on: :create
+  # A contract's date is edited here too (Shows & Events), so its time has
+  # to stay inside the slot the contract booked, and the booking's event
+  # time follows it: the contract and the show never say two times (Tim,
+  # 2026-10-18: a show at 8:00 on every manage page, 7:30 on its ticket page).
+  validate :inside_booked_slot, if: -> { space_rental && will_save_change_to_date_and_time? }
+  after_update :keep_booking_in_step, if: -> { space_rental && saved_change_to_date_and_time? }
 
   # Cache invalidation - invalidate production dashboard when show changes
   after_commit :invalidate_production_caches
@@ -282,22 +288,14 @@ class Show < ApplicationRecord
   # Duration helpers
   DEFAULT_DURATION_MINUTES = 120
 
-  # Returns the end time based on duration_minutes, space rental, or default 2 hours
+  # When it ends: the show's own time plus its duration, the booking's event
+  # length when it has none of its own, else two hours. Always from
+  # date_and_time, never the booking's clock: one start time everywhere.
   def ends_at
     return nil unless date_and_time
 
-    # If show has its own duration_minutes, use it
-    if duration_minutes.present?
-      return date_and_time + duration_minutes.minutes
-    end
-
-    # If show has a space rental, use the event end time from the rental
-    if space_rental.present?
-      return space_rental.effective_event_ends_at
-    end
-
-    # Default to 2 hours
-    date_and_time + DEFAULT_DURATION_MINUTES.minutes
+    minutes = duration_minutes.presence || space_rental&.effective_duration_minutes || DEFAULT_DURATION_MINUTES
+    date_and_time + minutes.minutes
   end
 
   # Duration in hours (for display purposes)
@@ -311,18 +309,18 @@ class Show < ApplicationRecord
     end
   end
 
-  # Display time range like "7:00 PM – 9:00 PM" or just "7:00 PM" if no duration
+  # "7:00 PM – 9:00 PM", or just "7:00 PM" with no duration and no booking.
+  # The show's own time, the same one its ticket page, calendar and cast
+  # read; it used to lead with the contract booking's event time, so a
+  # show whose time had drifted from its booking said one time here and
+  # another to buyers (Tim, 2026-10-18).
   def time_range_display
     return nil unless date_and_time
 
-    # Use space rental's event start time if available, otherwise use date_and_time
-    start_time = space_rental&.effective_event_starts_at || date_and_time
-    start_str = start_time.strftime("%-I:%M %p")
-
-    # Show end time if we have explicit duration or a space rental
+    start_str = date_and_time.strftime("%-I:%M %p")
     return start_str unless duration_minutes.present? || space_rental.present?
-    end_str = ends_at.strftime("%-I:%M %p")
-    "#{start_str} – #{end_str}"
+
+    "#{start_str} – #{ends_at.strftime('%-I:%M %p')}"
   end
 
   # Show-specific staffing roles this show has opted out of (the coverage
@@ -746,6 +744,23 @@ class Show < ApplicationRecord
   end
 
   private
+
+  def inside_booked_slot
+    return if date_and_time.nil? || date_and_time.between?(space_rental.starts_at, space_rental.ends_at)
+
+    errors.add(:date_and_time, "is outside the #{space_rental.starts_at.strftime('%-l:%M %p')} to " \
+                               "#{space_rental.ends_at.strftime('%-l:%M %p')} the contract booked for this date. " \
+                               "To move the date itself, use Change time on the contract.")
+  end
+
+  # The booking's event time follows the show's, when the show is the only
+  # one in the slot (several shows in one booking keep their own clocks).
+  def keep_booking_in_step
+    return if space_rental.shows.where.not(id: id).exists?
+    return if space_rental.effective_event_starts_at == date_and_time && space_rental.effective_event_ends_at == ends_at
+
+    space_rental.update!(event_starts_at: date_and_time, event_ends_at: ends_at)
+  end
 
   # Online sales close relative to the show (at showtime, or before it), so
   # when the show moves the cutoff moves by the same amount — and so does the
