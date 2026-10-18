@@ -20,18 +20,14 @@ module My
       group_ids = @groups.map(&:id)
       groups_by_id = @groups.index_by(&:id)
 
-      # Handle filter parameters
-      @filter = params[:filter] || "my_assignments"
-
-      # Someone on a contract (docs/contract_people_plan.md) can look back at
-      # how their dates did; performers' lists stay upcoming-only.
-      live_contracts = Contract.for_people(people_ids).where.not(status: %w[draft cancelled])
-      @has_contract_shows = live_contracts.any? { |contract| contract.contract_shows.exists? }
-      if @filter == "past" && @has_contract_shows
-        load_past_contract_shows(live_contracts)
-        return
-      end
-      @filter = "my_assignments" if @filter == "past"
+      # Two filters (Tim, 2026-10-18): what to list (My Assignments, or every
+      # show of the productions they're in) and when (Upcoming, or Past: the
+      # dates that have happened, newest first). My Assignments, Upcoming by
+      # default.
+      @filter = params[:filter].presence_in(%w[my_assignments all]) || "my_assignments"
+      @when = params[:when] == "past" ? "past" : "upcoming"
+      past = @when == "past"
+      range = past ? Show.where("shows.date_and_time < ?", Time.current) : Show.where("shows.date_and_time >= ?", Time.current)
       @event_type_filter = params[:event_type].present? ? params[:event_type].split(",") : EventTypes.all
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
       @entity_filter = params[:entity].present? ? params[:entity].split(",") : default_entities
@@ -47,7 +43,7 @@ module My
         # Shows where person is in production's own talent pool
         tp_person_shows = Show.joins(production: { talent_pools: :people })
                               .where(people: { id: selected_person_ids })
-                              .where("date_and_time >= ?", Time.current)
+                              .merge(range)
                               .where.not(productions: { production_type: "course" })
                               .pluck(:id)
         all_talent_pool_show_ids.merge(tp_person_shows)
@@ -55,7 +51,7 @@ module My
         # Shows where person is in a shared talent pool (via talent_pool_shares)
         shared_person_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :people } })
                                   .where(people: { id: selected_person_ids })
-                                  .where("date_and_time >= ?", Time.current)
+                                  .merge(range)
                                   .where.not(productions: { production_type: "course" })
                                   .pluck(:id)
         all_talent_pool_show_ids.merge(shared_person_shows)
@@ -65,7 +61,7 @@ module My
         # Shows where group is in production's own talent pool
         tp_group_shows = Show.joins(production: { talent_pools: :groups })
                              .where(groups: { id: selected_group_ids })
-                             .where("date_and_time >= ?", Time.current)
+                             .merge(range)
                              .where.not(productions: { production_type: "course" })
                              .pluck(:id)
         all_talent_pool_show_ids.merge(tp_group_shows)
@@ -73,7 +69,7 @@ module My
         # Shows where group is in a shared talent pool (via talent_pool_shares)
         shared_group_shows = Show.joins(production: { talent_pool_shares: { talent_pool: :groups } })
                                  .where(groups: { id: selected_group_ids })
-                                 .where("date_and_time >= ?", Time.current)
+                                 .merge(range)
                                  .where.not(productions: { production_type: "course" })
                                  .pluck(:id)
         all_talent_pool_show_ids.merge(shared_group_shows)
@@ -102,7 +98,7 @@ module My
 
           # Get the show from either the slot's instance or the direct instance (queued)
           show = reg.sign_up_slot&.sign_up_form_instance&.show || reg.sign_up_form_instance&.show
-          next unless show && show.date_and_time >= Time.current
+          next unless show && (past ? show.date_and_time < Time.current : show.date_and_time >= Time.current)
 
           sign_up_show_ids << show.id
           @sign_up_registrations_by_show[show.id] << reg
@@ -118,7 +114,7 @@ module My
       if selected_person_ids.any?
         person_assigned_show_ids = Show.joins(:show_person_role_assignments, :production)
                                        .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: selected_person_ids })
-                                       .where("date_and_time >= ?", Time.current)
+                                       .merge(range)
                                        .where.not(productions: { production_type: "course" })
                                        .pluck(:id)
         all_talent_pool_show_ids.merge(person_assigned_show_ids)
@@ -127,7 +123,7 @@ module My
       if selected_group_ids.any?
         group_assigned_show_ids = Show.joins(:show_person_role_assignments, :production)
                                       .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: selected_group_ids })
-                                      .where("date_and_time >= ?", Time.current)
+                                      .merge(range)
                                       .where.not(productions: { production_type: "course" })
                                       .pluck(:id)
         all_talent_pool_show_ids.merge(group_assigned_show_ids)
@@ -139,7 +135,7 @@ module My
       @contract_show_ids = Set.new
       if selected_person_ids.any?
         Contract.for_people(selected_person_ids).where.not(status: %w[draft cancelled]).find_each do |contract|
-          @contract_show_ids.merge(contract.contract_shows.where("date_and_time >= ?", Time.current).pluck(:id))
+          @contract_show_ids.merge(contract.contract_shows.merge(range).pluck(:id))
         end
         all_talent_pool_show_ids.merge(@contract_show_ids)
       end
@@ -200,7 +196,7 @@ module My
           }
         end
       else
-        # "all" or "by_production" - include all talent pool shows with their assignments (if any)
+        # "all": every show of the productions they're in, with their assignments (if any)
         all_shows.each do |show|
           show_data_by_id[show.id] = {
             show: show,
@@ -263,7 +259,7 @@ module My
       if vacancy_only_show_ids.any? && @filter == "my_assignments"
         vacancy_shows = Show
           .where(id: vacancy_only_show_ids)
-          .where("date_and_time >= ?", Time.current)
+          .merge(range)
           .includes(:production, :location, :event_linkage)
           .to_a
 
@@ -592,8 +588,9 @@ module My
       @ticket_stats = Ticketing::ListingStats.of(listing)
       @ticket_link = TicketLink.for(@show, listing: listing)
       team_level = TicketSalesAccess.team_level_for(Current.user, @production)
-      @ticket_sales_path = if @my_contract && TicketSalesAccess.can_see?(Current.user, listing)
-        # Theirs by contract: who's coming and their comps are on My Ticket Sales.
+      @ticket_sales_path = if @my_contract || TicketSalesAccess.on_contract_for?(Current.user, listing)
+        # Theirs by contract: who's coming, their comps, and afterwards how it
+        # sold, are on My Ticket Sales.
         my_ticket_sale_path(listing)
       elsif team_level == :full
         manage_production_sale_path(@production, listing)
@@ -602,28 +599,14 @@ module My
       @ticket_codes = TicketDiscountCode.shared_for(listing, cast: team_level.nil? && !TicketSalesAccess.can_see?(Current.user, listing))
     end
 
-    # The Past view: every date under one of their contracts that has
-    # happened, newest first, each marked as theirs by contract.
-    def load_past_contract_shows(contracts)
-      show_ids = contracts.flat_map { |contract| contract.contract_shows.where("date_and_time < ?", Time.current).pluck(:id) }.uniq
-      shows = Show.where(id: show_ids).includes(:production, :location, :event_linkage).order(date_and_time: :desc).to_a
-      @shows = shows
-      @show_entity_rows = shows.map { |show| { show: show, assignments: [], sign_up_registrations: [], contract: true } }
-      @show_assignments = {}
-      @show_entities = {}
-      @my_vacancies_by_show = {}
-      @sign_up_registrations_by_show = {}
-      @productions = Production.where(id: shows.map(&:production_id).uniq).order(:name)
-      @has_any_shows = true
-      @pending_vacancy_invitations = RoleVacancyInvitation.none
-      # The filter bar's other views link with the defaults.
-      @event_type_filter = EventTypes.all
-      @entity_filter = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
-    end
-
+    # The contract's own dates first; failing that, the one live contract
+    # they're on for this production (a production that has had several
+    # contracts counts only its rental-linked dates as a contract's, and an
+    # older date may be linked to none).
     def contract_for_date(show, people_ids)
-      Contract.for_people(people_ids).where.not(status: %w[draft cancelled]).includes(:contractor, :organization)
-              .detect { |contract| contract.contract_shows.exists?(id: show.id) }
+      contracts = Contract.for_people(people_ids).where.not(status: %w[draft cancelled]).includes(:contractor, :organization).to_a
+      contracts.detect { |contract| contract.contract_shows.exists?(id: show.id) } ||
+        contracts.select { |contract| contract.production_id == show.production_id && contract.status_active? }.then { |mine| mine.one? ? mine.first : nil }
     end
 
     def user_can_access_show?(show, people_ids, group_ids)

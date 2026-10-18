@@ -107,23 +107,15 @@ RSpec.describe "Contract people", type: :request do
 
     sign_in(priya)
     get my_shows_path
-    expect(response.body).to include(my_shows_path(filter: "past"), my_show_path(show))
-    expect(response.body).not_to include(my_show_path(old_show))
+    expect(response.body).to include(">Upcoming<", ">Past<", my_show_path(show))
+    expect(response.body).not_to include(my_show_path(old_show), "By Production")
 
-    get my_shows_path(filter: "past")
+    get my_shows_path(when: "past")
     expect(response).to have_http_status(:ok)
     html = response.body
     expect(html).to include(my_show_path(old_show), my_show_path(older_show), "Your contract")
     expect(html).not_to include(my_show_path(show))
     expect(html.index(my_show_path(old_show))).to be < html.index(my_show_path(older_show))
-
-    # A performer with no contract has no Past view.
-    performer = create(:user, password: password)
-    create(:person, user: performer, name: "Jamie Cruz").tap { |p| performer.update!(default_person: p) }
-    sign_in(performer)
-    get my_shows_path(filter: "past")
-    expect(response).to have_http_status(:ok)
-    expect(response.body).not_to include(">Past<")
   end
 
   it "sees the date's sales on My Ticket Sales and gives comps for it, up to what the date can give" do
@@ -145,6 +137,12 @@ RSpec.describe "Contract people", type: :request do
     show.update_columns(date_and_time: 1.hour.ago)
     get my_ticket_sale_path(listing)
     expect(response.body).not_to include("Give comps")
+
+    # And the date's page says it has happened, with the way into how it sold and no link to share (Tim, 2026-10-18).
+    get my_show_path(show)
+    html = response.body.gsub(/\s+/, " ")
+    expect(html).to include('data-show-state="past"', "has already happened", my_ticket_sale_path(listing), "How it sold, and who came, are in Ticket sales.")
+    expect(html).not_to include("Your link for this date", "Who's coming is in", "Who's coming, and your comps")
   end
 
   it "never puts them on the production team or in the organization" do

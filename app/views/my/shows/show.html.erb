@@ -16,6 +16,7 @@
 <div class="w-full" data-controller="contact-production">
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
+  <%= render "shared/show_state_banner", show: @show %>
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
@@ -575,6 +576,9 @@
         button to the date's sales page in the Production Dashboard. Nothing
         else links out of here, and nothing is drawn without a level. %>
     <% if @ticket_level %>
+      <%# Once the date has happened there's no link to share; the box is the
+          count, and for someone on the contract the way into how it sold. %>
+      <% tickets_past = @show.date_and_time <= Time.current %>
       <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-tickets-card>
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>
           <% if @ticket_sales_path %>
@@ -597,18 +601,24 @@
             <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium <%= badge_classes %>"><%= badge_label %></span>
               <% if @ticket_sales_path %>
-                <span>Who's coming<%= ", and your comps," if TicketSalesAccess.comp_allowance(Current.user, @ticket_listing) %> are in Ticket sales.</span>
+                <% if tickets_past %>
+                  <span>How it sold, and who came, are in Ticket sales.</span>
+                <% elsif TicketSalesAccess.comp_allowance(Current.user, @ticket_listing) %>
+                  <span>Who's coming, and your comps, are in Ticket sales.</span>
+                <% else %>
+                  <span>Who's coming is in Ticket sales.</span>
+                <% end %>
               <% end %>
             </div>
           </div>
-          <% if @ticket_link&.url.present? %>
+          <% if @ticket_link&.url.present? && !tickets_past %>
             <div class="min-w-0">
               <%= render "shared/copy_url", url: @ticket_link.url, layout: :tile, label: "Ticket link", show_qr: false,
                     help_text: "Your link for this date. Share it with your people." %>
             </div>
           <% end %>
         </div>
-        <% if @ticket_codes.present? %>
+        <% if @ticket_codes.present? && !tickets_past %>
           <div class="px-4 pb-4"><%= render "shared/ticketing/shared_codes", codes: @ticket_codes %></div>
         <% end %>
       </div>

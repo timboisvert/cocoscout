@@ -16,17 +16,24 @@
 
   <% if @has_any_shows %>
 
+  <%# Two filters (Tim, 2026-10-18): what to list, and when. %>
   <%= render "shared/filters/filter_bar",
       toggle_label: "Filters & View Options",
       filter_groups: [
         {
           label: "View",
           filters: [
-            { text: "My Assignments", path: my_shows_path(filter: 'my_assignments', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'my_assignments' },
-            { text: "All Shows", path: my_shows_path(filter: 'all', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'all' },
-            { text: "By Production", path: my_shows_path(filter: 'by_production', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'by_production' },
-            ({ text: "Past", path: my_shows_path(filter: 'past'), active: @filter == 'past' } if @has_contract_shows)
-          ].compact
+            { text: "My Assignments", path: my_shows_path(filter: 'my_assignments', when: @when, event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'my_assignments' },
+            { text: "All Shows", path: my_shows_path(filter: 'all', when: @when, event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'all' }
+          ]
+        },
+        { separator: true },
+        {
+          label: "When",
+          filters: [
+            { text: "Upcoming", path: my_shows_path(filter: @filter, when: 'upcoming', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @when == 'upcoming' },
+            { text: "Past", path: my_shows_path(filter: @filter, when: 'past', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @when == 'past' }
+          ]
         },
         { separator: true },
         {
@@ -44,49 +51,21 @@
       ]
   %>
 
-  <% if @filter == 'by_production' %>
-    <!-- By Production View -->
-    <% if @productions.any? %>
-      <% @productions.each do |production| %>
-        <% production_rows = @show_entity_rows.select { |row| row[:show].production_id == production.id } %>
-        <% if production_rows.any? %>
-          <div class="mb-6">
-            <h2 class="text-lg font-bold mb-2"><%= production.name %></h2>
-            <%= render "shared/shows_list",
-                       show_rows: production_rows,
-                       show_production: false,
-                       show_location: true,
-                       has_groups: @groups.any?,
-                       show_cant_make_it: true,
-                       cant_make_it_person: @person,
-                       my_vacancies_by_show: @my_vacancies_by_show,
-                       link_path_helper: ->(show) { my_show_path(show) } %>
-          </div>
-        <% end %>
-      <% end %>
-    <% else %>
-      <div class="text-sm text-gray-500">
-        No upcoming shows or events found for the selected filters.
-      </div>
-    <% end %>
+  <% if @show_entity_rows.any? %>
+    <%= render "shared/shows_list",
+               show_rows: @show_entity_rows,
+               show_production: true,
+               show_location: true,
+               has_groups: @groups.any?,
+               show_cant_make_it: @when == 'upcoming',
+               cant_make_it_person: @person,
+               my_vacancies_by_show: @my_vacancies_by_show,
+               newest_first: @when == 'past',
+               link_path_helper: ->(show) { my_show_path(show) } %>
   <% else %>
-    <!-- All Shows / My Assignments / Past View -->
-    <% if @show_entity_rows.any? %>
-      <%= render "shared/shows_list",
-                 show_rows: @show_entity_rows,
-                 show_production: true,
-                 show_location: true,
-                 has_groups: @groups.any?,
-                 show_cant_make_it: true,
-                 cant_make_it_person: @person,
-                 my_vacancies_by_show: @my_vacancies_by_show,
-                 newest_first: @filter == 'past',
-                 link_path_helper: ->(show) { my_show_path(show) } %>
-    <% else %>
-      <div class="text-sm text-gray-500">
-        <%= @filter == 'past' ? "None of your contract dates have happened yet." : "No upcoming shows or events found for the selected filters." %>
-      </div>
-    <% end %>
+    <div class="text-sm text-gray-500">
+      <%= @when == 'past' ? "Nothing in the past for these filters." : "No upcoming shows or events found for the selected filters." %>
+    </div>
   <% end %>
 
   <% else %>
