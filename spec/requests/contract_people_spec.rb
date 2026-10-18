@@ -13,6 +13,7 @@ RSpec.describe "Contract people", type: :request do
   let(:owner) { create(:user, password: password) }
   let!(:org) { create(:organization, :pro, name: "Stars & Garters", owner: owner) }
   let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let!(:owner_person) { create(:person, user: owner, name: "Tim Boisvert").tap { |p| owner.update!(default_person: p) } }
   let!(:production) { create(:production, organization: org, name: "Carded", production_type: "third_party") }
   let(:dan) { create(:user, email_address: "dan@example.com", password: password) }
   let!(:dan_person) { create(:person, user: dan, name: "Dan Feltey", email: "dan@example.com").tap { |p| dan.update!(default_person: p) } }
@@ -79,12 +80,50 @@ RSpec.describe "Contract people", type: :request do
     expect(html).to include("data-contract-box", "Carded LLC", "50% of ticket sales", "$80.00", "−$50.00", "Booth Tech, 2 hrs", "You get", "$30.00",
                             "Payments go to Carded LLC.", my_contracts_path)
     expect(html).not_to include("They get", "Can't make it", "View contract")
+    # None of our casting on a contract date (Tim, 2026-10-18): no availability to give, no cast; the
+    # question goes to the organization, not "the team".
+    expect(html).not_to include("My Availability", "Full Cast", "Running Order", "Contact Team")
+    expect(html).to include("Contact Stars &amp; Garters", "Have a question about this date?")
+
+    post my_production_production_messages_path(production), params: { subject: "Door time?", body: "What time can we load in?" }
+    expect(response).to redirect_to(my_messages_path)
+    expect(Message.order(:id).last.subject).to eq("Door time?")
+    expect(Message.order(:id).last.recipient_people).to include(owner_person)
 
     # The contractor's own person reads the same box, without being told where the money goes.
     sign_in(dan)
     get my_show_path(show)
     expect(response.body).to include("You get")
     expect(response.body).not_to include("Payments go to")
+  end
+
+  it "can look back at the contract's dates that have happened, newest first" do
+    earlier = 10.days.ago.change(hour: 20)
+    old_rental = create(:space_rental, contract: contract, starts_at: earlier, ends_at: earlier + 3.hours)
+    old_show = create(:show, production: production, space_rental: old_rental, date_and_time: earlier, event_type: "show")
+    older = 20.days.ago.change(hour: 20)
+    older_rental = create(:space_rental, contract: contract, starts_at: older, ends_at: older + 3.hours)
+    older_show = create(:show, production: production, space_rental: older_rental, date_and_time: older, event_type: "show")
+
+    sign_in(priya)
+    get my_shows_path
+    expect(response.body).to include(my_shows_path(filter: "past"), my_show_path(show))
+    expect(response.body).not_to include(my_show_path(old_show))
+
+    get my_shows_path(filter: "past")
+    expect(response).to have_http_status(:ok)
+    html = response.body
+    expect(html).to include(my_show_path(old_show), my_show_path(older_show), "Your contract")
+    expect(html).not_to include(my_show_path(show))
+    expect(html.index(my_show_path(old_show))).to be < html.index(my_show_path(older_show))
+
+    # A performer with no contract has no Past view.
+    performer = create(:user, password: password)
+    create(:person, user: performer, name: "Jamie Cruz").tap { |p| performer.update!(default_person: p) }
+    sign_in(performer)
+    get my_shows_path(filter: "past")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include(">Past<")
   end
 
   it "sees the date's sales on My Ticket Sales and gives comps for it, up to what the date can give" do

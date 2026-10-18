@@ -22,6 +22,16 @@ module My
 
       # Handle filter parameters
       @filter = params[:filter] || "my_assignments"
+
+      # Someone on a contract (docs/contract_people_plan.md) can look back at
+      # how their dates did; performers' lists stay upcoming-only.
+      live_contracts = Contract.for_people(people_ids).where.not(status: %w[draft cancelled])
+      @has_contract_shows = live_contracts.any? { |contract| contract.contract_shows.exists? }
+      if @filter == "past" && @has_contract_shows
+        load_past_contract_shows(live_contracts)
+        return
+      end
+      @filter = "my_assignments" if @filter == "past"
       @event_type_filter = params[:event_type].present? ? params[:event_type].split(",") : EventTypes.all
       default_entities = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
       @entity_filter = params[:entity].present? ? params[:entity].split(",") : default_entities
@@ -590,6 +600,25 @@ module My
       end
       # Discount codes to pass along: the team's, or the ones shared with the cast.
       @ticket_codes = TicketDiscountCode.shared_for(listing, cast: team_level.nil? && !TicketSalesAccess.can_see?(Current.user, listing))
+    end
+
+    # The Past view: every date under one of their contracts that has
+    # happened, newest first, each marked as theirs by contract.
+    def load_past_contract_shows(contracts)
+      show_ids = contracts.flat_map { |contract| contract.contract_shows.where("date_and_time < ?", Time.current).pluck(:id) }.uniq
+      shows = Show.where(id: show_ids).includes(:production, :location, :event_linkage).order(date_and_time: :desc).to_a
+      @shows = shows
+      @show_entity_rows = shows.map { |show| { show: show, assignments: [], sign_up_registrations: [], contract: true } }
+      @show_assignments = {}
+      @show_entities = {}
+      @my_vacancies_by_show = {}
+      @sign_up_registrations_by_show = {}
+      @productions = Production.where(id: shows.map(&:production_id).uniq).order(:name)
+      @has_any_shows = true
+      @pending_vacancy_invitations = RoleVacancyInvitation.none
+      # The filter bar's other views link with the defaults.
+      @event_type_filter = EventTypes.all
+      @entity_filter = @people.map { |p| "person_#{p.id}" } + @groups.map { |g| "group_#{g.id}" }
     end
 
     def contract_for_date(show, people_ids)

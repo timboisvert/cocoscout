@@ -46,6 +46,10 @@ class My::ProductionMessagesController < ApplicationController
 
     production_ids = Set.new
 
+    # Productions under a contract the person is on (docs/contract_people_plan.md):
+    # their question goes to the organization's managers, who are among the recipients.
+    production_ids.merge(Contract.for_people(people_ids).where.not(status: %w[draft cancelled]).where.not(production_id: nil).pluck(:production_id))
+
     # Productions via person's direct talent pool memberships
     person_production_ids = TalentPoolMembership
       .where(member_type: "Person", member_id: people_ids)

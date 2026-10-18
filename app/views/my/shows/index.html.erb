@@ -24,8 +24,9 @@
           filters: [
             { text: "My Assignments", path: my_shows_path(filter: 'my_assignments', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'my_assignments' },
             { text: "All Shows", path: my_shows_path(filter: 'all', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'all' },
-            { text: "By Production", path: my_shows_path(filter: 'by_production', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'by_production' }
-          ]
+            { text: "By Production", path: my_shows_path(filter: 'by_production', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'by_production' },
+            ({ text: "Past", path: my_shows_path(filter: 'past'), active: @filter == 'past' } if @has_contract_shows)
+          ].compact
         },
         { separator: true },
         {
@@ -69,7 +70,7 @@
       </div>
     <% end %>
   <% else %>
-    <!-- All Shows / My Assignments View -->
+    <!-- All Shows / My Assignments / Past View -->
     <% if @show_entity_rows.any? %>
       <%= render "shared/shows_list",
                  show_rows: @show_entity_rows,
@@ -79,10 +80,11 @@
                  show_cant_make_it: true,
                  cant_make_it_person: @person,
                  my_vacancies_by_show: @my_vacancies_by_show,
+                 newest_first: @filter == 'past',
                  link_path_helper: ->(show) { my_show_path(show) } %>
     <% else %>
       <div class="text-sm text-gray-500">
-        No upcoming shows or events found for the selected filters.
+        <%= @filter == 'past' ? "None of your contract dates have happened yet." : "No upcoming shows or events found for the selected filters." %>
       </div>
     <% end %>
   <% end %>
