@@ -17,4 +17,13 @@ export default class extends Controller {
     this.listTarget.classList.add("hidden")
     this.cardTarget.classList.remove("hidden")
   }
+
+  // Opening a month folds the others (Tim, 2026-10-18). The details carry a
+  // shared name, which newer browsers honor on their own; this covers the rest.
+  only(event) {
+    if (!event.target.open) return
+    this.listTarget.querySelectorAll("details[open]").forEach((details) => {
+      if (details !== event.target) details.open = false
+    })
+  }
 }

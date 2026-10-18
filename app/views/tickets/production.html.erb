@@ -120,10 +120,12 @@
               <% end %>
             </div>
             <% by_month.each do |month, month_listings| %>
-              <details class="group border-t border-gray-100" <%= "open" if month == open_month %>>
+              <%# One month open at a time (Tim, 2026-10-18): the name makes the
+                  browser fold the others; ticket-dates#only does it where it won't. %>
+              <details name="ticket-months" class="group border-t border-gray-100" data-action="toggle->ticket-dates#only" <%= "open" if month == open_month %>>
                 <summary class="flex items-center justify-between px-4 py-2 bg-gray-50 cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                   <span><%= month.strftime("%B") %><%= " #{month.year}" if month.year != Date.current.year %></span>
-                  <span class="text-xs font-semibold normal-case tracking-normal text-pink-700 group-open:hidden">Show <%= pluralize(month_listings.size, "date") %></span>
+                  <span class="text-xs font-normal normal-case tracking-normal text-gray-500 group-open:hidden">Show <%= pluralize(month_listings.size, "date") %></span>
                 </summary>
                 <% month_listings.each do |listing| %>
                   <% current = listing == selected %>
