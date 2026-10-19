@@ -210,3 +210,77 @@ cd android && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/
 The bundle lands at `android/app/build/outputs/bundle/release/app-release.aab`.
 Bump `versionCode` in `app/build.gradle.kts` for every upload (Play refuses
 a number it has seen).
+
+## Tap to Pay (version 1.2, build 3)
+
+The door phone takes a buyer's card or phone tap (`door/TapToPayReader`).
+Android has no approval step like Apple's: the moment this build reaches
+someone with box office access at an organization that has Tap to Pay
+switched on (Stars & Garters today), they see it in the menu and at the door.
+
+The bundle is built: `app-release.aab` as above, versionCode 3, versionName
+1.2. Two things first:
+
+- **Deploy main.** The Android wording ("Tap to Pay", never the iPhone) and
+  the door header fix are on the server; without them the app says "Tap to
+  Pay on iPhone".
+- **Let build 2 (1.0) pass its review first.** A new Production release
+  replaces one that's still in review. Internal testing doesn't have to wait.
+
+1. **Internal testing.** Testing → Internal testing → Create new release →
+   upload `app-release.aab`, release name `1.2`. Add Andy's Google account
+   to the testers list and copy the "Join on the web" link.
+2. **Andy's phone.** Stripe's list (checked 2026-10-19):
+   - Android 13 or later, with a security update from the last 12 months
+     (Settings → About phone, and Settings → Security).
+   - NFC on (search Settings for "NFC").
+   - Google Play Store on the phone, not rooted, the maker's own Android.
+   - Developer options off (Settings → System → Developer options; if it
+     isn't listed, it's off).
+   - Location on (Settings → Location).
+   - For cards that ask for a PIN: no screen recording, no accessibility or
+     draw-over-other-apps tools running.
+
+   Supported phones include Pixel 6 and later and Galaxy S22 and later; the
+   full list is on [Stripe's Tap to Pay page](https://docs.stripe.com/terminal/payments/setup-reader/tap-to-pay?platform=android#supported-devices).
+   Open the testing link on the phone and install from Play, not from a
+   copied file. If CocoScout 1.0 is on it, Play updates it.
+3. **Set it up.** Sign in as someone with box office access at Stars &
+   Garters. Menu → Tap to Pay → Set up Tap to Pay → allow location "While
+   using the app". It says Ready within a few seconds.
+4. **One real tap at a door.** Work the door → the show → Sell → 1 ticket →
+   Tap to Pay. Stripe's tap screen shows where to tap; tap a real card (or a
+   phone wallet). The page says Paid with the receipt code. Note the order
+   code.
+5. **Refund it** on the website: Manage → Ticketing → Orders → that order →
+   Refund.
+6. **Production.** Production → Create new release → add build 3 (1.2)
+   from the library. Release notes:
+
+```
+Tap to Pay at the door: box office staff can take a buyer's contactless card or phone wallet right on their Android phone.
+```
+
+**Play Console for this build**
+
+- No new permission declaration. Location is approximate and only while
+  the app is open (no background location). Stripe's SDK also declares NFC,
+  phone state and Bluetooth, none of which has a Play form.
+- **Data safety: three changes.** Add Location → Approximate location
+  (Collected, not shared, Optional; App functionality, and Fraud
+  prevention, security and compliance): card networks need to know where a
+  payment is taken. Add Financial info → User payment info (Optional, same
+  purposes): the card a buyer taps, read on the payment provider's own
+  screen and sent to it encrypted; CocoScout never sees the number. On
+  Device or other IDs, add the purpose Fraud prevention, security and
+  compliance: the payment SDK checks the phone.
+- Financial features: unchanged, "My app doesn't provide any financial
+  features." Tap to Pay is an organization taking payment for its own
+  tickets, like the door's other ways to pay. If Google asks, the nearest
+  category is Payments and transfers → Mobile payments and digital wallets.
+- Content rating: unchanged.
+
+The emulator can't run Tap to Pay, even Stripe's simulated reader (it has
+no NFC), so a debug build there stands Stripe's simulated countertop reader
+in for it, with a dialog playing the buyer. That's for testing on the Mac
+only; release builds never do it.
