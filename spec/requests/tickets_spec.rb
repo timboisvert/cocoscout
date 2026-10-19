@@ -85,7 +85,7 @@ RSpec.describe "Public ticketing", type: :request do
       html = response.body.gsub(/\s+/, " ")
       expect(html).to include("Chicago&#39;s home for the strange", "All upcoming shows", 'name="production"', ">Carded<", show.location.name,
                               show.date_and_time.to_date.strftime("%A, %B %-d"), event_path)
-      expect(html).to include("This weekend").or include("This week").or include("Coming up")
+      expect(html).to include("This week").or include("Coming up")
       expect(html).not_to include(">Everything<")
 
       get tickets_box_office_path(org: "starsandgarters", production: other.public_key)

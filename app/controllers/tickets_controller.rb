@@ -24,12 +24,17 @@ class TicketsController < ApplicationController
     @layout = @ticketing_profile.box_office_layout
     @storefront_no_header = true
     @venue = selling_listings.map { |l| l.show.location }.compact.tally.max_by { |_, n| n }&.first if @ticketing_profile.show_address?
+    # The rail at the top: the next seven days (Tim, 2026-10-18: "this
+    # weekend" from a Sunday caught one Wednesday show), up to eight. A thin
+    # week widens to the next few shows, whatever their dates.
     today = Date.current
-    soon = @listings.select { |l| l.show.date_and_time.to_date.between?(today, today + 3) }
-    @coming_up = soon.any? ? soon.first(8) : @listings.first(4)
-    @coming_up_heading = if soon.empty? then "Coming up"
-    elsif (today..(today + 3)).any? { |day| day.saturday? || day.sunday? } then "This weekend"
-    else "This week"
+    week = @listings.select { |l| l.show.date_and_time.to_date.between?(today, today + 6) }
+    if week.size >= 2
+      @coming_up = week.first(8)
+      @coming_up_heading = "This week"
+    else
+      @coming_up = @listings.first(6)
+      @coming_up_heading = "Coming up"
     end
     @by_day = @listings.group_by { |l| l.show.date_and_time.to_date }
     @tonight = @listings.select { |l| l.show.date_and_time.to_date == today }
