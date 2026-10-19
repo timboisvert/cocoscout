@@ -74,45 +74,56 @@ version marker (the Release section), so its server changes can't reach V1
 installs. Tap to Pay ships whenever Apple grants the publishing entitlement
 below, before or after V1.1.
 
-## Apple's publishing review (requirements v1.7, Aug 2026)
+## Apple's publishing review (guide and checklist v1.8, Oct 2026)
 
-Apple's "App & Marketing Requirements and Review Guide" and checklist come
-from the Box folder linked in the Oct 12 email from ttpoientitlements@apple.com
-(Case-ID 22828656). To get the publishing entitlement, reply to that email and
-upload: a video of the New User (onboarding) flow, a video of the Existing
-User (enable + education) flow, a video of the Checkout flow, and the filled
-checklist. The checkout video must be filmed with another device: Apple's
-Tap to Pay screens don't show up in a screen recording.
+Apple's guide and checklist are in `ios/apple_ttp/` (not committed: they're
+Apple's). To get the publishing entitlement, reply to the Oct 12 email from
+ttpoientitlements@apple.com (Case-ID 22828656) with the filled checklist and
+three videos, **each filmed with a second phone** (the checklist says so for
+all three; Apple's Tap to Pay screens don't show in a screen recording):
 
-Where CocoScout stands (2026-10-15):
+1. **New user.** Our merchant onboarding happens on the web, so v1.8 wants a
+   video of that: an organization signs up on cocoscout.com, opens its box
+   office, then Tap to Pay is introduced to it, its Terms and Conditions
+   accepted, the guide shown, the progress indicator while the phone
+   configures, and configuration finishing. With the video, ask for the
+   exception for apps whose merchants are authorized outside the app (2.1–2.3).
+2. **Existing user.** The Tap to Pay button visible before the terms are
+   accepted; the awareness splash; accepting the terms (every path: Settings,
+   checkout); the guide after the terms; the guide again from Settings; the
+   progress indicator if configuration is still running.
+3. **Checkout.** Pick tickets, the payment options, the Tap to Pay on iPhone
+   button, the initializing screen if it takes over 300 ms, a successful tap,
+   the receipt.
 
-Met: iPhone XS+ via Stripe (1.1); acceptance status from the SDK (1.6);
-Apple's How to Tap guide (4.1, 4.5–4.7); checkout trigger (3.7); Tap to Pay
-first in the payment list (5.1); processing and outcome screens (5.8, 5.9);
-US needs no fallback method, surcharging or IFR.
+Only Tim can do: request Apple's Marketing Toolkit (the form at
+https://forms.appleservices.apple/form/5e784e28b4e6, linked from the
+checklist's 6.1–6.3 rows). The awareness splash, the push and the launch
+email must use its assets and copy; we may not make our own.
 
-To build:
-- Warm up Tap to Pay at launch and on foreground (1.5, 5.6), so the payment
-  screen opens within a second.
-- A "getting ready" screen with the SDK's progress while the phone
-  configures (3.9.1, 5.7).
-- Education after the terms are accepted, not before (4.2): connect first,
-  then the guide.
-- A Tap to Pay entry in Settings for box-office users: set it up (accept the
-  terms) and the guide (3.6, 4.3).
-- An awareness moment for eligible users, using Apple's toolkit assets: a
-  full-screen splash once, a push, a launch email (3.1–3.3, 6.1–6.3).
-- The button never greyed out (5.3), labelled "Tap to Pay on iPhone" next to
-  other methods (5.4), no custom tap icon (5.5, marketing rules), reachable
-  without scrolling (5.2).
-- A digital receipt on the result screen, approved or declined (5.10):
-  a QR code to the order page, or email.
-- A notification when a payment isn't approved after the app was closed
-  (5.12).
-- A clear "update iOS" message for the SDK's OS-version error (1.4).
+Met already: 1.1 (iPhone XS+ via the SDK), 1.6 (acceptance status from the
+SDK), 3.7 (trigger in checkout), 4.1 and 4.5–4.7 (Apple's How to Tap guide),
+5.1 (Tap to Pay first), 5.8 and 5.9 (processing and outcome), US needs no
+PIN fallback, surcharging or IFR.
+
+To build (Required in v1.8):
+- 1.4 a clear "update iOS" message for the SDK's OS-version error.
+- 1.5 and 5.6 warm up Tap to Pay at launch and on foreground, so the screen opens within a second.
+- 3.1, 3.2, 3.3 (6.2, 6.3) the awareness moment for eligible users: a full-screen splash once with Apple's Hero banner, and a push with Apple's copy.
+- 3.4 at the end of a new organization's onboarding (opening the box office on the web), say how to turn on Tap to Pay in the app.
+- 3.5 a clear action to accept Apple's Terms and Conditions (Apple's own screen, opened by the SDK).
+- 3.6 and 4.3 a Tap to Pay section in the app's settings: turn it on, and the guide.
+- 3.8 and 3.8.1 only an authorized person accepts the terms (an organization's manager); anyone else sees "ask your organization's manager to turn on Tap to Pay on iPhone".
+- 3.9.1 and 5.7 the configuration progress indicator and an "initializing" screen while the reader prepares.
+- 4.2 the guide right after the terms are accepted, never before.
+- 5.3 the button never greyed out; tapped before the terms are accepted, it opens them.
+- 5.4 and 5.5 the button says "Tap to Pay on iPhone", with only the `wave.3.right.circle` symbol if any.
+- 5.10 a digital receipt on the result screen, approved or declined: a QR code to the order, or email.
+- 5.12 a notification when a payment isn't approved after the app was closed.
+- 6.1 a launch email to eligible users, from Apple's Launch template.
 - No "Stripe" in the processing copy.
 
-Decision: in-app merchant onboarding (2.1–2.3). Organizations sign up and
-open their box office on cocoscout.com; door staff are invited and sign in
-in the app. Apple allows asking for an exception with the request; V1.1
-(production mode in the app) would meet it outright.
+Open question for the build: CocoScout takes payments on one account, so
+Apple's terms may be accepted once for every organization (terms are per
+merchant ID). Check how the SDK's merchant display name and location map to
+Apple's merchant ID before deciding who sees the terms.

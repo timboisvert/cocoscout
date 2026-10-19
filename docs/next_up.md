@@ -15,11 +15,12 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [ ] Show time drift: 55 shows sit 11 to 60 minutes before their booking's event time (list in the 2026-10-19 chat); decide which clock is right per production, then run the fix block.
 - [ ] Impersonate Dan Feltey and Andy Nash and look at what they see (My → Payments, My Contracts, Ticket Sales), after today's email from our payment provider.
 - [ ] Tap to Pay on Android: get ready (see "Tap to Pay on Android" below).
-- [ ] **Tap to Pay on iPhone (V1.2): Apple's publishing approval.** Videos of the app as it is today won't pass; the app work comes first. In order:
-  1. **Tim, today, 5 minutes:** open Apple's Oct 12 email from ttpoientitlements@apple.com (Case-ID 22828656), download the checklist and the review guide from its Box link, and drop both into `ios/apple_ttp/`.
-  2. **Claude:** build the 13 missing pieces listed under "To build" in `ios/tap_to_pay.md` on the V1.2 branch, and draft the filled checklist.
-  3. **Tim:** film three videos on a real iPhone: (a) new user: sign in as door staff, see the one-time Tap to Pay splash, set it up (accept Apple's terms), see the How to Tap guide; (b) existing user: turn it on from Settings → Tap to Pay and see the guide; (c) checkout: sell a ticket at the door, pick Tap to Pay on iPhone, tap a card, see Approved and the receipt, filmed with a second phone because Apple's tap screens don't show in a screen recording.
-  4. **Tim:** reply to the Oct 12 email with the three videos, the checklist, and the request for an exception on in-app merchant sign-up. Apple's review takes a week or two from then.
+- [ ] **Tap to Pay on iPhone (V1.2): Apple's publishing approval.** In order:
+  1. [x] Tim: Apple's checklist and guide into `ios/apple_ttp/` (done 10/19).
+  2. [ ] **Tim, today: request Apple's Marketing Toolkit** at https://forms.appleservices.apple/form/5e784e28b4e6. Apple requires its splash, push and launch email assets; we can't make our own. Drop it into `ios/apple_ttp/` when it comes.
+  3. [ ] Claude: build the pieces listed under "To build" in `ios/tap_to_pay.md` on the V1.2 branch, then write a shot list for each video and draft the checklist.
+  4. [ ] Tim: film the three videos, each with a second phone: new user (an organization signs up and opens its box office on the web, then Tap to Pay is introduced in the app), existing user (the splash, accepting Apple's terms, the guide, Settings), checkout (a door sale with a real tap and the receipt).
+  5. [ ] Tim: reply to the Oct 12 email (Case-ID 22828656) with the videos, the checklist and the exception request for web sign-up. Apple's review takes a week or two from then.
 
 ## Soon
 
