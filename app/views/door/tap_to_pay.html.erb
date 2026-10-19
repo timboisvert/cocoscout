@@ -1,4 +1,5 @@
-<% content_for :title, "Tap to Pay on iPhone" %>
+<%# The app's title bar has room only for the door's; the page's own header names Tap to Pay on iPhone in full. %>
+<% content_for :title, turbo_native_app? ? "Work the door" : "Tap to Pay on iPhone" %>
 <% content_for :door_header do %>
   <% unless turbo_native_app? %>
     <%= link_to door_index_path, class: "flex-shrink-0 p-1.5 -ml-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "Work the door" do %>

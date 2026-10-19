@@ -17,14 +17,18 @@ struct SharedButtonStyle: ButtonStyle {
     }
 
     /// shared/button's sizes: "small" is px-3 py-1.5 text-sm; "medium" is
-    /// px-5 py-2.5 at sm and up (phones use the small padding on the web too).
+    /// px-5 py-2.5 at sm and up (phones use the small padding on the web too);
+    /// "large" is px-8 py-3 at sm and up, 44 points tall.
     enum Size {
         case small
         case medium
+        case large
     }
 
     var variant: Variant = .primary
     var size: Size = .medium
+    /// shared/button with classes: "w-full justify-center".
+    var fullWidth = false
 
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
@@ -32,8 +36,9 @@ struct SharedButtonStyle: ButtonStyle {
             .font(.system(size: 14, weight: .medium))
             .lineLimit(1)
             .foregroundStyle(variant == .primary ? Color.white : Tailwind.gray700)
-            .padding(.horizontal, size == .small ? 12 : 20)
-            .padding(.vertical, size == .small ? 6 : 10)
+            .frame(maxWidth: fullWidth ? .infinity : nil)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
             .background(
                 RoundedRectangle(cornerRadius: 4)
                     .fill(background(pressed: pressed))
@@ -44,6 +49,22 @@ struct SharedButtonStyle: ButtonStyle {
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private var horizontalPadding: CGFloat {
+        switch size {
+        case .small: 12
+        case .medium: 20
+        case .large: 32
+        }
+    }
+
+    private var verticalPadding: CGFloat {
+        switch size {
+        case .small: 6
+        case .medium: 10
+        case .large: 12
+        }
     }
 
     private func background(pressed: Bool) -> Color {

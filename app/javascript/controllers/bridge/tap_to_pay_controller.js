@@ -10,7 +10,7 @@ import { BridgeComponent } from "@hotwired/hotwire-native-bridge"
 // browser nothing here runs — the button that leads here only shows in the app.
 export default class extends BridgeComponent {
   static component = "tap-to-pay"
-  static values = { payment: Object, connectionTokenUrl: String, locationId: String, label: String, canAcceptTerms: Boolean }
+  static values = { payment: Object, connectionTokenUrl: String, locationId: String, label: String, canAcceptTerms: Boolean, doorPath: String }
 
   pay(event) {
     if (!this.enabled) return
@@ -26,10 +26,12 @@ export default class extends BridgeComponent {
       transferGroup: payment.transfer_group,
       connectionTokenUrl: new URL(this.connectionTokenUrlValue, window.location.href).toString(),
       locationId: this.locationIdValue,
-      label: this.labelValue
+      label: this.labelValue,
+      canAcceptTerms: this.canAcceptTermsValue,
+      doorPath: this.doorPathValue
     }
     this.send("pay", data, (message) => {
-      // { status: "paid" | "failed" | "canceled", message, paymentIntentId }
+      // { status: "paid" | "failed" | "canceled", message, paymentIntentId, declined }
       this.dispatch("done", { detail: message.data, prefix: "tap-to-pay" })
     })
   }

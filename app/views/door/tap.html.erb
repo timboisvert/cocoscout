@@ -2,7 +2,8 @@
   show = @listing.show
   tickets = @order.tickets.includes(:ticket_tier).to_a
 %>
-<% content_for :title, turbo_native_app? ? "Tap to Pay" : "Tap to Pay · #{@listing.display_title}" %>
+<%# Apple's name is always the whole "Tap to Pay on iPhone"; the app's title bar has room only for the door's. %>
+<% content_for :title, turbo_native_app? ? "Work the door" : "Tap to Pay on iPhone · #{@listing.display_title}" %>
 <% content_for :door_header do %>
   <%# The app has its own back button. %>
   <% unless turbo_native_app? %>
@@ -12,7 +13,7 @@
   <% end %>
   <div class="min-w-0 flex-1">
     <div class="text-base font-semibold text-gray-900 leading-tight truncate"><%= @listing.display_title %></div>
-    <div class="text-xs text-gray-500 truncate">Tap to Pay · <%= show.date_and_time.strftime("%-l:%M %p") %></div>
+    <div class="text-xs text-gray-500 truncate">Tap to Pay on iPhone · <%= show.date_and_time.strftime("%-l:%M %p") %></div>
   </div>
 <% end %>
 
@@ -29,12 +30,13 @@
      data-bridge--tap-to-pay-connection-token-url-value="<%= door_tap_connection_token_path(@listing) %>"
      data-bridge--tap-to-pay-location-id-value="<%= @location_id %>"
      data-bridge--tap-to-pay-label-value="<%= @listing.display_title %>"
-     data-bridge--tap-to-pay-can-accept-terms-value="<%= @can_accept_terms %>">
+     data-bridge--tap-to-pay-can-accept-terms-value="<%= @can_accept_terms %>"
+     data-bridge--tap-to-pay-door-path-value="<%= door_path(@listing) %>">
   <div data-door-tap-target="waiting" class="rounded-2xl border border-gray-200 bg-white p-5 text-center">
     <div class="text-sm text-gray-600"><%= tickets.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} × #{tier.name}" }.join(", ") %></div>
     <div class="mt-1 text-4xl font-bold tabular-nums text-gray-900"><%= number_to_currency(@order.total_cents / 100.0) %></div>
     <%# No drawn tap icon: Apple allows none of our own (Tap to Pay 5.5 and its marketing rules). %>
-    <p class="mt-6 text-base font-medium text-gray-900" data-door-tap-target="prompt">Hold their card or phone to the top of this phone</p>
+    <p class="mt-6 text-base font-medium text-gray-900" data-door-tap-target="prompt">Hold their card or phone to the top of this iPhone</p>
     <p class="mt-1 text-sm text-gray-600">Contactless card, Apple Pay or Google Pay</p>
     <div class="mt-2 flex justify-center">
       <%= render "shared/button", text: "How to take a tap", variant: "ghost", size: "small", type: :button,

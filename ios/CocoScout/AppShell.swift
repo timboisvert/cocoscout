@@ -97,6 +97,21 @@ final class AppShell {
         }
     }
 
+    // MARK: Tap to Pay on iPhone
+
+    /// Who can sell with Tap to Pay on iPhone, with every menu: warm it up
+    /// (Apple 1.5), and show Apple's awareness screen once (Apple 3.1, 3.2).
+    func update(tapToPay info: TapToPayInfo?) {
+        TapToPaySetup.shared.update(info: info)
+        guard let info else { return }
+        // Let the page settle first, and never over a sheet already showing.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(800))
+            guard self.tabBarController.presentedViewController == nil else { return }
+            TapToPaySplash.showIfNeeded(info, over: self.tabBarController) { [weak self] path in self?.open(path: path) }
+        }
+    }
+
     // MARK: The menu
 
     func showMenu() {

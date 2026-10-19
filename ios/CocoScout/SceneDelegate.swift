@@ -28,6 +28,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
 
+    /// Back in front: Tap to Pay on iPhone warms up again (Apple 1.5); the
+    /// reader disconnects whenever the app goes to the background.
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        #if DEBUG
+        TapToPaySetup.shared.warmUp()
+        #endif
+    }
+
     /// A cocoscout.com link tapped while the app was already running.
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         guard userActivity.activityType == NSUserActivityTypeBrowsingWeb else { return }

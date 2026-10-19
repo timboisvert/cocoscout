@@ -27,7 +27,7 @@ export default class extends Controller {
         this.errorTarget.classList.add("hidden")
         this.retryTarget.classList.add("hidden")
         if (this.hasDeclinedReceiptTarget) this.declinedReceiptTarget.classList.add("hidden")
-        this.promptTarget.textContent = "Hold their card or phone to the top of this phone"
+        this.promptTarget.textContent = "Hold their card or phone to the top of this iPhone"
         this.askApp()
     }
 

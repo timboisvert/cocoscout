@@ -179,7 +179,7 @@
                 classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "compButton" } %>
         </div>
       </div>
-      <p class="mt-3 text-xs text-gray-500"><%= "Tap to Pay takes their card or phone on this one. " if can_tap %><%= card_label %> shows a code they scan to pay on their own phone, with Apple Pay, Google Pay or a card. Cash and comps are checked in as you record them<%= "; a comp carries no products" if @offers.any? %>.</p>
+      <p class="mt-3 text-xs text-gray-500"><%= "Tap to Pay on iPhone takes their card or phone right on this iPhone. " if can_tap %><%= card_label %> shows a code they scan to pay on their own phone, with Apple Pay, Google Pay or a card. Cash and comps are checked in as you record them<%= "; a comp carries no products" if @offers.any? %>.</p>
     <% end %>
   <% end %>
 
