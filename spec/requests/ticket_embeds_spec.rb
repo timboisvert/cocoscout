@@ -47,14 +47,17 @@ RSpec.describe "Ticketing embed", type: :request do
     expect(response.body).to include(tickets_checkout_done_url(token: order.token, embed: "1"))
   end
 
-  it "gives managers the code to paste" do
+  it "keeps the Your website tab off Ticketing settings until embeds are ready to offer" do
     admin = create(:user, email_address: "boisvert@gmail.com", password: "Password123!")
     create(:organization_role, :manager, user: admin, organization: org)
     post handle_signin_path, params: { email_address: admin.email_address, password: "Password123!" }
     get manage_path
 
     get manage_ticketing_settings_section_path(section: "embed")
-    expect(response.body).to include(%(data-cocoscout-tickets=&quot;starsandgarters&quot;))
-    expect(response.body).to include("/tickets/embed.js").and include(listing.slug)
+    expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "box_office"))
+    follow_redirect!
+    expect(response.body).not_to include("Your website")
+    get manage_ticketing_path
+    expect(response.body).not_to include("Embed on your website")
   end
 end

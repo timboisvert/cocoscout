@@ -14,12 +14,34 @@
 %>
 
 <div class="space-y-6">
-  <% if TapToPay.available_for?(Current.organization) %>
-    <%# How to turn on Tap to Pay on iPhone, where a new organization finishes setting up its door (Apple 3.4). %>
-    <div class="bg-white border border-gray-200 rounded-xl px-6 py-4">
-      <h2 class="text-lg font-semibold text-gray-900">Tap to Pay on iPhone</h2>
-      <p class="text-sm text-gray-600 mt-1">Anyone who can sell at your door can accept physical debit and credit cards as well as Apple Pay and other digital wallets, right on their iPhone. In the CocoScout app, open the menu and choose Tap to Pay on iPhone to set it up.</p>
+  <% if TapToPay.offered_to?(Current.organization, Current.user) %>
+    <%# Tap to Pay on iPhone (Tim, 2026-10-19): how it's set here, changed in
+        a modal. It's also where a new organization finishing its door
+        setup learns how to turn it on (Apple 3.4). %>
+    <% tap_on = ticketing_profile.tap_to_pay? %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-tap-to-pay-card>
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Tap to Pay on iPhone</h2>
+        <p class="text-sm text-gray-600 mt-1">Accept physical debit and credit cards as well as Apple Pay and other digital wallets at your door, right on an iPhone.</p>
+      </div>
+      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0 flex items-center gap-2 text-sm">
+          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 <%= tap_on ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700" %>"><%= tap_on ? "On" : "Off" %></span>
+          <span class="text-gray-600">
+            <% if !tap_on %>
+              Nobody takes cards on an iPhone at your door.
+            <% elsif ticketing_profile.enabled? %>
+              Anyone who can check people in and sell tickets can take cards in the CocoScout app.
+            <% else %>
+              It starts working once your box office is open.
+            <% end %>
+          </span>
+        </div>
+        <%= render "shared/button", text: "Manage", variant: "secondary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "tap-to-pay-settings" } %>
+      </div>
     </div>
+    <%= render "manage/ticketing_settings/tap_to_pay_modal", id: "tap-to-pay-settings" %>
   <% end %>
   <%# When the Door shows in the app's menu (DoorTonight). %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">

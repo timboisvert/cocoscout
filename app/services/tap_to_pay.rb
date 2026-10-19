@@ -31,6 +31,17 @@ class TapToPay
     profile.present? && profile.enabled? && profile.tap_to_pay?
   end
 
+  # Whether the organization sees Tap to Pay on iPhone on Ticketing settings
+  # → Door, to switch it on or off: CocoScout's to offer while it's new
+  # (TicketingProfile#tap_to_pay_offered, Tim 2026-10-19). A superadmin sees
+  # it everywhere, to offer it.
+  def self.offered_to?(organization, user = nil)
+    profile = organization&.ticketing_profile
+    return false if profile.nil?
+
+    profile.tap_to_pay_offered? || profile.tap_to_pay? || user&.superadmin? || false
+  end
+
   def self.organizations_for(user)
     TicketingDoorAccess.organizations_for(user).select do |organization|
       available_for?(organization) && TicketingDoorAccess.at_least?(TicketingDoorAccess.level_for(user, organization), :box_office)

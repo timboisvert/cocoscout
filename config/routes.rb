@@ -1334,6 +1334,7 @@ Rails.application.routes.draw do
     post   "ticketing/settings/door",             to: "ticketing_settings#grant_door_access", as: "ticketing_door_access"
     post   "ticketing/settings/door/invite",      to: "ticketing_settings#invite_door_access", as: "ticketing_door_invite"
     patch  "ticketing/settings/door/app",         to: "ticketing_settings#update_door_in_app", as: "ticketing_door_in_app"
+    patch  "ticketing/settings/door/tap-to-pay",  to: "ticketing_settings#update_tap_to_pay", as: "ticketing_door_tap_to_pay"
     post   "ticketing/settings/door/:id/resend",  to: "ticketing_settings#resend_door_invite", as: "ticketing_door_invite_resend"
     patch  "ticketing/settings/door/:id",         to: "ticketing_settings#update_door_access", as: "ticketing_door_access_grant"
     delete "ticketing/settings/door/:id",         to: "ticketing_settings#revoke_door_access"

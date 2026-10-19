@@ -1,0 +1,9 @@
+<%# Apple's disclaimer for Tap to Pay on iPhone (Marketing Guide, US, Sept
+    2026), behind "Terms apply." wherever Tap to Pay on iPhone is offered.
+    Locals: classes (optional, for the details element). %>
+<details class="<%= local_assigns[:classes] || "text-xs text-gray-500" %>">
+  <summary class="cursor-pointer select-none">Terms apply.</summary>
+  <p class="mt-2">Tap to Pay on iPhone requires a supported payment app and the latest version of iOS. Update to the latest version by going to Settings &gt; General &gt; Software Update. Some contactless cards may not be accepted by your payment app. Transaction limits may apply. Tap to Pay on iPhone is not available in all markets. For Tap to Pay on iPhone countries and regions, see https://developer.apple.com/tap-to-pay/regions/.</p>
+  <p class="mt-2">Apple Pay is a service provided by Apple Payments Services LLC, a subsidiary of Apple Inc. Neither Apple Inc. nor Apple Payments Services LLC is a bank. Any card used in Apple Pay is offered by the card issuer.</p>
+  <p class="mt-2">The Contactless Indicator mark, consisting of four graduating arcs, is a trademark owned by and used with permission of EMVCo, LLC.</p>
+</details>

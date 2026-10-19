@@ -3,12 +3,16 @@
 module Manage
   # Ticketing settings, a routed-section page like Money and Contract settings:
   # the box office itself (its address, who pays fees, the pilot switch), tax
-  # on tickets, who can work the door, and the code for selling on the
-  # theater's own website. No branding in v1 — every org gets the same pages.
+  # on tickets, who can work the door (and Tap to Pay on iPhone there).
+  # No branding in v1 — every org gets the same pages.
+  #
+  # The "Your website" tab (sections/_embed, the code for selling from an
+  # organization's own site) is off the list until embeds are ready to offer
+  # (Tim, 2026-10-19); the embed pages themselves still work.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office page refunds tax notifications door sharing comps embed].freeze
+    SECTIONS = %w[box_office page refunds tax notifications door sharing comps].freeze
     SECTION_LABELS = { "box_office" => "Box office", "page" => "Box office page", "refunds" => "Refunds", "tax" => "Tax", "notifications" => "Notifications",
-                       "door" => "Door", "sharing" => "Who sees sales", "comps" => "Comps", "embed" => "Your website" }.freeze
+                       "door" => "Door", "sharing" => "Who sees sales", "comps" => "Comps" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -96,7 +100,11 @@ module Manage
       ticketing_profile.update!(enabled: true)
       notice = "Your box office is open. Buyers can find your shows at your box office link."
       # The end of a new organization's onboarding says how to turn on Tap to Pay on iPhone (Apple 3.4).
-      notice += " To take cards at the door on an iPhone, open the CocoScout app and choose Tap to Pay on iPhone in the menu." if TapToPay.available_for?(Current.organization)
+      if TapToPay.available_for?(Current.organization)
+        notice += " To take cards at the door on an iPhone, open the CocoScout app and choose Tap to Pay on iPhone in the menu."
+      elsif TapToPay.offered_to?(Current.organization)
+        notice += " To take cards at the door on an iPhone, turn on Tap to Pay on iPhone in Ticketing settings, on the Door tab."
+      end
       redirect_to manage_ticketing_path, notice: notice
     end
 
@@ -213,6 +221,23 @@ module Manage
       else
         redirect_to section_path("door"), alert: ticketing_profile.errors.full_messages.to_sentence
       end
+    end
+
+    # Tap to Pay on iPhone at this organization's door, from its modal on the
+    # Door tab: on or off. Switching it on offers it here from then on.
+    def update_tap_to_pay
+      return redirect_to(section_path("door")) unless TapToPay.offered_to?(Current.organization, Current.user)
+
+      on = params.dig(:ticketing_profile, :tap_to_pay) == "1"
+      ticketing_profile.update!(tap_to_pay: on, tap_to_pay_offered: true)
+      notice = if !on
+        "Tap to Pay on iPhone is off."
+      elsif ticketing_profile.enabled?
+        "Tap to Pay on iPhone is on. To set up an iPhone, open the CocoScout app and choose Tap to Pay on iPhone in the menu."
+      else
+        "Tap to Pay on iPhone is on. It starts working once your box office is open."
+      end
+      redirect_to section_path("door"), notice: notice
     end
 
     def revoke_door_access

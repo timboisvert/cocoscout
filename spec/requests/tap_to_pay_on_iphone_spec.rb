@@ -34,6 +34,12 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     post handle_signin_path, params: { email_address: user.email_address, password: password }, headers: headers
   end
 
+  def sign_in_to_manage(user)
+    get signout_path
+    post handle_signin_path, params: { email_address: user.email_address, password: password }
+    post set_organization_path(id: org.id)
+  end
+
   it "has its own page for someone who can sell there, with set up, the guide and Apple's disclaimer" do
     sign_in(seller)
     get door_tap_to_pay_path, headers: in_app
@@ -72,6 +78,44 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     get door_tap_to_pay_path, headers: in_app
     setup = Nokogiri::HTML(response.body).at_css("[data-controller~='tap-to-pay-setup']")
     expect(setup["data-bridge--tap-to-pay-can-accept-terms-value"]).to eq("true")
+  end
+
+  it "sits on Ticketing settings → Door once CocoScout offers it, set in a modal there" do
+    profile.update!(tap_to_pay: false)
+    create(:organization_role, :manager, user: owner, organization: org)
+    sign_in_to_manage(owner)
+    get manage_ticketing_settings_section_path(section: "door")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Who can work the door")
+    expect(response.body).not_to include("data-tap-to-pay-card")
+    patch manage_ticketing_door_tap_to_pay_path, params: { ticketing_profile: { tap_to_pay: "1" } }
+    expect(profile.reload.tap_to_pay?).to be(false)
+
+    # A superadmin sees it everywhere, and switching it on offers it.
+    admin = create(:user, email_address: "boisvert@gmail.com", password: password)
+    create(:organization_role, :manager, user: admin, organization: org)
+    sign_in_to_manage(admin)
+    get manage_ticketing_settings_section_path(section: "door")
+    expect(response.body).to include("data-tap-to-pay-card")
+    patch manage_ticketing_door_tap_to_pay_path, params: { ticketing_profile: { tap_to_pay: "1" } }
+    expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "door"))
+    expect(flash[:notice]).to include("Tap to Pay on iPhone is on")
+    expect(profile.reload).to have_attributes(tap_to_pay: true, tap_to_pay_offered: true)
+
+    sign_in_to_manage(owner)
+    get manage_ticketing_settings_section_path(section: "door")
+    card = Nokogiri::HTML(response.body).at_css("[data-tap-to-pay-card]")
+    expect(card.text).to include("Tap to Pay on iPhone", "On", "Anyone who can check people in and sell tickets")
+    modal = Nokogiri::HTML(response.body).at_css("#tap-to-pay-settings")
+    expect(modal.text).to include("Take cards on iPhones at your door", "Setting up an iPhone", "iPhone XS or later", "Terms apply.")
+    expect(modal.at_css("input[type=checkbox][name='ticketing_profile[tap_to_pay]']")["checked"]).to eq("checked")
+    expect(response.body).not_to include("Stripe")
+
+    # Switched off, it stays on the tab to switch on again.
+    patch manage_ticketing_door_tap_to_pay_path, params: { ticketing_profile: { tap_to_pay: "0" } }
+    expect(profile.reload.tap_to_pay?).to be(false)
+    get manage_ticketing_settings_section_path(section: "door")
+    expect(Nokogiri::HTML(response.body).at_css("[data-tap-to-pay-card]").text).to include("Off")
   end
 
   it "tells the app who can sell with it, in the menu, only in a copy of the app that has it" do
