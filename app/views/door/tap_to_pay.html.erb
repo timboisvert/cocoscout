@@ -6,8 +6,12 @@
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
     <% end %>
   <% end %>
-  <div class="coustard-regular text-xl leading-tight text-gray-900">Tap to Pay on iPhone</div>
+  <div class="coustard-regular text-xl leading-tight text-gray-900"><%= tap_to_pay_name %></div>
 <% end %>
+<%# The Android app's own page: none of Apple's words, picture or terms. %>
+<% if native_android? %>
+  <%= render "door/tap_to_pay_android" %>
+<% else %>
 <%# Tap to Pay on iPhone's page in the app (Apple 3.5, 3.6, 4.3): Apple's
     words and picture, how this iPhone stands, Set up (Apple's terms, then
     the guide), the guide again, and Apple's disclaimer behind "Terms apply." %>
@@ -86,3 +90,4 @@
 
   <%= render "shared/tap_to_pay_terms", classes: "mt-3 px-1 text-xs text-gray-500" %>
 </div>
+<% end %>

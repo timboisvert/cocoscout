@@ -36,6 +36,18 @@ module NativeAppHelper
     native_android? ? "your phone's Settings" : "iPhone Settings"
   end
 
+  # Tap to Pay's name. On iPhone it's always Apple's whole "Tap to Pay on
+  # iPhone" (Apple's review); the Android app's is plain "Tap to Pay", and
+  # never names Apple or its phone.
+  def tap_to_pay_name
+    native_android? ? "Tap to Pay" : "Tap to Pay on iPhone"
+  end
+
+  # The door phone, in Tap to Pay's words: "this iPhone" or "this phone".
+  def tap_to_pay_phone
+    native_android? ? "phone" : "iPhone"
+  end
+
   # Everything in My, as the menu's tiles: the web nav's items, each titled
   # "My …" like the page it opens (Tim, 2026-10-12), with SF Symbols, then
   # profile, groups (only for someone in one) and settings. badge is a count.
@@ -49,11 +61,11 @@ module NativeAppHelper
     items = talent_nav_sections.flat_map { |section| section[:items] }.map { |item| native_menu_item(item) }
     items.reject! { |item| item[:id] == "door" }
     paths = [ profile_path, (groups_path if native_in_a_group?(user)), account_path ].compact
-    tap_to_pay = ({ id: "tap_to_pay", title: "Tap to Pay on iPhone", path: door_tap_to_pay_path, icon: "wave.3.right.circle", badge: 0 } if native_tap_to_pay)
+    tap_to_pay = ({ id: "tap_to_pay", title: tap_to_pay_name, path: door_tap_to_pay_path, icon: "wave.3.right.circle", badge: 0 } if native_tap_to_pay)
     items + [ tap_to_pay ].compact + paths.map { |path| native_menu_item(path: path) } + [ native_door_item(user) ].compact
   end
 
-  # Tap to Pay on iPhone, for an app that has it, when this person can sell
+  # Tap to Pay, for an app that has it, when this person can sell
   # at a door that has it switched on (TapToPay.organizations_for): where its
   # page is, what the app warms Terminal up with at launch (Apple 1.5), and
   # whether they may accept Apple's terms (3.8). Nil otherwise, and the app

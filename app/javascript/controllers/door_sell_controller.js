@@ -7,7 +7,7 @@ import { orderTotalCents, money } from "controllers/lib/ticket_pricing"
 export default class extends Controller {
     static targets = ["row", "input", "count", "minus", "plus", "cardButton", "cashButton", "compButton", "tapButton"]
     static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, tapPerMille: Number, tapFixed: Number,
-                      cardLabel: { type: String, default: "Card or phone pay" } }
+                      cardLabel: { type: String, default: "Card or phone pay" }, tapLabel: { type: String, default: "Tap to Pay on iPhone" } }
 
     connect() {
         this.render()
@@ -61,7 +61,7 @@ export default class extends Controller {
             const tap = orderTotalCents({ base, paid, feeMode: this.feeModeValue, platformFee: this.platformFeeValue,
                 perMille: this.tapPerMilleValue, fixed: this.tapFixedValue })
             // Never greyed out (Apple's Tap to Pay 5.3): with nothing picked it says so instead.
-            this.label(this.tapButtonTarget, count === 0 ? "Tap to Pay on iPhone" : `Tap to Pay on iPhone · ${money(tap)}`)
+            this.label(this.tapButtonTarget, count === 0 ? this.tapLabelValue : `${this.tapLabelValue} · ${money(tap)}`)
         }
         // A free ticket can't go on a card, and a comp carries no products.
         if (card === 0) this.cardButtonTarget.disabled = true

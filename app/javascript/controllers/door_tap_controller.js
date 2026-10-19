@@ -10,6 +10,8 @@ export default class extends Controller {
     static values = { statusUrl: String, settleUrl: String, expiresAt: String }
 
     connect() {
+        // The page's own words for the tap (they differ between the phones).
+        this.promptText = this.promptTarget.textContent
         this.timer = setInterval(() => this.poll(), 2000)
         this.clock = setInterval(() => this.tick(), 1000)
         this.tick()
@@ -27,7 +29,7 @@ export default class extends Controller {
         this.errorTarget.classList.add("hidden")
         this.retryTarget.classList.add("hidden")
         if (this.hasDeclinedReceiptTarget) this.declinedReceiptTarget.classList.add("hidden")
-        this.promptTarget.textContent = "Hold their card or phone to the top of this iPhone"
+        this.promptTarget.textContent = this.promptText
         this.askApp()
     }
 

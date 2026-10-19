@@ -1,0 +1,73 @@
+<%# Tap to Pay's page in the Android app (door/tap_to_pay): how this phone
+    stands, Set up (location access, then the connection), and the guide
+    again. Android has no terms and no required wording, so it has none of
+    the iPhone page's Apple words, picture or disclaimer. Every panel the
+    iPhone page has is here too (tap_to_pay_setup_controller.js shows one at a
+    time); "needsAdmin" is Apple's and never comes from the Android app. %>
+<div data-controller="tap-to-pay-setup bridge--tap-to-pay"
+     data-action="tap-to-pay-setup:status->bridge--tap-to-pay#status tap-to-pay:state->tap-to-pay-setup#state"
+     data-bridge--tap-to-pay-connection-token-url-value="<%= door_tap_to_pay_token_path(organization_id: @organization.id) %>"
+     data-bridge--tap-to-pay-location-id-value="<%= @location_id %>">
+
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5">
+    <h1 class="text-2xl font-bold text-gray-900">Tap to Pay</h1>
+    <p class="mt-1 text-[15px] text-gray-700">Take contactless cards and phone wallets right on this phone, at the door.</p>
+
+    <div class="mt-5">
+      <% if @location_error %>
+        <div class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800"><%= @location_error %></div>
+      <% end %>
+      <div data-tap-to-pay-setup-target="checking" class="<%= 'hidden' if @location_error %> text-sm text-gray-500">Checking this phone…</div>
+
+      <div data-tap-to-pay-setup-target="browser" class="hidden rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">
+        Open this page in the CocoScout app to set up Tap to Pay.
+      </div>
+
+      <div data-tap-to-pay-setup-target="notSetUp" class="hidden">
+        <%= render "shared/button", text: "Set up Tap to Pay", variant: "primary", size: "large", type: :button,
+              classes: "w-full justify-center", data: { action: "click->bridge--tap-to-pay#enable" } %>
+        <p class="mt-2 text-xs text-gray-500">This phone gets ready to take taps for <%= @organizations.map(&:name).to_sentence %>. It asks for your location, which card networks require for every payment.</p>
+      </div>
+
+      <div data-tap-to-pay-setup-target="preparing" class="hidden" role="status" aria-live="polite">
+        <div class="text-sm font-medium text-gray-900">Getting Tap to Pay ready <span class="tabular-nums text-gray-500" data-tap-to-pay-setup-target="progressText"></span></div>
+        <div class="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden"><div class="h-2 rounded-full bg-pink-500 transition-all progress-unknown" style="width: 0%" data-tap-to-pay-setup-target="progress"></div></div>
+        <p class="mt-2 text-xs text-gray-500">This takes a few seconds. Tap to Pay can't take payments until it's ready.</p>
+      </div>
+
+      <div data-tap-to-pay-setup-target="ready" class="hidden">
+        <div class="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">
+          <div class="font-semibold">Ready</div>
+          <div>This phone can take payments with Tap to Pay.</div>
+        </div>
+        <div class="mt-3">
+          <%= link_to door_index_path, class: "block" do %>
+            <%= render "shared/button", text: "Try it out at the door", variant: "primary", size: "large", classes: "w-full justify-center" %>
+          <% end %>
+          <p class="mt-2 text-xs text-gray-500">Open a show, choose Sell, pick tickets, then Tap to Pay.</p>
+        </div>
+      </div>
+
+      <div data-tap-to-pay-setup-target="needsAdmin" class="hidden rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        Tap to Pay isn't ready for your organization yet. Ask your organization's manager to contact CocoScout.
+      </div>
+
+      <div data-tap-to-pay-setup-target="failed" class="hidden">
+        <div class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800" data-tap-to-pay-setup-target="failedText"></div>
+        <div class="mt-3">
+          <%= render "shared/button", text: "Try again", variant: "primary", size: "medium", type: :button,
+                classes: "w-full justify-center", data: { action: "click->bridge--tap-to-pay#enable" } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-3 rounded-2xl border border-gray-200 bg-white px-5 py-4">
+    <h2 class="text-base font-semibold text-gray-900">How to take a tap</h2>
+    <p class="mt-1 text-sm text-gray-600">Where the buyer holds their card, phone or watch, and what happens when a card asks for a PIN.</p>
+    <div class="mt-3">
+      <%= render "shared/button", text: "See how", variant: "secondary", size: "medium", type: :button,
+            classes: "w-full justify-center", data: { action: "click->bridge--tap-to-pay#howToTap" } %>
+    </div>
+  </div>
+</div>
