@@ -192,7 +192,7 @@ RSpec.describe "Contract people", type: :request do
     post set_organization_path(id: org.id)
 
     get amend_choose_manage_contract_path(contract)
-    expect(response.body).to include("Change who's on it", amend_people_manage_contract_path(contract))
+    expect(response.body).to include(">Who&#39;s on it<", amend_people_manage_contract_path(contract))
 
     get amend_people_manage_contract_path(contract)
     expect(response).to have_http_status(:ok)

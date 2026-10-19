@@ -28,8 +28,8 @@ RSpec.describe "Contracts — change dates", type: :request do
   it "offers the choice between changing dates and changing the deal" do
     get amend_choose_manage_contract_path(contract)
 
-    expect(response.body).to include("Change the dates")
-    expect(response.body).to include("Change the deal")
+    expect(response.body).to include(">Dates<", amend_dates_manage_contract_path(contract))
+    expect(response.body).to include(">The deal<", amend_bookings_manage_contract_path(contract))
   end
 
   describe "removing a future date" do

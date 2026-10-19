@@ -25,8 +25,8 @@ RSpec.describe "Contracts — change the basic info", type: :request do
     get amend_choose_manage_contract_path(contract)
 
     body = response.body
-    expect(body).to include("Change the basic info", amend_basics_manage_contract_path(contract))
-    expect(body.index("Change the basic info")).to be < body.index("Change the dates")
+    expect(body).to include(">Basic info<", amend_basics_manage_contract_path(contract))
+    expect(body.index(">Basic info<")).to be < body.index(">Dates<")
   end
 
   it "opens with the production's name and description" do

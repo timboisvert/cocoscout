@@ -1,114 +1,44 @@
+<%# What are you changing? (Tim, 2026-10-18): three short groups instead of
+    six tall cards, so the small things read as small, the date and service
+    changes as recorded-but-unsigned, and amending the deal as the one that
+    goes back for a signature. %>
+<%
+  row = lambda do |path, icon_name, title, words, pink: false|
+    link_to path, class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors" do
+      concat(content_tag(:span, icon(icon_name, class: "w-4 h-4"),
+                         class: "inline-flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 #{pink ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-600'}"))
+      concat(content_tag(:span, class: "min-w-0 flex-1") {
+        concat content_tag(:span, title, class: "block text-sm font-semibold text-gray-900")
+        concat content_tag(:span, words, class: "block text-xs text-gray-600")
+      })
+      concat content_tag(:span, icon("arrow-right", class: "w-4 h-4"), class: "flex-shrink-0 #{pink ? 'text-pink-500' : 'text-gray-400'}")
+    end
+  end
+  group = lambda do |eyebrow, words, pink: false, &rows|
+    concat content_tag(:h3, eyebrow, class: "text-[11px] font-semibold uppercase tracking-wide text-gray-500")
+    concat content_tag(:p, words, class: "text-xs text-gray-500 mb-2")
+    concat content_tag(:div, capture(&rows), class: "divide-y divide-gray-100 rounded-lg overflow-hidden mb-6 #{pink ? 'border-2 border-pink-300' : 'border border-gray-200'}")
+  end
+%>
 <%= render layout: "manage/contracts/amend_layout", locals: { step_name: "What are you changing?" } do %>
     <h2 class="text-2xl coustard-regular text-gray-900 mb-1">What are you changing?</h2>
-    <p class="text-gray-600 mb-6">Each kind of change is its own job, so the small ones never touch the deal.</p>
+    <p class="text-gray-600 mb-6">Small things never touch the deal. Only the deal itself goes back for a signature.</p>
 
-    <div class="space-y-3">
-      <%# The smallest change of all: what the production is called and how it's
-          described. Nothing on the signed contract moves. %>
-      <%= link_to amend_basics_manage_contract_path(@contract),
-            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
-        <div class="flex items-start gap-4">
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
-            <%= icon("pencil", class: "w-5 h-5") %>
-          </span>
-          <div>
-            <p class="font-semibold text-gray-900">Change the basic info</p>
-            <p class="text-sm text-gray-600 mt-0.5">
-              The production's name and description. The dates, the money and the paperwork stay exactly
-              as they are.
-            </p>
-          </div>
-        </div>
-      <% end %>
+    <% group.call("Small changes", "Nothing on the signed contract moves.") do %>
+      <%= row.call(amend_basics_manage_contract_path(@contract), "pencil", "Basic info", "The production's name and description.") %>
+      <%= row.call(amend_people_manage_contract_path(@contract), "users", "Who's on it",
+                   "The people on #{@contract.contractor_name}'s side who see the dates, the ticket sales and what the contract pays.") %>
+      <%= row.call(amend_space_manage_contract_path(@contract), "building", "The room", "A different space at the same venue, for one date or all of them.") %>
+    <% end %>
 
-      <%# Who's on the contract besides the contractor: the people who see it
-          on My (docs/contract_people_plan.md). Nothing on paper moves. %>
-      <%= link_to amend_people_manage_contract_path(@contract),
-            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
-        <div class="flex items-start gap-4">
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
-            <%= icon("users", class: "w-5 h-5") %>
-          </span>
-          <div>
-            <p class="font-semibold text-gray-900">Change who's on it</p>
-            <p class="text-sm text-gray-600 mt-0.5">
-              The people on <%= @contract.contractor_name %>'s side who see the dates, the ticket sales and what the
-              contract pays. The contract itself stays exactly as it is.
-            </p>
-          </div>
-        </div>
-      <% end %>
+    <% group.call("Dates and services", "Applied right away and recorded on the contract. No new signature.") do %>
+      <%= row.call(amend_dates_manage_contract_path(@contract), "calendar", "Dates", "Cancel a date, move one, or add another. Its payments come and go with it.") %>
+      <%= row.call(amend_services_manage_contract_path(@contract), "check-circle", "Services and prices",
+                   "What each date gets and what it costs, on any date that isn't settled yet.") %>
+    <% end %>
 
-      <%# The common case, and the safe one: nothing about the money is
-          regenerated, so a settled date can't sprout a second payment. %>
-      <%= link_to amend_dates_manage_contract_path(@contract),
-            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
-        <div class="flex items-start gap-4">
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
-            <%= icon("calendar", class: "w-5 h-5") %>
-          </span>
-          <div>
-            <p class="font-semibold text-gray-900">Change the dates</p>
-            <p class="text-sm text-gray-600 mt-0.5">
-              Cancel a night, move one, or add another. The payments tied to a date come and go with it;
-              everything else about the deal is left alone.
-            </p>
-          </div>
-        </div>
-      <% end %>
-
-      <%# Services and prices on the open dates. The deal isn't regenerated,
-          and a settled date keeps what it had. %>
-      <%= link_to amend_services_manage_contract_path(@contract),
-            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
-        <div class="flex items-start gap-4">
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>
-          </span>
-          <div>
-            <p class="font-semibold text-gray-900">Change services and prices</p>
-            <p class="text-sm text-gray-600 mt-0.5">
-              Which services each date gets and what they cost, on any date that isn't settled yet: add a
-              booth tech to one night, change its hours, or its price, down to $0. The deal stays as it is.
-            </p>
-          </div>
-        </div>
-      <% end %>
-
-      <%# Smaller again: the contract names the venue, not the room, so moving
-          them between spaces is ours to do without new paper. Always offered —
-          a venue with one room today may have two tomorrow. %>
-      <%= link_to amend_space_manage_contract_path(@contract),
-            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
-        <div class="flex items-start gap-4">
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
-            <%= icon("building", class: "w-5 h-5") %>
-          </span>
-          <div>
-            <p class="font-semibold text-gray-900">Change the room</p>
-            <p class="text-sm text-gray-600 mt-0.5">
-              Put one night, or all of them, in a different space at the same venue. The dates, the money
-              and the paperwork stay exactly as they are.
-            </p>
-          </div>
-        </div>
-      <% end %>
-
-      <%= link_to amend_bookings_manage_contract_path(@contract),
-            class: "block border border-gray-300 rounded-xl p-5 hover:border-pink-400 hover:bg-pink-50/40 transition-colors" do %>
-        <div class="flex items-start gap-4">
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 text-gray-600 flex-shrink-0">
-            <%= icon("dollar-sign", class: "w-5 h-5") %>
-          </span>
-          <div>
-            <p class="font-semibold text-gray-900">Change the deal</p>
-            <p class="text-sm text-gray-600 mt-0.5">
-              The split or the fee, for every date or just one, ticketing, or the booking pattern. Walks the full amendment
-              and rebuilds the payment schedule around what's changed.
-            </p>
-          </div>
-        </div>
-      <% end %>
-    </div>
-
+    <% group.call("Amend the deal", "A new version of the contract, sent for signature.", pink: true) do %>
+      <%= row.call(amend_bookings_manage_contract_path(@contract), "file-text", "The deal",
+                   "The split or the fee, for every date or just one, ticketing, or the booking pattern. Rebuilds the payment schedule around what's changed.", pink: true) %>
+    <% end %>
 <% end %>

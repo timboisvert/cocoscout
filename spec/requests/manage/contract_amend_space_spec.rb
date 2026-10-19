@@ -30,9 +30,9 @@ RSpec.describe "Contracts — change the room", type: :request do
   it "is offered alongside changing the dates and changing the deal" do
     get amend_choose_manage_contract_path(contract)
 
-    expect(response.body).to include("Change the room")
-    expect(response.body).to include("Change the dates")
-    expect(response.body).to include("Change the deal")
+    expect(response.body).to include(">The room<", amend_space_manage_contract_path(contract))
+    expect(response.body).to include(">Dates<")
+    expect(response.body).to include(">The deal<")
   end
 
   it "lists every date with the venue's rooms to choose from" do

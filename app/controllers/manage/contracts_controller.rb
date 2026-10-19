@@ -684,7 +684,6 @@ module Manage
       @amend_data["booking_rules"] ||= {}
       @amend_data["new_bookings"] ||= []
       @amend_data["removed_rental_ids"] ||= []
-      @production_name = @amend_data["production_name"] || @contract.production_name.presence || @contract.production&.name
     end
 
     def save_amend_bookings
@@ -719,8 +718,7 @@ module Manage
         "booking_rules" => booking_rules,
         "new_bookings" => new_bookings,
         "removed_rental_ids" => removed_rental_ids,
-        "moved_rentals" => moved_rentals,
-        "production_name" => params[:production_name].to_s.strip
+        "moved_rentals" => moved_rentals
       ))
 
       Rails.logger.info "[AMEND] amend_data saved for contract #{@contract.id}"
