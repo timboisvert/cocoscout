@@ -133,9 +133,13 @@ tries before that sees "An administrator needs to turn it on first" (3.8.1).
 6. Apple's terms are per merchant, and CocoScout is one merchant, so they
    may already be accepted from the Oct 15 test. If Set up in video 1 goes
    straight to the progress bar with no terms screen, they were. To show
-   them, follow the "remove the Merchant ID" guide linked on page 10 of
-   Apple's PDF (takes up to 15 minutes), delete the app, run it from Xcode
-   again and re-record.
+   them, remove the merchant ID first: go to
+   business.apple.com/taptopay/removeall, sign in with the Apple Account on
+   the iPhone, choose "Remove all merchant IDs" and confirm (Apple's page
+   "Remove a merchant ID in Apple Business", linked from page 10 of the
+   PDF). It takes up to 15 minutes, and Tap to Pay on iPhone stays off on
+   that account until the terms are accepted again in video 1. If the
+   page lists no merchant IDs, the terms were never accepted.
 7. Order: existing user, then new user, then checkout. Delete the app and
    run it from Xcode again before each of the first two.
 
