@@ -10,9 +10,10 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [x] Box office page: welcome line, wide image, layout.
 - [x] Drop the old `contract_service_options` table (8be7344c).
 - [x] Ticketing page: Coming up is Upcoming / Past, past dates newest first with their numbers (f4b91e4c).
-- [ ] Contract people move: run the dry run in prod, read the table, then run it for real.
-- [ ] Payee details: run the sync block in prod so people already set up get the heads-up when they're near $2,000.
-- [ ] Show time drift: run the listing loop across every contract show; fix any that drifted.
+- [ ] Contract people move: the dry run found nothing on active contracts; run the diagnostic block, then the move.
+- [x] Payee details: synced 104 payees, 91 have details coming due; the heads-up shows on My → Payments once someone's been paid $2,000.
+- [ ] Show time drift: 55 shows sit 11 to 60 minutes before their booking's event time (list in the 2026-10-19 chat); decide which clock is right per production, then run the fix block.
+- [ ] Tap to Pay publishing entitlement: reply to Apple's Oct 12 email (Case-ID 22828656) with the three videos and the checklist (`ios/tap_to_pay.md`). V1.1 can't ship until Apple answers.
 
 ## Soon
 
