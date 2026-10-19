@@ -241,7 +241,7 @@ class DoorController < ApplicationController
     @listing = TicketListing.includes(:organization, :production, show: %i[location location_space]).find(params[:listing_id])
     @level = TicketingDoorAccess.level_for(Current.user, @listing.organization)
     profile = @listing.organization.ticketing_profile
-    raise ActiveRecord::RecordNotFound unless @level && (profile&.enabled? || Current.user.superadmin?)
+    raise ActiveRecord::RecordNotFound unless @level && profile&.enabled?
   end
 
   def require_level(needed)

@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
 # Who may work the door, and how much they may do there:
-#   :manager    — org managers (and superadmins): everything at the door
+#   :manager    — org managers: everything at the door
 #   :box_office — check in, sell and comp at the door, look up orders
 #   :check_in   — scan, search and check people in
 # Anyone else gets nil. Grants are made in Ticketing settings → Door access.
 class TicketingDoorAccess
   LEVELS = %i[check_in box_office manager].freeze
 
+  # A superadmin gets no door of their own (Tim, 2026-10-18): the door is
+  # the organization's; support happens by impersonating someone on it.
   def self.level_for(user, organization)
     return nil unless user && organization
-    return :manager if user.superadmin? || organization.manageable_by?(user)
+    return :manager if organization.manageable_by?(user)
 
     grant = organization.ticketing_access_grants.active.find_by(user_id: user.id)
     grant&.access_level&.to_sym
@@ -23,7 +25,7 @@ class TicketingDoorAccess
   # Organizations whose door this user works, with ticketing switched on:
   # a door grant, a manager role, or their own. A superadmin's list is the
   # same (Tim, 2026-10-18: every organization on CocoScout showed up on his
-  # door); a superadmin can still open any show's door by its link.
+  # door).
   def self.organizations_for(user)
     return [] unless user
 
