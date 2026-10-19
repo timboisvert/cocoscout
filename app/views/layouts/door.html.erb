@@ -25,23 +25,30 @@
       organization and the time. %>
   <%
     door_organization = @listing&.organization || @organization
-    door_profile = door_organization&.ticketing_profile
-    door_org_link = door_profile&.enabled? ? tickets_box_office_path(org: door_profile.slug) : nil
     native = turbo_native_app?
   %>
   <body class="inter-regular text-slate-700 bg-gray-50">
     <%# The header is a little box (Tim, 2026-10-18): "Work the door", the
-        organization's name under it, the date and time under that. Nothing
+        organization's name under it (plain words, never a link: a link to the
+        ticket page confused people), the date and time under that. Nothing
         shares a line, so nothing gets cut off on a phone. %>
     <header class="<%= native ? '' : 'sticky top-0 z-10' %> bg-gray-50" style="padding-top: env(safe-area-inset-top)">
       <div class="mx-auto max-w-2xl px-4 pt-3">
         <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+          <%# The way back, a chevron beside the title (Tim, 2026-10-18): a
+              show's page goes back to its organization's list; that list goes
+              back to the choice of organizations when there are several. The
+              app has its own. %>
+          <% back_path = if native then nil
+                         elsif @listing then door_index_path(organization: @listing.organization_id)
+                         elsif @organization && @organizations&.many? then door_index_path
+                         end %>
           <% if content_for?(:door_header) %>
             <div class="flex items-center gap-2"><%= yield :door_header %></div>
           <% elsif !native %>
             <div class="flex items-center gap-1">
-              <% if @listing %>
-                <%= link_to door_index_path(organization: @listing.organization_id), class: "flex-shrink-0 p-1.5 -ml-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
+              <% if back_path %>
+                <%= link_to back_path, class: "flex-shrink-0 p-1.5 -ml-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": (@listing ? "All the shows" : "All your organizations") do %>
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 <% end %>
               <% end %>
@@ -49,11 +56,7 @@
             </div>
           <% end %>
           <% if door_organization %>
-            <% if door_org_link %>
-              <%= link_to door_organization.name, door_org_link, class: "block text-sm font-semibold text-pink-600 hover:text-pink-700 mt-0.5" %>
-            <% else %>
-              <div class="text-sm font-semibold text-gray-900 mt-0.5"><%= door_organization.name %></div>
-            <% end %>
+            <div class="text-sm font-semibold text-gray-900 mt-0.5"><%= door_organization.name %></div>
           <% end %>
           <div class="text-xs text-gray-500 tabular-nums mt-0.5"><%= Time.current.strftime("%A, %B %-d · %-l:%M %p") %></div>
         </div>
