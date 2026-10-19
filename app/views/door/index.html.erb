@@ -45,7 +45,7 @@
 <% else %>
   <div class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center">
     <div class="text-lg font-semibold text-gray-900">Nothing to work right now</div>
-    <p class="mt-2 text-sm text-gray-600">The door opens the morning of a show, or earlier when the theater sets that, and closes an hour after it ends.</p>
+    <p class="mt-2 text-sm text-gray-600">The door opens the morning of a show, or earlier when the organization sets that, and closes an hour after it ends.</p>
     <% if @next_listing %>
       <div class="mt-4 inline-block rounded-xl bg-gray-50 px-4 py-3 text-left">
         <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Next for you</div>
@@ -53,7 +53,7 @@
         <div class="text-xs text-gray-500">The door opens <%= opens_words.call(@next_listing) %><%= " that day" unless opens_words.call(@next_listing) == "that morning" %></div>
       </div>
     <% elsif @organizations.empty? %>
-      <p class="mt-3 text-sm text-gray-600">A theater manager can give you door access in Ticketing settings.</p>
+      <p class="mt-3 text-sm text-gray-600">An organization's manager can give you door access in Ticketing settings.</p>
     <% end %>
   </div>
 <% end %>

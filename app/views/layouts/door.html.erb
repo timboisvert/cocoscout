@@ -20,7 +20,7 @@
       The header (Tim, 2026-10-18) says what this is, "Work the door", and
       whose door: the organization's name, as a link to its box office, with
       the date and time. Never a person's picture: someone handing over money
-      should see the theater, not a stranger's face. In the app the native
+      should see the organization, not a stranger's face. In the app the native
       bar holds the title and the way back, so the header is just the
       organization and the time. %>
   <%
@@ -31,34 +31,38 @@
   %>
   <body class="inter-regular text-slate-700 bg-gray-50">
     <header class="<%= native ? '' : 'sticky top-0 z-10' %> border-b border-gray-200 bg-white" style="padding-top: env(safe-area-inset-top)">
-      <div class="mx-auto max-w-2xl px-3 py-2.5 flex items-center gap-2 min-h-[3.5rem]">
-        <%# A page that is one step inside a show (paying at the door) names
-            itself and the way back; every other page is "Work the door". %>
-        <% if content_for?(:door_header) %>
-          <%= yield :door_header %>
-        <% else %>
-          <% if @listing && !native %>
-            <%= link_to door_index_path, class: "flex-shrink-0 p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      <%# On a phone the organization and the time take their own line under
+          the title (Tim, 2026-10-18); side by side only when there's room. %>
+      <div class="mx-auto max-w-2xl px-3 py-2 min-h-[3.5rem] flex flex-wrap items-center gap-x-3 gap-y-0.5">
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+          <%# A page that is one step inside a show (paying at the door) names
+              itself and the way back; every other page is "Work the door". %>
+          <% if content_for?(:door_header) %>
+            <%= yield :door_header %>
+          <% else %>
+            <% if @listing && !native %>
+              <%= link_to door_index_path, class: "flex-shrink-0 p-2 -ml-1 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              <% end %>
+            <% end %>
+            <% unless native %>
+              <div class="min-w-0 flex-1 <%= 'pl-1' unless @listing %>">
+                <div class="coustard-regular text-xl leading-tight text-gray-900">Work the door</div>
+              </div>
             <% end %>
           <% end %>
-          <% unless native %>
-            <div class="min-w-0 flex-1 <%= 'pl-1' unless @listing %>">
-              <div class="coustard-regular text-xl leading-tight text-gray-900">Work the door</div>
-            </div>
-          <% end %>
-        <% end %>
-        <div class="<%= native && !content_for?(:door_header) ? 'flex-1 flex items-center justify-between' : 'text-right flex-shrink-0' %> min-w-0">
+        </div>
+        <div class="basis-full sm:basis-auto min-w-0 flex items-baseline gap-x-2 sm:flex-col sm:items-end sm:gap-0 <%= 'pl-1' if !native && !@listing %> <%= 'pl-9' if !native && @listing && !content_for?(:door_header) %>">
           <% if door_organization %>
             <% if door_org_link %>
-              <%= link_to door_organization.name, door_org_link, class: "block text-sm font-semibold text-pink-600 hover:text-pink-700 truncate" %>
+              <%= link_to door_organization.name, door_org_link, class: "text-sm font-semibold text-pink-600 hover:text-pink-700 truncate" %>
             <% else %>
-              <div class="text-sm font-semibold text-gray-900 truncate"><%= door_organization.name %></div>
+              <span class="text-sm font-semibold text-gray-900 truncate"><%= door_organization.name %></span>
             <% end %>
           <% elsif @organizations&.many? %>
-            <div class="text-sm font-semibold text-gray-900 truncate"><%= pluralize(@organizations.size, "theater") %></div>
+            <span class="text-sm font-semibold text-gray-900 truncate"><%= pluralize(@organizations.size, "organization") %></span>
           <% end %>
-          <div class="text-xs text-gray-500 tabular-nums"><%= Time.current.strftime("%a, %b %-d · %-l:%M %p") %></div>
+          <span class="text-xs text-gray-500 tabular-nums whitespace-nowrap"><span class="sm:hidden"><%= "· " if door_organization || @organizations&.many? %></span><%= Time.current.strftime("%a, %b %-d · %-l:%M %p") %></span>
         </div>
       </div>
     </header>
