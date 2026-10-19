@@ -1181,6 +1181,42 @@ class Contract < ApplicationRecord
     v.present? && v.requires_signature? && v.executed_at.nil? && v.staged_amendment.present?
   end
 
+  # Throws away an amendment staged for signature (Tim, 2026-10-18: Cancel
+  # on its send step said "draft discarded" and discarded nothing). The
+  # version holding it goes, with any signature made on it, the staged
+  # changes go, and the contract's signing state goes back to executed:
+  # the deal in force is the one that was signed.
+  def discard_pending_amendment!
+    transaction { reopen_pending_amendment! && clear_amend_data }.present?
+  end
+
+  # The same, keeping the staged changes: the version and its signature go,
+  # the contract reads as signed again, and the changes wait on the
+  # amendment's review page to be looked over and staged again (Tim,
+  # 2026-10-18: "unsign it, tweak something, sign it again").
+  def reopen_pending_amendment!
+    return false unless amendment_pending?
+
+    transaction do
+      current_version.destroy!
+      update!(signing_state: latest_executed_version ? :executed : :unsent)
+    end
+    true
+  end
+
+  # Takes the organization's signature back off a version that hasn't gone
+  # out yet, to change something and sign again. The version stays and is
+  # re-rendered at the next signing (ContractVersion#refreshable?).
+  def unsign!
+    return false unless signing_awaiting_send?
+
+    transaction do
+      current_version&.contract_signatures&.role_organization&.destroy_all
+      update!(signing_state: :unsent)
+    end
+    true
+  end
+
   def create_amended_booking!(booking, default_event_type, force_overlap)
     starts_at = Time.zone.parse(booking["starts_at"])
     ends_at = starts_at + (booking["duration"] || 2).to_f.hours

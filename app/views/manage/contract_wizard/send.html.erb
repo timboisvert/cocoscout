@@ -79,8 +79,14 @@
       </div>
     </div>
 
-    <div class="mt-6 flex items-center justify-between">
-      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_sign_contract_wizard_path(@contract) %>
+    <div class="mt-6 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_sign_contract_wizard_path(@contract) %>
+        <%# Signed, not sent: take the signature back to change something (Tim, 2026-10-18). %>
+        <%= form_with url: manage_unsign_contract_wizard_path(@contract), method: :post, local: true do %>
+          <%= render "shared/button", text: "Unsign and change something", variant: "secondary", size: "medium", type: :submit %>
+        <% end %>
+      </div>
       <%= form_with url: manage_send_contract_wizard_path(@contract), method: :post, local: true do %>
         <%# The deadline is real: when it passes the link stops working and this
             comes back to you ready to re-send. Defaults to the org's setting. %>
@@ -157,8 +163,13 @@
       <% end %>
     </div>
 
-    <div class="mt-6 flex items-center justify-between">
-      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_sign_contract_wizard_path(@contract) %>
+    <div class="mt-6 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: manage_sign_contract_wizard_path(@contract) %>
+        <%= form_with url: manage_unsign_contract_wizard_path(@contract), method: :post, local: true do %>
+          <%= render "shared/button", text: "Unsign and change something", variant: "secondary", size: "medium", type: :submit %>
+        <% end %>
+      </div>
       <span class="text-sm text-gray-400">Attach a CocoScout user to send</span>
     </div>
   <% end %>

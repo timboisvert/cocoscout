@@ -46,7 +46,7 @@ RSpec.describe "Amend: change services and prices", type: :request do
 
   it "is offered on the chooser, and shows the settled date collapsed and read-only" do
     get amend_choose_manage_contract_path(contract)
-    expect(response.body).to include("Change services and prices", amend_services_manage_contract_path(contract))
+    expect(response.body).to include(">Services and prices<", amend_services_manage_contract_path(contract))
 
     get amend_services_manage_contract_path(contract)
     html = response.body.gsub(/\s+/, " ")

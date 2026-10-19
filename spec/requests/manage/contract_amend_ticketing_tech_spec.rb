@@ -126,35 +126,18 @@ RSpec.describe "Manage::Contracts amend ticketing & tech", type: :request do
     end
   end
 
-  # Production name is edited on the bookings (Events) step now, not here.
-  describe "production name (on the bookings step)" do
+  # Renaming is Basic info's job (Tim, 2026-10-18); the deal's bookings step
+  # carries no production name.
+  describe "production name" do
     let!(:production) { create(:production, organization: org, name: "Music & Improv Show").tap { |p| contract.update!(production: p) } }
 
-    it "prefills the bookings step with the current name" do
+    it "is not on the bookings step, and a stray one posted there changes nothing" do
       contract.update!(production_name: "Music & Improv Show")
       get amend_bookings_manage_contract_path(contract)
-      expect(response.body).to include("Music &amp; Improv Show")
-    end
-
-    it "renames the contract and the linked production on apply" do
-      contract.update!(production_name: "Music & Improv Show")
+      expect(response.body).not_to include('name="production_name"')
 
       post save_amend_bookings_manage_contract_path(contract), params: {
         production_name: "The Midnight Riot",
-        booking_rules_json: "[]",
-        removed_rental_ids: "[]"
-      }
-      post apply_amendments_manage_contract_path(contract)
-
-      expect(contract.reload.production_name).to eq("The Midnight Riot")
-      expect(production.reload.name).to eq("The Midnight Riot")
-    end
-
-    it "leaves the name untouched when the field is left blank" do
-      contract.update!(production_name: "Music & Improv Show")
-
-      post save_amend_bookings_manage_contract_path(contract), params: {
-        production_name: "",
         booking_rules_json: "[]",
         removed_rental_ids: "[]"
       }

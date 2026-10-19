@@ -570,9 +570,34 @@ module Manage
       end
     end
 
+    # Signed but not sent, and something needs changing (Tim, 2026-10-18):
+    # an amendment goes back to its review page with the changes kept; a
+    # first signing goes back to Review with the signature taken off.
+    def unsign
+      if @contract.amendment_pending?
+        @contract.reopen_pending_amendment!
+        redirect_to amend_review_manage_contract_path(@contract),
+                    notice: "Unsigned. Your changes are still here: change what you need, then stage and sign again."
+      elsif @contract.unsign!
+        @contract.update_column(:wizard_step, 8)
+        redirect_to manage_review_contract_wizard_path(@contract), notice: "Unsigned. Change what you need, then sign again."
+      else
+        redirect_to manage_contract_path(@contract), alert: "There's no unsent signature to take back."
+      end
+    end
+
+    # Cancel in the wizard: a draft contract is deleted; a live contract in
+    # the wizard for an amendment's re-signature gets the amendment thrown
+    # away and stays as it was signed.
     def cancel
-      @contract.destroy if @contract.status_draft?
-      redirect_to manage_contracts_path, notice: "Contract draft discarded."
+      if @contract.status_draft?
+        @contract.destroy
+        redirect_to manage_contracts_path, notice: "Contract draft discarded."
+      elsif @contract.discard_pending_amendment!
+        redirect_to manage_contract_path(@contract), notice: "Amendment discarded. The contract stays as it was signed."
+      else
+        redirect_to manage_contract_path(@contract), alert: "Nothing to discard."
+      end
     end
 
     private
