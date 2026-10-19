@@ -65,13 +65,14 @@ the buyer paying: $21.42 online, $21.22 tapped.
 - Test with a Stripe test-mode Location and the SDK's simulated reader, then
   a real tap on a device.
 
-## After this: V2
+## Where this sits: V1.2 (renamed 2026-10-19)
 
-Once V1.1 (Tap to Pay) ships, the next app release is V2: production mode
-on mobile web and in the app. The plan is locked in
-`docs/production_mode_v2_plan.md`. Have V1.1 carry a per-build
-path-configuration address and a user-agent version marker (see that plan's
-release section), so V2 server changes can't reach V1 installs.
+Tap to Pay is V1.2. The redesign, production mode and the new navigation
+(`docs/production_mode_v2_plan.md`), is V1.1 and goes first; it carries the
+per-build path-configuration address (`AppConfig.swift`) and the user-agent
+version marker (the Release section), so its server changes can't reach V1
+installs. Tap to Pay ships whenever Apple grants the publishing entitlement
+below, before or after V1.1.
 
 ## Apple's publishing review (requirements v1.7, Aug 2026)
 
@@ -113,5 +114,5 @@ To build:
 
 Decision: in-app merchant onboarding (2.1–2.3). Organizations sign up and
 open their box office on cocoscout.com; door staff are invited and sign in
-in the app. Apple allows asking for an exception with the request; V2
+in the app. Apple allows asking for an exception with the request; V1.1
 (production mode in the app) would meet it outright.

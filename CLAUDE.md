@@ -27,8 +27,8 @@ There are TWO levels of management pages:
 
 1. **V1 (iOS)**: the app as it is today (see `ios/app_store_submission.md`). Submitted for review 2026-10-15. Fixes decided along the way, for right after it: `docs/after_v1.md`.
 2. **Android, V1 feature set** (from 2026-10-16): the same app on Android, in `android/` in this repo, using the same server pieces (menu, form, door scanner, push, app links, account deletion).
-3. **V1.1**: Tap to Pay at the door (`ios/tap_to_pay.md`), once V1 is approved and in the App Store. It should also give each app build its own path-configuration address and a user-agent version marker, so V2 server changes can't reach V1 installs.
-4. **V2, next after V1.1 ships**: production mode on mobile web and in the app, plus the new navigation (enter and exit production mode from the account menu, the organization on a pink band in the top left, the floating sidebar). The plan is locked (2026-10-14): `docs/production_mode_v2_plan.md`, and still needs an Android pass (does each piece work in the Android app too). Don't start V2 work until V1.1 is out.
+3. **V1.1 (renamed 2026-10-19, was V2)**: production mode on mobile web and in the app, plus the new navigation (enter and exit production mode from the account menu, the organization on a pink band in the top left, the floating sidebar). The plan is locked (2026-10-14): `docs/production_mode_v2_plan.md`, and still needs an Android pass (does each piece work in the Android app too). Built on a branch while V1 is in review; never deployed until both app reviews pass. It must give each app build its own path-configuration address and a user-agent version marker, so its server changes can't reach V1 installs.
+4. **V1.2 (was V1.1)**: Tap to Pay at the door (`ios/tap_to_pay.md`). Its clock is Apple's: the publishing entitlement needs a reply to Apple's Oct 12 email (Case-ID 22828656) with three videos and the checklist, which Tim hasn't sent yet. Ships whenever Apple answers, before or after V1.1.
 
 ---
 

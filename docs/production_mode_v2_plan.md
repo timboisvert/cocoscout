@@ -1,8 +1,8 @@
-# Production Mode in the App (V2): difficulty assessment and plan
+# Production Mode in the App (V1.1, was V2): difficulty assessment and plan
 
 *Read-only audit of `/manage`, 2026-10-14. No code was changed for it.*
 
-**Status: locked 2026-10-14.** Queued to start once V1.1 (Tap to Pay) ships. Navigation mockups: https://claude.ai/artifact/CNaAubdaxfkbdn3ST59LwG. Plan page: https://claude.ai/artifact/J5PCo4RYJ3Q9G4PUCR7s1R.
+**Status: locked 2026-10-14. Renamed 2026-10-19: this is V1.1 (was V2); Tap to Pay is V1.2 (was V1.1).** Built on a branch while V1 is in review, never deployed until both app reviews pass; Tap to Pay waits on Apple's publishing entitlement and ships whenever that lands. Navigation mockups: https://claude.ai/artifact/CNaAubdaxfkbdn3ST59LwG. Plan page: https://claude.ai/artifact/J5PCo4RYJ3Q9G4PUCR7s1R.
 
 **Scores**
 - **1** = already close; mostly reflows inside the native layout.
@@ -24,13 +24,12 @@ Nothing in this plan is built this week.
    - Include the must-ship items from the V1 triage in §8.
    - Most of those fixes are server-side (views and `path-configuration.json`), so any that miss launch can follow without an app release.
    - Keep today's `path-configuration.json` safe for V1 for as long as V1 installs are around. V1 builds will always read it.
-2. **V1.1, right after.** Tap to Pay, out quickly.
-   - Also give each app build its own path-config address (`AppConfig.swift:24`) and a version marker in the user agent. Then V2 server changes can't reach V1 installs.
-   - No production mode yet.
-3. **V2.** Production mode and the rest of this plan.
+2. **V1.1, next (was V2).** Production mode and the rest of this plan, built on a branch while V1 is in review and never deployed until both app reviews pass.
+   - Give each app build its own path-config address (`AppConfig.swift:24`) and a version marker in the user agent, so V1.1 server changes can't reach V1 installs.
    - Enter/exit production mode, the floating nav, the organization switcher.
    - Production features on mobile web and the app together, in the §7/§8 order.
-   - The invisible plumbing (0a) can start once V1.1 is out.
+   - The invisible plumbing (0a) can start now.
+3. **V1.2, whenever Apple grants the publishing entitlement (was V1.1).** Tap to Pay, out quickly, before or after V1.1.
 
 ## 0a. What's locked (navigation and modes)
 
@@ -56,7 +55,7 @@ Nothing in this plan is built this week.
   - the floating Coco button stays as it is, but its count becomes a pink-600 badge with a 2pt white ring (`MenuButton.swift`, today `.systemRed`);
   - the menu tiles' counts use the same pink (`MenuViewController.swift`, today `Color.red`).
 
-**Decide before V2 starts:**
+**Decide before V1.1 starts:**
 1. Does "Start producing" appear in the app at all (App Store review), or only on the web?
 2. Is Superadmin web-only, and should the app show a "you're impersonating · Stop" banner?
 3. Course instructors: attendance on the everyday side, or limited production access?
@@ -116,13 +115,13 @@ Everything in this plan is built **for phones, not for the app**. Mobile Safari 
 - account links shown as rows because the app hides the sidebar
 - the Door's native scanner and Tap to Pay
 
-One deliberate exception needs revisiting for V2: the talent dashboard hides "Producing your own shows?" in the app (`my/dashboard/index.html.erb:56`), because Pro is sold on the web.
+One deliberate exception needs revisiting for V1.1: the talent dashboard hides "Producing your own shows?" in the app (`my/dashboard/index.html.erb:56`), because Pro is sold on the web.
 
 ---
 
 ## 2. Phase 0: shell and plumbing (required before any screen)
 
-| Item | What exists today | What V2 needs |
+| Item | What exists today | What V1.1 needs |
 |---|---|---|
 | **Switching modes** (see the market study, *Dual persona mode switching*) | Four different dashboard switchers on the web; the app's menu is talent only. | **No always-visible switcher.** **Decided (option A):** everyday CocoScout has no name at all (no "Talent Dashboard"), and an "Enter production mode" / "Exit production mode" link sits at the top of the account menu on desktop, mobile web and the app, drawn from one list the server sends. Alternatives considered: Personal/Producing; you vs. your organizations; "My CocoScout"; a named workspace such as "Production Office". Talent and Performing are ruled out because they leave out staff, contractors and students. Only people with production access see it; talent-only users get a quiet "Start producing". The top left shows context: the organization switcher plus a "Production mode" label in production mode; otherwise just the CocoScout mark. Profile, account and superadmin become account-menu items. The mode follows the address (`/my` vs `/manage`): links from the other mode switch automatically and announce it. The app opens in the last mode used, stored on the user. One inbox at both message paths. In the app, a `replace_root` rule on both mode home pages. |
 | **Organization / production context** | Org and production are chosen in the session (`manage_controller.rb#set_current_organization`), so they already carry over into the WebView. | An org switcher in the menu's pink person card (the "Producing for: Stars & Garters ▾" pattern). Production selection stays in-page. |
@@ -378,7 +377,7 @@ These are web components (ERB partial + Stimulus), so they also improve mobile w
 
 ---
 
-## 7. Suggested V2 sequencing
+## 7. Suggested V1.1 sequencing
 
 1. **Phase 0: shell.**
    - Mode switch, org switcher, Manage layout, path config.
@@ -415,7 +414,7 @@ These are web components (ERB partial + Stimulus), so they also improve mobile w
 - (b) Ship them working but unoptimized.
 - (c) Build the pivot redesign.
 
-Phase 3 assumes (b). That keeps "everything comes in" true without blocking V2 on the hardest screens.
+Phase 3 assumes (b). That keeps "everything comes in" true without blocking V1.1 on the hardest screens.
 
 
 ---
@@ -427,7 +426,7 @@ Fable checked the load-bearing claims against the code; all of them held. Change
 **New Phase 0 blockers**
 - **Path rules and the menu are server-loaded and unversioned.** `SceneDelegate.swift:50` and `AppConfig.swift:24` read one `path-configuration.json` from the server, so any change reaches V1 apps already installed.
   - Fix: a versioned path-config address per app build, plus a user-agent marker the server checks before sending production menu items.
-  - Add `/manage/*` to universal links only once V2 is the minimum build.
+  - Add `/manage/*` to universal links only once V1.1 is the minimum build.
 - **`Manage::ManageController` inherits from `ActionController::Base`** (`manage_controller.rb:4`). It lacks `resolve_layout` and `ActivityTracking`.
   - Move it under `ApplicationController`.
   - Also fix the three places that force `/my`:
@@ -437,7 +436,7 @@ Fable checked the load-bearing claims against the code; all of them held. Change
   - The `^/select/` and `^/superadmin` Safari rules need decisions too.
 
 **Phase 0 split**
-- **0a plumbing.** Invisible. Starts once V1.1 is out (see §0):
+- **0a plumbing.** Invisible. Can start now (see §0):
   1. Reparent the controller.
   2. Add an organization-context concern for both controller roots.
   3. Menu data v2 with `mode`, `kind` and one `badge_total`.
@@ -450,7 +449,7 @@ Fable checked the load-bearing claims against the code; all of them held. Change
 - **1b:** money (settlement, payouts, run), contracts, courses, sign-up roster, audition voting.
 
 **Deferred**
-- **Unified inbox.** It's a data-model merge: subscription-based vs. visibility-based, and unread lives on subscriptions. Ship V2 with the existing production inbox and one server-computed badge, then unify behind a switch.
+- **Unified inbox.** It's a data-model merge: subscription-based vs. visibility-based, and unread lives on subscriptions. Ship V1.1 with the existing production inbox and one server-computed badge, then unify behind a switch.
 - **Push routing.** Pushes need routing by notification type; today every push opens `/my/messages/:id`.
 - **`last_dashboard`.** Store it on the user. Update it only on real page loads, not Turbo frames or prefetches, and throttle the writes.
 
