@@ -40,7 +40,9 @@ final class TapToPayComponent: BridgeComponent {
                 let state = await setup.enable(locationId: data.locationId, tokenURL: data.connectionTokenUrl,
                                                termsPermitted: data.canAcceptTerms ?? false)
                 answer("enable", state)
-                if state == .ready, !HowToTap.hasBeenShown, let page { await HowToTap.present(from: page) }
+                // Apple's guide right after setting up, every time (Apple 4.2):
+                // having seen it earlier from "See how" doesn't count.
+                if state == .ready, let page { await HowToTap.present(from: page) }
             }
         case "pay":
             guard let data: TapToPayPayment = message.data() else { return }

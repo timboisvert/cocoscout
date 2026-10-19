@@ -13,6 +13,20 @@ select:focus {
     @apply ring-2 ring-pink-500 outline-none;
 }
 
+/* A progress bar that hasn't heard a percentage yet: a pink segment slides
+   across it (Tap to Pay on iPhone getting ready, Apple 3.9.1). */
+@keyframes progress-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+}
+.progress-unknown {
+    width: 40% !important;
+    animation: progress-slide 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .progress-unknown { animation: none; width: 100% !important; opacity: 0.4; }
+}
+
 [data-form-toggle-target="section"][hidden] {
     display: none;
 }

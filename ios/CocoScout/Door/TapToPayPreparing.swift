@@ -53,8 +53,15 @@ enum TapToPayPreparing {
                     Text("Getting Tap to Pay on iPhone ready")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Tailwind.gray900)
-                    ProgressView(value: Double(model.progress))
-                        .tint(Tailwind.pink500)
+                    // No percentage yet: the spinning kind, so it never looks stuck.
+                    if model.progress > 0 {
+                        ProgressView(value: Double(model.progress))
+                            .tint(Tailwind.pink500)
+                    } else {
+                        ProgressView()
+                            .tint(Tailwind.pink500)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     Text(model.progress > 0 ? "\(Int(model.progress * 100))%. Tap to Pay on iPhone will be ready in a moment." : "Tap to Pay on iPhone will be ready in a moment.")
                         .font(.system(size: 14))
                         .foregroundStyle(Tailwind.gray700)

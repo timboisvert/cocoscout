@@ -31,6 +31,9 @@ export default class extends Controller {
     const { state, progress, message } = detail || {}
     if (state === "preparing") {
       const percent = Math.round((progress || 0) * 100)
+      // No percentage yet (the iPhone hasn't said): the bar moves anyway,
+      // so it never looks stuck.
+      this.progressTarget.classList.toggle("progress-unknown", percent === 0)
       this.progressTarget.style.width = `${percent}%`
       this.progressTextTarget.textContent = percent > 0 ? `${percent}%` : ""
     }

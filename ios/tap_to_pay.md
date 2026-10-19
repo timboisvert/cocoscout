@@ -145,7 +145,10 @@ tries before that sees "An administrator needs to turn it on first" (3.8.1).
 
 ### Video 1: Existing user (film first)
 
-Start recording at the app's welcome screen.
+Andy films the iPhone with her phone: Apple's payment screen never shows in
+a screen recording. Keep to this order; Apple wants the Tap to Pay on
+iPhone button seen at the door before the terms are accepted. Start
+recording at the app's welcome screen.
 
 1. Sign in as yourself.
 2. The full-screen Tap to Pay on iPhone page appears. Tap "Terms apply.",
