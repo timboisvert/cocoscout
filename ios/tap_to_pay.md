@@ -79,8 +79,9 @@ below, before or after V1.1.
 Apple's guide and checklist are in `ios/apple_ttp/` (not committed: they're
 Apple's). To get the publishing entitlement, reply to the Oct 12 email from
 ttpoientitlements@apple.com (Case-ID 22828656) with the filled checklist and
-three videos, **each filmed with a second phone** (the checklist says so for
-all three; Apple's Tap to Pay screens don't show in a screen recording):
+three videos. Apple's checklist: "a video recording from another iPhone is
+best ... Otherwise, screen recording from the same device will suffice." Tim
+has one iPhone, so all three are screen recordings on it.
 
 1. **New user.** Our merchant onboarding happens on the web, so v1.8 wants a
    video of that: an organization signs up on cocoscout.com, opens its box
@@ -118,62 +119,77 @@ tries before that sees "An administrator needs to turn it on first" (3.8.1).
 
 ### Before filming (Tim)
 
-1. Deploy main. It has two new columns on `ticketing_profiles`.
-2. Turn on Tap to Pay on iPhone for Stars & Garters: Ticketing settings →
-   Door → Tap to Pay on iPhone → Manage → switch on → Save.
-3. Run the app on your iPhone from Xcode: CocoScout scheme, Debug, your
-   iPhone as the destination. A phone run from Xcode talks to cocoscout.com,
-   and only Debug builds have Tap to Pay until Apple says yes. To see the
-   splash again later, delete the app and run it again.
-4. Pick a show that's on tonight: the door lists tonight's shows. The
-   checkout video takes a real tap on your own card; refund that order
-   afterward from Ticketing → Orders.
-5. Have a second phone to film with, and a card or a second phone with
-   Apple Pay to tap.
-6. Film in this order, because Apple's terms can be accepted only once:
-   the existing-user video first (it accepts the terms), then the new-user
-   video, then checkout. To accept the terms again for a retake, unlink your
-   Apple Account first (the link is in the checklist's "If you need to
-   unlink your Apple Account" row).
+1. Deploy main (done 10/19), and switch Tap to Pay on iPhone on for
+   Stars & Garters (done 10/19).
+2. Delete the CocoScout app from the iPhone. Apple: uninstalling is what
+   makes the iPhone configure Tap to Pay from scratch, so the progress bar
+   shows; it also brings back the one-time Tap to Pay on iPhone page.
+3. Plug the iPhone into the Mac, open `ios/CocoScout.xcodeproj`, pick the
+   iPhone at the top of the Xcode window, press Run. That build talks to
+   cocoscout.com and is the only one with Tap to Pay until Apple says yes.
+4. Film on a show day: Work the door appears only then.
+5. Turn on Do Not Disturb. Screen Recording is in Control Center (add it in
+   Settings → Control Center if it isn't there); recordings land in Photos.
+6. Apple's terms are per merchant, and CocoScout is one merchant, so they
+   may already be accepted from the Oct 15 test. If Set up in video 1 goes
+   straight to the progress bar with no terms screen, they were. To show
+   them, follow the "remove the Merchant ID" guide linked on page 10 of
+   Apple's PDF (takes up to 15 minutes), delete the app, run it from Xcode
+   again and re-record.
+7. Order: existing user, then new user, then checkout. Delete the app and
+   run it from Xcode again before each of the first two.
 
 ### Video 1: Existing user (film first)
 
-You, signed in, before Apple's terms are accepted:
+Start recording at the app's welcome screen.
 
-1. Open the app. The full-screen Tap to Pay on iPhone page appears once.
-   Tap "Terms apply." to show Apple's disclaimer, close it, tap Not now.
-2. Menu → Work the door → tonight's show → Sell. The Tap to Pay on iPhone
-   button is there, first, before the terms are accepted.
-3. Menu → Tap to Pay on iPhone. Tap "Set up Tap to Pay on iPhone": allow
-   location, accept Apple's terms, watch the progress, then Apple's guide
-   opens on its own. Close it: the page says Ready and offers "Try it out at
-   the door".
-4. On the same page, "How to accept payments" → See how: Apple's guide again.
+1. Sign in as yourself.
+2. The full-screen Tap to Pay on iPhone page appears. Tap "Terms apply.",
+   swipe the disclaimer away, then tap Not now.
+3. Menu (the pink button, bottom right) → Work the door → tonight's show →
+   Sell. The Tap to Pay on iPhone button is there before the terms are
+   accepted. Don't tap it.
+4. Menu → Tap to Pay on iPhone → Set up Tap to Pay on iPhone. Allow
+   location (Allow While Using App), accept Apple's terms, watch the
+   progress bar. Apple's guide opens on its own; close it. The page says
+   Ready and offers "Try it out at the door".
+5. Scroll to "How to accept payments" → See how: Apple's guide again.
+   Close it and stop recording.
 
 ### Video 2: New user
 
-Someone new to CocoScout who will work the door:
+Same iPhone, a new person who will work the door.
 
-1. On cocoscout.com as the Stars & Garters manager: Ticketing settings →
-   Door. Show the Tap to Pay on iPhone card (On), then invite a new email
-   under "Who can work the door" with "Check people in and sell tickets".
-2. On the iPhone, open the invitation email, tap its link, and create the
-   account (in the app, or in Safari and then sign in to the app).
-3. The full-screen Tap to Pay on iPhone page appears: Get started.
-4. Set up Tap to Pay on iPhone: allow location, the progress while the
-   iPhone configures, configuration finishing, Apple's guide, Ready, and
-   "Try it out at the door". (No terms here: CocoScout accepted them in
-   video 1. Say so in the checklist.)
+1. Off camera, on cocoscout.com: Ticketing settings → Door → "Who can
+   work the door", invite an address that has no CocoScout account and
+   whose mail you can read on the iPhone (your Gmail with +door before the
+   @ works), as "Check people in and sell tickets".
+2. Delete the app, run it from Xcode again. Start recording at the
+   welcome screen.
+3. Open the invitation email in the Mail app and tap its link. It opens
+   in the CocoScout app: choose a password, and the door opens. (If it
+   opens in a browser instead, choose the password there, then open the
+   app and sign in with the new address.)
+4. The full-screen Tap to Pay on iPhone page appears: Get started.
+5. Set up Tap to Pay on iPhone: allow location, the progress bar,
+   configuration finishing, Apple's guide, Ready, "Try it out at the
+   door". No terms screen: CocoScout accepted them in video 1, which the
+   checklist comments say. Stop recording.
+6. Menu → Sign out, and sign back in as yourself.
 
 ### Video 3: Checkout
 
-1. Menu → Work the door → tonight's show → Sell. Add one ticket.
-2. Show the ways to pay, with Tap to Pay on iPhone first.
+1. Start recording. Menu → Work the door → tonight's show → Sell. Add
+   one ticket.
+2. Pause on the ways to pay, Tap to Pay on iPhone first.
 3. Tap Tap to Pay on iPhone. If the iPhone is still getting ready, the
    "Getting Tap to Pay on iPhone ready" screen shows.
-4. Tap the card or the other phone. Apple's screen processes it.
-5. Paid, with "Scan for a receipt": scan the code with the filming phone
-   to show the receipt.
+4. Hold your own card at the top of the iPhone. Apple's card screen may
+   come out black in a screen recording; Apple protects it.
+5. Paid, with "Scan for a receipt". Leave it on screen a few seconds, then
+   Back to the door. Stop recording.
+6. Refund that order on cocoscout.com: Ticketing → Orders → the order →
+   Refund.
 
 ### The reply to Apple
 

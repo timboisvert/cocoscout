@@ -19,8 +19,8 @@ things off here; the app roadmap itself stays in CLAUDE.md.
   1. [x] Tim: Apple's checklist and guide into `ios/apple_ttp/` (done 10/19).
   2. [x] Tim: Apple's Marketing Toolkit into `ios/apple_ttp/` (done 10/19).
   3. [x] Claude: build what Apple requires, on main behind Debug builds and a per-organization switch, and write the shot lists and checklist answers (done 10/19, in `ios/tap_to_pay.md`).
-  4. [ ] Tim: deploy main, switch Tap to Pay on iPhone on for Stars & Garters (Ticketing settings → Door → Manage), and run the app on your iPhone from Xcode.
-  5. [ ] Tim: film the three videos with a second phone, in this order: existing user, new user, checkout ("Before filming" and the shot lists in `ios/tap_to_pay.md`).
+  4. [x] Tim: deploy main and switch Tap to Pay on iPhone on for Stars & Garters (done 10/19).
+  5. [ ] Tim: screen-record the three videos on the iPhone, in this order: existing user, new user, checkout ("Before filming" and the shot lists in `ios/tap_to_pay.md`).
   6. [ ] Tim: fill Apple's checklist from the answers in `ios/tap_to_pay.md` and reply to the Oct 12 email (Case-ID 22828656) with the videos, the checklist and the exception request (the reply is drafted there too). Apple's review takes a week or two from then.
 
 ## Soon
