@@ -41,10 +41,16 @@ RSpec.describe "Ticketing dashboard", type: :request do
 
     get manage_ticketing_path(period: "all_time")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Tickets sold", "Ticket sales", "$140.00", "Coming up", "3 of 50 sold", "6% sold",
+    expect(response.body).to include("Tickets sold", "Ticket sales", "$140.00", ">Upcoming<", ">Past<", "3 of 50 sold", "6% sold",
                                       "Just played", "4 sold", "/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}", "Sales tax", "Embed on your website")
     expect(response.body).to include(manage_ticket_listing_path(upcoming), manage_ticket_listing_path(played))
     expect(response.body).not_to include("Latest orders", "this week")
+
+    # Past (Tim, 2026-10-19): every date that has played, newest first, each
+    # with its numbers, no drawers and no Just played beside it.
+    get manage_ticketing_path(period: "all_time", dates: "past")
+    expect(response.body).to include(manage_ticket_listing_path(played), "4 sold", "Every date, with totals")
+    expect(response.body).not_to include(manage_ticket_listing_path(upcoming), "Just played", "more date")
   end
 
   it "shows each production once, at its next date, soonest first, with its later dates behind a drawer" do

@@ -1,0 +1,8 @@
+<%# A date that has played, on the Ticketing page: when, what, how many
+    sold and came, and whether its money is available. Locals: listing, stats. %>
+<%= link_to manage_ticket_listing_path(listing), class: "flex flex-wrap items-center gap-x-4 gap-y-0.5 px-5 py-2.5 hover:bg-gray-50" do %>
+  <span class="min-w-[12rem] flex-1 text-sm text-gray-900 truncate"><%= listing.show.date_and_time.strftime("%a %b %-d") %><%= ", #{listing.show.date_and_time.year}" if listing.show.date_and_time.year != Date.current.year %> · <%= listing.display_title %></span>
+  <span class="text-sm text-gray-700 tabular-nums"><%= stats.sold_anywhere %> sold</span>
+  <span class="text-sm text-gray-700 tabular-nums"><%= stats.sold.positive? ? "#{(stats.checked_in * 100.0 / stats.sold).round}% came" : "—" %></span>
+  <span class="w-28 text-right text-xs <%= listing.released_at ? 'text-green-700' : 'text-gray-500' %>"><%= listing.released_at ? "Money available" : "Money tomorrow" %></span>
+<% end %>

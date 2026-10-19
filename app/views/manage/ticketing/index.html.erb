@@ -68,14 +68,27 @@
     <div class="space-y-6 min-w-0">
       <%# Coming up: each production once, at its next date, soonest first;
           its next few dates open under it, and the rest on its own page. %>
+      <%# Upcoming or Past (Tim, 2026-10-19): upcoming is each production with
+          its next date and a drawer of the few after; past is every date that
+          has played, newest first, each with its numbers, no drawers. %>
       <section>
-        <div class="flex items-baseline justify-between mb-2">
-          <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Coming up
-          </h2>
-        </div>
-        <% if coming_up.any? %>
-          <div class="space-y-3">
+        <%= render "shared/filters/filter_bar", bare: true, filter_groups: [ { label: "Dates", filters: [
+              { text: "Upcoming", path: manage_ticketing_path(period: params[:period].presence), active: @dates == "upcoming" },
+              { text: "Past", path: manage_ticketing_path(period: params[:period].presence, dates: "past"), active: @dates == "past" }
+            ] } ] %>
+        <% if @dates == "past" %>
+          <% if d.past.any? %>
+            <div class="mt-2 bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+              <% d.past.each do |listing, stats| %>
+                <%= render "manage/ticketing/played_row", listing: listing, stats: stats %>
+              <% end %>
+            </div>
+            <%= link_to "Every date, with totals", manage_ticketing_attendance_path(filter: "this_month"), class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
+          <% else %>
+            <div class="mt-2 bg-white border border-gray-200 rounded-xl px-5 py-6 text-sm text-gray-600">No dates have played yet.</div>
+          <% end %>
+        <% elsif coming_up.any? %>
+          <div class="mt-2 space-y-3">
             <% coming_up.each do |row| %>
               <%= render "manage/ticketing/coming_up_production", row: row %>
             <% end %>
@@ -84,14 +97,14 @@
             <%= link_to "All productions →", manage_ticket_listings_path, class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
           <% end %>
         <% else %>
-          <div class="bg-white border border-gray-200 rounded-xl px-5 py-6 flex items-center gap-3 text-sm text-gray-600">
+          <div class="mt-2 bg-white border border-gray-200 rounded-xl px-5 py-6 flex items-center gap-3 text-sm text-gray-600">
             <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
             No upcoming shows are selling yet. Set a production up to sell its dates.
           </div>
         <% end %>
       </section>
 
-      <% if just_played.any? %>
+      <% if just_played.any? && @dates == "upcoming" %>
         <section>
           <div class="flex items-baseline justify-between mb-2">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Just played</h2>
@@ -99,12 +112,7 @@
           </div>
           <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
             <% just_played.each do |listing, stats| %>
-              <%= link_to manage_ticket_listing_path(listing), class: "flex flex-wrap items-center gap-x-4 gap-y-0.5 px-5 py-2.5 hover:bg-gray-50" do %>
-                <span class="min-w-[12rem] flex-1 text-sm text-gray-900 truncate"><%= listing.show.date_and_time.strftime("%a %b %-d") %> · <%= listing.display_title %></span>
-                <span class="text-sm text-gray-700 tabular-nums"><%= stats.sold %> sold</span>
-                <span class="text-sm text-gray-700 tabular-nums"><%= stats.sold.positive? ? "#{(stats.checked_in * 100.0 / stats.sold).round}% came" : "—" %></span>
-                <span class="w-28 text-right text-xs <%= listing.released_at ? 'text-green-700' : 'text-gray-500' %>"><%= listing.released_at ? "Money available" : "Money tomorrow" %></span>
-              <% end %>
+              <%= render "manage/ticketing/played_row", listing: listing, stats: stats %>
             <% end %>
           </div>
         </section>

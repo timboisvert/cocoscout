@@ -7,6 +7,8 @@ module Manage
     def index
       @dashboard = TicketingDashboard.new(Current.organization, period: params[:period].presence || :last_30_days)
       @balance = CocoScoutBalance.summary(Current.organization)
+      # The dates list: upcoming (a production with its next dates), or past (each date, newest first).
+      @dates = params[:dates] == "past" ? "past" : "upcoming"
     end
   end
 end

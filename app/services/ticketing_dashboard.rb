@@ -87,6 +87,17 @@ class TicketingDashboard
   end
 
   # Before today, but not one that's still on tonight.
+  # Every date that has played, newest first, with its numbers: the Past
+  # view of the Ticketing page (Tim, 2026-10-19: a played show's total was
+  # hard to find once it fell off Just played).
+  PAST = 60
+  def past
+    @past ||= with_stats(listings.where.not(status: %w[canceled draft])
+                                 .where("shows.date_and_time < ?", Time.current.beginning_of_day)
+                                 .where.not(id: tonight.map { |listing, _| listing.id })
+                                 .order("shows.date_and_time DESC").limit(PAST))
+  end
+
   def just_played
     @just_played ||= with_stats(listings.where.not(status: %w[canceled draft])
                                         .where("shows.date_and_time < ?", Time.current.beginning_of_day)
