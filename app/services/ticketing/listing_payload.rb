@@ -31,7 +31,7 @@ module Ticketing
         venue: venue,
         currency: "usd",
         fee_mode: @listing.effective_fee_mode,
-        tiers: @listing.ticket_tiers.active.reject(&:hidden).reject(&:unlisted?).map { |tier| tier_payload(tier, inventory) }
+        tiers: @listing.ticket_tiers.active.reject(&:hidden).reject(&:unlisted?).select(&:sells_online?).map { |tier| tier_payload(tier, inventory) }
       }
     end
 

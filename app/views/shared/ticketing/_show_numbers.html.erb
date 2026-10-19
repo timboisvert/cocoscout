@@ -113,6 +113,7 @@
       state = if row.tier.archived_at then nil
               elsif row.tier.unlisted? then "Hidden"
               elsif row.tier.marked_sold_out? || out_of_seats then "Sold out"
+              else row.tier.sells_at_words
               end
       menu = (render("shared/ticketing/tier_menu", listing: listing, row: row) unless read_only || row.tier.archived_at)
       { row: row, tone: tone, state: state, menu: menu }

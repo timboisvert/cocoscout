@@ -53,6 +53,30 @@ class TicketTier < ApplicationRecord
   AVAILABILITY_LABELS = { "on_sale" => "On sale", "sold_out" => "Sold out", "unlisted" => "Hidden" }.freeze
   validates :availability, inclusion: { in: AVAILABILITIES }
 
+  # Where it sells (Tim, 2026-10-18): a "$15 in advance" type is online
+  # only and a "$20 at the door" type is door only, so the ticket page shows
+  # one and the door the other, and nobody picks wrong.
+  SELLS_AT = %w[everywhere online door].freeze
+  SELLS_AT_LABELS = { "everywhere" => "Online and at the door", "online" => "Online only", "door" => "At the door only" }.freeze
+  validates :sells_at, inclusion: { in: SELLS_AT }
+
+  def sells_online?
+    sells_at != "door"
+  end
+
+  def sells_at_door?
+    sells_at != "online"
+  end
+
+  def sells_at_words
+    sells_at == "everywhere" ? nil : SELLS_AT_LABELS[sells_at]
+  end
+
+  # The door can sell it right now.
+  def door_sellable?
+    available? && sells_at_door?
+  end
+
   # What buyers get: the type's own say, or a bundle following its type (a
   # "4 × General" can't sell General's seats once General is sold out or
   # hidden).
@@ -127,12 +151,13 @@ class TicketTier < ApplicationRecord
 
   # Can be bought online right now.
   def selling?(at = Time.current)
-    available? && in_sales_window?(at)
+    available? && sells_online? && in_sales_window?(at)
   end
 
-  # On the ticket page: buyable, or marked sold out (shown, greyed).
+  # On the ticket page: buyable, or marked sold out (shown, greyed). A type
+  # sold only at the door is never on the page.
   def listed?(at = Time.current)
-    !unlisted? && in_sales_window?(at)
+    !unlisted? && sells_online? && in_sales_window?(at)
   end
 
   def in_sales_window?(at = Time.current)

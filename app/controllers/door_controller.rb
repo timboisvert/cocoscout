@@ -23,7 +23,7 @@ class DoorController < ApplicationController
 
   def show
     @counts = door.counts
-    @tiers = @listing.ticket_tiers.active.select(&:available?)
+    @tiers = @listing.ticket_tiers.active.select(&:door_sellable?)
     @offers = @listing.product_offers(at_door: true)
     @orders = parties
     @pass_holders_searchable = pass_holdings_for_show.exists?

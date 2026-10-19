@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_17_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3896,6 +3896,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_17_220000) do
     t.integer "admits", default: 1, null: false
     t.bigint "bundle_of_tier_id"
     t.string "availability", default: "on_sale", null: false
+    t.string "sells_at", default: "everywhere", null: false
     t.index ["bundle_of_tier_id"], name: "index_ticket_tiers_on_bundle_of_tier_id"
     t.index ["production_ticketing_id"], name: "index_ticket_tiers_on_production_ticketing_id"
     t.index ["source_tier_id"], name: "index_ticket_tiers_on_source_tier_id"

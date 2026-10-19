@@ -230,7 +230,7 @@ module Manage
       return {} unless rows.respond_to?(:each_pair)
 
       rows.each_pair.to_h do |key, row|
-        row = row.permit(:id, :name, :price, :quantity, :admits, :bundle_of_tier_id, :description, :position, :_destroy).to_h
+        row = row.permit(:id, :name, :price, :quantity, :admits, :bundle_of_tier_id, :description, :position, :sells_at, :_destroy).to_h
         price = row.delete("price").to_s.delete("$,").strip
         row["price_cents"] = price.empty? ? 0 : (BigDecimal(price) * 100).round.to_i
         row["quantity"] = row["quantity"].presence

@@ -228,7 +228,7 @@ module TicketingHelper
 
   # The lowest all-in price a buyer can see for a show, for "From $21.42".
   def listing_from_price_cents(listing)
-    listing.ticket_tiers.select { |tier| tier.archived_at.nil? && !tier.hidden? }
+    listing.ticket_tiers.select { |tier| tier.archived_at.nil? && !tier.hidden? && tier.sells_online? }
            .map { |tier| TicketPricing.all_in_price_cents(listing, tier) }.min
   end
 

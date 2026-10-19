@@ -48,7 +48,12 @@
           <%= tf.number_field :quantity, min: 1, placeholder: "Seats", "aria-label": "Seats", class: input_class %>
         <% end %>
       </div>
-      <%= tf.text_field :description, placeholder: "Short description (optional), like “Front row and a drink”", "aria-label": "Description", class: input_class %>
+      <%# Where it sells (Tim, 2026-10-18): online and at the door, online only, or at the door only. %>
+      <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_12rem] gap-2">
+        <%= tf.text_field :description, placeholder: "Short description (optional), like “Front row and a drink”", "aria-label": "Description", class: input_class %>
+        <%= tf.select :sells_at, options_for_select(TicketTier::SELLS_AT_LABELS.map { |value, label| [ label, value ] }, tier.sells_at),
+              {}, "aria-label": "Where it sells", title: "Where this type sells", class: input_class %>
+      </div>
       <% if sold.positive? %><p class="text-xs text-gray-500"><%= sold %> sold</p><% end %>
       </div>
       <% if tier.persisted? %>

@@ -102,7 +102,7 @@ module Ticketing
     def sold_out?
       return true if remaining&.zero?
 
-      selling = @listing.ticket_tiers.active.reject(&:hidden).reject(&:bundle?)
+      selling = @listing.ticket_tiers.active.reject(&:hidden).reject(&:bundle?).select(&:sells_online?)
       return false if selling.empty?
 
       open = selling.select(&:available?)

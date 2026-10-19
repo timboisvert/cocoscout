@@ -326,7 +326,7 @@ module Manage
       permitted = params.require(:ticket_listing).permit(
         :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode, :low_stock_threshold,
         :door_note, :age_note, :accessibility_note, :sell_products,
-        ticket_tiers_attributes: %i[id name price quantity admits bundle_of_tier_id description position _destroy]
+        ticket_tiers_attributes: %i[id name price quantity admits bundle_of_tier_id description position sells_at _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
