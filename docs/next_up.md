@@ -13,7 +13,13 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [ ] Contract people move: the dry run found nothing on active contracts; run the diagnostic block, then the move.
 - [x] Payee details: synced 104 payees, 91 have details coming due; the heads-up shows on My → Payments once someone's been paid $2,000.
 - [ ] Show time drift: 55 shows sit 11 to 60 minutes before their booking's event time (list in the 2026-10-19 chat); decide which clock is right per production, then run the fix block.
-- [ ] **SEND APPLE THE TAP TO PAY PACKAGE.** Reply to Apple's Oct 12 email (Case-ID 22828656) with the three videos and the checklist (`ios/tap_to_pay.md`). Tap to Pay (V1.2) can't ship until Apple answers, and Apple's review takes a week or two.
+- [ ] Impersonate Dan Feltey and Andy Nash and look at what they see (My → Payments, My Contracts, Ticket Sales), after today's email from our payment provider.
+- [ ] Tap to Pay on Android: get ready (see "Tap to Pay on Android" below).
+- [ ] **Tap to Pay on iPhone (V1.2): Apple's publishing approval.** Videos of the app as it is today won't pass; the app work comes first. In order:
+  1. **Tim, today, 5 minutes:** open Apple's Oct 12 email from ttpoientitlements@apple.com (Case-ID 22828656), download the checklist and the review guide from its Box link, and drop both into `ios/apple_ttp/`.
+  2. **Claude:** build the 13 missing pieces listed under "To build" in `ios/tap_to_pay.md` on the V1.2 branch, and draft the filled checklist.
+  3. **Tim:** film three videos on a real iPhone: (a) new user: sign in as door staff, see the one-time Tap to Pay splash, set it up (accept Apple's terms), see the How to Tap guide; (b) existing user: turn it on from Settings → Tap to Pay and see the guide; (c) checkout: sell a ticket at the door, pick Tap to Pay on iPhone, tap a card, see Approved and the receipt, filmed with a second phone because Apple's tap screens don't show in a screen recording.
+  4. **Tim:** reply to the Oct 12 email with the three videos, the checklist, and the request for an exception on in-app merchant sign-up. Apple's review takes a week or two from then.
 
 ## Soon
 
@@ -34,3 +40,11 @@ the Attendance roll-up; the Productions list as rows; the two-letter monogram; t
 where a ticket type sells; the box office page and its two layouts; the door redesign (Work the
 door, organization chooser, tonight only, "checked in"); the amend chooser and discard/unsign;
 a contract date's one clock; the single ticket page.
+
+## Tap to Pay on Android
+
+No approval from Google or the payment provider: it ships with a normal Play review, so it can go out before Tap to Pay on iPhone.
+
+- The app adds the payment provider's Terminal SDK with its Tap to Pay module (`stripeterminal-taptopay` and `stripeterminal-core` 6.0.0) and the `MODIFY_AUDIO_SETTINGS` permission. The server side (connection tokens, the location, settling the sale) is the one already built for iPhone.
+- Phones: Android 13 or later, NFC, not rooted, Google Play installed, a security update from the last 12 months, and **Developer options turned off**. That last one means testing can't be over a USB cable: install test builds from a Play internal testing track. No emulator.
+- Most recent Pixels and Samsung Galaxy phones qualify. Tim needs one such phone to test on.
