@@ -275,6 +275,18 @@ module My
         @show_entity_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
       end
 
+      # The pink production filter, as on Manage → Shows & Events (Tim,
+      # 2026-10-19): the productions in this view, for anyone with more than
+      # one. A production that isn't in the view drops back to all.
+      @filter_productions = show_data_by_id.values.map { |data| data[:show].production }.uniq.sort_by { |p| p.name.downcase }
+      @production_filter = params[:production].presence&.to_i
+      @production_filter = nil unless @filter_productions.any? { |p| p.id == @production_filter }
+      if @production_filter
+        show_data_by_id.select! { |_, data| data[:show].production_id == @production_filter }
+        @shows = show_data_by_id.values.map { |data| data[:show] }.sort_by(&:date_and_time)
+        @show_entity_rows = show_data_by_id.values.sort_by { |row| row[:show].date_and_time }
+      end
+
       # Build @show_entities for compatibility
       @show_entities = {}
       @shows.each do |show|

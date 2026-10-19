@@ -23,16 +23,16 @@
         {
           label: "View",
           filters: [
-            { text: "My Assignments", path: my_shows_path(filter: 'my_assignments', when: @when, event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'my_assignments' },
-            { text: "All Shows", path: my_shows_path(filter: 'all', when: @when, event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @filter == 'all' }
+            { text: "My Assignments", path: my_shows_path(filter: 'my_assignments', when: @when, event_type: @event_type_filter.join(','), entity: @entity_filter.join(','), production: @production_filter), active: @filter == 'my_assignments' },
+            { text: "All Shows", path: my_shows_path(filter: 'all', when: @when, event_type: @event_type_filter.join(','), entity: @entity_filter.join(','), production: @production_filter), active: @filter == 'all' }
           ]
         },
         { separator: true },
         {
           label: "When",
           filters: [
-            { text: "Upcoming", path: my_shows_path(filter: @filter, when: 'upcoming', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @when == 'upcoming' },
-            { text: "Past", path: my_shows_path(filter: @filter, when: 'past', event_type: @event_type_filter.join(','), entity: @entity_filter.join(',')), active: @when == 'past' }
+            { text: "Upcoming", path: my_shows_path(filter: @filter, when: 'upcoming', event_type: @event_type_filter.join(','), entity: @entity_filter.join(','), production: @production_filter), active: @when == 'upcoming' },
+            { text: "Past", path: my_shows_path(filter: @filter, when: 'past', event_type: @event_type_filter.join(','), entity: @entity_filter.join(','), production: @production_filter), active: @when == 'past' }
           ]
         },
         { separator: true },
@@ -45,10 +45,23 @@
             entity_filter: @entity_filter,
             label: "Include",
             filter: @filter,
-            event_type: @event_type_filter.join(",")
+            when: @when,
+            event_type: @event_type_filter.join(","),
+            production: @production_filter
           }
-        }
-      ]
+        },
+        (@filter_productions.size > 1 ? { separator: true } : nil),
+        (@filter_productions.size > 1 ? {
+          partial: "shared/filters/production_dropdown_filter",
+          locals: {
+            label: "Production",
+            name: "production",
+            options: [{ value: "", text: "All Productions" }] + @filter_productions.map { |p| { value: p.id.to_s, text: p.name, type: p.production_type } },
+            selected: @production_filter.to_s,
+            extra_url_params: { filter: @filter, when: @when, event_type: @event_type_filter.join(","), entity: @entity_filter.join(",") }
+          }
+        } : nil)
+      ].compact
   %>
 
   <% if @show_entity_rows.any? %>
