@@ -42,7 +42,8 @@ RSpec.describe "Ticketing dashboard", type: :request do
     get manage_ticketing_path(period: "all_time")
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Tickets sold", "Ticket sales", "$140.00", ">Upcoming<", ">Past<", "3 of 50 sold", "6% sold",
-                                      "Just played", "4 sold", "/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}", "Sales tax", "Embed on your website")
+                                      "Just played", "4 sold", "/t/#{ShortLink.canonical_for!(TicketingProfile.for(org)).code}", "Sales tax")
+    expect(response.body).not_to include("Embed on your website") # not offered yet (Tim, 2026-10-19)
     expect(response.body).to include(manage_ticket_listing_path(upcoming), manage_ticket_listing_path(played))
     expect(response.body).not_to include("Latest orders", "this week")
 

@@ -48,6 +48,12 @@ export default class extends Controller {
     // stops it.
     setMode(event) {
         this.applyMode(event.currentTarget.dataset.mode)
+        // Apple's Tap to Pay on iPhone review (5.2): at checkout its button is
+        // in view without scrolling, so choosing Sell brings the tickets and
+        // the ways to pay to the top of the screen.
+        if (this.mode === "sell" && this.hasSellPanelTarget) {
+            this.sellPanelTarget.scrollIntoView({ behavior: "smooth", block: "start" })
+        }
     }
 
     applyMode(mode, { start = true } = {}) {

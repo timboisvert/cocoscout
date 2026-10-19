@@ -96,34 +96,153 @@ all three; Apple's Tap to Pay screens don't show in a screen recording):
    button, the initializing screen if it takes over 300 ms, a successful tap,
    the receipt.
 
-Only Tim can do: request Apple's Marketing Toolkit (the form at
-https://forms.appleservices.apple/form/5e784e28b4e6, linked from the
-checklist's 6.1–6.3 rows). The awareness splash, the push and the launch
-email must use its assets and copy; we may not make our own.
+Apple's Marketing Toolkit: done (Tim, 2026-10-19). The splash, the push and
+the launch email use its Hero photo and copy unaltered.
 
-Met already: 1.1 (iPhone XS+ via the SDK), 1.6 (acceptance status from the
-SDK), 3.7 (trigger in checkout), 4.1 and 4.5–4.7 (Apple's How to Tap guide),
-5.1 (Tap to Pay first), 5.8 and 5.9 (processing and outcome), US needs no
-PIN fallback, surcharging or IFR.
+### What's built (2026-10-19, commits 56bd44e2, 1a13445e, a7e7ee71)
 
-To build (Required in v1.8):
-- 1.4 a clear "update iOS" message for the SDK's OS-version error.
-- 1.5 and 5.6 warm up Tap to Pay at launch and on foreground, so the screen opens within a second.
-- 3.1, 3.2, 3.3 (6.2, 6.3) the awareness moment for eligible users: a full-screen splash once with Apple's Hero banner, and a push with Apple's copy.
-- 3.4 at the end of a new organization's onboarding (opening the box office on the web), say how to turn on Tap to Pay in the app.
-- 3.5 a clear action to accept Apple's Terms and Conditions (Apple's own screen, opened by the SDK).
-- 3.6 and 4.3 a Tap to Pay section in the app's settings: turn it on, and the guide.
-- 3.8 and 3.8.1 only an authorized person accepts the terms (an organization's manager); anyone else sees "ask your organization's manager to turn on Tap to Pay on iPhone".
-- 3.9.1 and 5.7 the configuration progress indicator and an "initializing" screen while the reader prepares.
-- 4.2 the guide right after the terms are accepted, never before.
-- 5.3 the button never greyed out; tapped before the terms are accepted, it opens them.
-- 5.4 and 5.5 the button says "Tap to Pay on iPhone", with only the `wave.3.right.circle` symbol if any.
-- 5.10 a digital receipt on the result screen, approved or declined: a QR code to the order, or email.
-- 5.12 a notification when a payment isn't approved after the app was closed.
-- 6.1 a launch email to eligible users, from Apple's Launch template.
-- No "Stripe" in the processing copy.
+Every Required item in v1.8 is built and was tried end to end in the
+Simulator with Stripe's simulated reader: the splash, setting up from its
+page (location, Apple's terms, progress, Apple's guide, "Try it out at the
+door"), the getting-ready screen over a sale, a paid sale with its receipt
+code, a canceled one, and a second sale on a warm reader with no reconnect.
+It shows only in Debug builds (TapToPayComponent registers under `#if DEBUG`)
+and only where an organization has Tap to Pay on iPhone switched on
+(Ticketing settings → Door → Tap to Pay on iPhone → Manage; a superadmin
+sees that card on every organization, and switching it on offers it there).
 
-Open question for the build: CocoScout takes payments on one account, so
-Apple's terms may be accepted once for every organization (terms are per
-merchant ID). Check how the SDK's merchant display name and location map to
-Apple's merchant ID before deciding who sees the terms.
+Who accepts Apple's terms: CocoScout takes every organization's payments on
+one account, so Apple's terms are accepted once, by a CocoScout
+administrator (`TapToPay.can_accept_terms?`, superadmins). Anyone else who
+tries before that sees "An administrator needs to turn it on first" (3.8.1).
+
+### Before filming (Tim)
+
+1. Deploy main. It has two new columns on `ticketing_profiles`.
+2. Turn on Tap to Pay on iPhone for Stars & Garters: Ticketing settings →
+   Door → Tap to Pay on iPhone → Manage → switch on → Save.
+3. Run the app on your iPhone from Xcode: CocoScout scheme, Debug, your
+   iPhone as the destination. A phone run from Xcode talks to cocoscout.com,
+   and only Debug builds have Tap to Pay until Apple says yes. To see the
+   splash again later, delete the app and run it again.
+4. Pick a show that's on tonight: the door lists tonight's shows. The
+   checkout video takes a real tap on your own card; refund that order
+   afterward from Ticketing → Orders.
+5. Have a second phone to film with, and a card or a second phone with
+   Apple Pay to tap.
+6. Film in this order, because Apple's terms can be accepted only once:
+   the existing-user video first (it accepts the terms), then the new-user
+   video, then checkout. To accept the terms again for a retake, unlink your
+   Apple Account first (the link is in the checklist's "If you need to
+   unlink your Apple Account" row).
+
+### Video 1: Existing user (film first)
+
+You, signed in, before Apple's terms are accepted:
+
+1. Open the app. The full-screen Tap to Pay on iPhone page appears once.
+   Tap "Terms apply." to show Apple's disclaimer, close it, tap Not now.
+2. Menu → Work the door → tonight's show → Sell. The Tap to Pay on iPhone
+   button is there, first, before the terms are accepted.
+3. Menu → Tap to Pay on iPhone. Tap "Set up Tap to Pay on iPhone": allow
+   location, accept Apple's terms, watch the progress, then Apple's guide
+   opens on its own. Close it: the page says Ready and offers "Try it out at
+   the door".
+4. On the same page, "How to accept payments" → See how: Apple's guide again.
+
+### Video 2: New user
+
+Someone new to CocoScout who will work the door:
+
+1. On cocoscout.com as the Stars & Garters manager: Ticketing settings →
+   Door. Show the Tap to Pay on iPhone card (On), then invite a new email
+   under "Who can work the door" with "Check people in and sell tickets".
+2. On the iPhone, open the invitation email, tap its link, and create the
+   account (in the app, or in Safari and then sign in to the app).
+3. The full-screen Tap to Pay on iPhone page appears: Get started.
+4. Set up Tap to Pay on iPhone: allow location, the progress while the
+   iPhone configures, configuration finishing, Apple's guide, Ready, and
+   "Try it out at the door". (No terms here: CocoScout accepted them in
+   video 1. Say so in the checklist.)
+
+### Video 3: Checkout
+
+1. Menu → Work the door → tonight's show → Sell. Add one ticket.
+2. Show the ways to pay, with Tap to Pay on iPhone first.
+3. Tap Tap to Pay on iPhone. If the iPhone is still getting ready, the
+   "Getting Tap to Pay on iPhone ready" screen shows.
+4. Tap the card or the other phone. Apple's screen processes it.
+5. Paid, with "Scan for a receipt": scan the code with the filming phone
+   to show the receipt.
+
+### The reply to Apple
+
+Reply to Apple's Oct 12 email (Case-ID 22828656) with the three videos and
+the filled checklist (`ios/apple_ttp/App Review Requirements Checklist
+1_8.numbers`). A body to start from:
+
+> Hello, attached are CocoScout's three recordings (existing user, new user,
+> checkout) and the completed App Review Requirements Checklist v1.8.
+> CocoScout is the box office for the organizations that use it: every
+> organization's sales go through CocoScout's own payment account, so
+> CocoScout is the merchant and its administrators accept the Tap to Pay on
+> iPhone terms once, in the app. The people who use Tap to Pay on iPhone are
+> door staff an organization invites; they create a CocoScout account in the
+> app and set up Tap to Pay on iPhone there. Organizations themselves set up
+> their box office on our website, so we ask for the exception for apps
+> whose merchants are onboarded outside the app (requirements 2.1 to 2.3).
+> Thank you.
+
+### Checklist answers (Apple's numbering, v1.8)
+
+Info tab: App Name CocoScout. PSP Name Stripe. Existing app. Number of
+devices: the smallest range. Distribution: Public.
+
+General
+- 1.1 iPhone XS and later: Done. The payment SDK checks the iPhone, and an older one is told it can't take Tap to Pay on iPhone.
+- 1.2 Human Interface Guidelines: Done.
+- 1.3 Marketing guidelines: Done. Apple's copy and Hero photo, unaltered; always "Tap to Pay on iPhone".
+- 1.4 Old iOS: Done. "To take payments with Tap to Pay on iPhone, update iOS: Settings > General > Software Update."
+- 1.5 and 5.6 Warm-up: Done. Once set up, the app connects in the background at launch and every time it comes back to the front.
+- 1.6 Acceptance status from Apple: Done. The app asks Apple through the SDK each time and keeps no record of acceptance; if Apple says the terms aren't accepted, it shows Set up again.
+- 1.7 Face ID or Touch ID login: Can improve. Sign-in uses iOS Password AutoFill, which unlocks with Face ID.
+- Primary payment method items: Not applicable. Tap to Pay on iPhone is one of several ways to pay at the door.
+- Regional: United States only. No PIN fallback, surcharging or IFR.
+
+Onboarding merchants
+- 2.1 to 2.3: Exception requested (see the reply). A door person's account takes about two minutes; setting up Tap to Pay on iPhone a minute or two.
+
+Enabling Tap to Pay on iPhone
+- 3.1 and 6.2 Splash: Done. Full screen, once per person on each iPhone, with Apple's Hero photo and copy.
+- 3.2 and 6.3 Push: Done. At launch, a CocoScout message with a push carrying Apple's Value Proposition copy, to everyone who can sell at a door that has it.
+- 3.3 Visible: Done. "Tap to Pay on iPhone" in the app's menu and on the door.
+- 3.4 End of onboarding: Done. Opening a box office says how to turn on Tap to Pay on iPhone, and Ticketing settings → Door has its card.
+- 3.5 Accepting the terms: Done. "Set up Tap to Pay on iPhone" on its page, and the checkout button.
+- 3.6 Outside checkout: Done. Menu → Tap to Pay on iPhone.
+- 3.7 Trigger in checkout: Done. The door's button opens the terms when they aren't accepted.
+- 3.8 Authorized party only: Done. Only CocoScout's administrators, because one merchant account serves every organization.
+- 3.8.1 Message for others: Done. "An administrator needs to turn it on first."
+- 3.9.1 Progress: Done. On its page and over a sale, with the percentage.
+
+Educating merchants
+- 4.1 ProximityReaderDiscovery on iOS 18 and later: Done. This covers 4.4, 4.6, 4.7 and 4.8.
+- 4.2 After the terms: Done. Apple's guide opens as soon as setup finishes.
+- 4.3 Later: Done. "See how" on the Tap to Pay on iPhone page, and "How to take a tap" on the payment screen.
+- Try it out: Done. The Ready panel invites them to try it at the door.
+- PIN and fallback education: Not applicable in the United States.
+
+Checking out
+- 5.1 and 5.2 Button: Done. First among the ways to pay, and choosing Sell brings the tickets and the buttons to the top so nothing needs scrolling.
+- 5.3 Never greyed out: Done.
+- 5.4 and 5.5 Name and symbol: Done. "Tap to Pay on iPhone", with no symbol.
+- 5.7 Initializing: Done. "Getting Tap to Pay on iPhone ready."
+- 5.8 Processing: Done. Apple's screen.
+- 5.9 Outcome: Done. Paid, not approved, or canceled.
+- 5.10 Receipt: Done. A QR code on the result screen whether approved or not; the receipt names no card and no buyer.
+- 5.12 Not approved while closed: Done. A notification that opens the door.
+- Refunds: Referenced refunds, from the order page; no card tap.
+- Schemes: Visa, Mastercard, American Express, Discover.
+- Receipt methods: QR code.
+
+Marketing
+- 6.1 Launch email: Done. Apple's Launch email, to the people who can sell at a door that has Tap to Pay on iPhone. Send it with `TapToPayLaunch.announce!` once Apple approves (dry run first).

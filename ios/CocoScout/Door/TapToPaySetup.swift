@@ -132,8 +132,16 @@ final class TapToPaySetup {
             }
         }
         connecting = task
-        let result = await task.value
+        var result = await task.value
         connecting = nil
+        // Apple says the terms aren't accepted (any more): this iPhone isn't
+        // set up, whatever it last knew (Apple 1.6). For someone who may
+        // accept them that means "Set up"; for anyone else, wait for an
+        // administrator.
+        if case .needsAdmin = result {
+            if let setUpKey { UserDefaults.standard.removeObject(forKey: setUpKey) }
+            if info?.canAcceptTerms == true { result = .notSetUp }
+        }
         state = result
         return result
     }

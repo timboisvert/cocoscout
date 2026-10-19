@@ -51,7 +51,7 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     expect(setup["data-bridge--tap-to-pay-connection-token-url-value"]).to eq(door_tap_to_pay_token_path(organization_id: org.id))
     expect(response.body).to include("Set up Tap to Pay on iPhone", "click->bridge--tap-to-pay#enable", "click->bridge--tap-to-pay#howToTap",
                                      "Terms apply.", "Tap to Pay on iPhone requires a supported payment app", "Getting Tap to Pay on iPhone ready",
-                                     "An administrator needs to turn it on first")
+                                     "An administrator needs to turn it on first", "Try it out at the door", door_index_path)
     expect(response.body).not_to include("Stripe")
 
     get door_tap_to_pay_token_path(organization_id: org.id), headers: in_app

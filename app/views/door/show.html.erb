@@ -93,7 +93,7 @@
   <% if can_sell %>
     <%# Selling to someone in front of you: pick the tickets, then how they pay. %>
     <% max_per_order = @listing.effective_max_per_order %>
-    <%= form_with url: door_sell_path(@listing), method: :post, class: "hidden mt-4 rounded-xl border border-gray-200 bg-white p-4",
+    <%= form_with url: door_sell_path(@listing), method: :post, class: "hidden mt-4 scroll-mt-3 rounded-xl border border-gray-200 bg-white p-4",
           data: { controller: "door-sell", door_target: "sellPanel",
                   door_sell_fee_mode_value: @listing.effective_fee_mode,
                   door_sell_platform_fee_value: TicketPricing::PLATFORM_FEE_CENTS,

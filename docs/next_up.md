@@ -17,16 +17,17 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [ ] Tap to Pay on Android: get ready (see "Tap to Pay on Android" below).
 - [ ] **Tap to Pay on iPhone (V1.2): Apple's publishing approval.** In order:
   1. [x] Tim: Apple's checklist and guide into `ios/apple_ttp/` (done 10/19).
-  2. [ ] **Tim, today: request Apple's Marketing Toolkit** at https://forms.appleservices.apple/form/5e784e28b4e6. Apple requires its splash, push and launch email assets; we can't make our own. Drop it into `ios/apple_ttp/` when it comes.
-  3. [ ] Claude: build the pieces listed under "To build" in `ios/tap_to_pay.md` on the V1.2 branch, then write a shot list for each video and draft the checklist.
-  4. [ ] Tim: film the three videos, each with a second phone: new user (an organization signs up and opens its box office on the web, then Tap to Pay is introduced in the app), existing user (the splash, accepting Apple's terms, the guide, Settings), checkout (a door sale with a real tap and the receipt).
-  5. [ ] Tim: reply to the Oct 12 email (Case-ID 22828656) with the videos, the checklist and the exception request for web sign-up. Apple's review takes a week or two from then.
+  2. [x] Tim: Apple's Marketing Toolkit into `ios/apple_ttp/` (done 10/19).
+  3. [x] Claude: build what Apple requires, on main behind Debug builds and a per-organization switch, and write the shot lists and checklist answers (done 10/19, in `ios/tap_to_pay.md`).
+  4. [ ] Tim: deploy main, switch Tap to Pay on iPhone on for Stars & Garters (Ticketing settings → Door → Manage), and run the app on your iPhone from Xcode.
+  5. [ ] Tim: film the three videos with a second phone, in this order: existing user, new user, checkout ("Before filming" and the shot lists in `ios/tap_to_pay.md`).
+  6. [ ] Tim: fill Apple's checklist from the answers in `ios/tap_to_pay.md` and reply to the Oct 12 email (Case-ID 22828656) with the videos, the checklist and the exception request (the reply is drafted there too). Apple's review takes a week or two from then.
 
 ## Soon
 
 - [ ] Reports → Ticket Sales by Show: count other sites too, as Attendance does.
 - [ ] V1.1 (was V2): production mode + new navigation on its own branch; never deployed until both app reviews pass. Carries the per-build path config and user-agent marker.
-- [ ] V1.2 (was V1.1): Tap to Pay on its own branch; ships when Apple grants the publishing entitlement.
+- [ ] V1.2 (was V1.1): Tap to Pay on iPhone, on main behind Debug builds; the Release build registers it once Apple grants the publishing entitlement.
 - [ ] Books, stages B to F (`docs/accounting_books_plan.md`), one phase at a time.
 
 ## Waiting on
