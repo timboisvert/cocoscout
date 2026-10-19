@@ -32,7 +32,7 @@
     <% end %>
 
     <% group.call("Dates and services", "Applied right away and recorded on the contract. No new signature.") do %>
-      <%= row.call(amend_dates_manage_contract_path(@contract), "calendar", "Dates", "Cancel a date, move one, or add another. Its payments come and go with it.") %>
+      <%= row.call(amend_dates_manage_contract_path(@contract), "calendar", "Dates", "Move a date or cancel one; its payments go with it. Adding a date is part of the deal.") %>
       <%= row.call(amend_services_manage_contract_path(@contract), "check-circle", "Services and prices",
                    "What each date gets and what it costs, on any date that isn't settled yet.") %>
     <% end %>

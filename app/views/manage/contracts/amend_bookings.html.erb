@@ -34,7 +34,7 @@
         <% staged_moves = @amend_data["moved_rentals"] || {} %>
         <% @existing_rentals.each do |rental| %>
           <% staged = ContractDateChanges.staged_times(rental, staged_moves[rental.id.to_s]) if staged_moves[rental.id.to_s] %>
-          <div class="existing-rental p-3 bg-gray-50 rounded-lg" data-rental-id="<%= rental.id %>">
+          <div class="existing-rental p-3 bg-gray-50 rounded-lg" data-rental-id="<%= rental.id %>" data-controller="disclosure">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="flex-shrink-0 w-12 flex items-center gap-1">
@@ -50,6 +50,10 @@
                   <% if rental.has_separate_event_time? %>
                     <span class="text-pink-600">· show <%= rental.effective_event_starts_at.strftime("%-l:%M %p") %>–<%= rental.effective_event_ends_at.strftime("%-l:%M %p") %></span>
                   <% end %>
+                  <%# Moves the night in place (ContractDateChanges.move!): the same show, so
+                      its ticket buyers, cast, staffing and payments go with it. A small link
+                      beside the time (Tim, 2026-10-18), opening the fields under the row. %>
+                  <button type="button" data-action="click->disclosure#toggle" class="ml-2 text-xs font-medium text-pink-600 hover:text-pink-700 bg-transparent border-0 p-0 cursor-pointer">Change time</button>
                 </div>
               </div>
             </div>
@@ -57,15 +61,10 @@
               <%= icon("x", class: "w-5 h-5") %>
             </button>
           </div>
-          <%# Moves the night in place (ContractDateChanges.move!): the same show, so
-              its ticket buyers, cast, staffing and payments go with it. %>
-          <details class="mt-2 ml-15" <%= "open" if staged %>>
-            <summary class="text-sm text-pink-600 hover:text-pink-700 cursor-pointer select-none">Change time</summary>
-            <div class="mt-3">
-              <%= render "manage/contracts/night_times_fields", rental: rental, prefix: "moved[#{rental.id}]", times: staged %>
-              <p class="text-xs text-gray-500 mt-3">The same event, so its ticket buyers keep their tickets (Ticketing asks you to tell them about a new show time), and its cast and staffing stay.</p>
-            </div>
-          </details>
+          <div data-disclosure-target="content" class="<%= 'hidden' unless staged %> mt-3 ml-15">
+            <%= render "manage/contracts/night_times_fields", rental: rental, prefix: "moved[#{rental.id}]", times: staged %>
+            <p class="text-xs text-gray-500 mt-3">The same event, so its ticket buyers keep their tickets (Ticketing asks you to tell them about a new show time), and its cast and staffing stay.</p>
+          </div>
           </div>
         <% end %>
       </div>
