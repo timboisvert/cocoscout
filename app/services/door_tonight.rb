@@ -20,7 +20,7 @@ module DoorTonight
     listings(TicketingDoorAccess.organizations_for(user).map(&:id))
       .where(shows: { date_and_time: (at - 1.day)..(at + 1.day) })
       .includes(organization: :ticketing_profile).to_a
-      .select { |listing| window(listing.show, listing.organization.ticketing_profile).cover?(at) }
+      .select { |listing| (w = window(listing.show, listing.organization.ticketing_profile)) && w.begin <= at && at < w.end }
   end
 
   # Whether one of the user's organizations keeps the Door in the app's menu
@@ -83,6 +83,12 @@ module DoorTonight
     opens..closes(show)
   end
 
+  # When tonight is over for the door's list: 6 AM tomorrow (a 1 AM show is
+  # still tonight's).
+  def self.night_ends(at = Time.current)
+    (at - NIGHT_ROLLOVER.hours).to_date.next_day.in_time_zone.change(hour: NIGHT_ROLLOVER)
+  end
+
   def self.closes(show)
     starts = show.date_and_time
     return show.ends_at + AFTER_END if show.duration_minutes.present? || show.space_rental.present?
@@ -99,5 +105,4 @@ module DoorTonight
                  .includes(:production, show: :space_rental)
                  .order("shows.date_and_time")
   end
-  private_class_method :listings
 end

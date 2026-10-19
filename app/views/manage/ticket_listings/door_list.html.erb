@@ -30,7 +30,7 @@
   </div>
   <table>
     <% products = @rows.any? { |r| r[:products].present? } %>
-    <thead><tr><th style="width: 70px">In</th><th>Name</th><th>Tickets</th><% if products %><th>Products</th><% end %><th>Order</th></tr></thead>
+    <thead><tr><th style="width: 70px">Checked in</th><th>Name</th><th>Tickets</th><% if products %><th>Products</th><% end %><th>Order</th></tr></thead>
     <tbody>
       <% @rows.each do |row| %>
         <tr>

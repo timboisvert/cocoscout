@@ -45,11 +45,21 @@ RSpec.describe "Door", type: :request do
       grant(door_person, "box_office")
       sign_in(door_person)
 
+      # The door is for right now (Tim, 2026-10-18): tonight's show, whose
+      # door is open, with its counts; a show three days out isn't listed.
       get door_index_path
       body = response.body
-      expect(body.index(">Today<")).to be < body.index(door_path(tonight))
-      expect(body.index(door_path(tonight))).to be < body.index(">Coming up<")
-      expect(body.index(">Coming up<")).to be < body.index(door_path(later))
+      expect(body).to include(">On now<", door_path(tonight), "Checked in", "Open the door")
+      expect(body).not_to include(door_path(later), ">Coming up<")
+
+      # An organization that keeps the Door in the app all the time was
+      # promised its coming shows when nothing's on, and gets them.
+      profile.update!(door_in_app: "always")
+      travel_to(2.days.from_now.change(hour: 12)) do
+        sign_in(door_person)
+        get door_index_path
+        expect(response.body).to include("Nothing to work right now", ">Coming up<", door_path(later))
+      end
     end
 
     it "keeps last night's show on the list until its door closes" do
@@ -75,7 +85,7 @@ RSpec.describe "Door", type: :request do
       grant(door_person, "check_in")
       sign_in(door_person)
       get door_index_path
-      expect(response.body).to include(door_path(listing))
+      expect(response.body).to include("Nothing to work right now", "Next for you", listing.display_title)
 
       get door_path(listing)
       expect(response).to have_http_status(:ok)
@@ -182,13 +192,13 @@ RSpec.describe "Door", type: :request do
       order = sold_order(3)
       TicketDoor.new(listing, owner).sell({ general.id.to_s => "1" }, kind: "comp", buyer_name: "Abe Comp")
       get door_path(listing)
-      expect(response.body).to include("Abe Comp", "1 General · Comp · In", "All in", "Dana Scully", "3 General", 'title="Check in all 3"',
+      expect(response.body).to include("Abe Comp", "1 General · Comp · Checked in", "All checked in", "Dana Scully", "3 General", 'title="Check in all 3"',
                                        door_check_in_order_path(listing, order_id: order.id))
       expect(response.body.index("Abe Comp")).to be < response.body.index("Dana Scully")
 
       post door_check_in_path(listing), params: { code: order.tickets.first.code }, as: :json
       get door_list_path(listing)
-      expect(response.body).to include(">1/3<", "1 of 3 in", 'title="Check in all 2"')
+      expect(response.body).to include(">1/3<", "1 of 3 checked in", 'title="Check in all 2"')
     end
 
     it "undoes a mistaken check-in" do

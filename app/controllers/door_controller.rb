@@ -13,12 +13,27 @@ class DoorController < ApplicationController
   before_action -> { require_level(:box_office) }, only: %i[sell card card_status card_cancel use_pass tap tap_connection_token tap_settle]
   before_action :set_card_order, only: %i[card card_status card_cancel tap tap_settle]
 
+  # The door is for right now (Tim, 2026-10-18): the shows whose door is
+  # open, with the counts that matter, then tonight's later shows waiting
+  # for theirs to open, then the next show for this person. No list of
+  # coming dates: selling ahead is the box office's job in Ticketing. An
+  # organization that keeps the Door in the app all the time ("always")
+  # promised a list of its coming shows when nothing's on, and gets it.
   def index
-    organizations = TicketingDoorAccess.organizations_for(Current.user)
-    on_sale = TicketListing.where(organization: organizations).where.not(status: %w[draft canceled])
-                           .joins(:show).where(shows: { canceled: false })
-    @listings = DoorTonight.still_on(on_sale).includes(:organization, :production, show: :location)
-                           .order("shows.date_and_time").limit(40).to_a
+    @organizations = TicketingDoorAccess.organizations_for(Current.user).to_a
+    now = Time.current
+    @on_now = DoorTonight.listings_for(Current.user, at: now).sort_by { |listing| listing.show.date_and_time }
+    today = DoorTonight.listings(@organizations.map(&:id)).includes(:organization, :production, show: %i[location space_rental])
+                       .where(shows: { date_and_time: now..DoorTonight.night_ends(now) }).to_a
+    @later_tonight = (today - @on_now).select { |listing| DoorTonight.phase(listing, at: now) == :before }
+    @next_listing = DoorTonight.listings(@organizations.map(&:id)).where("shows.date_and_time > ?", DoorTonight.night_ends(now)).first
+    @coming_up = if @on_now.empty? && @organizations.any? { |org| org.ticketing_profile&.door_in_app == "always" }
+      DoorTonight.listings(@organizations.select { |org| org.ticketing_profile&.door_in_app == "always" }.map(&:id))
+                 .where("shows.date_and_time > ?", now).limit(12).to_a
+    else
+      []
+    end
+    @stats = Ticketing::ListingStats.for(@on_now)
   end
 
   def show
@@ -254,7 +269,7 @@ class DoorController < ApplicationController
     held = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     return nil if held.size < 2
 
-    "#{held.count(&:checked_in?)} of #{held.size} in"
+    "#{held.count(&:checked_in?)} of #{held.size} checked in"
   end
 
   def items_json(order)

@@ -78,7 +78,7 @@ RSpec.describe "Ticket products on pages", type: :request do
     # A scan at the door names what they pre-bought, with a hand-over tap.
     post door_check_in_path(listing), params: { code: order.tickets.first.code }, as: :json
     scan = response.parsed_body
-    expect(scan["party"]).to eq("1 of 2 in")
+    expect(scan["party"]).to eq("1 of 2 checked in")
     expect(scan["items"]).to eq([ { "id" => item.id, "label" => "1 × Champagne bottle", "fulfilled" => false, "fulfill_url" => door_fulfill_path(listing, item_id: item.id) } ])
     post door_fulfill_path(listing, item_id: item.id), as: :json
     expect(response.parsed_body["message"]).to eq("1 × Champagne bottle delivered")

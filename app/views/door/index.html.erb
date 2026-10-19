@@ -1,31 +1,92 @@
-<% content_for :title, "Working the door" %>
+<% content_for :title, "Work the door" %>
+<%
+  now = Time.current
+  time_words = ->(listing) { listing.show.date_and_time.strftime("%-l:%M %p") }
+  started = ->(listing) { listing.show.date_and_time <= now }
+  room = ->(listing) { [ listing.show.location&.name, listing.show.location_space&.name ].compact.uniq.last }
+  # When a door opens: "that morning" when it opens with the day, else the hour.
+  opens_words = lambda do |listing|
+    opens = DoorTonight.window(listing.show, listing.organization.ticketing_profile).begin
+    opens == opens.beginning_of_day ? "that morning" : "at #{opens.strftime('%-l:%M %p')}"
+  end
+%>
 
-<h1 class="text-lg font-semibold text-gray-900">Pick the show you're working</h1>
-
-<%# Today's shows first (someone early for the second of three shows picks
-    theirs), then the rest, for selling ahead. %>
-<% today, later = @listings.partition { |listing| listing.show.date_and_time.to_date <= Date.current } %>
-<% if @listings.any? %>
-  <% [ [ "Today", today ], [ "Coming up", later ] ].each do |heading, listings| %>
-    <% next if listings.empty? %>
-    <h2 class="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500"><%= heading %></h2>
-    <div class="mt-2 space-y-2">
-      <% listings.each do |listing| %>
-        <% show = listing.show %>
-        <%= link_to door_path(listing), class: "flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-pink-400 transition-colors" do %>
-          <div class="flex-shrink-0 w-12 text-center">
-            <div class="text-[11px] font-semibold uppercase text-pink-600"><%= show.date_and_time.strftime("%b") %></div>
-            <div class="text-2xl font-bold leading-tight text-gray-900"><%= show.date_and_time.day %></div>
-            <div class="text-[11px] uppercase text-gray-500"><%= show.date_and_time.to_date == Date.current ? "Today" : show.date_and_time.strftime("%a") %></div>
-          </div>
+<% if @on_now.any? %>
+  <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">On now</h2>
+  <div class="mt-2 space-y-2">
+    <% @on_now.each_with_index do |listing, index| %>
+      <% show = listing.show %>
+      <% stats = @stats[listing.id] %>
+      <% lead = index.zero? %>
+      <%= link_to door_path(listing), class: "block rounded-2xl bg-white transition-colors #{lead ? 'border-2 border-pink-500 p-4' : 'border border-gray-200 px-4 py-3 hover:border-pink-400'}" do %>
+        <div class="flex items-start gap-3">
           <div class="min-w-0 flex-1">
-            <div class="font-semibold text-gray-900 truncate"><%= listing.display_title %></div>
-            <div class="text-sm text-gray-600 truncate"><%= show.date_and_time.strftime("%-l:%M %p") %> · <%= listing.organization.name %></div>
+            <div class="text-xs text-gray-500"><%= [ room.call(listing), (@organizations.many? ? listing.organization.name : nil) ].compact.join(" · ") %></div>
+            <div class="<%= lead ? 'text-xl' : 'text-lg' %> font-bold leading-tight text-gray-900"><%= listing.display_title %></div>
+            <div class="text-sm text-gray-600 mt-0.5">Show <%= time_words.call(listing) %> · <%= started.call(listing) ? "started #{time_ago_in_words(show.date_and_time)} ago" : "starts in #{distance_of_time_in_words(now, show.date_and_time)}" %></div>
+          </div>
+          <% unless lead %>
+            <div class="text-right text-sm text-gray-600 tabular-nums flex-shrink-0"><strong class="text-xl text-gray-900"><%= stats.checked_in %></strong> checked in<br><%= stats.sold %> sold</div>
+          <% end %>
+        </div>
+        <% if lead %>
+          <div class="mt-3 grid grid-cols-3 gap-2">
+            <div class="rounded-xl bg-gray-50 px-3 py-2"><div class="text-[11px] text-gray-500">Checked in</div><div class="text-2xl font-bold tabular-nums text-gray-900"><%= stats.checked_in %></div></div>
+            <div class="rounded-xl bg-gray-50 px-3 py-2"><div class="text-[11px] text-gray-500">Sold</div><div class="text-2xl font-bold tabular-nums text-gray-900"><%= stats.sold %></div></div>
+            <div class="rounded-xl bg-gray-50 px-3 py-2"><div class="text-[11px] text-gray-500">Seats</div><div class="text-2xl font-bold tabular-nums text-gray-900"><%= stats.inventory.capacity || "—" %></div></div>
+          </div>
+          <div class="mt-3">
+            <%= render "shared/button", text: "Open the door", variant: "primary", size: "medium", classes: "w-full justify-center" %>
           </div>
         <% end %>
       <% end %>
-    </div>
-  <% end %>
+    <% end %>
+  </div>
 <% else %>
-  <p class="mt-4 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-600">No upcoming shows to work. A theater manager can give you door access in Ticketing settings.</p>
+  <div class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center">
+    <div class="text-lg font-semibold text-gray-900">Nothing to work right now</div>
+    <p class="mt-2 text-sm text-gray-600">The door opens the morning of a show, or earlier when the theater sets that, and closes an hour after it ends.</p>
+    <% if @next_listing %>
+      <div class="mt-4 inline-block rounded-xl bg-gray-50 px-4 py-3 text-left">
+        <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Next for you</div>
+        <div class="mt-0.5 text-sm font-semibold text-gray-900"><%= @next_listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %> · <%= @next_listing.display_title %></div>
+        <div class="text-xs text-gray-500">The door opens <%= opens_words.call(@next_listing) %><%= " that day" unless opens_words.call(@next_listing) == "that morning" %></div>
+      </div>
+    <% elsif @organizations.empty? %>
+      <p class="mt-3 text-sm text-gray-600">A theater manager can give you door access in Ticketing settings.</p>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @later_tonight.any? %>
+  <h2 class="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500">Later tonight</h2>
+  <div class="mt-2 rounded-2xl border border-gray-200 bg-white px-4 divide-y divide-gray-100 text-sm text-gray-500">
+    <% @later_tonight.each do |listing| %>
+      <div class="py-3 flex items-center justify-between gap-3">
+        <div class="min-w-0"><div><strong class="text-gray-700"><%= time_words.call(listing) %></strong> <%= listing.display_title %></div><div class="text-xs"><%= [ room.call(listing), (@organizations.many? ? listing.organization.name : nil) ].compact.join(" · ") %></div></div>
+        <div class="text-xs flex-shrink-0">Door opens <%= opens_words.call(listing).delete_prefix("at ") %></div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @coming_up.any? %>
+  <%# An "always" organization keeps the Door for selling ahead: when nothing's on, its coming shows. %>
+  <h2 class="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500">Coming up</h2>
+  <div class="mt-2 space-y-2">
+    <% @coming_up.each do |listing| %>
+      <% show = listing.show %>
+      <%= link_to door_path(listing), class: "flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-pink-400 transition-colors" do %>
+        <div class="flex-shrink-0 w-12 text-center">
+          <div class="text-[11px] font-semibold uppercase text-pink-600"><%= show.date_and_time.strftime("%b") %></div>
+          <div class="text-2xl font-bold leading-tight text-gray-900"><%= show.date_and_time.day %></div>
+          <div class="text-[11px] uppercase text-gray-500"><%= show.date_and_time.strftime("%a") %></div>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-gray-900 truncate"><%= listing.display_title %></div>
+          <div class="text-sm text-gray-600 truncate"><%= time_words.call(listing) %><%= " · #{listing.organization.name}" if @organizations.many? %></div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
 <% end %>

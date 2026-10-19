@@ -17,39 +17,49 @@
   </head>
 
   <%# The door on show night: a phone-first page with nothing in the way.
-      The header says where you are: the show you're working (with a way
-      back to your shows), or your list of shows. It never sends a door
-      volunteer off into the rest of CocoScout. %>
-  <% person = Current.user&.person %>
-  <% headshot = person&.safe_headshot_variant(:thumb) %>
+      The header (Tim, 2026-10-18) says what this is, "Work the door", and
+      whose door: the organization's name, as a link to its box office, with
+      the date and time. Never a person's picture: someone handing over money
+      should see the theater, not a stranger's face. In the app the native
+      bar holds the title and the way back, so the header is just the
+      organization and the time. %>
+  <%
+    door_organization = @listing&.organization || (@organizations&.one? ? @organizations.first : nil)
+    door_profile = door_organization&.ticketing_profile
+    door_org_link = door_profile&.enabled? ? tickets_box_office_path(org: door_profile.slug) : nil
+    native = turbo_native_app?
+  %>
   <body class="inter-regular text-slate-700 bg-gray-50">
-    <%# In the app the native nav bar holds the title and the way back, so the
-        header only appears to say which show (and doesn't stick). %>
-    <% native = turbo_native_app? %>
-    <% if native %>
-      <header class="border-b border-gray-200 bg-white <%= "hidden" unless content_for?(:door_header) %>">
-    <% else %>
-      <header class="sticky top-0 z-10 border-b border-gray-200 bg-white" style="padding-top: env(safe-area-inset-top)">
-    <% end %>
-      <div class="mx-auto max-w-2xl px-4 py-2.5 flex items-center gap-3 min-h-[3.5rem]">
+    <header class="<%= native ? '' : 'sticky top-0 z-10' %> border-b border-gray-200 bg-white" style="padding-top: env(safe-area-inset-top)">
+      <div class="mx-auto max-w-2xl px-3 py-2.5 flex items-center gap-2 min-h-[3.5rem]">
+        <%# A page that is one step inside a show (paying at the door) names
+            itself and the way back; every other page is "Work the door". %>
         <% if content_for?(:door_header) %>
           <%= yield :door_header %>
         <% else %>
-          <%= image_tag "/icon.svg", alt: "", class: "w-8 h-8 rounded-lg flex-shrink-0" %>
-          <div class="min-w-0 flex-1">
-            <div class="text-base font-semibold text-gray-900 leading-tight">Working the door</div>
-            <div class="text-xs text-gray-500 truncate">CocoScout Tickets</div>
-          </div>
-        <% end %>
-        <% if person %>
-          <span class="flex-shrink-0" title="Signed in as <%= person.name %>">
-            <% if headshot %>
-              <%= image_tag headshot, alt: person.name, class: "w-8 h-8 rounded-lg object-cover" %>
-            <% else %>
-              <span class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs"><%= person.initials %></span>
+          <% if @listing && !native %>
+            <%= link_to door_index_path, class: "flex-shrink-0 p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             <% end %>
-          </span>
+          <% end %>
+          <% unless native %>
+            <div class="min-w-0 flex-1 <%= 'pl-1' unless @listing %>">
+              <div class="coustard-regular text-xl leading-tight text-gray-900">Work the door</div>
+            </div>
+          <% end %>
         <% end %>
+        <div class="<%= native && !content_for?(:door_header) ? 'flex-1 flex items-center justify-between' : 'text-right flex-shrink-0' %> min-w-0">
+          <% if door_organization %>
+            <% if door_org_link %>
+              <%= link_to door_organization.name, door_org_link, class: "block text-sm font-semibold text-pink-600 hover:text-pink-700 truncate" %>
+            <% else %>
+              <div class="text-sm font-semibold text-gray-900 truncate"><%= door_organization.name %></div>
+            <% end %>
+          <% elsif @organizations&.many? %>
+            <div class="text-sm font-semibold text-gray-900 truncate"><%= pluralize(@organizations.size, "theater") %></div>
+          <% end %>
+          <div class="text-xs text-gray-500 tabular-nums"><%= Time.current.strftime("%a, %b %-d · %-l:%M %p") %></div>
+        </div>
       </div>
     </header>
     <main class="mx-auto max-w-2xl px-4 py-5">

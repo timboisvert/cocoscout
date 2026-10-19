@@ -42,7 +42,7 @@
           <% end %>
         </div>
         <div class="sm:w-28 sm:text-right text-xs <%= inside == held.size && held.any? ? 'text-green-700 font-medium' : 'text-gray-500' %>">
-          <%= held.empty? ? "" : (inside.zero? ? "Not in yet" : "#{inside} of #{held.size} in") %>
+          <%= held.empty? ? "" : (inside.zero? ? "Not checked in yet" : "#{inside} of #{held.size} checked in") %>
         </div>
       </li>
     <% end %>

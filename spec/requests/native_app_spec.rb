@@ -263,13 +263,13 @@ RSpec.describe "The iOS app's web side", type: :request do
     expect(door["data-door-in-app-value"]).to eq("true")
     expect(door["data-bridge--door-scanner-title-value"]).to eq(listing.display_title)
     expect(door["data-action"]).to include("door:scan->bridge--door-scanner#open", "door-scanner:code->door#nativeCode")
-    expect(page.at_css("title").text).to eq("Door")
+    expect(page.at_css("title").text).to eq("Work the door")
 
     # A browser keeps its own camera, and a title naming the show.
     get door_path(listing)
     page = Nokogiri::HTML(response.body)
     expect(page.at_css("[data-controller~='door']")["data-door-in-app-value"]).to eq("false")
-    expect(page.at_css("title").text).to eq("Door · #{listing.display_title}")
+    expect(page.at_css("title").text).to eq("Work the door · #{listing.display_title}")
   end
 
   # iPhone zooms in on small text boxes, and in the app the zoom stuck to

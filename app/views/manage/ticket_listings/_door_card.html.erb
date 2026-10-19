@@ -33,13 +33,13 @@
       <% if phase == :door %>
         <p class="text-[15px] text-gray-600 mt-1"><%= closed_words %> Anyone arriving now buys at the door.</p>
         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-700">
-          <span><strong class="text-gray-900 tabular-nums"><%= checked_in %></strong> in</span>
+          <span><strong class="text-gray-900 tabular-nums"><%= checked_in %></strong> checked in</span>
           <span><strong class="text-gray-900 tabular-nums"><%= still_to_come %></strong> still to come</span>
           <% if at_the_door.positive? %><span><strong class="text-gray-900 tabular-nums"><%= at_the_door %></strong> sold at the door</span><% end %>
         </div>
       <% else %>
         <p class="text-[15px] text-gray-600 mt-1">
-          <%= stats.sold_anywhere %> sold, <%= checked_in.zero? ? "nobody in yet" : "#{checked_in} in" %>.
+          <%= stats.sold_anywhere %> sold, <%= checked_in.zero? ? "nobody checked in yet" : "#{checked_in} checked in" %>.
         </p>
       <% end %>
     </div>

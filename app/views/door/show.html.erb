@@ -4,22 +4,31 @@
   box_office = TicketingDoorAccess.at_least?(@level, :box_office)
   has_products = @listing.ticket_order_items.sold.exists?
 %>
-<%# In the app the nav bar says Door; the show is in the header just below. %>
-<% content_for :title, turbo_native_app? ? "Door" : "Door · #{@listing.display_title}" %>
-<% content_for :door_header do %>
-  <% unless turbo_native_app? %>
-    <%= link_to door_index_path, class: "flex-shrink-0 -ml-2 p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-    <% end %>
+<% content_for :title, turbo_native_app? ? "Work the door" : "Work the door · #{@listing.display_title}" %>
+
+<%# The show being worked, with its poster, so the page reads as that
+    show's (Tim, 2026-10-18): the poster, the name, when, where, the ages. %>
+<%
+  poster = show.poster.attached? ? show.safe_poster_variant(:small) : @listing.production.safe_poster_variant(:small)
+  room = [ show.location&.name, show.location_space&.name ].compact.uniq.last
+%>
+<div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 flex items-center gap-3">
+  <% if poster %>
+    <div class="w-12 aspect-[3/4] rounded overflow-hidden border border-gray-200 bg-white flex-shrink-0"><%= image_tag poster, alt: "", class: "w-full h-full object-cover" %></div>
+  <% else %>
+    <div class="w-12 aspect-[3/4] rounded bg-pink-100 flex items-center justify-center flex-shrink-0"><span class="text-sm font-bold text-pink-600"><%= @listing.production.initials %></span></div>
   <% end %>
   <div class="min-w-0 flex-1">
-    <div class="text-base font-semibold text-gray-900 leading-tight truncate"><%= @listing.display_title %></div>
-    <div class="text-xs text-gray-500 truncate">
+    <div class="text-lg font-bold text-gray-900 leading-tight truncate"><%= @listing.display_title %></div>
+    <div class="text-sm text-gray-600 truncate">
       <%= show.date_and_time.to_date == Date.current ? "Tonight" : show.date_and_time.strftime("%a %b %-d") %>
-      · <%= show.date_and_time.strftime("%-l:%M %p") %><% if (age = AgeLimit.short(@listing.effective_minimum_age)) %> · <span class="font-semibold text-gray-900">Ages <%= age %></span><% end %> · <%= @listing.organization.name %>
+      · <%= show.date_and_time.strftime("%-l:%M %p") %><%= " · #{room}" if room.present? %>
+    </div>
+    <div class="text-xs text-gray-500 truncate">
+      <% if (age = AgeLimit.short(@listing.effective_minimum_age)) %><span class="font-semibold text-gray-700">Ages <%= age %></span> · <% end %><%= show.date_and_time <= Time.current ? "started #{time_ago_in_words(show.date_and_time)} ago" : "starts in #{distance_of_time_in_words(Time.current, show.date_and_time)}" %>
     </div>
   </div>
-<% end %>
+</div>
 
 <%# Two ways to work the door: the list (most nights people are looked up by
     name and checked in with a tap) and the camera. Selling sits behind its
@@ -42,10 +51,10 @@
      data-door-passes-url-value="<%= door_search_path(@listing, passes_only: 1) if @pass_holders_searchable %>">
 
   <%# The numbers that matter tonight; refreshed every few seconds. %>
-  <div class="grid grid-cols-3 gap-2 text-center">
+  <div class="mt-3 grid grid-cols-3 gap-2 text-center">
     <div class="rounded-xl border border-gray-200 bg-white py-3">
       <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="checkedIn"><%= @counts[:checked_in] %></div>
-      <div class="text-xs text-gray-500">In</div>
+      <div class="text-xs text-gray-500">Checked in</div>
     </div>
     <div class="rounded-xl border border-gray-200 bg-white py-3">
       <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="sold"><%= @counts[:sold] %></div>
@@ -179,7 +188,7 @@
     <input id="door-filter" type="search" autocomplete="off" placeholder="Filter by name, email or order code" data-door-target="filterInput"
            data-action="input->door#filter" class="<%= input_class %>">
     <div class="mt-3 flex flex-wrap gap-2">
-      <% { "all" => "All", "out" => "Not in", "in" => "In" }.each do |key, words| %>
+      <% { "all" => "All", "out" => "Not here yet", "in" => "Checked in" }.each do |key, words| %>
         <%= render "shared/button", text: words, variant: "secondary", size: "xs", type: :button,
               data: { door_target: "filterChip", filter: key, action: "click->door#chip" } %>
       <% end %>
