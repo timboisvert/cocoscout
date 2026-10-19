@@ -28,7 +28,7 @@
     storefront_organization = @storefront_organization || @ticketing_profile&.organization
     storefront_home = @storefront_home || (@ticketing_profile && tickets_box_office_path(org: @ticketing_profile.slug))
     storefront_sold_line = @storefront_sold_line || (storefront_organization && "Tickets sold by #{storefront_organization.name}")
-    storefront_brand = @storefront_brand || "Tickets by CocoScout"
+    storefront_brand = @storefront_brand || "Ticketing by CocoScout"
   %>
   <body class="inter-regular text-slate-700 bg-white">
     <%# Someone who works this door, on its show's page while the door is

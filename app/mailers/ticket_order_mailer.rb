@@ -9,7 +9,7 @@ class TicketOrderMailer < ApplicationMailer
   helper TicketingHelper
 
   # A buyer's email is the theater's: its name leads the frame and the footer
-  # says "Tickets by CocoScout" (layouts/mailer, @storefront_organization), so
+  # says "Ticketing by CocoScout" (layouts/mailer, @storefront_organization), so
   # CocoScout's cat isn't attached at all.
   skip_before_action :attach_logo
 
