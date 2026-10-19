@@ -49,7 +49,27 @@ module NativeAppHelper
     items = talent_nav_sections.flat_map { |section| section[:items] }.map { |item| native_menu_item(item) }
     items.reject! { |item| item[:id] == "door" }
     paths = [ profile_path, (groups_path if native_in_a_group?(user)), account_path ].compact
-    items + paths.map { |path| native_menu_item(path: path) } + [ native_door_item(user) ].compact
+    tap_to_pay = ({ id: "tap_to_pay", title: "Tap to Pay on iPhone", path: door_tap_to_pay_path, icon: "wave.3.right.circle", badge: 0 } if native_tap_to_pay)
+    items + [ tap_to_pay ].compact + paths.map { |path| native_menu_item(path: path) } + [ native_door_item(user) ].compact
+  end
+
+  # Tap to Pay on iPhone, for an app that has it, when this person can sell
+  # at a door that has it switched on (TapToPay.organizations_for): where its
+  # page is, what the app warms Terminal up with at launch (Apple 1.5), and
+  # whether they may accept Apple's terms (3.8). Nil otherwise, and the app
+  # shows nothing of Tap to Pay.
+  def native_tap_to_pay
+    return @native_tap_to_pay if defined?(@native_tap_to_pay)
+
+    user = native_user
+    @native_tap_to_pay = if user && native_bridge_component?("tap-to-pay")
+      organization = TapToPay.organizations_for(user).first
+      if organization
+        { settingsPath: door_tap_to_pay_path, userKey: user.id.to_s, canAcceptTerms: TapToPay.can_accept_terms?(user),
+          locationId: organization.stripe_terminal_location_id,
+          connectionTokenUrl: door_tap_to_pay_token_url(organization_id: organization.id) }
+      end
+    end
   end
 
   # Who's signed in, for the top of the menu. headshot_path is relative to

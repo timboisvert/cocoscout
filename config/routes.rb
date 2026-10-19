@@ -367,6 +367,7 @@ Rails.application.routes.draw do
     get  "embed/:org",                 to: "tickets#box_office",      as: "embed_box_office", defaults: { embed: "1" }
     get  "embed/:org/:event",          to: "tickets#event",           as: "embed_event", defaults: { embed: "1" }
     get  "orders/:token",              to: "ticket_orders#show",      as: "order"
+    get  "orders/:token/receipt",      to: "ticket_orders#receipt",   as: "order_receipt"
     get  "orders/:token/calendar",     to: "ticket_orders#calendar",  as: "order_calendar"
     post "orders/:token/resend",       to: "ticket_orders#resend",    as: "order_resend"
     post "orders/:token/deals/:offer", to: "ticket_orders#add_deal",  as: "order_add_deal"
@@ -403,6 +404,10 @@ Rails.application.routes.draw do
   get  "/door/invitations/:token",        to: "door_invitations#show",   as: "door_invitation"
   post "/door/invitations/:token",        to: "door_invitations#accept", as: "door_invitation_accept"
   get  "/door",                           to: "door#index",          as: "door_index"
+  # Tap to Pay on iPhone's own page in the app (Apple 3.6, 4.3), and the
+  # connection token the app warms Terminal up with before any sale.
+  get  "/door/tap-to-pay",                to: "door#tap_to_pay",     as: "door_tap_to_pay"
+  get  "/door/tap-to-pay/connection-token", to: "door#tap_to_pay_token", as: "door_tap_to_pay_token"
   get  "/door/:listing_id",               to: "door#show",           as: "door"
   post "/door/:listing_id/check-in",      to: "door#check_in",       as: "door_check_in"
   post "/door/:listing_id/check-in-order", to: "door#check_in_order", as: "door_check_in_order"

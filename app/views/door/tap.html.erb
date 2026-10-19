@@ -28,14 +28,13 @@
      data-bridge--tap-to-pay-payment-value="<%= @payment.to_json %>"
      data-bridge--tap-to-pay-connection-token-url-value="<%= door_tap_connection_token_path(@listing) %>"
      data-bridge--tap-to-pay-location-id-value="<%= @location_id %>"
-     data-bridge--tap-to-pay-label-value="<%= @listing.display_title %>">
+     data-bridge--tap-to-pay-label-value="<%= @listing.display_title %>"
+     data-bridge--tap-to-pay-can-accept-terms-value="<%= @can_accept_terms %>">
   <div data-door-tap-target="waiting" class="rounded-2xl border border-gray-200 bg-white p-5 text-center">
     <div class="text-sm text-gray-600"><%= tickets.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} × #{tier.name}" }.join(", ") %></div>
     <div class="mt-1 text-4xl font-bold tabular-nums text-gray-900"><%= number_to_currency(@order.total_cents / 100.0) %></div>
-    <svg class="mx-auto mt-6 w-20 h-20 text-pink-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/>
-    </svg>
-    <p class="mt-4 text-base font-medium text-gray-900" data-door-tap-target="prompt">Hold their card or phone to the top of this phone</p>
+    <%# No drawn tap icon: Apple allows none of our own (Tap to Pay 5.5 and its marketing rules). %>
+    <p class="mt-6 text-base font-medium text-gray-900" data-door-tap-target="prompt">Hold their card or phone to the top of this phone</p>
     <p class="mt-1 text-sm text-gray-600">Contactless card, Apple Pay or Google Pay</p>
     <div class="mt-2 flex justify-center">
       <%= render "shared/button", text: "How to take a tap", variant: "ghost", size: "small", type: :button,
@@ -43,6 +42,11 @@
     </div>
     <p class="mt-4 text-sm text-gray-500">Held <span class="tabular-nums" data-door-tap-target="countdown"></span></p>
     <p class="mt-3 hidden text-sm text-red-700" data-door-tap-target="error"></p>
+    <%# A receipt either way (Apple 5.10): shown with a payment that wasn't approved. %>
+    <div class="mt-4 hidden" data-door-tap-target="declinedReceipt">
+      <div class="mx-auto w-36"><%= link_qr_svg(@receipt_url) %></div>
+      <p class="mt-1 text-xs text-gray-500">The buyer can scan for a receipt.</p>
+    </div>
     <div class="mt-4 flex justify-center gap-2">
       <%# hidden on a wrapper: it loses to the button's own inline-flex. %>
       <div class="hidden" data-door-tap-target="retry">
@@ -58,6 +62,11 @@
     <svg class="mx-auto w-14 h-14 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
     <p class="mt-3 text-2xl font-semibold text-green-800">Paid</p>
     <p class="mt-1 text-base text-green-800" data-door-tap-target="paidText">Checked in.</p>
+    <%# The buyer's receipt (Apple 5.10): scan it with their phone's camera. %>
+    <div class="mt-4 rounded-xl bg-white p-3 inline-block">
+      <div class="w-36"><%= link_qr_svg(@receipt_url) %></div>
+      <p class="mt-1 text-xs text-gray-600">Scan for a receipt</p>
+    </div>
     <div class="mt-5 flex justify-center">
       <%= render "shared/button", text: "Back to the door", variant: "primary", size: "large", path: door_path(@listing) %>
     </div>

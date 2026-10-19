@@ -1,0 +1,40 @@
+<%# A sale's receipt, paid or not (Apple's Tap to Pay 5.10). The door shows a
+    QR code to it after a tap; it names no card and no buyer, so it's safe on
+    a screen anyone can read. %>
+<%
+  show = @listing.show
+  tickets = @order.tickets.to_a
+  paid = @order.paid? || @order.status.in?(%w[partially_refunded refunded exchanged])
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+%>
+<% content_for :title, "Receipt · #{@listing.organization.name}" %>
+<div class="mx-auto max-w-md">
+  <div class="rounded-2xl border border-gray-200 bg-white p-6">
+    <div class="text-sm text-gray-500">Receipt</div>
+    <h1 class="mt-1 text-2xl coustard-regular text-gray-900"><%= @listing.organization.name %></h1>
+    <div class="mt-4 text-[15px] font-semibold text-gray-900"><%= @listing.display_title %></div>
+    <div class="text-sm text-gray-600"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></div>
+
+    <div class="mt-5 divide-y divide-gray-100 border-y border-gray-100">
+      <% tickets.group_by(&:type_label).each do |label, rows| %>
+        <div class="flex justify-between py-2 text-sm"><span class="text-gray-700"><%= rows.size %> × <%= label %></span><span class="tabular-nums text-gray-900"><%= money.call(rows.sum(&:price_cents)) %></span></div>
+      <% end %>
+      <% @order.ticket_order_items.each do |item| %>
+        <div class="flex justify-between py-2 text-sm"><span class="text-gray-700"><%= item.label %></span><span class="tabular-nums text-gray-900"><%= money.call(item.unit_price_cents * item.quantity) %></span></div>
+      <% end %>
+      <div class="flex justify-between py-2 text-base font-semibold"><span>Total</span><span class="tabular-nums"><%= money.call(@order.total_cents) %></span></div>
+    </div>
+
+    <% if paid %>
+      <div class="mt-5 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div class="font-semibold">Approved</div>
+        <div>Paid <%= @order.paid_at&.strftime("%b %-d, %Y at %-l:%M %p") %> · order <%= @order.code %></div>
+      </div>
+    <% else %>
+      <div class="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div class="font-semibold">Not approved</div>
+        <div>No payment was taken for order <%= @order.code %>.</div>
+      </div>
+    <% end %>
+  </div>
+</div>

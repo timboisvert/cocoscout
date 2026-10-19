@@ -6,10 +6,14 @@ import { BridgeComponent } from "@hotwired/hotwire-native-bridge"
 // app shows just the sign-in screen.
 export default class extends BridgeComponent {
   static component = "menu"
-  static values = { menu: Array, person: Object }
+  // tapToPay: Tap to Pay on iPhone for someone who can sell with it
+  // (NativeAppHelper#native_tap_to_pay), so the app can show Apple's
+  // one-time screen and warm Terminal up; absent for everyone else.
+  static values = { menu: Array, person: Object, tapToPay: Object }
 
   connect() {
     super.connect()
-    this.send("update", { menu: this.menuValue, person: this.hasPersonValue ? this.personValue : null })
+    this.send("update", { menu: this.menuValue, person: this.hasPersonValue ? this.personValue : null,
+                          tapToPay: this.hasTapToPayValue ? this.tapToPayValue : null })
   }
 }

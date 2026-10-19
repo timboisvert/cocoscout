@@ -60,8 +60,8 @@ export default class extends Controller {
         if (this.hasTapButtonTarget) {
             const tap = orderTotalCents({ base, paid, feeMode: this.feeModeValue, platformFee: this.platformFeeValue,
                 perMille: this.tapPerMilleValue, fixed: this.tapFixedValue })
-            this.label(this.tapButtonTarget, count === 0 ? "Tap to Pay" : `Tap to Pay · ${money(tap)}`)
-            this.tapButtonTarget.disabled = count === 0 || tap === 0
+            // Never greyed out (Apple's Tap to Pay 5.3): with nothing picked it says so instead.
+            this.label(this.tapButtonTarget, count === 0 ? "Tap to Pay on iPhone" : `Tap to Pay on iPhone · ${money(tap)}`)
         }
         // A free ticket can't go on a card, and a comp carries no products.
         if (card === 0) this.cardButtonTarget.disabled = true

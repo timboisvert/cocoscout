@@ -22,6 +22,28 @@
 class TapToPay
   class Error < StandardError; end
 
+  # Who sees Tap to Pay on iPhone (Apple's publishing review, 2026-10-19):
+  # an organization with its box office open and Tap to Pay switched on
+  # (TicketingProfile#tap_to_pay, off until Apple grants the publishing
+  # entitlement), and, there, the people who can sell at the door.
+  def self.available_for?(organization)
+    profile = organization&.ticketing_profile
+    profile.present? && profile.enabled? && profile.tap_to_pay?
+  end
+
+  def self.organizations_for(user)
+    TicketingDoorAccess.organizations_for(user).select do |organization|
+      available_for?(organization) && TicketingDoorAccess.at_least?(TicketingDoorAccess.level_for(user, organization), :box_office)
+    end
+  end
+
+  # Apple's terms are accepted once for CocoScout's payment account, the one
+  # every organization's taps go through, so only CocoScout's administrators
+  # may accept them (Apple 3.8); everyone else is asked to wait for that.
+  def self.can_accept_terms?(user)
+    user&.superadmin? || false
+  end
+
   # Stripe's Terminal Location for the organization, made from its default
   # venue's address the first time. Tap to Pay needs an address to sell from.
   def self.location_for(organization)

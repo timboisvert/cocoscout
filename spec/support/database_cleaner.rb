@@ -160,4 +160,5 @@ def seed_content_templates
   PlatformTemplates.ensure!(overwrite: true)
   ContractInvoiceTemplates.ensure!(overwrite: true)
   ContractPeopleTemplates.ensure!(overwrite: true)
+  TapToPayTemplates.ensure!(overwrite: true)
 end

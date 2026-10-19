@@ -9,7 +9,7 @@
 class DoorController < ApplicationController
   layout "door"
 
-  before_action :set_listing, except: :index
+  before_action :set_listing, except: %i[index tap_to_pay tap_to_pay_token]
   before_action -> { require_level(:box_office) }, only: %i[sell card card_status card_cancel use_pass tap tap_connection_token tap_settle]
   before_action :set_card_order, only: %i[card card_status card_cancel tap tap_settle]
 
@@ -165,6 +165,33 @@ class DoorController < ApplicationController
     # organization's Terminal Location.
     @payment = TapToPay.payment_params(@order)
     @location_id = TapToPay.location_for(@listing.organization)
+    @can_accept_terms = TapToPay.can_accept_terms?(Current.user)
+    @receipt_url = tickets_order_receipt_url(token: @order.token)
+  end
+
+  # Tap to Pay on iPhone in the app (Apple 3.5, 3.6, 4.3): set it up
+  # (Apple's terms, then the guide), see how it's doing, find the guide
+  # again. For the people who can sell at a door that has it.
+  def tap_to_pay
+    @organizations = TapToPay.organizations_for(Current.user)
+    raise ActiveRecord::RecordNotFound if @organizations.empty?
+
+    @organization = @organizations.find { |org| org.id.to_s == params[:organization].to_s } || @organizations.first
+    @can_accept_terms = TapToPay.can_accept_terms?(Current.user)
+    @location_id = TapToPay.location_for(@organization)
+  rescue TapToPay::Error, Stripe::StripeError => e
+    @location_error = e.message
+  end
+
+  # Terminal's token for warming up before a sale (Apple 1.5): the same as a
+  # sale's, for an organization whose door this person can sell at.
+  def tap_to_pay_token
+    organization = TapToPay.organizations_for(Current.user).find { |org| org.id.to_s == params[:organization_id].to_s }
+    raise ActiveRecord::RecordNotFound unless organization
+
+    render json: { secret: TapToPay.connection_token(organization) }
+  rescue TapToPay::Error, Stripe::StripeError => e
+    render json: { error: e.message }, status: :unprocessable_content
   end
 
   # The app's Terminal SDK connects with this.

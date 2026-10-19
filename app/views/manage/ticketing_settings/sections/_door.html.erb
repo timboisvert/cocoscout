@@ -14,6 +14,13 @@
 %>
 
 <div class="space-y-6">
+  <% if TapToPay.available_for?(Current.organization) %>
+    <%# How to turn on Tap to Pay on iPhone, where a new organization finishes setting up its door (Apple 3.4). %>
+    <div class="bg-white border border-gray-200 rounded-xl px-6 py-4">
+      <h2 class="text-lg font-semibold text-gray-900">Tap to Pay on iPhone</h2>
+      <p class="text-sm text-gray-600 mt-1">Anyone who can sell at your door can accept physical debit and credit cards as well as Apple Pay and other digital wallets, right on their iPhone. In the CocoScout app, open the menu and choose Tap to Pay on iPhone to set it up.</p>
+    </div>
+  <% end %>
   <%# When the Door shows in the app's menu (DoorTonight). %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">

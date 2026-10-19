@@ -10,7 +10,7 @@ import { BridgeComponent } from "@hotwired/hotwire-native-bridge"
 // browser nothing here runs — the button that leads here only shows in the app.
 export default class extends BridgeComponent {
   static component = "tap-to-pay"
-  static values = { payment: Object, connectionTokenUrl: String, locationId: String, label: String }
+  static values = { payment: Object, connectionTokenUrl: String, locationId: String, label: String, canAcceptTerms: Boolean }
 
   pay(event) {
     if (!this.enabled) return
@@ -37,5 +37,30 @@ export default class extends BridgeComponent {
   // "How to take a tap": Apple's guide again (the app shows it before the first tap too).
   howToTap() {
     if (this.enabled) this.send("howToTap")
+  }
+
+  // Tap to Pay on iPhone's page (door/tap_to_pay): how this iPhone stands,
+  // and setting it up (Apple's terms, then the guide). The app answers, and
+  // keeps answering while it gets ready, with { state: "notSetUp" |
+  // "preparing" | "ready" | "needsAdmin" | "failed", progress, message },
+  // dispatched as tap-to-pay:state.
+  status() {
+    if (!this.enabled) return
+    this.send("status", this.readerData(), (message) => this.dispatch("state", { detail: message.data, prefix: "tap-to-pay" }))
+  }
+
+  enable(event) {
+    if (!this.enabled) return
+
+    event?.preventDefault()
+    this.send("enable", this.readerData(), (message) => this.dispatch("state", { detail: message.data, prefix: "tap-to-pay" }))
+  }
+
+  readerData() {
+    return {
+      connectionTokenUrl: new URL(this.connectionTokenUrlValue, window.location.href).toString(),
+      locationId: this.locationIdValue,
+      canAcceptTerms: this.canAcceptTermsValue
+    }
   }
 }

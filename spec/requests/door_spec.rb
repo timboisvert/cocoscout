@@ -352,6 +352,7 @@ RSpec.describe "Door", type: :request do
       end
 
       before do
+        profile.update!(tap_to_pay: true) # switched on for this organization (Apple's flagged release)
         org.locations.create!(name: "Playhouse", address1: "48 Lantern St", city: "Providence", state: "RI", postal_code: "02903", default: true)
         allow(Stripe::Terminal::Location).to receive(:create).and_return(Stripe::Terminal::Location.construct_from(id: "tml_1"))
         allow(Stripe::Terminal::ConnectionToken).to receive(:create).and_return(Stripe::Terminal::ConnectionToken.construct_from(secret: "pst_1"))

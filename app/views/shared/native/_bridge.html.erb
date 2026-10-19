@@ -5,7 +5,8 @@
 <% if turbo_native_app? %>
   <% person = native_person %>
   <%= tag.div hidden: true, data: { controller: "bridge--menu", "bridge--menu-menu-value": native_menu.to_json,
-                                    "bridge--menu-person-value": (person.to_json if person) } %>
+                                    "bridge--menu-person-value": (person.to_json if person),
+                                    "bridge--menu-tap-to-pay-value": (native_tap_to_pay.to_json if native_tap_to_pay) } %>
   <% if person && Current.session %>
     <%= tag.div hidden: true, data: { controller: "bridge--push", "bridge--push-url-value": my_push_token_path,
                                       "bridge--push-session-value": Current.session.id,

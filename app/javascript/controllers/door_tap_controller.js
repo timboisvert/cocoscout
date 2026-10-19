@@ -6,7 +6,7 @@ import { Controller } from "@hotwired/stimulus"
 // the while it watches the order like a card-or-phone sale, in case Stripe's
 // webhook settled it first. A failed tap shows why and offers another go.
 export default class extends Controller {
-    static targets = ["waiting", "paid", "paidText", "expired", "countdown", "prompt", "error", "retry"]
+    static targets = ["waiting", "paid", "paidText", "expired", "countdown", "prompt", "error", "retry", "declinedReceipt"]
     static values = { statusUrl: String, settleUrl: String, expiresAt: String }
 
     connect() {
@@ -26,6 +26,7 @@ export default class extends Controller {
     retry() {
         this.errorTarget.classList.add("hidden")
         this.retryTarget.classList.add("hidden")
+        if (this.hasDeclinedReceiptTarget) this.declinedReceiptTarget.classList.add("hidden")
         this.promptTarget.textContent = "Hold their card or phone to the top of this phone"
         this.askApp()
     }
@@ -47,6 +48,7 @@ export default class extends Controller {
             await this.settle(detail.paymentIntentId)
         } else if (detail.status === "failed") {
             this.fail(detail.message || "The tap didn't go through.")
+            if (detail.declined && this.hasDeclinedReceiptTarget) this.declinedReceiptTarget.classList.remove("hidden")
         } else {
             this.fail("Canceled before the tap.")
         }

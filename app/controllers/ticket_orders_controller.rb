@@ -18,6 +18,12 @@ class TicketOrdersController < ApplicationController
     @deals = TicketCheckout.deals_after(@order)
   end
 
+  # A receipt for a sale at the door, paid or not (Apple's Tap to Pay 5.10:
+  # the buyer can have one either way): who sold it, what, how much, when,
+  # and whether it was paid. The door shows it as a QR code to scan.
+  def receipt
+  end
+
   # Taking a deal on another show after paying: a new checkout at the deal
   # price, remembering this purchase (TicketCheckout.start_deal!).
   def add_deal

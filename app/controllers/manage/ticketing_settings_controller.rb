@@ -94,7 +94,10 @@ module Manage
 
     def open_box_office
       ticketing_profile.update!(enabled: true)
-      redirect_to manage_ticketing_path, notice: "Your box office is open. Buyers can find your shows at your box office link."
+      notice = "Your box office is open. Buyers can find your shows at your box office link."
+      # The end of a new organization's onboarding says how to turn on Tap to Pay on iPhone (Apple 3.4).
+      notice += " To take cards at the door on an iPhone, open the CocoScout app and choose Tap to Pay on iPhone in the menu." if TapToPay.available_for?(Current.organization)
+      redirect_to manage_ticketing_path, notice: notice
     end
 
     def update

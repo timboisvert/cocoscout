@@ -77,7 +77,7 @@
   <%# Tap to Pay: the buyer taps their card on this phone (the app's Terminal
       SDK), offered only by a copy of the app that has it. Beside it, the QR
       code reads as the other way: tap a card, or scan a code (Tim, 2026-10-13). %>
-  <% can_tap = native_bridge_component?("tap-to-pay") %>
+  <% can_tap = native_bridge_component?("tap-to-pay") && TapToPay.available_for?(@listing.organization) %>
   <% card_label = can_tap ? "Scan to pay" : "Card or phone pay" %>
   <div class="mt-4 grid <%= can_sell ? 'grid-cols-3' : 'grid-cols-2' %> gap-2" role="tablist" aria-label="How to check people in">
     <%= render "shared/button", text: "List", variant: "secondary", size: "medium", type: :button, classes: "w-full justify-center",
@@ -166,8 +166,9 @@
       </div>
       <div class="mt-3 space-y-2">
         <% if can_tap %>
-          <%= render "shared/button", text: "Tap to Pay", variant: "primary", size: "large", type: :submit, name: "kind", value: "tap",
-                classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "tapButton" } %>
+          <%# Apple 5.2 to 5.4: first, never greyed out, and named Tap to Pay on iPhone beside the other ways to pay. %>
+          <%= render "shared/button", text: "Tap to Pay on iPhone", variant: "primary", size: "large", type: :submit, name: "kind", value: "tap",
+                classes: "w-full justify-center", data: { door_sell_target: "tapButton" } %>
         <% end %>
         <%= render "shared/button", text: card_label, variant: can_tap ? "secondary" : "primary", size: "large", type: :submit, name: "kind", value: "card",
               classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "cardButton" } %>
