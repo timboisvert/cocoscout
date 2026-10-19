@@ -30,39 +30,34 @@
     native = turbo_native_app?
   %>
   <body class="inter-regular text-slate-700 bg-gray-50">
-    <header class="<%= native ? '' : 'sticky top-0 z-10' %> border-b border-gray-200 bg-white" style="padding-top: env(safe-area-inset-top)">
-      <%# On a phone the organization and the time take their own line under
-          the title (Tim, 2026-10-18); side by side only when there's room. %>
-      <div class="mx-auto max-w-2xl px-3 py-2 min-h-[3.5rem] flex flex-wrap items-center gap-x-3 gap-y-0.5">
-        <div class="flex items-center gap-2 flex-1 min-w-0">
-          <%# A page that is one step inside a show (paying at the door) names
-              itself and the way back; every other page is "Work the door". %>
+    <%# The header is a little box (Tim, 2026-10-18): "Work the door", the
+        organization's name under it, the date and time under that. Nothing
+        shares a line, so nothing gets cut off on a phone. %>
+    <header class="<%= native ? '' : 'sticky top-0 z-10' %> bg-gray-50" style="padding-top: env(safe-area-inset-top)">
+      <div class="mx-auto max-w-2xl px-4 pt-3">
+        <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
           <% if content_for?(:door_header) %>
-            <%= yield :door_header %>
-          <% else %>
-            <% if @listing && !native %>
-              <%= link_to door_index_path, class: "flex-shrink-0 p-2 -ml-1 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            <div class="flex items-center gap-2"><%= yield :door_header %></div>
+          <% elsif !native %>
+            <div class="flex items-center gap-1">
+              <% if @listing %>
+                <%= link_to door_index_path, class: "flex-shrink-0 p-1.5 -ml-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                <% end %>
               <% end %>
-            <% end %>
-            <% unless native %>
-              <div class="min-w-0 flex-1 <%= 'pl-1' unless @listing %>">
-                <div class="coustard-regular text-xl leading-tight text-gray-900">Work the door</div>
-              </div>
-            <% end %>
+              <div class="coustard-regular text-xl leading-tight text-gray-900">Work the door</div>
+            </div>
           <% end %>
-        </div>
-        <div class="basis-full sm:basis-auto min-w-0 flex items-baseline gap-x-2 sm:flex-col sm:items-end sm:gap-0 <%= 'pl-1' if !native && !@listing %> <%= 'pl-9' if !native && @listing && !content_for?(:door_header) %>">
           <% if door_organization %>
             <% if door_org_link %>
-              <%= link_to door_organization.name, door_org_link, class: "text-sm font-semibold text-pink-600 hover:text-pink-700 truncate" %>
+              <%= link_to door_organization.name, door_org_link, class: "block text-sm font-semibold text-pink-600 hover:text-pink-700 mt-0.5" %>
             <% else %>
-              <span class="text-sm font-semibold text-gray-900 truncate"><%= door_organization.name %></span>
+              <div class="text-sm font-semibold text-gray-900 mt-0.5"><%= door_organization.name %></div>
             <% end %>
           <% elsif @organizations&.many? %>
-            <span class="text-sm font-semibold text-gray-900 truncate"><%= pluralize(@organizations.size, "organization") %></span>
+            <div class="text-sm font-semibold text-gray-900 mt-0.5"><%= pluralize(@organizations.size, "organization") %></div>
           <% end %>
-          <span class="text-xs text-gray-500 tabular-nums whitespace-nowrap"><span class="sm:hidden"><%= "· " if door_organization || @organizations&.many? %></span><%= Time.current.strftime("%a, %b %-d · %-l:%M %p") %></span>
+          <div class="text-xs text-gray-500 tabular-nums mt-0.5"><%= Time.current.strftime("%A, %B %-d · %-l:%M %p") %></div>
         </div>
       </div>
     </header>
