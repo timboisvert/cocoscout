@@ -24,7 +24,7 @@
       bar holds the title and the way back, so the header is just the
       organization and the time. %>
   <%
-    door_organization = @listing&.organization || (@organizations&.one? ? @organizations.first : nil)
+    door_organization = @listing&.organization || @organization
     door_profile = door_organization&.ticketing_profile
     door_org_link = door_profile&.enabled? ? tickets_box_office_path(org: door_profile.slug) : nil
     native = turbo_native_app?
@@ -41,7 +41,7 @@
           <% elsif !native %>
             <div class="flex items-center gap-1">
               <% if @listing %>
-                <%= link_to door_index_path, class: "flex-shrink-0 p-1.5 -ml-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
+                <%= link_to door_index_path(organization: @listing.organization_id), class: "flex-shrink-0 p-1.5 -ml-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100", "aria-label": "All your shows" do %>
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 <% end %>
               <% end %>
@@ -54,8 +54,6 @@
             <% else %>
               <div class="text-sm font-semibold text-gray-900 mt-0.5"><%= door_organization.name %></div>
             <% end %>
-          <% elsif @organizations&.many? %>
-            <div class="text-sm font-semibold text-gray-900 mt-0.5"><%= pluralize(@organizations.size, "organization") %></div>
           <% end %>
           <div class="text-xs text-gray-500 tabular-nums mt-0.5"><%= Time.current.strftime("%A, %B %-d · %-l:%M %p") %></div>
         </div>

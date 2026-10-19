@@ -62,6 +62,32 @@ RSpec.describe "Door", type: :request do
       end
     end
 
+    # Someone who works two doors picks the organization first, by what
+    # each has on now (Tim, 2026-10-18); one organization skips the choice.
+    it "asks which organization's door first, when there are several" do
+      other_org = create(:organization, :pro, name: "Lantern Street Players")
+      TicketingProfile.for(other_org).update!(enabled: true)
+      tonight = create(:ticket_listing, organization: org, status: "on_sale",
+                       show: create(:show, production: create(:production, organization: org), date_and_time: Time.current.end_of_day - 1.hour))
+      grant(door_person, "check_in")
+      grant(door_person, "check_in", organization: other_org)
+      sign_in(door_person)
+
+      get door_index_path
+      html = CGI.unescapeHTML(response.body.gsub(/\s+/, " "))
+      expect(html).to include("Whose door?", org.name, "Lantern Street Players", ">On now<", "Nothing on now",
+                              door_index_path(organization: org.id), door_index_path(organization: other_org.id))
+      expect(html).not_to include(door_path(tonight), "2 organizations")
+
+      get door_index_path(organization: org.id)
+      expect(CGI.unescapeHTML(response.body)).to include(">On now<", door_path(tonight), org.name)
+      expect(response.body).not_to include("Lantern Street Players")
+
+      get door_index_path(organization: other_org.id)
+      expect(response.body).to include("Nothing to work right now", "Lantern Street Players")
+      expect(response.body).not_to include(door_path(tonight))
+    end
+
     it "keeps last night's show on the list until its door closes" do
       production = create(:production, organization: org)
       friday = Time.zone.local(2026, 11, 6)

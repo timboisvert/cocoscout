@@ -19,17 +19,27 @@ class DoorController < ApplicationController
   # coming dates: selling ahead is the box office's job in Ticketing. An
   # organization that keeps the Door in the app all the time ("always")
   # promised a list of its coming shows when nothing's on, and gets it.
+  #
+  # Someone who works the door at several organizations picks one first:
+  # each with how many shows it has on now. One organization skips that.
   def index
     @organizations = TicketingDoorAccess.organizations_for(Current.user).to_a
     now = Time.current
-    @on_now = DoorTonight.listings_for(Current.user, at: now).sort_by { |listing| listing.show.date_and_time }
-    today = DoorTonight.listings(@organizations.map(&:id)).includes(:organization, :production, show: %i[location space_rental])
+    on_now_everywhere = DoorTonight.listings_for(Current.user, at: now).sort_by { |listing| listing.show.date_and_time }
+    @organization = @organizations.one? ? @organizations.first : @organizations.find { |org| org.id.to_s == params[:organization].to_s }
+    unless @organization
+      @on_now_by_organization = on_now_everywhere.group_by(&:organization_id)
+      @next_by_organization = @organizations.to_h { |org| [ org.id, DoorTonight.listings([ org.id ]).where("shows.date_and_time > ?", now).first ] }
+      render :choose and return
+    end
+
+    @on_now = on_now_everywhere.select { |listing| listing.organization_id == @organization.id }
+    today = DoorTonight.listings([ @organization.id ]).includes(:organization, :production, show: %i[location space_rental])
                        .where(shows: { date_and_time: now..DoorTonight.night_ends(now) }).to_a
     @later_tonight = (today - @on_now).select { |listing| DoorTonight.phase(listing, at: now) == :before }
-    @next_listing = DoorTonight.listings(@organizations.map(&:id)).where("shows.date_and_time > ?", DoorTonight.night_ends(now)).first
-    @coming_up = if @on_now.empty? && @organizations.any? { |org| org.ticketing_profile&.door_in_app == "always" }
-      DoorTonight.listings(@organizations.select { |org| org.ticketing_profile&.door_in_app == "always" }.map(&:id))
-                 .where("shows.date_and_time > ?", now).limit(12).to_a
+    @next_listing = DoorTonight.listings([ @organization.id ]).where("shows.date_and_time > ?", DoorTonight.night_ends(now)).first
+    @coming_up = if @on_now.empty? && @organization.ticketing_profile&.door_in_app == "always"
+      DoorTonight.listings([ @organization.id ]).where("shows.date_and_time > ?", now).limit(12).to_a
     else
       []
     end
