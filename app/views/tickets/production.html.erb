@@ -7,7 +7,7 @@
   # the production's name goes under the place (Tim, 2026-10-08).
   own_title = selected&.own_title
   heading = own_title || title
-  share_title = params[:date].present? ? heading : title
+  share_title = @dated ? heading : title
   # The chosen date's words and notes (its own, else the production's), so a
   # date with its own description says it on its page.
   description = selected ? selected.effective_description.presence : (setup&.description.presence || @production.description.presence)
@@ -16,8 +16,8 @@
   else []
   end
   # A link to the production describes the production; one to a date, that date.
-  share_description = params[:date].present? ? description : (setup&.description.presence || @production.description.presence || description)
-  page_url = ticket_production_url(@ticketing_profile, @production)
+  share_description = @dated ? description : (setup&.description.presence || @production.description.presence || description)
+  page_url = @dated && selected ? tickets_event_url(org: @ticketing_profile.slug, event: selected.slug) : ticket_production_url(@ticketing_profile, @production)
   date_path = ->(listing) { tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: listing.slug, code: @code, **embed_params) }
   # The picture is the chosen date's (Show#ticket_page_image: its own wide
   # image, its own poster, then the production's), so each date's page
@@ -30,7 +30,7 @@
   image_url = image && url_for(image)
   # A shared link to the production shows the production's picture; one to a
   # date shows that date's.
-  share_image_url = params[:date].present? ? image_url : (production_image && url_for(production_image)) || image_url
+  share_image_url = @dated ? image_url : (production_image && url_for(production_image)) || image_url
   # The chosen date's ages, which can differ from the production's.
   ages = selected ? selected.age_words : setup&.age_words
   show = selected&.show
@@ -42,12 +42,37 @@
   # Many dates and none in the link: the list is open and nothing is chosen
   # yet, so there's no card, no Close and no tickets until a date is picked
   # (Tim, 2026-10-18, option C).
-  picking = @listings.many? && params[:date].blank?
+  picking = @listings.many? && !@dated
   by_month = @listings.group_by { |listing| listing.show.date_and_time.beginning_of_month }.sort_by { |month, _| month }
   open_month = picking ? by_month.first&.first : selected&.show&.date_and_time&.beginning_of_month
 %>
+<%
+  # Search engines read this to list the chosen date (schema.org Event with
+  # all-in offers), as the date's own page did.
+  structured = if selected && !@preview
+    payload = Ticketing::ListingPayload.for(selected)
+    pv = payload[:venue]
+    {
+      "@context" => "https://schema.org", "@type" => "Event", "name" => payload[:title],
+      "startDate" => payload[:starts_at], "endDate" => payload[:ends_at],
+      "eventStatus" => show.canceled ? "https://schema.org/EventCancelled" : "https://schema.org/EventScheduled",
+      "eventAttendanceMode" => show.is_online ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
+      "description" => description.to_s.truncate(500).presence, "image" => image_url,
+      "typicalAgeRange" => (selected.effective_minimum_age && "#{selected.effective_minimum_age}-"),
+      "organizer" => { "@type" => "Organization", "name" => @organization.name, "url" => tickets_box_office_url(org: @ticketing_profile.slug) },
+      "location" => pv && { "@type" => "Place", "name" => pv[:name],
+                            "address" => { "@type" => "PostalAddress", "streetAddress" => pv[:address1], "addressLocality" => pv[:city],
+                                           "addressRegion" => pv[:state], "postalCode" => pv[:postal_code], "addressCountry" => "US" }.compact },
+      "offers" => payload[:tiers].map { |tier|
+        { "@type" => "Offer", "name" => tier[:name], "price" => format("%.2f", tier[:all_in_price_cents] / 100.0), "priceCurrency" => "USD",
+          "availability" => tier[:remaining]&.zero? ? "https://schema.org/SoldOut" : "https://schema.org/InStock", "url" => page_url }
+      }
+    }.compact
+  end
+%>
 <% content_for :title, "#{share_title} · #{@organization.name}" %>
 <% content_for :head do %>
+  <% if structured %><script type="application/ld+json"><%= json_escape(structured.to_json).html_safe %></script><% end %>
   <meta name="description" content="<%= share_description.to_s.truncate(160) %>">
   <meta property="og:title" content="<%= share_title %> · <%= @organization.name %>">
   <meta property="og:description" content="<%= share_description.to_s.truncate(200) %>">
@@ -156,6 +181,9 @@
     <% unless picking %>
     <%= render "tickets/picker", listing: selected, tiers: @tiers, inventory: @inventory, tax: @tax, code: @code, preview: @preview,
           profile: @ticketing_profile, code_url: tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: selected.slug, **embed_params) %>
+    <% Array(@passes).each do |pass| %>
+      <%= render "tickets/pass_card", pass: pass, profile: @ticketing_profile, save: true %>
+    <% end %>
     <% end %>
   <% end %>
 

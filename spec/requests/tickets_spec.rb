@@ -145,9 +145,13 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).to include(later.date_and_time.strftime("%a, %b %-d · %-l:%M %p"), "Sold out")
       expect(response.body).not_to include("Continue to checkout")
 
+      # A date's own link is the same page with that date chosen (Tim,
+      # 2026-10-18): the card, Change date, and the tickets, never a second
+      # layout with the production's name and an Other dates link.
       get event_path
-      expect(response.body).to include(%(href="/tickets/starsandgarters/#{production.public_key}"))
-      expect(response.body).not_to include("/p/#{production.id}")
+      expect(response.body).to include("data-chosen-date", "Change date", "Continue to checkout",
+                                       %(href="/tickets/starsandgarters/#{production.public_key}?date=#{later_listing.slug}"))
+      expect(response.body).not_to include("Other dates", "/p/#{production.id}")
 
       get tickets_event_path(org: "starsandgarters", event: production.id.to_s)
       expect(response).to have_http_status(:not_found)

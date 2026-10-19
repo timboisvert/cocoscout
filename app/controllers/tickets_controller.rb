@@ -40,6 +40,8 @@ class TicketsController < ApplicationController
 
   # /tickets/<org>/<slug>: a date's ticket page, or — when the slug is a
   # production's public key — the production's page with all its dates.
+  # A date's own link opens the production's page with that date chosen
+  # (Tim, 2026-10-18: one page, however you got there).
   def event
     @listing = @organization.ticket_listings.find_by(slug: params[:event])
     return production(@organization.productions.find_by(public_key: params[:event].to_s.downcase)) unless @listing
@@ -50,15 +52,7 @@ class TicketsController < ApplicationController
 
       @preview = true
     end
-
-    check_code(@listing)
-    @door_banner_listing = door_banner_for(@listing)
-    @tiers = @listing.ticket_tiers.active.select(&:listed?).reject { |t| t.hidden? && t.unlock_code != @code }
-    @inventory = @listing.inventory
-    @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
-    @passes = selling_passes.select do |pass|
-      pass.credit_kind? ? pass.coverages.any? { |coverage| coverage.production_id == @listing.production_id } : pass.rows.any? { |row| row.ticket_listing_id == @listing.id }
-    end
+    production(@listing.production, chosen: @listing)
   end
 
   # What a phone camera opens from a ticket's QR code: the ticket itself.
@@ -73,14 +67,20 @@ class TicketsController < ApplicationController
   # The production's page: its dates as chips, and the chosen date's tickets
   # (?date= a date's slug, a day like 2026-10-17, or oct-17 as a short link
   # names it; else the first date on sale).
-  def production(production)
+  def production(production, chosen: nil)
     raise ActiveRecord::RecordNotFound unless production
 
     @production = production
     @listings = selling_listings.select { |l| l.production_id == @production.id }
+    # A draft being previewed isn't on sale, so it isn't among the dates; it
+    # joins them for its own page.
+    @listings = (@listings + [ chosen ]).sort_by { |l| l.show.date_and_time } if chosen && !@listings.include?(chosen)
     wanted = params[:date].to_s.downcase
-    @listing = @listings.find { |l| l.slug == wanted || l.show.date_and_time.to_date.iso8601 == wanted || ShortLink.date_suffix(l.show) == wanted } ||
+    @listing = chosen ||
+               @listings.find { |l| l.slug == wanted || l.show.date_and_time.to_date.iso8601 == wanted || ShortLink.date_suffix(l.show) == wanted } ||
                @listings.find { |l| l.selling? && !l.inventory.sold_out? } || @listings.first
+    # Reached as one date (its own link, or ?date=): the page shares as that date.
+    @dated = chosen.present? || params[:date].present?
     check_code(@listing)
     # The date it opens on lists only what's still selling online, so a
     # show whose online sales are over (the night's, after curtain) is found
@@ -90,6 +90,9 @@ class TicketsController < ApplicationController
       @tiers = @listing.ticket_tiers.active.select(&:listed?).reject { |t| t.hidden? && t.unlock_code != @code }
       @inventory = @listing.inventory
       @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
+      @passes = selling_passes.select do |pass|
+        pass.credit_kind? ? pass.coverages.any? { |coverage| coverage.production_id == @listing.production_id } : pass.rows.any? { |row| row.ticket_listing_id == @listing.id }
+      end
     end
     render :production
   end
