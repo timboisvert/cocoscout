@@ -198,22 +198,50 @@ Same iPhone, a new person who will work the door.
 6. Refund that order on cocoscout.com: Ticketing → Orders → the order →
    Refund.
 
+### Recording 4: Website setup (Mac)
+
+Apple's guide: when onboarding happens on a website, "you must still
+provide a video recording of that onboarding process". This shows how a
+door person gets authorized. On the Mac, press Command-Shift-5, choose
+Record Entire Screen, then Record.
+
+1. On cocoscout.com as the Stars & Garters manager: Ticketing settings →
+   Door.
+2. The Tap to Pay on iPhone card (On) → Manage: show the modal (the switch,
+   who can use it, setting up an iPhone, "Terms apply."), then Cancel.
+3. "Who can work the door": invite a new address (boisvert+door2@gmail.com)
+   as "Check people in and sell tickets", and send. Stop recording
+   (the stop button in the menu bar). Withdraw that invitation afterwards.
+4. Name the file "4 Website setup".
+
+### The files
+
+In `ios/apple_ttp/` (not committed): "1 Existing user", "2 New user",
+"3 Checkout", "4 Website setup", and the filled checklist, "CocoScout
+Checklist 1_8.numbers" (Apple's blank original is kept beside it). Before
+sending, check the checklist's Info tab: Version 1.2, and "New" for
+Existing or New app; change it to Existing if V1 is live in the App Store
+by then.
+
 ### The reply to Apple
 
-Reply to Apple's Oct 12 email (Case-ID 22828656) with the three videos and
-the filled checklist (`ios/apple_ttp/App Review Requirements Checklist
-1_8.numbers`). A body to start from:
+Reply to Apple's Oct 12 email (Case-ID 22828656) with the filled checklist
+attached, and upload the four recordings the way that email says. A body
+to start from:
 
-> Hello, attached are CocoScout's three recordings (existing user, new user,
-> checkout) and the completed App Review Requirements Checklist v1.8.
-> CocoScout is the box office for the organizations that use it: every
-> organization's sales go through CocoScout's own payment account, so
-> CocoScout is the merchant and its administrators accept the Tap to Pay on
-> iPhone terms once, in the app. The people who use Tap to Pay on iPhone are
-> door staff an organization invites; they create a CocoScout account in the
-> app and set up Tap to Pay on iPhone there. Organizations themselves set up
-> their box office on our website, so we ask for the exception for apps
-> whose merchants are onboarded outside the app (requirements 2.1 to 2.3).
+> Hello, attached is CocoScout's completed App Review Requirements
+> Checklist v1.8, with four recordings: existing user, new user, checkout,
+> and the website setup.
+> CocoScout is the box office for the performing-arts organizations that
+> use it. Every organization's ticket sales go through CocoScout's own
+> Stripe account, so CocoScout is the merchant, with one Merchant ID, and
+> its administrators accept the Tap to Pay on iPhone terms once, in the app.
+> The people who use Tap to Pay on iPhone are door staff an organization's
+> managers invite by email from our website; they create their account in
+> the app and set up Tap to Pay on iPhone there. Organizations sign up and
+> open their box office on cocoscout.com, and nobody an organization hasn't
+> authorized can take payments, so we ask for the exception for apps
+> restricted to pre-authorized users (requirement 2.2).
 > Thank you.
 
 ### Checklist answers (Apple's numbering, v1.8)
