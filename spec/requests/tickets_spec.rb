@@ -83,7 +83,7 @@ RSpec.describe "Public ticketing", type: :request do
       profile.update!(welcome_line: "Chicago's home for the strange")
       get tickets_box_office_path(org: "starsandgarters")
       html = response.body.gsub(/\s+/, " ")
-      expect(html).to include("Chicago&#39;s home for the strange", "Every date", 'name="production"', ">Carded<", show.location.name,
+      expect(html).to include("Chicago&#39;s home for the strange", "All upcoming shows", 'name="production"', ">Carded<", show.location.name,
                               show.date_and_time.to_date.strftime("%A, %B %-d"), event_path)
       expect(html).to include("This weekend").or include("This week").or include("Coming up")
       expect(html).not_to include(">Everything<")
@@ -102,7 +102,7 @@ RSpec.describe "Public ticketing", type: :request do
       get tickets_box_office_path(org: "starsandgarters")
       html = response.body.gsub(/\s+/, " ")
       expect(html).to include("All shows", "Improvised Animorphs", "Next:", tickets_event_path(org: "starsandgarters", event: production.public_key), "from $21.42")
-      expect(html).not_to include("Every date")
+      expect(html).not_to include("All upcoming shows")
     end
 
     it "stays hidden until ticketing is switched on, except for a superadmin's preview" do

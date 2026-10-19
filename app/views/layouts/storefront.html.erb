@@ -36,7 +36,10 @@
     <% if @door_banner_listing %>
       <%= render "tickets/door_banner", listing: @door_banner_listing %>
     <% end %>
-    <% if storefront_organization %>
+    <%# The box office page itself leads with the organization's name, so it
+        skips this bar (Tim, 2026-10-18); every other page keeps it as the
+        way back. %>
+    <% if storefront_organization && !@storefront_no_header %>
       <header class="border-b border-gray-200">
         <div class="mx-auto max-w-4xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <% if storefront_home %>

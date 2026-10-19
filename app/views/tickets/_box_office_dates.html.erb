@@ -34,7 +34,7 @@
 
 <section class="mt-8">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-    <h2 class="text-2xl coustard-regular text-gray-900">Every date</h2>
+    <h2 class="text-2xl coustard-regular text-gray-900">All upcoming shows</h2>
     <% if @productions.size > 1 %>
       <%= form_with url: tickets_box_office_path(org: @ticketing_profile.slug), method: :get, data: { controller: "auto-submit" }, class: "flex items-center gap-2 text-sm text-gray-500" do |f| %>
         <% embed_params.each { |key, value| concat hidden_field_tag(key, value, id: nil) } %>

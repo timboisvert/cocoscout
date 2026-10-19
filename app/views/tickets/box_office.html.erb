@@ -15,6 +15,9 @@
 <%# The hero: who this is, a line of welcome, where, and the wide image when there is one. %>
 <section class="<%= wide ? 'grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_20rem] gap-6 items-center' : '' %>">
   <div>
+    <% if @preview %>
+      <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 mb-2">Preview — not public yet</span>
+    <% end %>
     <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @organization.name %></h1>
     <% if @ticketing_profile.welcome_line.present? %>
       <p class="text-base sm:text-lg text-gray-600 mt-2 max-w-xl"><%= @ticketing_profile.welcome_line %></p>

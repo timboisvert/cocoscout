@@ -22,6 +22,7 @@ class TicketsController < ApplicationController
     @listings = selling_listings.select { |l| @production_filter.nil? || l.production_id == @production_filter.id }
     @passes = @production_filter ? [] : selling_passes
     @layout = @ticketing_profile.box_office_layout
+    @storefront_no_header = true
     @venue = selling_listings.map { |l| l.show.location }.compact.tally.max_by { |_, n| n }&.first if @ticketing_profile.show_address?
     today = Date.current
     soon = @listings.select { |l| l.show.date_and_time.to_date.between?(today, today + 3) }
