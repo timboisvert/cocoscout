@@ -20,18 +20,16 @@ class TicketingDoorAccess
     level && LEVELS.index(level) >= LEVELS.index(needed)
   end
 
-  # Organizations whose door this user can work, with ticketing switched on
-  # (a superadmin also sees pilot orgs that aren't switched on yet).
+  # Organizations whose door this user works, with ticketing switched on:
+  # a door grant, a manager role, or their own. A superadmin's list is the
+  # same (Tim, 2026-10-18: every organization on CocoScout showed up on his
+  # door); a superadmin can still open any show's door by its link.
   def self.organizations_for(user)
     return [] unless user
 
-    scope = Organization.joins(:ticketing_profile)
-    unless user.superadmin?
-      ids = TicketingAccessGrant.active.where(user_id: user.id).pluck(:organization_id) +
-            user.organization_roles.where(company_role: "manager").pluck(:organization_id) +
-            Organization.where(owner_id: user.id).pluck(:id)
-      scope = scope.where(ticketing_profiles: { enabled: true }).where(id: ids.uniq)
-    end
-    scope.order(:name).to_a
+    ids = TicketingAccessGrant.active.where(user_id: user.id).pluck(:organization_id) +
+          user.organization_roles.where(company_role: "manager").pluck(:organization_id) +
+          Organization.where(owner_id: user.id).pluck(:id)
+    Organization.joins(:ticketing_profile).where(ticketing_profiles: { enabled: true }).where(id: ids.uniq).order(:name).to_a
   end
 end
