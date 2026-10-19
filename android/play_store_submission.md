@@ -223,7 +223,9 @@ The bundle is built: `app-release.aab` as above, versionCode 3, versionName
 
 - **Deploy main.** The Android wording ("Tap to Pay", never the iPhone) and
   the door header fix are on the server; without them the app says "Tap to
-  Pay on iPhone".
+  Pay on iPhone". Film Apple's Recording 4 (`ios/tap_to_pay.md`) before
+  this deploy: main also adds a "Tap to Pay on Android" card to the Door tab
+  that recording shows.
 - **Let build 2 (1.0) pass its review first.** A new Production release
   replaces one that's still in review. Internal testing doesn't have to wait.
 

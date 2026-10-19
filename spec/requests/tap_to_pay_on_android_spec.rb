@@ -81,6 +81,27 @@ RSpec.describe "Tap to Pay on Android", type: :request do
     no_apple(response.body)
   end
 
+  it "has a card of its own on Ticketing settings → Door, leaving Apple's card and modal as they are" do
+    create(:organization_role, :manager, user: owner, organization: org)
+    profile.update!(tap_to_pay_offered: true)
+    get signout_path
+    post handle_signin_path, params: { email_address: owner.email_address, password: password }
+    post set_organization_path(id: org.id)
+    get manage_ticketing_settings_section_path(section: "door")
+    page = Nokogiri::HTML(response.body)
+    android = page.at_css("[data-tap-to-pay-android-card]")
+    expect(android.text.squish).to include("Tap to Pay on Android", "On", "Anyone who can check people in and sell tickets can take cards on an Android phone",
+                                           "Setting up an Android phone", "Open the menu and choose Tap to Pay.", "Android 13 or later")
+    expect(android.text).not_to include("iPhone XS", "Apple Pay")
+    expect(page.at_css("[data-tap-to-pay-card]").text).not_to include("Android")
+    expect(page.at_css("#tap-to-pay-settings").text).not_to include("Android")
+    expect(response.body).not_to include("Stripe")
+
+    profile.update!(tap_to_pay: false)
+    get manage_ticketing_settings_section_path(section: "door")
+    expect(Nokogiri::HTML(response.body).at_css("[data-tap-to-pay-android-card]").text).to include("Off", "Nobody takes cards on an Android phone")
+  end
+
   it "leaves the iPhone app's words as Apple asks" do
     post handle_signin_path, params: { email_address: seller.email_address, password: password }, headers: iphone
     get door_path(listing), headers: iphone
