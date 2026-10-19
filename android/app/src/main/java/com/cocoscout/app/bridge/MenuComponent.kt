@@ -1,6 +1,8 @@
 package com.cocoscout.app.bridge
 
 import com.cocoscout.app.AppShell
+import com.cocoscout.app.door.TapToPayInfo
+import com.cocoscout.app.door.TapToPaySetup
 import dev.hotwire.core.bridge.BridgeComponent
 import dev.hotwire.core.bridge.BridgeDelegate
 import dev.hotwire.core.bridge.Message
@@ -11,7 +13,8 @@ import kotlinx.serialization.Serializable
 /**
  * The menu (with badges) and who's signed in, sent by every page
  * (bridge/menu_controller.js, NativeAppHelper#native_menu). An empty menu
- * means signed out.
+ * means signed out. With it, Tap to Pay for someone who can sell with it, so
+ * the app can warm Terminal up.
  */
 class MenuComponent(
     name: String,
@@ -22,10 +25,11 @@ class MenuComponent(
         if (message.event != "update") return
         val data = message.data<MenuData>() ?: return
         AppShell.update(data.menu, data.person, page = message.metadata?.url)
+        TapToPaySetup.update(data.tapToPay)
     }
 
     @Serializable
-    data class MenuData(val menu: List<MenuItem> = emptyList(), val person: MenuPerson? = null)
+    data class MenuData(val menu: List<MenuItem> = emptyList(), val person: MenuPerson? = null, val tapToPay: TapToPayInfo? = null)
 }
 
 /** One menu tile: icon is an SF Symbol name (the iOS app's); MenuIcons maps it. */

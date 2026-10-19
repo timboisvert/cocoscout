@@ -28,8 +28,8 @@ android {
         // Hotwire Native Android needs Android 9 or later.
         minSdk = 28
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.2"
         buildConfigField("String", "BASE_URL", "\"https://cocoscout.com\"")
     }
 
@@ -90,6 +90,16 @@ dependencies {
     // Notifications: Firebase Cloud Messaging (push/).
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    // Tap to Pay at the door: Stripe Terminal with its Tap to Pay reader
+    // (door/TapToPayReader). It needs Kotlin 2.3.21 or later.
+    implementation(libs.stripe.terminal.core)
+    implementation(libs.stripe.terminal.taptopay)
+    // Stripe brings okhttp-tls 4.12, built against OkHttp 4's internals;
+    // Hotwire Native brings OkHttp 5, so the 4.12 one fails at its first
+    // request (NoClassDefFoundError: okhttp3/internal/Util). OkHttp 5's own
+    // okhttp-tls has the same API.
+    implementation(libs.okhttp.tls)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

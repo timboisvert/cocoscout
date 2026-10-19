@@ -8,6 +8,15 @@
     <!-- Notifications (Android 13 and later ask; only when someone taps Turn on). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Tap to Pay at the door (door/TapToPayReader): card networks need to
+         know where a payment is taken, and approximate is enough. Asked only
+         when someone sets Tap to Pay up, or before their first sale. Audio
+         settings keep the tap's sound from being muted (Stripe asks apps to
+         declare it). Stripe's SDK adds NFC and the rest itself; a phone
+         without NFC still installs the app. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
 
     <application
         android:name=".CocoScoutApplication"

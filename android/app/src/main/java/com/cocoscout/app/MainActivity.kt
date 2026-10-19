@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import com.cocoscout.app.door.TapToPayOverlay
+import com.cocoscout.app.door.TapToPaySetup
 import com.cocoscout.app.menu.MenuOverlay
 import dev.hotwire.navigation.activities.HotwireActivity
 import dev.hotwire.navigation.navigator.Navigator
@@ -29,6 +31,12 @@ class MainActivity : HotwireActivity() {
         notificationAnswer = null
     }
 
+    private var locationAnswer: CompletableDeferred<Boolean>? = null
+    private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        locationAnswer?.complete(granted)
+        locationAnswer = null
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -42,10 +50,19 @@ class MainActivity : HotwireActivity() {
             insets
         }
 
-        findViewById<ComposeView>(R.id.menu_button).setContent { MenuOverlay() }
+        findViewById<ComposeView>(R.id.menu_button).setContent {
+            MenuOverlay()
+            TapToPayOverlay()
+        }
 
         AppShell.attach(this)
         openLinkFrom(intent)
+    }
+
+    /** Back in front: Tap to Pay warms up again, so a sale's tap screen opens at once. */
+    override fun onStart() {
+        super.onStart()
+        TapToPaySetup.warmUp()
     }
 
     override fun onDestroy() {
@@ -70,6 +87,14 @@ class MainActivity : HotwireActivity() {
     suspend fun askForNotificationPermission(): Boolean {
         val answer = CompletableDeferred<Boolean>().also { notificationAnswer = it }
         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        return answer.await()
+    }
+
+    /** Android's location question, for Tap to Pay (TapToPayLocation.ask). Approximate is enough. */
+    suspend fun askForLocationPermission(): Boolean {
+        locationAnswer?.let { return it.await() }
+        val answer = CompletableDeferred<Boolean>().also { locationAnswer = it }
+        locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
         return answer.await()
     }
 

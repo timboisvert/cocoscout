@@ -8,6 +8,7 @@ import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.Contactless
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.Email
@@ -41,7 +42,8 @@ object MenuIcons {
         "person.crop.circle" to Icons.Outlined.AccountCircle,
         "person.3" to Icons.Outlined.Groups,
         "gearshape" to Icons.Outlined.Settings,
-        "qrcode.viewfinder" to Icons.Outlined.QrCodeScanner
+        "qrcode.viewfinder" to Icons.Outlined.QrCodeScanner,
+        "wave.3.right.circle" to Icons.Outlined.Contactless
     )
 
     fun forName(name: String): ImageVector = icons[name] ?: Icons.Outlined.Circle

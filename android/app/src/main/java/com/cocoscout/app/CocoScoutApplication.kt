@@ -5,9 +5,13 @@ import com.cocoscout.app.bridge.DoorScannerComponent
 import com.cocoscout.app.bridge.FormComponent
 import com.cocoscout.app.bridge.MenuComponent
 import com.cocoscout.app.bridge.PushComponent
+import com.cocoscout.app.bridge.TapToPayComponent
+import com.cocoscout.app.door.TapToPaySetup
 import com.cocoscout.app.push.Notifications
 import com.cocoscout.app.routing.OpenAsDocumentRouteDecisionHandler
 import com.cocoscout.app.routing.OpenInBrowserRouteDecisionHandler
+import com.stripe.stripeterminal.TerminalApplicationDelegate
+import com.stripe.stripeterminal.taptopay.TapToPay
 import dev.hotwire.core.bridge.BridgeComponentFactory
 import dev.hotwire.core.bridge.KotlinXJsonConverter
 import dev.hotwire.core.config.Hotwire
@@ -25,6 +29,12 @@ class CocoScoutApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Stripe's Tap to Pay screen runs in a process of its own, which
+        // starts this Application again: none of the app's setup belongs there.
+        if (TapToPay.isInTapToPayProcess()) return
+        TerminalApplicationDelegate.onCreate(this)
+        TapToPaySetup.start(this)
+
         Hotwire.defaultFragmentDestination = WebFragment::class
         Hotwire.registerFragmentDestinations(WebFragment::class)
 
@@ -34,7 +44,8 @@ class CocoScoutApplication : Application() {
             BridgeComponentFactory("form", ::FormComponent),
             BridgeComponentFactory("menu", ::MenuComponent),
             BridgeComponentFactory("door-scanner", ::DoorScannerComponent),
-            BridgeComponentFactory("push", ::PushComponent)
+            BridgeComponentFactory("push", ::PushComponent),
+            BridgeComponentFactory("tap-to-pay", ::TapToPayComponent)
         )
         Notifications.createChannels(this)
 
