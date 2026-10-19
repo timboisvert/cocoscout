@@ -1,0 +1,59 @@
+<%
+  profile = ticketing_profile
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  layouts = [
+    [ "dates", "Dates first", "This weekend's shows as cards, then every date by day with one Show filter. For a theater with many short runs." ],
+    [ "posters", "Poster wall", "One poster per production, soonest first, each saying its next date. For a company with a few long runs." ]
+  ]
+  wide = profile.safe_wide_image_variant(:small)
+%>
+<%= form_with model: profile, url: manage_ticketing_settings_page_path, method: :patch do |f| %>
+  <div class="space-y-6">
+    <p class="text-sm text-gray-600">What people see at your box office link<% if profile.enabled? %>, <%= link_to tickets_box_office_url(org: profile.slug), tickets_box_office_url(org: profile.slug), class: "text-pink-600 hover:text-pink-700", target: "_blank", rel: "noopener" %><% end %>. The shows on it come from your dates on sale.</p>
+
+    <fieldset>
+      <legend class="block text-sm font-medium text-gray-700 mb-2">Layout</legend>
+      <div class="space-y-2">
+        <% layouts.each do |value, label, words| %>
+          <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer hover:border-pink-300">
+            <%= f.radio_button :box_office_layout, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+            <span><span class="block text-sm font-medium text-gray-900"><%= label %></span><span class="block text-xs text-gray-600 mt-0.5"><%= words %></span></span>
+          </label>
+        <% end %>
+      </div>
+    </fieldset>
+
+    <div>
+      <%= f.label :welcome_line, "A line of welcome", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+      <%= f.text_field :welcome_line, maxlength: TicketingProfile::WELCOME_LINE_LIMIT, placeholder: "Chicago's home for burlesque, improv and the strange since 2019", class: input_class %>
+      <p class="text-xs text-gray-500 mt-1">Under your name at the top of the page. Leave it blank for none.</p>
+    </div>
+
+    <div>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <%= f.check_box :show_address, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-900">Show the venue's address, with Directions</span>
+      </label>
+      <p class="text-xs text-gray-500 mt-1 ml-7">The venue most of your dates are at.</p>
+    </div>
+
+    <div>
+      <span class="block text-sm font-medium text-gray-700 mb-1.5">Wide image</span>
+      <% if wide %>
+        <div class="flex items-center gap-4">
+          <%= image_tag wide, alt: "", class: "w-40 rounded-lg border border-gray-200" %>
+          <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <%= check_box_tag :remove_wide_image, "1", false, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+            Remove it
+          </label>
+        </div>
+      <% end %>
+      <%= f.file_field :wide_image, accept: HasWideImage::WIDE_IMAGE_TYPES.join(","), class: "mt-2 block text-sm text-gray-700" %>
+      <p class="text-xs text-gray-500 mt-1">A photo of your theater or your season, 16:9, JPG, PNG or WebP up to 10 MB. Shown whole, never cropped.</p>
+    </div>
+
+    <div class="pt-2">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  </div>
+<% end %>

@@ -1,24 +1,32 @@
 <% content_for :title, "Tickets · #{@organization.name}" %>
 <% content_for :head do %>
-  <meta name="description" content="Upcoming shows and tickets at <%= @organization.name %>.">
+  <meta name="description" content="<%= @ticketing_profile.welcome_line.presence || "Upcoming shows and tickets at #{@organization.name}." %>">
   <meta property="og:title" content="Tickets · <%= @organization.name %>">
   <meta property="og:type" content="website">
   <meta property="og:url" content="<%= tickets_box_office_url(org: @ticketing_profile.slug) %>">
+  <% if (og = @ticketing_profile.safe_wide_image_variant(:display)) %><meta property="og:image" content="<%= url_for(og) %>"><% end %>
 <% end %>
+<%
+  wide = @ticketing_profile.safe_wide_image_variant(:display)
+  address = @venue && [ @venue.address1, @venue.city, @venue.state ].compact_blank.join(", ")
+  map_url = address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ @venue.name, address ].compact.join(', '))}" : nil
+%>
 
-<h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @organization.name %></h1>
-<p class="text-gray-600 mt-2">Upcoming shows</p>
-
-<% if @productions.size > 1 %>
-  <nav class="mt-6 flex flex-wrap gap-2" aria-label="Filter by production">
-    <%= link_to "Everything", tickets_box_office_path(org: @ticketing_profile.slug, **embed_params),
-          class: "rounded-full px-3 py-1.5 text-sm #{@production_filter ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-pink-500 text-white'}" %>
-    <% @productions.each do |production| %>
-      <%= link_to production.name, tickets_box_office_path(org: @ticketing_profile.slug, production: production.public_key, **embed_params),
-            class: "rounded-full px-3 py-1.5 text-sm #{@production_filter == production ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" %>
+<%# The hero: who this is, a line of welcome, where, and the wide image when there is one. %>
+<section class="<%= wide ? 'grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_20rem] gap-6 items-center' : '' %>">
+  <div>
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @organization.name %></h1>
+    <% if @ticketing_profile.welcome_line.present? %>
+      <p class="text-base sm:text-lg text-gray-600 mt-2 max-w-xl"><%= @ticketing_profile.welcome_line %></p>
     <% end %>
-  </nav>
-<% end %>
+    <% if @venue %>
+      <p class="text-sm text-gray-500 mt-2"><%= [ @venue.name, address.presence ].compact.join(" · ") %><% if map_url %> · <%= link_to "Directions", map_url, class: "text-pink-600 hover:text-pink-700", target: "_blank", rel: "noopener" %><% end %></p>
+    <% end %>
+  </div>
+  <% if wide %>
+    <%= image_tag wide, alt: "", class: "w-full h-auto rounded-2xl" %>
+  <% end %>
+</section>
 
 <% if @passes.any? %>
   <div class="mt-6 space-y-2">
@@ -28,12 +36,10 @@
   </div>
 <% end %>
 
-<div class="mt-6 space-y-2">
-  <% if @listings.any? %>
-    <% @listings.each do |listing| %>
-      <%= render "tickets/listing_row", listing: listing, profile: @ticketing_profile %>
-    <% end %>
-  <% else %>
-    <p class="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-600">No shows on sale right now. Check back soon.</p>
-  <% end %>
-</div>
+<% if @listings.empty? %>
+  <p class="mt-6 rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-600">No shows on sale right now. Check back soon.</p>
+<% elsif @layout == "posters" %>
+  <%= render "tickets/box_office_posters" %>
+<% else %>
+  <%= render "tickets/box_office_dates" %>
+<% end %>

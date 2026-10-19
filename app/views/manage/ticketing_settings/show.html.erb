@@ -10,6 +10,8 @@
   width: (%w[sharing comps door].include?(@section) ? "max-w-5xl" : nil)
 } do %>
   <% case @section %>
+  <% when "page" %>
+    <%= render "manage/ticketing_settings/sections/page" %>
   <% when "refunds" %>
     <%= render "manage/ticketing_settings/sections/refunds" %>
   <% when "tax" %>

@@ -12,11 +12,29 @@ class TicketsController < ApplicationController
 
   before_action :set_box_office, except: :ticket
 
+  # The organization's page (Tim, 2026-10-18): a hero (name, welcome line,
+  # the venue, a wide image), then either dates first (this weekend's shows
+  # as cards, every date by day, one Show filter) or a poster wall (a tile
+  # per production, soonest first), by Ticketing settings → Box office page.
   def box_office
     @productions = selling_listings.map(&:production).uniq.sort_by(&:name)
     @production_filter = @productions.find { |p| p.public_key.present? && p.public_key == params[:production].to_s }
     @listings = selling_listings.select { |l| @production_filter.nil? || l.production_id == @production_filter.id }
     @passes = @production_filter ? [] : selling_passes
+    @layout = @ticketing_profile.box_office_layout
+    @venue = selling_listings.map { |l| l.show.location }.compact.tally.max_by { |_, n| n }&.first if @ticketing_profile.show_address?
+    today = Date.current
+    soon = @listings.select { |l| l.show.date_and_time.to_date.between?(today, today + 3) }
+    @coming_up = soon.any? ? soon.first(8) : @listings.first(4)
+    @coming_up_heading = if soon.empty? then "Coming up"
+    elsif (today..(today + 3)).any? { |day| day.saturday? || day.sunday? } then "This weekend"
+    else "This week"
+    end
+    @by_day = @listings.group_by { |l| l.show.date_and_time.to_date }
+    @tonight = @listings.select { |l| l.show.date_and_time.to_date == today }
+    @production_rows = @listings.group_by(&:production).map do |production, dates|
+      { production: production, next: dates.first, count: dates.size, from: dates.filter_map { |l| helpers.listing_from_price_cents(l) }.min }
+    end.sort_by { |row| row[:next].show.date_and_time }
   end
 
   # /tickets/<org>/<slug>: a date's ticket page, or — when the slug is a

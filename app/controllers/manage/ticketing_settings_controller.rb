@@ -6,8 +6,8 @@ module Manage
   # on tickets, who can work the door, and the code for selling on the
   # theater's own website. No branding in v1 — every org gets the same pages.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office refunds tax notifications door sharing comps embed].freeze
-    SECTION_LABELS = { "box_office" => "Box office", "refunds" => "Refunds", "tax" => "Tax", "notifications" => "Notifications",
+    SECTIONS = %w[box_office page refunds tax notifications door sharing comps embed].freeze
+    SECTION_LABELS = { "box_office" => "Box office", "page" => "Box office page", "refunds" => "Refunds", "tax" => "Tax", "notifications" => "Notifications",
                        "door" => "Door", "sharing" => "Who sees sales", "comps" => "Comps", "embed" => "Your website" }.freeze
     DEFAULT_SECTION = "box_office"
 
@@ -72,6 +72,21 @@ module Manage
         redirect_to section_path("comps"), notice: "Saved. #{ticketing_profile.comp_rules_words.upcase_first}."
       else
         @section = "comps"
+        flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
+        render :show, status: :unprocessable_content
+      end
+    end
+
+    # The box office page (Tim, 2026-10-18): its layout, a welcome line, the
+    # address, and a wide image.
+    def update_page
+      attrs = params.require(:ticketing_profile).permit(:box_office_layout, :welcome_line, :show_address, :wide_image)
+      attrs[:welcome_line] = attrs[:welcome_line].to_s.squish.presence if attrs.key?(:welcome_line)
+      ticketing_profile.wide_image.purge_later if params[:remove_wide_image] == "1" && ticketing_profile.wide_image.attached?
+      if ticketing_profile.update(attrs)
+        redirect_to section_path("page"), notice: "Box office page saved."
+      else
+        @section = "page"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
         render :show, status: :unprocessable_content
       end

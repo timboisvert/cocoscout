@@ -1,0 +1,67 @@
+<%# Dates first: this weekend's shows as cards, then every date by day with
+    one Show filter in place of a chip per production. %>
+<% unless @production_filter %>
+  <section class="mt-8">
+    <div class="flex items-baseline justify-between gap-4 mb-3">
+      <h2 class="text-2xl coustard-regular text-gray-900"><%= @coming_up_heading %></h2>
+      <span class="text-sm text-gray-500"><%= pluralize(@coming_up.size, "show") %></span>
+    </div>
+    <div class="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">
+      <% @coming_up.each do |listing| %>
+        <% show = listing.show %>
+        <% image, page_image = ticket_page_image(listing) %>
+        <% note = public_listing_note(listing) %>
+        <% from = listing_from_price_cents(listing) %>
+        <%= link_to tickets_event_path(org: @ticketing_profile.slug, event: listing.slug, **embed_params),
+              class: "flex-shrink-0 w-60 sm:w-auto rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-pink-400 transition-colors" do %>
+          <div class="aspect-video bg-gray-100 overflow-hidden flex items-center justify-center">
+            <% if image %>
+              <%= image_tag image, alt: "", class: "w-full h-full #{page_image.wide? ? 'object-cover' : 'object-contain'}" %>
+            <% else %>
+              <span class="coustard-regular text-lg text-gray-400 px-4 text-center"><%= listing.production.name %></span>
+            <% end %>
+          </div>
+          <div class="px-3.5 py-3">
+            <div class="text-xs font-semibold text-pink-600"><%= show.date_and_time.strftime("%a · %-l:%M %p") %><% if note %> · <span class="<%= note == 'Sold out' ? 'text-gray-500' : 'text-amber-700' %>"><%= note %></span><% end %></div>
+            <div class="text-[15px] font-semibold text-gray-900 leading-snug mt-0.5"><%= listing.display_title %></div>
+            <div class="text-sm text-gray-500 mt-1"><%= [ show.location_space&.name || show.location&.name, (from && note != "Sold out" ? (from.zero? ? "Free" : "from #{number_to_currency(from / 100.0)}") : nil) ].compact.join(" · ") %></div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+<% end %>
+
+<section class="mt-8">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+    <h2 class="text-2xl coustard-regular text-gray-900">Every date</h2>
+    <% if @productions.size > 1 %>
+      <%= form_with url: tickets_box_office_path(org: @ticketing_profile.slug), method: :get, data: { controller: "auto-submit" }, class: "flex items-center gap-2 text-sm text-gray-500" do |f| %>
+        <% embed_params.each { |key, value| concat hidden_field_tag(key, value, id: nil) } %>
+        <%= label_tag :production, "Show", class: "text-sm text-gray-500" %>
+        <%= select_tag :production, options_for_select([ [ "All shows (#{@productions.size})", "" ] ] + @productions.map { |p| [ p.name, p.public_key ] }, @production_filter&.public_key),
+              data: { action: "change->auto-submit#submit" }, class: "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 max-w-[16rem] focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      <% end %>
+    <% end %>
+  </div>
+  <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+    <% @by_day.each do |day, listings| %>
+      <div class="px-4 sm:px-5 py-2 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-500 border-t first:border-t-0 border-gray-200"><%= day.strftime("%A, %B %-d") %><%= ", #{day.year}" if day.year != Date.current.year %></div>
+      <% listings.each do |listing| %>
+        <% show = listing.show %>
+        <% note = public_listing_note(listing) %>
+        <% from = listing_from_price_cents(listing) %>
+        <%= link_to tickets_event_path(org: @ticketing_profile.slug, event: listing.slug, **embed_params),
+              class: "flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2.5 border-t border-gray-100 hover:bg-gray-50 transition-colors" do %>
+          <% price = from && note != "Sold out" ? (from.zero? ? "Free" : "From #{number_to_currency(from / 100.0)}") : nil %>
+          <span class="w-16 sm:w-20 flex-shrink-0 text-sm font-semibold text-gray-900 tabular-nums"><%= show.date_and_time.strftime("%-l:%M %p") %></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[15px] font-semibold text-gray-900 leading-snug sm:truncate"><%= listing.display_title %></span>
+            <span class="block text-xs text-gray-500"><%= [ (listing.display_title != listing.production.name ? listing.production.name : nil), show.location_space&.name || show.location&.name ].compact.join(" · ") %><% if note %> · <span class="<%= note == 'Sold out' ? 'text-gray-500' : 'text-amber-700' %> font-medium"><%= note %></span><% end %><% if price %><span class="sm:hidden"> · <%= price.downcase %></span><% end %></span>
+          </span>
+          <% if price %><span class="hidden sm:block flex-shrink-0 text-sm font-semibold text-gray-900"><%= price %></span><% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+</section>

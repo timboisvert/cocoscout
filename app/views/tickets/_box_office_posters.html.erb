@@ -1,0 +1,51 @@
+<%# Poster wall: tonight's shows, then one poster per production, soonest first. %>
+<% if @tonight.any? && !@production_filter %>
+  <section class="mt-8">
+    <h2 class="text-2xl coustard-regular text-gray-900 mb-3">Tonight</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <% @tonight.each do |listing| %>
+        <% show = listing.show %>
+        <% from = listing_from_price_cents(listing) %>
+        <% note = public_listing_note(listing) %>
+        <%= link_to tickets_event_path(org: @ticketing_profile.slug, event: listing.slug, **embed_params),
+              class: "flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-3.5 hover:border-pink-400 transition-colors" do %>
+          <span class="min-w-0">
+            <span class="block text-xs font-semibold text-pink-600"><%= show.date_and_time.strftime("%-l:%M %p") %><%= " · #{show.location_space&.name || show.location&.name}" if show.location %></span>
+            <span class="block text-[17px] font-semibold text-gray-900 leading-snug mt-0.5"><%= listing.display_title %></span>
+          </span>
+          <span class="flex-shrink-0 rounded-lg bg-pink-500 px-3.5 py-2 text-sm font-semibold text-white"><%= note == "Sold out" ? "Sold out" : (from.nil? ? "Tickets" : (from.zero? ? "Free" : "From #{number_to_currency(from / 100.0)}")) %></span>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+<% end %>
+
+<section class="mt-8">
+  <div class="flex items-baseline justify-between gap-4 mb-3">
+    <h2 class="text-2xl coustard-regular text-gray-900">All shows</h2>
+    <span class="text-sm text-gray-500"><%= pluralize(@production_rows.size, "production") %> · soonest first</span>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+    <% @production_rows.each do |row| %>
+      <% production = row[:production] %>
+      <% poster = production.safe_poster_variant(:small) %>
+      <% next_show = row[:next].show %>
+      <% next_note = public_listing_note(row[:next]) %>
+      <%= link_to tickets_event_path(org: @ticketing_profile.slug, event: production.public_key, **embed_params), class: "group block" do %>
+        <% if poster %>
+          <div class="aspect-[3/4] rounded-xl overflow-hidden border border-gray-200 bg-white"><%= image_tag poster, alt: "", class: "w-full h-full object-cover group-hover:opacity-90 transition-opacity" %></div>
+        <% else %>
+          <div class="aspect-[3/4] rounded-xl bg-pink-100 flex items-center justify-center px-3 text-center"><span class="coustard-regular text-lg text-pink-700"><%= production.name %></span></div>
+        <% end %>
+        <div class="mt-2">
+          <div class="text-sm font-semibold text-gray-900 leading-snug group-hover:text-pink-600"><%= production.name %></div>
+          <div class="text-xs text-gray-500 mt-0.5">
+            Next: <%= next_show.date_and_time.to_date == Date.current ? "tonight" : next_show.date_and_time.strftime("%a %b %-d") %> <%= next_show.date_and_time.strftime("%-l:%M %p") %>
+            <% if row[:count] > 1 %> · <%= pluralize(row[:count], "date") %><% end %>
+            <% if next_note == "Sold out" && row[:count] == 1 %> · <span class="text-gray-500">sold out</span><% elsif row[:from] %> · <%= row[:from].zero? ? "free" : "from #{number_to_currency(row[:from] / 100.0)}" %><% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</section>

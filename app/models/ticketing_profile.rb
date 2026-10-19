@@ -4,6 +4,7 @@
 # flag a superadmin sets), its public address (/tickets/<slug>), and its defaults.
 # No branding in v1 — every org gets the same standard pages.
 class TicketingProfile < ApplicationRecord
+  include HasWideImage
   FEE_MODES = %w[buyer org].freeze
   # Automatic withdrawal of the CocoScout balance to the theater's bank. Off
   # by default: money left here pays payout runs without a bank debit.
@@ -12,6 +13,12 @@ class TicketingProfile < ApplicationRecord
   # Door): "smart" while a show is on (DoorTonight), or "always". Smart opens
   # door_hours_before the show, or the morning of show day when that's blank.
   DOOR_IN_APP = %w[smart always].freeze
+  # The box office page's layout (Tim, 2026-10-18): dates first (this
+  # weekend's shows, then every date by day) or a poster wall (one tile per
+  # production, soonest first).
+  BOX_OFFICE_LAYOUTS = %w[dates posters].freeze
+  BOX_OFFICE_LAYOUT_LABELS = { "dates" => "Dates first", "posters" => "Poster wall" }.freeze
+  WELCOME_LINE_LIMIT = 160
   DOOR_HOURS_BEFORE = [ 1, 2, 3, 4, 6, 8, 12 ].freeze
   # Path words under /tickets that an org's slug must never shadow.
   RESERVED_SLUGS = %w[orders checkout embed embed-js v p go door api assets help admin pass-checkout my-pass].freeze
@@ -52,6 +59,8 @@ class TicketingProfile < ApplicationRecord
   validates :refund_window_hours, numericality: { only_integer: true, in: 0..RefundPolicy::MAX_HOURS }
   validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
   validates :door_in_app, inclusion: { in: DOOR_IN_APP }
+  validates :box_office_layout, inclusion: { in: BOX_OFFICE_LAYOUTS }
+  validates :welcome_line, length: { maximum: WELCOME_LINE_LIMIT }
   validates :door_hours_before, inclusion: { in: DOOR_HOURS_BEFORE }, allow_nil: true
   validates :team_manager_sales, inclusion: { in: TEAM_MANAGER_SALES }
   validates :team_viewer_sales, inclusion: { in: TEAM_VIEWER_SALES }

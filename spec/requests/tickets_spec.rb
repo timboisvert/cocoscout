@@ -75,6 +75,36 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).not_to include(draft.slug)
     end
 
+    # The page's two layouts (Tim, 2026-10-18), chosen in Ticketing settings →
+    # Box office page, under a hero with a welcome line and the venue.
+    it "leads with the coming dates by day, with one Show filter in place of a chip per production" do
+      other = create(:production, organization: org, name: "Carded")
+      TicketListing.create!(show: create(:show, production: other, date_and_time: 2.days.from_now.change(hour: 21)), status: "on_sale")
+      profile.update!(welcome_line: "Chicago's home for the strange")
+      get tickets_box_office_path(org: "starsandgarters")
+      html = response.body.gsub(/\s+/, " ")
+      expect(html).to include("Chicago&#39;s home for the strange", "Every date", 'name="production"', ">Carded<", show.location.name,
+                              show.date_and_time.to_date.strftime("%A, %B %-d"), event_path)
+      expect(html).to include("This weekend").or include("This week").or include("Coming up")
+      expect(html).not_to include(">Everything<")
+
+      get tickets_box_office_path(org: "starsandgarters", production: other.public_key)
+      expect(response.body).to include("Carded")
+      expect(response.body).not_to include(event_path)
+
+      profile.update!(show_address: false)
+      get tickets_box_office_path(org: "starsandgarters")
+      expect(response.body).not_to include("Directions")
+    end
+
+    it "is a poster wall when the organization chooses one" do
+      profile.update!(box_office_layout: "posters")
+      get tickets_box_office_path(org: "starsandgarters")
+      html = response.body.gsub(/\s+/, " ")
+      expect(html).to include("All shows", "Improvised Animorphs", "Next:", tickets_event_path(org: "starsandgarters", event: production.public_key), "from $21.42")
+      expect(html).not_to include("Every date")
+    end
+
     it "stays hidden until ticketing is switched on, except for a superadmin's preview" do
       profile.update!(enabled: false)
       get tickets_box_office_path(org: "starsandgarters")
