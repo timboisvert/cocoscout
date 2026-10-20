@@ -48,14 +48,14 @@ Nothing in this plan is built this week.
 - **Team access as today:** non-managers see the free modules and no Pro heading; audition reviewers see Sign-ups only.
 - **Contract people aren't production mode's audience** (2026-10-17, `docs/contract_people_plan.md`): contractors and the people they bring never enter the Production Dashboard; their dates, sales, comps and contract are on My. Production mode is for the organization and its in-house production teams.
 - **The address decides the mode.** A link into `/manage` switches by itself and says so in a soft pink notice with an Exit button (`shared/button`, secondary, small); the app opens in the last mode used.
-- **Messages and Notifications are universal** (2026-10-20): a mail icon and a bell, each with a count, at the top of the desktop panel, in the phone's top bar, and in the app's native nav bar, the same in both modes. Neither nav lists them. The mail icon opens one Messages list in either mode, which pulls the unified inbox (§8, deferred) into V1.1; until the data merge it can open My Messages with production threads included.
+- **Messages and Notifications are universal** (2026-10-20): the bell is the only way into Notifications (no nav item, no "My"), and the list holds everything, read ones included; a mail icon and a bell, each with a count, at the top of the desktop panel, in the phone's top bar, and in the app's native nav bar, the same in both modes. Neither nav lists them. The mail icon opens one Messages list in either mode, which pulls the unified inbox (§8, deferred) into V1.1; until the data merge it can open My Messages with production threads included.
 - **Crossing modes from a notification:** opening one whose page lives in the other mode asks first, in a pink-header modal ("Open in production mode?", Switch and open, Don't ask again).
 - **Counts:** only Tasks carries a count in the nav; Productions keeps its quantity.
 - **The app:**
   - the same menu, drawn natively;
   - a soft pink strip with the organization under the nav bar in production mode;
-  - the floating Coco button stays as it is, but its count becomes a pink-600 badge with a 2pt white ring (`MenuButton.swift`, today `.systemRed`), counting what's waiting in the menu (tasks) now that messages and notifications have their own nav-bar icons (open: keep or drop it);
-  - the menu sheet: the person card at the top with the close button inside it; in production mode a soft pink row under it names the organization (no pill); Work the door, then the dark pink Enter/Exit bar, under the tiles;
+  - the floating Coco button stays, with **no badge** (Tim, 2026-10-20): the mail and bell icons carry the counts (`MenuButton.swift` drops its count);
+  - the menu sheet: a plain outlined card at the top with your picture, name and email, Profile and Settings under them and the close button in its corner (not pink: pink bars are things to do); in production mode a soft pink row under it names the organization (no pill); Work the door (dark) and the Enter/Exit bar, in production mode's soft pink, pinned to the bottom of the sheet;
   - the menu tiles' counts use the same pink (`MenuViewController.swift`, today `Color.red`).
 
 **Decide before V1.1 starts:**
