@@ -80,4 +80,37 @@ RSpec.describe Notifier do
       expect(manager.message_push?).to be(false)
     end
   end
+
+  describe "ContentTemplateService.deliver with notification:" do
+    let(:payee) { create(:person, name: "Sam Staffer", user: create(:user)) }
+    let(:no_account) { create(:person, name: "Pat Nobody") }
+
+    before do
+      ContentTemplate.find_or_create_by!(key: "payout_returned_to_payee") do |t|
+        t.name = "Payout returned"; t.channel = "both"; t.category = "payouts"
+        t.subject = "Your {{amount}} from {{organization_name}} came back"; t.body = "Hi {{recipient_name}}"
+      end
+    end
+
+    def deliver(gate:)
+      ContentTemplateService.deliver(template_key: "payout_returned_to_payee", variables: { recipient_name: "Sam", organization_name: "Stars & Garters", amount: "$50.00" },
+                                     sender: nil, recipients: [ payee, no_account ], organization: org,
+                                     notification: { category: "pay", kind: "payout_returned", path: "/my/payments/setup", gate_email: gate })
+    end
+
+    it "notifies people with an account instead of messaging them, and emails everyone" do
+      result = nil
+      expect { result = deliver(gate: true) }.to change(Notification, :count).by(1).and(not_change(Message, :count))
+      expect(result[:emails_queued]).to eq(2)
+      rendered = ContentTemplateService.render("payout_returned_to_payee", { recipient_name: "Sam", organization_name: "Stars & Garters", amount: "$50.00" })
+      expect(payee.user.notifications.last.title).to eq(rendered[:push_body].presence || rendered[:subject])
+    end
+
+    it "leaves out the email of someone who switched it off, never someone without an account" do
+      payee.user.set_notification_switches(email: { "pay" => "0" })
+      payee.user.save!
+      expect(deliver(gate: true)[:emails_queued]).to eq(1)
+      expect(deliver(gate: false)[:emails_queued]).to eq(2)
+    end
+  end
 end

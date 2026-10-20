@@ -32,8 +32,8 @@ class PayoutAccountProblemNotificationJob < ApplicationJob
       sender: nil,
       recipients: [ person ],
       organization: organization,
-      message_type: :system,
-      system_generated: true
+      # A Notification, not an in-app Message (V1.1 plan §9).
+      notification: { category: "pay", kind: "payout_returned", path: Rails.application.routes.url_helpers.my_payments_setup_path, gate_email: true }
     )
 
     Rails.logger.warn("[PayoutAccountProblemNotificationJob] #{payee_type} #{payee_id}: #{amount} returned — #{reason}")

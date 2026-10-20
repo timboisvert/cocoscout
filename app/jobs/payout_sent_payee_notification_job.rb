@@ -101,20 +101,18 @@ class PayoutSentPayeeNotificationJob < ApplicationJob
     rendered = ContentTemplateService.render(template_key, variables)
 
     # Email is the backbone: person.email is always present, while plenty of
-    # performers have no login at all.
-    PayoutBatchMailer.sent_to_payee(person: person, batch: batch, rendered: rendered).deliver_now
+    # performers have no login at all. Someone with an account can switch
+    # their pay emails off (Account settings → Notifications).
+    unless person.user && !person.user.notification_email?("pay")
+      PayoutBatchMailer.sent_to_payee(person: person, batch: batch, rendered: rendered).deliver_now
+    end
 
-    # In-app copy for anyone with an account. Silently no-ops without a user.
-    MessageService.send_direct(
-      template_key: template_key, push_body: rendered[:push_body],
-      sender: nil,
-      recipient_person: person,
-      subject: rendered[:subject],
-      body: rendered[:body],
-      organization: batch.organization,
-      system_generated: true,
-      skip_digest: true
-    )
+    # Their Notifications list and phone, for anyone with an account (V1.1
+    # plan §9; it was an in-app Message).
+    return unless person.user
+
+    Notifier.deliver(user: person.user, category: "pay", kind: template_key, template_key: template_key, variables: variables,
+                     path: variables[:setup_url] || variables[:payments_url], organization: batch.organization)
   end
 
   # A job has no request context, so absolute URLs need the host handed to them.

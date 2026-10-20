@@ -31,7 +31,7 @@ RSpec.describe PayoutSentPayeeNotificationJob, type: :job do
   before { ActionMailer::Base.deliveries.clear }
 
   describe "who gets told" do
-    it "emails and messages each Person payee, then stamps them as notified" do
+    it "emails and notifies each Person payee, then stamps them as notified" do
       person = connected_person
       item = item_for(person)
 
@@ -43,9 +43,19 @@ RSpec.describe PayoutSentPayeeNotificationJob, type: :job do
       expect(mail.subject).to include("$150.00").and include("Stars and Garters")
       expect(item.reload.payee_notified_at).to be_present
 
-      message = Message.order(:created_at).last
-      expect(message.message_recipients.map(&:recipient)).to eq([ person ])
-      expect(message).to be_automated
+      notification = person.user.notifications.last
+      expect(notification.category).to eq("pay")
+      expect(notification.organization).to eq(batch.organization)
+    end
+
+    it "skips the email, not the notification, for someone who switched pay emails off" do
+      person = connected_person
+      item_for(person)
+      person.user.set_notification_switches(email: { "pay" => "0" })
+      person.user.save!
+
+      expect { described_class.perform_now(batch.id) }
+        .to change(Notification, :count).by(1).and(not_change { ActionMailer::Base.deliveries.size })
     end
 
     it "never notifies the same payee twice for one run" do

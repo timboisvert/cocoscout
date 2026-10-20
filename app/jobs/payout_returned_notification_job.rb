@@ -36,8 +36,8 @@ class PayoutReturnedNotificationJob < ApplicationJob
       sender: nil,
       recipients: [ person ],
       organization: organization,
-      message_type: :system,
-      system_generated: true
+      # A Notification, not an in-app Message (V1.1 plan §9).
+      notification: { category: "pay", kind: "payout_returned", path: url_helpers.my_payments_setup_path, gate_email: true }
     )
   rescue StandardError => e
     Rails.logger.error("[PayoutReturnedNotificationJob] payee #{item.id}: #{e.class}: #{e.message}")
@@ -59,8 +59,8 @@ class PayoutReturnedNotificationJob < ApplicationJob
       sender: nil,
       recipients: recipients,
       organization: organization,
-      message_type: :system,
-      system_generated: false
+      # The organization's chosen people (Money settings); their email isn't theirs to switch off here.
+      notification: { category: "pay", kind: "payout_returned_manager", path: url_helpers.manage_payout_batch_path(batch) }
     )
   rescue StandardError => e
     Rails.logger.error("[PayoutReturnedNotificationJob] org #{item.id}: #{e.class}: #{e.message}")

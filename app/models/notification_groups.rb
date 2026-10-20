@@ -7,7 +7,8 @@
 # Messages one at a time (V1.1 plan §9); a group's Push switch only shows once
 # its area has moved, so no switch promises what nothing does.
 # email: :person (the person's own switch), :plan (the organization picks, by
-# plan: Ticketing settings → Notifications, Tim 2026-10-20) or nil (no email).
+# plan: Ticketing settings → Notifications, Tim 2026-10-20), :always (it
+# always goes: it carries a link they need) or nil (no email).
 # legacy_email: the older preference keys this group's Email switch stands
 # for, so emails that read them keep honoring the person's choice.
 module NotificationGroups
@@ -20,8 +21,9 @@ module NotificationGroups
     Group.new("casting", "Casting and vacancies", "You're cast, a show changes, someone needs cover.", :yours, true, :person, true, false, %w[vacancy_invitations vacancy_notifications], "Casting"),
     Group.new("signups", "Sign-ups and auditions", "Spots, results, invitations to audition, reminders before a deadline.", :yours, true, :person, true, false, %w[audition_invitations], "Sign-ups"),
     Group.new("invitations", "Invitations", "To join a group or a production team.", :yours, true, :person, true, false, %w[group_invitations], nil),
-    Group.new("pay", "Your pay", "Pay on its way, deposited or returned; bank setup and tax forms.", :yours, true, :person, true, false, [], "Pay"),
-    Group.new("contracts", "Contracts", "Signed, countersigned, amended, and reminders to sign.", :yours, true, :person, true, false, [], "Contracts"),
+    Group.new("pay", "Pay and payouts", "Your pay on its way or sent back; for managers, payout runs that bounce, come back or pay by themselves.", :yours, true, :person, true, true, [], "Pay"),
+    # Email always goes for contracts: it carries the signing link or the signed copy.
+    Group.new("contracts", "Contracts", "Requests and reminders to sign, signed and countersigned, and ones that stall or expire.", :yours, true, :always, true, true, [], "Contracts"),
     Group.new("shifts", "Shifts and hours", "Shifts assigned, hours approved, onboarding steps.", :yours, false, :person, true, false, [], "Shifts"),
     Group.new("courses", "Courses", "Registrations, cancellations and session reminders.", :yours, false, :person, true, false, [], "Courses"),
     Group.new("ticketing_sales", "Sales as they happen", "Each online sale, door sale, comp and pass.", :ticketing, true, :plan, false, true, [], "Ticketing"),

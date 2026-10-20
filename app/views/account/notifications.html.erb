@@ -64,7 +64,8 @@
       <% NotificationGroups::ALL.select { |g| g.section == :yours }.each do |group| %>
         <%= render "account/notification_switch_row", label: group.label, description: group.description,
               push_name: (group.live ? "push[#{group.key}]" : nil), push_on: Current.user.notification_push?(group.key),
-              email_name: "email[#{group.key}]", email_on: Current.user.notification_email?(group.key) %>
+              email_name: (group.email == :person ? "email[#{group.key}]" : nil), email_on: Current.user.notification_email?(group.key),
+              email_note: (group.email == :always ? "Always" : nil) %>
       <% end %>
     </div>
 

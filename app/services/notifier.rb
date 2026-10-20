@@ -7,11 +7,11 @@
 # The words come from the event's ContentTemplate: its push text if it has
 # one, else its subject, so copy never lives in code (all copy via templates).
 class Notifier
-  def self.deliver(user:, category:, kind:, template_key:, variables: {}, path: nil, organization: nil, subject: nil, reply_path: nil)
+  def self.deliver(user:, category:, kind:, template_key:, variables: {}, path: nil, organization: nil, subject: nil, reply_path: nil, title: nil)
     group = NotificationGroups.find(category)
     vars = variables.transform_keys(&:to_s)
-    title = ContentTemplateService.render_push_body(template_key, vars).presence ||
-            ContentTemplateService.render_subject(template_key, vars)
+    title ||= ContentTemplateService.render_push_body(template_key, vars).presence ||
+              ContentTemplateService.render_subject(template_key, vars)
 
     notification = user.notifications.create!(
       category: group.key, kind: kind.to_s, title: title.to_s.squish.truncate(240), path: local_path(path),

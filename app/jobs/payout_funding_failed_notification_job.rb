@@ -24,8 +24,8 @@ class PayoutFundingFailedNotificationJob < ApplicationJob
       sender: nil,
       recipients: recipients,
       organization: batch.organization,
-      message_type: :system,
-      system_generated: false
+      # The organization's chosen people (Money settings), as a Notification (V1.1 plan §9).
+      notification: { category: "pay", kind: "payout_funding_failed", path: Rails.application.routes.url_helpers.manage_payout_batch_path(batch) }
     )
   end
 end

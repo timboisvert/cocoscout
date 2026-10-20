@@ -139,12 +139,14 @@ RSpec.describe PayoutReturnedNotificationJob, type: :job do
   before { org.update!(payout_notification_user_ids: [ owner.id ]) }
 
   it "actually delivers to both the payee and the org" do
-    expect { described_class.perform_now(item.id) }.to change(Message, :count).by_at_least(2)
+    expect { described_class.perform_now(item.id) }.to change(Notification, :count).by(2)
+    expect(payee.user.notifications.last.path).to eq("/my/payments/setup")
+    expect(owner.notifications.last.path).to eq("/manage/money/payout-runs/#{batch.id}")
   end
 
   it "does nothing for an item that wasn't returned" do
     paid = batch.items.create!(payee: payee, amount_cents: 100, status: "paid")
 
-    expect { described_class.perform_now(paid.id) }.not_to change(Message, :count)
+    expect { described_class.perform_now(paid.id) }.not_to change(Notification, :count)
   end
 end

@@ -186,7 +186,11 @@ class ContentTemplateService
                 production: nil, show: nil, organization: nil,
                 message_type: :system, visibility: :personal,
                 mailer_class: nil, mailer_method: nil, email_batch: nil,
-                subject_override: nil, body_override: nil, system_generated: nil)
+                subject_override: nil, body_override: nil, system_generated: nil, notification: nil)
+      return deliver_as_notification(template_key:, variables:, recipients:, organization: organization || production&.organization,
+                                     mailer_class:, mailer_method:, email_batch:, production:, subject_override:, body_override:,
+                                     **notification) if notification
+
       result = render(template_key, variables)
       channel = result[:channel]
       # A caller-supplied subject or body (a manager's edited draft) wins over
@@ -447,6 +451,38 @@ class ContentTemplateService
       when "removed_from_cast_notification" then "Update Regarding Your Role in Singin' in the Rain"
       else "Message from The Riverside Players"
       end
+    end
+
+    # V1.1 plan §9: an area that has moved to Notifications. Each recipient
+    # with an account gets a Notification (Notifier: the list, and push by
+    # their switch) instead of an in-app Message, whatever the template's
+    # channel. Email goes as the template's channel says, to everyone, except
+    # people who switched that group's email off (gate_email: true; for
+    # notices the organization chose people for, it stays false).
+    #   category: the NotificationGroups key; kind: what happened (default the
+    #   template key); path: where a tap goes.
+    def deliver_as_notification(template_key:, variables:, recipients:, organization:, category:, path:,
+                                kind: nil, gate_email: false, mailer_class: nil, mailer_method: nil,
+                                email_batch: nil, production: nil, subject_override: nil, body_override: nil)
+      result = render(template_key, variables)
+      subject = subject_override.presence || result[:subject]
+      people = Array(recipients).select { |p| p.is_a?(Person) }
+      notifications = people.filter_map do |person|
+        next unless person.user
+
+        Notifier.deliver(user: person.user, category: category, kind: kind || template_key, template_key: template_key,
+                         variables: variables, path: path, organization: organization, title: subject_override.presence)
+      end
+
+      emails = 0
+      if result[:channel].in?(%i[email both])
+        to = gate_email ? people.reject { |p| p.user && !p.user.notification_email?(category) } : people
+        if to.any?
+          emails = deliver_as_email(subject: subject, body: body_override.presence || result[:body], recipients: to, production: production,
+                                    mailer_class: mailer_class, mailer_method: mailer_method, email_batch: email_batch, variables: variables)
+        end
+      end
+      { messages: [], notifications: notifications, emails_queued: emails, channel: result[:channel] }
     end
 
     def deliver_as_message(subject:, body:, sender:, recipients:,

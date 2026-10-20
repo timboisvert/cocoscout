@@ -426,6 +426,7 @@ class User < ApplicationRecord
 
   def notification_email?(group_key)
     group = NotificationGroups.find(group_key)
+    return true if group.email == :always
     return false unless group.email == :person
 
     legacy = group.legacy_email.first
