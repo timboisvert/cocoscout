@@ -42,7 +42,10 @@ final class MenuButton: UIButton {
 
         badgeLabel.font = .systemFont(ofSize: 12, weight: .bold)
         badgeLabel.textColor = .white
-        badgeLabel.backgroundColor = .systemRed
+        // pink-600, as the website's counts (V1.1 plan §0a); V1.1 menus show none.
+        badgeLabel.backgroundColor = UIColor(red: 0xE6 / 255, green: 0, blue: 0x76 / 255, alpha: 1)
+        badgeLabel.layer.borderColor = UIColor.white.cgColor
+        badgeLabel.layer.borderWidth = 2
         badgeLabel.layer.cornerRadius = 10
         badgeLabel.layer.masksToBounds = true
         badgeLabel.textAlignment = .center

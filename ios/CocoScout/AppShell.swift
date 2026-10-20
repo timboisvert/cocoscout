@@ -41,6 +41,8 @@ final class AppShell {
     let tabBarController = HotwireTabBarController(lazyLoadTabs: true)
     private(set) var menu: [MenuItem] = []
     private(set) var person: MenuPerson?
+    /// The V1.1 menu (NativeAppHelper#native_nav), once a page has sent one.
+    private(set) var nav: NavData?
     private var loadedSignedIn: Bool?
     private lazy var menuButton = MenuButton { [weak self] in self?.showMenu() }
 
@@ -93,8 +95,23 @@ final class AppShell {
                 open(path: path)
             }
         } else {
-            menuButton.badge = Self.badgeText(newMenu.reduce(0) { $0 + ($1.badge ?? 0) })
+            menuButton.badge = nav == nil ? Self.badgeText(newMenu.reduce(0) { $0 + ($1.badge ?? 0) }) : nil
         }
+    }
+
+    // MARK: The V1.1 menu
+
+    /// Every page sends it (MenuComponent). The menu sheet and the nav bar's
+    /// Messages and Notifications icons follow it; the Coco button carries no
+    /// badge (Tim, 2026-10-20); the app icon counts unread messages and
+    /// notifications.
+    func update(nav newNav: NavData?) {
+        guard let newNav else { return }
+        nav = newNav
+        menuButton.badge = nil
+        let unread = newNav.icons.messages.count + newNav.icons.notifications.count
+        Task { try? await UNUserNotificationCenter.current().setBadgeCount(unread) }
+        NotificationCenter.default.post(name: .cocoNavChanged, object: newNav)
     }
 
     // MARK: Tap to Pay on iPhone
@@ -116,6 +133,15 @@ final class AppShell {
 
     func showMenu() {
         guard !menu.isEmpty else { return }
+        if let nav {
+            let sheet = NavMenuViewController(nav: nav, person: person, onOpen: { [weak self] path in
+                self?.tabBarController.dismiss(animated: true) { self?.replaceScreen(with: AppConfig.url(path)) }
+            }, onSignOut: { [weak self] in
+                self?.tabBarController.dismiss(animated: true) { self?.tabBarController.activeNavigator.route(AppConfig.url("/signout")) }
+            })
+            topViewController().present(sheet, animated: true)
+            return
+        }
         let sheet = MenuViewController(items: menu, person: person) { [weak self] action in
             self?.handle(action)
         }
@@ -159,7 +185,7 @@ final class AppShell {
         }
         menuButton.isHidden = !signedIn
         tabBarController.view.bringSubviewToFront(menuButton)
-        menuButton.badge = Self.badgeText(menu.reduce(0) { $0 + ($1.badge ?? 0) })
+        menuButton.badge = nav == nil ? Self.badgeText(menu.reduce(0) { $0 + ($1.badge ?? 0) }) : nil
     }
 
     private func topViewController() -> UIViewController {

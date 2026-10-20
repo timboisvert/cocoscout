@@ -27,6 +27,57 @@ final class WebViewController: HotwireWebViewController {
         navigationItem.leftBarButtonItem = item
         // An empty title view keeps iOS from also centering the title.
         navigationItem.titleView = UIView()
+
+        // V1.1: Messages and Notifications, on the right of every bar.
+        NotificationCenter.default.addObserver(self, selector: #selector(navChanged), name: .cocoNavChanged, object: nil)
+        showIcons(AppShell.shared.nav)
+    }
+
+    @objc private func navChanged(_ note: Notification) {
+        showIcons(note.object as? NavData)
+    }
+
+    /// The two universal icons, with their counts, opening their pages on top.
+    private func showIcons(_ nav: NavData?) {
+        guard let nav else {
+            navigationItem.rightBarButtonItems = nil
+            return
+        }
+        navigationItem.rightBarButtonItems = [
+            iconItem(systemName: "bell", label: "Notifications", icon: nav.icons.notifications),
+            iconItem(systemName: "envelope", label: "Messages", icon: nav.icons.messages)
+        ]
+    }
+
+    private func iconItem(systemName: String, label: String, icon: NavData.Icon) -> UIBarButtonItem {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: systemName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)), for: .normal)
+        button.tintColor = AppConfig.pink
+        button.frame = CGRect(x: 0, y: 0, width: 40, height: 40)
+        button.accessibilityLabel = icon.count > 0 ? "\(label), \(icon.count) unread" : label
+        let path = icon.path
+        button.addAction(UIAction { _ in AppShell.shared.open(path: path) }, for: .touchUpInside)
+        if let text = AppShell.badgeText(icon.count) {
+            let badge = UILabel()
+            badge.text = " \(text) "
+            badge.font = .systemFont(ofSize: 10, weight: .bold)
+            badge.textColor = .white
+            badge.backgroundColor = UIColor(red: 0xE6 / 255, green: 0, blue: 0x76 / 255, alpha: 1)
+            badge.textAlignment = .center
+            badge.layer.cornerRadius = 8
+            badge.layer.masksToBounds = true
+            badge.layer.borderColor = UIColor.white.cgColor
+            badge.layer.borderWidth = 1.5
+            badge.translatesAutoresizingMaskIntoConstraints = false
+            button.addSubview(badge)
+            NSLayoutConstraint.activate([
+                badge.topAnchor.constraint(equalTo: button.topAnchor, constant: 2),
+                badge.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: 2),
+                badge.heightAnchor.constraint(equalToConstant: 16),
+                badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 16)
+            ])
+        }
+        return UIBarButtonItem(customView: button)
     }
 
     /// The welcome screen, sign-in and sign-up stand on their own: no bar

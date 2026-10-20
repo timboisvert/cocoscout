@@ -14,6 +14,7 @@ final class MenuComponent: BridgeComponent {
         DispatchQueue.main.async {
             AppShell.shared.update(menu: data.menu, person: data.person, page: page)
             AppShell.shared.update(tapToPay: data.tapToPay)
+            AppShell.shared.update(nav: data.nav)
         }
     }
 }
@@ -23,4 +24,6 @@ private struct MenuData: Decodable {
     let person: MenuPerson?
     /// Tap to Pay on iPhone for someone who can sell with it, else absent.
     let tapToPay: TapToPayInfo?
+    /// The V1.1 menu; only generation-2 builds are sent one.
+    let nav: NavData?
 }

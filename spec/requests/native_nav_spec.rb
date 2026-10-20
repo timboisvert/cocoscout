@@ -49,3 +49,21 @@ RSpec.describe "The app's V1.1 menu", type: :request do
     expect(nav.dig("icons", "messages", "path")).to eq(manage_messages_path)
   end
 end
+
+RSpec.describe "The app's production-mode strip", type: :request do
+  let(:user) { create(:user) }
+  let(:org) { Organization.create!(name: "Stars & Garters", owner: user) }
+
+  before do
+    OrganizationRole.create!(user: user, organization: org, company_role: "manager")
+    post handle_signin_path, params: { email_address: user.email_address, password: user.password }
+  end
+
+  it "shows only for V1.1 builds in Manage" do
+    v1 = "Mozilla/5.0 (iPhone) Hotwire Native iOS; Turbo Native iOS"
+    get manage_path, headers: { "User-Agent" => "CocoScout/1.1 (12; nav 2) #{v1}" }
+    expect(response.body).to include("data-production-strip")
+    get my_dashboard_path, headers: { "User-Agent" => "CocoScout/1.1 (12; nav 2) #{v1}" }
+    expect(response.body).not_to include("data-production-strip")
+  end
+end
