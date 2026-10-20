@@ -495,7 +495,7 @@ Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions
 **The model**
 - One `Notification` record per person: kind, group, title, body, link path, what it's about, read time.
 - Per-person preferences: a few **groups**, each with **Push** and **Email** switches, plus sensible defaults. The list always shows everything.
-- Each person picks their own (Tim, 2026-10-16). Nobody manages a grid for the team.
+- Each person picks their own push and email per group (Tim, 2026-10-16). Nobody manages a grid for the team. **Ticketing email is the one exception, locked 2026-10-20:** the organization gives each manager or address an email plan on Ticketing settings → Notifications (built 2026-10-20, `TicketingNotifications::PLANS`), because that page also covers addresses that aren't users. Each person still sets **push** per ticketing group on their own settings; the Email column there reads "By plan" and links to the ticketing page.
 - All copy stays in ContentTemplates (subject, body, `push_body`).
 - Delivery: `PushNotificationService.notify` (push without a Message) and the existing mailers.
 
@@ -511,8 +511,8 @@ Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions
 
 - A push only goes to someone with the app and notifications on. Disputes still also email CocoScout's superadmins.
 - **Box office inboxes:** org-level addresses with the groups they get, email only.
-- Ticketing settings → Notifications becomes "Your notifications" (5 groups × Push / Email), "Box office inboxes", and a read-only line per teammate. The grid goes.
-- Migration: each manager's ticked kinds turn on email for those groups; push starts at the defaults; extra addresses keep their groups.
+- Ticketing settings → Notifications stays as built on 2026-10-20: one row per manager or address with its email plan, Edit opens the plan modal, Add an email address for inboxes. (Superseded here: the "Your notifications" 5 × Push / Email page and its migration.)
+- Push starts at the defaults in the table above; the groups are the four `TicketingNotifications::KINDS` groups (Sales as they happen, Reports, Milestones, Money), so the table's five collapse to those.
 - Tim's channel decision for ticketing: push and email (and the Notifications list), never the Messages inbox.
 
 **Then the rest, one area at a time:** payouts and payments, contracts, casting and vacancies, sign-ups and auditions, courses, staffing (onboarding, W-9s, availability), mics. Each area gets its groups, moves its senders off `system_generated` Messages, and keeps every email it sends today. When the last one moves, Messages is people only.
@@ -523,4 +523,4 @@ Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions
 
 **Mockups (2026-10-20):** row 6 of the navigation canvas (https://claude.ai/artifact/CNaAubdaxfkbdn3ST59LwG): My Notifications on desktop, Account settings → Notifications on desktop, both on mobile web, the app's Notifications screen, and pushes as they arrive. The menus and the desktop sidebar gained a Notifications item with its own count, in both modes (the list is the person's, not the mode's).
 
-**Reconciled with what was built on 2026-10-20** (Ticketing settings → Notifications, "Concept A": the organization gives each manager or address an email *plan*: Everything, The usual, Just the money, Pick my own, Nothing; `TicketingNotifications::PLANS`). That stays as the organization's email policy, since it also covers addresses that aren't users. The person's own settings add **push** per ticketing group; their Email column reads "By plan" and links to the ticketing page. Open for Tim: whether that split is right (§9 above said each person picks their own), whether the app's one badge total adds notifications to messages and tasks, and the label ("My Notifications" on the web, "Notifications" on tiles).
+**Reconciled with what was built on 2026-10-20** (Ticketing settings → Notifications, "Concept A": the organization gives each manager or address an email *plan*: Everything, The usual, Just the money, Pick my own, Nothing; `TicketingNotifications::PLANS`). That stays as the organization's email policy, since it also covers addresses that aren't users. The person's own settings add **push** per ticketing group; their Email column reads "By plan" and links to the ticketing page. Tim locked that split on 2026-10-20. Still open: whether the app's one badge total adds notifications to messages and tasks, and the label ("My Notifications" on the web, "Notifications" on tiles).
