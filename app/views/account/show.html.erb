@@ -16,11 +16,14 @@
   <%# The app hides the Account sidebar, so its other pages are rows here. %>
   <% if turbo_native_app? %>
     <nav class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6 divide-y divide-gray-100" aria-label="Account">
+      <%# Tap to Pay's setup and Apple's guide live here, for people who can
+          sell with it (Apple 3.6, 4.3; Tim, 2026-10-19: never in the menu). %>
       <% [
         [ "Notifications", "On this phone, and by email", account_notifications_path ],
+        ([ tap_to_pay_name, "Set it up on this #{tap_to_pay_phone}, and how to take a tap", door_tap_to_pay_path ] if native_tap_to_pay),
         [ "Profiles", "Your profiles and which one is the default", account_profiles_path ],
         [ "Organizations", "The organizations you're part of", account_organizations_path ]
-      ].each do |label, line, path| %>
+      ].compact.each do |label, line, path| %>
         <%# Never wraps (unlike row_class, made for rows with buttons): the
             arrow stays on the right however long the line. %>
         <%= link_to path, class: "flex items-center justify-between gap-4 px-4 py-3 sm:px-6 hover:bg-gray-50 transition-colors" do %>

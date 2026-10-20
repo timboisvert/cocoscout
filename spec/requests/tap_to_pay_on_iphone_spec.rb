@@ -123,8 +123,12 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     get my_dashboard_path, headers: in_app
     bridge = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--menu']")
     menu = JSON.parse(bridge["data-bridge--menu-menu-value"])
-    # The menu is the My pages only (Tim, 2026-10-19).
+    # The menu is the My pages only (Tim, 2026-10-19); its setup lives on Settings.
     expect(menu.map { |item| item["id"] }).not_to include("tap_to_pay")
+    get account_path, headers: in_app
+    settings = Nokogiri::HTML(response.body).at_css("nav[aria-label='Account']")
+    expect(settings.text).to include("Tap to Pay on iPhone", "Set it up on this iPhone, and how to take a tap")
+    expect(settings.at_css("a[href='#{door_tap_to_pay_path}']")).to be_present
     tap_to_pay = JSON.parse(bridge["data-bridge--menu-tap-to-pay-value"])
     expect(tap_to_pay).to include("settingsPath" => door_tap_to_pay_path, "userKey" => seller.id.to_s, "canAcceptTerms" => false)
 
@@ -132,6 +136,8 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     bridge = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--menu']")
     expect(JSON.parse(bridge["data-bridge--menu-menu-value"]).map { |item| item["id"] }).not_to include("tap_to_pay")
     expect(bridge["data-bridge--menu-tap-to-pay-value"]).to be_nil
+    get account_path, headers: old_app
+    expect(response.body).not_to include("Tap to Pay on iPhone")
 
     sign_in(checker)
     get my_dashboard_path, headers: in_app

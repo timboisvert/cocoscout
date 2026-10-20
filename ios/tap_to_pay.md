@@ -156,12 +156,17 @@ recording at the app's welcome screen.
 3. Menu (the pink button, bottom right) → Work the door → tonight's show →
    Sell. The Tap to Pay on iPhone button is there before the terms are
    accepted. Don't tap it.
-4. Menu → Tap to Pay on iPhone → Set up Tap to Pay on iPhone. Allow
-   location (Allow While Using App), accept Apple's terms, watch the
-   progress bar. Apple's guide opens on its own; close it. The page says
-   Ready and offers "Try it out at the door".
-5. Scroll to "How to accept payments" → See how: Apple's guide again.
-   Close it and stop recording.
+4. Menu → Settings (in the pink card) → Tap to Pay on iPhone → Set up
+   Tap to Pay on iPhone. Allow location (Allow While Using App), accept
+   Apple's terms, watch the progress bar. Apple's guide opens on its own;
+   close it. The page says Ready and offers "Try it out at the door".
+   (Tapping the Tap to Pay on iPhone button at Sell before the terms also
+   opens them; either path is fine.)
+5. Menu → Settings → Tap to Pay on iPhone again → "See how": Apple's guide
+   again, from Settings. Close it and stop recording.
+
+The app's menu is the My pages only (Tim, 2026-10-19): Tap to Pay on
+iPhone's setup lives on Settings, never as a menu tile.
 
 ### Video 2: New user
 
@@ -266,10 +271,10 @@ Onboarding merchants
 Enabling Tap to Pay on iPhone
 - 3.1 and 6.2 Splash: Done. Full screen, once per person on each iPhone, with Apple's Hero photo and copy.
 - 3.2 and 6.3 Push: Done. At launch, a CocoScout message with a push carrying Apple's Value Proposition copy, to everyone who can sell at a door that has it.
-- 3.3 Visible: Done. "Tap to Pay on iPhone" in the app's menu and on the door.
+- 3.3 Visible: Done. "Tap to Pay on iPhone" on Settings and first on the door's Sell screen.
 - 3.4 End of onboarding: Done. Opening a box office says how to turn on Tap to Pay on iPhone, and Ticketing settings → Door has its card.
 - 3.5 Accepting the terms: Done. "Set up Tap to Pay on iPhone" on its page, and the checkout button.
-- 3.6 Outside checkout: Done. Menu → Tap to Pay on iPhone.
+- 3.6 Outside checkout: Done. Settings → Tap to Pay on iPhone.
 - 3.7 Trigger in checkout: Done. The door's button opens the terms when they aren't accepted.
 - 3.8 Authorized party only: Done. Only CocoScout's administrators, because one merchant account serves every organization.
 - 3.8.1 Message for others: Done. "An administrator needs to turn it on first."
@@ -278,7 +283,7 @@ Enabling Tap to Pay on iPhone
 Educating merchants
 - 4.1 ProximityReaderDiscovery on iOS 18 and later: Done. This covers 4.4, 4.6, 4.7 and 4.8.
 - 4.2 After the terms: Done. Apple's guide opens as soon as setup finishes.
-- 4.3 Later: Done. "See how" on the Tap to Pay on iPhone page, and "How to take a tap" on the payment screen.
+- 4.3 Later: Done. Settings → Tap to Pay on iPhone → "See how", and "How to take a tap" on the payment screen.
 - Try it out: Done. The Ready panel invites them to try it at the door.
 - PIN and fallback education: Not applicable in the United States.
 

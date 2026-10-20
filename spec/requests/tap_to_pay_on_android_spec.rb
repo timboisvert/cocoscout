@@ -57,6 +57,8 @@ RSpec.describe "Tap to Pay on Android", type: :request do
     bridge = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--menu']")
     menu = JSON.parse(bridge["data-bridge--menu-menu-value"])
     expect(menu.map { |item| item["id"] }).not_to include("tap_to_pay") # the My pages only (Tim, 2026-10-19)
+    get account_path, headers: android
+    expect(Nokogiri::HTML(response.body).at_css("nav[aria-label='Account']").text).to include("Tap to Pay", "Set it up on this phone, and how to take a tap")
     tap_to_pay = JSON.parse(bridge["data-bridge--menu-tap-to-pay-value"])
     expect(tap_to_pay).to include("settingsPath" => door_tap_to_pay_path, "userKey" => seller.id.to_s, "locationId" => "tml_1")
   end
