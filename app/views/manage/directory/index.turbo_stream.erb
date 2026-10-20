@@ -6,7 +6,7 @@
         <%= render "directory_tile", entry: entry %>
       <% end %>
     <% else %>
-      <% cache ["directory_list_v2", entry, entry.updated_at, Current.production&.id] do %>
+      <% cache ["directory_list_v3", entry, entry.updated_at, Current.production&.id] do %>
         <%= render "directory_list_item", entry: entry %>
       <% end %>
     <% end %>

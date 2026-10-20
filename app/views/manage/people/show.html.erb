@@ -36,7 +36,7 @@
           <% end %>
           <% if @person.phone.present? %>
             <span class="text-gray-400">·</span>
-            <span><%= @person.formatted_phone %></span>
+            <%= link_to @person.formatted_phone, "tel:#{@person.phone.gsub(/[^\d+]/, '')}", class: "text-pink-500 hover:underline" %>
           <% end %>
         </div>
       </div>
@@ -52,6 +52,21 @@
         <%= render partial: "shared/button", locals: { text: "Public Profile", path: public_profile_path(@person.public_key), variant: "outline", size: "small", target: "_blank" } %>
       <% end %>
     </div>
+  </div>
+
+  <%# On a phone, the ways to reach them in one row (V1.1 plan §4): call,
+      text, email, or a message in CocoScout. %>
+  <div class="sm:hidden grid grid-cols-4 gap-2 mb-4" data-contact-actions
+       data-controller="compose-message"
+       data-compose-message-recipient-type-value="person"
+       data-compose-message-recipient-id-value="<%= @person.id %>"
+       data-compose-message-recipient-name-value="<%= @person.name %>"
+       data-compose-message-recipient-headshot-value="<%= @person.safe_headshot_variant(:thumb) ? url_for(@person.safe_headshot_variant(:thumb)) : '' %>">
+    <% dial = @person.phone.to_s.gsub(/[^\d+]/, "") %>
+    <%= render "shared/button", text: "Call", icon: "phone", variant: "secondary", size: "small", classes: "w-full justify-center", **(dial.present? ? { path: "tel:#{dial}" } : { disabled: true }) %>
+    <%= render "shared/button", text: "Text", icon: "chat-bubble", variant: "secondary", size: "small", classes: "w-full justify-center", **(dial.present? ? { path: "sms:#{dial}" } : { disabled: true }) %>
+    <%= render "shared/button", text: "Email", icon: "envelope", variant: "secondary", size: "small", classes: "w-full justify-center", **(@person.email.present? ? { path: "mailto:#{@person.email}" } : { disabled: true }) %>
+    <%= render "shared/button", text: "Message", variant: "primary", size: "small", classes: "w-full justify-center", type: :button, data: { action: "click->compose-message#open" } %>
   </div>
 
   <%# Dashboard tiles — 2 cols mobile, 4 cols desktop %>

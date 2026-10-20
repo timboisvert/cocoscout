@@ -9,7 +9,9 @@ module Manage
     def index
       # Get filter params (prioritize params, fall back to session, then defaults)
       @sort = params[:sort] || session[:directory_sort] || "name_asc"
-      @show = params[:show] || session[:directory_show] || "tiles"
+      # A phone opens on the list, with each person's ways to reach them (V1.1
+      # plan §4); the choice is remembered like any other.
+      @show = params[:show] || session[:directory_show] || (request.user_agent.to_s.match?(/iPhone|Android|Mobile/) ? "list" : "tiles")
       @filter = params[:filter] || session[:directory_filter] || "talent_pools"
       @type = params[:type] || session[:directory_type] || "all"
       @search = params[:q] || ""
