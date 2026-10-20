@@ -38,7 +38,7 @@ Nothing in this plan is built this week.
 - **The everyday side has no name.** You enter and exit production mode.
 - **The switch is a menu link,** a CocoScout-pink bar (`bg-pink-500`, white text) at the **bottom** of the account menu (moved from the top 2026-10-20: it's used rarely and shouldn't be in the way), never an always-visible control. The menu is the same in both modes. On a phone it sits under Work the door, near the bottom of the menu sheet.
 - **Profile, account settings and superadmin** are account-menu items, not dashboards.
-- **Top left shows where you are:** the CocoScout logo, or the organization on a soft pink band with "Production mode" under it (option A).
+- **Top left is the CocoScout logo in both modes** (2026-10-20, was "logo or band"), with the Messages and Notifications icons on their own row under it. In production mode a soft pink band under them names the organization with its ▾ and says "Production mode" in plain words, with no icon beside those words anywhere.
 - **The organization name always has a single ▾,** on every plan.
   - Several organizations: the list, with your role and each one's plan, then settings and New organization.
   - One organization: production settings, organization settings, plan and billing, a locked "Add a production" (Producer plan allows one) and New organization.
