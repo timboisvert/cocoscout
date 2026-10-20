@@ -97,6 +97,43 @@ module NativeAppHelper
     end
   end
 
+  # The V1.1 menu, for generation-2 builds only (NativeAppVersion); nil for
+  # V1 installs, which keep reading native_menu unchanged. One list the app
+  # draws natively (navigation canvas, app row):
+  #   mode          "my" or "production"
+  #   sections      [{ label:, items: [{ id, title, path, icon, badge, locked }] }]
+  #                 (the panel's nav: no Messages tile)
+  #   icons         Messages and Notifications for the nav bar, with counts
+  #   organization  in production mode: name, initials, and where its sheet opens
+  #   door          the Work the door bar (black), or nil
+  #   modeSwitch    Enter or Exit production mode (CocoScout pink), or nil
+  #   profilePath, settingsPath, signOutPath for the person card
+  # The floating Coco button carries no badge (Tim, 2026-10-20).
+  def native_nav
+    user = native_user
+    return nil unless user && native_nav_generation.to_i >= 2
+
+    production = native_production_mode?
+    context = production ? :production : :talent
+    icons = panel_universal_icons(production_mode: production)
+    {
+      mode: production ? "production" : "my",
+      sections: panel_nav_sections(context).map do |section|
+        { label: section[:label], items: section[:items].map { |item| native_nav_item(item) } }
+      end,
+      icons: {
+        messages: { path: icons[:messages][:path], count: icons[:messages][:count] },
+        notifications: { path: icons[:notifications][:path], count: icons[:notifications][:count] }
+      },
+      organization: (if production
+                       { name: Current.organization.name, initials: Current.organization.initials, sheetPath: select_organization_path }
+                     end),
+      door: (production ? nil : native_door_item(user)),
+      modeSwitch: panel_mode_switch(production_mode: production)&.slice(:label, :subtitle, :path, :enter),
+      profilePath: profile_path, settingsPath: account_path, signOutPath: "/signout"
+    }
+  end
+
   # Who's signed in, for the top of the menu. headshot_path is relative to
   # the site (the app adds its own host).
   def native_person
@@ -156,6 +193,28 @@ module NativeAppHelper
       account_path => %w[settings Settings gearshape]
     }.fetch(path) { [ path.parameterize, item[:label], "circle" ] }
     { id: id, title: title, path: path, icon: icon, badge: item[:badge].to_i }
+  end
+
+  # In production mode: a Manage page with its organization chosen.
+  def native_production_mode?
+    controller_path.to_s.start_with?("manage") && Current.organization.present?
+  end
+
+  # A tile for the V1.1 menu: My's tiles keep their names and symbols
+  # (native_menu_item); production mode's are the nav's own names.
+  NATIVE_NAV_SYMBOLS = {
+    "home" => "house", "shows" => "calendar", "casting" => "theatermasks", "signups" => "list.bullet.clipboard",
+    "courses" => "book", "documents" => "doc.text", "contacts" => "person.2", "productions" => "building.2",
+    "ticketing" => "ticket", "staffing" => "clock", "money" => "dollarsign.circle", "reports" => "chart.bar"
+  }.freeze
+
+  def native_nav_item(item)
+    if item[:path].to_s.start_with?("/manage")
+      { id: "manage-#{item[:icon]}-#{item[:label].parameterize}", title: item[:label], path: item[:path],
+        icon: NATIVE_NAV_SYMBOLS.fetch(item[:icon].to_s, "circle"), badge: item[:badge].to_i, locked: item[:locked] ? true : false }
+    else
+      native_menu_item(item).merge(locked: false)
+    end
   end
 
   # The Door, while a show is on: the same bar the website draws under the

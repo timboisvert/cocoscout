@@ -9,11 +9,17 @@ export default class extends BridgeComponent {
   // tapToPay: Tap to Pay on iPhone for someone who can sell with it
   // (NativeAppHelper#native_tap_to_pay), so the app can show Apple's
   // one-time screen and warm Terminal up; absent for everyone else.
-  static values = { menu: Array, person: Object, tapToPay: Object }
+  // nav: the V1.1 menu (NativeAppHelper#native_nav), only for generation-2
+  // builds; V1 apps never get it and keep drawing `menu`.
+  static values = { menu: Array, person: Object, tapToPay: Object, nav: Object }
 
   connect() {
     super.connect()
-    this.send("update", { menu: this.menuValue, person: this.hasPersonValue ? this.personValue : null,
-                          tapToPay: this.hasTapToPayValue ? this.tapToPayValue : null })
+    const data = { menu: this.menuValue, person: this.hasPersonValue ? this.personValue : null,
+                   tapToPay: this.hasTapToPayValue ? this.tapToPayValue : null }
+    // Only when there is one: a V1 Android build's decoder may refuse a key
+    // it doesn't know, so V1 phones get exactly the message they always did.
+    if (this.hasNavValue) data.nav = this.navValue
+    this.send("update", data)
   }
 }
