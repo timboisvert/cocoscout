@@ -120,7 +120,8 @@
     </div>
 
     <aside class="space-y-6">
-      <%= render "shared/action_list", items: actions %>
+      <%# On a phone these are the bottom bar's ⋯ menu and Door button below. %>
+      <div class="hidden sm:block"><%= render "shared/action_list", items: actions %></div>
       <% if live %>
         <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing if comps_open %>
         <%= render "manage/ticket_listings/outside_sales_modal", id: "outside-sales-modal", listing: @listing,
@@ -158,5 +159,22 @@
         </div>
       </div>
     </aside>
+  </div>
+
+  <%# On a phone (V1.1 plan §4): the show's status, its other actions in a ⋯
+      menu, and the Door a thumb away (the existing /door page; tonight it's
+      the way in). %>
+  <% door_action = actions.compact.find { |a| a[:text] == "Door" } %>
+  <% menu_items = actions.compact.reject { |a| a[:text] == "Door" }.map { |a| { text: a[:text], path: a[:path], icon: Array(a[:icon]).join(" ") } } %>
+  <div class="sm:hidden h-24" aria-hidden="true"></div>
+  <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-2" data-ticketing-phone-bar>
+    <span class="flex-1 min-w-0 flex flex-col">
+      <span class="inline-flex self-start items-center rounded-md px-2 py-0.5 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
+      <span class="text-xs text-gray-600 truncate mt-0.5"><%= @stats.sold %> sold<% if door_phase.in?(%i[presale door]) %> · tonight<% end %></span>
+    </span>
+    <%= render "shared/action_menu", id: "ticket-listing-#{@listing.id}-actions", items: menu_items, title: "This show" %>
+    <% if door_action %>
+      <%= render "shared/button", text: door_phase.in?(%i[presale door]) ? "Open the Door" : "Door", variant: "primary", size: "medium", path: door_action[:path], icon: "qr-code" %>
+    <% end %>
   </div>
 </div>
