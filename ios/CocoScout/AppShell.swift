@@ -147,7 +147,7 @@ final class AppShell {
         let signedIn = !menu.isEmpty
         loadedSignedIn = signedIn
         // /my sends a signed-out person to sign in; signing in sends the menu.
-        tabBarController.load([HotwireTab(id: signedIn ? "main" : "start", title: "CocoScout", image: nil, url: AppConfig.url("/my"))])
+        tabBarController.load([HotwireTab(id: signedIn ? "main" : "start", title: "CocoScout", image: nil, url: AppConfig.url("/start"))])
         if #available(iOS 18.0, *) {
             tabBarController.isTabBarHidden = true
         } else {
@@ -173,7 +173,7 @@ final class AppShell {
     static func pageAfterSignIn(_ page: String?) -> String? {
         guard let page, let url = URL(string: page), url.host == AppConfig.baseURL.host else { return nil }
         let path = url.path
-        let home = ["", "/", "/my", "/my/"]
+        let home = ["", "/", "/start", "/my", "/my/"]
         let signingIn = ["/welcome", "/signin", "/signup", "/signout", "/password", "/reset"]
         guard !home.contains(path), !signingIn.contains(where: { path.hasPrefix($0) }) else { return nil }
         return url.query.map { "\(path)?\($0)" } ?? path

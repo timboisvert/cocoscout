@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
 module Manage
-  class ManageController < ActionController::Base
-    include Authentication
-    include Pagy::Method
-    include SentryContext
-    include Impersonation
+  # Under ApplicationController since V1.1 (it was ActionController::Base):
+  # Manage gets activity tracking and the app's layout (resolve_layout), now
+  # that production mode opens inside the app for generation-2 builds.
+  class ManageController < ApplicationController
     include Manage::PaidFeatureGate
 
-    layout "application"
+    # My's own trackers; Manage keeps its own (track_last_dashboard,
+    # show_manage_sidebar).
+    skip_before_action :track_my_dashboard
+    skip_before_action :show_my_sidebar
 
     # before_action :hide_sidebar
     before_action :set_current_organization, if: -> { Current.user.present? }

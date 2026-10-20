@@ -171,7 +171,7 @@ object AppShell {
         val uri = page?.let { runCatching { android.net.Uri.parse(it) }.getOrNull() } ?: return null
         if (uri.host != android.net.Uri.parse(AppConfig.baseUrl).host) return null
         val path = uri.path.orEmpty()
-        val home = setOf("", "/", "/my", "/my/")
+        val home = setOf("", "/", "/start", "/my", "/my/")
         val signingIn = listOf("/welcome", "/signin", "/signup", "/signout", "/password", "/reset")
         if (path in home || signingIn.any { path.startsWith(it) }) return null
         return uri.query?.let { "$path?$it" } ?: path

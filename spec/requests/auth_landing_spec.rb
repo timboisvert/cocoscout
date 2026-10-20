@@ -52,6 +52,33 @@ RSpec.describe "Post-authentication landing", type: :request do
 
       expect(response).to redirect_to(manage_path)
     end
+
+    context "in the app" do
+      let(:v1_app) { "Mozilla/5.0 (iPhone) AppleWebKit Hotwire Native iOS; Turbo Native iOS; bridge-components: [form menu]" }
+
+      def returning_manager(user_agent)
+        user = create(:user)
+        person = Person.create!(email: user.email_address, name: "Someone", user: user)
+        org = Organization.create!(name: "Landing Org", owner: user)
+        OrganizationRole.create!(user: user, organization: org, company_role: "manager")
+        org.people << person
+        post handle_signin_path, params: { email_address: user.email_address, password: user.password }
+        get manage_path
+        delete signout_path
+        post handle_signin_path, params: { email_address: user.email_address, password: user.password },
+             headers: { "User-Agent" => user_agent }
+      end
+
+      it "keeps a V1 install on My, since Manage opens in Safari there" do
+        returning_manager(v1_app)
+        expect(response).to redirect_to(my_dashboard_path)
+      end
+
+      it "brings a V1.1 build back to production mode" do
+        returning_manager("CocoScout/1.1 (12; nav 2) #{v1_app}")
+        expect(response).to redirect_to(manage_path)
+      end
+    end
   end
 
   describe "password reset" do

@@ -73,7 +73,7 @@ class MainActivity : HotwireActivity() {
     override fun navigatorConfigurations() = listOf(
         NavigatorConfiguration(
             name = "main",
-            startLocation = AppConfig.url("/my"),
+            startLocation = AppConfig.url("/start"),
             navigatorHostId = R.id.main_navigator_host
         )
     )

@@ -57,6 +57,8 @@ Rails.application.routes.draw do
   get   "/signup",        to: "auth#signup",          as: "signup"
   post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
   get   "/signin",        to: "auth#signin",          as: "signin"
+  # Where the V1.1 app opens: the mode last used (StartController).
+  get   "/start",         to: "start#show",           as: "start"
   post  "/signin",        to: "auth#handle_signin",   as: "handle_signin"
   get   "/signout",       to: "auth#signout",         as: "signout"
   get   "/password",      to: "auth#password",        as: "password"
