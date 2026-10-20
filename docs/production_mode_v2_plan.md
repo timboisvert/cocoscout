@@ -48,7 +48,7 @@ Nothing in this plan is built this week.
 - **Team access as today:** non-managers see the free modules and no Pro heading; audition reviewers see Sign-ups only.
 - **Contract people aren't production mode's audience** (2026-10-17, `docs/contract_people_plan.md`): contractors and the people they bring never enter the Production Dashboard; their dates, sales, comps and contract are on My. Production mode is for the organization and its in-house production teams.
 - **The address decides the mode.** A link into `/manage` switches by itself and says so in a soft pink notice with an Exit button (`shared/button`, secondary, small); the app opens in the last mode used.
-- **Counts:** only Messages and Tasks carry a count in the nav, as today.
+- **Counts:** Messages, Notifications and Tasks carry a count in the nav (Notifications added 2026-10-20, §9); nothing else does.
 - **The app:**
   - the same menu, drawn natively;
   - a soft pink strip with the organization under the nav bar in production mode;
@@ -520,3 +520,7 @@ Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions
 **In the apps:** a Notifications screen in the menu with an unread count, opening each notification's link. Pushes from notifications open their link. iOS and Android both: the server pieces are shared, and the list is a web page like everything else.
 
 **Design work first:** the settings screen (phone and desktop), the Notifications list, and a few pushes as they'd arrive. Then build ticketing, then move the other areas.
+
+**Mockups (2026-10-20):** row 6 of the navigation canvas (https://claude.ai/artifact/CNaAubdaxfkbdn3ST59LwG): My Notifications on desktop, Account settings → Notifications on desktop, both on mobile web, the app's Notifications screen, and pushes as they arrive. The menus and the desktop sidebar gained a Notifications item with its own count, in both modes (the list is the person's, not the mode's).
+
+**Reconciled with what was built on 2026-10-20** (Ticketing settings → Notifications, "Concept A": the organization gives each manager or address an email *plan*: Everything, The usual, Just the money, Pick my own, Nothing; `TicketingNotifications::PLANS`). That stays as the organization's email policy, since it also covers addresses that aren't users. The person's own settings add **push** per ticketing group; their Email column reads "By plan" and links to the ticketing page. Open for Tim: whether that split is right (§9 above said each person picks their own), whether the app's one badge total adds notifications to messages and tasks, and the label ("My Notifications" on the web, "Notifications" on tiles).
