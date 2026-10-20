@@ -1,0 +1,14 @@
+<%# The ⋯ menu's items, for its dropdown (size :menu) and its phone sheet (size :sheet). %>
+<% row = local_assigns[:size] == :sheet ? "flex items-center gap-3 w-full min-h-[52px] px-5 text-[15px] text-gray-800 border-t border-gray-100 first:border-t-0 hover:bg-gray-50 text-left cursor-pointer" : "flex items-center gap-3 w-full px-3.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 text-left cursor-pointer" %>
+<% items.each do |item| %>
+  <% inner = capture do %>
+    <% if item[:icon] %><svg class="w-[18px] h-[18px] text-gray-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="<%= item[:icon] %>"/></svg><% end %>
+    <span><%= item[:text] %></span>
+  <% end %>
+  <% method = (item[:method] || :get).to_sym %>
+  <% if method == :get %>
+    <%= link_to inner, item[:path], class: row, role: "menuitem", data: item[:data] || {} %>
+  <% else %>
+    <%= button_to inner, item[:path], method: method, class: row, form_class: "block", role: "menuitem", data: item[:data] || {} %>
+  <% end %>
+<% end %>

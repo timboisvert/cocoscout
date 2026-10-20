@@ -1,0 +1,48 @@
+<%#
+  The shared sheet (V1.1 plan Phase 0b): a bottom sheet on a phone, the
+  usual centered modal from sm up, with the pink header every modal wears.
+  Opened and closed by the modal controller like any in-page modal: a
+  trigger with data-controller="modal", data-action="click->modal#open" and
+  data-modal-id matching this id.
+
+  Rendered as a layout around its body:
+    render layout: "shared/sheet", locals: { id: "edit-show", title: "Edit show", footer: capture { ... } } do
+      ...the body...
+    end
+
+  Locals:
+    id     (required) the DOM id the trigger opens
+    title  the pink header's words
+    footer optional HTML (usually shared/button calls); full-width buttons
+           stacked on a phone, right-aligned in a row from sm up
+    size   "md" (default), "lg" or "xl": the width from sm up
+%>
+<%
+  id = local_assigns.fetch(:id)
+  width = { "lg" => "sm:max-w-2xl", "xl" => "sm:max-w-4xl" }.fetch(local_assigns[:size].to_s, "sm:max-w-lg")
+%>
+<div id="<%= id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop" data-sheet>
+  <div class="bg-white w-full <%= width %> rounded-t-2xl sm:rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+       role="dialog" aria-modal="true" aria-labelledby="<%= id %>-title" data-action="click->modal#stopPropagation">
+    <div class="flex-shrink-0 bg-gradient-to-r from-pink-500 to-pink-600">
+      <span class="sm:hidden block mx-auto mt-2 w-10 h-1 rounded-full bg-white/70" aria-hidden="true"></span>
+      <div class="flex items-center justify-between gap-3 pl-5 pr-2 sm:px-6 py-2 sm:py-4">
+        <h3 id="<%= id %>-title" class="text-[17px] sm:text-lg font-semibold text-white min-w-0 truncate"><%= local_assigns[:title] %></h3>
+        <button type="button" data-action="click->modal#close" aria-label="Close"
+                class="w-11 h-11 sm:w-auto sm:h-auto sm:p-1 flex items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 transition-colors cursor-pointer flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+      <%= yield %>
+    </div>
+    <% if local_assigns[:footer].present? %>
+      <div class="flex-shrink-0 px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 [&>*]:w-full sm:[&>*]:w-auto">
+        <%= local_assigns[:footer] %>
+      </div>
+    <% end %>
+  </div>
+</div>

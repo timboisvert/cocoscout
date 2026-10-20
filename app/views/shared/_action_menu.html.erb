@@ -1,0 +1,32 @@
+<%#
+  The shared ⋯ menu (V1.1 plan Phase 0b): a row's or page's secondary
+  actions behind one button. A dropdown from sm up; on a phone the same
+  items in a bottom sheet (shared/sheet). Same items, same order, same
+  result everywhere.
+
+  Locals:
+    id     (required) unique per page, e.g. "show-#{show.id}-actions"
+    items  [{ text:, path:, method: (default :get), icon: (an SVG path d, optional),
+             data: {} }], in the order they should appear. Never red: the
+           key action is pink elsewhere, and these are all secondary.
+    title  the phone sheet's header (default "Actions")
+    label  the button's accessible name (default "More actions")
+%>
+<% id = local_assigns.fetch(:id) %>
+<% items = Array(local_assigns[:items]).compact %>
+<% if items.any? %>
+<div class="relative inline-block" data-controller="action-menu dropdown" data-action-menu-sheet-id-value="<%= id %>-sheet">
+  <button type="button" data-action="action-menu#open"
+          class="w-11 h-11 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+          aria-label="<%= local_assigns[:label] || "More actions" %>" aria-haspopup="menu">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+  </button>
+
+  <div data-dropdown-target="menu" role="menu" class="hidden absolute right-0 top-full mt-1.5 w-60 bg-white border border-gray-200 rounded-xl shadow-[0_16px_40px_rgba(17,24,39,0.16)] overflow-hidden z-50 py-1">
+    <%= render "shared/action_menu_items", items: items, size: :menu %>
+  </div>
+</div>
+<%= render layout: "shared/sheet", locals: { id: "#{id}-sheet", title: local_assigns[:title] || "Actions" } do %>
+  <div class="-mx-4 -my-5"><%= render "shared/action_menu_items", items: items, size: :sheet %></div>
+<% end %>
+<% end %>
