@@ -37,10 +37,11 @@
   form_data       = local_assigns[:form_data] || {}
 %>
 <div id="<%= id %>"
-     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
      data-controller="modal"
      data-action="click->modal#closeOnBackdrop">
-  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+  <%# A bottom sheet on a phone, a centered card from sm up (V1.1 plan §5). %>
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden"
        data-action="click->modal#stopPropagation">
     <%# Header — pink gradient (CocoScout standard for confirmation modals) %>
     <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
@@ -62,7 +63,7 @@
     <% end %>
 
     <%# Footer %>
-    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+    <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 [&>*]:w-full sm:[&>*]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
       <%= render "shared/button",
             text: cancel_text,
             variant: "secondary",
