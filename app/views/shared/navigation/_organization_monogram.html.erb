@@ -1,0 +1,9 @@
+<%# An organization's square: its logo if it has one, else its two-letter
+    monogram on pink. Locals: organization, size (px). %>
+<% px = local_assigns[:size] || 36 %>
+<% logo = organization.respond_to?(:logo) && organization.logo.attached? ? organization.logo : nil %>
+<% if logo %>
+  <%= image_tag logo, alt: "", class: "rounded-lg object-cover flex-shrink-0", style: "width: #{px}px; height: #{px}px" %>
+<% else %>
+  <span class="rounded-lg bg-pink-600 text-white font-bold flex items-center justify-center flex-shrink-0" style="width: <%= px %>px; height: <%= px %>px; font-size: <%= (px * 0.36).round %>px" aria-hidden="true"><%= organization.initials %></span>
+<% end %>

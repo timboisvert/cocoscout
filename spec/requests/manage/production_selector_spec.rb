@@ -24,7 +24,10 @@ RSpec.describe "Production selector", type: :request do
     expect(response.body).to include("Recently used")
     expect(response.body).to include("Show all 7 productions")
     # Recent rows render before the (collapsed) full list.
-    expect(response.body.index("Recently used")).to be < response.body.index("All productions")
+    # (Measured from "Recently used": the panel's organization menu has an
+    # "All productions" link of its own higher up the page.)
+    recents_at = response.body.index("Recently used")
+    expect(response.body.index("All productions", recents_at)).to be > recents_at
     # The full list starts hidden — the whole point is not facing the wall.
     expect(response.body).to match(/style="display: none" data-production-selector-target="allList"/)
   end

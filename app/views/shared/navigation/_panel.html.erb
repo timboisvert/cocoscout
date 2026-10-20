@@ -1,0 +1,45 @@
+<%# The desktop panel for My and production mode (navigation canvas). The
+    frame (top row, organization band, account menu) is panel_frame; these
+    are the mode's links. Local: production_mode. %>
+<% production_mode = local_assigns[:production_mode] ? true : false %>
+<%= render layout: "shared/navigation/panel_frame", locals: { production_mode: production_mode } do %>
+    <% context = production_mode ? :production : :talent %>
+    <% if !production_mode || Current.organization.present? %>
+      <% panel_nav_sections(context).each do |section| %>
+        <% if section[:label].present? %>
+          <div class="px-4 mt-4 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400"><%= section[:label] %></div>
+        <% end %>
+        <% section[:items].each do |item| %>
+          <div class="relative">
+            <%= render "shared/nav_link", text: item[:label], path: item[:path], active: item[:active],
+                  locked: item[:locked], upgrade_feature: (item[:locked] ? item[:feature] : nil) %>
+            <% if item[:badge].to_i > 0 %>
+              <span class="absolute top-2 right-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full" data-unread-badge><%= item[:badge] > 99 ? "99+" : item[:badge] %></span>
+            <% elsif item[:quantity] %>
+              <span class="absolute top-2 right-3 text-xs font-semibold text-gray-500"><%= item[:quantity] %></span>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <% if production_mode && Current.organization.present? && !Current.organization.on_paid_plan? %>
+      <% used = Current.organization.events_in_month.count %>
+      <% limit = Organization::FREE_MONTHLY_EVENT_LIMIT %>
+      <% can_manage_billing = Current.user&.superadmin? || Current.organization.manageable_by?(Current.user) %>
+      <%= link_to (can_manage_billing ? section_manage_organization_path(Current.organization, section: "billing") : pricing_path), class: "block mx-3 mt-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 hover:border-pink-300 transition-colors" do %>
+        <div class="flex items-center justify-between text-xs font-semibold text-gray-700">
+          <span>Producer plan</span>
+          <span class="<%= used >= limit ? 'text-pink-600' : 'text-gray-500' %>"><%= used %>/<%= limit %> events</span>
+        </div>
+        <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+          <div class="h-full rounded-full <%= used >= limit ? 'bg-pink-500' : 'bg-gray-400' %>" style="width: <%= [ (used.to_f / limit * 100).round, 100 ].min %>%"></div>
+        </div>
+        <div class="mt-1.5 text-xs text-pink-600 font-medium">Upgrade to Pro Plan →</div>
+      <% end %>
+    <% end %>
+
+    <% if !production_mode && (door_bar = door_bar_item(Current.user)) %>
+      <%= render "shared/navigation/door_bar", item: door_bar, size: :sidebar %>
+    <% end %>
+<% end %>

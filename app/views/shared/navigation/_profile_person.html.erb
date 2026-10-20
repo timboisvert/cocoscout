@@ -1,9 +1,7 @@
-<!-- Profile Edit Sidebar Navigation -->
-<nav class="hidden w-64 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col transition-all duration-200 ease-in-out z-50 app-top-chrome fixed left-0 top-0 h-screen justify-between" data-controller="profile-nav">
-  <%= render "shared/navigation/nav_dashboard_selector", current_dashboard: "profile" %>
-
-  <div class="flex-1 overflow-y-auto">
-    <div class="mt-2">
+<%# The profile editor's panel: the V1.1 frame (shared/navigation/panel_frame) around its
+    own links. No dashboard switcher any more: the wordmark goes back to the
+    mode last used, and the account menu holds the mode switch. %>
+<%= render layout: "shared/navigation/panel_frame", locals: { production_mode: panel_last_mode_production?, band: false, controller: "profile-nav" } do %>
       <%= render "shared/nav_link", text: "Home", href: "#profile-card" %>
       <%= render "shared/nav_link", text: "Public Profile", href: "#public-profile" %>
       <div data-profile-visibility-target="menuItems" class="<%= 'hidden' unless @person&.public_profile_enabled %>">
@@ -18,14 +16,5 @@
         <%= render "shared/nav_link", text: "Resumes", href: "#resumes" %>
         <%= render "shared/nav_link", text: "Groups", href: "#groups" %>
       </div>
-    </div>
-  </div>
-
-  <!-- Bottom section -->
-  <div class="mt-auto">
-    <div class="flex justify-center">
-      <%= render "shared/cocoscout_logo", size: :medium %>
-    </div>
-    <%= render "shared/navigation/sidebar_account_menu" %>
-  </div>
-</nav>
+    
+<% end %>

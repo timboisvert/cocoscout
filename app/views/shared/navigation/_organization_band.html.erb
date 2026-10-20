@@ -1,0 +1,66 @@
+<%#
+  Production mode's band under the panel's top row: the organization on a
+  soft pink band with "Production mode" under it in plain words (no icon;
+  Tim, 2026-10-20). Its single ▾ opens the organization menu on every plan:
+  several organizations list first, each with your role and its plan; then
+  the organization and production settings, plan and billing, and New
+  organization. Also the phone's (shared/navigation/organization_sheet).
+%>
+<% org = Current.organization %>
+<% organizations = Current.user.accessible_organizations.order(:name).to_a %>
+<% roles = OrganizationRole.where(user: Current.user, organization_id: organizations.map(&:id)).pluck(:organization_id, :company_role).to_h %>
+<div class="relative" data-controller="dropdown">
+  <button type="button" data-action="click->dropdown#toggle click@window->dropdown#hide"
+          class="w-full flex items-center gap-3 px-4 py-3.5 bg-pink-50 border-y border-pink-200 text-left cursor-pointer hover:bg-pink-100/70 transition-colors"
+          aria-label="Organization: <%= org.name %>, production mode. Organization menu" aria-haspopup="menu">
+    <%= render "shared/navigation/organization_monogram", organization: org, size: 36 %>
+    <span class="min-w-0 flex-1 flex flex-col gap-0.5">
+      <span class="text-sm font-bold text-gray-900 truncate"><%= org.name %></span>
+      <span class="text-[10px] font-bold uppercase tracking-[0.08em] text-pink-700">Production mode</span>
+    </span>
+    <svg class="w-4 h-4 text-pink-700 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+
+  <div data-dropdown-target="menu" role="menu" class="hidden absolute left-2.5 top-full mt-1.5 w-[300px] bg-white border border-gray-200 rounded-xl shadow-[0_16px_40px_rgba(17,24,39,0.16)] overflow-hidden z-50">
+    <% if organizations.size > 1 %>
+      <div class="px-3.5 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">Your organizations</div>
+      <% organizations.each do |o| %>
+        <%= form_with url: set_organization_path, method: :post, data: { turbo: false } do %>
+          <%= hidden_field_tag :id, o.id, id: nil %>
+          <button type="submit" role="menuitemradio" aria-checked="<%= o.id == org.id %>"
+                  class="w-full flex items-center gap-3 px-3.5 py-2.5 text-left cursor-pointer transition-colors <%= o.id == org.id ? 'bg-pink-50' : 'hover:bg-gray-50' %>">
+            <%= render "shared/navigation/organization_monogram", organization: o, size: 32 %>
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-semibold text-gray-900 truncate"><%= o.name %></span>
+              <span class="block text-xs text-gray-500"><%= o.owner_id == Current.user.id ? "Owner" : roles[o.id].to_s.humanize.presence || "Team" %> · <%= o.on_paid_plan? ? "Pro" : "Producer plan" %></span>
+            </span>
+            <% if o.id == org.id %>
+              <svg class="w-4 h-4 text-pink-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+            <% end %>
+          </button>
+        <% end %>
+      <% end %>
+      <div class="border-t border-gray-100"></div>
+    <% end %>
+
+    <% item = "flex items-center gap-3 px-3.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors" %>
+    <% if org.on_paid_plan? %>
+      <%= link_to "All productions", manage_productions_path, class: item, role: "menuitem" %>
+    <% elsif (production = Current.user.accessible_productions.where(organization: org).order(:name).first) %>
+      <%= link_to "#{production.name} settings", edit_manage_production_path(production), class: item, role: "menuitem" %>
+    <% end %>
+    <% if current_user_is_global_manager? %>
+      <% if org.at_production_limit? %>
+        <span class="<%= item %> text-gray-400 cursor-default" role="menuitem" aria-disabled="true">Add a production <%= render "shared/pro_marker", kind: :lock, classes: "ml-auto" %></span>
+      <% else %>
+        <%= link_to "Add a production", manage_productions_wizard_path, class: item, role: "menuitem" %>
+      <% end %>
+      <%= link_to "Organization settings", manage_organization_path(org), class: item, role: "menuitem" %>
+    <% end %>
+    <% if Current.user.superadmin? || org.manageable_by?(Current.user) %>
+      <%= link_to "Plan and billing", section_manage_organization_path(org, section: "billing"), class: item, role: "menuitem" %>
+    <% end %>
+    <div class="border-t border-gray-100"></div>
+    <%= link_to "New organization", new_manage_organization_path, class: item, role: "menuitem" %>
+  </div>
+</div>

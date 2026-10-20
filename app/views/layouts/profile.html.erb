@@ -42,7 +42,7 @@
             <%= render "shared/navigation/profile_person" %>
           <% end %>
         <% end %>
-        <main class="flex-1 <%= if turbo_native_app? then "px-4 pt-3 pb-8" elsif @hide_sidebar then "" else "px-5 pt-14 lg:ml-64 #{@show_group_sidebar ? 'lg:pt-20' : 'lg:pt-6'}" end %> overflow-x-hidden">
+        <main class="flex-1 <%= if turbo_native_app? then "px-4 pt-3 pb-8" elsif @hide_sidebar then "" else "px-5 pt-14 lg:ml-[272px] #{@show_group_sidebar ? 'lg:pt-20' : 'lg:pt-6'}" end %> overflow-x-hidden">
             <%= yield %>
         </main>
         <%= render "shared/native/bridge" %>

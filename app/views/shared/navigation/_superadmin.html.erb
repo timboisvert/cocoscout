@@ -1,20 +1,7 @@
-<%# Super Admin left sidebar — global (not org-scoped). Same shell as the other
-    dashboards: switcher on top, grouped section links (from the shared
-    dashboard_nav_sections helper), coco logo + account menu at the bottom. %>
-<nav class="hidden w-64 bg-white border-r border-r-2 border-gray-200 lg:flex flex-col z-50 justify-between app-top-chrome fixed left-0 top-0 h-screen">
-  <%= render "shared/navigation/nav_dashboard_selector", current_dashboard: "superadmin" %>
-
-  <div class="flex-1 overflow-y-auto">
-    <div class="mt-2">
+<%# Superadmin's panel (global, not org-scoped): the V1.1 frame (shared/navigation/panel_frame) around its
+    own links. No dashboard switcher any more: the wordmark goes back to the
+    mode last used, and the account menu holds the mode switch. %>
+<%= render layout: "shared/navigation/panel_frame", locals: { production_mode: panel_last_mode_production?, band: false } do %>
       <%= render "shared/navigation/sidebar_nav", context: :superadmin %>
-    </div>
-  </div>
-
-  <!-- Bottom section -->
-  <div class="mt-auto">
-    <div class="flex justify-center">
-      <%= render "shared/cocoscout_logo", size: :medium %>
-    </div>
-    <%= render "shared/navigation/sidebar_account_menu" %>
-  </div>
-</nav>
+    
+<% end %>

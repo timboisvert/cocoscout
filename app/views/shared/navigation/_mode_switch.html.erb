@@ -1,0 +1,15 @@
+<%# Enter or Exit production mode: a CocoScout-pink bar with white words,
+    never dark pink (Tim, 2026-10-20). Locals: switch (panel_mode_switch),
+    size (:menu at the foot of the desktop account menu, :bar in the phone menu). %>
+<% bar = local_assigns[:size] == :bar %>
+<%= link_to switch[:path], class: "flex items-center gap-3 bg-pink-500 hover:bg-pink-600 text-white transition-colors #{bar ? 'min-h-[56px] px-3.5 py-2 rounded-xl' : 'px-3.5 py-3 border-t border-pink-600'}", role: (bar ? nil : "menuitem"), data: { mode_switch: (switch[:enter] ? "enter" : "exit") } do %>
+  <% if switch[:enter] %>
+    <svg class="<%= bar ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]' %> flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/></svg>
+  <% else %>
+    <svg class="<%= bar ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]' %> flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 16l-4-4 4-4M6 12h11"/></svg>
+  <% end %>
+  <span class="flex flex-col min-w-0">
+    <span class="<%= bar ? 'text-[15px]' : 'text-sm' %> font-bold"><%= switch[:label] %></span>
+    <span class="<%= bar ? 'text-[13px]' : 'text-xs' %> text-pink-50 truncate"><%= switch[:subtitle] %></span>
+  </span>
+<% end %>

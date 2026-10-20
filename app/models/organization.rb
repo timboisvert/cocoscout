@@ -7,6 +7,7 @@ class Organization < ApplicationRecord
   include StripeConnectable
   include StaffingDayParts
   include IssuesInvoices
+  include Monogram
 
   belongs_to :owner, class_name: "User"
   # CocoScout's bills to it, and its monthly statements. CocoScout's own

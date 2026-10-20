@@ -52,8 +52,8 @@
       <% elsif @show_manage_sidebar %>
 
         <%= render "shared/navigation/manage_mobile" %>
-        <%= render "shared/navigation/manage" %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-64 overflow-x-hidden">
+        <%= render "shared/navigation/panel", production_mode: true %>
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] overflow-x-hidden">
 
       <% elsif @show_manage_header_only %>
 
@@ -71,20 +71,20 @@
       <% elsif @show_my_sidebar %>
 
         <%= render "shared/navigation/my_mobile" %>
-        <%= render "shared/navigation/my" %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-64 overflow-x-hidden">
+        <%= render "shared/navigation/panel", production_mode: false %>
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] overflow-x-hidden">
 
       <% elsif @show_superadmin_sidebar %>
 
         <%= render "shared/navigation/superadmin_mobile" %>
         <%= render "shared/navigation/superadmin" %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-64 overflow-x-hidden">
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] overflow-x-hidden">
 
       <% elsif @show_account_sidebar %>
 
         <%= render "shared/navigation/account_mobile" %>
         <%= render "shared/navigation/account" %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-64 overflow-x-hidden">
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] overflow-x-hidden">
 
       <% else %>
 

@@ -24,6 +24,64 @@ module NavigationHelper
     end
   end
 
+  # The V1.1 panels' nav (desktop and mobile web, and generation-2 apps):
+  # dashboard_nav_sections without Messages, which became a universal icon
+  # beside Notifications (Tim, 2026-10-20), and, in production mode on Pro
+  # with several productions, Productions after Home with how many. V1's
+  # native menu keeps reading dashboard_nav_sections unchanged.
+  def panel_nav_sections(context)
+    sections = dashboard_nav_sections(context).map do |section|
+      section.merge(items: section[:items].reject { |item| item[:icon] == "messages" })
+    end
+    if context.to_sym == :production && Current.organization&.on_paid_plan? && sections.first
+      count = Current.user.accessible_productions.where(organization: Current.organization).count
+      if count > 1
+        productions = { label: "Productions", path: manage_productions_path, icon: "productions", quantity: count,
+                        active: controller_name == "productions" }
+        sections.first[:items].insert(1, productions)
+      end
+    end
+    sections
+  end
+
+  # Whether the person was last in production mode on this browser (pages
+  # that belong to neither mode, like Account settings, draw that mode's
+  # account menu and wordmark link).
+  def panel_last_mode_production?
+    prefs = cookies.encrypted[:last_dashboard]
+    prefs.is_a?(Hash) && Current.user && prefs[Current.user.id.to_s] == "manage" && production_mode_available?
+  end
+
+  # The two universal icons at the top of every panel, in both modes: where
+  # each goes and how many are unread. Messages opens the mode's own inbox
+  # until the one inbox lands (V1.1 plan §0a).
+  def panel_universal_icons(production_mode:)
+    messages = if production_mode && Current.organization
+      { path: manage_messages_path, count: Current.user.unread_message_count_for_org(Current.organization).to_i }
+    else
+      { path: my_messages_path, count: Current.user.unread_message_count.to_i }
+    end
+    {
+      messages: messages.merge(active: controller_name == "messages"),
+      notifications: { path: notifications_path, count: Current.user.unread_notification_count, active: controller_name == "notifications" }
+    }
+  end
+
+  # The account menu's mode switch, at its bottom (Tim, 2026-10-20): nil for
+  # someone with no production access, who gets "Start producing" instead.
+  def panel_mode_switch(production_mode:)
+    if production_mode
+      tasks = Current.user.open_tasks_count.to_i
+      { label: "Exit production mode", path: my_dashboard_path, enter: false,
+        subtitle: [ "Your shows and tasks", (pluralize(tasks, "task") + " waiting" if tasks.positive?) ].compact.join(" · ") }
+    elsif Current.user.accessible_organizations.exists?
+      organizations = Current.user.accessible_organizations.order(:name).to_a
+      chosen = session[:current_organization_id].is_a?(Hash) && organizations.find { |o| o.id == session[:current_organization_id][Current.user.id.to_s] }
+      { label: "Enter production mode", path: manage_path, enter: true,
+        subtitle: organizations.size > 1 && !chosen ? "#{organizations.size} organizations" : (chosen || organizations.first).name }
+    end
+  end
+
   # SVG path `d` for a nav icon key (used by the mobile grid tiles).
   def nav_icon_path(key)
     NAV_ICON_PATHS[key.to_s] || NAV_ICON_PATHS["dot"]

@@ -1,0 +1,36 @@
+<%#
+  The V1.1 desktop panel's frame (navigation canvas, rows 1-3): one floating panel in
+  both modes. Its top row is a small CocoScout wordmark with the two
+  universal icons, Messages and Notifications, beside it. In production mode
+  a soft pink band under that names the organization (its menu holds the
+  organization and production settings) and says "Production mode" in plain
+  words; the panel's edge and shadow pick up a faint pink. The nav items are
+  today's (panel_nav_sections). The account menu at the bottom ends with the
+  mode switch, a CocoScout-pink bar (never dark pink; Tim, 2026-10-20).
+  Rendered as a layout around each panel's own links:
+    render layout: "shared/navigation/panel_frame", locals: { production_mode: } do ... end
+  Locals: production_mode (true in Manage), band (default: production_mode),
+  controller (a Stimulus controller for the panel, e.g. profile-nav).
+%>
+<% production_mode = local_assigns[:production_mode] ? true : false %>
+<% icons = panel_universal_icons(production_mode: production_mode) %>
+<nav class="hidden lg:flex flex-col fixed left-3 top-3 bottom-3 w-[248px] z-50 app-top-chrome bg-white rounded-2xl border <%= production_mode ? 'border-pink-200 shadow-[0_1px_2px_rgba(17,24,39,0.04),0_12px_32px_rgba(219,39,119,0.12)]' : 'border-[#ebe6e0] shadow-[0_1px_2px_rgba(17,24,39,0.04),0_12px_32px_rgba(17,24,39,0.07)]' %>"
+     aria-label="<%= production_mode ? 'Production mode navigation' : 'CocoScout navigation' %>" data-v11-panel<% if local_assigns[:controller] %> data-controller="<%= local_assigns[:controller] %>"<% end %>>
+  <div class="flex items-center justify-between gap-2.5 pl-[18px] pr-3.5 pt-4 pb-2.5">
+    <%= link_to "CocoScout", (production_mode ? manage_path : my_dashboard_path), class: "coustard-regular text-[21px] leading-none text-pink-600" %>
+    <div class="flex items-center gap-1.5">
+      <%= render "shared/navigation/universal_icon", kind: :messages, **icons[:messages] %>
+      <%= render "shared/navigation/universal_icon", kind: :notifications, **icons[:notifications] %>
+    </div>
+  </div>
+
+  <% if local_assigns.fetch(:band, production_mode) && Current.organization.present? %>
+    <%= render "shared/navigation/organization_band" %>
+  <% end %>
+
+  <div class="flex-1 overflow-y-auto pt-1">
+    <%= yield %>
+  </div>
+
+  <%= render "shared/navigation/panel_account_menu", production_mode: production_mode %>
+</nav>
