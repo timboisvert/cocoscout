@@ -20,6 +20,8 @@ class Notification < ApplicationRecord
   scope :unread, -> { where(read_at: nil) }
   scope :newest_first, -> { order(created_at: :desc, id: :desc) }
   scope :in_category, ->(keys) { where(category: Array(keys)) }
+  # Unread notices the unread digest still owes an email (UnreadDigestJob).
+  scope :owed_a_digest, -> { unread.where(digest: true, digested_at: nil) }
 
   def read? = read_at.present?
 

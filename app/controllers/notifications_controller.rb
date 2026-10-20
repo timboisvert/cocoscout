@@ -7,7 +7,7 @@ class NotificationsController < ApplicationController
   include OrganizationContext
 
   skip_before_action :show_my_sidebar
-  before_action :show_mode_sidebar, only: :index
+  before_action :show_mode_sidebar, only: %i[index show]
 
   def index
     @filter = params[:filter] == "unread" ? "unread" : "all"
@@ -28,7 +28,14 @@ class NotificationsController < ApplicationController
       session[:current_organization_id] = {} unless session[:current_organization_id].is_a?(Hash)
       session[:current_organization_id][Current.user.id.to_s] = notification.organization_id
     end
-    redirect_to notification.path.presence || notifications_path
+    redirect_to notification.path.presence || (notification.body.present? ? notification_path(notification) : notifications_path)
+  end
+
+  # A notice with nothing to link to (it came with its words, from a
+  # template that used to be a message): those words, on its own page.
+  def show
+    @notification = Current.user.notifications.find(params[:id])
+    @notification.mark_read!
   end
 
   def mark_all_read

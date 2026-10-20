@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1559,9 +1559,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_200000) do
     t.datetime "read_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "digest", default: false, null: false
+    t.datetime "digested_at"
     t.index ["organization_id"], name: "index_notifications_on_organization_id"
     t.index ["subject_type", "subject_id"], name: "index_notifications_on_subject"
     t.index ["user_id", "created_at"], name: "index_notifications_on_user_id_and_created_at"
+    t.index ["user_id", "digest", "digested_at"], name: "index_notifications_owed_a_digest", where: "(read_at IS NULL)"
     t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end

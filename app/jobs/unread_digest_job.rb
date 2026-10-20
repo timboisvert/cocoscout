@@ -37,23 +37,26 @@ class UnreadDigestJob < ApplicationJob
     # 2. Have at least one unread message subscription (using counter cache)
     # 3. Haven't received a digest email in their current throttle period (or never)
 
+    # 4. (V1.1) Or have an unread notification the digest still owes an
+    #    email: a notice that was a message before it became a Notification.
+    with_unread = MessageSubscription.where("unread_count > 0").select(:user_id)
+    owed = Notification.owed_a_digest.select(:user_id)
     User
       .where(message_digest_enabled: true)
-      .joins(:message_subscriptions)
-      .where("message_subscriptions.unread_count > 0")
+      .where("users.id IN (#{with_unread.to_sql}) OR users.id IN (#{owed.to_sql})")
       .where(
         "users.last_unread_digest_sent_at IS NULL OR " \
         "users.last_unread_digest_sent_at < NOW() - (users.digest_throttle_days || ' days')::interval"
       )
-      .distinct
   end
 
   def send_digest_to(user)
     unread_threads = collect_unread_threads(user)
-    return if unread_threads.empty?
+    notifications = user.notifications.owed_a_digest.order(:created_at).to_a
+    return if unread_threads.empty? && notifications.empty?
 
     # Check if the oldest unread is old enough (waited INITIAL_DELAY)
-    oldest_unread_at = find_oldest_unread_at(user, unread_threads)
+    oldest_unread_at = [ find_oldest_unread_at(user, unread_threads), notifications.first&.created_at ].compact.min
     delay = user.push_enabled? ? INITIAL_DELAY_WITH_PUSH : INITIAL_DELAY
     return if oldest_unread_at.nil? || oldest_unread_at > delay.ago
 
@@ -61,10 +64,11 @@ class UnreadDigestJob < ApplicationJob
     adjust_throttle(user)
 
     # Send the digest
-    MessageNotificationMailer.unread_digest(user: user, unread_threads: unread_threads).deliver_later
+    MessageNotificationMailer.unread_digest(user: user, unread_threads: unread_threads, notifications: notifications).deliver_later
 
     # Update tracking
     user.update!(last_unread_digest_sent_at: Time.current)
+    Notification.where(id: notifications.map(&:id)).update_all(digested_at: Time.current) if notifications.any?
 
     Rails.logger.info "[UnreadDigestJob] Sent digest to #{user.email_address} with #{unread_threads.size} threads (throttle: #{user.digest_throttle_days} days)"
   end

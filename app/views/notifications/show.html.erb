@@ -1,0 +1,25 @@
+<% content_for :title, "Notification" %>
+
+<%# A notice that came with its own words and no page to link to. %>
+<div class="w-full pb-8 max-w-3xl">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Notifications", notifications_path ] ],
+    text: @notification.group.label,
+    links: []
+  } %>
+
+  <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-start gap-3">
+      <span class="w-9 h-9 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center flex-shrink-0">
+        <%= render "notifications/icon", category: @notification.category %>
+      </span>
+      <div class="min-w-0">
+        <h1 class="text-base font-semibold text-gray-900"><%= @notification.title %></h1>
+        <p class="text-xs text-gray-500 mt-0.5"><%= [ @notification.organization&.name, @notification.created_at.in_time_zone.strftime("%a, %b %-d at %-l:%M %p") ].compact.join(" · ") %></p>
+      </div>
+    </div>
+    <div class="px-4 sm:px-6 py-5 prose prose-sm max-w-none text-gray-700">
+      <%= sanitize @notification.body %>
+    </div>
+  </div>
+</div>

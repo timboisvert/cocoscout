@@ -68,3 +68,17 @@ RSpec.describe "Notifications", type: :request do
     end
   end
 end
+
+RSpec.describe "A notification's own page", type: :request do
+  let(:user) { create(:user) }
+
+  before { post handle_signin_path, params: { email_address: user.email_address, password: user.password } }
+
+  it "opens a notice with no link on its own page, with its words" do
+    n = user.notifications.create!(category: "courses", kind: "course_registration_confirmed", title: "You're registered", body: "<p>See you Tuesday.</p>")
+    get open_notification_path(n)
+    expect(response).to redirect_to(notification_path(n))
+    follow_redirect!
+    expect(response.body).to include("registered", "See you Tuesday.")
+  end
+end

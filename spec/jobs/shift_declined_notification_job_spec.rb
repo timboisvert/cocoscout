@@ -42,16 +42,18 @@ RSpec.describe ShiftDeclinedNotificationJob, type: :job do
   it "renders the migration-owned template with the reason and a scheduling link" do
     described_class.perform_now(assignment.id)
 
-    message = Message.order(:created_at).last
-    expect(message).to be_present
-    body = message.body.to_s
+    # A Notification, not a message (V1.1 plan §9), that keeps the full words
+    # and opens that day in Scheduling.
+    notification = Notification.order(:created_at).last
+    expect(notification).to be_present
+    expect(notification.category).to eq("shifts")
+    body = notification.body.to_s
     expect(body).to include("Sam Staffer")
     expect(body).to include("Bartender")
     expect(body).to include("Family thing")
     expect(body).to include("View that day in Staffing Scheduling")
-    expect(body).to include("week_start=#{shift.starts_at.to_date.beginning_of_week.iso8601}")
-    expect(message.message_type).to eq("system")
-    expect(message.sender).to be_nil
+    expect(notification.path).to include("week_start=#{shift.starts_at.to_date.beginning_of_week.iso8601}")
+    expect(Message.count).to eq(0)
   end
 
   it "omits the note line when no reason was given" do
@@ -59,8 +61,7 @@ RSpec.describe ShiftDeclinedNotificationJob, type: :job do
 
     described_class.perform_now(assignment.id)
 
-    message = Message.order(:created_at).last
-    expect(message.body.to_s).not_to include("Their note")
+    expect(Notification.order(:created_at).last.body.to_s).not_to include("Their note")
   end
 
   it "no-ops when the org has selected no recipients" do

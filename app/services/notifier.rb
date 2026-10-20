@@ -21,6 +21,42 @@ class Notifier
     notification
   end
 
+  # A notice that arrives already rendered, from MessageService.create_message
+  # for a template in NotificationGroups::TEMPLATES: the words are the
+  # template's (push text, else subject); body keeps the full message for the
+  # notification's own page and the digest. path is the body's first link to
+  # this site, else nil (the notification opens its own page). digest: the
+  # unread digest owes it an email, as it did when it was a message.
+  def self.deliver_rendered(user:, category:, kind:, subject:, body:, push_body: nil, organization: nil, digest: false)
+    group = NotificationGroups.find(category)
+    html = body.respond_to?(:to_trix_html) ? body.to_trix_html : body.to_s
+    notification = user.notifications.create!(
+      category: group.key, kind: kind.to_s, title: (push_body.presence || subject).to_s.squish.truncate(240),
+      body: html.presence, path: first_link_path(html), organization: organization,
+      digest: digest && user.message_digest_enabled? && user.notification_email?(group.key)
+    )
+    push(notification) if user.notification_push?(group.key)
+    notification
+  end
+
+  # The first link in a notice's body that points at this site, as a path.
+  def self.first_link_path(html)
+    return nil if html.blank?
+
+    host = (Rails.application.config.action_mailer.default_url_options || {})[:host]
+    Nokogiri::HTML.fragment(html).css("a[href]").each do |a|
+      href = a["href"].to_s
+      next if href.start_with?("mailto:", "tel:", "#")
+
+      uri = URI.parse(href) rescue next
+      next unless uri.host.nil? || uri.host == host || uri.host&.end_with?("cocoscout.com")
+
+      path = local_path(href)
+      return path if path.present? && path != "/"
+    end
+    nil
+  end
+
   def self.push(notification)
     user = notification.user
     PushNotificationService.notify(

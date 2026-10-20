@@ -74,8 +74,10 @@ RSpec.describe "Course receipt and emails", type: :request do
     html = mail.html_part.body.to_s
     expect(html).to include("Hi Fox,", "2 sessions starting Tuesday, November 3 at 7:00 PM", ">When<", "Tuesday, November 3", ">Where<", "The Annex",
                             "Add to calendar", "Every session", "Tue, Nov 10", "What you paid", "$108.00", "Questions about the course?", "classes@starsandgarters.com")
-    # The in-app note carries the same words.
-    expect(Message.last&.subject).to eq("You're registered for Improv 101")
+    # The in-app notification carries the same words (V1.1 plan §9: a
+    # Notification now, not a message).
+    expect(Notification.last&.body.to_s).to include("Improv 101")
+    expect(Notification.last&.category).to eq("courses")
   end
 
   it "tells the student about a refund, and about being taken off, but not twice when the whole course is canceled" do

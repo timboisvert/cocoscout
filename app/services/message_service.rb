@@ -159,6 +159,21 @@ class MessageService
       recipients = Array(recipients).uniq.select { |p| p.is_a?(Person) && p.user.present? }
       return nil if recipients.empty?
 
+      # V1.1 plan §9: an automated notice whose area moved becomes a
+      # Notification for each recipient instead of a message (Messages are
+      # people talking to people). Callers only check that something came
+      # back; their emails go on as before.
+      # Automated: flagged so, or sent by nobody (a notice FOR managers).
+      if template_key && (system_generated || sender.nil?)
+        if (category = NotificationGroups.category_for_template(template_key)) && parent_message.nil?
+          notifications = recipients.map do |person|
+            Notifier.deliver_rendered(user: person.user, category: category, kind: template_key, subject: subject, body: body,
+                                      push_body: push_body, organization: organization || production&.organization, digest: !skip_digest)
+          end
+          return notifications.first
+        end
+      end
+
       # If replying, inherit context from parent (only inherit visibility if not explicitly passed)
       if parent_message
         production ||= parent_message.production
