@@ -1,0 +1,15 @@
+<%# The phone's organization sheet (mobile-nav#showOrgPopup), from the
+    production-mode top bar or the menu's organization row: the same items
+    as the desktop band's menu, under a pink header. %>
+<div data-mobile-nav-target="orgPopup" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/40" data-action="click->mobile-nav#hideOrgPopup"></div>
+  <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col" role="dialog" aria-modal="true" aria-labelledby="org-sheet-title">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 pl-5 pr-2 py-1.5">
+      <h3 id="org-sheet-title" class="text-[17px] font-bold text-white"><%= Current.user.accessible_organizations.count > 1 ? "Switch organization" : Current.organization.name %></h3>
+      <button type="button" data-action="click->mobile-nav#hideOrgPopup" class="w-11 h-11 flex items-center justify-center text-white/90 hover:text-white cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="overflow-y-auto pb-4"><%= render "shared/navigation/organization_menu_items" %></div>
+  </div>
+</div>

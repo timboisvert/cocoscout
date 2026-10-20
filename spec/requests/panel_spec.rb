@@ -29,7 +29,7 @@ RSpec.describe "The desktop panel", type: :request do
       expect(bell["href"]).to eq(notifications_path)
       expect(bell["aria-label"]).to eq("Notifications, 1 unread")
       expect(panel.css("a").map(&:text).map(&:squish)).not_to include("My Messages")
-      expect(panel.text).not_to include("Talent Dashboard", "Production Dashboard")
+      expect(response.body).not_to include("Talent Dashboard", "Production Dashboard")
       expect(panel.text).to include("Start producing")
       expect(panel.at_css("[data-mode-switch]")).to be_nil
     end
@@ -66,5 +66,35 @@ RSpec.describe "The desktop panel", type: :request do
       expect(panel).to be_present
       expect(panel.text).not_to include("Production mode")
     end
+  end
+end
+
+RSpec.describe "The phone's navigation on the website", type: :request do
+  let(:user) { create(:user) }
+  let!(:person) { Person.create!(email: user.email_address, name: "Tim Boisvert", user: user) }
+  let(:org) { Organization.create!(name: "Stars & Garters", owner: user) }
+
+  before do
+    OrganizationRole.create!(user: user, organization: org, company_role: "manager")
+    org.people << person
+    post handle_signin_path, params: { email_address: user.email_address, password: user.password }
+  end
+
+  def phone_nav
+    Nokogiri::HTML(response.body).at_css('[data-controller="mobile-nav"]')
+  end
+
+  it "has the icons in the top bar, no switcher, and Enter production mode at the bottom of the menu" do
+    get my_dashboard_path
+    expect(phone_nav.css("[data-universal-icon]").map { |a| a["data-universal-icon"] }).to eq(%w[messages notifications])
+    expect(phone_nav.text).not_to include("Talent Dashboard", "Switch dashboard")
+    expect(phone_nav.at_css('[data-mode-switch="enter"]')["class"]).to include("bg-pink-500")
+    expect(phone_nav.css("a").map { |a| a.text.squish }).not_to include("My Messages")
+  end
+
+  it "names the organization in the top bar in production mode, with its sheet" do
+    get manage_path
+    expect(phone_nav.text).to include("Stars & Garters", "Production mode", "Exit production mode")
+    expect(phone_nav.at_css('[data-mobile-nav-target="orgPopup"]')).to be_present
   end
 end

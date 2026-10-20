@@ -1,52 +1,82 @@
-<%# App-style mobile navigation shared by every dashboard. A top bar with a
-    hamburger opens a full-screen panel where the dashboard's nav items are laid
-    out as a grid (the first/Home item full-width, the rest 3-up). Item lists and
-    visibility come from the shared dashboard_nav_sections helper, so mobile and
-    desktop always agree on who sees what.
-    Locals: context, dashboard_label, dashboard_desc, current_dashboard. %>
-<div data-controller="mobile-nav" class="app-top-chrome fixed inset-x-0 top-0 z-30 border-b border-pink-100 bg-white lg:hidden">
-  <%# ===== TOP BAR ===== %>
-  <div class="flex items-center justify-between px-4 py-2.5">
-    <button type="button" data-action="mobile-nav#toggle" class="p-1">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-pink-500">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-      </svg>
+<%#
+  The phone's navigation on the website (navigation canvas, mobile web row),
+  shared by every context. The top bar: the menu button, then the CocoScout
+  wordmark, or in production mode the organization with "Production mode"
+  under it on soft pink (tapping it opens the organization sheet), then the
+  universal Messages and Notifications icons. The menu sheet opens on you: a
+  plain outlined card with Profile, Settings and Sign out; in production
+  mode the organization row under it; the nav's tiles; then Work the door
+  (black) and the mode switch (CocoScout pink) at the bottom (Tim,
+  2026-10-20). No dashboard switcher.
+  Locals: context (:talent, :production, :account, :superadmin).
+%>
+<% production_mode = context.to_sym == :production && Current.organization.present? %>
+<% icons = panel_universal_icons(production_mode: production_mode) %>
+<% switch = %i[talent production].include?(context.to_sym) || panel_last_mode_production? ? panel_mode_switch(production_mode: production_mode || (context.to_sym != :talent && panel_last_mode_production?)) : nil %>
+<div data-controller="mobile-nav" class="app-top-chrome fixed inset-x-0 top-0 z-30 border-b lg:hidden <%= production_mode ? 'bg-pink-50 border-pink-200' : 'bg-white border-pink-100' %>">
+  <div class="grid grid-cols-[52px_minmax(0,1fr)_96px] items-center h-[52px] px-1">
+    <button type="button" data-action="mobile-nav#toggle" class="w-11 h-11 flex items-center justify-center text-pink-500" aria-label="Menu">
+      <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
-    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1.5">
-      <%= image_tag "/icon.png", alt: "CocoScout", class: "h-5 w-5" %>
-      <span class="text-lg text-pink-500 coustard-regular">CocoScout</span>
+    <% if production_mode %>
+      <button type="button" data-action="mobile-nav#showOrgPopup" class="min-h-[44px] flex flex-col items-center justify-center gap-px cursor-pointer min-w-0"
+              aria-label="Organization: <%= Current.organization.name %>, production mode. Change organization">
+        <span class="flex items-center gap-1 text-[15px] font-bold text-gray-900 max-w-full">
+          <span class="truncate"><%= Current.organization.name %></span>
+          <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+        <span class="text-[10px] font-bold uppercase tracking-[0.08em] text-pink-700">Production mode</span>
+      </button>
+    <% else %>
+      <%= link_to "CocoScout", my_dashboard_path, class: "text-center coustard-regular text-lg text-pink-600" %>
+    <% end %>
+    <div class="flex justify-end">
+      <%= render "shared/navigation/universal_icon", kind: :messages, size: :bar, **icons[:messages] %>
+      <%= render "shared/navigation/universal_icon", kind: :notifications, size: :bar, **icons[:notifications] %>
     </div>
-    <div class="w-6"></div>
   </div>
 
-  <%# ===== FULL-SCREEN PANEL ===== %>
-  <%# Pinned dashboard switcher (top) and user info (bottom); the nav grid in
-      between scrolls when it's too long. %>
-  <div data-mobile-nav-target="panel" class="app-top-chrome hidden fixed inset-0 top-[45px] bg-white z-40 flex flex-col">
-
-    <%# No impersonation banner here — shared/_impersonation_bar sits above the
-        whole nav now, so it's visible without opening this panel. %>
-
-    <%# ===== DASHBOARD SWITCHER (pinned) ===== %>
-    <div class="shrink-0 px-4 pt-4 pb-3">
-      <button type="button" data-action="mobile-nav#showDashboardPopup" class="w-full flex items-center justify-between hover:bg-gray-50 rounded-lg transition cursor-pointer">
-        <div class="min-w-0 flex-1 text-left">
-          <div class="text-base font-bold text-gray-900 truncate"><%= dashboard_label %></div>
-          <div class="text-xs text-gray-500 truncate"><%= dashboard_desc %></div>
+  <%# ===== MENU SHEET ===== %>
+  <div data-mobile-nav-target="panel" class="app-top-chrome hidden fixed inset-0 top-[53px] bg-[#f9f9f7] z-40 flex flex-col">
+    <div class="flex-1 overflow-y-auto px-4 pt-3.5 pb-4 flex flex-col gap-3">
+      <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden flex-shrink-0">
+        <div class="flex items-center gap-3 px-3.5 py-3">
+          <% headshot = Current.user.person&.safe_headshot_variant(:thumb) %>
+          <% if headshot %>
+            <%= image_tag headshot, alt: "", class: "w-11 h-11 rounded-lg object-cover flex-shrink-0" %>
+          <% else %>
+            <span class="w-11 h-11 rounded-lg bg-pink-100 text-pink-700 font-bold text-sm flex items-center justify-center flex-shrink-0"><%= Current.user.person&.initials || Current.user.email_address[0].upcase %></span>
+          <% end %>
+          <span class="min-w-0 flex flex-col">
+            <span class="text-[15px] font-bold text-gray-900 truncate"><%= Current.user.person&.name || "My Account" %></span>
+            <span class="text-[13px] text-gray-500 truncate"><%= Current.user.email_address %></span>
+          </span>
         </div>
-        <div class="p-2">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
-          </svg>
+        <% links = [ [ "Profile", profile_path ], [ "Settings", account_path ] ] %>
+        <% links << [ "Superadmin", superadmin_path ] if Current.user.superadmin? %>
+        <% links << [ "Sign out", signout_path ] %>
+        <div class="grid border-t border-gray-100" style="grid-template-columns: repeat(<%= links.size %>, minmax(0, 1fr))">
+          <% links.each_with_index do |(text, path), i| %>
+            <%= link_to text, path, class: "min-h-[44px] flex items-center justify-center text-sm font-semibold text-gray-800 hover:bg-gray-50 #{'border-l border-gray-100' if i.positive?}",
+                  data: (path == signout_path ? { turbo_prefetch: false } : {}) %>
+          <% end %>
         </div>
-      </button>
-    </div>
+      </div>
 
-    <%# ===== NAV GRID (scrolls) ===== %>
-    <div class="flex-1 overflow-y-auto px-4 py-4 border-t border-gray-200">
-      <% dashboard_nav_sections(context).each do |section| %>
+      <% if production_mode %>
+        <button type="button" data-action="mobile-nav#showOrgPopup" class="flex items-center justify-between gap-2.5 min-h-[48px] px-3.5 bg-pink-50 border border-pink-200 rounded-2xl text-left cursor-pointer flex-shrink-0">
+          <span class="flex items-center gap-2.5 min-w-0">
+            <%= render "shared/navigation/organization_monogram", organization: Current.organization, size: 28 %>
+            <span class="text-[15px] font-bold text-gray-900 truncate"><%= Current.organization.name %></span>
+            <svg class="w-3.5 h-3.5 text-pink-700 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+          <span class="text-[10px] font-bold uppercase tracking-[0.08em] text-pink-700 flex-shrink-0">Production mode</span>
+        </button>
+      <% end %>
+
+      <% panel_nav_sections(context).each do |section| %>
         <% if section[:label].present? %>
-          <div class="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400"><%= section[:label] %></div>
+          <div class="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-500"><%= section[:label] %></div>
         <% end %>
         <div class="grid grid-cols-3 gap-2.5">
           <% section[:items].each do |item| %>
@@ -54,34 +84,23 @@
           <% end %>
         </div>
       <% end %>
-      <%# The "Work the door" bar under the talent menu, as in the app (door_bar_item). %>
-      <% if context == :talent && (door_bar = door_bar_item(Current.user)) %>
+
+      <div class="flex-1"></div>
+      <% if context.to_sym == :talent && (door_bar = door_bar_item(Current.user)) %>
         <%= render "shared/navigation/door_bar", item: door_bar, size: :mobile %>
       <% end %>
+      <% if switch %>
+        <%= render "shared/navigation/mode_switch", switch: switch, size: :bar %>
+      <% elsif context.to_sym == :talent %>
+        <%= link_to manage_producer_setup_path, class: "flex items-center gap-2.5 min-h-[48px] px-3.5 text-sm text-gray-600" do %>
+          <svg class="w-[18px] h-[18px] text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18"/></svg>
+          <span><strong class="text-gray-700">Start producing</strong> · run your own shows on CocoScout</span>
+        <% end %>
+      <% end %>
     </div>
-
-    <%# ===== FOOTER (pinned) ===== %>
-    <div class="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-3">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3 min-w-0 flex-1">
-          <% user_headshot_variant = Current.user.person&.safe_headshot_variant(:thumb) %>
-          <% if user_headshot_variant %>
-            <%= image_tag user_headshot_variant, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-          <% else %>
-            <div class="w-10 h-10 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
-              <%= Current.user.person&.initials || Current.user.email_address[0].upcase %>
-            </div>
-          <% end %>
-          <div class="min-w-0">
-            <div class="text-sm font-bold text-gray-900 truncate"><%= Current.user.person&.name || "My Account" %></div>
-            <div class="text-xs text-gray-500 truncate"><%= Current.user.email_address %></div>
-          </div>
-        </div>
-        <%= render "shared/button", text: "Menu", variant: "secondary", size: "small", type: :button, data: { action: "mobile-nav#showUserPopup" }, icon: "ellipsis-horizontal" %>
-      </div>
-    </div>
-
-    <%= render "shared/navigation/mobile_dashboard_popup", current_dashboard: current_dashboard %>
-    <%= render "shared/navigation/mobile_account_popup" %>
   </div>
+
+  <% if production_mode %>
+    <%= render "shared/navigation/organization_sheet" %>
+  <% end %>
 </div>
