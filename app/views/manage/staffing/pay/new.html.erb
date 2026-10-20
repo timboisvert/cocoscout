@@ -312,8 +312,19 @@
 
       <p class="text-xs text-gray-500 mt-2">Only staff with a connected bank are paid — anyone else you add here is recorded on the run as owed, and gets paid once they connect a bank. Paying staff is unlimited and included in the $5/month per active staff member. Cash tips are saved to this payout run's record for your files, but not sent through us.</p>
 
-      <div class="flex items-center justify-end gap-3 mt-4">
+      <div class="hidden lg:flex items-center justify-end gap-3 mt-4">
         <%= link_to "Cancel", manage_staffing_index_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+        <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "medium", type: :submit %>
+      </div>
+
+      <%# Phone and tablet (V1.1 plan §4): the running total and the one
+          button pinned to the bottom, clear of the Coco button in the app. %>
+      <div class="lg:hidden h-24" aria-hidden="true"></div>
+      <div class="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-pay-phone-bar>
+        <div class="flex-1 min-w-0">
+          <div class="text-xs text-gray-500"><span data-pay-run-target="count">0</span> people</div>
+          <div class="text-lg font-semibold text-gray-900 tabular-nums leading-tight" data-pay-run-target="grandTotal">$0.00</div>
+        </div>
         <%= render "shared/button", text: "Add to payout run", variant: "primary", size: "medium", type: :submit %>
       </div>
 
@@ -321,8 +332,8 @@
           included in this pay — e.g. a shift approved after hours were added). %>
       <div data-pay-confirm-target="missingModal" class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm overflow-y-auto"
            data-action="click->pay-confirm#backdropClose">
-        <div class="flex min-h-full items-start justify-center p-4 py-12">
-          <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->pay-confirm#stopPropagation">
+        <div class="flex min-h-full items-start justify-center p-4 py-12 max-sm:items-end max-sm:p-0">
+          <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl max-sm:max-w-none max-sm:rounded-b-none max-sm:pb-[env(safe-area-inset-bottom)]" data-pay-sheet data-action="click->pay-confirm#stopPropagation">
             <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
               <h3 class="text-lg font-semibold text-white">Approved hours not included</h3>
               <button type="button" data-action="click->pay-confirm#closeAll" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
@@ -344,8 +355,8 @@
       <%# ===== Pay summary + acknowledge (the last stop before submitting). %>
       <div data-pay-confirm-target="summaryModal" class="hidden fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm overflow-y-auto"
            data-action="click->pay-confirm#backdropClose">
-        <div class="flex min-h-full items-start justify-center p-4 py-12">
-          <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl" data-action="click->pay-confirm#stopPropagation">
+        <div class="flex min-h-full items-start justify-center p-4 py-12 max-sm:items-end max-sm:p-0">
+          <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl max-sm:max-w-none max-sm:rounded-b-none max-sm:pb-[env(safe-area-inset-bottom)]" data-pay-sheet data-action="click->pay-confirm#stopPropagation">
             <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
               <h3 class="text-lg font-semibold text-white">Review this pay</h3>
               <button type="button" data-action="click->pay-confirm#closeAll" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
@@ -386,8 +397,8 @@
   <%# ---- Tips / cash-tips day-by-day modal (shared) ---- %>
   <div data-tips-worksheet-target="modal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
        data-action="click->tips-worksheet#backdropClose keydown.esc@window->tips-worksheet#close">
-    <div class="flex min-h-full items-start justify-center p-4 py-12">
-      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl" data-action="click->tips-worksheet#stopPropagation">
+    <div class="flex min-h-full items-start justify-center p-4 py-12 max-sm:items-end max-sm:p-0">
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl max-sm:max-w-none max-sm:rounded-b-none max-sm:pb-[env(safe-area-inset-bottom)]" data-pay-sheet data-action="click->tips-worksheet#stopPropagation">
         <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
           <h3 class="text-lg font-semibold text-white" data-tips-worksheet-target="title">Tips</h3>
           <button type="button" class="text-white/70 hover:text-white cursor-pointer" data-action="click->tips-worksheet#close">

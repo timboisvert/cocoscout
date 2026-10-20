@@ -36,8 +36,9 @@ export default class extends Controller {
                 else { owed += total; owedPeople += 1 }
             }
         })
-        if (this.hasGrandTotalTarget) this.grandTotalTarget.textContent = this.fmt(grand)
-        if (this.hasCountTarget) this.countTarget.textContent = paying
+        // The table foot and the phone bar both show these.
+        this.grandTotalTargets.forEach(el => { el.textContent = this.fmt(grand) })
+        this.countTargets.forEach(el => { el.textContent = paying })
         if (this.hasOwedNoteTarget) {
             this.owedNoteTarget.classList.toggle("hidden", owedPeople === 0)
             if (this.hasOwedTotalTarget) this.owedTotalTarget.textContent = this.fmt(owed)
