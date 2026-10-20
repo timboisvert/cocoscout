@@ -58,6 +58,22 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("In this show: Magic (Act 1)")
     end
+
+    it "keeps them pickable in the phone's assign sheet, and pins the count and Notify to the bottom (V1.1 plan §4, §6)" do
+      create(:talent_pool_membership, talent_pool: production.talent_pool, member: performer)
+      magic_copies = show.custom_roles.where(name: "Magic").order(:position)
+      create(:show_person_role_assignment, show: show, role: magic_copies.first, assignable: performer)
+
+      get manage_casting_show_cast_path(production, show)
+      doc = Nokogiri::HTML(response.body)
+      pick = doc.at_css(%([data-action="click->drop-role#assignFromModal"][data-assignable-id="#{performer.id}"]))
+      expect(pick["disabled"]).to be_nil
+      expect(pick.text).to include("Already in this show")
+      bar = doc.at_css("[data-casting-phone-bar]")
+      expect(bar["class"]).to include("md:hidden", "fixed", "bottom-0")
+      expect(bar.at_css("#progress-fraction").text).to match(%r{\A1/\d+ \w+ cast\z})
+      expect(doc.at_css('[data-action="click->drop-role#openReplaceSheet"]')).to be_present
+    end
   end
 
   describe "assign role resolution (only this show's lineup is castable)" do

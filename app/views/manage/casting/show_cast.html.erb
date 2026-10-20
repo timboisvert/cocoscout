@@ -42,6 +42,7 @@
          data-drop-role-unit-value="<%= unit %>"
          data-drop-role-progress-unit-value="<%= progress_unit_plural %>"
          data-drop-role-click-to-add-value="<%= show_click_to_add %>"
+         data-drop-role-act-based-value="<%= @show.act_based? %>"
          <% if @show.act_based? %>
          data-running-order-reorder-url-value="<%= manage_casting_show_running_order_reorder_path(@production, @show) %>"
          data-running-order-acts-url-value="<%= manage_casting_show_running_order_acts_path(@production, @show) %>"
@@ -110,6 +111,17 @@
                 removed_email_draft: @removed_email_draft %>
           </div>
         </div>
+      </div>
+
+      <%# On a phone (V1.1 plan §4): the cast count and Notify pinned to the
+          bottom, so they're never a scroll away. Notify opens the same modal
+          as the button above (drop-role#notifyFromBar). %>
+      <div class="md:hidden h-20" aria-hidden="true"></div>
+      <div class="md:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-casting-phone-bar>
+        <span id="progress-fraction" class="flex-1 text-sm font-semibold <%= fully_cast ? 'text-green-600' : 'text-pink-600' %>"><%= filled_slots %>/<%= total_slots %> <%= progress_unit_plural %> cast</span>
+        <span data-drop-role-target="phoneNotify" class="<%= 'hidden' if filled_slots.zero? %>">
+          <%= render "shared/button", text: "Notify", variant: "primary", size: "medium", type: :button, data: { action: "click->drop-role#notifyFromBar" } %>
+        </span>
       </div>
     <% elsif @show.use_custom_roles? && @roles.empty? %>
       <%# Show warning when custom roles is enabled but no roles are defined %>
@@ -481,8 +493,11 @@
                 is_assigned = (@assigned_member_keys || Set.new).include?(member_key)
                 is_person = member.is_a?(Person)
               %>
+              <%# An act-based night casts one performer in several acts, so someone
+                  already in the show stays pickable there (V1.1 plan §6). %>
+              <% locked = is_assigned && !@show.act_based? %>
               <button type="button"
-                class="w-full flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer <%= is_assigned ? 'opacity-50 bg-gray-50' : 'hover:bg-pink-50 active:bg-pink-100' %>"
+                class="w-full flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer <%= locked ? 'opacity-50 bg-gray-50' : 'hover:bg-pink-50 active:bg-pink-100' %>"
                 data-action="click->drop-role#assignFromModal"
                 data-assignable-type="<%= is_person ? 'Person' : 'Group' %>"
                 data-assignable-id="<%= member.id %>"
@@ -492,7 +507,7 @@
                 data-is-partially-available="<%= is_partially_available ? 'true' : 'false' %>"
                 data-availability-status="<%= member_availability&.status || 'unset' %>"
                 data-member-name="<%= member.name %>"
-                <%= 'disabled' if is_assigned %>>
+                <%= 'disabled' if locked %>>
                 <% headshot_variant = member.safe_headshot_variant(:thumb) %>
                 <% if headshot_variant %>
                   <%= image_tag headshot_variant, alt: member.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
@@ -505,7 +520,7 @@
                   <div class="font-medium text-sm text-gray-900 truncate"><%= member.name %></div>
                   <div class="text-xs text-gray-500">
                     <% if is_assigned %>
-                      Already assigned
+                      <%= @show.act_based? ? "Already in this show" : "Already assigned" %>
                     <% elsif is_fully_available %>
                       <span class="text-green-600">Available for all events</span>
                     <% elsif is_partially_available %>

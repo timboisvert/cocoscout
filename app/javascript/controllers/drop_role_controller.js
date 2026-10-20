@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = [
-        "role", "person", "show", "assignment", "assignModal", "rolesContainer",
+        "role", "person", "show", "assignment", "assignModal", "rolesContainer", "phoneNotify",
         // Add Person modal targets
         "addPersonModal", "addPersonRoleName", "addPersonRoleId", "addPersonSlotPosition",
         "addPersonSearchTab", "addPersonGuestTab",
@@ -22,7 +22,7 @@ export default class extends Controller {
         // Scheduling-conflict modal targets
         "conflictModal", "conflictMemberName", "conflictList"
     ];
-    static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean, unit: String, progressUnit: String };
+    static values = { showId: String, productionId: String, castingSource: String, clickToAdd: Boolean, unit: String, progressUnit: String, actBased: Boolean };
 
     // The word the board uses for the thing being cast: "role" (default) or
     // "act" in an act-based production. Only user-visible strings read this;
@@ -141,6 +141,46 @@ export default class extends Controller {
             document.body.classList.remove('overflow-hidden');
         }
         this.currentAssignRoleId = null;
+        this.currentReplaceAssignmentId = null;
+    }
+
+    // Phone: pick someone else for a filled slot, in the same assign sheet
+    // (the board's replace flow; V1.1 plan §4).
+    openReplaceSheet(event) {
+        const button = event.currentTarget;
+        this.openAssignModal(event);
+        this.currentReplaceAssignmentId = button.dataset.assignmentId;
+        const titleEl = this.assignModalTarget.querySelector('[data-modal-title]');
+        if (titleEl) titleEl.textContent = `Replace in ${button.dataset.roleName}`;
+    }
+
+    // Phone: the bottom bar's Notify opens the same modal as the board's own
+    // button (whatever state it's in: Finalize & Notify, or Contact Cast).
+    notifyFromBar(event) {
+        event.preventDefault();
+        const trigger = document.querySelector('#notify-section-wrapper button');
+        if (trigger) trigger.click();
+    }
+
+    // The bar's Notify only while the board has a button to open.
+    syncPhoneNotify() {
+        if (!this.hasPhoneNotifyTarget) return;
+        const trigger = document.querySelector('#notify-section-wrapper button');
+        this.phoneNotifyTarget.classList.toggle('hidden', !trigger);
+    }
+
+    // After an assign from the phone sheet, the person reads as cast there
+    // straight away (it used to stay stale until a reload). On an act-based
+    // night they stay pickable: one performer, several acts.
+    markAssignedInSheet(button) {
+        if (!button) return;
+        const actBased = this.actBasedValue;
+        const status = button.querySelector('.text-xs');
+        if (status) status.textContent = actBased ? "Already in this show" : "Already assigned";
+        if (!actBased) {
+            button.disabled = true;
+            button.classList.add('opacity-50', 'bg-gray-50');
+        }
     }
 
     // Open the add guest modal
@@ -963,6 +1003,26 @@ export default class extends Controller {
         const roleId = this.currentAssignRoleId;
 
         if (!roleId) return;
+        const replaceAssignmentId = this.currentReplaceAssignmentId;
+
+        // A restricted role: the same warning the desktop shows, instead of a
+        // refusal the sheet used to swallow (V1.1 plan §6).
+        const roleElement = document.querySelector(`[data-role-id="${roleId}"][data-role-restricted="true"]`);
+        if (roleElement && !this.isEligibleForRole(roleElement, assignableType, assignableId)) {
+            this.closeAssignModal();
+            this.showRestrictedWarningModal(roleElement, assignableType, assignableId, null);
+            if (this.hasRestrictedWarningPersonNameTarget && button.dataset.memberName) {
+                this.restrictedWarningPersonNameTarget.textContent = button.dataset.memberName;
+            }
+            return;
+        }
+
+        // Replacing a filled slot (phone): the board's replace flow.
+        if (replaceAssignmentId) {
+            this.closeAssignModal();
+            this.replaceAssignment(replaceAssignmentId, assignableType, assignableId, roleId, null);
+            return;
+        }
 
         const requestBody = { role_id: roleId };
         if (assignableType === "Person") {
@@ -986,6 +1046,11 @@ export default class extends Controller {
             .then(r => r.json())
             .then(data => {
                 if (this.guardConflict(data, assignUrl, requestBody)) return;
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                this.markAssignedInSheet(button);
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
@@ -1683,6 +1748,7 @@ export default class extends Controller {
             // checklist, and the finalize option stay in sync after cast changes.
             wrapper.innerHTML = notifyModalHtml;
         }
+        this.syncPhoneNotify();
     }
 
     // Update the linkage sync section with fresh HTML from the server

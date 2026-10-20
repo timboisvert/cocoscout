@@ -364,6 +364,15 @@
                             Can't Make It
                           </button>
                         <% else %>
+                          <%# Phone: pick someone else for this slot in the assign sheet (V1.1 plan §4). %>
+                          <span class="md:hidden">
+                            <button type="button"
+                              class="text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-md px-2 py-1 cursor-pointer"
+                              data-action="click->drop-role#openReplaceSheet"
+                              data-assignment-id="<%= assignment.id %>"
+                              data-role-id="<%= role.id %>"
+                              data-role-name="<%= role_label %>">Replace</button>
+                          </span>
                           <button type="button"
                             class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
                             data-action="click->drop-role#removeAssignment"
@@ -587,6 +596,15 @@
                             Can't Make It
                           </button>
                         <% else %>
+                          <%# Phone: pick someone else for this slot in the assign sheet (V1.1 plan §4). %>
+                          <span class="md:hidden">
+                            <button type="button"
+                              class="text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-md px-2 py-1 cursor-pointer"
+                              data-action="click->drop-role#openReplaceSheet"
+                              data-assignment-id="<%= assignment.id %>"
+                              data-role-id="<%= role.id %>"
+                              data-role-name="<%= role_label %>">Replace</button>
+                          </span>
                           <button type="button"
                             class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
                             data-action="click->drop-role#removeAssignment"
