@@ -188,6 +188,17 @@
             <%= render "shared/button", text: "Close Registration", variant: "secondary", size: "small", type: :submit %>
           <% end %>
         <% end %>
+        <%# Mark completed and Reopen were desktop-only (V1.1 plan §6). %>
+        <% if !can_manage %>
+        <% elsif @course_offering.closed? %>
+          <%= form_with url: manage_complete_course_offering_path(@course_offering), method: :post do %>
+            <%= render "shared/button", text: "Mark completed", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        <% elsif @course_offering.completed? %>
+          <%= form_with url: manage_reopen_course_offering_path(@course_offering), method: :post do %>
+            <%= render "shared/button", text: "Reopen", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        <% end %>
       </div>
     </div>
 

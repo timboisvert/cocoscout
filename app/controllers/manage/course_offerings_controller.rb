@@ -473,9 +473,18 @@ module Manage
     def attendance
       @students = students
       @sessions = @course_offering.sessions.to_a
+      # A phone takes one session at a time (V1.1 plan §4): the one asked for,
+      # else today's, else the next, else the last.
+      today = Time.zone.today
+      @session = @sessions.find { |s| s.id.to_s == params[:session_id].to_s } ||
+                 @sessions.find { |s| s.date_and_time.to_date == today } ||
+                 @sessions.find { |s| s.date_and_time.to_date > today } ||
+                 @sessions.last
     end
 
     def save_attendance
+      return save_one_session_attendance if params[:session_id].present?
+
       session_ids = @course_offering.sessions.pluck(:id)
       raw = params.fetch(:attended, {}).permit!.to_h
       students.each do |registration|
@@ -485,6 +494,20 @@ module Manage
         registration.update_columns(attended_show_ids: came)
       end
       redirect_to manage_course_offering_attendance_path(@course_offering), notice: "Attendance saved."
+    end
+
+    # One session's checklist from a phone: who was there marks that session
+    # on each student and leaves their other sessions alone (the full grid
+    # replaces every student's whole list).
+    def save_one_session_attendance
+      session = @course_offering.sessions.find(params[:session_id])
+      present = Array(params[:present]).map(&:to_i)
+      students.each do |registration|
+        came = registration.attended_show_ids.to_a
+        came = present.include?(registration.id) ? (came | [ session.id ]) : (came - [ session.id ])
+        registration.update_columns(attended_show_ids: came) unless came.sort == registration.attended_show_ids.to_a.sort
+      end
+      redirect_to manage_course_offering_attendance_path(@course_offering, session_id: session.id), notice: "Attendance saved."
     end
 
     def resend_confirmation

@@ -11,6 +11,46 @@
   <% if @students.empty? || @sessions.empty? %>
     <p class="text-sm text-gray-600"><%= @students.empty? ? "Nobody is registered yet." : "This course has no sessions yet." %></p>
   <% else %>
+    <%# On a phone, one session at a time (V1.1 plan §4): pick it, tap who's
+        there, the count keeps up, Save stays pinned. %>
+    <div class="sm:hidden" data-course-session-checklist>
+      <div class="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+        <% @sessions.each do |session| %>
+          <%= link_to manage_course_offering_attendance_path(@course_offering, session_id: session.id),
+                class: "flex-shrink-0 rounded-full px-3 py-1.5 text-sm font-medium border #{session == @session ? 'bg-pink-500 border-pink-500 text-white' : 'bg-white border-gray-300 text-gray-700'}",
+                aria: { current: (session == @session ? "true" : nil) } do %>
+            <%= session.date_and_time.strftime("%a %b %-d") %><% if session.canceled %> · canceled<% end %>
+          <% end %>
+        <% end %>
+      </div>
+      <%= form_with url: manage_course_offering_attendance_path(@course_offering), method: :patch, data: { controller: "checklist-count" } do %>
+        <%= hidden_field_tag :session_id, @session.id %>
+        <div class="flex items-baseline justify-between mt-2 mb-2">
+          <h2 class="text-sm font-semibold text-gray-900"><%= @session.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></h2>
+          <span class="text-sm text-gray-600"><span data-checklist-count-target="count"><%= @students.count { |r| r.attended_show_ids.include?(@session.id) } %></span> of <%= @students.size %> here</span>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+          <% @students.each do |registration| %>
+            <label class="flex items-center gap-3 min-h-[56px] px-4 cursor-pointer has-[:checked]:bg-pink-50">
+              <%= check_box_tag "present[]", registration.id, registration.attended_show_ids.include?(@session.id), id: "present_#{registration.id}",
+                    class: "h-6 w-6 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500 flex-shrink-0",
+                    data: { action: "change->checklist-count#update", checklist_count_target: "box" } %>
+              <span class="min-w-0">
+                <span class="block text-[15px] font-medium text-gray-900 truncate"><%= registration.person.name %></span>
+                <span class="block text-xs text-gray-500 truncate"><%= registration.person.email %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+        <% if current_user_can_manage?(@production) %>
+          <%= render layout: "shared/sticky_actions" do %>
+            <%= render "shared/button", text: "Save attendance", variant: "primary", size: "medium", type: :submit %>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <div class="hidden sm:block">
     <%= form_with url: manage_course_offering_attendance_path(@course_offering), method: :patch do %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-x-auto">
         <table class="w-full text-sm">
@@ -55,5 +95,6 @@
         <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: manage_course_offering_path(@course_offering) %>
       </div>
     <% end %>
+    </div>
   <% end %>
 </div>
