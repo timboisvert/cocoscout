@@ -118,11 +118,14 @@
     </div>
   </div>
 
+  <%# On a phone the two columns become one list, in the order a phone needs
+      (V1.1 plan §4): signing, money, what to do next, payments, bookings,
+      documents, then the details and terms. %>
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <%# Main content %>
-    <div class="lg:col-span-2 space-y-6">
+    <div class="lg:col-span-2 space-y-6 max-lg:space-y-0 max-lg:contents">
       <%# Contractor Info %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div class="max-lg:order-8 border border-gray-200 rounded-lg overflow-hidden bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contractor Information" %>
         <div class="p-4">
           <dl class="grid grid-cols-2 gap-4">
@@ -183,10 +186,10 @@
       </div>
 
       <%# The deal as written — direction, pricing, ticketing, services %>
-      <%= render "contract_terms", contract: @contract %>
+      <div class="max-lg:order-9"><%= render "contract_terms", contract: @contract %></div>
 
       <%# Bookings %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div class="max-lg:order-5 border border-gray-200 rounded-lg overflow-hidden bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Space Bookings" %>
         <div class="p-4">
           <% if @rentals.any? %>
@@ -204,7 +207,7 @@
       <%# Payments. No overflow-hidden here: the rows' kebab menus are
           absolutely positioned and would be clipped at the card edge — the
           header rounds its own top corners instead. %>
-      <div class="border border-gray-200 rounded-lg bg-white">
+      <div class="max-lg:order-4 border border-gray-200 rounded-lg bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Payments" %>
         <div class="p-4">
           <% if @payments.any? %>
@@ -224,7 +227,7 @@
       <%# Course Offering Payouts - show if contract has course offerings with payouts %>
       <% course_payouts = @contract.course_offerings.includes(:course_offering_payout).filter_map(&:course_offering_payout) %>
       <% if course_payouts.any? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <div class="max-lg:order-6 border border-gray-200 rounded-lg overflow-hidden bg-white">
           <%= render "shared/section_heading", padding: "px-4 py-3", title: "Course Payouts" %>
           <div class="p-4 space-y-2">
             <% course_payouts.each do |payout| %>
@@ -260,7 +263,7 @@
 
       <%# Associated Productions %>
       <% if @productions.any? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <div class="max-lg:order-10 border border-gray-200 rounded-lg overflow-hidden bg-white">
           <%= render "shared/section_heading", padding: "px-4 py-3", title: "Associated Productions" %>
           <div class="p-4 space-y-2">
             <% @productions.each do |production| %>
@@ -290,16 +293,16 @@
     </div>
 
     <%# Sidebar %>
-    <div class="space-y-6">
+    <div class="space-y-6 max-lg:space-y-0 max-lg:contents">
       <%# E-signature status (only for contracts set up for native signing) %>
       <% if @contract.signing_mode_esign? %>
-        <%= render "signature_panel" %>
+        <div class="max-lg:order-1"><%= render "signature_panel" %></div>
       <% end %>
 
       <%# Financial Summary — the gross picture first (what the deal made vs
           cost us, ticket revenue included), then plain payment cash-flow. %>
       <% money ||= @contract.money_display %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div class="max-lg:order-2 border border-gray-200 rounded-lg overflow-hidden bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Financial Summary" %>
         <div class="p-4">
           <dl class="space-y-3">
@@ -335,7 +338,7 @@
       </div>
 
       <%# Documents %>
-      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-controller="modal">
+      <div class="max-lg:order-7 border border-gray-200 rounded-lg overflow-hidden bg-white" data-controller="modal">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Documents" do %>
           <%= render "shared/button", text: "Upload", variant: "secondary", size: "small", icon: "plus", type: :button,
                 data: { action: "click->modal#open", modal_id: "document-upload-modal" } %>
@@ -395,13 +398,14 @@
         <div id="document-upload-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
           <div class="flex min-h-full items-center justify-center p-4">
             <div class="fixed inset-0 bg-gray-500/75 transition-opacity" data-action="click->modal#close"></div>
-            <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Upload Document</h3>
-                <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-500">
+            <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+              <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600">
+                <h3 class="text-lg font-semibold text-white">Upload Document</h3>
+                <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white" aria-label="Close">
                   <%= icon("x", class: "w-5 h-5") %>
                 </button>
               </div>
+              <div class="p-6">
 
               <%= form_with model: [@contract, ContractDocument.new], url: manage_contract_contract_documents_path(@contract), multipart: true, data: { controller: "file-upload" } do |f| %>
                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-400 transition-colors mb-4">
@@ -430,6 +434,7 @@
                   <%= render "shared/button", text: "Upload", variant: "primary", size: "medium", type: :submit %>
                 </div>
               <% end %>
+              </div>
             </div>
           </div>
         </div>
@@ -437,7 +442,7 @@
 
       <%# Notes %>
       <% if @contract.notes.present? || @contract.terms.present? %>
-        <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <div class="max-lg:order-11 border border-gray-200 rounded-lg overflow-hidden bg-white">
           <%= render "shared/section_heading", padding: "px-4 py-3", title: "Notes & Terms" %>
           <div class="p-4">
             <% if @contract.notes.present? %>
@@ -456,6 +461,7 @@
         </div>
       <% end %>
 
+      <div class="max-lg:order-3 space-y-6">
       <%# Actions %>
       <% if @contract.status_active? %>
         <%= render "manage/contracts/version_history" %>
@@ -515,6 +521,7 @@
           </div>
         </div>
       <% end %>
+      </div>
     </div>
   </div>
 
@@ -523,9 +530,9 @@
     <div id="reopen-contract-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="fixed inset-0 bg-black/40" data-action="click->modal#close"></div>
       <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-900">Reopen this contract?</h3>
-          <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600">
+        <div class="px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-white">Reopen this contract?</h3>
+          <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white" aria-label="Close">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>

@@ -235,4 +235,16 @@ RSpec.describe "Contract people", type: :request do
     get my_show_path(show)
     expect(response).to redirect_to(my_shows_path)
   end
+
+  it "orders a contract for a phone: money and what to do next before payments, details and terms last (V1.1 plan §4)" do
+    sign_in(owner)
+    get manage_contract_path(contract)
+    doc = Nokogiri::HTML(response.body)
+    order_of = ->(title) { doc.css("h2, h3").find { |h| h.text.squish == title }&.ancestors("div")&.find { |d| d["class"].to_s.match?(/max-lg:order-\d+/) }&.[]("class")&.[](/max-lg:order-(\d+)/, 1).to_i }
+    expect(order_of.("Financial Summary")).to be < order_of.("Payments")
+    expect(order_of.("Payments")).to be < order_of.("Space Bookings")
+    expect(order_of.("Space Bookings")).to be < order_of.("Documents")
+    expect(order_of.("Documents")).to be < order_of.("Contractor Information")
+    expect(doc.css(".max-lg\\:contents").size).to eq(2)
+  end
 end
