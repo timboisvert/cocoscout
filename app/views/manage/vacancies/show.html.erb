@@ -452,6 +452,9 @@
                           <% elsif is_already_invited %>
                             <span class="text-gray-400">(Already invited)</span>
                           <% end %>
+                          <% unless is_unavailable %>
+                            <%= render "manage/vacancies/availability_tag", status: @availability_by_key["#{member.class.name}_#{member.id}"] %>
+                          <% end %>
                         </span>
                       </label>
                     <% end %>
@@ -522,6 +525,9 @@
                               <% elsif is_already_invited %>
                                 <span class="text-gray-400">(Already invited)</span>
                               <% end %>
+                              <% unless is_unavailable %>
+                                <%= render "manage/vacancies/availability_tag", status: @availability_by_key["#{member.class.name}_#{member.id}"] %>
+                              <% end %>
                             </span>
                           </label>
                         <% end %>
@@ -584,6 +590,9 @@
                               <% elsif is_already_invited %>
                                 <span class="text-gray-400">(Already invited)</span>
                               <% end %>
+                              <% unless is_unavailable %>
+                                <%= render "manage/vacancies/availability_tag", status: @availability_by_key["#{member.class.name}_#{member.id}"] %>
+                              <% end %>
                             </span>
                           </label>
                         <% end %>
@@ -620,11 +629,13 @@
               <% end %>
             </div>
 
-            <%= render "shared/button",
-                text: "Send Invitations",
-                variant: "primary",
-                type: :submit,
-                icon: "paper-airplane" %>
+            <%= render layout: "shared/sticky_actions" do %>
+              <%= render "shared/button",
+                  text: "Send Invitations",
+                  variant: "primary",
+                  type: :submit,
+                  icon: "paper-airplane" %>
+            <% end %>
           <% end %>
         <% else %>
           <div class="text-center py-4 text-gray-500">

@@ -44,7 +44,13 @@ module Manage
                                              .where(assignable_type: "Group")
                                              .pluck(:assignable_id)
 
-      # Sort: role-eligible first (for restricted roles), unavailable at bottom, then by name
+      # What each person said about this date: "available", "unavailable", or nothing.
+      @availability_by_key = ShowAvailability.where(show_id: @vacancy.show_id)
+                                             .to_h { |a| [ "#{a.available_entity_type}_#{a.available_entity_id}", a.status.to_s ] }
+
+      # Sort: role-eligible first (for restricted roles), then who said they're
+      # available for the date (V1.1 plan §4), unavailable at bottom, then by name
+      availability_rank = { "available" => 0, "unavailable" => 2 }
       @all_potential_members = all_members.sort_by do |member|
         is_vacated = member.class.name == @vacated_by_type && member.id == @vacated_by_id
         is_already_cast = member.is_a?(Person) ? @already_cast_person_ids.include?(member.id) : @already_cast_group_ids.include?(member.id)
@@ -53,6 +59,7 @@ module Manage
         is_role_eligible = @role_eligible_member_keys.include?("#{member.class.name}_#{member.id}")
         [
           is_unavailable ? 2 : (is_role_eligible ? 0 : 1),  # eligible first, then others, unavailable last
+          availability_rank.fetch(@availability_by_key["#{member.class.name}_#{member.id}"], 1),
           member.name.downcase
         ]
       end
