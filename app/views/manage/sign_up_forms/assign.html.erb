@@ -82,7 +82,7 @@
                     <% end %>
                   </div>
                   <% return_queue_cid = "confirm-return-queue-multi-#{slot.id}-#{reg.id}" %>
-                  <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
                     <%= render "shared/button",
                         text: "Return to Queue",
                         variant: "ghost",
@@ -153,7 +153,7 @@
                           <% end %>
                         </div>
                         <% return_queue_cid2 = "confirm-return-queue-multi2-#{slot.id}-#{reg.id}" %>
-                        <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
                           <%= render "shared/button",
                               text: "Return to Queue",
                               variant: "ghost",
@@ -214,7 +214,7 @@
                           <% end %>
                         </div>
                         <% return_queue_cid3 = "confirm-return-queue-single-#{slot.id}-#{reg.id}" %>
-                        <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
                           <%= render "shared/button",
                               text: "Return to Queue",
                               variant: "ghost",
@@ -304,7 +304,7 @@
                   </div>
                 </div>
                 <% remove_queue_cid = "confirm-remove-queue-#{registration.id}" %>
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity flex items-center gap-1">
                   <%= render "shared/button",
                       text: "Auto-assign",
                       variant: "primary",

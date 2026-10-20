@@ -68,7 +68,7 @@
           </div>
         </div>
         <% if (@is_owner || @role == "manager") && member != Current.user && member.id != @organization.owner_id %>
-          <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
             <%= render "shared/button",
                 text: "Manage",
                 variant: "primary",
@@ -108,7 +108,7 @@
             <div class="text-sm font-medium text-yellow-600">Pending</div>
             <div class="text-xs text-gray-500">Awaiting response</div>
           </div>
-          <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
             <% revoke_invite_cid = "confirm-revoke-invite-#{invite.id}" %>
             <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: revoke_invite_cid } %>

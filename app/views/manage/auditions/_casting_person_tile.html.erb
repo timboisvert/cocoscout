@@ -30,7 +30,7 @@
   <% end %>
   <span class="text-[10px] text-gray-700 font-medium mt-1 text-center pointer-events-none truncate w-full"><%= assignable.name %></span>
   <button type="button"
-    class="absolute bottom-4 left-0 right-0 z-20 <%= decision_type == 'rejected' ? 'text-red-500 border-red-200 hover:bg-red-100' : 'text-pink-500 border-pink-200 hover:bg-pink-100' %> bg-white rounded-md px-1 py-0.5 text-[10px] font-bold shadow transition-all border md:opacity-0 md:group-hover:opacity-100 cursor-pointer"
+    class="absolute bottom-4 left-0 right-0 z-20 <%= decision_type == 'rejected' ? 'text-red-500 border-red-200 hover:bg-red-100' : 'text-pink-500 border-pink-200 hover:bg-pink-100' %> bg-white rounded-md px-1 py-0.5 text-[10px] font-bold shadow transition-all border pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 cursor-pointer"
     data-action="click->casting-drag#removePerson"
     data-talent-pool-id="<%= talent_pool.id %>"
     data-auditionee-type="<%= assignable.class.name %>"

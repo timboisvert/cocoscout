@@ -48,7 +48,7 @@
                   <%= format_duration(session[:duration_minutes]) %> · <%= session[:is_online] ? "Online" : (location&.name || "No location") %>
                 </p>
               </div>
-              <div class="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <div class="flex items-center gap-2 opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
                 <button type="button"
                         class="text-gray-700 hover:bg-gray-100 inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm"
                         data-action="click->session-wizard#openEditModal"

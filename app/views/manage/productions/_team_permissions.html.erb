@@ -54,7 +54,7 @@
                 <div class="text-[10px] text-gray-400 uppercase tracking-wide">Role</div>
                 <div class="text-sm font-medium text-pink-500"><%= permission.role.capitalize %></div>
               </div>
-              <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="flex items-center gap-2 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
                 <%= render "shared/button",
                     text: "Edit",
                     variant: "primary",
@@ -108,7 +108,7 @@
                 <div class="text-sm font-medium text-yellow-600">Pending</div>
                 <div class="text-xs text-gray-500"><%= invite.invitation_role&.capitalize || "Viewer" %></div>
               </div>
-              <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
                 <% revoke_prod_invite_cid = "confirm-revoke-prod-invite-#{invite.id}" %>
                 <%= render "shared/button", text: "Revoke", variant: "primary", size: "small", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: revoke_prod_invite_cid } %>

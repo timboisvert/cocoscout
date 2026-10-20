@@ -25,7 +25,7 @@
                             <% end %>
                             <span class="font-medium text-xs text-center"><%= auditionable.name.truncate(20, omission: '...') %></span>
                             <button type="button"
-                                class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 opacity-0 group-hover:opacity-100 cursor-pointer"
+                                class="absolute bottom-2 left-2 right-2 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 cursor-pointer"
                                 data-action="click->drag#removeAudition"
                                 data-audition-id="<%= audition.id %>"
                                 data-session-id="<%= audition_session.id %>">

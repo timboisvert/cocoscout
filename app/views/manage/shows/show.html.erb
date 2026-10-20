@@ -320,7 +320,7 @@
                       </div>
                     </div>
                     <%# Always tappable on touch; hover-reveal only on desktop pointers. %>
-                    <div class="flex-shrink-0 block md:hidden md:group-hover:block">
+                    <div class="flex-shrink-0 block pointer-fine:hidden pointer-fine:group-hover:block pointer-fine:group-focus-within:block">
                       <%= render "shared/button", text: "Review", path: manage_casting_vacancy_path(@production, vacancy), variant: "primary", size: "small" %>
                     </div>
                   </div>
