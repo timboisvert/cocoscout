@@ -16,7 +16,7 @@
 %>
 
 <div class="w-full mb-10"
-     data-controller="shift-assign shift-edit shift-split shift-add staffing-finalize"
+     data-controller="shift-assign shift-edit shift-split shift-add staffing-finalize week-agenda"
      data-shift-assign-staff-by-role-value="<%= @staff_by_role_payload.to_json %>"
      data-shift-assign-assign-url-template-value="<%= assign_url_template %>"
      data-shift-assign-shift-times-value="<%= @shift_times_payload.to_json %>"
@@ -180,8 +180,31 @@
                                           method: :post, data: { turbo_method: :post } } ] : [] %>
   <% end %>
 
+  <%# Phone: the week as a strip, one day's shifts under it (V1.1 plan §4).
+      A pink dot is a show; an amber dot is a shift nobody's on yet or a
+      show with a role uncovered. Swipe the day to move along the week. %>
+  <div class="sm:hidden mb-3 grid grid-cols-7 gap-1" data-week-strip>
+    <% days.each do |day| %>
+      <% d_shows = @shows_by_day[day] || [] %>
+      <% d_shifts = @shifts_by_day[day] || [] %>
+      <% empty = d_shows.empty? && d_shifts.empty? %>
+      <% open_slots = d_shifts.count { |sh| sh.needs_assignment? && !sh.fully_staffed? } + d_shows.count { |sh| @uncovered_roles_by_show[sh.id] } %>
+      <button type="button" data-week-agenda-target="day" data-day="<%= day.iso8601 %>" data-open-slots="<%= open_slots %>"
+              data-action="click->week-agenda#pick" <%= "disabled" if empty %>
+              aria-label="<%= day.strftime("%A, %b %-d") %>"
+              class="flex flex-col items-center gap-0.5 rounded-lg py-1.5 min-h-[56px] border <%= empty ? 'border-transparent text-gray-300' : 'border-gray-200 bg-white text-gray-900 cursor-pointer' %>">
+        <span class="text-[10px] font-semibold uppercase"><%= day.strftime("%a") %></span>
+        <span class="text-base font-bold leading-none"><%= day.day %></span>
+        <span class="flex gap-0.5 h-1.5">
+          <% if d_shows.any? %><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span><% end %>
+          <% if open_slots.positive? %><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><% end %>
+        </span>
+      </button>
+    <% end %>
+  </div>
+
   <%# === Day rows === %>
-  <div class="space-y-4">
+  <div class="space-y-4" data-action="touchstart->week-agenda#touchStart touchend->week-agenda#touchEnd">
     <% days.each do |day| %>
       <% day_shows  = @shows_by_day[day] || [] %>
       <% day_shifts = @shifts_by_day[day] || [] %>
@@ -192,7 +215,8 @@
       <div id="day-<%= day.iso8601 %>"
            class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden scroll-mt-4"
            data-controller="day-view"
-           data-day-view-mode-value="cards">
+           data-day-view-mode-value="cards"
+           data-week-agenda-target="row" data-day="<%= day.iso8601 %>">
         <%# Stacks on mobile (date/shows/toggle on top, shifts below); sidebar on desktop. %>
         <div class="flex flex-col sm:flex-row sm:items-stretch">
           <%# Date / shows / view-toggle %>
@@ -212,8 +236,9 @@
               </div>
             <% end %>
 
-            <%# View toggle: cards · gantt-by-role · gantt-by-people. %>
-            <div class="flex items-center gap-1 sm:mt-2 sm:pt-2 sm:border-t sm:border-gray-200">
+            <%# View toggle: cards · gantt-by-role · gantt-by-people. The Gantt
+                charts are a desktop thing; a phone has the cards. %>
+            <div class="hidden sm:flex items-center gap-1 sm:mt-2 sm:pt-2 sm:border-t sm:border-gray-200">
               <button type="button" data-day-view-target="toggle" data-mode="cards"
                       data-action="click->day-view#setMode"
                       title="Cards view"
@@ -555,13 +580,6 @@
                         "day-shows": day_shows_options.to_json
                       } %>
               </div>
-              <%# Mobile scroll affordance — the scroller is hard to spot otherwise. %>
-              <% if role_groups.size > 1 %>
-                <div class="sm:hidden mt-1.5 flex items-center gap-1 text-[11px] text-gray-400">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5 15.75 12l-7.5 7.5"/></svg>
-                  Swipe to see all <%= role_groups.size %> roles
-                </div>
-              <% end %>
               </div>
 
               <%# === Gantt modes (toggled by the day-view controller). === %>
@@ -766,12 +784,30 @@
     <% end %>
   </div>
 
+  <%# Phone: Publish, or Notify updates, pinned to the bottom (V1.1 plan §4),
+      clear of the Coco button in the app. The band above still says why. %>
+  <% if @shifts_by_day.any? && (!@week_finalized || @comms[:update].any?) %>
+    <div class="sm:hidden h-24" aria-hidden="true"></div>
+    <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-scheduling-phone-bar>
+      <% if !@week_finalized %>
+        <span class="text-sm text-gray-600 flex-1 min-w-0 truncate">Draft · <%= pluralize(@comms[:total], "person") %> assigned</span>
+        <%= render "shared/button", text: "Publish & notify", variant: "primary", size: "medium", type: :button,
+              data: { action: "staffing-finalize#open" } %>
+      <% else %>
+        <span class="text-sm text-gray-600 flex-1 min-w-0 truncate"><%= pluralize(@comms[:update].size, "update") %> to send</span>
+        <%= render "shared/button", text: "Notify updates", variant: "primary", size: "medium", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-notify-updates" } %>
+      <% end %>
+    </div>
+  <% end %>
+
   <%# === Assignment modal === %>
   <div data-shift-assign-target="modal"
        class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
        data-action="click->shift-assign#backdropClose keydown.esc@window->shift-assign#close">
-    <div class="flex min-h-full items-start justify-center p-4 py-12">
-      <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl"
+    <div class="flex min-h-full items-start justify-center p-4 py-12 max-sm:items-end max-sm:p-0">
+      <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl max-sm:rounded-b-none max-sm:max-w-none"
+           data-shift-assign-sheet
            data-action="click->shift-assign#stopPropagation">
         <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
           <div>
@@ -802,7 +838,7 @@
                   class="px-3 py-1.5 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">Available the whole shift</button>
         </div>
 
-        <div class="px-5 py-4 max-h-[60vh] overflow-y-auto" data-shift-assign-target="results">
+        <div class="px-5 py-4 max-h-[60vh] max-sm:max-h-[65dvh] max-sm:pb-[calc(env(safe-area-inset-bottom)+16px)] overflow-y-auto" data-shift-assign-target="results">
           <%# populated by JS %>
         </div>
       </div>
