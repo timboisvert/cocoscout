@@ -6,9 +6,7 @@
     [ "Ticketing", manage_ticketing_path ]
   ],
   sections: sections,
-  current: @section,
-  # Every tab uses the content space, like Door (Tim, 2026-10-20).
-  width: "max-w-5xl"
+  current: @section
 } do %>
   <% case @section %>
   <% when "page" %>

@@ -20,8 +20,10 @@
     banner      — optional html_safe content for a bar above the tabs, for a
                   page that changes one thing within something bigger (one
                   date's ticket settings within its production's)
-    width       — optional max-width class for the body (default max-w-2xl);
-                  pass something wider for sections holding tables or lists
+    width       — optional max-width class for the body. The default,
+                  max-w-5xl, is every settings page's width: they all use
+                  the content space (Tim, 2026-10-20). Pass one only for a
+                  page that truly needs another.
     show_single_tab — pass true to show the strip even with one section, for a
                   page that should look tabbed like its sibling settings pages
 %>
@@ -29,7 +31,7 @@
   sections ||= []
   breadcrumbs ||= []
   intro = local_assigns[:intro]
-  width = local_assigns[:width].presence || "max-w-2xl"
+  width = local_assigns[:width].presence || "max-w-5xl"
   show_single_tab = local_assigns[:show_single_tab]
 %>
 

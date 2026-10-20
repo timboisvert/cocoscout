@@ -18,9 +18,7 @@
   breadcrumbs: ticket_listing_breadcrumbs(@listing),
   sections: settings_sections,
   current: @section,
-  banner: banner,
-  # Every tab uses the content space, like the box office's Door tab (Tim, 2026-10-20).
-  width: "max-w-5xl"
+  banner: banner
 } do %>
   <% case @section %>
   <% when "products" %>

@@ -6,8 +6,7 @@
     ["Staffing", manage_staffing_index_path]
   ],
   sections: sections,
-  current: @section,
-  width: "max-w-3xl"
+  current: @section
 } do %>
   <%= render "manage/staffing/settings/sections/#{@section}" %>
 <% end %>
