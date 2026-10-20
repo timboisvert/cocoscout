@@ -15,13 +15,7 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [ ] Show time drift: 55 shows sit 11 to 60 minutes before their booking's event time (list in the 2026-10-19 chat); decide which clock is right per production, then run the fix block.
 - [ ] Impersonate Dan Feltey and Andy Nash and look at what they see (My → Payments, My Contracts, Ticket Sales), after today's email from our payment provider.
 - [ ] Tap to Pay on Android: get ready (see "Tap to Pay on Android" below).
-- [ ] **Tap to Pay on iPhone (V1.2): Apple's publishing approval.** In order:
-  1. [x] Tim: Apple's checklist and guide into `ios/apple_ttp/` (done 10/19).
-  2. [x] Tim: Apple's Marketing Toolkit into `ios/apple_ttp/` (done 10/19).
-  3. [x] Claude: build what Apple requires, on main behind Debug builds and a per-organization switch, and write the shot lists and checklist answers (done 10/19, in `ios/tap_to_pay.md`).
-  4. [x] Tim: deploy main and switch Tap to Pay on iPhone on for Stars & Garters (done 10/19).
-  5. [ ] Tim: screen-record the three videos on the iPhone, in this order: existing user, new user, checkout ("Before filming" and the shot lists in `ios/tap_to_pay.md`).
-  6. [ ] Tim: fill Apple's checklist from the answers in `ios/tap_to_pay.md` and reply to the Oct 12 email (Case-ID 22828656) with the videos, the checklist and the exception request (the reply is drafted there too). Apple's review takes a week or two from then.
+- [x] **Tap to Pay on iPhone (V1.2): sent to Apple 2026-10-19.** The reply to the Oct 12 email (Case-ID 22828656) went with the checklist; the four videos and a follow-up after. Apple's review takes a week or two.
 
 ## Soon
 
@@ -32,6 +26,7 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 
 ## Waiting on
 
+- [ ] Apple's answer on Tap to Pay on iPhone. When it says yes: add the Tap to Pay entitlement back to `ios/CocoScout-Release.entitlements`, drop the `#if DEBUG` around TapToPayComponent's registration in `SceneDelegate.swift`, set the version to 1.2 with a new build number, Tim uploads and submits it, then `TapToPayLaunch.announce!` for Stars & Garters (dry run first).
 - [ ] Apple: App Store Connect → CocoScout → 1.0 status.
 - [ ] Google: Play Console → Publishing overview.
 
