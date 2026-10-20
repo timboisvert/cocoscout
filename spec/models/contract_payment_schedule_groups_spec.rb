@@ -95,4 +95,55 @@ RSpec.describe "Contract#payment_schedule_groups", type: :model do
     expect(groups.find { |g| g[:payment] == earlier }[:deductions]).to be_empty
     expect(groups.find { |g| g[:payment] == host }[:deductions]).to eq([ fee ])
   end
+
+  # Contract 111, 2026-10-20: the Oct 16 share was in a funded run ($342.50 less
+  # two $50 booth techs = $242.50) when an amendment added an Oct 20 rehearsal.
+  # The page showed it netted from the in-flight share ($192.50) — it can't be.
+  context "when the settlement is already in a payout run" do
+    let(:batch) { org.payout_batches.create!(kind: "payout", status: "funding", trigger: "manual", funding_status: "processing", total_cents: 24_250) }
+    let(:payee) { create(:person) }
+    let!(:share) do
+      contract.contract_payments.create!(description: "Oct 16 — 50% to them", amount: 342.50,
+                                         direction: "outgoing", due_date: Date.new(2026, 10, 16))
+    end
+
+    before do
+      item = batch.items.create!(payee: payee, amount_cents: 24_250, status: "pending")
+      PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: payee, source: share,
+                                 amount_cents: 34_250, label: "Share")
+    end
+
+    def deducted(due)
+      contract.contract_payments.create!(description: "Booth Tech — #{due.strftime('%b %-d, %Y')}", amount: 50,
+                                         direction: "incoming", due_date: due, settlement_method: "payout_deduction",
+                                         status: "paid", paid_date: Date.new(2026, 10, 17),
+                                         payment_method: "payout_deduction", reference_number: "payout_run_#{batch.id}")
+    end
+
+    it "keeps a charge added afterwards off the in-flight share, as a payable row of its own" do
+      deducted(Date.new(2026, 8, 26))
+      deducted(Date.new(2026, 10, 16))
+      rehearsal = contract.contract_payments.create!(description: "Rehearsal — Oct 20, 2026", amount: 50,
+                                                     direction: "incoming", due_date: Date.new(2026, 10, 20),
+                                                     settlement_method: "payout_deduction")
+
+      groups = contract.reload.payment_schedule_groups
+      host = groups.find { |g| g[:payment] == share }
+      expect(host[:deduction_total]).to eq(100.0)
+      expect(groups.map { |g| g[:payment] }).to include(rehearsal)
+      expect(rehearsal.reload.deduct_from_payout?).to be(false)
+      expect(rehearsal.collectable_online?).to be(true)
+    end
+
+    it "folds a deducted charge into the run it rode out on, not the next settlement by date" do
+      earlier = contract.contract_payments.create!(description: "Sep 5 — 50% to them", amount: 300,
+                                                   direction: "outgoing", due_date: Date.new(2026, 9, 5),
+                                                   status: "paid", paid_date: Date.new(2026, 9, 7))
+      aug = deducted(Date.new(2026, 8, 26))
+
+      groups = contract.reload.payment_schedule_groups
+      expect(groups.find { |g| g[:payment] == earlier }[:deductions]).to be_empty
+      expect(groups.find { |g| g[:payment] == share }[:deductions]).to eq([ aug ])
+    end
+  end
 end

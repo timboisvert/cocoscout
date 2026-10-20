@@ -981,16 +981,30 @@ class Contract < ApplicationRecord
          (p.status_paid? && p.payment_method == "payout_deduction"))
     end
     settlements = rest.select { |p| p.direction_outgoing? }.sort_by(&:due_date)
-    pending_settlements = settlements.select(&:status_pending?)
+    # A settlement already in a payout run has had its deductions worked out:
+    # the run netted what was due by then and its amount is fixed. A charge
+    # added afterwards (an amendment's new rehearsal) can't ride it.
+    open_settlements = settlements.select { |s| s.status_pending? && !s.in_payout_run? }
+    run_hosts = settlements.each_with_object({}) do |s, h|
+      batch_id = s.payout_contribution&.payout_batch_id
+      h[batch_id] ||= s if batch_id
+    end
 
     attached = Hash.new { |h, k| h[k] = [] }
     orphans = []
     deductible.each do |charge|
-      # A pending charge can only net against a settlement that hasn't happened
-      # yet; an already-deducted one belongs to the settlement it rode out on.
-      # Both match by date: a fee deducts at its own event's settlement.
-      pool = charge.status_paid? ? settlements : pending_settlements
-      host = pool.detect { |s| s.due_date >= charge.due_date } || pool.last
+      host =
+        if charge.status_paid?
+          # It belongs to the settlement it rode out on: the run its reference
+          # names, else (a wash, whose share left the run) by date.
+          batch_id = charge.reference_number.to_s[/\A(?:payout|offset)_run_(\d+)\z/, 1]&.to_i
+          run_hosts[batch_id] || settlements.detect { |s| s.due_date >= charge.due_date } || settlements.last
+        else
+          # Still owed: it nets against the first open settlement due on or
+          # after it (the same cutoff the run applies). None ahead means it
+          # stands alone until a later share or a pay link settles it.
+          open_settlements.detect { |s| s.due_date >= charge.due_date }
+        end
       host ? attached[host.id] << charge : orphans << charge
     end
 
@@ -1963,14 +1977,17 @@ class Contract < ApplicationRecord
   end
 
   # Whether this contract still has money going OUT that an incoming charge
-  # could be netted out of: an outgoing payment that's pending and actually
-  # carries an amount (or is waiting on one). Nothing pending, or a settlement
+  # could be netted out of: an outgoing payment that's pending, not yet in a
+  # payout run, and actually carries an amount (or is waiting on one). Nothing pending, or a settlement
   # that came to nothing, means there is nothing to deduct from (see
   # ContractPayment#deduct_from_payout?). Not memoized — a settlement can flip
   # direction mid-request.
   def outgoing_settlement?
     rows = contract_payments.loaded? ? contract_payments.to_a : contract_payments.direction_outgoing.status_pending.to_a
-    rows.any? { |p| p.direction_outgoing? && p.status_pending? && (p.amount_tbd? || p.amount.to_f.positive?) }
+    # One already in a payout run is spoken for: the run fixed what it nets.
+    rows.any? do |p|
+      p.direction_outgoing? && p.status_pending? && (p.amount_tbd? || p.amount.to_f.positive?) && !p.in_payout_run?
+    end
   end
 
   # Can a service they owe us be netted out of a payout at all? Only when this
