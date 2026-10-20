@@ -1,0 +1,16 @@
+<% content_for :title, "Financials · #{show_display_name(@show)}" %>
+
+<%# The worksheet as a page (V1.1 plan §6: this template was missing, so the
+    payout page's "enter financial data first" and a failed save both
+    raised). Phones land here too. %>
+<div class="w-full mb-10 max-w-2xl">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Financials", manage_money_show_financials_path(@show) ] ],
+    text: "Worksheet",
+    links: []
+  } %>
+  <div class="mt-4">
+    <%= render "manage/show_financials/worksheet_modal", page: true, return_to: params[:return_to] %>
+  </div>
+</div>

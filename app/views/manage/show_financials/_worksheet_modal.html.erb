@@ -1,4 +1,9 @@
-<%# Financial Worksheet Modal - for entering/editing financial data %>
+<%# Financial Worksheet - for entering/editing financial data. A modal on the
+    financials and payout pages; with page: true, the edit page itself
+    (show_financials#edit, which had no template; V1.1 plan §6), which is
+    also what a phone gets. %>
+<% page = local_assigns[:page] ? true : false %>
+<% back = local_assigns[:return_to].presence || manage_money_show_financials_path(@show) %>
 <%
   # Use normalized methods that always return arrays
   other_revenue_items = @show_financials.normalized_other_revenue_details
@@ -12,12 +17,12 @@
 %>
 
 <div id="financialWorksheet"
-     class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 overflow-y-auto"
+     class="<%= page ? '' : 'hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 overflow-y-auto' %>"
      data-controller="financials-form"
-     data-action="click->financials-form#closeWorksheet keydown.esc@window->financials-form#closeWorksheet">
+     <% unless page %>data-action="click->financials-form#closeWorksheet keydown.esc@window->financials-form#closeWorksheet"<% end %>>
 
-  <div class="min-h-screen flex items-start justify-center p-4 pt-12 pb-20">
-    <div class="bg-white w-full max-w-2xl rounded-lg shadow-xl" data-action="click->financials-form#stopPropagation">
+  <div class="<%= page ? '' : 'min-h-screen flex items-start justify-center p-4 pt-12 pb-20' %>">
+    <div class="bg-white w-full max-w-2xl rounded-lg <%= page ? 'border border-gray-200' : 'shadow-xl' %>" data-action="click->financials-form#stopPropagation">
 
       <!-- Header -->
       <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white rounded-t-lg z-10">
@@ -25,11 +30,13 @@
           <h2 class="text-lg font-semibold text-gray-900">Financial Data Worksheet</h2>
           <p class="text-sm text-gray-500"><%= show_display_name(@show) %></p>
         </div>
-        <button type="button" data-action="click->financials-form#closeWorksheet" class="text-gray-400 hover:text-gray-600 p-2 -mr-2 cursor-pointer">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+        <% unless page %>
+          <button type="button" data-action="click->financials-form#closeWorksheet" class="text-gray-400 hover:text-gray-600 p-2 -mr-2 cursor-pointer" aria-label="Close">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        <% end %>
       </div>
 
       <!-- Form Content -->
@@ -41,7 +48,7 @@
         <input type="hidden" name="show_financials[expense_items_cleared]" value="0"
                data-financials-form-target="expenseClearedInput">
 
-        <div class="p-4 space-y-3 max-h-[74vh] overflow-y-auto">
+        <div class="p-4 space-y-3 <%= 'max-h-[74vh] overflow-y-auto' unless page %>">
 
           <% if @show_financials.errors.any? %>
             <div class="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -397,14 +404,18 @@
         <!-- Footer — always visible; the confirm checkbox lives here so you never
              have to scroll to reach it. data_confirmed gates payout calculation and
              the "needs financials" counts, so it stays a real, submitted field. -->
-        <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-4 rounded-b-lg sticky bottom-0">
+        <div class="px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-b-lg sticky bottom-0 z-10 <%= 'pr-[96px] sm:pr-4' if page && turbo_native_app? %>">
           <label class="flex items-center gap-2 cursor-pointer select-none"
                  title="Check when the financials above are correct — even if revenue is $0. Required before payouts can be calculated.">
             <%= form.check_box :data_confirmed, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
             <span class="text-sm font-medium text-gray-900">The data entered is complete and ready for payout</span>
           </label>
           <div class="flex items-center gap-3">
-            <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->financials-form#closeWorksheet" } %>
+            <% if page %>
+              <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", path: back %>
+            <% else %>
+              <%= render "shared/button", text: "Cancel", variant: "ghost", size: "medium", type: :button, data: { action: "click->financials-form#closeWorksheet" } %>
+            <% end %>
             <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
           </div>
         </div>
@@ -534,7 +545,7 @@
           </label>
           <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-400 transition-colors">
             <input type="file" data-financials-form-target="receiptFile"
-                   accept=".pdf,.jpg,.jpeg,.png"
+                   accept="image/jpeg,image/png,application/pdf,.pdf,.jpg,.jpeg,.png"
                    class="hidden"
                    data-action="change->financials-form#handleReceiptSelect">
             <button type="button" class="cursor-pointer" data-action="click->financials-form#triggerReceiptFileInput">

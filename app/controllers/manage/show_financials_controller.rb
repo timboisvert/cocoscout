@@ -15,11 +15,12 @@ module Manage
                                              .order("production_expenses.name")
     end
 
+    # The worksheet as a page (V1.1 plan §6): where the payout page sends
+    # someone to enter financials, and what a phone gets. A Turbo Frame still
+    # gets it bare. The app gets its own layout like any page.
     def edit
-      # Renders the financial data entry form (worksheet)
-      # This is called via Turbo Frame for modal display
       respond_to do |format|
-        format.html { render layout: request.headers["Turbo-Frame"].present? ? false : "application" }
+        format.html { request.headers["Turbo-Frame"].present? ? render(layout: false) : render }
       end
     end
 

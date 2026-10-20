@@ -849,9 +849,9 @@
                   <div class="flex min-h-full items-center justify-center p-4">
                     <div class="fixed inset-0 bg-gray-500/75" data-action="click->modal#close"></div>
                     <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg">
-                      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900">Add to payout run</h3>
-                        <button type="button" data-action="click->modal#close" class="text-gray-400 hover:text-gray-600">
+                      <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl">
+                        <h3 class="text-lg font-semibold text-white">Add to payout run</h3>
+                        <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white" aria-label="Close">
                           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                       </div>
@@ -1661,7 +1661,42 @@
       <%= render "manage/show_payouts/acts_modal" %>
     <% end %>
 
+    <%# On a phone (V1.1 plan §4): the payout's next step pinned to the
+        bottom: enter financials, calculate, add to the payout run, or open
+        the run it's on. %>
+    <%
+      phone_candidates = if @show_payout.total_payout && has_line_items && !@show_payout.paid?
+        (@line_items || []).select { |li| !li.paid? && !li.in_payout_run? && li.payee.present? && li.payee.respond_to?(:can_receive_payouts?) && li.amount.to_f > 0 }
+      else
+        []
+      end
+      phone_run = @show_payout.in_payout_run? ? @show_payout.payout_run : nil
+      phone_state = if @show_payout.paid? then "Paid"
+                    elsif phone_candidates.any? then "#{number_to_currency(phone_candidates.sum(&:net_amount))} to add to a run"
+                    elsif phone_run then "On a payout run"
+                    elsif @show_payout.awaiting_financials? then "Needs financials"
+                    elsif @show_payout.awaiting_calculation? then "Ready to calculate"
+                    end
+    %>
+    <% if phone_state %>
+      <div class="sm:hidden h-24" aria-hidden="true"></div>
+      <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-payout-phone-bar>
+        <span class="flex-1 min-w-0 text-sm font-semibold text-gray-900 truncate"><%= phone_state %></span>
+        <% if phone_candidates.any? %>
+          <%= render "shared/button", text: "Add to run", variant: "primary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "add-to-run-modal" } %>
+        <% elsif phone_run && !@show_payout.paid? %>
+          <%= render "shared/button", text: "Open the run", variant: "primary", size: "medium", path: manage_payout_batch_path(phone_run) %>
+        <% elsif @show_payout.awaiting_financials? %>
+          <%= render "shared/button", text: "Enter financials", variant: "primary", size: "medium", path: manage_edit_money_show_financials_path(@show, return_to: manage_money_show_payout_path(@show)) %>
+        <% elsif @show_payout.awaiting_calculation? %>
+          <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true do %>
+            <%= render "shared/button", text: "Calculate", variant: "primary", size: "medium", type: :submit %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
   </div>
   <% end %><%# end of third_party vs performer conditional %>
 </div>
-
