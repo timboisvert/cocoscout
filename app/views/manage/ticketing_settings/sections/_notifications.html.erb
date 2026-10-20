@@ -46,20 +46,6 @@
       <span class="text-sm text-gray-600">For an inbox, or someone who isn't a manager here. Your managers are listed on their own.</span>
     </div>
   </div>
-
-  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">The plans</h2>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2">
-      <% TicketingNotifications::PLANS.reject { |p| p.key == "nothing" }.each do |plan| %>
-        <div class="px-6 py-4 border-t border-gray-100 sm:[&:nth-child(-n+2)]:border-t-0 first:border-t-0">
-          <div class="text-sm font-semibold text-gray-900"><%= plan.label %><% unless plan.key == "custom" %> · <%= TicketingNotifications.kinds_for(plan.key).size %><% end %></div>
-          <div class="text-sm text-gray-600 mt-1"><%= plan.description %></div>
-        </div>
-      <% end %>
-    </div>
-  </div>
 </div>
 
 <% people.each_with_index do |r, i| %>

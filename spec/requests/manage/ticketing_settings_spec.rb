@@ -191,7 +191,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
 
     it "lists each manager with their plan, and Edit opens their modal with the plans and every email (Tim, 2026-10-20)" do
       doc = page
-      expect(response.body).to include("Ticketing emails", "The plans", "Add an email address")
+      expect(response.body).to include("Ticketing emails", "Add an email address")
       expect(response.body).not_to include("check-matrix", "Select all")
       row = doc.at_css("[data-recipient='user:#{superadmin.id}']")
       expect(row.text.squish).to include("The usual · 9 emails", "Edit")
