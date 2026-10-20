@@ -20,7 +20,7 @@
     { label: "Danger Zone", partial: "tab_danger", danger: true, save: false }
   ].compact
 %>
-<div class="w-full mb-10" data-controller="location-modal tabs" data-tabs-plain-value="true"
+<div class="w-full mb-10" data-controller="location-modal tabs" data-tabs-plain-value="true" data-tabs-drill-value="true"
      data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>" data-location-modal-spaces-value="<%= location_spaces_map.to_json %>">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
@@ -51,13 +51,22 @@
       </div>
     <% end %>
 
-    <%# Mobile: the tabs as a menu. %>
-    <div class="sm:hidden mb-5">
-      <select data-tabs-target="menu" data-action="change->tabs#selectMenu" aria-label="Settings section" class="<%= input_class %>">
-        <% edit_tabs.each_with_index do |tab, i| %>
-          <option value="<%= i %>"><%= tab[:label] %></option>
-        <% end %>
-      </select>
+    <%# Phone: a list of sections to drill into (V1.1 plan §5, Section list).
+        Tapping one shows its panel with a way back; Save pins to the bottom. %>
+    <div class="sm:hidden rounded-lg border border-gray-200 divide-y divide-gray-200 bg-white overflow-hidden" data-tabs-target="list" data-show-edit-sections>
+      <% edit_tabs.each_with_index do |tab, i| %>
+        <button type="button" data-index="<%= i %>" data-action="tabs#select"
+                class="w-full flex items-center justify-between gap-3 px-4 min-h-[52px] text-left text-base cursor-pointer <%= tab[:danger] ? 'text-red-600' : 'text-gray-900' %>">
+          <span class="flex items-center gap-2">
+            <%= tab[:label] %>
+            <% if tab[:pro] %>
+              <%= render "shared/pro_marker" %>
+              <%= render "shared/pro_marker", kind: :lock if tab[:locked] %>
+            <% end %>
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+        </button>
+      <% end %>
     </div>
 
     <%# Desktop: the tab strip, drawn as the settings pages draw theirs. %>
@@ -76,11 +85,20 @@
 
     <% edit_tabs.each_with_index do |tab, i| %>
       <div data-tabs-target="panel" class="space-y-6 <%= 'hidden' unless i.zero? %>">
+        <%# Phone: the section's name and the way back to the list. %>
+        <div class="sm:hidden flex items-center gap-3 -mt-1" data-show-edit-section-header>
+          <button type="button" data-action="tabs#showList" class="inline-flex items-center gap-1 min-h-[44px] text-sm font-medium text-pink-600 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+            Sections
+          </button>
+          <span class="text-gray-300">/</span>
+          <span class="text-sm font-semibold text-gray-900"><%= tab[:label] %></span>
+        </div>
         <%= render "manage/shows/edit/#{tab[:partial]}", form: form, input_class: input_class, location_spaces_map: location_spaces_map %>
         <% unless tab[:save] == false || tab[:locked] %>
-          <div class="flex justify-end">
+          <%= render layout: "shared/sticky_actions" do %>
             <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
-          </div>
+          <% end %>
         <% end %>
       </div>
     <% end %>
