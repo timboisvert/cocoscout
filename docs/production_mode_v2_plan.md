@@ -36,7 +36,7 @@ Nothing in this plan is built this week.
 - **One site, one login, one app.** `/my` and `/manage` stay; no subdomains.
 - **One mobile experience.** Mobile web and the app get the same screens and features; the app differs only in its frame.
 - **The everyday side has no name.** You enter and exit production mode.
-- **The switch is a menu link,** the first item in the account menu, never an always-visible control. The menu is the same in both modes.
+- **The switch is a menu link,** a dark pink bar at the **bottom** of the account menu (moved from the top 2026-10-20: it's used rarely and shouldn't be in the way), never an always-visible control. The menu is the same in both modes. On a phone it sits under Work the door, near the bottom of the menu sheet.
 - **Profile, account settings and superadmin** are account-menu items, not dashboards.
 - **Top left shows where you are:** the CocoScout logo, or the organization on a soft pink band with "Production mode" under it (option A).
 - **The organization name always has a single ▾,** on every plan.
@@ -48,11 +48,14 @@ Nothing in this plan is built this week.
 - **Team access as today:** non-managers see the free modules and no Pro heading; audition reviewers see Sign-ups only.
 - **Contract people aren't production mode's audience** (2026-10-17, `docs/contract_people_plan.md`): contractors and the people they bring never enter the Production Dashboard; their dates, sales, comps and contract are on My. Production mode is for the organization and its in-house production teams.
 - **The address decides the mode.** A link into `/manage` switches by itself and says so in a soft pink notice with an Exit button (`shared/button`, secondary, small); the app opens in the last mode used.
-- **Counts:** Messages, Notifications and Tasks carry a count in the nav (Notifications added 2026-10-20, §9); nothing else does.
+- **Messages and Notifications are universal** (2026-10-20): a mail icon and a bell, each with a count, at the top of the desktop panel, in the phone's top bar, and in the app's native nav bar, the same in both modes. Neither nav lists them. The mail icon opens one Messages list in either mode, which pulls the unified inbox (§8, deferred) into V1.1; until the data merge it can open My Messages with production threads included.
+- **Crossing modes from a notification:** opening one whose page lives in the other mode asks first, in a pink-header modal ("Open in production mode?", Switch and open, Don't ask again).
+- **Counts:** only Tasks carries a count in the nav; Productions keeps its quantity.
 - **The app:**
   - the same menu, drawn natively;
   - a soft pink strip with the organization under the nav bar in production mode;
-  - the floating Coco button stays as it is, but its count becomes a pink-600 badge with a 2pt white ring (`MenuButton.swift`, today `.systemRed`);
+  - the floating Coco button stays as it is, but its count becomes a pink-600 badge with a 2pt white ring (`MenuButton.swift`, today `.systemRed`), counting what's waiting in the menu (tasks) now that messages and notifications have their own nav-bar icons (open: keep or drop it);
+  - the menu sheet: the person card at the top with the close button inside it; in production mode a soft pink row under it names the organization (no pill); Work the door, then the dark pink Enter/Exit bar, under the tiles;
   - the menu tiles' counts use the same pink (`MenuViewController.swift`, today `Color.red`).
 
 **Decide before V1.1 starts:**
@@ -517,7 +520,7 @@ Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions
 
 **Then the rest, one area at a time:** payouts and payments, contracts, casting and vacancies, sign-ups and auditions, courses, staffing (onboarding, W-9s, availability), mics. Each area gets its groups, moves its senders off `system_generated` Messages, and keeps every email it sends today. When the last one moves, Messages is people only.
 
-**In the apps:** a Notifications screen in the menu with an unread count, opening each notification's link. Pushes from notifications open their link. iOS and Android both: the server pieces are shared, and the list is a web page like everything else.
+**In the apps:** a bell in the native nav bar with an unread count (2026-10-20: universal, not a menu tile), opening the Notifications list, which opens each notification's link. Pushes from notifications open their link. iOS and Android both: the server pieces are shared, and the list is a web page like everything else.
 
 **Design work first:** the settings screen (phone and desktop), the Notifications list, and a few pushes as they'd arrive. Then build ticketing, then move the other areas.
 
