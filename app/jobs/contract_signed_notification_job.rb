@@ -26,11 +26,9 @@ class ContractSignedNotificationJob < ApplicationJob
       recipients: recipients,
       organization: contract.organization,
       production: contract.production,
-      message_type: :system,
-      # This notification is FOR managers — system_generated would hide it from
-      # the /manage/messages inbox (manage_inbox_for filters that flag). The
-      # :system message type alone keeps the automated attribution.
-      system_generated: false
+      # The organization's chosen managers (Contract settings → Notifications),
+      # as a Notification in their list and on their phones (V1.1 plan §9).
+      notification: { category: "contracts", kind: "contract_signed", path: Rails.application.routes.url_helpers.manage_contract_path(contract) }
     )
   end
 end

@@ -53,8 +53,8 @@ class ContractSignatureRemindersJob < ApplicationJob
       # The last reminder says so in the subject line — an escalation only in
       # the body arrives looking identical to the first one.
       subject_override: final_nudge_subject(contract, version, number),
-      message_type: :system,
-      system_generated: true
+      # The email carries the signing link, so it always goes (V1.1 plan §9).
+      notification: { category: "contracts", kind: "signature_nudge", path: nudge_variables(contract, version)[:sign_url] }
     )
     version.update!(nudge_count: number, last_nudged_at: Time.current)
 
@@ -87,8 +87,7 @@ class ContractSignatureRemindersJob < ApplicationJob
       # mailer here, the expiry notice reached nobody.
       mailer_class: Manage::ContractSignatureMailer,
       mailer_method: :signature_request,
-      message_type: :system,
-      system_generated: true
+      notification: { category: "contracts", kind: "signature_expired", path: Rails.application.routes.url_helpers.my_contracts_path }
     )
   end
 
@@ -130,8 +129,9 @@ class ContractSignatureRemindersJob < ApplicationJob
       sender: nil,
       recipients: recipients,
       organization: contract.organization,
-      message_type: :system,
-      system_generated: false
+      # The organization's chosen managers, as a Notification (V1.1 plan §9).
+      notification: { category: "contracts", kind: kind == :expired ? "signature_expired_manager" : "signature_stalled_manager",
+                      path: Rails.application.routes.url_helpers.manage_contract_path(contract) }
     )
   rescue StandardError => e
     Rails.logger.error("[ContractSignatureRemindersJob] notify #{contract.id}: #{e.class}: #{e.message}")

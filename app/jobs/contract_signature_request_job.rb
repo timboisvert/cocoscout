@@ -30,7 +30,10 @@ class ContractSignatureRequestJob < ApplicationJob
       organization: contract.organization,
       production: contract.production,
       mailer_class: Manage::ContractSignatureMailer,
-      mailer_method: :signature_request
+      mailer_method: :signature_request,
+      # The email carries the signing link, so it always goes; anyone with an
+      # account also gets a Notification (V1.1 plan §9).
+      notification: { category: "contracts", kind: "signature_requested", path: sign_url }
     )
   end
 end

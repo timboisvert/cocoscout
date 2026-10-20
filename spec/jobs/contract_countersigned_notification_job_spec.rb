@@ -40,13 +40,16 @@ RSpec.describe ContractCountersignedNotificationJob, type: :job do
     expect(pdfs.first.filename).to include("contract")
   end
 
-  it "also posts a CocoScout message pointing at their contracts page" do
+  it "also sends a Notification pointing at their contracts page, not an in-app Message (V1.1 plan §9)" do
     execute!
     version = contract.current_version
     GenerateContractPdfJob.perform_now(contract.id, version.id)
 
-    expect { described_class.perform_now(contract.id, version.id) }.to change(Message, :count).by(1)
-    expect(Message.order(:created_at).last.body.to_s).to include("contracts")
+    expect { described_class.perform_now(contract.id, version.id) }
+      .to change(Notification, :count).by(1).and(not_change(Message, :count))
+    notification = Notification.order(:created_at).last
+    expect(notification.category).to eq("contracts")
+    expect(notification.path).to eq("/my/contracts")
   end
 
   it "is triggered by the PDF job only when the signing path asked for it" do

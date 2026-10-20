@@ -81,7 +81,7 @@ RSpec.describe ContractSignatureRemindersJob, type: :job do
     end
 
     it "tells both sides" do
-      expect { described_class.perform_now }.to change(Message, :count).by_at_least(1)
+      expect { described_class.perform_now }.to change(Notification, :count).by_at_least(1)
     end
 
     it "keeps a staged amendment so re-sending is one click" do

@@ -25,19 +25,15 @@ class ContractCountersignedNotificationJob < ApplicationJob
 
     rendered = ContentTemplateService.render("contract_countersigned_to_signer", variables(contract, version, person))
 
+    # Always emailed: it's the copy they keep.
     email_pdf(person, contract, version, rendered)
-    # Silently no-ops for a counterparty without an account, which is the
-    # common case — the email above is what actually reaches them.
-    MessageService.send_direct(
-      template_key: "contract_countersigned_to_signer", push_body: rendered[:push_body],
-      sender: nil,
-      recipient_person: person,
-      subject: rendered[:subject],
-      body: rendered[:body],
-      organization: contract.organization,
-      system_generated: true,
-      skip_digest: true
-    )
+    # A Notification for a counterparty with an account (V1.1 plan §9); most
+    # have none, and the email above is what reaches them.
+    return unless person.user
+
+    Notifier.deliver(user: person.user, category: "contracts", kind: "contract_countersigned", template_key: "contract_countersigned_to_signer",
+                     variables: variables(contract, version, person), path: Rails.application.routes.url_helpers.my_contracts_path,
+                     organization: contract.organization, subject: contract)
   end
 
   private

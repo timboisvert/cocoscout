@@ -14,7 +14,7 @@ RSpec.describe ContractSignedNotificationJob, type: :job do
 
   before { org.update!(contract_notification_user_ids: [ manager_user.id ]) }
 
-  it "delivers the contract_signed_manager template to the chosen managers as a system message" do
+  it "delivers the contract_signed_manager template to the chosen managers as a Notification" do
     allow(ContentTemplateService).to receive(:deliver).and_return({ messages: [], emails_queued: 0, channel: :message })
 
     described_class.perform_now(contract.id)
@@ -22,15 +22,14 @@ RSpec.describe ContractSignedNotificationJob, type: :job do
     expect(ContentTemplateService).to have_received(:deliver).with(
       hash_including(
         template_key: "contract_signed_manager",
-        message_type: :system,
-        system_generated: false, # must reach the manage inbox — it's FOR managers
         recipients: [ manager_person ],
-        organization: org
+        organization: org,
+        notification: hash_including(category: "contracts", kind: "contract_signed")
       )
     )
   end
 
-  it "lands in the manager's manage inbox (and the badge counts it), attributed as automated" do
+  it "lands in the manager's Notifications, linking to the contract, and not in Messages (V1.1 plan §9)" do
     ContentTemplate.find_or_create_by!(key: "contract_signed_manager") do |t|
       t.name = "Contract signed (manager)"
       t.channel = "message"
@@ -39,18 +38,13 @@ RSpec.describe ContractSignedNotificationJob, type: :job do
       t.category = "contracts"
     end
 
-    described_class.perform_now(contract.id)
+    expect { described_class.perform_now(contract.id) }.not_to change(Message, :count)
 
-    message = Message.order(:created_at).last
-    expect(message.message_type).to eq("system")
-    expect(message.system_generated).to be(false)
-    expect(message.sender).to be_nil
-    expect(message.automated?).to be(true) # never attributed to a user
-
-    inbox = Message.manage_inbox_for(manager_user, org)
-    expect(inbox).to include(message)
-    # Badge == list invariant.
-    expect(manager_user.unread_message_count_for_org(org)).to eq(1)
+    notification = manager_user.notifications.last
+    expect(notification.title).to eq("Dan Feltey signed")
+    expect(notification.path).to eq("/manage/contracts/#{contract.to_param}")
+    expect(notification.organization).to eq(org)
+    expect(manager_user.unread_notification_count).to eq(1)
   end
 
   it "no-ops when the org has selected no recipients" do
