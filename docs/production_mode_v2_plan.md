@@ -36,7 +36,7 @@ Nothing in this plan is built this week.
 - **One site, one login, one app.** `/my` and `/manage` stay; no subdomains.
 - **One mobile experience.** Mobile web and the app get the same screens and features; the app differs only in its frame.
 - **The everyday side has no name.** You enter and exit production mode.
-- **The switch is a menu link,** a dark pink bar at the **bottom** of the account menu (moved from the top 2026-10-20: it's used rarely and shouldn't be in the way), never an always-visible control. The menu is the same in both modes. On a phone it sits under Work the door, near the bottom of the menu sheet.
+- **The switch is a menu link,** a CocoScout-pink bar (`bg-pink-500`, white text) at the **bottom** of the account menu (moved from the top 2026-10-20: it's used rarely and shouldn't be in the way), never an always-visible control. The menu is the same in both modes. On a phone it sits under Work the door, near the bottom of the menu sheet.
 - **Profile, account settings and superadmin** are account-menu items, not dashboards.
 - **Top left shows where you are:** the CocoScout logo, or the organization on a soft pink band with "Production mode" under it (option A).
 - **The organization name always has a single ▾,** on every plan.
@@ -55,7 +55,7 @@ Nothing in this plan is built this week.
   - the same menu, drawn natively;
   - a soft pink strip with the organization under the nav bar in production mode;
   - the floating Coco button stays, with **no badge** (Tim, 2026-10-20): the mail and bell icons carry the counts (`MenuButton.swift` drops its count);
-  - the menu sheet: a plain outlined card at the top with your picture, name and email, Profile and Settings under them and the close button in its corner (not pink: pink bars are things to do); in production mode a soft pink row under it names the organization (no pill); Work the door (dark) and the Enter/Exit bar, in production mode's soft pink, pinned to the bottom of the sheet;
+  - the menu sheet: a plain outlined card at the top with your picture, name and email, Profile and Settings under them and the close button in its corner (not pink: pink bars are things to do); in production mode a soft pink row under it names the organization (no pill); Work the door (black) and the Enter/Exit bar (CocoScout pink, white text) pinned to the bottom of the sheet; nothing CocoScout pink anywhere (Tim, 2026-10-20);
   - the menu tiles' counts use the same pink (`MenuViewController.swift`, today `Color.red`).
 
 **Decide before V1.1 starts:**
