@@ -125,6 +125,7 @@ class TicketPassCredits
       end
     end
     TicketSalesSync.sync!(listing.show)
+    TicketingAfterSaleJob.perform_later(order.id)
     order
   rescue Ticketing::Inventory::SoldOut
     raise Error, "Sorry, that show doesn't have the seats left."

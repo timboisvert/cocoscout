@@ -59,7 +59,7 @@ class TicketComps
     end
 
     orders.each { |order| TicketOrderConfirmationJob.perform_later(order.id) if email_them && order.buyer_email.present? }
-    TicketingAfterSaleJob.perform_later(orders.last.id)
+    TicketingAfterSaleJob.perform_later(orders.last.id, together: orders.map(&:id))
     orders
   rescue Ticketing::Inventory::SoldOut
     raise Error, sold_out_message(listing, requests)

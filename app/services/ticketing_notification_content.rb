@@ -97,7 +97,7 @@ class TicketingNotificationContent
     held = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     items = order.ticket_order_items.select(&:sold?)
     show_vars(listing).merge(
-      buyer_name: h(order.buyer_name.presence || (order.channel.start_with?("door") ? "Someone at the door" : "Someone")),
+      buyer_name: h(order.buyer_name.presence || "Someone"),
       ticket_count: ActionController::Base.helpers.pluralize(held.size, "ticket"),
       ticket_summary: h(held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} #{tier.name}" }.join(", ")),
       products: items.map { |i| "#{i.quantity} #{h(i.name)}" }.to_sentence,
@@ -107,6 +107,54 @@ class TicketingNotificationContent
       products_sold: products_line(stats),
       order_url: routes.manage_ticket_order_url(order.id, **url_options)
     )
+  end
+
+  # How a door sale was paid, for the door-sale email. "A tapped card or
+  # phone" covers Tap to Pay on iPhone and on Android alike.
+  DOOR_PAYMENTS = { "door_tap" => "a tapped card or phone", "door_card" => "scan to pay", "door_cash" => "cash" }.freeze
+
+  def self.door_sale(order)
+    sale(order).merge(
+      seller_name: h(person_name(order.issued_by) || "Someone at the door"),
+      payment_method: DOOR_PAYMENTS.fetch(order.channel, "the door"),
+      buyer_name: h(order.buyer_name.to_s.squish)
+    )
+  end
+
+  # One email for comps given together (a guest list is one order per guest).
+  def self.comps(orders, by:)
+    listing = orders.first.ticket_listing
+    stats = Ticketing::ListingStats.of(listing)
+    count = orders.sum { |o| o.tickets.size }
+    people = orders.map { |o| "#{o.buyer_name.presence || 'Someone'} (#{o.tickets.size})" }
+    show_vars(listing).merge(
+      giver_name: h(person_name(by) || "Someone"),
+      ticket_count: ActionController::Base.helpers.pluralize(count, "comp"),
+      recipients: h(people.to_sentence),
+      sold_line: sold_line(stats)
+    )
+  end
+
+  def self.pass_redeemed(order)
+    listing = order.ticket_listing
+    stats = Ticketing::ListingStats.of(listing)
+    holding = order.tickets.first&.ticket_pass_holding
+    left = holding && !holding.season? ? holding.credits_left : nil
+    show_vars(listing).merge(
+      holder_name: h(order.buyer_name.presence || "Someone"),
+      pass_name: h(holding&.ticket_pass&.name || "a pass"),
+      ticket_count: ActionController::Base.helpers.pluralize(order.tickets.size, "ticket"),
+      where_used: order.channel == "door_pass" ? "at the door" : "online",
+      credits_left: left ? "#{left} #{left == 1 ? 'credit' : 'credits'} left on the pass" : "",
+      sold_line: sold_line(stats),
+      order_url: routes.manage_ticket_order_url(order.id, **url_options)
+    )
+  end
+
+  def self.person_name(user)
+    return nil unless user
+
+    user.person&.name.presence || user.email_address
   end
 
   def self.show_day(listing)

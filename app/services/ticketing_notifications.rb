@@ -8,7 +8,12 @@ class TicketingNotifications
   Kind = Data.define(:key, :group, :label, :description, :default_on)
 
   KINDS = [
-    Kind.new("sale", "Sales", "Each sale", "Who bought, what, and how full the show is now. Can be a lot of email.", false),
+    # One row per way tickets go out (Tim, 2026-10-19): online, at the door,
+    # comps, passes. Each has its own email (ticketing_<key>).
+    Kind.new("sale", "Sales", "Each online sale", "Someone buys online or on your website: who, what, and how full the show is now. Can be a lot of email.", false),
+    Kind.new("door_sale", "Sales", "Each door sale", "A sale at the door by tap, scan to pay or cash: who sold it, how it was paid, and how full the show is now.", false),
+    Kind.new("comp_issued", "Sales", "Each comp issued", "Comps given from Ticketing, by a production team or at the door: who gave them, and to whom.", false),
+    Kind.new("pass_redeemed", "Sales", "Each pass redeemed", "Someone uses a pass for a show, online or at the door, and what's left on it.", false),
     Kind.new("daily_summary", "Sales", "Daily summary", "Every morning: yesterday's sales and refunds, and how each upcoming show is selling.", true),
     Kind.new("show_day", "Sales", "Show day", "The morning of each show: tickets sold, comps, and the door list.", true),
     Kind.new("after_show", "Sales", "After the show", "The day after: who came, who didn't, and the money now available.", true),

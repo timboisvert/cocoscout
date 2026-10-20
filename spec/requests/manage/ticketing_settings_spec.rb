@@ -186,7 +186,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
 
     it "shows who gets what, and saves the theater's choices with extra addresses" do
       get manage_ticketing_settings_section_path(section: "notifications")
-      expect(response.body).to include("Who hears about what", "Each sale", "Daily summary", "Disputed charge", "Other email addresses")
+      expect(response.body).to include("Who hears about what", "Each online sale", "Each door sale", "Each comp issued", "Each pass redeemed", "Daily summary", "Disputed charge", "Other email addresses")
 
       patch manage_ticketing_settings_notifications_path,
             params: { updating: "1", emails: "box@starsandgarters.com", rules: { "sale" => [ "email:box@starsandgarters.com" ] } }
