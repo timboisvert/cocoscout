@@ -527,3 +527,15 @@ Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions
 **Mockups (2026-10-20):** row 6 of the navigation canvas (https://claude.ai/artifact/CNaAubdaxfkbdn3ST59LwG): My Notifications on desktop, Account settings → Notifications on desktop, both on mobile web, the app's Notifications screen, and pushes as they arrive. The menus and the desktop sidebar gained a Notifications item with its own count, in both modes (the list is the person's, not the mode's).
 
 **Reconciled with what was built on 2026-10-20** (Ticketing settings → Notifications, "Concept A": the organization gives each manager or address an email *plan*: Everything, The usual, Just the money, Pick my own, Nothing; `TicketingNotifications::PLANS`). That stays as the organization's email policy, since it also covers addresses that aren't users. The person's own settings add **push** per ticketing group; their Email column reads "By plan" and links to the ticketing page. Tim locked that split on 2026-10-20. Still open: whether the app's one badge total adds notifications to messages and tasks, and the label ("My Notifications" on the web, "Notifications" on tiles).
+
+## 10. Built on branch v1.1 (2026-10-20)
+
+Worktree `.claude/worktrees/v1.1`, pushed to origin/v1.1; never deployed until both app reviews pass. `main` stays the production line.
+
+- **Plumbing:** app builds say their navigation generation in the user agent ("CocoScout/1.1 (12; nav 2)", `NativeAppVersion`); generation 2 reads `public/hotwire-native/nav-2/path-configuration.json`, which keeps `/manage` in the app. V1's file never changes. Manage inherits ApplicationController; `OrganizationContext` holds the organization lookup; `/start` opens the last mode.
+- **Notifications (§9):** `Notification` + `NotificationGroups` + `Notifier`; Ticketing's notices reach managers' lists and phones; `/notifications` list with the mode-switch prompt; Account settings → Notifications rebuilt. Other areas still send automated Messages (all through `MessageService.create_message`), to move one at a time.
+- **Desktop panel:** `shared/navigation/panel_frame` for every panel; switcher retired; Work the door black.
+- **Mobile web:** `shared/navigation/mobile_grid_nav` rebuilt (icons in the top bar, organization sheet, bars at the bottom).
+- **Apps:** `NativeAppHelper#native_nav` for generation 2 only (the bridge adds it only when present); iOS `NavMenuViewController` and nav-bar icons; Android `NavMenuSheet` and `ToolbarIcons`; Coco has no badge; sticky production strip in the app layout.
+
+Still to do: move the other areas onto Notifications; one Messages inbox for both modes; the Phase 0b components and the page-by-page phone work (§7); a look at everything on a server and in both simulators.
