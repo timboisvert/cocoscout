@@ -42,7 +42,73 @@
       <% end %>
     </div>
   <% else %>
-    <div class="mt-4 overflow-auto border border-gray-200 rounded-lg max-h-[calc(100vh-280px)] relative z-0" data-controller="availability-grid">
+    <%# Phone (V1.1 plan §4): the grid pivots into a list of shows with
+        counts, or a list of people; a tap opens the same modal as a sheet. %>
+    <%
+      status_of = ->(member, show) { @availabilities["#{member.class.name}_#{member.id}"][show.id]&.status.to_s }
+      show_counts = @shows.to_h do |show|
+        statuses = @cast_members.map { |m| status_of.call(m, show) }
+        [ show.id, { available: statuses.count("available"), unavailable: statuses.count("unavailable"),
+                     unset: statuses.count { |st| st != "available" && st != "unavailable" } } ]
+      end
+    %>
+    <div class="sm:hidden mt-4" data-controller="tabs" data-tabs-select-key-value="pivot" data-tabs-plain-value="true" data-availability-pivot>
+      <nav class="flex gap-1 border-b border-gray-200 mb-3" aria-label="Availability by">
+        <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select"
+                class="px-4 py-2 -mb-px text-sm font-medium border-b-2 cursor-pointer border-pink-500 text-pink-600">Shows</button>
+        <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select"
+                class="px-4 py-2 -mb-px text-sm font-medium border-b-2 cursor-pointer border-transparent text-gray-500">People</button>
+      </nav>
+
+      <div data-tabs-target="panel" class="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden" data-availability-shows-list>
+        <% @shows.each do |show| %>
+          <% counts = show_counts[show.id] %>
+          <button type="button" class="w-full flex items-center gap-3 px-4 min-h-[60px] py-2 text-left cursor-pointer"
+                  data-action="click->availability-modal#openShowModal"
+                  data-show-id="<%= show.id %>"
+                  data-modal-url="<%= manage_show_modal_casting_availability_path(@production, show) %>">
+            <div class="flex-1 min-w-0">
+              <div class="text-[11px] font-semibold text-pink-600 uppercase tracking-wide"><%= show.date_and_time.strftime("%a, %b %-d") %></div>
+              <div class="text-sm font-semibold text-gray-900"><%= show.time_range_display %></div>
+              <% if show.name_subtitle.present? %>
+                <div class="text-xs text-gray-500 truncate"><%= show.name_subtitle %></div>
+              <% end %>
+            </div>
+            <div class="flex items-center gap-2 text-xs tabular-nums flex-shrink-0" data-availability-counts>
+              <span class="inline-flex items-center gap-0.5 font-semibold text-pink-600" title="Available"><span aria-hidden="true">&#10003;</span><%= counts[:available] %></span>
+              <span class="inline-flex items-center gap-0.5 text-gray-400" title="No response"><span aria-hidden="true">&ndash;</span><%= counts[:unset] %></span>
+              <span class="inline-flex items-center gap-0.5 text-gray-700" title="Unavailable"><span aria-hidden="true">&#10007;</span><%= counts[:unavailable] %></span>
+            </div>
+            <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+          </button>
+        <% end %>
+      </div>
+
+      <div data-tabs-target="panel" class="hidden rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden" data-availability-people-list>
+        <% @cast_members.each do |member| %>
+          <% available_shows = @shows.count { |show| status_of.call(member, show) == "available" } %>
+          <button type="button" class="w-full flex items-center gap-3 px-4 min-h-[60px] py-2 text-left cursor-pointer"
+                  data-action="click->availability-modal#openMemberModal"
+                  data-member-type="<%= member.class.name %>"
+                  data-member-id="<%= member.id %>"
+                  data-member-name="<%= member.name %>">
+            <% headshot_variant = member.safe_headshot_variant(:thumb) %>
+            <% if headshot_variant %>
+              <%= image_tag headshot_variant, alt: member.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0"><%= member.initials %></div>
+            <% end %>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-gray-900 truncate"><%= member.name %></div>
+              <div class="text-xs text-gray-500">Available for <%= available_shows %> of <%= pluralize(@shows.size, "show") %></div>
+            </div>
+            <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+          </button>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="hidden sm:block mt-4 overflow-auto border border-gray-200 rounded-lg max-h-[calc(100vh-280px)] relative z-0" data-controller="availability-grid" data-availability-grid>
       <table class="border-collapse" style="table-layout: fixed; min-width: max-content;">
         <colgroup>
           <col class="w-[180px] sm:w-[250px]">
@@ -151,9 +217,9 @@
        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto z-50"
        data-availability-modal-target="modal"
        data-action="click->availability-modal#closeModal keydown.esc@window->availability-modal#closeModal">
-    <div class="min-h-screen flex items-start justify-center py-8 px-4">
+    <div class="min-h-screen flex items-start justify-center py-8 px-4 max-sm:items-end max-sm:p-0 max-sm:min-h-[100dvh]">
       <div id="availability-modal-content"
-           class="bg-white w-full max-w-2xl rounded-lg shadow-xl"
+           class="bg-white w-full max-w-2xl rounded-lg shadow-xl max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[90dvh] max-sm:overflow-y-auto max-sm:pb-[env(safe-area-inset-bottom)]"
            data-availability-modal-target="content"
            data-action="click->availability-modal#stopPropagation">
         <%# Content loaded dynamically %>
@@ -170,9 +236,9 @@
        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto z-50"
        data-availability-modal-target="memberModal"
        data-action="click->availability-modal#closeMemberModal keydown.esc@window->availability-modal#closeMemberModal">
-    <div class="min-h-screen flex items-start justify-center py-8 px-4">
+    <div class="min-h-screen flex items-start justify-center py-8 px-4 max-sm:items-end max-sm:p-0 max-sm:min-h-[100dvh]">
       <div id="member-availability-modal-content"
-           class="bg-white w-full max-w-2xl rounded-lg shadow-xl"
+           class="bg-white w-full max-w-2xl rounded-lg shadow-xl max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[90dvh] max-sm:overflow-y-auto max-sm:pb-[env(safe-area-inset-bottom)]"
            data-availability-modal-target="memberContent"
            data-action="click->availability-modal#stopPropagation">
         <%# Content loaded dynamically %>

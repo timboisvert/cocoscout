@@ -177,8 +177,8 @@
     </div>
 
     <%# Action Popup (hidden by default) %>
-    <div class="hidden fixed z-[60] bg-white rounded-lg shadow-xl border border-gray-200 p-3 min-w-[220px] max-w-[300px]"
-         data-availability-popup-target="popup">
+    <div class="hidden fixed z-[60] bg-white rounded-lg shadow-xl border border-gray-200 p-3 min-w-[220px] max-w-[300px] max-md:!inset-x-0 max-md:!top-auto max-md:!bottom-0 max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-2xl max-md:p-4 max-md:pb-[calc(env(safe-area-inset-bottom)+16px)] max-md:shadow-[0_-8px_30px_rgba(0,0,0,0.2)]"
+         data-availability-popup-target="popup" data-availability-popup-sheet>
       <div class="text-xs font-medium text-gray-500 uppercase mb-2" data-availability-popup-target="popupTitle">Actions</div>
       <div class="space-y-1" data-availability-popup-target="popupContent">
         <!-- Populated dynamically -->
