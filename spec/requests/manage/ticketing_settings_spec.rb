@@ -184,32 +184,49 @@ RSpec.describe "Manage ticketing settings", type: :request do
   describe "notifications" do
     before { sign_in(superadmin) }
 
-    it "shows who gets what, and saves the theater's choices with extra addresses" do
+    def page
       get manage_ticketing_settings_section_path(section: "notifications")
-      expect(response.body).to include("Who hears about what", "Each online sale", "Each door sale", "Each comp issued", "Each pass redeemed", "Daily summary", "Disputed charge", "Other email addresses")
-
-      patch manage_ticketing_settings_notifications_path,
-            params: { updating: "1", emails: "box@starsandgarters.com", rules: { "sale" => [ "email:box@starsandgarters.com" ] } }
-      expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "notifications"))
-      expect(TicketingNotifications.new(org).emails_for("sale")).to eq([ "box@starsandgarters.com" ])
-      expect(TicketingNotifications.new(org).emails_for("daily_summary")).to be_empty
-
-      patch manage_ticketing_settings_notifications_path, params: { updating: "1", emails: "nope" }
-      expect(flash[:alert]).to eq("nope isn't an email address.")
+      Nokogiri::HTML(response.body)
     end
 
-    it "has smart controls, and saves nothing ticked as nobody (Tim, 2026-10-10)" do
-      get manage_ticketing_settings_section_path(section: "notifications")
-      body = response.body
-      expect(body).to include('data-controller="check-matrix"', "Select all", "Select none", "Back to the usual",
-                              'data-check-matrix-target="column"', 'data-check-matrix-target="groupColumn"', 'data-check-matrix-target="row"', ">Everyone</th>")
-      # The usual: managers get the notices that are on by default.
-      expect(body).to match(/name="rules\[daily_summary\]\[\]"[^>]*data-usual="true"/)
-      expect(body).to match(/name="rules\[sale\]\[\]"[^>]*data-usual="false"/)
+    it "lists each manager with their plan, and Edit opens their modal with the plans and every email (Tim, 2026-10-20)" do
+      doc = page
+      expect(response.body).to include("Ticketing emails", "The plans", "Add an email address")
+      expect(response.body).not_to include("check-matrix", "Select all")
+      row = doc.at_css("[data-recipient='user:#{superadmin.id}']")
+      expect(row.text.squish).to include("The usual · 9 emails", "Edit")
+      modal = doc.at_css("#notification-plan-0")
+      expect(modal.text.squish).to include("Everything", "The usual", "Just the money", "Pick my own", "Nothing",
+                                           "Each online sale", "Each door sale", "Each comp issued", "Each pass redeemed", "Daily summary", "Disputed charge")
+      expect(modal.at_css("input[name='plan'][value='usual'][checked]")).to be_present
+      expect(modal.css("input[name='kinds[]'][type='checkbox']").size).to eq(TicketingNotifications::KEYS.size)
+      expect(modal.at_css("form")["data-controller"]).to eq("notification-plan")
+      expect(doc.at_css("#notification-plan-new").text).to include("Add an email address", "Email address")
+    end
 
-      patch manage_ticketing_settings_notifications_path, params: { updating: "1", emails: "" }
-      notifications = TicketingNotifications.new(org)
-      expect(TicketingNotifications::KEYS.map { |key| notifications.emails_for(key) }).to all(be_empty)
+    it "saves a plan, adds and removes an address, and says what went wrong" do
+      fresh = -> { TicketingNotifications.new(Organization.find(org.id)) }
+      patch manage_ticketing_settings_notifications_path, params: { recipient: "user:#{superadmin.id}", plan: "everything", kinds: [ "" ] }
+      expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "notifications"))
+      expect(flash[:notice]).to include("gets everything: 15 emails")
+      expect(fresh.call.emails_for("sale")).to eq([ superadmin.email_address ])
+
+      patch manage_ticketing_settings_notifications_path,
+            params: { recipient: "new", email: "box@starsandgarters.com", plan: "custom", kinds: [ "", "sale", "door_sale" ] }
+      expect(flash[:notice]).to eq("Saved. box@starsandgarters.com gets their own pick: 2 emails.")
+      expect(fresh.call.emails_for("door_sale")).to contain_exactly(superadmin.email_address, "box@starsandgarters.com")
+      expect(page.at_css("[data-recipient='email:box@starsandgarters.com']").text.squish).to include("Their own pick · 2 emails", "Not a manager here")
+
+      patch manage_ticketing_settings_notifications_path, params: { recipient: "email:box@starsandgarters.com", remove: "1", plan: "custom" }
+      expect(flash[:notice]).to eq("box@starsandgarters.com won't get Ticketing email any more.")
+      expect(fresh.call.emails_for("sale")).to eq([ superadmin.email_address ])
+
+      patch manage_ticketing_settings_notifications_path, params: { recipient: "user:#{superadmin.id}", plan: "nothing" }
+      expect(flash[:notice]).to end_with("gets no Ticketing email.")
+      expect(TicketingNotifications::KEYS.map { |key| fresh.call.emails_for(key) }).to all(be_empty)
+
+      patch manage_ticketing_settings_notifications_path, params: { recipient: "new", email: "nope", plan: "usual" }
+      expect(flash[:alert]).to eq("nope isn't an email address.")
     end
   end
 end

@@ -1,99 +1,68 @@
+<%#
+  Ticketing emails by plan (Tim, 2026-10-20, Concept A): one row per manager
+  or address with its plan, and Edit opens that person's modal
+  (_notification_plan_modal) to change it. Add an email address opens the
+  same modal for a new address.
+%>
 <%
   n = @notifications
-  managers = n.managers
-  extras = n.extra_emails
-  columns = managers.map { |u| [ "user:#{u.id}", u.person&.name || u.email_address, u.email_address ] } +
-            extras.map { |e| [ "email:#{e}", e, nil ] }
-  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  people = n.recipients
+  plan_labels = TicketingNotifications::PLANS.to_h { |p| [ p.key, p.label ] }.merge("custom" => "Their own pick")
 %>
-<%= form_with url: manage_ticketing_settings_notifications_path, method: :patch, class: "space-y-6" do %>
-  <%= hidden_field_tag :updating, "1" %>
-  <%# Smart controls (check-matrix): a person's whole column, their column
-      in one group, one notice for everyone, or all, none, or the usual
-      (managers get the notices that are on by default). Each control box
-      shows all, some (a dash) or none. Nothing saves until Save. %>
-  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="check-matrix">
+<div class="space-y-6">
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Who hears about what</h2>
-      <p class="text-sm text-gray-600 mt-1">Ticketing emails your team as tickets sell and money moves. Tick who gets each one: your managers, and any other address, like a box office inbox.</p>
-      <div class="mt-3 flex flex-wrap gap-2">
-        <%= render "shared/button", text: "Select all", variant: "secondary", size: "xs", type: :button, data: { action: "check-matrix#all" } %>
-        <%= render "shared/button", text: "Select none", variant: "secondary", size: "xs", type: :button, data: { action: "check-matrix#none" } %>
-        <%= render "shared/button", text: "Back to the usual", variant: "secondary", size: "xs", type: :button, data: { action: "check-matrix#usual" },
-              title: "Managers get the notices that are on by default; other addresses get none" %>
-      </div>
+      <h2 class="text-lg font-semibold text-gray-900">Ticketing emails</h2>
+      <p class="text-sm text-gray-600 mt-1">Who gets which emails as tickets sell and money moves. Each person has a plan, and a plan takes in new kinds of email on its own.</p>
     </div>
-    <div class="overflow-x-auto">
-      <table class="min-w-full text-sm">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-6 py-2 text-left text-xs font-medium text-gray-500 align-bottom">Email</th>
-            <% columns.each do |key, label, sub| %>
-              <%# The box under a name: everything for that person. %>
-              <th class="px-3 py-2 text-center text-xs font-medium text-gray-700 align-bottom min-w-[7rem]">
-                <div class="truncate max-w-[9rem] mx-auto" title="<%= sub || label %>"><%= label %></div>
-                <label class="mt-1 inline-flex items-center gap-1 text-[11px] font-normal text-gray-500 cursor-pointer">
-                  <input type="checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" data-check-matrix-target="column" data-col="<%= key %>"
-                         data-action="change->check-matrix#toggleColumn" aria-label="Everything for <%= label %>">
-                  All
-                </label>
-              </th>
-            <% end %>
-            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 align-bottom border-l border-gray-200">Everyone</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <% TicketingNotifications::KINDS.group_by(&:group).each do |group, kinds| %>
-            <%# The group's row: that group, for one person. %>
-            <tr class="bg-gray-50/60">
-              <td class="px-6 pt-4 pb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500"><%= group %></td>
-              <% columns.each do |key, label, _| %>
-                <td class="px-3 pt-4 pb-1.5 text-center">
-                  <input type="checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" data-check-matrix-target="groupColumn" data-col="<%= key %>" data-group="<%= group %>"
-                         data-action="change->check-matrix#toggleGroupColumn" aria-label="All <%= group.downcase %> emails for <%= label %>" title="All <%= group.downcase %> emails for <%= label %>">
-                </td>
-              <% end %>
-              <td class="border-l border-gray-200"></td>
-            </tr>
-            <% kinds.each do |kind| %>
-              <tr>
-                <td class="px-6 py-3">
-                  <div class="font-medium text-gray-900"><%= kind.label %></div>
-                  <div class="text-xs text-gray-500 max-w-sm"><%= kind.description %></div>
-                </td>
-                <% columns.each do |key, label, _| %>
-                  <td class="px-3 py-3 text-center">
-                    <%= check_box_tag "rules[#{kind.key}][]", key, n.ticked?(kind.key, key), id: "rule_#{kind.key}_#{key.parameterize}",
-                          "aria-label": "#{kind.label} to #{label}",
-                          data: { check_matrix_target: "box", col: key, row: kind.key, group: group, usual: (kind.default_on && key.start_with?("user:")).to_s,
-                                  action: "change->check-matrix#changed" },
-                          class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-                  </td>
-                <% end %>
-                <%# One notice, for everyone. %>
-                <td class="px-3 py-3 text-center border-l border-gray-200">
-                  <input type="checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" data-check-matrix-target="row" data-row="<%= kind.key %>"
-                         data-action="change->check-matrix#toggleRow" aria-label="<%= kind.label %> to everyone">
-                </td>
-              </tr>
-            <% end %>
+    <ul class="divide-y divide-gray-100" data-notification-recipients>
+      <% people.each_with_index do |r, i| %>
+        <% headshot_variant = r.user&.person&.safe_headshot_variant(:thumb) %>
+        <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 sm:px-6 py-3.5" data-recipient="<%= r.key %>">
+          <% if headshot_variant %>
+            <%= image_tag headshot_variant, alt: r.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+          <% elsif r.address? %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="m3 7 9 6 9-6"/></svg>
+            </div>
+          <% else %>
+            <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0"><%= r.user.person&.initials || r.name.first.upcase %></div>
           <% end %>
-        </tbody>
-      </table>
+          <div class="min-w-0 flex-1 basis-48">
+            <div class="text-sm font-medium text-gray-900 truncate"><%= r.name %></div>
+            <div class="text-sm text-gray-600 truncate"><%= r.address? ? "Not a manager here" : r.email %></div>
+          </div>
+          <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs whitespace-nowrap <%= case r.plan when "everything" then "bg-pink-100 text-pink-800" when "nothing" then "bg-white border border-gray-200 text-gray-500" else "bg-gray-100 text-gray-700" end %>">
+            <span class="font-semibold"><%= plan_labels.fetch(r.plan) %></span><% if r.kinds.any? %> · <%= pluralize(r.kinds.size, "email") %><% end %>
+          </span>
+          <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "notification-plan-#{i}" } %>
+        </li>
+      <% end %>
+    </ul>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 sm:px-6 py-3.5 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Add an email address", variant: "secondary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: "notification-plan-new" } %>
+      <span class="text-sm text-gray-600">For an inbox, or someone who isn't a manager here. Your managers are listed on their own.</span>
     </div>
   </div>
 
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Other email addresses</h2>
-      <p class="text-sm text-gray-600 mt-1">Anyone who should get Ticketing emails but isn't a manager here. They get a column above once you save.</p>
+      <h2 class="text-lg font-semibold text-gray-900">The plans</h2>
     </div>
-    <div class="px-6 py-5">
-      <label for="emails" class="block text-sm font-medium text-gray-700 mb-1.5">One address per line</label>
-      <%= text_area_tag :emails, extras.join("\n"), rows: 3, placeholder: "boxoffice@yourtheater.com", class: input_class %>
-    </div>
-    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
-      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    <div class="grid grid-cols-1 sm:grid-cols-2">
+      <% TicketingNotifications::PLANS.reject { |p| p.key == "nothing" }.each do |plan| %>
+        <div class="px-6 py-4 border-t border-gray-100 sm:[&:nth-child(-n+2)]:border-t-0 first:border-t-0">
+          <div class="text-sm font-semibold text-gray-900"><%= plan.label %><% unless plan.key == "custom" %> · <%= TicketingNotifications.kinds_for(plan.key).size %><% end %></div>
+          <div class="text-sm text-gray-600 mt-1"><%= plan.description %></div>
+        </div>
+      <% end %>
     </div>
   </div>
+</div>
+
+<% people.each_with_index do |r, i| %>
+  <%= render "manage/ticketing_settings/notification_plan_modal", id: "notification-plan-#{i}", recipient: r %>
 <% end %>
+<%= render "manage/ticketing_settings/notification_plan_modal", id: "notification-plan-new", recipient: nil %>

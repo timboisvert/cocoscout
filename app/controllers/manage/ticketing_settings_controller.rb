@@ -23,13 +23,22 @@ module Manage
       @notifications = TicketingNotifications.new(Current.organization) if @section == "notifications"
     end
 
-    # Who gets which Ticketing emails: the ticked managers and addresses per
-    # kind, and the extra addresses themselves.
+    # One person's or address's Ticketing emails, from its modal on the
+    # Notifications tab: a plan (and the emails, for Pick my own), an address
+    # added or renamed, or an address removed (TicketingNotifications).
     def update_notifications
-      rules = params[:rules].respond_to?(:each_pair) ? params[:rules].each_pair.to_h { |kind, keys| [ kind.to_s, Array(keys) ] } : {}
-      emails = params[:emails].to_s.split(/[\s,;]+/)
-      TicketingNotifications.new(Current.organization).save!(rules: rules, emails: emails)
-      redirect_to section_path("notifications"), notice: "Notifications saved."
+      notifications = TicketingNotifications.new(Current.organization)
+      key = params[:recipient].to_s
+      if params[:remove] == "1"
+        notifications.remove_address!(key)
+        return redirect_to section_path("notifications"), notice: "#{key.delete_prefix('email:')} won't get Ticketing email any more."
+      end
+
+      saved = notifications.save_plan!(key, plan: params[:plan].to_s, kinds: Array(params[:kinds]).compact_blank, email: params[:email])
+      plan = TicketingNotifications::PLANS.find { |p| p.key == saved.plan }
+      what = saved.plan == "custom" ? "their own pick" : plan.label.downcase_first
+      notice = saved.kinds.empty? ? "Saved. #{saved.name} gets no Ticketing email." : "Saved. #{saved.name} gets #{what}: #{helpers.pluralize(saved.kinds.size, 'email')}."
+      redirect_to section_path("notifications"), notice: notice
     rescue ArgumentError => e
       redirect_to section_path("notifications"), alert: e.message
     end

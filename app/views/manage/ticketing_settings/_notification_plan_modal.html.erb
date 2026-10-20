@@ -1,0 +1,94 @@
+<%#
+  One person's or address's Ticketing emails, in a modal from the
+  Notifications tab: an email address (for an address), the plan, and what
+  it sends, switchable under Pick my own (notification-plan controller).
+  Locals: id, recipient (a TicketingNotifications::Recipient, or nil for a
+  new address).
+%>
+<%
+  r = local_assigns[:recipient]
+  address = r.nil? || r.address?
+  current_plan = r&.plan || "usual"
+  kinds_on = r&.kinds || TicketingNotifications::USUAL
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  title = r.nil? ? "Add an email address" : "Ticketing emails for #{r.name}"
+%>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden my-auto" data-action="click->modal#stopPropagation" role="dialog" aria-modal="true" aria-labelledby="<%= id %>-title">
+    <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-4 sm:px-6 py-4">
+      <h3 id="<%= id %>-title" class="text-lg font-semibold text-white min-w-0 truncate"><%= title %></h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer flex-shrink-0" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: manage_ticketing_settings_notifications_path, method: :patch,
+          data: { controller: "notification-plan",
+                  notification_plan_plans_value: TicketingNotifications.plan_kinds.to_json,
+                  notification_plan_custom_value: kinds_on.to_json } do %>
+      <%= hidden_field_tag :recipient, r&.key || "new", id: nil %>
+      <%= hidden_field_tag "kinds[]", "", id: nil %>
+      <div class="px-4 sm:px-6 py-5 space-y-5">
+        <% if address %>
+          <div>
+            <label for="<%= id %>-email" class="block text-sm font-medium text-gray-700 mb-1.5">Email address</label>
+            <%= email_field_tag :email, r&.email, id: "#{id}-email", required: true, placeholder: "boxoffice@yourorganization.com", class: input_class %>
+          </div>
+        <% end %>
+
+        <fieldset class="space-y-1.5 sm:space-y-2">
+          <legend class="text-sm font-medium text-gray-700 mb-2">Plan</legend>
+          <% TicketingNotifications::PLANS.each do |plan| %>
+            <%# The count sits beside the name, so the description runs the
+                card's whole width under both (Tim: less height on a phone). %>
+            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-3 py-2.5 sm:px-4 sm:py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= radio_button_tag :plan, plan.key, current_plan == plan.key, id: "#{id}-plan-#{plan.key}",
+                    class: "mt-0.5 h-4 w-4 flex-shrink-0 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500", data: { action: "notification-plan#pick" } %>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-baseline justify-between gap-3">
+                  <span class="text-sm font-semibold text-gray-900"><%= plan.label %></span>
+                  <span class="text-xs sm:text-sm text-gray-600 whitespace-nowrap" data-notification-plan-target="planCount" data-plan="<%= plan.key %>"></span>
+                </span>
+                <span class="block text-sm leading-snug text-gray-600 mt-0.5"><%= plan.description %></span>
+              </span>
+            </label>
+          <% end %>
+        </fieldset>
+
+        <div class="rounded-xl border border-gray-200 overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm text-gray-600" data-notification-plan-target="intro"></div>
+          <% TicketingNotifications::KINDS.group_by(&:group).each do |group, kinds| %>
+            <div class="px-4 pt-3 pb-1 flex items-baseline justify-between gap-2">
+              <span class="text-xs font-semibold uppercase tracking-wide text-gray-500"><%= group %></span>
+              <span class="text-xs text-gray-500" data-notification-plan-target="groupCount" data-group="<%= group %>"></span>
+            </div>
+            <% kinds.each do |kind| %>
+              <div class="flex items-center gap-3 px-4 py-2">
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm text-gray-900"><%= kind.label %></div>
+                  <div class="text-xs text-gray-500"><%= kind.description %></div>
+                </div>
+                <%= render "shared/toggle_switch", name: "kinds[]", checked: kinds_on.include?(kind.key), checked_value: kind.key,
+                      id: "#{id}-kind-#{kind.key}", aria_label: kind.label,
+                      data: { notification_plan_target: "switch", kind: kind.key, group: group, action: "change->notification-plan#changed" } %>
+              </div>
+            <% end %>
+          <% end %>
+          <div class="h-2"></div>
+        </div>
+      </div>
+
+      <div class="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <% if r&.address? %>
+            <%= render "shared/button", text: "Remove this address", variant: "ghost-cancel", size: "small", type: :submit, name: "remove", value: "1" %>
+          <% end %>
+        </div>
+        <div class="flex items-center gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: r.nil? ? "Add" : "Save", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

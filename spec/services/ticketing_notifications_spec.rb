@@ -37,27 +37,68 @@ RSpec.describe "Ticketing notifications" do
   end
 
   describe "who gets what" do
-    it "sends the important ones to every manager until the theater chooses" do
+    it "puts every manager on The usual until someone changes it" do
+      expect(settings.recipients.map(&:plan)).to all(eq("usual"))
       expect(settings.emails_for("daily_summary")).to contain_exactly("owner@sg.example", "manager@sg.example")
       expect(settings.emails_for("sale")).to be_empty
     end
 
-    it "saves the theater's choices, extra addresses included, and drops anyone who's gone" do
-      settings.save!(rules: { "sale" => [ "user:#{manager.id}", "email:box@sg.example", "user:999" ] },
-                     emails: [ "Box@SG.example", "" ])
+    it "keeps a plan per person and address, and a plan takes in every email it covers" do
+      settings.save_plan!("user:#{manager.id}", plan: "everything")
+      settings.save_plan!("new", plan: "custom", kinds: %w[sale door_sale bogus], email: " Box@SG.example ")
       fresh = TicketingNotifications.new(org)
-      expect(fresh.extra_emails).to eq([ "box@sg.example" ])
-      expect(fresh.emails_for("sale")).to contain_exactly("manager@sg.example", "box@sg.example")
-      expect(fresh.emails_for("daily_summary")).to be_empty
+      expect(TicketingNotifications::KEYS.map { |key| fresh.emails_for(key).include?("manager@sg.example") }).to all(be(true))
+      box = fresh.recipient("email:box@sg.example")
+      expect(box).to have_attributes(plan: "custom", kinds: %w[sale door_sale], address?: true)
+      expect(fresh.emails_for("door_sale")).to contain_exactly("manager@sg.example", "box@sg.example")
+      expect(fresh.emails_for("daily_summary")).to contain_exactly("owner@sg.example", "manager@sg.example")
+      expect(TicketingProfile.for(org).notification_emails).to eq([ "box@sg.example" ])
+    end
+
+    it "renames and removes an address, and drops a manager who's gone" do
+      settings.save_plan!("new", plan: "money", email: "box@sg.example")
+      settings.save_plan!("email:box@sg.example", plan: "money", email: "door@sg.example")
+      keys = TicketingNotifications.new(org).recipients.map(&:key)
+      expect(keys).to include("email:door@sg.example")
+      expect(keys).not_to include("email:box@sg.example")
+      settings.remove_address!("email:door@sg.example")
+      expect(TicketingNotifications.new(org).emails_for("dispute")).to contain_exactly("owner@sg.example", "manager@sg.example")
 
       OrganizationRole.where(user: manager).destroy_all
-      expect(TicketingNotifications.new(org).emails_for("sale")).to eq([ "box@sg.example" ])
-      expect { settings.save!(rules: {}, emails: [ "not an email" ]) }.to raise_error(ArgumentError, /isn't an email/)
+      expect(TicketingNotifications.new(org).emails_for("dispute")).to eq([ "owner@sg.example" ])
+    end
+
+    it "turns down what doesn't belong" do
+      expect { settings.save_plan!("new", plan: "usual", email: "not an email") }.to raise_error(ArgumentError, /isn't an email/)
+      expect { settings.save_plan!("new", plan: "usual", email: "manager@sg.example") }.to raise_error(ArgumentError, /one of your managers/)
+      expect { settings.save_plan!("user:999", plan: "usual") }.to raise_error(ArgumentError, /managers/)
+      expect { settings.save_plan!("user:#{manager.id}", plan: "sometimes") }.to raise_error(ArgumentError, /Pick a plan/)
+      expect { settings.remove_address!("user:#{manager.id}") }.to raise_error(ArgumentError, /Managers stay/)
+      expect(settings.save_plan!("user:#{manager.id}", plan: "custom", kinds: [])).to have_attributes(plan: "nothing", kinds: [])
+    end
+
+    it "turns each organization's saved checkboxes into the same emails by plan (the migration)" do
+      require Rails.root.join("db/migrate/20261020120000_add_notification_plans_to_ticketing_profiles.rb").to_s
+      usual = TicketingNotifications::USUAL
+      TicketingProfile.for(org).update_columns(notification_plans: {}, notification_emails: [ "box@sg.example" ], notification_rules: (
+        TicketingNotifications::KEYS.to_h { |k| [ k, [ "user:#{owner.id}" ] ] }
+          .merge(usual.to_h { |k| [ k, [ "user:#{owner.id}", "user:#{manager.id}" ] ] })
+          .merge("sale" => [ "user:#{owner.id}", "email:box@sg.example" ])
+      ))
+      migration = AddNotificationPlansToTicketingProfiles.new
+      ActiveRecord::Migration.suppress_messages do
+        migration.down
+        migration.up
+      end
+      plans = TicketingProfile.for(org).reload.notification_plans
+      expect(plans["user:#{owner.id}"]).to eq("plan" => "everything")
+      expect(plans["user:#{manager.id}"]).to eq("plan" => "usual")
+      expect(plans["email:box@sg.example"]).to eq("plan" => "custom", "kinds" => [ "sale" ])
     end
   end
 
-  it "emails each sale to whoever wants them, and nothing for comps" do
-    settings.save!(rules: { "sale" => [ "email:box@sg.example" ] }, emails: [ "box@sg.example" ])
+  it "emails each sale to whoever wants them, and nothing for comps unless they want those too" do
+    settings.save_plan!("new", plan: "custom", kinds: [ "sale" ], email: "box@sg.example")
     sell(2)
 
     mail = mails_to("box@sg.example").sole
@@ -121,7 +162,7 @@ RSpec.describe "Ticketing notifications" do
   end
 
   it "tells the team about refunds, and about refunds that fail" do
-    settings.save!(rules: { "refund_issued" => [ "user:#{owner.id}" ], "refund_problem" => [ "user:#{owner.id}" ] }, emails: [])
+    settings.save_plan!("user:#{owner.id}", plan: "custom", kinds: %w[refund_issued refund_problem])
     order = sell(1)
     allow(Stripe::Refund).to receive(:create).and_return(double("refund", id: "re_1"))
     perform_enqueued_jobs { TicketOrderRefund.issue!(order, by: manager, reason: "Asked by email") }
