@@ -118,13 +118,13 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     expect(Nokogiri::HTML(response.body).at_css("[data-tap-to-pay-card]").text).to include("Off")
   end
 
-  it "tells the app who can sell with it, in the menu, only in a copy of the app that has it" do
+  it "tells the app who can sell with it, only in a copy of the app that has it, and never adds a menu tile" do
     sign_in(seller)
     get my_dashboard_path, headers: in_app
     bridge = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--menu']")
     menu = JSON.parse(bridge["data-bridge--menu-menu-value"])
-    expect(menu.map { |item| item["id"] }).to include("tap_to_pay")
-    expect(menu.find { |item| item["id"] == "tap_to_pay" }).to include("title" => "Tap to Pay on iPhone", "path" => door_tap_to_pay_path, "icon" => "wave.3.right.circle")
+    # The menu is the My pages only (Tim, 2026-10-19).
+    expect(menu.map { |item| item["id"] }).not_to include("tap_to_pay")
     tap_to_pay = JSON.parse(bridge["data-bridge--menu-tap-to-pay-value"])
     expect(tap_to_pay).to include("settingsPath" => door_tap_to_pay_path, "userKey" => seller.id.to_s, "canAcceptTerms" => false)
 

@@ -51,12 +51,12 @@ RSpec.describe "Tap to Pay on Android", type: :request do
     no_apple(response.body)
   end
 
-  it "names it Tap to Pay in the menu, with what the app warms up with" do
+  it "tells the app what it warms up with, and never adds a menu tile" do
     get door_tap_to_pay_path, headers: android # makes the organization's Terminal Location
     get my_dashboard_path, headers: android
     bridge = Nokogiri::HTML(response.body).at_css("[data-controller='bridge--menu']")
     menu = JSON.parse(bridge["data-bridge--menu-menu-value"])
-    expect(menu.find { |item| item["id"] == "tap_to_pay" }).to include("title" => "Tap to Pay", "path" => door_tap_to_pay_path)
+    expect(menu.map { |item| item["id"] }).not_to include("tap_to_pay") # the My pages only (Tim, 2026-10-19)
     tap_to_pay = JSON.parse(bridge["data-bridge--menu-tap-to-pay-value"])
     expect(tap_to_pay).to include("settingsPath" => door_tap_to_pay_path, "userKey" => seller.id.to_s, "locationId" => "tml_1")
   end

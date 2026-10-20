@@ -61,8 +61,9 @@ module NativeAppHelper
     items = talent_nav_sections.flat_map { |section| section[:items] }.map { |item| native_menu_item(item) }
     items.reject! { |item| item[:id] == "door" }
     paths = [ profile_path, (groups_path if native_in_a_group?(user)), account_path ].compact
-    tap_to_pay = ({ id: "tap_to_pay", title: tap_to_pay_name, path: door_tap_to_pay_path, icon: "wave.3.right.circle", badge: 0 } if native_tap_to_pay)
-    items + [ tap_to_pay ].compact + paths.map { |path| native_menu_item(path: path) } + [ native_door_item(user) ].compact
+    # Only the My pages (Tim's rule): no Tap to Pay, ticketing or door tile.
+    # The door is the Work the door bar under the menu.
+    items + paths.map { |path| native_menu_item(path: path) } + [ native_door_item(user) ].compact
   end
 
   # Tap to Pay, for an app that has it, when this person can sell
