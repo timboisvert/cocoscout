@@ -97,7 +97,7 @@ class TicketingNotificationContent
     held = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     items = order.ticket_order_items.select(&:sold?)
     show_vars(listing).merge(
-      buyer_name: h(order.buyer_name.presence || "Someone"),
+      buyer_name: h(order.buyer_name.presence || (order.channel.start_with?("door") ? "Someone at the door" : "Someone")),
       ticket_count: ActionController::Base.helpers.pluralize(held.size, "ticket"),
       ticket_summary: h(held.group_by(&:ticket_tier).map { |tier, ts| "#{ts.size} #{tier.name}" }.join(", ")),
       products: items.map { |i| "#{i.quantity} #{h(i.name)}" }.to_sentence,
