@@ -1,0 +1,100 @@
+{
+  "settings": {
+    "nav": 2
+  },
+  "rules": [
+    {
+      "patterns": [
+        ".*"
+      ],
+      "properties": {
+        "context": "default",
+        "pull_to_refresh_enabled": true
+      }
+    },
+    {
+      "patterns": [
+        "/new$",
+        "/edit$",
+        "/edit/"
+      ],
+      "properties": {
+        "context": "modal",
+        "modal_dismiss_gesture_enabled": false,
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
+        "/my/signups/[^/]+/form$",
+        "/my/auditions/[^/]+/form$",
+        "/my/questionnaires/[^/]+/form$",
+        "/my/courses/[^/]+/register$",
+        "/my/profiles/new$",
+        "/groups/new$"
+      ],
+      "properties": {
+        "context": "modal",
+        "modal_dismiss_gesture_enabled": false,
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
+        "/door/[0-9]+/card/"
+      ],
+      "properties": {
+        "context": "modal",
+        "modal_style": "full",
+        "modal_dismiss_gesture_enabled": false,
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
+        "/door/[0-9]+$"
+      ],
+      "properties": {
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
+        "/welcome$",
+        "/password$",
+        "/reset/"
+      ],
+      "properties": {
+        "context": "default",
+        "presentation": "replace_root",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
+        "^/superadmin",
+        "^/$",
+        "^/for-performers",
+        "^/for-producers",
+        "^/pricing",
+        "^/sketchfest"
+      ],
+      "properties": {
+        "open_in": "safari"
+      }
+    },
+    {
+      "patterns": [
+        "/tax-forms/[0-9]+/w9/copy$",
+        "/tax-forms/[0-9]+/1099/[0-9]+$",
+        "/pay/contract/[^/]+/invoice$",
+        "/my/courses/[^/]+/calendar$",
+        "/tickets/orders/[^/]+/calendar$",
+        "^/rails/active_storage/"
+      ],
+      "properties": {
+        "open_in": "document"
+      }
+    }
+  ]
+}

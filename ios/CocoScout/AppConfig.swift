@@ -21,7 +21,24 @@ enum AppConfig {
         #endif
     }()
 
-    static let pathConfigurationURL = baseURL.appendingPathComponent("hotwire-native/path-configuration.json")
+    /// Which navigation this build draws. V1 builds are 1 and read the
+    /// original page rules; V1.1 builds (production mode, the universal
+    /// Messages and Notifications icons) are 2. The server reads it from the
+    /// user agent (NativeAppVersion) and only sends generation-2 menus and
+    /// pages to builds that say so, so V1 installs never see them.
+    static let navGeneration = 2
+
+    /// Each generation reads its own page rules, so a change for one never
+    /// reaches phones running the other.
+    static let pathConfigurationURL = baseURL.appendingPathComponent("hotwire-native/nav-\(navGeneration)/path-configuration.json")
+
+    /// "CocoScout/1.1 (12; nav 2)", ahead of Hotwire Native's own user agent.
+    static let userAgentPrefix: String = {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "0"
+        let build = info?["CFBundleVersion"] as? String ?? "0"
+        return "CocoScout/\(version) (\(build); nav \(navGeneration))"
+    }()
 
     static func url(_ path: String) -> URL {
         URL(string: path, relativeTo: baseURL)!.absoluteURL

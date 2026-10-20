@@ -25,6 +25,18 @@ module NativeAppHelper
     turbo_native_app? && request.user_agent.to_s[/bridge-components: \[([^\]]*)\]/, 1].to_s.split.include?(name)
   end
 
+  # The app build's navigation generation (NativeAppVersion): 1 for V1
+  # installs, 2 for V1.1. Nil outside the app.
+  def native_nav_generation
+    NativeAppVersion.nav(request.user_agent)
+  end
+
+  # Whether this page may show production mode and the V1.1 navigation: the
+  # whole website, and app builds that draw it. V1 installs never do.
+  def production_mode_available?
+    NativeAppVersion.production_mode?(request.user_agent)
+  end
+
   # The Android app (Hotwire Native Android's user agent says so); the
   # iPhone app otherwise.
   def native_android?

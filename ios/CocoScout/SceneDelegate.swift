@@ -55,6 +55,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     private func configureHotwire() {
+        // Before any web view exists: the server tells V1.1 builds by this.
+        Hotwire.config.applicationUserAgentPrefix = AppConfig.userAgentPrefix
         Hotwire.loadPathConfiguration(from: [.server(AppConfig.pathConfigurationURL)])
         var components: [BridgeComponent.Type] = [FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self]
         // Tap to Pay only in builds run from Xcode (Debug) until Apple grants

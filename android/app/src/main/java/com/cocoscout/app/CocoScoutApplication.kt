@@ -59,6 +59,8 @@ class CocoScoutApplication : Application() {
             SystemNavigationRouteDecisionHandler()
         )
 
+        // Before any web view exists: the server tells V1.1 builds by this.
+        Hotwire.config.applicationUserAgentPrefix = AppConfig.userAgentPrefix
         Hotwire.config.jsonConverter = KotlinXJsonConverter()
         Hotwire.config.webViewDebuggingEnabled = BuildConfig.DEBUG
         Hotwire.config.logger.logLevel = if (BuildConfig.DEBUG) HotwireLogLevel.DEBUG else HotwireLogLevel.NONE
@@ -66,7 +68,7 @@ class CocoScoutApplication : Application() {
         Hotwire.loadPathConfiguration(
             context = this,
             location = PathConfiguration.Location(
-                assetFilePath = "path-configuration.json",
+                assetFilePath = AppConfig.PATH_CONFIGURATION_ASSET,
                 remoteFileUrl = AppConfig.pathConfigurationUrl
             )
         )
