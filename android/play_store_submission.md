@@ -216,16 +216,15 @@ a number it has seen).
 The door phone takes a buyer's card or phone tap (`door/TapToPayReader`).
 Android has no approval step like Apple's: the moment this build reaches
 someone with box office access at an organization that has Tap to Pay
-switched on (Stars & Garters today), they see it in the menu and at the door.
+switched on (Stars & Garters today), they see it on Settings and at the door
+(never as a menu tile: the menu is the My pages only).
 
 The bundle is built: `app-release.aab` as above, versionCode 3, versionName
 1.2. Two things first:
 
-- **Deploy main.** The Android wording ("Tap to Pay", never the iPhone) and
-  the door header fix are on the server; without them the app says "Tap to
-  Pay on iPhone". Film Apple's Recording 4 (`ios/tap_to_pay.md`) before
-  this deploy: main also adds a "Tap to Pay on Android" card to the Door tab
-  that recording shows.
+- **Deploy main** (done 2026-10-19). The Android wording ("Tap to Pay",
+  never the iPhone), the door header fix and the Settings entry are on the
+  server; without them the app says "Tap to Pay on iPhone".
 - **Let build 2 (1.0) pass its review first.** A new Production release
   replaces one that's still in review. Internal testing doesn't have to wait.
 
@@ -248,8 +247,8 @@ The bundle is built: `app-release.aab` as above, versionCode 3, versionName
    Open the testing link on the phone and install from Play, not from a
    copied file. If CocoScout 1.0 is on it, Play updates it.
 3. **Set it up.** Sign in as someone with box office access at Stars &
-   Garters. Menu → Tap to Pay → Set up Tap to Pay → allow location "While
-   using the app". It says Ready within a few seconds.
+   Garters. Menu → Settings → Tap to Pay → Set up Tap to Pay → allow
+   location "While using the app". It says Ready within a few seconds.
 4. **One real tap at a door.** Work the door → the show → Sell → 1 ticket →
    Tap to Pay. Stripe's tap screen shows where to tap; tap a real card (or a
    phone wallet). The page says Paid with the receipt code. Note the order

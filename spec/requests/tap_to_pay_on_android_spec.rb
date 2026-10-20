@@ -93,8 +93,10 @@ RSpec.describe "Tap to Pay on Android", type: :request do
     page = Nokogiri::HTML(response.body)
     android = page.at_css("[data-tap-to-pay-android-card]")
     expect(android.text.squish).to include("Tap to Pay on Android", "On", "Anyone who can check people in and sell tickets can take cards on an Android phone",
-                                           "Setting up an Android phone", "Open the menu and choose Tap to Pay.", "Android 13 or later")
-    expect(android.text).not_to include("iPhone XS", "Apple Pay")
+                                           "How to set up")
+    setup = page.at_css("#tap-to-pay-android-setup")
+    expect(setup.text.squish).to include("Setting up an Android phone", "Open the menu, tap Settings, then Tap to Pay.", "Android 13 or later")
+    expect(android.text + setup.text).not_to include("iPhone XS", "Apple Pay")
     expect(page.at_css("[data-tap-to-pay-card]").text).not_to include("Android")
     expect(page.at_css("#tap-to-pay-settings").text).not_to include("Android")
     expect(response.body).not_to include("Stripe")

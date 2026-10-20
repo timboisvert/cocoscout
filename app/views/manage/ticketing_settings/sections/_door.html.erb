@@ -52,8 +52,8 @@
         <h2 class="text-lg font-semibold text-gray-900">Tap to Pay on Android</h2>
         <p class="text-sm text-gray-600 mt-1">Contactless debit and credit cards and phone wallets at your door, right on an Android phone, in the CocoScout app. It's on and off with Tap to Pay on iPhone, above.</p>
       </div>
-      <div class="px-6 py-4 space-y-4">
-        <div class="flex items-center gap-2 text-sm">
+      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0 flex items-center gap-2 text-sm">
           <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 <%= tap_on ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700" %>"><%= tap_on ? "On" : "Off" %></span>
           <span class="text-gray-600">
             <% if !tap_on %>
@@ -65,14 +65,36 @@
             <% end %>
           </span>
         </div>
-        <div>
-          <h3 class="text-sm font-medium text-gray-900">Setting up an Android phone</h3>
-          <ol class="mt-1 list-decimal pl-5 space-y-1 text-sm text-gray-600">
-            <li>Install or update the CocoScout app from Google Play (version 1.2 or later), and sign in.</li>
-            <li>Open the menu and choose Tap to Pay.</li>
-            <li>Tap Set up Tap to Pay, and allow location while using the app. Card networks need to know where a payment is taken.</li>
-          </ol>
-          <p class="text-xs text-gray-500 mt-2">It needs a phone with NFC on Android 13 or later, such as a Pixel 6 or a Galaxy S22 or newer, with a security update from the last year and Developer options off. The app says so if a phone can't take taps.</p>
+        <%= render "shared/button", text: "How to set up", variant: "secondary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "tap-to-pay-android-setup" } %>
+      </div>
+    </div>
+    <div id="tap-to-pay-android-setup" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         data-controller="modal" data-action="click->modal#closeOnBackdrop">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white">Tap to Pay on Android</h3>
+          <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-6 space-y-5">
+          <div>
+            <h4 class="text-sm font-medium text-gray-900">Who can use it</h4>
+            <p class="text-sm text-gray-600 mt-1">Your organization's managers, and everyone on your door list who can check people in and sell tickets.</p>
+          </div>
+          <div>
+            <h4 class="text-sm font-medium text-gray-900">Setting up an Android phone</h4>
+            <ol class="mt-1 list-decimal pl-5 space-y-1 text-sm text-gray-600">
+              <li>Install or update the CocoScout app from Google Play (version 1.2 or later), and sign in.</li>
+              <li>Open the menu, tap Settings, then Tap to Pay.</li>
+              <li>Tap Set up Tap to Pay, and allow location while using the app. Card networks need to know where a payment is taken.</li>
+            </ol>
+            <p class="text-xs text-gray-500 mt-2">It needs a phone with NFC on Android 13 or later, such as a Pixel 6 or a Galaxy S22 or newer, with a security update from the last year and Developer options off. The app says so if a phone can't take taps.</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+          <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
         </div>
       </div>
     </div>
