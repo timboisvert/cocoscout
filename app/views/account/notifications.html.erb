@@ -1,4 +1,4 @@
-<% content_for :title, turbo_native_app? ? "Notifications" : "Notification Preferences" %>
+<% content_for :title, "Notifications" %>
 
 <div class="w-full">
   <div id="notice-container">
@@ -42,69 +42,52 @@
     </div>
   <% end %>
 
-  <!-- Email Notifications Section -->
+  <%# V1.1 plan §9: Messages are people writing to you; Notifications are
+      everything automated. Push and Email per group. A group's Push shows
+      once its area sends Notifications (NotificationGroups live); Ticketing
+      email is the organization's, by plan. %>
   <%= form_with(url: account_notifications_path, method: :patch, data: { turbo: true }) do |f| %>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Email Notifications" %>
-      <div class="p-4 sm:p-6">
-        <p class="text-sm text-gray-600 mb-6">
-          Control which email notifications you receive from CocoScout.
+      <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Messages" %>
+      <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">People writing to you. A new message always shows in Messages.</p>
+      <%= render "account/notification_switch_header" %>
+      <%= render "account/notification_switch_row", label: "New messages",
+            description: "A push the moment one arrives; email as a digest of what's still unread.",
+            push_name: "push[messages]", push_on: Current.user.message_push?,
+            email_name: "notifications[message_digest]", email_on: Current.user.message_digest_enabled? %>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Notifications" %>
+      <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">What CocoScout tells you about as things happen. Every one shows in Notifications; choose which also reach your phone or your inbox.</p>
+      <%= render "account/notification_switch_header" %>
+      <% NotificationGroups::ALL.select { |g| g.section == :yours }.each do |group| %>
+        <%= render "account/notification_switch_row", label: group.label, description: group.description,
+              push_name: (group.live ? "push[#{group.key}]" : nil), push_on: Current.user.notification_push?(group.key),
+              email_name: "email[#{group.key}]", email_on: Current.user.notification_email?(group.key) %>
+      <% end %>
+    </div>
+
+    <% @ticketing_plans.each do |organization, recipient| %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+        <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Ticketing at #{organization.name}" %>
+        <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">
+          Your organization picks your Ticketing emails. Your plan is <strong class="text-gray-900"><%= TicketingNotifications::PLANS.find { |plan| plan.key == recipient.plan }&.label || "Your own pick" %></strong>, <%= pluralize(recipient.kinds.size, "email") %>.
+          <% if organization.manageable_by?(Current.user) %>
+            <%= link_to "Change it on Ticketing settings", manage_ticketing_settings_section_path(section: "notifications"), class: "text-pink-600 hover:text-pink-700 font-medium" %>.
+          <% end %>
         </p>
-
-        <div class="space-y-4">
-          <div class="flex items-center justify-between py-3 border-b border-gray-100">
-            <div>
-              <p class="text-sm font-medium text-gray-700">Open Vacancy Invitations</p>
-              <p class="text-xs text-gray-500 mt-1">Get notified when you're invited to fill an open vacancy</p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="hidden" name="notifications[vacancy_invitations]" value="0">
-              <input type="checkbox" name="notifications[vacancy_invitations]" value="1" <%= 'checked' if Current.user.notification_enabled?(:vacancy_invitations) %> class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            </label>
-          </div>
-
-          <div class="flex items-center justify-between py-3 border-b border-gray-100">
-            <div>
-              <p class="text-sm font-medium text-gray-700">Audition Invitations</p>
-              <p class="text-xs text-gray-500 mt-1">Get notified when you're invited to audition</p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="hidden" name="notifications[audition_invitations]" value="0">
-              <input type="checkbox" name="notifications[audition_invitations]" value="1" <%= 'checked' if Current.user.notification_enabled?(:audition_invitations) %> class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            </label>
-          </div>
-
-          <div class="flex items-center justify-between py-3 border-b border-gray-100">
-            <div>
-              <p class="text-sm font-medium text-gray-700">Group Invitations</p>
-              <p class="text-xs text-gray-500 mt-1">Get notified when you're invited to join a group</p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="hidden" name="notifications[group_invitations]" value="0">
-              <input type="checkbox" name="notifications[group_invitations]" value="1" <%= 'checked' if Current.user.notification_enabled?(:group_invitations) %> class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            </label>
-          </div>
-
-          <div class="flex items-center justify-between py-3">
-            <div>
-              <p class="text-sm font-medium text-gray-700">Message Digest</p>
-              <p class="text-xs text-gray-500 mt-1">Get reminded about unread messages (adapts to your engagement: daily if you check, less often if you don't; with notifications on in the app, only what's still unread a day later)</p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="hidden" name="notifications[message_digest]" value="0">
-              <input type="checkbox" name="notifications[message_digest]" value="1" <%= 'checked' if Current.user.message_digest_enabled %> class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            </label>
-          </div>
-        </div>
-
-        <div class="mt-6">
-          <%= render "shared/button", text: "Save Email Preferences", type: :submit, variant: "primary" %>
-        </div>
+        <%= render "account/notification_switch_header" %>
+        <% NotificationGroups::ALL.select(&:ticketing?).each do |group| %>
+          <%= render "account/notification_switch_row", label: group.label, description: group.description,
+                push_name: "push[#{group.key}]", push_on: Current.user.notification_push?(group.key),
+                email_name: nil, email_note: "By plan" %>
+        <% end %>
       </div>
+    <% end %>
+
+    <div class="mb-6">
+      <%= render "shared/button", text: "Save", type: :submit, variant: "primary" %>
     </div>
   <% end %>
 </div>

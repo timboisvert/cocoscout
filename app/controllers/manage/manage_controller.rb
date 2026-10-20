@@ -6,6 +6,7 @@ module Manage
   # that production mode opens inside the app for generation-2 builds.
   class ManageController < ApplicationController
     include Manage::PaidFeatureGate
+    include OrganizationContext
 
     # My's own trackers; Manage keeps its own (track_last_dashboard,
     # show_manage_sidebar).
@@ -253,59 +254,6 @@ module Manage
 
     def show_manage_header_only
       @show_manage_header_only = true
-    end
-
-    def set_current_organization
-      user_id = Current.user&.id
-      if user_id && session[:current_organization_id].is_a?(Hash)
-        company_id = session[:current_organization_id][user_id.to_s]
-        org = Organization.find_by(id: company_id)
-        # Verify user still has access to this org (role may have been removed)
-        if org && Current.user.accessible_organizations.where(id: org.id).exists?
-          Current.organization = org
-        else
-          session[:current_organization_id].delete(user_id.to_s)
-          Current.organization = nil
-        end
-      elsif Current.user
-        orgs = Current.user.accessible_organizations
-        non_demo_orgs = orgs.non_demo
-
-        # Auto-select if user has exactly one non-demo org (ignore demo org)
-        # Or if demo org is their only org, auto-select it
-        auto_select_org = if non_demo_orgs.count == 1
-                            non_demo_orgs.first
-        elsif non_demo_orgs.count == 0 && orgs.count == 1
-                            orgs.first
-        end
-
-        if auto_select_org
-          session[:current_organization_id] ||= {}
-          session[:current_organization_id][Current.user.id.to_s] = auto_select_org.id
-          Current.organization = auto_select_org
-        else
-          Current.organization = nil
-        end
-      else
-        Current.organization = nil
-      end
-    end
-
-    def set_current_production
-      user_id = Current.user&.id
-      if user_id && Current.organization && session[:current_production_id_for_organization].is_a?(Hash)
-        prod_id = session[:current_production_id_for_organization]["#{user_id}_#{Current.organization.id}"]
-        production = if prod_id
-                       Current.organization.productions.includes(posters: { image_attachment: :blob }).find_by(id: prod_id)
-        end
-        # Only honor the stored selection if the user can actually open it. This
-        # prevents a stale/archived/foreign selection (e.g. left over from
-        # impersonation or a shared browser) from leaking onto org-level pages
-        # like Messages and tripping the production access guard.
-        Current.production = (production && Current.user.can_access_production?(production)) ? production : nil
-      else
-        Current.production = nil
-      end
     end
 
     def require_current_organization

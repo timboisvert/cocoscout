@@ -1,0 +1,104 @@
+<% content_for :title, "Notifications" %>
+
+<%# Everything automated that reached this person, read or not (V1.1 plan
+    §9). A row whose page lives in production mode asks before switching
+    there from My, unless they said not to (notification-open controller). %>
+<div class="w-full pb-8" data-controller="notification-open"
+     data-notification-open-ask-value="<%= @ask_before_switching %>"
+     data-notification-open-remember-url-value="<%= notifications_switch_without_asking_path %>">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [],
+    text: "Notifications",
+    links: [
+      { icon: "check", text: "Mark all read", path: read_notifications_path(filter: @filter, area: @area), method: :post, disabled: Current.user.unread_notification_count.zero? },
+      { icon: "cog", text: "Settings", path: account_notifications_path }
+    ]
+  } %>
+
+  <div class="mt-4">
+    <%= render "shared/filters/filter_bar",
+          toggle_label: "Filters",
+          filter_groups: [
+            { label: "Show", filters: [
+              { text: "All", path: notifications_path(area: @area), active: @filter == "all" },
+              { text: "Unread", path: notifications_path(filter: "unread", area: @area), active: @filter == "unread" }
+            ] },
+            (NotificationGroups.areas.size > 1 ? { separator: true } : nil),
+            (NotificationGroups.areas.size > 1 ? { label: "About", filters: [ { text: "Everything", path: notifications_path(filter: @filter), active: @area.nil? } ] +
+              NotificationGroups.areas.map { |area| { text: area, path: notifications_path(filter: @filter, area: area), active: @area == area } } } : nil)
+          ].compact %>
+  </div>
+
+  <% if @notifications.any? %>
+    <% today = Time.zone.today %>
+    <% sections = @notifications.group_by { |n| d = n.created_at.in_time_zone.to_date; d == today ? "Today" : (d == today - 1 ? "Yesterday" : "Earlier") } %>
+    <div class="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <% sections.each_with_index do |(label, rows), section_index| %>
+        <div class="px-4 sm:px-5 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 <%= 'border-t border-gray-100' if section_index.positive? %>"><%= label %></div>
+        <ul class="divide-y divide-gray-100">
+          <% rows.each do |n| %>
+            <li class="relative flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-3 hover:bg-gray-50 transition-colors">
+              <span class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 <%= n.read? ? 'bg-gray-100 text-gray-500' : 'bg-pink-50 text-pink-600' %>">
+                <%= render "notifications/icon", category: n.category %>
+              </span>
+              <span class="min-w-0 flex-1">
+                <%# The title's link covers the whole row (after:inset-0); Reply sits above it. %>
+                <a href="<%= open_notification_path(n) %>"
+                   class="block text-sm leading-snug text-gray-900 after:absolute after:inset-0 <%= 'font-semibold' unless n.read? %>"
+                   data-production-mode="<%= n.production_mode? %>"
+                   data-organization-name="<%= n.organization&.name %>"
+                   data-action="click->notification-open#open"><%= n.title %></a>
+                <span class="block text-xs text-gray-500 mt-0.5"><%= [ n.organization&.name, n.group.label ].compact.join(" · ") %></span>
+                <% if n.reply_path.present? %>
+                  <span class="relative z-10 inline-flex mt-1.5"><%= render "shared/button", text: "Reply", variant: "secondary", size: "small", path: n.reply_path %></span>
+                <% end %>
+              </span>
+              <span class="flex items-center gap-2 flex-shrink-0 pt-0.5 text-xs text-gray-500 whitespace-nowrap">
+                <%= label == "Today" ? "#{time_ago_in_words(n.created_at)} ago" : (label == "Yesterday" ? n.created_at.in_time_zone.strftime("%-l:%M %p") : n.created_at.in_time_zone.strftime("%b %-d")) %>
+                <% unless n.read? %><span class="w-2 h-2 rounded-full bg-pink-500" aria-label="Unread"></span><% end %>
+              </span>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+
+    <% if @pagy.pages > 1 %>
+      <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-500">Page <%= @pagy.page %> of <%= @pagy.pages %></div>
+        <div class="flex gap-2">
+          <%= render "shared/button", text: "← Newer", variant: "secondary", size: "small", **(@pagy.previous ? { path: notifications_path(page: @pagy.previous, filter: @filter, area: @area) } : { disabled: true }) %>
+          <%= render "shared/button", text: "Older →", variant: "secondary", size: "small", **(@pagy.next ? { path: notifications_path(page: @pagy.next, filter: @filter, area: @area) } : { disabled: true }) %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="mt-8 text-center py-12">
+      <svg class="mx-auto h-12 w-12 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+      <p class="mt-3 text-sm text-gray-600"><%= @filter == "unread" ? "Nothing unread." : "Nothing yet. Things that happen, like a ticket selling or a contract being signed, show up here." %></p>
+    </div>
+  <% end %>
+
+  <%# Asked before a notification opens production mode from My. %>
+  <div class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-notification-open-target="modal" data-action="click->notification-open#closeOnBackdrop">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="mode-switch-title">
+      <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 id="mode-switch-title" class="text-lg font-semibold text-white">Open in production mode?</h3>
+        <button type="button" data-action="click->notification-open#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-sm text-gray-700">This lives in production mode for <strong class="text-gray-900" data-notification-open-target="organization">your organization</strong>. You'll switch there to see it, and can exit from the account menu.</p>
+        <label class="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" data-notification-open-target="remember">
+          Don't ask again, just switch
+        </label>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->notification-open#close" } %>
+        <%= render "shared/button", text: "Switch and open", variant: "primary", size: "medium", type: :button, data: { action: "click->notification-open#confirm" } %>
+      </div>
+    </div>
+  </div>
+</div>

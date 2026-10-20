@@ -25,6 +25,7 @@ class PushNotificationService
   # title = their name, subtitle = the production, body = what they wrote.
   def self.notify_new_message(user, message)
     return unless user.device_tokens.exists?
+    return unless user.message_push?
 
     root = message.root_message
     production_name = message.effective_production&.name
@@ -49,7 +50,7 @@ class PushNotificationService
         thread_id: root.id.to_s,
         message_id: message.id.to_s
       },
-      badge: user.unread_message_count
+      badge: user.unread_message_count + user.unread_notification_count
     )
   end
 

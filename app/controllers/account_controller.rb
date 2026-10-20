@@ -109,6 +109,13 @@ class AccountController < ApplicationController
   end
 
   def notifications
+    # Ticketing: the organizations where this person is a manager, each with
+    # the email plan the organization gave them (TicketingNotifications).
+    @ticketing_plans = Current.user.accessible_organizations.filter_map do |organization|
+      settings = TicketingNotifications.new(organization)
+      recipient = settings.recipient("user:#{Current.user.id}")
+      [ organization, recipient ] if recipient
+    end
   end
 
   # Email notification preferences. Only the keys a form sends change, so a
@@ -129,9 +136,12 @@ class AccountController < ApplicationController
       end
     end
 
+    # V1.1's groups: Push and Email per group (NotificationGroups).
+    Current.user.set_notification_switches(push: params[:push]&.to_unsafe_h || {}, email: params[:email]&.to_unsafe_h || {})
+
     back = params[:return_to] == my_account_path ? my_account_path : account_notifications_path
     if Current.user.save
-      redirect_to back, notice: "Email notification preferences updated."
+      redirect_to back, notice: "Notification settings saved."
     else
       redirect_to back, alert: "Failed to update notification preferences."
     end

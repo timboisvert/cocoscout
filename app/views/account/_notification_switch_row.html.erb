@@ -1,0 +1,27 @@
+<%#
+  One group's Push and Email switches. Locals: label, description, push_name
+  (nil: nothing pushes for it yet), push_on, email_name (nil: not the
+  person's to set), email_on, email_note (shown instead, e.g. "By plan").
+%>
+<div class="flex sm:grid sm:grid-cols-[minmax(0,1fr)_88px_88px] items-center gap-3 px-4 sm:px-6 py-3 border-t border-gray-100 first-of-type:border-t-0">
+  <div class="min-w-0 flex-1">
+    <p class="text-sm font-medium text-gray-900"><%= label %></p>
+    <p class="text-xs text-gray-500 mt-0.5"><%= description %></p>
+  </div>
+  <div class="flex flex-col items-center gap-1 w-14 sm:w-auto flex-shrink-0">
+    <span class="sm:hidden text-[10px] font-semibold uppercase tracking-wider text-gray-500">Push</span>
+    <% if local_assigns[:push_name] %>
+      <%= render "shared/toggle_switch", name: push_name, checked: push_on, hidden_false: true, aria_label: "Push for #{label}" %>
+    <% else %>
+      <span class="text-xs text-gray-400" title="Nothing pushes for this yet">—</span>
+    <% end %>
+  </div>
+  <div class="flex flex-col items-center gap-1 w-14 sm:w-auto flex-shrink-0">
+    <span class="sm:hidden text-[10px] font-semibold uppercase tracking-wider text-gray-500">Email</span>
+    <% if local_assigns[:email_name] %>
+      <%= render "shared/toggle_switch", name: email_name, checked: email_on, hidden_false: true, aria_label: "Email for #{label}" %>
+    <% else %>
+      <span class="text-xs text-gray-500 text-center"><%= local_assigns[:email_note] %></span>
+    <% end %>
+  </div>
+</div>

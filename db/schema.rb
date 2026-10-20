@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1543,6 +1543,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_130000) do
     t.index ["slug"], name: "index_mics_on_slug", unique: true
     t.index ["status"], name: "index_mics_on_status"
     t.index ["venue_id"], name: "index_mics_on_venue_id"
+  end
+
+  create_table "notifications", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "organization_id"
+    t.string "kind", null: false
+    t.string "category", null: false
+    t.string "title", null: false
+    t.text "body"
+    t.string "path"
+    t.string "reply_path"
+    t.string "subject_type"
+    t.bigint "subject_id"
+    t.datetime "read_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_notifications_on_organization_id"
+    t.index ["subject_type", "subject_id"], name: "index_notifications_on_subject"
+    t.index ["user_id", "created_at"], name: "index_notifications_on_user_id_and_created_at"
+    t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
+    t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
   create_table "org_cash_entries", force: :cascade do |t|
@@ -4270,6 +4291,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_130000) do
   add_foreign_key "mic_taggings", "mics"
   add_foreign_key "mics", "productions"
   add_foreign_key "mics", "venues"
+  add_foreign_key "notifications", "organizations"
+  add_foreign_key "notifications", "users"
   add_foreign_key "org_cash_entries", "organizations"
   add_foreign_key "org_payouts", "course_offerings"
   add_foreign_key "org_payouts", "organizations"

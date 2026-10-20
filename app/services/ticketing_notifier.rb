@@ -29,7 +29,25 @@ class TicketingNotifier
     recipients.each do |to|
       AppMailer.with(template_key: "ticketing_#{kind}", to: to, variables: common.merge(variables)).send_template.deliver_later
     end
+    notify_managers(organization, kind, common.merge(variables), about_type, about_id)
     recipients.size
+  end
+
+  # The in-app list and push (V1.1 plan §9). Email is the organization's,
+  # by plan; push is each manager's own, per group. A manager gets the
+  # notification if their plan emails them this kind or their push for its
+  # group is on; it pushes only if push is on.
+  def self.notify_managers(organization, kind, variables, about_type, about_id)
+    group = NotificationGroups.for_ticketing_kind(kind)
+    settings = TicketingNotifications.new(organization)
+    emailed = settings.recipients.reject(&:address?).select { |r| r.kinds.include?(kind) }.map { |r| r.user.id }
+    subject = about_type.present? && about_id.to_i.positive? ? about_type.safe_constantize&.find_by(id: about_id) : nil
+    settings.managers.each do |user|
+      next unless emailed.include?(user.id) || user.notification_push?(group.key)
+
+      Notifier.deliver(user: user, category: group.key, kind: kind, template_key: "ticketing_#{kind}", variables: variables,
+                       path: variables["show_url"].presence || variables["ticketing_url"], organization: organization, subject: subject)
+    end
   end
 
   def self.claim(organization, kind, about_type, about_id, occasion)
@@ -44,5 +62,5 @@ class TicketingNotifier
     Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
   end
 
-  private_class_method :claim, :url_options
+  private_class_method :claim, :url_options, :notify_managers
 end

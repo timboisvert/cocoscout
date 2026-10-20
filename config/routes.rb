@@ -57,6 +57,11 @@ Rails.application.routes.draw do
   get   "/signup",        to: "auth#signup",          as: "signup"
   post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
   get   "/signin",        to: "auth#signin",          as: "signin"
+  # Notifications (V1.1 plan §9): universal, in neither mode; the bell opens them.
+  get   "/notifications",          to: "notifications#index",       as: "notifications"
+  get   "/notifications/:id/open", to: "notifications#open",        as: "open_notification"
+  post  "/notifications/read",     to: "notifications#mark_all_read", as: "read_notifications"
+  post  "/notifications/switch-without-asking", to: "notifications#switch_without_asking", as: "notifications_switch_without_asking"
   # Where the V1.1 app opens: the mode last used (StartController).
   get   "/start",         to: "start#show",           as: "start"
   post  "/signin",        to: "auth#handle_signin",   as: "handle_signin"

@@ -22,6 +22,7 @@ class User < ApplicationRecord
   # through the web, so its phones are web sessions too).
   has_many :app_sessions, dependent: :destroy
   has_many :device_tokens, dependent: :destroy
+  has_many :notifications, dependent: :delete_all
   after_update :end_other_sign_ins, if: :saved_change_to_password_digest?
 
   has_many :organization_roles, dependent: :destroy
@@ -410,6 +411,58 @@ class User < ApplicationRecord
 
   def set_notification_preference(key, enabled)
     self.notification_preferences = notification_preferences.merge(key.to_s => enabled)
+  end
+
+  # Notifications (V1.1 plan §9). Per group, Push and Email, stored under
+  # notification_preferences["push"] and ["email"]; a group with nothing set
+  # uses its default (NotificationGroups). A group's Email stands for the older
+  # keys it replaced (legacy_email), so the emails that read those keep
+  # honoring the choice. Email by plan (ticketing) isn't the person's to set.
+  def notification_push?(group_key)
+    group = NotificationGroups.find(group_key)
+    stored = notification_preferences.dig("push", group.key)
+    stored.nil? ? group.push_default : stored
+  end
+
+  def notification_email?(group_key)
+    group = NotificationGroups.find(group_key)
+    return false unless group.email == :person
+
+    legacy = group.legacy_email.first
+    return notification_enabled?(legacy) if legacy
+
+    stored = notification_preferences.dig("email", group.key)
+    stored.nil? ? group.email_default : stored
+  end
+
+  # New messages: push stays on unless switched off; email is the digest.
+  def message_push? = notification_preferences.dig("push", "messages") != false
+
+  def set_notification_switches(push: {}, email: {})
+    prefs = notification_preferences.deep_dup
+    push.each do |key, on|
+      next unless key.to_s == "messages" || NotificationGroups.keys.include?(key.to_s)
+
+      (prefs["push"] ||= {})[key.to_s] = ActiveModel::Type::Boolean.new.cast(on)
+    end
+    email.each do |key, on|
+      next unless NotificationGroups.keys.include?(key.to_s)
+
+      group = NotificationGroups.find(key)
+      next unless group.email == :person
+
+      value = ActiveModel::Type::Boolean.new.cast(on)
+      if group.legacy_email.any?
+        group.legacy_email.each { |legacy| prefs[legacy] = value }
+      else
+        (prefs["email"] ||= {})[group.key] = value
+      end
+    end
+    self.notification_preferences = prefs
+  end
+
+  def unread_notification_count
+    notifications.unread.count
   end
 
   # Intro guides (shared/_intro_guide). Three states per key: absent means the
