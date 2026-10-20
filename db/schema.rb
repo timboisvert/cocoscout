@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3936,7 +3936,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
     t.string "auto_withdraw", default: "off", null: false
     t.boolean "refunds_after_show", default: false, null: false
     t.jsonb "notification_emails", default: [], null: false
-    t.jsonb "notification_rules", default: {}, null: false
     t.integer "reminder_days_before", default: 2
     t.jsonb "previous_slugs", default: [], null: false
     t.string "refund_policy", default: "window", null: false

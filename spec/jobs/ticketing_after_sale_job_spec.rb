@@ -64,15 +64,6 @@ RSpec.describe TicketingAfterSaleJob do
     expect(calls).to be_empty
   end
 
-  it "ticks door sales for whoever ticked each sale before (the migration)" do
-    require Rails.root.join("db/migrate/20261020010000_add_door_comp_pass_notifications.rb").to_s
-    ticked = TicketingProfile.for(org).tap { |p| p.update!(notification_rules: { "sale" => [ "user:#{seller.id}" ] }) }
-    other = TicketingProfile.for(create(:organization, :pro)).tap { |p| p.update!(notification_rules: { "daily_summary" => [ "user:1" ] }) }
-    ActiveRecord::Migration.suppress_messages { AddDoorCompPassNotifications.new.up }
-    expect(ticked.reload.notification_rules["door_sale"]).to eq([ "user:#{seller.id}" ])
-    expect(other.reload.notification_rules).not_to have_key("door_sale")
-  end
-
   it "has an email for every kind" do
     TicketingTemplates.ensure!
     expect(ContentTemplate.where(key: TicketingNotifications::KEYS.map { |k| "ticketing_#{k}" }).count).to eq(TicketingNotifications::KEYS.size)
