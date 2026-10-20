@@ -243,7 +243,8 @@ RSpec.describe "Manage::CastingTables on act-based shows", type: :request do
 
       post manage_casting_table_finalize_path(table), params: { notify: "1" }
 
-      body = Message.where(system_generated: true).order(:id).last&.body.to_s
+      # A Notification now (V1.1 plan §9) that keeps the full words.
+      body = Notification.order(:id).last&.body.to_s
       expect(body).to include("MC, 2 acts as Magic (Acts 1 and 3)")
     end
   end

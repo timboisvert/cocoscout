@@ -56,7 +56,8 @@ class StaffAvailabilityNudger
                                                            subject: copy[:subject], body: copy[:body]).deliver_later
     MessageService.send_direct(sender: @sender, recipient_person: @staff_member.person,
                                subject: copy[:subject], body: copy[:body], template_key: TEMPLATE,
-                               organization: @staff_member.organization, system_generated: true)
+                               organization: @staff_member.organization, system_generated: true,
+                               custom_words: customized?)
     true
   end
 
@@ -66,6 +67,14 @@ class StaffAvailabilityNudger
     draft = self.class.draft(organization: @staff_member.organization)
     fill = ->(text) { ContentTemplate.interpolate(text, { "first_name" => first_name }) }
     { subject: fill.call(@subject || draft[:subject]), body: fill.call(@body || draft[:body]) }
+  end
+
+  # The manager changed the draft (V1.1 plan §9): compared with the
+  # default, both filled in the same way.
+  def customized?
+    draft = self.class.draft(organization: @staff_member.organization)
+    fill = ->(text) { ContentTemplate.interpolate(text.to_s, { "first_name" => first_name }) }
+    ManagerWords.changed?([ (fill.call(@subject) if @subject), fill.call(draft[:subject]) ], [ (fill.call(@body) if @body), fill.call(draft[:body]) ])
   end
 
   def first_name

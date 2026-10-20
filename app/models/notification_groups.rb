@@ -20,7 +20,7 @@ module NotificationGroups
   ALL = [
     Group.new("casting", "Casting and vacancies", "You're cast, a show changes, someone needs cover.", :yours, true, :person, true, true, %w[vacancy_invitations vacancy_notifications], "Casting"),
     Group.new("signups", "Sign-ups and auditions", "Spots, results, invitations to audition, reminders before a deadline.", :yours, true, :person, true, true, %w[audition_invitations], "Sign-ups"),
-    Group.new("invitations", "Invitations", "To join a group or a production team.", :yours, true, :person, true, false, %w[group_invitations], nil),
+    Group.new("invitations", "Invitations", "To join a group or a production team.", :yours, true, :person, true, true, %w[group_invitations], nil),
     Group.new("pay", "Pay and payouts", "Your pay on its way or sent back; for managers, payout runs that bounce, come back or pay by themselves.", :yours, true, :person, true, true, [], "Pay"),
     # Email always goes for contracts: it carries the signing link or the signed copy.
     Group.new("contracts", "Contracts", "Requests and reminders to sign, signed and countersigned, and ones that stall or expire.", :yours, true, :always, true, true, [], "Contracts"),
@@ -40,6 +40,7 @@ module NotificationGroups
   # ContentTemplateService.deliver(notification:) themselves aren't listed.
   TEMPLATES = {
     # Casting and vacancies
+    "casting_table_notification" => "casting", "show_canceled" => "casting",
     "vacancy_created" => "casting", "vacancy_filled" => "casting", "vacancy_reclaimed" => "casting",
     "vacancy_invitation" => "casting", "request_agreement_signature" => "casting",
     "talent_left_production" => "casting",
@@ -55,11 +56,21 @@ module NotificationGroups
     # Pay and Contracts, from senders that still go through messages
     "staff_1099_ready" => "pay", "contract_person_added" => "contracts"
   }.freeze
-  # Not here, so they stay messages: notices a manager writes or edits before
-  # sending, or that carry someone's own note, are people talking. Casting
-  # and casting-table notices, show cancellations, audition results, the staff
-  # roster, onboarding invites, W-9 and availability requests, payout setup
-  # reminders, group invitations and contract invoices.
+  # Notices a manager can write or edit before sending (V1.1 plan §9,
+  # option 3, Tim 2026-10-20): always a Notification, and also a Message
+  # from the manager when they changed the words or added a note
+  # (ManagerWords; the sender passes custom_words:). One push, one email.
+  VOICED = {
+    "cast_notification" => "casting", "removed_from_cast_notification" => "casting",
+    "audition_added_to_cast" => "signups", "audition_not_cast" => "signups",
+    "audition_invitation" => "signups", "audition_not_invited" => "signups",
+    "staff_schedule_notification" => "shifts", "staff_onboarding_invite" => "shifts",
+    "staff_availability_confirm_request" => "shifts",
+    "staff_w9_request" => "pay", "staff_w9_reminder" => "pay",
+    "payout_setup_reminder" => "pay", "payment_setup_reminder" => "pay",
+    "group_member_added" => "invitations",
+    "contract_invoice" => "contracts", "contract_invoice_reminder" => "contracts"
+  }.freeze
 
   # TicketingNotifications::KINDS' groups, to these.
   TICKETING = {
@@ -81,6 +92,8 @@ module NotificationGroups
   end
 
   def category_for_template(template_key) = TEMPLATES[template_key.to_s]
+
+  def voiced_category(template_key) = VOICED[template_key.to_s]
 
   # The list's filters: the areas that have something in them.
   def areas = ALL.select(&:live).map(&:area).compact.uniq

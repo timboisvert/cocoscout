@@ -29,11 +29,12 @@ RSpec.describe "Manage::Staffing finalize & staff visibility", type: :request do
   describe "POST finalize" do
     before { sign_in(owner) }
 
-    it "records the finalization and messages the assigned staffer" do
+    it "records the finalization and notifies the assigned staffer, with no message for the default words" do
       expect {
         post manage_finalize_staffing_path(week_start: week_start.to_s)
       }.to change(StaffingFinalization, :count).by(1)
-        .and change(Message, :count).by(1)
+        .and change(Notification, :count).by(1)
+        .and not_change(Message, :count)
 
       fin = StaffingFinalization.last
       expect(fin.organization).to eq(org)
@@ -41,19 +42,19 @@ RSpec.describe "Manage::Staffing finalize & staff visibility", type: :request do
       expect(fin.finalized_at).to be_present
       expect(assignment.reload.notified_at).to be_present
 
-      message = Message.last
-      expect(message.message_recipients.map(&:recipient)).to include(staff_person)
-      # Sent from the system, not the manager who clicked finalize.
-      expect(message.sender).to be_nil
-      expect(message).to be_system_generated
-      expect(message.sender_name).to eq("Automated Notification")
+      # V1.1 plan §9, option 3: the schedule is a Notification for the staffer.
+      notification = Notification.last
+      expect(notification.user).to eq(staff_person.user)
+      expect(notification.category).to eq("shifts")
     end
 
-    it "uses the manager's edited subject and message" do
+    it "also sends the manager's edited subject and message as a Message from them" do
       post manage_finalize_staffing_path(week_start: week_start.to_s),
            params: { subject: "Roster is up!", message: "Here's where you're working." }
 
       message = Message.last
+      expect(message.sender).to eq(owner)
+      expect(Notification.last.message).to eq(message)
       expect(message.subject).to eq("Roster is up!")
       expect(message.body.to_plain_text).to include("Here's where you're working.")
       expect(message.body.to_plain_text).to include(role.name) # per-person shift list still appended
@@ -65,7 +66,7 @@ RSpec.describe "Manage::Staffing finalize & staff visibility", type: :request do
       # re-sends to everyone — and must not create a second finalization row.
       expect {
         post manage_finalize_staffing_path(week_start: week_start.to_s), params: { notify_all: "1" }
-      }.to change(Message, :count).by(1)
+      }.to change(Notification, :count).by(1)
         .and change(StaffingFinalization, :count).by(0)
     end
 

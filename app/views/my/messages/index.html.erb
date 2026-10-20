@@ -11,6 +11,24 @@
     ]
   } %>
 
+  <%# Notifications, at the top of Messages (V1.1 plan §9): automated notices
+      left Messages for the bell, and the V1 apps have no bell, so this row
+      is how their phones (and anyone looking here) reach them. %>
+  <% unread_notifications = Current.user.unread_notification_count %>
+  <%= link_to notifications_path, class: "mt-4 flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors #{unread_notifications.positive? ? 'border-pink-200 bg-pink-50 hover:bg-pink-100/70' : 'border-gray-200 bg-white hover:bg-gray-50'}", data: { notifications_row: true } do %>
+    <span class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 <%= unread_notifications.positive? ? 'bg-white text-pink-600' : 'bg-gray-100 text-gray-500' %>">
+      <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+    </span>
+    <span class="min-w-0 flex-1">
+      <span class="block text-sm font-semibold text-gray-900">Notifications</span>
+      <span class="block text-xs text-gray-600"><%= unread_notifications.positive? ? "#{unread_notifications} unread: casting, sign-ups, pay, contracts and more" : "Casting, sign-ups, pay, contracts and more" %></span>
+    </span>
+    <% if unread_notifications.positive? %>
+      <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full"><%= unread_notifications > 99 ? "99+" : unread_notifications %></span>
+    <% end %>
+    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+  <% end %>
+
   <%# Contact Production Team Card %>
   <% if @contactable_productions.any? %>
     <div class="mt-4">

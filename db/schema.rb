@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1561,6 +1561,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_210000) do
     t.datetime "updated_at", null: false
     t.boolean "digest", default: false, null: false
     t.datetime "digested_at"
+    t.bigint "message_id"
+    t.index ["message_id"], name: "index_notifications_on_message_id"
     t.index ["organization_id"], name: "index_notifications_on_organization_id"
     t.index ["subject_type", "subject_id"], name: "index_notifications_on_subject"
     t.index ["user_id", "created_at"], name: "index_notifications_on_user_id_and_created_at"
@@ -4294,6 +4296,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_210000) do
   add_foreign_key "mic_taggings", "mics"
   add_foreign_key "mics", "productions"
   add_foreign_key "mics", "venues"
+  add_foreign_key "notifications", "messages", on_delete: :nullify
   add_foreign_key "notifications", "organizations"
   add_foreign_key "notifications", "users"
   add_foreign_key "org_cash_entries", "organizations"

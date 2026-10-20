@@ -29,8 +29,38 @@ RSpec.describe "Automated notices become Notifications" do
     expect(send_automated("request_agreement_signature", skip_digest: true).digest).to be(false)
   end
 
-  it "leaves notices a manager writes as messages" do
-    expect { send_automated("cast_notification") }.to change(Message, :count).by(1).and(not_change(Notification, :count))
+  describe "a notice a manager can write (option 3)" do
+    let(:manager) { create(:user) }
+
+    def send_voiced(custom_words)
+      MessageService.send_direct(sender: manager, recipient_person: person, subject: "You're cast in Sketch Night", body: "<p>Call is 6:30.</p>",
+                                 organization: org, template_key: "cast_notification", system_generated: true, custom_words: custom_words)
+    end
+
+    it "is a Notification alone when the words are the template's, and it pushes and digests" do
+      person.user.device_tokens.create!(token: "tok", platform: "ios")
+      result = nil
+      expect { result = send_voiced(false) }.to change(Notification, :count).by(1).and(not_change(Message, :count)).and(have_enqueued_job(PushDeliveryJob))
+      expect(result).to be_a(Notification)
+      expect(result.digest).to be(true)
+    end
+
+    it "is a Notification and a Message from the manager when they changed the words: one push, the message's" do
+      result = nil
+      expect { result = send_voiced(true) }.to change(Notification, :count).by(1).and(change(Message, :count).by(1))
+      expect(result).to be_a(Message)
+      expect(result.sender).to eq(manager)
+      expect(result).not_to be_automated
+      notification = person.user.notifications.last
+      expect(notification.message).to eq(result)
+      expect(notification.digest).to be(false)
+    end
+
+    it "reads the notification when the manager's message is read" do
+      message = send_voiced(true)
+      message.message_subscriptions.find_by(user: person.user).mark_read!
+      expect(person.user.notifications.last).to be_read
+    end
   end
 
   it "leaves people talking as messages" do

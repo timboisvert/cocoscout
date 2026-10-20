@@ -13,6 +13,8 @@ class Notification < ApplicationRecord
   belongs_to :user
   belongs_to :organization, optional: true
   belongs_to :subject, polymorphic: true, optional: true
+  # The manager's words that came with it, when they changed the notice (V1.1 plan §9).
+  belongs_to :message, optional: true
 
   validates :kind, :category, :title, presence: true
   validates :category, inclusion: { in: ->(_) { NotificationGroups.keys } }

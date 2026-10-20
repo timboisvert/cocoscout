@@ -45,15 +45,19 @@ class PayoutSetupReminders
   end
 
   # Returns how many were sent: the ticked recipients who can be reached.
-  def self.send!(organization:, recipients:, subject:, body:)
+  # sender: the manager, for the Message that carries their words when they
+  # changed the draft (V1.1 plan §9, option 3); always a Notification.
+  def self.send!(organization:, recipients:, subject:, body:, sender: nil)
+    default = draft(organization)
+    custom = ManagerWords.changed?([ subject, default[:subject] ], [ body, default[:body] ])
     recipients.select(&:reachable?).each do |recipient|
       variables = shared_variables(organization).merge(
         "recipient_name" => recipient.first_name,
         "amount" => ActiveSupport::NumberHelper.number_to_currency(recipient.amount_cents / 100.0)
       )
       ContentTemplateService.deliver(
-        template_key: TEMPLATE, variables: variables, sender: nil, recipients: [ recipient.person ],
-        organization: organization, message_type: :system, visibility: :personal,
+        template_key: TEMPLATE, variables: variables, sender: (sender if custom), recipients: [ recipient.person ],
+        organization: organization, message_type: :system, visibility: :personal, custom_words: custom,
         subject_override: ContentTemplate.interpolate(subject, variables),
         body_override: ContentTemplate.interpolate(body, variables)
       )

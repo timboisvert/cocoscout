@@ -94,7 +94,9 @@ class StaffOnboardingInviter
       subject: copy[:subject],
       body: copy[:body],
       organization: @organization,
-      system_generated: true
+      system_generated: true,
+      # The reviewer's edits make it a Message from them too (V1.1 plan §9).
+      custom_words: ManagerWords.changed?([ @subject_override, default_onboarding_copy[:subject] ], [ @body_override, default_onboarding_copy[:body] ])
     )
   end
 

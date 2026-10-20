@@ -27,7 +27,9 @@ class Notifier
   # notification's own page and the digest. path is the body's first link to
   # this site, else nil (the notification opens its own page). digest: the
   # unread digest owes it an email, as it did when it was a message.
-  def self.deliver_rendered(user:, category:, kind:, subject:, body:, push_body: nil, organization: nil, digest: false)
+  # push: false when a Message carries the manager's words and pushes itself
+  # (one push per notice).
+  def self.deliver_rendered(user:, category:, kind:, subject:, body:, push_body: nil, organization: nil, digest: false, push: true)
     group = NotificationGroups.find(category)
     html = body.respond_to?(:to_trix_html) ? body.to_trix_html : body.to_s
     notification = user.notifications.create!(
@@ -35,7 +37,7 @@ class Notifier
       body: html.presence, path: first_link_path(html), organization: organization,
       digest: digest && user.message_digest_enabled? && user.notification_email?(group.key)
     )
-    push(notification) if user.notification_push?(group.key)
+    push(notification) if push && user.notification_push?(group.key)
     notification
   end
 

@@ -82,3 +82,17 @@ RSpec.describe "A notification's own page", type: :request do
     expect(response.body).to include("registered", "See you Tuesday.")
   end
 end
+
+RSpec.describe "Notifications in My Messages", type: :request do
+  let(:user) { create(:user) }
+
+  before { post handle_signin_path, params: { email_address: user.email_address, password: user.password } }
+
+  it "has a Notifications row at the top, with the unread count, for the V1 apps that have no bell" do
+    user.notifications.create!(category: "pay", kind: "sent", title: "Your pay is on its way")
+    get my_messages_path
+    row = Nokogiri::HTML(response.body).at_css("[data-notifications-row]")
+    expect(row["href"]).to eq(notifications_path)
+    expect(row.text).to include("Notifications", "1 unread")
+  end
+end

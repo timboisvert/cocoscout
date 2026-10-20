@@ -34,9 +34,16 @@ class MessageSubscription < ApplicationRecord
   end
 
   def mark_read!
+    read_notifications!
     return if unread_count.zero? && last_read_at.present?
 
     update!(last_read_at: Time.current, unread_count: 0)
+  end
+
+  # A notice that came with a manager's words is a Notification and this
+  # thread (V1.1 plan §9); reading the thread reads it too.
+  def read_notifications!
+    Notification.unread.where(user_id: user_id, message_id: message_id).update_all(read_at: Time.current)
   end
 
   # Inverse of mark_read! — flip the thread back to "unread" so it reappears in

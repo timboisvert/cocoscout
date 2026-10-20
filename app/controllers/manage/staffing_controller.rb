@@ -250,7 +250,9 @@ module Manage
       notify_everyone = !was_published || params[:notify_all].present?
       people = notify_everyone ? comp[:all_people] : comp[:update].map { |u| u[:person] }
 
-      notified = notify_people_for_week(people: people, week_start: @week_start, shifts: shifts, subject: subject, intro: intro)
+      # Their own words, or the default? (V1.1 plan §9, option 3)
+      custom = ManagerWords.changed?([ subject, default_finalize_subject ], [ intro, default_finalize_intro ])
+      notified = notify_people_for_week(people: people, week_start: @week_start, shifts: shifts, subject: subject, intro: intro, custom_words: custom)
 
       notice =
         if !was_published
@@ -419,7 +421,9 @@ module Manage
     # any pending removals, via the seeded ContentTemplate (in-app message). Stamps
     # notified_at on their assignments, clears their removals, and records billing.
     # Returns how many people were actually notified (those with a login).
-    def notify_people_for_week(people:, week_start:, shifts:, subject:, intro:)
+    # custom_words: the manager changed the subject or intro, so it's also a
+    # Message from them; otherwise a Notification alone (V1.1 plan §9).
+    def notify_people_for_week(people:, week_start:, shifts:, subject:, intro:, custom_words: false)
       week_range = week_start.beginning_of_day..(week_start + 6.days).end_of_day
 
       shifts_by_person = Hash.new { |h, k| h[k] = [] }
@@ -448,11 +452,12 @@ module Manage
             my_shifts_link: my_shifts_url
           },
           subject_override: subject,
-          sender: nil,
+          sender: (Current.user if custom_words),
           recipients: [ person ],
           organization: Current.organization,
           message_type: :system,
-          visibility: :personal
+          visibility: :personal,
+          custom_words: custom_words
         )
 
         Shift.where(id: person_shifts.map(&:id)).each do |s|

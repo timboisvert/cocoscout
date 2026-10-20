@@ -54,7 +54,9 @@ class GroupInvitationsController < ApplicationController
           subject: rendered[:subject],
           body: rendered[:body],
           production: nil,
-          organization: nil
+          organization: nil,
+          # A note from the person adding them makes it a Message too (V1.1 plan §9).
+          custom_words: ManagerWords.note?(params[:invitation_message])
         )
       end
 

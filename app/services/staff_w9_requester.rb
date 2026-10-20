@@ -73,7 +73,9 @@ class StaffW9Requester
       subject: rendered[:subject],
       body: rendered[:body],
       organization: @organization,
-      system_generated: true
+      system_generated: true,
+      # The reviewer's edits make it a Message from them too (V1.1 plan §9).
+      custom_words: ManagerWords.changed?([ @subject_override, default_copy[:subject] ], [ @body_override, default_copy[:body] ])
     )
 
     now = Time.current

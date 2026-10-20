@@ -186,7 +186,7 @@ class ContentTemplateService
                 production: nil, show: nil, organization: nil,
                 message_type: :system, visibility: :personal,
                 mailer_class: nil, mailer_method: nil, email_batch: nil,
-                subject_override: nil, body_override: nil, system_generated: nil, notification: nil)
+                subject_override: nil, body_override: nil, system_generated: nil, notification: nil, custom_words: nil)
       return deliver_as_notification(template_key:, variables:, recipients:, organization: organization || production&.organization,
                                      mailer_class:, mailer_method:, email_batch:, production:, subject_override:, body_override:,
                                      **notification) if notification
@@ -218,7 +218,8 @@ class ContentTemplateService
           organization: organization,
           message_type: message_type,
           visibility: visibility,
-          system_generated: system_generated
+          system_generated: system_generated,
+          custom_words: custom_words
         )
         delivery_result[:messages] << message if message
       end
@@ -487,7 +488,7 @@ class ContentTemplateService
 
     def deliver_as_message(subject:, body:, sender:, recipients:,
                            production:, show:, organization:, message_type:, visibility:,
-                           system_generated: nil, template_key: nil, push_body: nil)
+                           system_generated: nil, template_key: nil, push_body: nil, custom_words: nil)
       # Filter to people with user accounts
       valid_recipients = Array(recipients).select { |p| p.is_a?(Person) && p.user.present? }
       return nil if valid_recipients.empty?
@@ -510,7 +511,8 @@ class ContentTemplateService
         # manage inbox. Callers whose notification is FOR managers (e.g. contract
         # signed) pass system_generated: false so it reaches /manage/messages;
         # message_type :system alone keeps the automated attribution.
-        system_generated: system_generated.nil? ? message_type.to_s == "system" : system_generated
+        system_generated: system_generated.nil? ? message_type.to_s == "system" : system_generated,
+        custom_words: custom_words
       )
     end
 

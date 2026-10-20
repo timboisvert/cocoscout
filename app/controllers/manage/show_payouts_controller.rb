@@ -417,7 +417,7 @@ module Manage
         return
       end
 
-      sent = PayoutSetupReminders.send!(organization: Current.organization, recipients: chosen, subject: subject, body: body)
+      sent = PayoutSetupReminders.send!(organization: Current.organization, recipients: chosen, subject: subject, body: body, sender: Current.user)
       redirect_to manage_money_show_payout_path(@show), notice: "Sent #{helpers.pluralize(sent, 'payment-setup reminder')}."
     end
 

@@ -41,7 +41,7 @@ class CastingNotificationService
     # @param subject [String] The notification subject
     # @param email_batch_id [Integer] Optional batch ID for tracking
     # @return [Hash] { messages_sent: Integer, emails_sent: Integer }
-    def send_cast_notification(person:, show:, production:, sender:, body:, subject:, email_batch_id: nil)
+    def send_cast_notification(person:, show:, production:, sender:, body:, subject:, email_batch_id: nil, custom_words: nil)
       send_notification(
         template_key: "cast_notification",
         person: person,
@@ -51,7 +51,8 @@ class CastingNotificationService
         body: body,
         subject: subject,
         email_batch_id: email_batch_id,
-        mailer_method: :cast_notification
+        mailer_method: :cast_notification,
+        custom_words: custom_words
       )
     end
 
@@ -65,7 +66,7 @@ class CastingNotificationService
     # @param subject [String] The notification subject
     # @param email_batch_id [Integer] Optional batch ID for tracking
     # @return [Hash] { messages_sent: Integer, emails_sent: Integer }
-    def send_removed_notification(person:, show:, production:, sender:, body:, subject:, email_batch_id: nil)
+    def send_removed_notification(person:, show:, production:, sender:, body:, subject:, email_batch_id: nil, custom_words: nil)
       send_notification(
         template_key: "removed_from_cast_notification",
         person: person,
@@ -75,7 +76,8 @@ class CastingNotificationService
         body: body,
         subject: subject,
         email_batch_id: email_batch_id,
-        mailer_method: :removed_notification
+        mailer_method: :removed_notification,
+        custom_words: custom_words
       )
     end
 
@@ -83,7 +85,7 @@ class CastingNotificationService
 
     # Casting notifications are message-only (no email)
     # system_generated: true so it doesn't appear in sender's sent folder
-    def send_notification(template_key:, person:, show:, production:, sender:, body:, subject:, email_batch_id:, mailer_method:)
+    def send_notification(template_key:, person:, show:, production:, sender:, body:, subject:, email_batch_id:, mailer_method:, custom_words: nil)
       result = { messages_sent: 0, emails_sent: 0 }
 
       return result unless person&.email.present?
@@ -98,7 +100,8 @@ class CastingNotificationService
           template_key: template_key,
           production: production,
           organization: production.organization,
-          system_generated: true
+          system_generated: true,
+          custom_words: custom_words
         )
         result[:messages_sent] += 1 if message
       end

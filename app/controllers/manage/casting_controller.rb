@@ -1718,11 +1718,16 @@ module Manage
         )
       end
 
+      # Their own words, or the template's? (V1.1 plan §9, option 3: always a
+      # Notification; a Message from the manager too when they changed it.)
+      cast_custom = ManagerWords.changed?([ cast_subject, default_cast_email_subject ], [ cast_body, default_cast_email_body ])
+      removed_custom = ManagerWords.changed?([ removed_subject, default_removed_email_subject ], [ removed_body, default_removed_email_body ])
+
       cast_notifications_by_person.each do |person, assignments|
-        send_consolidated_cast_email(person, assignments, cast_body, cast_subject, :cast, email_batch_id: email_batch&.id)
+        send_consolidated_cast_email(person, assignments, cast_body, cast_subject, :cast, email_batch_id: email_batch&.id, custom_words: cast_custom)
       end
       removed_notifications_by_person.each do |person, assignments|
-        send_consolidated_cast_email(person, assignments, removed_body, removed_subject, :removed, email_batch_id: email_batch&.id)
+        send_consolidated_cast_email(person, assignments, removed_body, removed_subject, :removed, email_batch_id: email_batch&.id, custom_words: removed_custom)
       end
 
       # Record notification state (mirrors the recipient filtering above).
@@ -1777,7 +1782,7 @@ module Manage
     end
 
     # Send a single consolidated email to a person with all their assignments across linked shows
-    def send_consolidated_cast_email(person, assignments, email_body, subject, notification_type, email_batch_id: nil)
+    def send_consolidated_cast_email(person, assignments, email_body, subject, notification_type, email_batch_id: nil, custom_words: nil)
       # The email_body is the template with {{placeholders}} (from the preview editor).
       # Personalize it for this specific recipient by substituting their actual values.
       shows = assignments.map { |a| a[:show] }.uniq.sort_by(&:date_and_time)
@@ -1837,7 +1842,8 @@ module Manage
           sender: Current.user,
           body: personalized_body,
           subject: personalized_subject,
-          email_batch_id: email_batch_id
+          email_batch_id: email_batch_id,
+          custom_words: custom_words
         )
       else
         CastingNotificationService.send_removed_notification(
@@ -1847,7 +1853,8 @@ module Manage
           sender: Current.user,
           body: personalized_body,
           subject: personalized_subject,
-          email_batch_id: email_batch_id
+          email_batch_id: email_batch_id,
+          custom_words: custom_words
         )
       end
     end

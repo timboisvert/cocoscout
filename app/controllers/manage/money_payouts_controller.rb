@@ -49,6 +49,9 @@ module Manage
         return
       end
 
+      # Their own words, or the draft as it opened? (V1.1 plan §9, option 3)
+      default = payment_reminder_draft
+      custom = ManagerWords.changed?([ subject, default[:subject] ], [ body, default[:body] ])
       chosen.each do |person|
         variables = payment_reminder_variables.merge(
           "first_name" => person.name.to_s.split(/\s+/).first.presence || "there",
@@ -61,7 +64,8 @@ module Manage
           subject: ContentTemplate.interpolate(subject, variables),
           body: ContentTemplate.interpolate(body, variables),
           production: @production,
-          organization: Current.organization
+          organization: Current.organization,
+          custom_words: custom
         )
       end
 

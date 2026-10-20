@@ -146,6 +146,7 @@ class AuditionNotificationService
 
       send_notification(
         template_key: template_key,
+        custom_words: ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]),
         subject: subject,
         body: body,
         push_body: rendered&.dig(:push_body),
@@ -181,6 +182,7 @@ class AuditionNotificationService
 
       send_notification(
         template_key: template_key,
+        custom_words: ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]),
         subject: subject,
         body: body,
         push_body: rendered&.dig(:push_body),
@@ -241,6 +243,7 @@ class AuditionNotificationService
 
       send_notification(
         template_key: template_key,
+        custom_words: ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]),
         subject: subject,
         body: body,
         push_body: rendered&.dig(:push_body),
@@ -277,6 +280,7 @@ class AuditionNotificationService
 
       send_notification(
         template_key: template_key,
+        custom_words: ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]),
         subject: subject,
         body: body,
         push_body: rendered&.dig(:push_body),
@@ -294,7 +298,7 @@ class AuditionNotificationService
     # All audition notifications are message-only (no email)
     def send_notification(template_key:, subject:, body:, production:, sender:,
                           person:, message_type:, visibility:, email_batch:,
-                          mailer_method: :casting_notification, push_body: nil)
+                          mailer_method: :casting_notification, push_body: nil, custom_words: nil)
       result = { messages_sent: 0, emails_sent: 0 }
 
       return result unless person&.email.present?
@@ -311,12 +315,19 @@ class AuditionNotificationService
           push_body: push_body,
           production: production,
           organization: production.organization,
-          system_generated: true
+          system_generated: true,
+          custom_words: custom_words
         )
         result[:messages_sent] += 1 if message
       end
 
       result
+    end
+
+    # The template's own words, before interpolation: what an unedited draft
+    # starts from (V1.1 plan §9, option 3).
+    def raw_template(template_key)
+      ContentTemplate.active.find_by(key: template_key)
     end
 
     # Helper to render template body for fallback when custom subject but no custom body

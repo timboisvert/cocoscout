@@ -97,7 +97,7 @@ class MessageService
     # template_key / push_body: the content template this message came from and
     # the phone notification's text, when it was rendered from one
     def send_direct(sender:, recipient_person:, subject:, body:, organization: nil, parent_message: nil, production: nil,
-                    system_generated: false, skip_digest: false, template_key: nil, push_body: nil)
+                    system_generated: false, skip_digest: false, template_key: nil, push_body: nil, custom_words: nil)
       create_message(
         sender: sender,
         recipients: [ recipient_person ],
@@ -111,7 +111,8 @@ class MessageService
         system_generated: system_generated,
         skip_digest: skip_digest,
         template_key: template_key,
-        push_body: push_body
+        push_body: push_body,
+        custom_words: custom_words
       )
     end
 
@@ -154,7 +155,7 @@ class MessageService
     def create_message(sender:, recipients:, subject:, body:, message_type:,
                        organization: nil, production: nil, show: nil,
                        visibility: nil, parent_message: nil, system_generated: false, skip_digest: false,
-                       template_key: nil, push_body: nil)
+                       template_key: nil, push_body: nil, custom_words: nil)
       # Filter to people with accounts
       recipients = Array(recipients).uniq.select { |p| p.is_a?(Person) && p.user.present? }
       return nil if recipients.empty?
@@ -164,13 +165,30 @@ class MessageService
       # people talking to people). Callers only check that something came
       # back; their emails go on as before.
       # Automated: flagged so, or sent by nobody (a notice FOR managers).
-      if template_key && (system_generated || sender.nil?)
-        if (category = NotificationGroups.category_for_template(template_key)) && parent_message.nil?
+      notifications = []
+      if template_key && parent_message.nil?
+        if (category = NotificationGroups.category_for_template(template_key)) && (system_generated || sender.nil?)
           notifications = recipients.map do |person|
             Notifier.deliver_rendered(user: person.user, category: category, kind: template_key, subject: subject, body: body,
                                       push_body: push_body, organization: organization || production&.organization, digest: !skip_digest)
           end
           return notifications.first
+        elsif (category = NotificationGroups.voiced_category(template_key))
+          # A notice a manager can write (option 3, Tim 2026-10-20): always a
+          # Notification; when they changed the words or added a note, also
+          # a Message from them, which pushes and digests in its place.
+          notifications = recipients.map do |person|
+            Notifier.deliver_rendered(user: person.user, category: category, kind: template_key, subject: subject, body: body,
+                                      push_body: push_body, organization: organization || production&.organization,
+                                      digest: !custom_words && !skip_digest, push: !custom_words)
+          end
+          return notifications.first unless custom_words
+
+          if sender.is_a?(User)
+            # From the manager: attributed to them and in their sent folder.
+            system_generated = false
+            message_type = :direct if message_type.to_s == "system"
+          end
         end
       end
 
@@ -230,6 +248,10 @@ class MessageService
 
       # Now notify all subscribers (increment unread counts) since subscriptions exist
       message.send(:notify_subscribers)
+
+      # The manager's words that go with a notification: opening this thread
+      # reads both (Notification#message).
+      Notification.where(id: notifications.map(&:id)).update_all(message_id: root_message.id) if notifications.any?
 
       # Note: Email notifications are now handled by UnreadDigestJob
       # which sends a digest after 1 hour if user hasn't checked their inbox
