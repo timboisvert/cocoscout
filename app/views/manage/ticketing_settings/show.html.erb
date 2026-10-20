@@ -7,7 +7,8 @@
   ],
   sections: sections,
   current: @section,
-  width: (%w[sharing comps door].include?(@section) ? "max-w-5xl" : nil)
+  # Every tab uses the content space, like Door (Tim, 2026-10-20).
+  width: "max-w-5xl"
 } do %>
   <% case @section %>
   <% when "page" %>

@@ -9,7 +9,8 @@
   ],
   sections: sections,
   current: @section,
-  width: (@section == "comps" ? "max-w-5xl" : "max-w-3xl")
+  # Every tab uses the content space, like the box office's Door tab (Tim, 2026-10-20).
+  width: "max-w-5xl"
 } do %>
   <% case @section %>
   <% when "tickets" %>
