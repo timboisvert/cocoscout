@@ -31,6 +31,9 @@ RSpec.describe NativeAppVersion do
     safari = ->(config) { config["rules"].select { |r| r.dig("properties", "open_in") == "safari" }.flat_map { |r| r["patterns"] } }
     expect(safari.(v1)).to include("^/manage")
     expect(safari.(v2)).not_to include("^/manage")
-    expect(safari.(v2)).to include("^/superadmin")
+    expect(safari.(v2)).to include("^/superadmin", "^/manage/billing")
+    # Pro isn't sold in the apps (Tim, 2026-10-20): billing opens the website.
+    billing = Rails.application.routes.url_helpers.section_manage_organization_path(7, section: "billing")
+    expect(safari.(v2).any? { |pattern| billing.match?(Regexp.new(pattern)) }).to be(true)
   end
 end

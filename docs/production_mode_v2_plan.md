@@ -58,13 +58,13 @@ Nothing in this plan is built this week.
   - the menu sheet: a plain outlined card at the top with your picture, name and email, Profile and Settings under them and the close button in its corner (not pink: pink bars are things to do); in production mode a soft pink row under it names the organization (no pill); Work the door (black) and the Enter/Exit bar (CocoScout pink, white text) pinned to the bottom of the sheet; nothing CocoScout pink anywhere (Tim, 2026-10-20);
   - the menu tiles' counts use the same pink (`MenuViewController.swift`, today `Color.red`).
 
-**Decide before V1.1 starts:**
-1. Does "Start producing" appear in the app at all (App Store review), or only on the web?
-2. Is Superadmin web-only, and should the app show a "you're impersonating · Stop" banner?
-3. Course instructors: attendance on the everyday side, or limited production access?
-4. One label set everywhere: "Home" or "My Calendar", and "My Shows" or "Shows"?
-5. Keep the Exit shortcut in the switch notice?
-6. Can people buy the Pro plan inside the iOS app, or does it link out to the web?
+**Decided 2026-10-20** (Tim chose 4, 5 and 6; 1–3 are the recommendations, his to change):
+1. "Start producing" is website-only; the apps never pitch producing.
+2. Superadmin is web-only (it opens in the browser from the app); impersonating inside a V1.1 app shows a "You're impersonating · Stop" banner.
+3. Course instructors take attendance from My (their course on My Courses), never production mode.
+4. Labels everywhere: "Home" and "Shows & Events" (no "My Calendar" / "My Shows" in V1.1 menus).
+5. The switch notice keeps its Exit button.
+6. Pro isn't sold in the apps: upgrading opens the website's billing page.
 
 Found while building the mockups (existing, not fixed): production Home hides an open vacancy's Review button on desktop until hover (`md:hidden md:group-hover:block`), and Sign-ups' Waitlists card shows an info icon because `queue-list` is missing from `shared/_module_header_icon`.
 
@@ -473,12 +473,7 @@ Fable checked the load-bearing claims against the code; all of them held. Change
 - Missed in the first pass: impersonating in the app has no Stop control, and Manage lacks activity tracking.
 - Security look: the `except: %i[index]` access guards (`manage_controller.rb:21-28`).
 
-**Decisions for the owner**
-1. Does "Start producing" appear in the app at all (App Store review), or only on the web?
-2. Is Superadmin web-only, and should the app show an impersonation banner with Stop?
-3. Course instructors: attendance on the everyday side, or limited production access?
-4. One label set everywhere: "Home" or "My Calendar", and "My Shows" or "Shows"?
-5. Keep the Exit shortcut in the switch notice?
+**Decisions for the owner:** decided 2026-10-20, see §0a.
 
 Correction: "Talent Dashboard" and "Production Dashboard" have 11 and 8 mentions in 8 files.
 

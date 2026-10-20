@@ -76,4 +76,24 @@ RSpec.describe "Impersonation bar", type: :request do
       expect(response.body).to include("Stop impersonating")
     end
   end
+
+  context "inside the app (V1.1, Tim 2026-10-20)" do
+    let(:app_v1) { "Mozilla/5.0 (iPhone) Hotwire Native iOS; Turbo Native iOS; bridge-components: [form menu]" }
+
+    before do
+      sign_in_superadmin
+      post impersonate_user_path, params: { email: target.email_address }
+    end
+
+    it "pins You're impersonating, with Stop, to the top of a V1.1 build's pages" do
+      get my_dashboard_path, headers: { "User-Agent" => "CocoScout/1.1 (12; nav 2) #{app_v1}" }
+      bar = Nokogiri::HTML(response.body).at_css("[data-native-impersonation-bar]")
+      expect(bar.text).to include("You're impersonating", "Stop")
+    end
+
+    it "leaves V1 builds as they were" do
+      get my_dashboard_path, headers: { "User-Agent" => app_v1 }
+      expect(response.body).not_to include("data-native-impersonation-bar")
+    end
+  end
 end

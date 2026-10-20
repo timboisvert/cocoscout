@@ -1,4 +1,6 @@
-<% content_for :title, "My Calendar" %>
+<%# V1.1 says "Home" (Tim, 2026-10-20); V1 phones keep "My Calendar". %>
+<% home_title = production_mode_available? ? "Home" : "My Calendar" %>
+<% content_for :title, home_title %>
 
 <div class="w-full">
 
@@ -84,7 +86,7 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
-    text: "My Calendar",
+    text: home_title,
     links: []
   } %>
 

@@ -33,6 +33,16 @@
 
     <%# No loading overlay: the page stays put while the next one loads, and
         Hotwire Native shows its own spinner only when a load is slow. %>
+    <%# V1.1 builds while a superadmin is impersonating (Tim, 2026-10-20):
+        "You're impersonating", whose account, and Stop, pinned at the top of
+        every page. V1 builds never had a way to impersonate in the app. %>
+    <% if native_nav_generation.to_i >= 2 && respond_to?(:impersonating?) && impersonating? %>
+      <div class="sticky top-0 z-30 flex items-center justify-between gap-3 min-h-[40px] px-4 bg-amber-500 text-white" data-native-impersonation-bar>
+        <span class="min-w-0 truncate text-xs font-bold"><span class="uppercase tracking-wider">You're impersonating</span> <%= Current.user.person&.name || Current.user.email_address %></span>
+        <%= render "shared/button", text: "Stop", variant: "outline", size: "xs", path: stop_impersonating_user_path, method: :post, classes: "flex-shrink-0" %>
+      </div>
+    <% end %>
+
     <%# V1.1, generation-2 builds in production mode: a soft pink strip under
         the native nav bar naming the organization. Sticky, so it never
         scrolls away; tapping it changes organization. %>
@@ -49,6 +59,7 @@
     <% end %>
     <main class="px-4 pt-3 pb-8 overflow-x-hidden" data-controller="bridge--form">
       <div id="flash-messages"></div>
+      <%= render "shared/navigation/mode_switch_notice" %>
       <%= yield %>
     </main>
 

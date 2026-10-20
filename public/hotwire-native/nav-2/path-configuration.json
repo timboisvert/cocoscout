@@ -77,7 +77,9 @@
         "^/for-performers",
         "^/for-producers",
         "^/pricing",
-        "^/sketchfest"
+        "^/sketchfest",
+        "^/manage/billing",
+        "^/manage/organizations/[^/]+/section/billing"
       ],
       "properties": {
         "open_in": "safari"

@@ -30,8 +30,12 @@ module NavigationHelper
   # with several productions, Productions after Home with how many. V1's
   # native menu keeps reading dashboard_nav_sections unchanged.
   def panel_nav_sections(context)
+    # Labels everywhere (Tim, 2026-10-20): "Home" and "Shows & Events".
+    renamed = { "My Shows & Events" => "Shows & Events" }
     sections = dashboard_nav_sections(context).map do |section|
-      section.merge(items: section[:items].reject { |item| item[:icon] == "messages" })
+      items = section[:items].reject { |item| item[:icon] == "messages" }
+                             .map { |item| renamed.key?(item[:label]) ? item.merge(label: renamed[item[:label]]) : item }
+      section.merge(items: items)
     end
     if context.to_sym == :production && Current.organization&.on_paid_plan? && sections.first
       count = Current.user.accessible_productions.where(organization: Current.organization).count

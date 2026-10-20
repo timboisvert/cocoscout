@@ -32,6 +32,7 @@ module Manage
     # Pro-tier gate — runs after the org is loaded and access is confirmed.
     before_action :require_paid_feature!, if: -> { Current.user.present? }
 
+    before_action :note_mode_switch
     before_action :track_last_dashboard
     before_action :show_manage_sidebar
 
@@ -211,6 +212,16 @@ module Manage
       return if Current.organization&.manageable_by?(Current.user)
 
       redirect_to manage_path, notice: "You do not have permission to access that page."
+    end
+
+    # A link (an email, a push, a bookmark) brought someone from My into
+    # production mode: the page says so, with Exit (V1.1 plan §0a; Tim kept
+    # Exit, 2026-10-20). Only a full page load, never a frame or a fetch.
+    def note_mode_switch
+      return unless Current.user && request.get? && request.format.html? && request.headers["Turbo-Frame"].blank?
+      return unless NativeAppVersion.production_mode?(request.user_agent)
+
+      @switched_into_production_mode = last_mode == "my" && Current.organization.present?
     end
 
     def track_last_dashboard

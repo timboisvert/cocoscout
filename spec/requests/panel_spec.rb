@@ -98,3 +98,30 @@ RSpec.describe "The phone's navigation on the website", type: :request do
     expect(phone_nav.at_css('[data-mobile-nav-target="orgPopup"]')).to be_present
   end
 end
+
+RSpec.describe "The mode-switch notice", type: :request do
+  let(:user) { create(:user) }
+  let(:org) { Organization.create!(name: "Stars & Garters", owner: user) }
+
+  before do
+    OrganizationRole.create!(user: user, organization: org, company_role: "manager")
+    post handle_signin_path, params: { email_address: user.email_address, password: user.password }
+  end
+
+  it "says so, with Exit, when a link brings someone from My into production mode, and only then" do
+    get my_dashboard_path
+    get manage_path
+    notice = Nokogiri::HTML(response.body).at_css("[data-mode-switch-notice]")
+    expect(notice.text).to include("You're in production mode for", "Stars & Garters")
+    expect(notice.at_css("a")["href"]).to eq(my_dashboard_path)
+
+    get manage_path
+    expect(response.body).not_to include("data-mode-switch-notice")
+  end
+
+  it "never shows on a V1 phone, which has no production mode" do
+    get my_dashboard_path
+    get manage_path, headers: { "User-Agent" => "Mozilla/5.0 (iPhone) Hotwire Native iOS; Turbo Native iOS" }
+    expect(response.body).not_to include("data-mode-switch-notice")
+  end
+end

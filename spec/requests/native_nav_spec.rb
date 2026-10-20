@@ -32,7 +32,8 @@ RSpec.describe "The app's V1.1 menu", type: :request do
     nav = JSON.parse(bridge["data-bridge--menu-nav-value"])
     expect(nav["mode"]).to eq("my")
     titles = nav["sections"].flat_map { |s| s["items"] }.map { |i| i["title"] }
-    expect(titles).to include("My Calendar")
+    expect(titles).to include("Home", "Shows & Events")
+    expect(titles).not_to include("My Calendar", "My Shows")
     expect(titles).not_to include("My Messages")
     expect(nav.dig("icons", "notifications", "path")).to eq(notifications_path)
     expect(nav.dig("modeSwitch", "label")).to eq("Enter production mode")

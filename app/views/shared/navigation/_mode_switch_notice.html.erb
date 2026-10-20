@@ -1,0 +1,14 @@
+<%#
+  "You're in production mode": a link brought someone from My into
+  production mode (ManageController#note_mode_switch). Soft pink, with Exit
+  as a shortcut back (Tim, 2026-10-20), and it fades after a few seconds.
+%>
+<% if @switched_into_production_mode && Current.organization %>
+  <div data-controller="notice" data-notice-timeout-value="6000" class="fixed inset-x-0 top-4 z-[60] flex justify-center px-4 pointer-events-none lg:pl-[272px]">
+    <div data-notice-target="container" role="status"
+         class="pointer-events-auto flex items-center gap-3 max-w-md w-full rounded-xl border border-pink-200 bg-pink-50 shadow-lg px-4 py-3 transition-all duration-300" data-mode-switch-notice>
+      <span class="min-w-0 flex-1 text-sm text-gray-800">You're in production mode for <strong class="text-gray-900"><%= Current.organization.name %></strong>.</span>
+      <%= render "shared/button", text: "Exit", variant: "secondary", size: "small", path: my_dashboard_path %>
+    </div>
+  </div>
+<% end %>

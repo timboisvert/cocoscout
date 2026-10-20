@@ -1,4 +1,6 @@
-<% content_for :title, "My Shows & Events" %>
+<%# V1.1 says "Shows & Events" (Tim, 2026-10-20); V1 phones keep their words. %>
+<% shows_title = production_mode_available? ? "Shows & Events" : "My Shows & Events" %>
+<% content_for :title, shows_title %>
 
 <div class="w-full">
 
@@ -7,7 +9,7 @@
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [],
-    text: "My Shows & Events",
+    text: shows_title,
     links: []
   } %>
 
