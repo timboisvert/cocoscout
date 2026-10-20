@@ -8,6 +8,18 @@
     links: []
   } %>
 
+  <%# On a phone (V1.1 plan §4): Needs attention, then the upcoming shows,
+      then the rest. %>
+  <div class="flex flex-col">
+  <% unless @production.type_third_party? %>
+    <div class="max-sm:-order-2">
+      <%= render "manage/manage/needs_attention",
+            vacancies: @dashboard[:open_vacancies].map { |v| v.merge(production: @production) },
+            audition_signups: @dashboard[:open_calls][:with_auditionees].sum { |c| c[:auditionee_count].to_i },
+            attention: nil %>
+    </div>
+  <% end %>
+
   <!-- Open Calls with Auditionees (only for in-house productions) -->
   <% if !@production.type_third_party? && @dashboard[:open_calls][:with_auditionees].any? %>
     <div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
@@ -189,7 +201,7 @@
 
   <!-- Open Vacancies (only for in-house productions) -->
   <% if !@production.type_third_party? && @dashboard[:open_vacancies].any? %>
-    <div class="border border-pink-200 rounded-lg overflow-hidden mb-8 bg-pink-50">
+    <div id="open-vacancies" class="scroll-mt-20 border border-pink-200 rounded-lg overflow-hidden mb-8 bg-pink-50">
       <%# Pink on purpose: an open vacancy is an alert, so this keeps its own header. %>
       <div class="bg-pink-100 px-4 py-3 border-b border-pink-200">
         <h3 class="text-md font-semibold text-pink-900 coustard-regular flex items-center gap-2">
@@ -317,7 +329,7 @@
   <% end %>
 
   <!-- Upcoming Shows & Availability -->
-  <div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
+  <div class="max-sm:-order-1 border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white">
     <%= render "shared/section_heading", padding: "px-4 py-3", title: "Upcoming Shows & Events (Next 45 Days)" do %>
       <% if current_user_can_manage?(@production) %>
         <%= link_to manage_production_shows_path(@production) do %>
@@ -410,6 +422,8 @@
       <% end %>
     </div>
   </div>
+
+  </div><%# the phone-ordered column %>
 
   <!-- Production Info & Recent Activity -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

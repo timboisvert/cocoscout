@@ -164,6 +164,14 @@ module Manage
 
       @events_by_date = @calendar_events.group_by { |e| e[:date] }
 
+      # The phone's "Needs attention" stack (V1.1 plan §4, Home): the money and
+      # hours waiting, for the managers who handle them on Pro.
+      if Current.organization.on_paid_plan? && (Current.user.superadmin? || Current.organization.manageable_by?(Current.user))
+        todo = MoneyTodoService.new(user: Current.user, organization: Current.organization, row_limit: 0)
+        @home_attention = { financials: todo.financials.count.to_i, payouts: todo.payouts.count.to_i, payouts_amount: todo.payouts.amount,
+                            hours: Current.organization.staff_time_entries.pending.count }
+      end
+
       render "home"
     end
 

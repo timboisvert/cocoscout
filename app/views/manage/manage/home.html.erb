@@ -65,9 +65,16 @@
       show_registrations_box = all_sign_up_forms.any?
     %>
 
+    <%# On a phone (V1.1 plan §4): Needs attention, then the agenda, then the
+        vacancy details; the summary boxes are in the stack, so they wait for sm. %>
+    <div class="flex flex-col">
+    <div class="max-sm:order-1">
+      <%= render "manage/manage/needs_attention", vacancies: all_open_vacancies, audition_signups: total_audition_signups, attention: @home_attention %>
+    </div>
+
     <!-- Row 1: Summary Boxes -->
     <% if show_auditions_box || show_registrations_box %>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+    <div class="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
       <%# Audition Sign-ups — accordion %>
       <% if show_auditions_box %>
       <div class="border border-gray-200 rounded-lg bg-white overflow-hidden">
@@ -197,7 +204,7 @@
 
     <!-- Row 2: Vacancy Alerts -->
     <% if all_open_vacancies.any? %>
-      <div class="border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
+      <div id="open-vacancies" class="max-sm:order-3 scroll-mt-20 border border-pink-200 rounded-lg overflow-hidden mb-6 bg-pink-50">
         <%# Pink on purpose: an open vacancy is an alert, so this keeps its own header. %>
         <div class="bg-pink-100 px-4 py-3 border-b border-pink-200">
           <h3 class="text-md font-semibold text-pink-900 coustard-regular flex items-center gap-2">
@@ -274,7 +281,7 @@
       # For current month, start grid at beginning of current week (skip past weeks)
       cal_start_date = (is_current_month && current_week_sunday > month_start_date) ? current_week_sunday : month_start_date
     %>
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6">
+    <div class="max-sm:order-2 border border-gray-200 rounded-lg overflow-hidden mb-6">
       <%# Calendar Header with Navigation %>
       <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
         <div>
@@ -467,6 +474,7 @@
         </div>
       </div>
     </div>
+    </div><%# the phone-ordered column %>
 
   <% else %>
     <!-- Empty state: new org, no productions yet -->

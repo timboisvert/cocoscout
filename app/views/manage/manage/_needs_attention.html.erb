@@ -1,0 +1,37 @@
+<%#
+  Production Home's "Needs attention" stack, on a phone (V1.1 plan §4):
+  one tappable line per thing waiting, before the agenda. Only what has
+  something in it. Locals: vacancies, audition_signups (counts), attention
+  (the controller's money and hours counts, or nil off Pro / for non-managers).
+%>
+<%
+  rows = []
+  if vacancies.size.positive?
+    rows << { label: "Open #{'vacancy'.pluralize(vacancies.size)}", count: vacancies.size,
+              detail: vacancies.first(2).map { |v| "#{v[:role].name}, #{v[:show].date_and_time.strftime('%a %b %-d')}" }.join(" · "),
+              path: vacancies.size == 1 ? manage_casting_vacancy_path(vacancies.first[:production], vacancies.first[:vacancy]) : "#open-vacancies", alert: true }
+  end
+  rows << { label: "Audition sign-ups to review", count: audition_signups, path: manage_signups_path } if audition_signups.positive?
+  if attention
+    rows << { label: "Shows that need financials", count: attention[:financials], path: manage_money_financials_path } if attention[:financials].positive?
+    rows << { label: "To pay", count: attention[:payouts], detail: "#{number_to_currency(attention[:payouts_amount])} still unpaid", path: manage_money_payouts_path } if attention[:payouts].positive?
+    rows << { label: "Hours to approve", count: attention[:hours], path: manage_staffing_timesheets_path } if attention[:hours].positive?
+  end
+%>
+<% if rows.any? %>
+  <section class="sm:hidden mb-5" aria-labelledby="needs-attention-title" data-needs-attention>
+    <h2 id="needs-attention-title" class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Needs attention</h2>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+      <% rows.each do |row| %>
+        <%= link_to row[:path], class: "flex items-center gap-3 min-h-[56px] px-4 py-2.5 #{row[:alert] ? 'bg-pink-50' : ''}" do %>
+          <span class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-sm font-bold <%= row[:alert] ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-800' %>"><%= row[:count] %></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[15px] font-semibold text-gray-900"><%= row[:label] %></span>
+            <% if row[:detail].present? %><span class="block text-xs text-gray-600 truncate"><%= row[:detail] %></span><% end %>
+          </span>
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+<% end %>
