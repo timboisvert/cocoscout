@@ -18,6 +18,19 @@ open class WebFragment : HotwireWebFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         navigator.location?.let { updateToolbar(it) }
+        addToolbarIcons()
+    }
+
+    /** V1.1: Messages and Notifications on the right of the toolbar (ToolbarIcons). */
+    private fun addToolbarIcons() {
+        val toolbar = toolbarForNavigation() ?: return
+        val icons = androidx.compose.ui.platform.ComposeView(requireContext()).apply {
+            setViewCompositionStrategy(androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent { com.cocoscout.app.menu.ToolbarIcons() }
+        }
+        toolbar.addView(icons, androidx.appcompat.widget.Toolbar.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL
+        ))
     }
 
     override fun onVisitRendered(location: String) {

@@ -38,6 +38,15 @@ object AppShell {
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
+    private val _nav = MutableStateFlow<com.cocoscout.app.bridge.NavData?>(null)
+    /** The V1.1 menu (NativeAppHelper#native_nav), once a page has sent one. */
+    val nav: StateFlow<com.cocoscout.app.bridge.NavData?> = _nav.asStateFlow()
+
+    /** Every page sends it; the menu sheet and the toolbar's two icons follow it. */
+    fun update(newNav: com.cocoscout.app.bridge.NavData?) {
+        if (newNav != null) _nav.value = newNav
+    }
+
     private var activity: MainActivity? = null
     /** Signed in or out, as the screen was last built for (from the cache at launch). */
     private var shownSignedIn: Boolean? = null

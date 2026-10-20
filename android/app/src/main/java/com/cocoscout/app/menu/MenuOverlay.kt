@@ -40,13 +40,30 @@ import com.cocoscout.app.R
 @Composable
 fun MenuOverlay() {
     val state by AppShell.state.collectAsState()
+    val nav by AppShell.nav.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
 
     if (!state.signedIn) return
 
-    MenuButton(badge = AppShell.badgeText(state.badgeTotal)) { showMenu = true }
+    // V1.1: no badge on Coco; the toolbar's Messages and Notifications carry the counts.
+    MenuButton(badge = if (nav != null) null else AppShell.badgeText(state.badgeTotal)) { showMenu = true }
 
-    if (showMenu) {
+    val currentNav = nav
+    if (showMenu && currentNav != null) {
+        NavMenuSheet(
+            nav = currentNav,
+            person = state.person,
+            onDismiss = { showMenu = false },
+            onOpen = { path ->
+                showMenu = false
+                AppShell.replaceScreen(path)
+            },
+            onSignOut = {
+                showMenu = false
+                AppShell.signOut()
+            }
+        )
+    } else if (showMenu) {
         MenuSheet(
             state = state,
             onDismiss = { showMenu = false },
@@ -106,7 +123,8 @@ fun MenuButton(badge: String?, onClick: () -> Unit) {
                     .offset(x = 4.dp, y = (-4).dp)
                     .defaultMinSize(minWidth = 20.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFFE7000B))
+                    .background(Color(0xFFE60076))
+                    .border(2.dp, Color.White, RoundedCornerShape(10.dp))
                     .padding(horizontal = 6.dp, vertical = 1.dp)
             )
         }

@@ -26,10 +26,17 @@ class MenuComponent(
         val data = message.data<MenuData>() ?: return
         AppShell.update(data.menu, data.person, page = message.metadata?.url)
         TapToPaySetup.update(data.tapToPay)
+        AppShell.update(data.nav)
     }
 
     @Serializable
-    data class MenuData(val menu: List<MenuItem> = emptyList(), val person: MenuPerson? = null, val tapToPay: TapToPayInfo? = null)
+    data class MenuData(
+        val menu: List<MenuItem> = emptyList(),
+        val person: MenuPerson? = null,
+        val tapToPay: TapToPayInfo? = null,
+        /** The V1.1 menu; only generation-2 builds are sent one. */
+        val nav: NavData? = null
+    )
 }
 
 /** One menu tile: icon is an SF Symbol name (the iOS app's); MenuIcons maps it. */
