@@ -1,8 +1,38 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["comment", "count"]
-    static values = { saveUrl: String }
+    static targets = ["comment", "count", "previous", "next", "left"]
+    static values = { saveUrl: String, othersUnvoted: Number, voted: Boolean }
+
+    // Phone: swipe the vote bar left for the next one, right for the previous.
+    touchStart(event) {
+        const t = event.changedTouches[0]
+        this.touchOrigin = { x: t.clientX, y: t.clientY }
+    }
+
+    touchEnd(event) {
+        if (!this.touchOrigin || event.target.closest("input, textarea")) return
+        const t = event.changedTouches[0]
+        const dx = t.clientX - this.touchOrigin.x
+        const dy = t.clientY - this.touchOrigin.y
+        this.touchOrigin = null
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2) return
+
+        const link = dx < 0
+            ? (this.hasNextTarget ? this.nextTarget : null)
+            : (this.hasPreviousTarget ? this.previousTarget : null)
+        if (link) this.navigateWithSave({ preventDefault() {}, currentTarget: link })
+    }
+
+    // After a first vote on this one, one fewer is left to vote on.
+    markVoted() {
+        if (this.votedValue) return
+        this.votedValue = true
+        navigator.vibrate?.(10)
+        if (!this.hasLeftTarget) return
+        const left = this.othersUnvotedValue
+        this.leftTarget.textContent = left === 0 ? "You've voted on every one" : `${left} left to vote on`
+    }
 
     // Get the visible comment input (handles mobile/desktop dual inputs)
     getVisibleCommentValue() {
@@ -40,6 +70,7 @@ export default class extends Controller {
             .then(data => {
                 console.log('[vote-form] vote response data', data)
                 if (data.success) {
+                    this.markVoted()
                     this.updateVoteButtons(vote)
                     this.updateCounts(data.counts)
                     this.updateVotesList(data.votes_html)

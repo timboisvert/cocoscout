@@ -87,7 +87,7 @@
                 <div class="flex items-center gap-1 mt-2 sm:mt-0.5">
                   <% headshot_url = headshot ? url_for(headshot) : nil %>
                   <button type="button"
-                          class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+                          class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-pointer max-sm:min-h-[44px] max-sm:px-4 max-sm:text-sm max-sm:border max-sm:border-gray-300 max-sm:bg-white"
                           data-action="click->move-registration-modal#open"
                           data-registration-id="<%= registration.id %>"
                           data-person-name="<%= registration.display_name %>"
@@ -100,7 +100,7 @@
                   <% remove_reg_cid = "confirm-remove-reg-multi-#{slot.id}-#{registration.id}" %>
                   <button type="button"
                       data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_reg_cid %>"
-                      class="px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors bg-transparent border-0 cursor-pointer">
+                      class="px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors cursor-pointer bg-transparent border-0 max-sm:min-h-[44px] max-sm:px-4 max-sm:text-sm max-sm:border max-sm:border-gray-300">
                     Remove
                   </button>
                   <%= render "shared/confirm_modal", id: remove_reg_cid, title: "Remove registration?",
@@ -166,7 +166,7 @@
                   <% if show_slot_label %>
                     <% headshot_url = headshot ? url_for(headshot) : nil %>
                     <button type="button"
-                            class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+                            class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-pointer max-sm:min-h-[44px] max-sm:px-4 max-sm:text-sm max-sm:border max-sm:border-gray-300 max-sm:bg-white"
                             data-action="click->move-registration-modal#open"
                             data-registration-id="<%= registration.id %>"
                             data-person-name="<%= registration.display_name %>"
@@ -180,7 +180,7 @@
                   <% remove_reg_single_cid = "confirm-remove-reg-single-#{slot.id}-#{registration.id}" %>
                   <button type="button"
                       data-controller="modal" data-action="click->modal#open" data-modal-id="<%= remove_reg_single_cid %>"
-                      class="px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors bg-transparent border-0 cursor-pointer">
+                      class="px-2 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded transition-colors cursor-pointer bg-transparent border-0 max-sm:min-h-[44px] max-sm:px-4 max-sm:text-sm max-sm:border max-sm:border-gray-300">
                     Remove
                   </button>
                   <%= render "shared/confirm_modal", id: remove_reg_single_cid, title: "Remove registration?",

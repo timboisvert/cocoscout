@@ -1,6 +1,6 @@
 <% content_for :title, "Audition Requests" %>
 <% can_vote = (current_user_can_review?(@production) || current_user_can_manage?(@production)) && current_user_can_review?(@production) && @audition_cycle.voting_enabled && @audition_cycle.active %>
-<div class="w-full <%= can_vote ? 'pb-48 lg:pb-40' : 'pb-8' %> relative">
+<div class="w-full <%= can_vote ? 'pb-64 sm:pb-48 lg:pb-40' : 'pb-8' %> relative">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%# Archived stamp - inky rubber stamp effect %>
@@ -346,8 +346,15 @@
   <% current_vote = @audition_request.vote_for(Current.user) %>
   <% vote_counts = @audition_request.vote_counts %>
 
-  <div class="fixed bottom-4 left-4 right-4 lg:left-[17rem] lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
+  <% next_unvoted = @audition_request.next_unvoted_for(Current.user) %>
+  <% others_unvoted = @audition_request.others_unvoted_by(Current.user).count %>
+  <% unvoted_left = others_unvoted + (current_vote ? 0 : 1) %>
+  <div class="fixed bottom-[calc(env(safe-area-inset-bottom)+16px)] sm:bottom-4 left-4 <%= turbo_native_app? ? 'right-[96px] sm:right-4' : 'right-4' %> lg:left-[17rem] lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
        data-controller="vote-form"
+       data-action="touchstart->vote-form#touchStart touchend->vote-form#touchEnd"
+       data-audition-phone-vote-bar
+       data-vote-form-others-unvoted-value="<%= others_unvoted %>"
+       data-vote-form-voted-value="<%= current_vote.present? %>"
        data-vote-form-save-url-value="<%= manage_cast_vote_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>">
     <% requestable_kind = @requestable.is_a?(Person) ? "person" : "group" %>
     <%= render "shared/section_heading", padding: "px-3 py-2",
@@ -359,8 +366,9 @@
         <div class="flex-shrink-0">
           <% if @audition_request.previous %>
             <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request.previous),
-                class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all",
-                data: { action: "click->vote-form#navigateWithSave" } do %>
+                class: "flex items-center justify-center w-11 h-11 sm:w-10 sm:h-10 rounded text-pink-500 hover:bg-pink-50 transition-all",
+                aria: { label: "Previous" },
+                data: { action: "click->vote-form#navigateWithSave", vote_form_target: "previous" } do %>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
               </svg>
@@ -382,8 +390,8 @@
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="yes"
                   data-vote-form-url-param="<%= manage_cast_vote_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
-                  class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
-            <span>👍</span>
+                  class="flex-1 inline-flex items-center justify-center gap-1 px-2 min-h-[44px] text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap <%= is_yes ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>Yes</span>
             <span class="opacity-75" data-vote-form-target="count" data-vote-count="yes"><%= vote_counts[:yes] %></span>
           </button>
 
@@ -393,8 +401,8 @@
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="no"
                   data-vote-form-url-param="<%= manage_cast_vote_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
-                  class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
-            <span>👎</span>
+                  class="flex-1 inline-flex items-center justify-center gap-1 px-2 min-h-[44px] text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap <%= is_no ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>No</span>
             <span class="opacity-75" data-vote-form-target="count" data-vote-count="no"><%= vote_counts[:no] %></span>
           </button>
 
@@ -404,8 +412,8 @@
                   data-action="click->vote-form#submitVote"
                   data-vote-form-vote-param="maybe"
                   data-vote-form-url-param="<%= manage_cast_vote_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request) %>"
-                  class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
-            <span>🤔</span>
+                  class="flex-1 inline-flex items-center justify-center gap-1 px-2 min-h-[44px] text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap <%= is_maybe ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700' %>">
+            <span>Not sure</span>
             <span class="opacity-75" data-vote-form-target="count" data-vote-count="maybe"><%= vote_counts[:maybe] %></span>
           </button>
         </div>
@@ -414,8 +422,9 @@
         <div class="flex-shrink-0 sm:hidden">
           <% if @audition_request.next %>
             <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request.next),
-                class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all",
-                data: { action: "click->vote-form#navigateWithSave" } do %>
+                class: "flex items-center justify-center w-11 h-11 rounded text-pink-500 hover:bg-pink-50 transition-all",
+                aria: { label: "Next" },
+                data: { action: "click->vote-form#navigateWithSave", vote_form_target: "next" } do %>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
               </svg>
@@ -443,6 +452,19 @@
                 class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">
           Save
         </button>
+      </div>
+
+      <!-- Phone: jump to the next one I haven't voted on -->
+      <div class="sm:hidden flex items-center justify-between gap-2 border-t border-gray-200 pt-2 text-sm" data-next-unvoted>
+        <span class="text-gray-500" data-unvoted-left data-vote-form-target="left"><%= unvoted_left.zero? ? "You've voted on every one" : "#{unvoted_left} left to vote on" %></span>
+        <% if next_unvoted %>
+          <%= link_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, next_unvoted),
+                class: "inline-flex items-center gap-1 min-h-[44px] font-medium text-pink-600",
+                data: { action: "click->vote-form#navigateWithSave" } do %>
+            Next I haven't voted on
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+          <% end %>
+        <% end %>
       </div>
 
       <!-- Separator - desktop only -->

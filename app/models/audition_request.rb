@@ -47,6 +47,21 @@ class AuditionRequest < ApplicationRecord
     audition_cycle.audition_requests.active.where("created_at < ?", created_at).order(created_at: :desc).first
   end
 
+  # The other requests in this cycle the user hasn't voted on yet.
+  def others_unvoted_by(user)
+    audition_cycle.audition_requests.active
+                  .where.not(id: id)
+                  .where.not(id: AuditionRequestVote.where(user: user).select(:audition_request_id))
+  end
+
+  # The next request the user hasn't voted on: after this one, then
+  # wrapping to the start of the cycle. Nil once they've voted on them all.
+  def next_unvoted_for(user)
+    unvoted = others_unvoted_by(user)
+    unvoted.where("created_at > ?", created_at).order(created_at: :asc).first ||
+      unvoted.order(created_at: :asc).first
+  end
+
   # Vote helper methods
   def vote_for(user)
     audition_request_votes.find_by(user: user)
