@@ -175,3 +175,79 @@ RSpec.describe "Manage::PeoplePicker for casting", type: :request do
     expect(doc.at_css("[data-people-picker-row='Group_#{group.id}'] [data-people-picker-taken]").text).to eq("Can't make it")
   end
 end
+
+# Staffing's shift assign (V1.1 plan §5): everyone qualified for the role,
+# free for all of it first, with what they said, who's on it, who's in a
+# show that night and who's on an overlapping shift, and the fit filters.
+RSpec.describe "Manage::PeoplePicker for a shift", type: :request do
+  let(:password) { "Password123!" }
+  let(:owner) { create(:user, password: password) }
+  let!(:org) { create(:organization, :pro, owner: owner) }
+  let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let(:production) { create(:production, organization: org, name: "Late Show") }
+  let(:tech) { create(:house_role, organization: org, name: "Tech") }
+  let(:bar) { create(:house_role, organization: org, name: "Bar") }
+  let(:friday) { Date.current.beginning_of_week + 1.week + 4 }
+  let!(:shift) { create(:shift, organization: org, house_role: tech, starts_at: friday.in_time_zone.change(hour: 18), ends_at: friday.in_time_zone.change(hour: 22)) }
+
+  def staff!(name)
+    person = create(:person, name: name).tap { |p| org.people << p }
+    member = create(:organization_staff_member, organization: org, person: person)
+    create(:staff_role_qualification, organization_staff_member: member, house_role: tech)
+    person
+  end
+
+  let!(:free) { staff!("Free Fran") }
+  let!(:off) { staff!("Off Oli") }
+  let!(:busy) { staff!("Busy Bea") }
+  let!(:performing) { staff!("Performing Pat") }
+  let!(:on_it) { staff!("Already Al") }
+  let!(:barkeep) { create(:person, name: "Bar Bob").tap { |p| org.people << p; create(:staff_role_qualification, organization_staff_member: create(:organization_staff_member, organization: org, person: p), house_role: bar) } }
+
+  before do
+    StaffAvailabilityWriter.new(off).save_exception!(starts_on: friday, ends_on: friday, state: "off")
+    other = create(:shift, organization: org, house_role: bar, starts_at: friday.in_time_zone.change(hour: 20), ends_at: friday.in_time_zone.change(hour: 23))
+    other.shift_assignments.create!(person: busy)
+    show = create(:show, production: production, date_and_time: friday.in_time_zone.change(hour: 20))
+    role = create(:role, production: production, name: "Host")
+    show.show_person_role_assignments.create!(role: show.available_roles.first || role, assignable: performing)
+    shift.shift_assignments.create!(person: on_it)
+    post handle_signin_path, params: { email_address: owner.email_address, password: password }
+  end
+
+  def search(params)
+    get manage_people_picker_search_path({ scope: "staff", shift_id: shift.id }.merge(params)), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    expect(response).to have_http_status(:ok)
+    Nokogiri::HTML(response.body)
+  end
+
+  def row(doc, person)
+    doc.at_css("[data-people-picker-row='Person_#{person.id}']")
+  end
+
+  it "lists everyone qualified, free first, each with their state, and the clashes in the pick" do
+    doc = search({})
+    expect(doc.text).to include("Qualified for Tech")
+    names = doc.css("[data-people-picker-row] .truncate:first-child").map { |n| n.text.squish }
+    expect(names).to eq([ "Free Fran", "Busy Bea", "Performing Pat", "Off Oli", "Already Al" ])
+    expect(row(doc, off).text).to include("Unavailable")
+    expect(row(doc, busy).text).to include("On another shift")
+    expect(JSON.parse(row(doc, busy)["data-pick"])["staff"]["conflicts"].first).to include("role" => "Bar", "time_range" => "8:00 PM–11:00 PM")
+    expect(row(doc, performing).text).to include("In a show")
+    expect(JSON.parse(row(doc, performing)["data-pick"])["staff"]["cast"]).to eq([ "Late Show (8:00 PM)" ])
+    expect(row(doc, on_it)["disabled"]).to be_present
+    expect(row(doc, on_it).at_css("[data-people-picker-taken]").text).to eq("Assigned")
+    expect(JSON.parse(row(doc, off)["data-pick"])["staff"]["verdict"]["status"]).to eq("blocked")
+  end
+
+  it "filters to who can work, or who's free for all of it, and searches by name" do
+    expect(row(search(fit: "can_work"), off)).to be_nil
+    expect(row(search(fit: "can_work"), free)).to be_present
+    doc = search(fit: "free")
+    expect(row(doc, off)).to be_nil
+    expect(row(doc, free)).to be_present
+    doc = search(q: "fran")
+    expect(doc.css("[data-people-picker-row]").size).to eq(1)
+    expect(search(q: "nobody").text).to include("No one is qualified for this role yet.")
+  end
+end

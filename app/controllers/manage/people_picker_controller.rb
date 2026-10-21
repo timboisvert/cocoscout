@@ -7,7 +7,10 @@ module Manage
   #                  list=pool
   #   scope          "people" (the organization's people, the default),
   #                  "users" (only those with an account, for team pages),
-  #                  "members" (people and groups)
+  #                  "members" (people and groups), "staff" (who's qualified
+  #                  for a shift's role, with shift_id; fit=all|can_work|free
+  #                  keeps everyone, those who can work some of it, or those
+  #                  free for all of it)
   #   list           "pool": with nothing typed, the production's talent pool,
   #                  available for the show first (casting pages)
   #   outside        "1" adds people on CocoScout outside the organization
@@ -32,15 +35,17 @@ module Manage
     before_action :set_production_scope
     before_action :ensure_user_is_manager
 
-    SCOPES = %w[people users members].freeze
+    SCOPES = %w[people users members staff].freeze
     HEADSHOTS = { profile_headshots: { image_attachment: :blob } }.freeze
 
     def search
       q = params[:q].to_s.strip
       scope = params[:scope].presence_in(SCOPES) || "people"
+      return search_staff(q) if scope == "staff"
+
       listing = q.length < 2 && params[:list] == "pool" && @production.present?
       locals = { query: q, people: [], groups: [], outside: [], already: {}, badges: Hash.new { |h, k| h[k] = [] }, ineligible: Set.new,
-                 invite_email: nil, invite_name: params[:invite_name] == "1", guest: params[:guest] == "1", listing: listing }
+                 invite_email: nil, invite_name: params[:invite_name] == "1", guest: params[:guest] == "1", listing: listing, extras: {} }
 
       if q.length >= 2 || listing
         org = Current.organization
@@ -109,6 +114,82 @@ module Manage
     end
 
     private
+
+    FIT = { "free" => 0, "partial" => 2, "unknown" => 4, "blocked" => 6 }.freeze
+
+    # Staffing's shift assign (V1.1 plan §5): everyone qualified for the
+    # shift's role, free for all of it first, then partly, then hasn't said,
+    # then can't; who's on it already, in a show that night, or on another
+    # shift that overlaps, so the page can ask before double-booking. The
+    # Everyone / Can work / Free filters are fit=all|can_work|free.
+    def search_staff(q)
+      shift = Current.organization.shifts.includes(:house_role, :source).find(params[:shift_id])
+      role = shift.house_role
+      members = StaffRoleQualification.joins(organization_staff_member: :person)
+                                      .where(house_role_id: role.id, organization_staff_members: { organization_id: Current.organization.id, archived_at: nil })
+                                      .includes(organization_staff_member: { person: HEADSHOTS })
+                                      .order("people.name").map(&:organization_staff_member)
+      members.select! { |m| m.person.name.to_s.downcase.include?(q.downcase) } if q.length >= 2
+      people = members.map(&:person)
+      ids = people.map(&:id)
+
+      resolver = StaffAvailabilityResolver.new(ids, from: shift.starts_at.to_date, to: shift.ends_at.to_date)
+      on_shift = shift.active_assignments.pluck(:person_id).to_set
+      day = shift.source.is_a?(Show) ? shift.source.date_and_time.to_date : shift.starts_at.to_date
+      shows = Show.joins(:production).where(productions: { organization_id: Current.organization.id }, date_and_time: day.all_day).includes(:production)
+      cast = ShowPersonRoleAssignment.where(show_id: shows.map(&:id), assignable_type: "Person", assignable_id: ids)
+                                     .group_by(&:assignable_id).transform_values { |as| as.map(&:show_id).uniq }
+      show_label = shows.index_by(&:id).transform_values { |show| "#{show.production&.name} (#{show.date_and_time.strftime("%-l:%M %p")})" }
+      overlapping = Current.organization.shifts.where("starts_at < ? AND ends_at > ?", shift.ends_at, shift.starts_at).where.not(id: shift.id)
+                                        .includes(:house_role, shift_assignments: []).to_a
+      busy = overlapping.each_with_object(Hash.new { |h, k| h[k] = [] }) do |other, h|
+        other.active_assignments.each do |a|
+          h[a.person_id] << { role: other.house_role.name, day: other.starts_at.strftime("%a %b %-d"),
+                              time_range: "#{other.starts_at.strftime("%-l:%M %p")}–#{other.ends_at.strftime("%-l:%M %p")}" }
+        end
+      end
+
+      fit = params[:fit].presence_in(%w[all can_work free]) || "all"
+      rows = people.map do |person|
+        verdict = resolver.verdict(person.id, shift.starts_at, shift.ends_at)
+        status = verdict.status.to_s
+        { person: person, status: status,
+          verdict: { status: status, badge: StaffAvailabilityWording.badge(verdict), detail: StaffAvailabilityWording.detail(verdict) },
+          cast: (cast[person.id] || []).map { |id| show_label[id] }.compact, conflicts: busy[person.id] }
+      end
+      rows.select! { |r| r[:status] != "blocked" } if fit == "can_work"
+      rows.select! { |r| r[:status].in?(%w[free unknown]) } if fit == "free"
+      # Free first, then partly, hasn't said, can't; a clash that night (a
+      # show, another shift) sorts after the clean ones of the same kind, and
+      # whoever's on the shift already comes last. Alphabetical within each.
+      rows.sort_by!.with_index do |r, i|
+        rank = if on_shift.include?(r[:person].id) then 9
+        else FIT.fetch(r[:status], 4) + ((r[:cast].any? || r[:conflicts].any?) ? 1 : 0)
+        end
+        [ rank, i ]
+      end
+
+      already = {}
+      badges = Hash.new { |h, k| h[k] = [] }
+      extras = {}
+      rows.each do |r|
+        key = "Person_#{r[:person].id}"
+        if on_shift.include?(r[:person].id) then already[key] = "Assigned"
+        elsif r[:cast].any? then badges[key] << "In a show"
+        elsif r[:status] == "blocked" then badges[key] << "Unavailable"
+        elsif r[:status] == "partial" then badges[key] << (r[:verdict][:badge] || "Partly available")
+        elsif r[:status] == "unknown" then badges[key] << "Hasn't said"
+        end
+        badges[key] << "On another shift" if r[:conflicts].any? && !on_shift.include?(r[:person].id)
+        extras[key] = { staff: { verdict: r[:verdict], cast: r[:cast], conflicts: r[:conflicts] } }
+      end
+
+      render partial: "shared/people_picker/results",
+             locals: { query: q, people: rows.map { |r| r[:person] }, groups: [], outside: [], already: already, badges: badges, ineligible: Set.new,
+                       invite_email: nil, invite_name: false, guest: false, listing: true, extras: extras,
+                       heading: "Qualified for #{role.name}",
+                       empty: (fit == "all" ? "No one is qualified for this role yet." : "No one who can work this shift.") }
+    end
 
     # A production's picker checks the production's managers; the rest the
     # organization's.

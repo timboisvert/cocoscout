@@ -6,7 +6,7 @@ import { Controller } from "@hotwired/stimulus"
 // people-picker:pick on its element for each tap, with the context the
 // opener passed, so the page does what it always did with the pick.
 export default class extends Controller {
-    static targets = ["input", "results", "spinner", "inviteName", "guestName", "guestEmail"]
+    static targets = ["input", "results", "spinner", "inviteName", "guestName", "guestEmail", "filter"]
     static values = { id: String, url: String, params: Object, multi: Boolean }
 
     connect() {
@@ -21,6 +21,7 @@ export default class extends Controller {
         this.openContext = detail.context || {}
         this.extraParams = detail.params || {}
         this.picked = new Set()
+        this.resetFilter()
         const title = document.getElementById(`${this.idValue}-title`)
         if (title && detail.title) title.textContent = detail.title
         this.inputTarget.value = ""
@@ -30,9 +31,37 @@ export default class extends Controller {
         else setTimeout(() => this.inputTarget.focus(), 50)
     }
 
-    // A casting page shows the talent pool before anything is typed.
+    // A casting page shows the talent pool before anything is typed; so does
+    // a staffing shift (everyone qualified).
     listsFirst() {
-        return this.paramsValue.list === "pool" || this.extraParams.list === "pool"
+        return this.paramsValue.list === "pool" || this.extraParams.list === "pool" || this.paramsValue.scope === "staff"
+    }
+
+    // The filter chips (shared/_people_picker filters): the first is the
+    // default; a tap re-asks with the chip's value.
+    resetFilter() {
+        if (!this.hasFilterTarget) return
+        this.applyFilter(this.filterTargets[0].dataset.filter)
+    }
+
+    setFilter(event) {
+        this.applyFilter(event.currentTarget.dataset.filter)
+        this.fetchResults(this.inputTarget.value.trim().length < 2 ? "" : this.inputTarget.value.trim())
+    }
+
+    applyFilter(value) {
+        const param = this.filterTargets[0]?.closest("[data-people-picker-filter-param]")?.dataset.peoplePickerFilterParam || "fit"
+        this.extraParams = { ...this.extraParams, [param]: value }
+        this.filterTargets.forEach(chip => {
+            const on = chip.dataset.filter === value
+            chip.classList.toggle("border-pink-500", on)
+            chip.classList.toggle("bg-pink-50", on)
+            chip.classList.toggle("text-pink-700", on)
+            chip.classList.toggle("font-medium", on)
+            chip.classList.toggle("border-gray-300", !on)
+            chip.classList.toggle("bg-white", !on)
+            chip.classList.toggle("text-gray-700", !on)
+        })
     }
 
     close() {

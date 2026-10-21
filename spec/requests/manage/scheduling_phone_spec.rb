@@ -3,8 +3,8 @@
 require "rails_helper"
 
 # V1.1 plan Phase 2: Scheduling on a phone is a week strip with one day's
-# shifts under it, the Gantt charts kept for desktop, the assign modal a
-# sheet, and Publish or Notify updates pinned to the bottom.
+# shifts under it, the Gantt charts kept for desktop, assigning through the
+# shared People Picker, and Publish or Notify updates pinned to the bottom.
 RSpec.describe "Scheduling on a phone", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
@@ -63,10 +63,15 @@ RSpec.describe "Scheduling on a phone", type: :request do
     expect(response.body).not_to include("Swipe to see all")
   end
 
-  it "makes the assign modal a sheet on a phone" do
-    sheet = page.at_css("[data-shift-assign-sheet]")
-    expect(sheet["class"]).to include("max-sm:rounded-b-none")
-    expect(sheet.parent["class"]).to include("max-sm:items-end")
+  it "assigns through the shared People Picker, with the Everyone / Can work / Free filters" do
+    doc = page
+    picker = doc.at_css("[data-people-picker='shift-picker']")
+    expect(JSON.parse(picker["data-people-picker-params-value"])).to include("scope" => "staff")
+    expect(picker["data-action"]).to include("people-picker:pick->shift-assign#picked")
+    expect(picker.css("[data-people-picker-target='filter']").map { |b| [ b.text, b["data-filter"] ] })
+      .to eq([ [ "Everyone", "all" ], [ "Can work", "can_work" ], [ "Available the whole shift", "free" ] ])
+    expect(doc.at_css("[data-shift-assign-target='form'] input[name='person_id']")).to be_present
+    expect(doc.at_css("[data-shift-assign-sheet]")).to be_nil
   end
 
   it "pins Publish to the bottom while the week is a draft" do

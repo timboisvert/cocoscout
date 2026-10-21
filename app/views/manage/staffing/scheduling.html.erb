@@ -19,9 +19,6 @@
      data-controller="shift-assign shift-edit shift-split shift-add staffing-finalize week-agenda"
      data-shift-assign-staff-by-role-value="<%= @staff_by_role_payload.to_json %>"
      data-shift-assign-assign-url-template-value="<%= assign_url_template %>"
-     data-shift-assign-shift-times-value="<%= @shift_times_payload.to_json %>"
-     data-shift-assign-person-busy-value="<%= @person_busy_payload.to_json %>"
-     data-shift-assign-staff-availability-value="<%= @staff_availability_payload.to_json %>"
      data-shift-assign-day-windows-value="<%= @staff_day_windows_payload.to_json %>"
      data-shift-assign-cast-by-day-value="<%= @cast_by_day_payload.to_json %>"
      data-shift-edit-update-url-template-value="<%= manage_update_staffing_shift_path(":id") %>"
@@ -801,49 +798,21 @@
     </div>
   <% end %>
 
-  <%# === Assignment modal === %>
-  <div data-shift-assign-target="modal"
-       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
-       data-action="click->shift-assign#backdropClose keydown.esc@window->shift-assign#close">
-    <div class="flex min-h-full items-start justify-center p-4 py-12 max-sm:items-end max-sm:p-0">
-      <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl max-sm:rounded-b-none max-sm:max-w-none"
-           data-shift-assign-sheet
-           data-action="click->shift-assign#stopPropagation">
-        <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
-          <div>
-            <h3 class="text-lg font-semibold text-white" data-shift-assign-target="title">Assign</h3>
-            <div class="text-xs text-white/80" data-shift-assign-target="subtitle"></div>
-          </div>
-          <button type="button" data-action="click->shift-assign#close" class="text-white/70 hover:text-white cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
-        <%= form_with url: "#", method: :post, local: true,
-                      authenticity_token: form_authenticity_token,
-                      data: { "shift-assign-target": "form" } do %>
-          <input type="hidden" name="person_id" data-shift-assign-target="personIdInput">
-        <% end %>
-
-        <%# Who to show: everyone, anyone who can work some of it, or only
-            people free for the whole shift. The list is sorted that way too. %>
-        <div class="px-5 pt-3 flex flex-wrap items-center gap-2">
-          <span class="text-xs text-gray-500 mr-1">Show</span>
-          <button type="button" data-shift-assign-target="filterButton" data-filter="all" data-action="click->shift-assign#setFilter"
-                  class="px-3 py-1.5 rounded text-xs font-medium transition bg-pink-500 text-white">Everyone</button>
-          <button type="button" data-shift-assign-target="filterButton" data-filter="can_work" data-action="click->shift-assign#setFilter"
-                  class="px-3 py-1.5 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">Can work</button>
-          <button type="button" data-shift-assign-target="filterButton" data-filter="free" data-action="click->shift-assign#setFilter"
-                  class="px-3 py-1.5 rounded text-xs font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">Available the whole shift</button>
-        </div>
-
-        <div class="px-5 py-4 max-h-[60vh] max-sm:max-h-[65dvh] max-sm:pb-[calc(env(safe-area-inset-bottom)+16px)] overflow-y-auto" data-shift-assign-target="results">
-          <%# populated by JS %>
-        </div>
-      </div>
-    </div>
-  </div>
+  <%# === Assign: the shared People Picker (V1.1 plan §5), listing everyone
+      qualified for the shift's role, free for all of it first, with the
+      Everyone / Can work / Available the whole shift filters. A pick that
+      collides (another shift, a show that night, hours they said they can't
+      work) goes through the conflict modal below first. %>
+  <%= render "shared/people_picker", id: "shift-picker", title: "Assign", scope: "staff",
+        filters: [ [ "Everyone", "all" ], [ "Can work", "can_work" ], [ "Available the whole shift", "free" ] ], filter_param: "fit",
+        placeholder: "Search by name", pick_action: "people-picker:pick->shift-assign#picked" %>
+  <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
+  <%= form_with url: "#", method: :post, local: true,
+                authenticity_token: form_authenticity_token,
+                class: "hidden",
+                data: { "shift-assign-target": "form" } do %>
+    <input type="hidden" name="person_id" data-shift-assign-target="personIdInput">
+  <% end %>
 
   <%# === Scheduling-conflict modal (shown when assigning would double-book) === %>
   <div data-shift-assign-target="collisionModal"
