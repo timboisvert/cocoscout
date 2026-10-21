@@ -40,6 +40,7 @@
 <div id="compose-message-modal"
      data-controller="compose-message"
      data-compose-message-target="modal"
+     data-action="people-picker:pick@window->compose-message#picked"
      class="hidden fixed inset-0 z-50 overflow-y-auto"
      aria-labelledby="compose-message-title"
      role="dialog"
@@ -148,23 +149,12 @@
 
         <%# Step 1 sub-panels (shown after selecting a type) %>
 
-        <%# Individuals: Person Search %>
+        <%# Individuals: the shared People Picker (compose-picker, below the modal) adds them; they're chips here %>
         <div data-compose-message-target="individualsPanel" class="hidden">
-          <div class="relative">
-            <input type="text"
-                   data-compose-message-target="personSearchInput"
-                   data-action="input->compose-message#searchPeople"
-                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 pl-10 text-gray-900 placeholder-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors"
-                   placeholder="Search by name or email..."
-                   autocomplete="off">
-            <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-          </div>
+          <%= render "shared/button", text: "Add people", variant: "secondary", size: "small", icon: "plus", type: :button,
+                data: { action: "click->compose-message#openPeoplePicker" } %>
           <%# Selected chips %>
-          <div data-compose-message-target="selectedPeopleChips" class="flex flex-wrap gap-2 mt-2 empty:hidden"></div>
-          <%# Search results %>
-          <div data-compose-message-target="personSearchResults" class="mt-2 max-h-48 overflow-y-auto rounded-lg border border-gray-200 hidden"></div>
+          <div data-compose-message-target="selectedPeopleChips" class="flex flex-wrap gap-2 mt-3 empty:hidden"></div>
         </div>
 
         <%# Show Cast: Production picker + Show Picker %>
@@ -436,3 +426,8 @@
     </div>
   </div>
 </div>
+
+<%# Compose's people, found by the shared People Picker; the modal above hears each pick (people-picker:pick on window). %>
+<%= render "shared/people_picker", id: "compose-picker", title: "Add people", scope: "people", multi: true,
+      production_id: (@production.id if @production.is_a?(Production) && @production.persisted?),
+      hint: "Someone in your organization" %>

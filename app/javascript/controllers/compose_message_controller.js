@@ -29,8 +29,7 @@ export default class extends Controller {
         // Step 1 targets
         "step1Panel", "step2Panel", "continueButton", "backToStep1", "cancelButton",
         "recipientCards",
-        "individualsPanel", "personSearchInput", "selectedPeopleChips",
-        "personSearchResults",
+        "individualsPanel", "selectedPeopleChips",
         "showCastPanel", "showCastProductionPicker", "showCastProductionSelect",
         "showSelectWrapper", "showSelect",
         "showCastPreview", "showCastCount", "showCastHeadshots",
@@ -54,7 +53,6 @@ export default class extends Controller {
         talentPoolName: String,
         talentPoolMembers: Array,    // Array of {id, name, headshot, initials}
         talentPoolCount: Number,     // Total count of talent pool members
-        searchUrl: String,           // URL for org-level person search endpoint
         // Index page: multiple productions
         productions: Array,          // Array of {id, name} for production picker
         productionDataUrl: String,   // URL pattern for fetching production data JSON
@@ -69,7 +67,6 @@ export default class extends Controller {
         this.templateBodyValue = ''
         this.stepSelectMode = false
         this.selectedPeople = [] // {id, name, headshot, initials}
-        this.searchTimeout = null
     }
 
     disconnect() {
@@ -118,9 +115,6 @@ export default class extends Controller {
             }
             if (source.dataset.composeMessageTalentPoolCountValue) {
                 modalController.talentPoolCountValue = parseInt(source.dataset.composeMessageTalentPoolCountValue)
-            }
-            if (source.dataset.composeMessageSearchUrlValue) {
-                modalController.searchUrlValue = source.dataset.composeMessageSearchUrlValue
             }
             if (source.dataset.composeMessageProductionsValue) {
                 try { modalController.productionsValue = JSON.parse(source.dataset.composeMessageProductionsValue) } catch (e) { modalController.productionsValue = [] }
@@ -326,12 +320,11 @@ export default class extends Controller {
         const hasMultipleProductions = this.productionsValue?.length > 0
 
         if (selected === 'individuals') {
-            // Individuals never needs a production — show search immediately
+            // Individuals never needs a production — open the People Picker right away
             const panel = modal.querySelector('[data-compose-message-target="individualsPanel"]')
             if (panel) panel.classList.remove('hidden')
-            const searchInput = modal.querySelector('[data-compose-message-target="personSearchInput"]')
-            if (searchInput) setTimeout(() => searchInput.focus(), 100)
             if (continueBtn) continueBtn.disabled = this.selectedPeople.length === 0
+            if (this.selectedPeople.length === 0) this.openPeoplePicker()
 
         } else if (selected === 'show_cast') {
             const panel = modal.querySelector('[data-compose-message-target="showCastPanel"]')
@@ -539,99 +532,24 @@ export default class extends Controller {
         return div.innerHTML
     }
 
-    // Person search for individuals panel
-    searchPeople(event) {
-        const query = event.currentTarget.value.trim()
-        const modal = document.getElementById('compose-message-modal')
-        const resultsEl = modal?.querySelector('[data-compose-message-target="personSearchResults"]')
-
-        if (!resultsEl) return
-
-        if (query.length < 2) {
-            resultsEl.classList.add('hidden')
-            resultsEl.innerHTML = ''
-            return
-        }
-
-        // Debounce
-        clearTimeout(this.searchTimeout)
-        this.searchTimeout = setTimeout(async () => {
-            const url = this.searchUrlValue
-            if (!url) return
-
-            try {
-                const response = await fetch(`${url}?q=${encodeURIComponent(query)}`, {
-                    headers: { 'Accept': 'application/json' }
-                })
-                if (!response.ok) return
-
-                const data = await response.json()
-                const people = data.people || []
-
-                // Filter out already selected
-                const selectedIds = new Set(this.selectedPeople.map(p => p.id))
-                const filtered = people.filter(p => !selectedIds.has(p.id))
-
-                if (filtered.length === 0) {
-                    resultsEl.innerHTML = '<div class="px-4 py-3 text-sm text-gray-500">No results found</div>'
-                    resultsEl.classList.remove('hidden')
-                    return
-                }
-
-                resultsEl.innerHTML = filtered.map(person => `
-                    <button type="button"
-                            class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-pink-50 transition-colors cursor-pointer text-left"
-                            data-action="click->compose-message#addPerson"
-                            data-person-id="${person.id}"
-                            data-person-name="${this._escapeHtml(person.name)}"
-                            data-person-headshot="${person.headshot_url || ''}"
-                            data-person-initials="${this._escapeHtml(person.initials || this.getInitials(person.name))}">
-                        ${person.headshot_url
-                        ? `<img src="${person.headshot_url}" alt="${this._escapeHtml(person.name)}" class="w-8 h-8 rounded-lg object-cover">`
-                        : `<div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs">${this._escapeHtml(person.initials || this.getInitials(person.name))}</div>`
-                    }
-                        <div>
-                            <div class="text-sm font-medium text-gray-900">${this._escapeHtml(person.name)}</div>
-                            ${person.email ? `<div class="text-xs text-gray-500">${this._escapeHtml(person.email)}</div>` : ''}
-                        </div>
-                    </button>
-                `).join('')
-                resultsEl.classList.remove('hidden')
-            } catch (error) {
-                console.error('Person search failed:', error)
-            }
-        }, 300)
+    // The shared People Picker ("compose-picker", shared/_people_picker)
+    // finds people for the Individuals step; those already chosen read "Added".
+    openPeoplePicker(event) {
+        event?.preventDefault()
+        window.dispatchEvent(new CustomEvent("people-picker:open", {
+            detail: { id: "compose-picker", title: "Add people", params: { exclude: this.selectedPeople.map(p => p.id), exclude_label: "Added" } }
+        }))
     }
 
-    addPerson(event) {
-        event.preventDefault()
-        const btn = event.currentTarget
-        const person = {
-            id: parseInt(btn.dataset.personId),
-            name: btn.dataset.personName,
-            headshot: btn.dataset.personHeadshot,
-            initials: btn.dataset.personInitials
-        }
-
-        // Avoid duplicates
-        if (this.selectedPeople.find(p => p.id === person.id)) return
-
-        this.selectedPeople.push(person)
+    // people-picker:pick from that sheet.
+    picked(event) {
+        const pick = event.detail
+        if (pick.picker !== "compose-picker" || pick.type !== "Person") return
+        if (this.selectedPeople.find(p => p.id === pick.id)) return
+        this.selectedPeople.push({ id: pick.id, name: pick.name, headshot: pick.headshotUrl || "", initials: pick.initials || this.getInitials(pick.name) })
         this._renderSelectedChips()
-
-        // Clear search
-        const modal = document.getElementById('compose-message-modal')
-        const searchInput = modal?.querySelector('[data-compose-message-target="personSearchInput"]')
-        const resultsEl = modal?.querySelector('[data-compose-message-target="personSearchResults"]')
-        if (searchInput) searchInput.value = ''
-        if (resultsEl) { resultsEl.classList.add('hidden'); resultsEl.innerHTML = '' }
-
-        // Enable continue button
-        const continueBtn = modal?.querySelector('[data-compose-message-target="continueButton"]')
+        const continueBtn = document.getElementById('compose-message-modal')?.querySelector('[data-compose-message-target="continueButton"]')
         if (continueBtn) continueBtn.disabled = false
-
-        // Re-focus search input
-        if (searchInput) searchInput.focus()
     }
 
     removePerson(event) {
@@ -1175,11 +1093,7 @@ export default class extends Controller {
                 panel.classList.remove('max-w-2xl')
                 panel.classList.add('max-w-lg')
             }
-            // Reset search and chips
-            const searchInput = modal.querySelector('[data-compose-message-target="personSearchInput"]')
-            if (searchInput) searchInput.value = ''
-            const searchResults = modal.querySelector('[data-compose-message-target="personSearchResults"]')
-            if (searchResults) { searchResults.classList.add('hidden'); searchResults.innerHTML = '' }
+            // Reset the chips
             const chips = modal.querySelector('[data-compose-message-target="selectedPeopleChips"]')
             if (chips) chips.innerHTML = ''
             // Reset show dropdown

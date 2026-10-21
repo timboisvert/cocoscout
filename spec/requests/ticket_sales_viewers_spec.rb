@@ -40,8 +40,11 @@ RSpec.describe "Ticket sales viewers", type: :request do
     get manage_ticket_listing_visibility_path(listing)
     expect(response.body).to include("Shared with", "Nobody yet", "Add someone else")
 
-    get manage_ticket_listing_visibility_search_path(listing, q: "Pat")
-    expect(response.body).to include("Pat Producer", "Choose")
+    # Add someone else goes through the People Picker (people with accounts, outsiders, invitations).
+    picker = Nokogiri::HTML(response.body).at_css("[data-people-picker='viewer-picker']")
+    expect(JSON.parse(picker["data-people-picker-params-value"])).to include("scope" => "users", "outside" => "1", "invite" => "1", "exclude_label" => "Sees the sales")
+    get manage_people_picker_search_path(scope: "users", outside: 1, q: "Pat")
+    expect(response.body).to include("Pat Producer")
 
     post manage_ticket_listing_visibility_path(listing), params: { person_id: producer_person.id, share_scope: "listing" }
     expect(flash[:notice]).to include("Pat Producer can now see the sales")
@@ -120,8 +123,8 @@ RSpec.describe "Ticket sales viewers", type: :request do
   it "invites someone by email when the search finds nobody, and they accept by making an account" do
     sign_in(superadmin)
     get manage_path
-    get manage_ticket_listing_visibility_search_path(listing, q: "sam@example.com")
-    expect(response.body).to include("Nobody on CocoScout matches", 'value="sam@example.com"')
+    get manage_people_picker_search_path(scope: "users", outside: 1, invite: 1, invite_name: 1, q: "sam@example.com")
+    expect(response.body).to include("Nobody has", "Invite sam@example.com", 'data-people-picker-target="inviteName"')
 
     expect {
       post manage_ticket_listing_visibility_invite_path(listing), params: { email: "sam@example.com", name: "Sam Producer", share_scope: "listing" }

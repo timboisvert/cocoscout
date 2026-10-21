@@ -319,20 +319,7 @@ module Manage
 
       @productions = @casting_table.productions
 
-      # For adding members (only if draft)
-      if @casting_table.draft?
-        # Get all people from the org's talent pools for these productions
-        existing_member_ids = @casting_table.casting_table_members.where(memberable_type: "Person").pluck(:memberable_id)
-        @available_people = Current.organization.people
-                                    .where.not(id: existing_member_ids)
-                                    .order(:name)
-                                    .limit(100)
-
-        existing_group_ids = @casting_table.casting_table_members.where(memberable_type: "Group").pluck(:memberable_id)
-        @available_groups = Current.organization.groups
-                                    .where.not(id: existing_group_ids)
-                                    .order(:name)
-      end
+      # Adding members (only while a draft) goes through the People Picker.
 
       # For each member, count draft assignments (needed for removal confirmation)
       @draft_counts_by_member = {}

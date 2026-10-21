@@ -657,7 +657,6 @@ Rails.application.routes.draw do
       end
       collection do
         post :mark_all_read
-        get :search_people
         get "production/:production_id", action: :production, as: :production
         get "production/:production_id/:id", action: :show, as: :production_message
         get "production_data/:production_id", action: :production_data, as: :production_data
@@ -1339,7 +1338,6 @@ Rails.application.routes.draw do
     patch "ticketing/settings/sharing",           to: "ticketing_settings#update_sharing", as: "ticketing_settings_sharing"
     patch "ticketing/settings/comps",             to: "ticketing_settings#update_comps",   as: "ticketing_settings_comps"
     get   "ticketing/settings/:section",          to: "ticketing_settings#show",         as: "ticketing_settings_section"
-    get    "ticketing/settings/door/search",      to: "ticketing_settings#door_search",  as: "ticketing_door_search"
     post   "ticketing/settings/door",             to: "ticketing_settings#grant_door_access", as: "ticketing_door_access"
     post   "ticketing/settings/door/invite",      to: "ticketing_settings#invite_door_access", as: "ticketing_door_invite"
     patch  "ticketing/settings/door/app",         to: "ticketing_settings#update_door_in_app", as: "ticketing_door_in_app"
@@ -1402,13 +1400,11 @@ Rails.application.routes.draw do
     # Visibility: who can see a show's (or a whole production's) sales —
     # producers, performers — share, invite, revoke.
     get    "ticketing/shows/:id/visibility",         to: "ticket_sales_viewers#index",   as: "ticket_listing_visibility"
-    get    "ticketing/shows/:id/visibility/search",  to: "ticket_sales_viewers#search",  as: "ticket_listing_visibility_search"
     post   "ticketing/shows/:id/visibility",         to: "ticket_sales_viewers#create"
     post   "ticketing/shows/:id/visibility/invite",  to: "ticket_sales_viewers#invite",  as: "ticket_listing_visibility_invite"
     patch  "ticketing/shows/:id/visibility/contracts/:contract_id", to: "ticket_sales_viewers#update_contract", as: "ticket_listing_visibility_contract"
     delete "ticketing/shows/:id/visibility/:viewer_id", to: "ticket_sales_viewers#destroy", as: "ticket_listing_visibility_viewer"
     get    "ticketing/productions/:production_id/visibility",        to: "ticket_sales_viewers#index",  as: "production_ticketing_visibility"
-    get    "ticketing/productions/:production_id/visibility/search", to: "ticket_sales_viewers#search", as: "production_ticketing_visibility_search"
     post   "ticketing/productions/:production_id/visibility",        to: "ticket_sales_viewers#create"
     post   "ticketing/productions/:production_id/visibility/invite", to: "ticket_sales_viewers#invite", as: "production_ticketing_visibility_invite"
     patch  "ticketing/productions/:production_id/visibility/contracts/:contract_id", to: "ticket_sales_viewers#update_contract", as: "production_ticketing_visibility_contract"

@@ -47,17 +47,25 @@ RSpec.describe "Manage ticketing door access", type: :request do
   it "finds anyone on CocoScout and gives them access" do
     friend, friend_person = user_with_person("Jordan Friend")
 
-    get manage_ticketing_door_search_path, params: { q: "jordan" }
-    expect(response.body).to include("Jordan Friend", "Choose")
-    get manage_ticketing_door_search_path, params: { q: "zzz" }
-    expect(response.body).to include("Invite them by email", "Send invitation")
+    # Add someone else is the People Picker: people with accounts, outsiders by name, an email to invite.
+    get manage_ticketing_settings_section_path(section: "door")
+    picker = Nokogiri::HTML(response.body).at_css("[data-people-picker='door-picker']")
+    params = JSON.parse(picker["data-people-picker-params-value"])
+    expect(params).to include("scope" => "users", "outside" => "1", "invite" => "1", "invite_name" => "1", "exclude_label" => "Has the door")
+    expect(params["exclude"]).not_to include(friend_person.id)
+    get manage_people_picker_search_path, params: params.merge(q: "jordan")
+    expect(response.body).to include("Jordan Friend")
+    expect(response.body).not_to include("Has the door")
 
     post manage_ticketing_door_access_path, params: { person_id: friend_person.id, access_level: "check_in" }
     expect(flash[:notice]).to eq("Jordan Friend can now check people in at the door.")
     expect(org.ticketing_access_grants.active.sole.user).to eq(friend)
 
-    get manage_ticketing_door_search_path, params: { q: "jordan" }
-    expect(response.body).to include("Has access")
+    get manage_ticketing_settings_section_path(section: "door")
+    params = JSON.parse(Nokogiri::HTML(response.body).at_css("[data-people-picker='door-picker']")["data-people-picker-params-value"])
+    expect(params["exclude"]).to include(friend_person.id)
+    get manage_people_picker_search_path, params: params.merge(q: "jordan")
+    expect(response.body).to include("Has the door")
   end
 
   it "skips managers, who always have the door" do
@@ -117,11 +125,11 @@ RSpec.describe "Manage ticketing door access", type: :request do
   describe "inviting someone not on CocoScout" do
     include ActiveJob::TestHelper
 
-    it "offers the invite only after a search finds nobody, prefilled from the search" do
-      get manage_ticketing_door_search_path, params: { q: "sam@volunteer.example" }
-      expect(response.body).to include('value="sam@volunteer.example"', "Send invitation")
-      get manage_ticketing_door_search_path, params: { q: "Sam Volunteer" }
-      expect(response.body).to include('value="Sam Volunteer"')
+    it "offers the invite only for an email nobody has, with a box for their name" do
+      get manage_people_picker_search_path, params: { scope: "users", outside: "1", invite: "1", invite_name: "1", q: "sam@volunteer.example" }
+      expect(response.body).to include("Invite sam@volunteer.example", 'data-people-picker-target="inviteName"')
+      get manage_people_picker_search_path, params: { scope: "users", outside: "1", invite: "1", invite_name: "1", q: "Sam Volunteer" }
+      expect(response.body).not_to include("Invite ")
     end
 
     it "sends an invitation and lists it until it's accepted" do

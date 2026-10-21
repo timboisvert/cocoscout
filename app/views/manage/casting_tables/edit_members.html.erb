@@ -141,67 +141,27 @@
       </div>
     </div>
 
-    <!-- Add Members (only for draft) -->
+    <!-- Add Members (only for draft): the shared People Picker lists the organization's people and groups -->
     <% if @casting_table.draft? %>
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm" data-controller="casting-table-members"
+           data-action="people-picker:pick@window->casting-table-members#picked">
         <div class="px-5 py-4 border-b border-gray-200">
           <h3 class="text-base font-semibold text-gray-900">Add Members</h3>
           <p class="text-sm text-gray-500 mt-1">People and groups from your organization</p>
         </div>
-        <div class="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
-          <% if @available_people.any? || @available_groups.any? %>
-            <!-- Available People -->
-            <% @available_people.each do |person| %>
-              <div class="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
-                <div class="flex items-center gap-3">
-                  <% headshot = person.safe_headshot_variant(:thumb) %>
-                  <% if headshot %>
-                    <%= image_tag headshot, alt: person.name, class: "w-10 h-10 rounded-lg object-cover opacity-60" %>
-                  <% else %>
-                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <span class="text-sm font-medium text-gray-400"><%= person.initials[0..1] %></span>
-                    </div>
-                  <% end %>
-                  <div>
-                    <div class="font-medium text-gray-700 text-sm"><%= person.name %></div>
-                    <div class="text-xs text-gray-400">Person</div>
-                  </div>
-                </div>
-                <%= form_with url: manage_casting_table_add_member_path(@casting_table, memberable_type: "Person", memberable_id: person.id), method: :post do %>
-                  <%= render "shared/button", text: "Add", variant: "primary", size: "small", icon: "plus" %>
-                <% end %>
-              </div>
-            <% end %>
-
-            <!-- Available Groups -->
-            <% @available_groups.each do |group| %>
-              <div class="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
-                <div class="flex items-center gap-3">
-                  <% headshot = group.safe_headshot_variant(:thumb) %>
-                  <% if headshot %>
-                    <%= image_tag headshot, alt: group.name, class: "w-10 h-10 rounded-lg object-cover opacity-60" %>
-                  <% else %>
-                    <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                      <span class="text-sm font-medium text-purple-400"><%= group.name[0..1].upcase %></span>
-                    </div>
-                  <% end %>
-                  <div>
-                    <div class="font-medium text-gray-700 text-sm"><%= group.name %></div>
-                    <div class="text-xs text-gray-400">Group</div>
-                  </div>
-                </div>
-                <%= form_with url: manage_casting_table_add_member_path(@casting_table, memberable_type: "Group", memberable_id: group.id), method: :post do %>
-                  <%= render "shared/button", text: "Add", variant: "primary", size: "small", icon: "plus" %>
-                <% end %>
-              </div>
-            <% end %>
-          <% else %>
-            <div class="px-5 py-8 text-center text-gray-500">
-              No available members to add
-            </div>
+        <div class="px-5 py-4">
+          <%= render "shared/button", text: "Add people or groups", variant: "primary", size: "small", icon: "plus", type: :button,
+                data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
+                        people_picker_trigger_id_value: "table-picker", people_picker_trigger_title_value: "Add to #{@casting_table.name}" } %>
+          <%= form_with url: manage_casting_table_add_member_path(@casting_table), method: :post, class: "hidden", data: { casting_table_members_target: "form" } do %>
+            <%= hidden_field_tag :memberable_type, nil, data: { casting_table_members_target: "type" } %>
+            <%= hidden_field_tag :memberable_id, nil, data: { casting_table_members_target: "id" } %>
           <% end %>
         </div>
       </div>
+      <%= render "shared/people_picker", id: "table-picker", title: "Add to #{@casting_table.name}", scope: "members", list: "org",
+            exclude: (@people.map { |p| "Person_#{p.id}" } + @groups.map { |g| "Group_#{g.id}" }), exclude_label: "In this table",
+            hint: "People and groups from your organization" %>
     <% else %>
       <div class="bg-gray-50 rounded-lg border border-gray-200 border-dashed p-8 flex items-center justify-center">
         <p class="text-gray-500 text-center">

@@ -18,20 +18,8 @@ module Manage
         manager_user_ids.include?(person.user_id) || viewing_user_ids.include?(person.user_id) || sees_by_role?(person)
       end
       @profile = ticketing_profile
-    end
-
-    def search
-      q = params[:q].to_s.strip
-      people = if q.length < 2
-        []
-      else
-        PersonSearch.anyone(q, Current.organization, Person.where.not(user_id: nil).where(archived_at: nil))
-                    .includes(:user).order(:name).limit(30).to_a.uniq(&:user_id).first(15)
-      end
-      render partial: "manage/ticket_sales_viewers/search_results",
-             locals: { listing: @listing, production: @production, people: people, query: q,
-                       connected_ids: PersonSearch.connected_ids(Current.organization, people),
-                       viewing_user_ids: viewing_user_ids, manager_user_ids: manager_user_ids, invite_path: path_for(:invite) }
+      # Who the People Picker marks "Sees the sales": managers always do.
+      @taken_person_ids = Person.where(user_id: (viewing_user_ids + manager_user_ids).compact.uniq).pluck(:id)
     end
 
     # Share with the people ticked from the team and cast, or the one person

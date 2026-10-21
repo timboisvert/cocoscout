@@ -168,40 +168,9 @@ module Manage
 
       render json: {
         shows: shows_data,
-        talent_pool: talent_pool_data,
-        search_url: manage_casting_search_people_path(production)
+        talent_pool: talent_pool_data
       }
     end
-
-    # GET /manage/messages/search_people (JSON)
-    # Org-level people search for the compose modal (no production required)
-    def search_people
-      q = params[:q].to_s.strip
-
-      if q.length < 2
-        render json: { people: [] }
-        return
-      end
-
-      people = Current.organization.people
-                      .where("LOWER(name) LIKE LOWER(:q) OR LOWER(email) LIKE LOWER(:q)", q: "%#{q}%")
-                      .order(:name)
-                      .limit(20)
-                      .includes(profile_headshots: { image_attachment: :blob })
-
-      render json: {
-        people: people.map { |p|
-          {
-            id: p.id,
-            name: p.name,
-            email: p.email,
-            initials: p.initials,
-            headshot_url: p.safe_headshot_variant(:thumb) ? url_for(p.safe_headshot_variant(:thumb)) : nil
-          }
-        }
-      }
-    end
-
     def mark_all_read
       # Same scope as the inbox list + sidebar badge so the badge actually
       # reaches zero from this view.

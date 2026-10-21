@@ -143,21 +143,6 @@ module Manage
       redirect_to section_path("tax"), alert: e.message
     end
 
-    # Door access: anyone on CocoScout, found by name or email. Managers already
-    # have the door, so they're marked rather than offered.
-    def door_search
-      q = params[:q].to_s.strip
-      people = if q.length < 2
-        []
-      else
-        PersonSearch.anyone(q, Current.organization, Person.where.not(user_id: nil).where(archived_at: nil))
-                    .includes(:user).order(:name).limit(30).to_a.uniq(&:user_id).first(15)
-      end
-      render partial: "manage/ticketing_settings/door_search_results",
-             locals: { people: people, query: q, granted_user_ids: door_grants.pluck(:user_id).compact, manager_user_ids: manager_user_ids,
-                       connected_ids: PersonSearch.connected_ids(Current.organization, people) }
-    end
-
     # Gives door access to the staff members ticked, or to one person found by
     # search, at the chosen level. Someone who already has access moves to the
     # new level; managers are skipped (they always have the door).
@@ -306,6 +291,8 @@ module Manage
       @door_grants = door_grants.includes(user: :default_person).to_a.sort_by { |grant| grant.display_name.to_s.downcase }
       granted = @door_grants.map(&:user_id)
       managers = manager_user_ids
+      # Who the People Picker marks "Has the door": managers always have it.
+      @door_taken_person_ids = Person.where(user_id: (granted + managers).compact.uniq).pluck(:id)
       # The organization's managers, named at the top of the list: they can
       # always check people in and sell tickets (Tim, 2026-10-16).
       @door_managers = User.where(id: managers.uniq).includes(:default_person).to_a

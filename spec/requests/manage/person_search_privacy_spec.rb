@@ -38,11 +38,12 @@ RSpec.describe "People pickers keep outsiders' emails private", type: :request d
     outsider.update!(user: create(:user, email_address: "dana.private@example.com"))
     member.update!(user: create(:user, email_address: "mo.member@example.com"))
 
-    get manage_ticketing_door_search_path, params: { q: "Dana" }
+    # The door (and the sales' Visibility page) pick through the People Picker's users scope with outsiders.
+    get manage_people_picker_search_path, params: { scope: "users", outside: "1", q: "Dana" }
     expect(response.body).to include("Dana Outsider")
     expect(response.body).not_to include("dana.private@example.com")
 
-    get manage_ticketing_door_search_path, params: { q: "Mo M" }
+    get manage_people_picker_search_path, params: { scope: "users", outside: "1", q: "Mo M" }
     expect(response.body).to include("mo.member@example.com")
 
     get search_manage_team_index_path, params: { q: "Dana" }

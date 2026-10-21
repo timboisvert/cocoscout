@@ -9,7 +9,7 @@
   <p class="text-sm text-gray-400 text-center py-6">Type a name to find someone.</p>
 <% elsif rows.empty? && outside.empty? && invite_email.blank? && !(guest && !listing) %>
   <div class="text-center py-6">
-    <p class="text-sm text-gray-500"><%= local_assigns[:empty] || (listing ? "Nobody's in the talent pool yet." : "Nobody found for \"#{query}\".") %></p>
+    <p class="text-sm text-gray-500"><%= local_assigns[:empty] || (listing ? "Nobody to add yet." : "Nobody found for \"#{query}\".") %></p>
     <% if query.include?("@") %>
       <p class="text-xs text-gray-400 mt-1">Search by their exact email to find someone on CocoScout.</p>
     <% end %>
@@ -17,7 +17,7 @@
 <% else %>
   <% section = ->(label) { tag.div(label, class: "text-[11px] font-semibold uppercase tracking-wide text-gray-500 px-1 pt-3 pb-1.5 first:pt-0") } %>
   <% if rows.any? %>
-    <%= section.call(local_assigns[:heading] || (listing ? "In the talent pool" : "In your organization")) %>
+    <%= section.call(local_assigns[:heading] || (listing && params[:list] == "pool" ? "In the talent pool" : "In your organization")) %>
     <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
       <% (listing ? rows : rows.sort_by { |m| m.name.to_s.downcase }).each do |member| %>
         <% key = "#{member.class.name}_#{member.id}" %>

@@ -31,10 +31,12 @@ export default class extends Controller {
         else setTimeout(() => this.inputTarget.focus(), 50)
     }
 
-    // A casting page shows the talent pool before anything is typed; so does
-    // a staffing shift (everyone qualified).
+    // A casting page shows the talent pool before anything is typed (a
+    // casting table the whole organization); so does a staffing shift
+    // (everyone qualified) and an audition session (the sign-ups).
     listsFirst() {
-        return this.paramsValue.list === "pool" || this.extraParams.list === "pool" || [ "staff", "auditionees" ].includes(this.paramsValue.scope)
+        const list = this.extraParams.list || this.paramsValue.list
+        return list === "pool" || list === "org" || [ "staff", "auditionees" ].includes(this.paramsValue.scope)
     }
 
     // The filter chips (shared/_people_picker filters): the first is the

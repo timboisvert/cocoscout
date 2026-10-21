@@ -14,7 +14,8 @@ module Manage
   #                  for an audition session, with audition_session_id;
   #                  fit=available|all, hide_scheduled=1|0)
   #   list           "pool": with nothing typed, the production's talent pool,
-  #                  available for the show first (casting pages)
+  #                  available for the show first (casting pages); "org": the
+  #                  organization's people (and groups) before anything's typed
   #   outside        "1" adds people on CocoScout outside the organization
   #                  (PersonSearch: by name, profile key or their exact email;
   #                  their email never shows unless it's what was typed)
@@ -46,13 +47,16 @@ module Manage
       return search_staff(q) if scope == "staff"
       return search_auditionees(q) if scope == "auditionees"
 
-      listing = q.length < 2 && params[:list] == "pool" && @production.present?
+      listing = q.length < 2 && ((params[:list] == "pool" && @production.present?) || params[:list] == "org")
       locals = { query: q, people: [], groups: [], outside: [], already: {}, badges: Hash.new { |h, k| h[k] = [] }, ineligible: Set.new,
                  invite_email: nil, invite_name: params[:invite_name] == "1", guest: params[:guest] == "1", listing: listing, extras: {} }
 
       if q.length >= 2 || listing
         org = Current.organization
-        people, groups = listing ? pool_members(scope) : search_members(org, q, scope)
+        people, groups = if !listing then search_members(org, q, scope)
+        elsif params[:list] == "org" then org_members(org, scope)
+        else pool_members(scope)
+        end
 
         already = {}
         exclude_label = params[:exclude_label].presence || "Already added"
@@ -264,6 +268,14 @@ module Manage
       people = org.people.where("people.name ILIKE :like OR people.email ILIKE :like", like: like).includes(HEADSHOTS).order(:name).limit(20).to_a
       people.select! { |p| p.user_id.present? } if scope == "users"
       groups = scope == "members" ? org.groups.where("groups.name ILIKE ?", like).order(:name).limit(10).to_a : []
+      [ people, groups ]
+    end
+
+    # The organization's people (and groups), for a page's list before a search.
+    def org_members(org, scope)
+      people = org.people.where(archived_at: nil).includes(HEADSHOTS).order(:name).limit(100).to_a
+      people.select! { |p| p.user_id.present? } if scope == "users"
+      groups = scope == "members" ? org.groups.order(:name).limit(30).to_a : []
       [ people, groups ]
     end
 
