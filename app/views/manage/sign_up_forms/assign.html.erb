@@ -153,7 +153,13 @@
                           <% end %>
                         </div>
                         <% return_queue_cid2 = "confirm-return-queue-multi2-#{slot.id}-#{reg.id}" %>
-                        <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
+                        <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity flex items-center gap-1">
+                          <%= render "shared/button",
+                              text: "Move",
+                              variant: "ghost",
+                              size: "small",
+                              type: :button,
+                              data: { action: "click->assign-drag#openPicker", registration_id: reg.id, current_slot_id: slot.id, name: reg.display_name } %>
                           <%= render "shared/button",
                               text: "Return to Queue",
                               variant: "ghost",
@@ -214,7 +220,13 @@
                           <% end %>
                         </div>
                         <% return_queue_cid3 = "confirm-return-queue-single-#{slot.id}-#{reg.id}" %>
-                        <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity">
+                        <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity flex items-center gap-1">
+                          <%= render "shared/button",
+                              text: "Move",
+                              variant: "ghost",
+                              size: "small",
+                              type: :button,
+                              data: { action: "click->assign-drag#openPicker", registration_id: reg.id, current_slot_id: slot.id, name: reg.display_name } %>
                           <%= render "shared/button",
                               text: "Return to Queue",
                               variant: "ghost",
@@ -251,8 +263,9 @@
         <% end %>
       </div>
 
-      <%# Right panel: Queue %>
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+      <%# Right panel: Queue. First on a phone (V1.1 plan §4): tap someone in
+          the queue, then pick their slot. %>
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden order-first lg:order-none" data-assign-queue-panel>
         <%= render "shared/section_heading", padding: "px-5 py-4", title: "Queue", intro: "#{@queue.count} waiting" do %>
           <%= render "shared/button", text: "Add", variant: "secondary", size: "small", icon: "plus", type: :button,
                 data: { action: "click->add-sign-up-person#openQueue", instance_id: @instance&.id } %>
@@ -273,7 +286,7 @@
         <% else %>
           <div class="divide-y divide-gray-100" data-assign-drag-target="queueList">
             <% @queue.each do |registration| %>
-              <div class="flex items-center justify-between group px-4 py-2 hover:bg-gray-50"
+              <div class="flex flex-wrap items-center justify-between group px-4 py-2 hover:bg-gray-50"
                    draggable="<%= supports_drag %>"
                    data-assign-drag-target="queueItem"
                    data-registration-id="<%= registration.id %>">
@@ -304,7 +317,15 @@
                   </div>
                 </div>
                 <% remove_queue_cid = "confirm-remove-queue-#{registration.id}" %>
-                <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity flex items-center gap-1">
+                <div class="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-opacity flex items-center gap-1 max-sm:basis-full max-sm:justify-end max-sm:pt-1">
+                  <% if supports_drag %>
+                    <%= render "shared/button",
+                        text: "Pick a slot",
+                        variant: "secondary",
+                        size: "small",
+                        type: :button,
+                        data: { action: "click->assign-drag#openPicker", registration_id: registration.id, name: registration.display_name } %>
+                  <% end %>
                   <%= render "shared/button",
                       text: "Auto-assign",
                       variant: "primary",
@@ -330,9 +351,47 @@
     </div>
   <% end %>
 
-  <%# Add Person to Queue Modal %>
-  <div data-add-sign-up-person-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->add-sign-up-person#close">
-    <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->add-sign-up-person#stopPropagation">
+  <% if @instance && @queue.any? %>
+    <%# Phone: Auto-assign all pinned to the bottom (V1.1 plan §4), clear of
+        the Coco button in the app. %>
+    <div class="lg:hidden h-24" aria-hidden="true"></div>
+    <div class="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-assign-phone-bar>
+      <span class="text-sm text-gray-600 flex-1 min-w-0 truncate"><%= pluralize(@queue.count, "person") %> waiting</span>
+      <%= render "shared/button",
+          text: "Auto-assign All",
+          variant: "primary",
+          size: "medium",
+          path: manage_auto_assign_queue_signups_form_path(@production, @sign_up_form, instance_id: @instance.id),
+          method: :post,
+          data: { turbo_method: :post } %>
+    </div>
+  <% end %>
+
+  <% if @instance && supports_drag %>
+    <%# The slot picker (V1.1 plan §5, Slot Picker sheet): tap someone, then
+        the slot. Full slots and the one they're already in are hidden by JS. %>
+    <%= render layout: "shared/sheet", locals: { id: "slot-picker", title: "Pick a slot" } do %>
+      <p class="text-sm text-gray-600 mb-3" data-assign-drag-target="pickerName"></p>
+      <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden" data-slot-picker-list>
+        <% @slots.each do |slot| %>
+          <% taken = slot.sign_up_registrations.active.size %>
+          <% free = slot.is_held ? 0 : [ slot.capacity - taken, 0 ].max %>
+          <button type="button"
+                  data-assign-drag-target="pickSlot" data-slot-id="<%= slot.id %>" data-free="<%= free %>"
+                  data-action="click->assign-drag#pickSlot"
+                  class="w-full flex items-center justify-between gap-3 px-4 min-h-[52px] text-left cursor-pointer hover:bg-pink-50 <%= 'hidden' if free.zero? %>">
+            <span class="text-sm font-medium text-gray-900"><%= slot.display_name %></span>
+            <span class="text-xs text-gray-500"><%= slot.capacity > 1 ? "#{free} of #{slot.capacity} free" : "free" %></span>
+          </button>
+        <% end %>
+        <p class="hidden px-4 py-4 text-sm text-gray-500 text-center" data-assign-drag-target="pickerEmpty">Every slot is full.</p>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%# Add Person to Queue Modal: a sheet on a phone. %>
+  <div data-add-sign-up-person-target="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 max-sm:items-end max-sm:p-0" data-action="click->add-sign-up-person#close">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-xl max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:pb-[env(safe-area-inset-bottom)]" data-add-queue-sheet data-action="click->add-sign-up-person#stopPropagation">
       <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <h2 data-add-sign-up-person-target="modalTitle" class="text-lg font-semibold text-gray-900">Add to Queue</h2>
         <button type="button" data-action="click->add-sign-up-person#close" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">

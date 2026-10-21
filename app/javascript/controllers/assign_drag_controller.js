@@ -7,7 +7,34 @@ import { Controller } from "@hotwired/stimulus"
  * - Dragging from one slot to another (moves registration)
  */
 export default class extends Controller {
-    static targets = ["slotList", "queueList", "dropZone", "emptySlot", "draggable", "queueItem"]
+    static targets = ["slotList", "queueList", "dropZone", "emptySlot", "draggable", "queueItem",
+                      "pickSlot", "pickerName", "pickerEmpty"]
+
+    // Tap to place (V1.1 plan §5, Slot Picker sheet): "Pick a slot" or "Move"
+    // on a row opens the sheet of slots with room; a tap on one assigns, the
+    // same way a drop does. Drag still works where there's a mouse.
+    openPicker(event) {
+        const { registrationId, currentSlotId, name } = event.currentTarget.dataset
+        this.pickingRegistrationId = registrationId
+        if (this.hasPickerNameTarget) this.pickerNameTarget.textContent = currentSlotId ? `Move ${name} to…` : `A slot for ${name}`
+        let shown = 0
+        this.pickSlotTargets.forEach(button => {
+            const free = parseInt(button.dataset.free || "0", 10) > 0
+            const here = button.dataset.slotId === currentSlotId
+            const show = free && !here
+            button.classList.toggle("hidden", !show)
+            if (show) shown += 1
+        })
+        if (this.hasPickerEmptyTarget) this.pickerEmptyTarget.classList.toggle("hidden", shown > 0)
+        document.getElementById("slot-picker")?.classList.remove("hidden")
+    }
+
+    pickSlot(event) {
+        const slotId = event.currentTarget.dataset.slotId
+        if (!slotId || !this.pickingRegistrationId) return
+        document.getElementById("slot-picker")?.classList.add("hidden")
+        this.assignToSlot(this.pickingRegistrationId, slotId)
+    }
 
     connect() {
         this.setupDragEvents()
