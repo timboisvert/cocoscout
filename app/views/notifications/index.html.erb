@@ -11,7 +11,7 @@
     text: "Notifications",
     links: [
       { icon: "check", text: "Mark all read", path: read_notifications_path(filter: @filter, area: @area), method: :post, disabled: Current.user.unread_notification_count.zero? },
-      { icon: "cog", text: "Settings", path: account_notifications_path }
+      { icon: "cog", text: "Settings", path: account_notifications_path, variant: "secondary" }
     ]
   } %>
 
