@@ -64,16 +64,36 @@
     </div>
   <% end %>
 
+  <%# Sort and filter (V1.1 plan §4): links, so the address carries them.
+      Select reveals the checkboxes on a phone, where there's no hover to
+      find them by; desktop always shows them. %>
   <div data-controller="bulk-select" class="mb-4">
+  <% if @audition_cycle.audition_requests.active.any? %>
+    <% chip = ->(on) { "inline-flex items-center min-h-[36px] px-3 rounded-full border text-sm whitespace-nowrap #{on ? 'border-pink-500 bg-pink-50 text-pink-700 font-medium' : 'border-gray-300 bg-white text-gray-700'}" } %>
+    <% here = ->(opts) { manage_signups_auditions_cycle_requests_path(@production, @audition_cycle, { filter: @filter, sort: @sort }.merge(opts).reject { |k, v| (k == :filter && v == "all") || (k == :sort && v == "signed_up") }) } %>
+    <div class="mb-3 flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap" data-requests-filters>
+      <%= link_to "Everyone", here.call(filter: "all"), class: chip.call(@filter == "all") %>
+      <% if current_user_can_review?(@production) %>
+        <%= link_to "Not voted by me#{" (#{@unvoted_count})" if @unvoted_count.positive?}", here.call(filter: "unvoted"), class: chip.call(@filter == "unvoted"), data: { filter: "unvoted" } %>
+        <span class="w-px h-5 bg-gray-200 flex-shrink-0" aria-hidden="true"></span>
+        <%= link_to "Most yes first", here.call(sort: @sort == "most_yes" ? "signed_up" : "most_yes"), class: chip.call(@sort == "most_yes"), data: { sort: "most_yes" } %>
+      <% end %>
+      <% if current_user_can_manage?(@production) %>
+        <span class="flex-1" aria-hidden="true"></span>
+        <button type="button" class="<%= chip.call(false) %> sm:hidden cursor-pointer" data-action="click->bulk-select#toggleSelectMode" data-bulk-select-target="selectModeButton" data-select-mode-button>Select</button>
+      <% end %>
+    </div>
+  <% end %>
+
     <div class="space-y-1">
       <% if @audition_requests.any? %>
         <% @audition_requests.each do |audition_request| %>
           <% requestable = audition_request.requestable %>
           <% vote_counts = audition_request.vote_counts if current_user_can_review?(@production) %>
 
-          <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-pink-400 transition-all group bg-white border-gray-200 cursor-pointer [&_*]:cursor-pointer">
+          <div class="flex items-stretch px-3 py-2 min-h-[56px] sm:min-h-0 border rounded-lg hover:border-pink-400 transition-all group bg-white border-gray-200 cursor-pointer [&_*]:cursor-pointer" data-request-row>
             <% if current_user_can_manage?(@production) %>
-              <div class="flex items-center mr-3">
+              <div class="flex items-center mr-3 max-sm:hidden" data-bulk-select-target="selectCell">
                 <input type="checkbox"
                        value="<%= audition_request.id %>"
                        name="ids[]"
@@ -89,7 +109,7 @@
                 data: { turbo_prefetch: false } do %>
 
               <%# Left Section: Headshot & Name (50%) %>
-              <div class="w-1/2 flex items-center gap-4">
+              <div class="flex-1 sm:w-1/2 sm:flex-none flex items-center gap-3 sm:gap-4 min-w-0">
                 <% if requestable.present? %>
                   <div class="flex-shrink-0">
                     <% headshot_url = safe_headshot_url(requestable) %>
@@ -127,9 +147,14 @@
                 <% end %>
               </div>
 
-              <%# Right Section: Vote Counts in thirds (50%) %>
+              <%# Right Section: Vote Counts in thirds (50%); chips on a phone. %>
               <% if current_user_can_review?(@production) && vote_counts %>
-                <div class="w-1/2 border-l border-gray-200 pl-4 grid grid-cols-3 items-center divide-x divide-gray-200">
+                <div class="sm:hidden flex items-center gap-1.5 flex-shrink-0 text-xs tabular-nums" data-vote-chips>
+                  <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 font-semibold"><%= vote_counts[:yes] %> yes</span>
+                  <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"><%= vote_counts[:no] %> no</span>
+                  <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"><%= vote_counts[:maybe] %> ?</span>
+                </div>
+                <div class="hidden sm:grid w-1/2 border-l border-gray-200 pl-4 grid-cols-3 items-center divide-x divide-gray-200">
                   <div class="text-center px-2">
                     <div class="text-xs text-gray-400 uppercase tracking-wide">Yes</div>
                     <div class="text-lg font-bold text-pink-600"><%= vote_counts[:yes] %></div>
@@ -151,7 +176,7 @@
 
         <% if current_user_can_manage?(@production) %>
           <!-- Bulk Archive Action Bar -->
-          <div data-bulk-select-target="actionBar" class="hidden mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between">
+          <div data-bulk-select-target="actionBar" class="hidden mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-30 max-sm:mt-0 max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:bg-white/95 max-sm:backdrop-blur max-sm:pl-4 <%= turbo_native_app? ? 'max-sm:pr-[96px]' : 'max-sm:pr-4' %> max-sm:pt-3 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)]">
             <div class="flex items-center gap-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox"
@@ -171,7 +196,9 @@
       <% else %>
 
       <p class="text-gray-500 text-sm pt-2">
-        <% if @audition_cycle.video_only? %>
+        <% if @filter == "unvoted" %>
+          You've voted on every one.
+        <% elsif @audition_cycle.video_only? %>
           No one has submitted a video audition yet.
         <% else %>
           No one has signed up for an audition yet.

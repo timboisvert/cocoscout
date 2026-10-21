@@ -16,7 +16,20 @@ module Manage
         return
       end
 
-      @audition_requests = @audition_cycle.audition_requests.active.order(:created_at)
+      requests = @audition_cycle.audition_requests.active.includes(:requestable, :audition_request_votes)
+
+      # Phone sort and filter (V1.1 plan §4): what I still have to vote on,
+      # and the ones with the most yes votes first.
+      @filter = params[:filter].to_s == "unvoted" ? "unvoted" : "all"
+      @sort = params[:sort].to_s == "most_yes" ? "most_yes" : "signed_up"
+      if @filter == "unvoted"
+        requests = requests.where.not(id: AuditionRequestVote.where(user: Current.user).select(:audition_request_id))
+      end
+      @audition_requests = requests.order(:created_at).to_a
+      @audition_requests.sort_by! { |r| [ -r.vote_counts[:yes], r.created_at ] } if @sort == "most_yes"
+      @unvoted_count = @audition_cycle.audition_requests.active
+                                      .where.not(id: AuditionRequestVote.where(user: Current.user).select(:audition_request_id))
+                                      .count
       @archived_count = @audition_cycle.audition_requests.archived.count
     end
 
