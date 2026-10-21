@@ -12,9 +12,30 @@
   <!-- Production Info Card -->
   <%= render "manage/productions/production_info_card", production: @production %>
 
+  <%# The sections, in panel order, for the phone's drill-in list (V1.1 plan
+      §5, Section list). Must match the panels below, branch for branch. %>
+  <%
+    edit_sections = [ "Basic Information", "Visual Assets", "Documents", "Production Team" ]
+    edit_sections += [ "Agreement", "Public Listing", "Pay" ] unless @production.type_third_party?
+    edit_sections << "Tickets"
+    edit_sections << "Services" if services_on
+    edit_sections << "Danger Zone" if org_manager
+  %>
   <!-- Tabs Section -->
-  <div class="w-full" data-controller="tabs">
-    <nav class="flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
+  <div class="w-full" data-controller="tabs" data-tabs-drill-value="true">
+    <div class="sm:hidden mb-4 rounded-lg border border-gray-200 divide-y divide-gray-200 bg-white overflow-hidden" data-tabs-target="list" data-production-edit-sections>
+      <% edit_sections.each_with_index do |label, i| %>
+        <button type="button" data-index="<%= i %>" data-action="tabs#select"
+                class="w-full flex items-center justify-between gap-3 px-4 min-h-[52px] text-left text-base cursor-pointer <%= label == 'Danger Zone' ? 'text-red-600' : 'text-gray-900' %>">
+          <span class="flex items-center gap-2">
+            <%= label %>
+            <% if %w[Agreement Pay Tickets Services].include?(label) %><%= render "shared/pro_marker" %><% end %>
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-gray-400 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+        </button>
+      <% end %>
+    </div>
+    <nav class="hidden sm:flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
       <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
       <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
       <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Documents</button>
@@ -76,6 +97,7 @@
 
     <!-- Tab 1: Basic Information -->
     <div data-tabs-target="panel">
+      <%= render "shared/section_panel_header", label: "Basic Information" %>
       <% basics_contract = production_basics_contract(@production) %>
       <%= form_with(model: [:manage, @production], class: "contents") do |form| %>
         <!-- Production Details Card -->
@@ -187,6 +209,7 @@
 
     <!-- Tab 2: Visual Assets -->
     <div data-tabs-target="panel" class="hidden" data-controller="visual-assets-modal" data-visual-assets-modal-create-poster-path-value="<%= manage_create_poster_production_visual_asset_path(@production) %>">
+      <%= render "shared/section_panel_header", label: "Visual Assets" %>
       <%
         can_manage = current_user_can_manage?(@production)
         primary = @production.primary_poster
@@ -390,6 +413,7 @@
 
     <!-- Tab 3: Documents -->
     <div data-tabs-target="panel" class="hidden">
+      <%= render "shared/section_panel_header", label: "Documents" %>
       <% production_documents = @production.applied_documents.includes(:shares).ordered %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <%= render "shared/section_heading", title: "Documents" do %>
@@ -431,12 +455,14 @@
 
     <!-- Tab 4: Team (every production, contracted ones too) -->
     <div data-tabs-target="panel" class="hidden">
+      <%= render "shared/section_panel_header", label: "Production Team" %>
       <%= render "team_permissions" %>
     </div>
 
     <% unless @production.type_third_party? %>
       <!-- Tab 5: Agreement -->
       <div data-tabs-target="panel" class="hidden">
+        <%= render "shared/section_panel_header", label: "Agreement" %>
         <% templates = @production.organization.agreement_templates.active.order(:name) %>
 
         <%# Same shape as the Pay tab: one card, Pro pill in the header, and the
@@ -595,6 +621,7 @@
 
       <!-- Tab 6: Public Profile -->
       <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
+        <%= render "shared/section_panel_header", label: "Public Listing" %>
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <%= render "shared/section_heading", title: "Public listing" %>
@@ -765,6 +792,7 @@
 
     <!-- Tab 7: Pay -->
     <div data-tabs-target="panel" class="hidden">
+      <%= render "shared/section_panel_header", label: "Pay" %>
       <% if org_manager %>
         <%= render "manage/productions/pay_tab", production: @production %>
       <% else %>
@@ -776,6 +804,7 @@
 
     <!-- Tickets (Pro): the Tickets question (Round 9 §3). Dates inherit the answer; a date can answer for itself on its own Tickets tab. -->
     <div data-tabs-target="panel" class="hidden">
+      <%= render "shared/section_panel_header", label: "Tickets" %>
       <div class="bg-white border border-gray-200 rounded-lg p-6">
         <% if !org_manager %>
           <p class="text-sm text-gray-600">Tickets for <%= @production.name %> are set up by your organization's managers.</p>
@@ -792,6 +821,7 @@
     <% if services_on %>
       <!-- Services (Pro): what every show needs -->
       <div data-tabs-target="panel" class="hidden">
+        <%= render "shared/section_panel_header", label: "Services" %>
         <%= render "manage/productions/services_tab", production: @production %>
       </div>
     <% end %>
@@ -800,6 +830,7 @@
         production team member gets neither the tab nor the panel. %>
     <% if org_manager %>
     <div data-tabs-target="panel" class="hidden">
+      <%= render "shared/section_panel_header", label: "Danger Zone" %>
       <% if org_manager %>
         <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
           <% if @production.archived? %>
