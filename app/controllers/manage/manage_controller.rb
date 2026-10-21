@@ -225,7 +225,7 @@ module Manage
     end
 
     def track_last_dashboard
-      return unless Current.user.present?
+      return unless Current.user.present? && real_page_load?
       # Someone with no organization (a performer who tapped into producer
       # setup) must keep landing on My at sign-in, or every login drops them
       # back into setup with no way out.

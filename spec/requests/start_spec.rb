@@ -52,5 +52,11 @@ RSpec.describe "The V1.1 app's /start", type: :request do
     expect(user.reload.last_mode).to eq("my")
     get manage_path
     expect(user.reload.last_mode).to eq("manage")
+
+    # The app's own calls land on My:: controllers but aren't a page: the
+    # mode stays production (this flipped the app back to My, 2026-10-21).
+    delete my_push_token_path, headers: { "User-Agent" => app_ua }
+    get start_path, headers: { "User-Agent" => app_ua }
+    expect(response).to redirect_to(manage_path)
   end
 end

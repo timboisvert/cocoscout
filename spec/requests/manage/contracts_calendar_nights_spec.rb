@@ -58,7 +58,10 @@ RSpec.describe "Manage::Contracts calendar nights", type: :request do
       show.update!(space_rental: rental)
 
       get manage_contracts_path(month: month_param(past_at.to_date))
-      expect(response.body.scan(">$100<").size).to eq(1)
+      # Once in the month grid (the phone's day list, md:hidden, draws the same card again).
+      grid = Nokogiri::HTML(response.body)
+      grid.css(".md\\:hidden").remove
+      expect(grid.to_html.scan(">$100<").size).to eq(1)
       # The rental card itself, named by time and renter
       expect(response.body).to include("#{past_at.strftime('%-l:%M%p').downcase} · Dan")
       expect(response.body).not_to include("#{past_at.strftime('%-l:%M%p').downcase} · Random Memory</div>")

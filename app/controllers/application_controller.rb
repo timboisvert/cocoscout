@@ -16,6 +16,10 @@ class ApplicationController < ActionController::Base
   def track_my_dashboard
     # Only track if user is on a My:: controller page (not AuthController or other base controllers)
     return unless self.class.name.start_with?("My::") && Current.user.present?
+    # And only a real page load: the app's own calls (its push token, a
+    # frame, a prefetch) land on My:: controllers too and must not flip the
+    # mode under someone working in production mode.
+    return unless real_page_load?
 
     last_dashboard_prefs = cookies.encrypted[:last_dashboard]
     # Reset if it's an old string value instead of a hash
@@ -25,12 +29,19 @@ class ApplicationController < ActionController::Base
     remember_mode("my")
   end
 
+  # A page someone actually opened: a GET for HTML, not a Turbo frame, not a
+  # prefetch. The mode trackers count nothing else.
+  def real_page_load?
+    return false unless request.get? && request.format.html? && request.headers["Turbo-Frame"].blank?
+
+    !(request.headers["Sec-Purpose"].to_s.include?("prefetch") || request.headers["X-Sec-Purpose"].to_s.include?("prefetch") || request.headers["Purpose"].to_s == "prefetch")
+  end
+
   # The mode on the account too (users.last_mode; V1.1 plan §8), so a new
-  # phone opens where this person works: only on a real page load (not a
-  # frame, a prefetch or a post), and only when it changed.
+  # phone opens where this person works: only on a real page load, and only
+  # when it changed.
   def remember_mode(mode)
-    return unless Current.user && request.get? && request.format.html? && request.headers["Turbo-Frame"].blank?
-    return if request.headers["Sec-Purpose"].to_s.include?("prefetch") || request.headers["X-Sec-Purpose"].to_s.include?("prefetch") || request.headers["Purpose"].to_s == "prefetch"
+    return unless Current.user && real_page_load?
     return if Current.user.last_mode == mode
 
     Current.user.update_column(:last_mode, mode) # rubocop:disable Rails/SkipsModelValidations -- a remembered preference, no callbacks wanted
