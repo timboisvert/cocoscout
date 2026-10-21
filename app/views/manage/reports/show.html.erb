@@ -69,8 +69,50 @@
     </div>
   <% end %>
 
+  <%# Phone (V1.1 plan §5, Responsive data table): each row is a card led
+      by its first column, the other columns as label and figure pairs, and
+      the total as a card of its own. Printing uses the table. %>
+  <div class="sm:hidden print:hidden space-y-3" data-report-cards>
+    <% if @report[:rows].any? %>
+      <% @report[:rows].each do |row| %>
+        <div class="rounded-lg border border-gray-200 bg-white p-4" data-report-card>
+          <div class="text-sm font-semibold text-gray-900 break-words"><%= fmt.call(row[0], @report[:columns][0][:format]) %></div>
+          <% if row.size > 1 %>
+            <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
+              <% row.each_with_index do |value, i| %>
+                <% next if i.zero? %>
+                <% c = @report[:columns][i] %>
+                <div class="min-w-0">
+                  <dt class="text-[11px] uppercase tracking-wide text-gray-500 truncate"><%= c[:label] %></dt>
+                  <dd class="text-sm text-gray-900 tabular-nums break-words"><%= fmt.call(value, c[:format]) %></dd>
+                </div>
+              <% end %>
+            </dl>
+          <% end %>
+        </div>
+      <% end %>
+      <% if @report[:total_row] %>
+        <div class="rounded-lg border-2 border-gray-300 bg-gray-50 p-4" data-report-total-card>
+          <div class="text-sm font-semibold text-gray-900"><%= fmt.call(@report[:total_row][0], @report[:columns][0][:format]) %></div>
+          <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
+            <% @report[:total_row].each_with_index do |value, i| %>
+              <% next if i.zero? %>
+              <% c = @report[:columns][i] %>
+              <div class="min-w-0">
+                <dt class="text-[11px] uppercase tracking-wide text-gray-500 truncate"><%= c[:label] %></dt>
+                <dd class="text-sm font-semibold text-gray-900 tabular-nums"><%= fmt.call(value, c[:format]) %></dd>
+              </div>
+            <% end %>
+          </dl>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-gray-500">No data for this report yet.</div>
+    <% end %>
+  </div>
+
   <%# Standardized table %>
-  <div class="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+  <div class="max-sm:hidden print:block bg-white border border-gray-200 rounded-lg overflow-x-auto" data-report-table>
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-gray-200 bg-gray-50">
