@@ -164,54 +164,19 @@ module Manage
       @staff_by_role_payload = build_staff_by_role_payload
       @all_staff_payload = build_all_staff_payload
 
-      # Collision-detection payloads (consumed by the assign modal): the time
-      # span + label of every shift this week, and which shift ids each person
-      # is already on. The modal warns before double-booking someone.
-      @shift_times_payload = shifts.each_with_object({}) do |s, h|
-        h[s.id.to_s] = {
-          starts_at: s.starts_at.iso8601,
-          ends_at: s.ends_at.iso8601,
-          role: s.house_role.name,
-          day: s.starts_at.strftime("%a %b %-d"),
-          # The schedule day this shift belongs to (follows its source show when
-          # it crosses midnight). Used to match against cast on that day.
-          cast_date: staffing_day_for(s, week_range).iso8601,
-          time_range: "#{s.starts_at.strftime("%-l:%M %p")}–#{s.ends_at.strftime("%-l:%M %p")}"
-        }
-      end
-
-      # Cast on each day, so the assign modal can warn when a staffer is also
-      # performing that day, and the schedule can show each show's cast.
+      # Cast on each day, so the Add-shift modal can warn when a staffer is
+      # also performing that day, and the schedule can show each show's cast.
+      # (Assigning to a shift asks the People Picker, which answers who's
+      # free, busy or performing per shift on its own.)
       all_week_shows = @shows_by_day.values.flatten
       @show_cast = build_show_cast(all_week_shows)
       @cast_by_day_payload = build_cast_by_day_payload(@shows_by_day, @show_cast)
-      # Someone who declined a shift isn't busy that evening — they're free, and
-      # the assign modal shouldn't warn about a collision with a slot they gave
-      # back.
-      @person_busy_payload = shifts.each_with_object({}) do |s, h|
-        s.active_assignments.each do |a|
-          (h[a.person_id.to_s] ||= []) << s.id.to_s
-        end
-      end
 
-      # When each staff member can work, answered per shift, so the assign
-      # modal can badge, sort and filter people without knowing how
-      # availability works. Only the shifts that aren't simply free are sent.
-      staff_person_ids = Current.organization.organization_staff_members.active.pluck(:person_id)
-      availability = StaffAvailabilityResolver.new(staff_person_ids, from: @week_start, to: @week_end + 1)
-      @staff_availability_payload = staff_person_ids.each_with_object({}) do |pid, h|
-        verdicts = shifts.each_with_object({}) do |shift, per_shift|
-          verdict = availability.verdict(pid, shift.starts_at, shift.ends_at)
-          next if verdict.free?
-
-          per_shift[shift.id.to_s] = { status: verdict.status, badge: StaffAvailabilityWording.badge(verdict),
-                                       detail: StaffAvailabilityWording.detail(verdict) }
-        end
-        h[pid.to_s] = verdicts if verdicts.any?
-      end
-      # And the hours each person can work on each day that isn't wide open, for
+      # The hours each person can work on each day that isn't wide open, for
       # the Add-shift modal, which asks about a shift that doesn't exist yet:
       # { personId: { "YYYY-MM-DD": [[from_minute, to_minute], ...] } }.
+      staff_person_ids = Current.organization.organization_staff_members.active.pluck(:person_id)
+      availability = StaffAvailabilityResolver.new(staff_person_ids, from: @week_start, to: @week_end + 1)
       @staff_day_windows_payload = staff_person_ids.each_with_object({}) do |pid, h|
         days = (@week_start..@week_end).each_with_object({}) do |date, per_day|
           day = availability.day(pid, date)

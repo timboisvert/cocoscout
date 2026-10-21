@@ -2,8 +2,8 @@
 
 require "rails_helper"
 
-# The scheduling page answers "can they work this?" on the server, per shift,
-# from the new time-band model — the whole shift, not just its start — and
+# The People Picker answers "can they work this?" on the server, per shift,
+# from the time-band model — the whole shift, not just its start — and
 # assigning says so when the answer isn't a clean yes.
 RSpec.describe "Manage::Staffing availability verdicts", type: :request do
   let(:password) { "Password123!" }
@@ -43,15 +43,18 @@ RSpec.describe "Manage::Staffing availability verdicts", type: :request do
     JSON.parse(CGI.unescapeHTML(raw))
   end
 
-  it "sends a verdict per shift for everyone who isn't simply free" do
-    verdicts = payload("staff-availability")
+  it "gives each pick its verdict for the shift, free first" do
+    get manage_people_picker_search_path(scope: "staff", shift_id: shift.id), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    doc = Nokogiri::HTML(response.body)
+    verdicts = doc.css("[data-people-picker-row]").to_h { |r| [ r["data-people-picker-row"], JSON.parse(r["data-pick"])["staff"]["verdict"] ] }
 
-    expect(verdicts.dig(late.id.to_s, shift.id.to_s)).to include(
+    expect(verdicts["Person_#{late.id}"]).to include(
       "status" => "partial", "badge" => "Available from 8:30 PM",
       "detail" => "Available from 8:30 PM, misses the first 2h 30m (an exception for #{day.strftime('%b %-d')})."
     )
-    expect(verdicts.dig(away.id.to_s, shift.id.to_s)).to include("status" => "blocked", "detail" => "Can't work then (“Lisbon”).")
-    expect(verdicts).not_to have_key(open.id.to_s)
+    expect(verdicts["Person_#{away.id}"]).to include("status" => "blocked", "detail" => "Can't work then (“Lisbon”).")
+    expect(verdicts["Person_#{open.id}"]).to include("status" => "free")
+    expect(verdicts.keys.first).to eq("Person_#{open.id}")
   end
 
   it "sends the hours each person can work on the days that aren't wide open" do
