@@ -17,7 +17,7 @@
     end
   end
 %>
-<div class="flex items-center gap-3 px-3 py-2.5">
+<div class="flex flex-wrap sm:flex-nowrap items-center gap-3 px-3 py-2.5" data-form-1099-row>
   <% if headshot %>
     <%= image_tag headshot, alt: person.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
   <% else %>
@@ -44,7 +44,8 @@
 
   <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 <%= status_pill[:classes] %>"><%= status_pill[:text] %></span>
 
-  <div class="flex items-center gap-1 flex-shrink-0">
+  <%# On a phone the actions drop under the name, each a real tap target. %>
+  <div class="flex items-center gap-1 flex-shrink-0 max-sm:basis-full max-sm:justify-end max-sm:flex-wrap max-sm:[&_a]:min-h-[40px] max-sm:[&_button]:min-h-[40px]">
     <% if form.nil? %>
       <% if amount_cents.positive? %>
         <%= button_to manage_generate_1099s_staffing_taxes_path(tax_year: local_assigns[:tax_year_override] || params[:tax_year] || Tax::Calendar.working_tax_year),
