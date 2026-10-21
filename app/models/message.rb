@@ -231,15 +231,16 @@ class Message < ApplicationRecord
   def self.manage_inbox_for(user, organization)
     return none unless user && organization
 
-    accessible_production_ids = user.accessible_productions
-                                    .where(organization: organization)
-                                    .pluck(:id)
+    organization_ids = organization.is_a?(Organization) ? [ organization.id ] : organization.pluck(:id)
+    return none if organization_ids.empty?
+
+    accessible_production_ids = Production.where(id: user.production_ids_everywhere, organization_id: organization_ids).pluck(:id)
     person_ids = user.people.pluck(:id)
     private_received_ids = Message.joins(:message_recipients)
                                   .where(message_recipients: { recipient_type: "Person", recipient_id: person_ids })
                                   .select(:id)
 
-    where(organization: organization)
+    where(organization_id: organization_ids)
       .where(system_generated: false)
       .root_messages
       .where(
@@ -250,6 +251,21 @@ class Message < ApplicationRecord
         "private", "User", user.id,
         "private", private_received_ids
       )
+  end
+
+  # The one inbox (V1.1, 2026-10-21): every thread this person is subscribed
+  # to, plus the production-side threads of every organization they can open
+  # (manage_inbox_for: a manager sees those without a subscription of their
+  # own). Archived threads stay out unless that's what's asked for.
+  def self.inbox_for(user, archived: false)
+    return none unless user
+
+    subscriptions = user.message_subscriptions.active
+    return root_messages.where(id: subscriptions.archived.select(:message_id)) if archived
+
+    subscribed = root_messages.where(id: subscriptions.not_archived.select(:message_id))
+    managed = root_messages.where(id: manage_inbox_for(user, user.accessible_organizations).select(:id))
+    subscribed.or(managed).where.not(id: subscriptions.archived.select(:message_id))
   end
 
   # Production-scoped messages (for manage/messages)

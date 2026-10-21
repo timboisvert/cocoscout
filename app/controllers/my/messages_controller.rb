@@ -1,56 +1,40 @@
 class My::MessagesController < ApplicationController
+  include MessagesInbox
   before_action :require_authentication
   before_action :set_sidebar
   before_action :track_inbox_visit, only: [ :index, :show, :production ]
   rescue_from ActiveRecord::RecordNotFound, with: :message_not_found
 
+  # The one inbox (MessagesInbox): every thread, under either hat.
   def index
     @show_my_sidebar = true
-
-    # Filter params
-    @filter = params[:filter] || "all"
-    @search = params[:q].to_s.strip
-    @production_filter = params[:production_id]
-    @order = params[:order] || "newest"
-
-    # Base query - show root messages for threads user is subscribed to
-    # Note: system-generated messages (automated notifications) ARE shown here
-    # because talent needs to see their sign-up confirmations, casting notices, etc.
-    base_threads = @filter == "archived" ? Current.user.archived_message_threads : Current.user.subscribed_message_threads
-    @messages = base_threads
-                  .includes(:sender, :message_recipients, :child_messages, :production, :show, :message_poll, images_attachments: :blob)
-
-    # Apply filters
-    case @filter
-    when "unread"
-      unread_thread_ids = Current.user.message_subscriptions.unread.pluck(:message_id)
-      @messages = @messages.where(id: unread_thread_ids)
-    end
-
-    # Filter by production
-    if @production_filter.present?
-      @messages = @messages.where(production_id: @production_filter)
-    end
-
-    # Search filter (body is in action_text_rich_texts table)
-    if @search.present?
-      @messages = @messages
-        .left_joins(:rich_text_body)
-        .where("messages.subject ILIKE :q OR action_text_rich_texts.body ILIKE :q", q: "%#{@search}%")
-    end
-
-    # Apply ordering
-    @messages = @order == "oldest" ? @messages.order(updated_at: :asc) : @messages.order(updated_at: :desc)
-    @pagy, @messages = pagy(@messages, limit: 25)
-    @thread_summaries = Message.thread_summaries_for(@messages, current_user: Current.user)
-    @unread_count = Current.user.unread_message_count
-
-    # For production dropdown
-    @user_productions = Current.user.subscribed_message_threads.where.not(production_id: nil).distinct.pluck(:production_id)
-    @user_productions = Production.where(id: @user_productions).order(:name)
-
+    load_inbox
     # For "Contact Production Team" card - get productions user is in talent pool for
     @contactable_productions = productions_user_can_contact
+  end
+
+  # A tap on an inbox row: a thread of a production this person runs opens in
+  # production mode for its organization (switching organization when it's
+  # another one), a thread they're in as a performer opens here on My.
+  def open
+    thread = Message.root_messages.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by the inbox check below
+    user = Current.user
+    unless thread.subscribed?(user) || Message.manage_inbox_for(user, user.accessible_organizations).exists?(id: thread.id)
+      redirect_to my_messages_path, alert: "You don't have access to this message" and return
+    end
+
+    production_ids = user.production_ids_everywhere
+    organization_ids = user.accessible_organizations.pluck(:id)
+    production_side = production_ids.include?(thread.production_id) ||
+                      (thread.production_id.nil? && organization_ids.include?(thread.organization_id))
+    organization_id = thread.organization_id || thread.production&.organization_id
+    if production_side && organization_id && organization_ids.include?(organization_id)
+      session[:current_organization_id] = {} unless session[:current_organization_id].is_a?(Hash)
+      session[:current_organization_id][user.id.to_s] = organization_id
+      redirect_to manage_message_path(thread)
+    else
+      redirect_to my_message_path(thread)
+    end
   end
 
   # GET /my/messages/production/:production_id

@@ -62,15 +62,6 @@ class User < ApplicationRecord
     message_subscriptions.active.not_archived.sum(:unread_count)
   end
 
-  # Unread count for the manage sidebar — must equal the unread count derivable
-  # from the manage messages list, so we share Message.manage_inbox_for here.
-  def unread_message_count_for_org(organization)
-    return 0 unless organization
-    message_subscriptions.active
-                         .where(message_id: Message.manage_inbox_for(self, organization).select(:id))
-                         .sum(:unread_count)
-  end
-
   # Open-task counts (availability + sign-ups + questionnaires) for the nav
   # badge and dashboard summary card. Memoized so both render from one
   # computation per request. Full logic lives in TaskListService — the same
@@ -160,6 +151,17 @@ class User < ApplicationRecord
     end
 
     Organization.where(id: org_ids)
+  end
+
+  # Every production this person can open, in every organization (the one
+  # Messages inbox sorts threads by hat with it; accessible_productions is the
+  # current organization's only): all of an organization's active productions
+  # where they're a manager or viewer, plus any they hold a permission on.
+  def production_ids_everywhere
+    role_org_ids = organization_roles.where(company_role: %w[manager viewer]).pluck(:organization_id)
+    ids = Production.active.where(organization_id: role_org_ids).pluck(:id)
+    ids += Production.active.where(id: production_permissions.select(:production_id)).pluck(:id)
+    ids.uniq
   end
 
   # Returns the effective role for the current organization

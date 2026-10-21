@@ -206,7 +206,9 @@ class MessageService
       # Create the message (skip automatic notification - we'll call it after subscriptions exist)
       message = Message.new(
         sender: sender,
-        organization: organization,
+        # A thread about a production is that production's organization's
+        # (the one inbox sorts and labels threads by it).
+        organization: organization || production&.organization || show&.production&.organization,
         production: production,
         show: show,
         visibility: visibility,

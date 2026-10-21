@@ -1,0 +1,28 @@
+<%#
+  Asked before a row opens somewhere else: production mode from My (a
+  notification, a thread), or another organization's production mode (a
+  thread). Lives inside a notification-open controller; the row's
+  data-switch-title and data-switch-body replace the words when it says so,
+  and "Don't ask again" is remembered on the server.
+%>
+<div class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-notification-open-target="modal" data-action="click->notification-open#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="mode-switch-title">
+    <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 id="mode-switch-title" class="text-lg font-semibold text-white" data-notification-open-target="title">Open in production mode?</h3>
+      <button type="button" data-action="click->notification-open#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-6 py-5 space-y-4">
+      <p class="text-sm text-gray-700" data-notification-open-target="body">This lives in production mode for <strong class="text-gray-900" data-notification-open-target="organization">your organization</strong>. You'll switch there to see it, and can exit from the account menu.</p>
+      <label class="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer">
+        <input type="checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" data-notification-open-target="remember">
+        Don't ask again, just switch
+      </label>
+    </div>
+    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->notification-open#close" } %>
+      <%= render "shared/button", text: "Switch and open", variant: "primary", size: "medium", type: :button, data: { action: "click->notification-open#confirm" } %>
+    </div>
+  </div>
+</div>

@@ -8,6 +8,8 @@
 
   Optional:
     message_path: explicit path override (default chooses my/manage automatically)
+    pill: { text:, tone:, title: } before the subject (the one inbox's organization pill)
+    link_data: more data attributes on the row's link
 %>
 <%
   is_manage_context = controller.class.name.start_with?("Manage::")
@@ -35,7 +37,7 @@
     single Gmail-style line leaves the subject barely any width. %>
 <%= link_to message_path,
       class: "msg-row flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-0.5 px-3 sm:px-4 py-2.5 sm:py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors",
-      data: { message_id: message.id } do %>
+      data: { message_id: message.id }.merge(local_assigns[:link_data] || {}) do %>
   <%# Participants + thread count (and, on mobile, the date on the same line) %>
   <span class="msg-participants w-full sm:w-56 sm:flex-shrink-0 flex items-baseline gap-2 min-w-0">
     <span class="truncate text-sm <%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>">
@@ -51,6 +53,9 @@
 
   <%# Subject - snippet %>
   <span class="msg-main w-full sm:w-auto sm:flex-1 min-w-0 truncate text-sm">
+    <% if (pill = local_assigns[:pill]) %>
+      <span class="inline-block max-w-[11rem] truncate align-middle rounded-full px-2 py-0.5 mr-1.5 text-[11px] font-medium leading-4 <%= pill[:tone] %>" title="<%= pill[:title] || pill[:text] %>" data-inbox-pill><%= pill[:text] %></span>
+    <% end %>
     <span class="<%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>"><%= message.subject %></span><% if snippet.present? %><span class="msg-sep font-light text-gray-400"> - </span><span class="msg-snippet font-light text-gray-400"><%= snippet %></span><% end %>
   </span>
 

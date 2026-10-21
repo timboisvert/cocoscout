@@ -459,6 +459,7 @@ Rails.application.routes.draw do
     # Messages
     resources :messages, only: [ :index, :show ] do
       member do
+        get :open
         post :archive
         post :unarchive
         post :mark_unread

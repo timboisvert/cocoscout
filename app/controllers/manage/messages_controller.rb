@@ -1,59 +1,19 @@
 module Manage
   class MessagesController < Manage::ManageController
+    include MessagesInbox
     rescue_from ActiveRecord::RecordNotFound, with: :message_not_found
 
+    # The one inbox (MessagesInbox), in production mode's frame: the same
+    # threads and count as My Messages, each row under its hat.
     def index
-      # Filter params
-      @filter = params[:filter] || "all"
-      @search = params[:q].to_s.strip
-      @production_filter = params[:production_id]
-      @order = params[:order] || "newest"
-
-      # Productions the user can access (for the production-filter dropdown).
-      # The compose flow asks each for its effective talent pool — preload so
-      # that check doesn't query per production.
+      # Productions the user can access (for the compose flow). The compose
+      # flow asks each for its effective talent pool — preload so that check
+      # doesn't query per production.
       @accessible_productions = Current.user.accessible_productions
         .where(organization: Current.organization)
         .includes(:talent_pools, talent_pool_shares: :talent_pool)
         .order(:name)
-
-      # Single source of truth for what belongs in this manage inbox — shared
-      # with the sidebar badge + mark-all-read so they always agree.
-      inbox = Message.manage_inbox_for(Current.user, Current.organization)
-      @messages = inbox
-        .includes(:sender, :message_recipients, :child_messages, :production, :show, :message_poll, images_attachments: :blob)
-
-      # Apply filters
-      case @filter
-      when "unread"
-        unread_subscription_message_ids = Current.user.message_subscriptions.unread.select(:message_id)
-        @messages = @messages.where(id: unread_subscription_message_ids)
-      when "sent_by_me"
-        @messages = @messages.where(sender: Current.user)
-      end
-
-      # Filter by production
-      if @production_filter.present?
-        @messages = @messages.where(production_id: @production_filter)
-      end
-
-      # Search filter (body is in action_text_rich_texts table)
-      if @search.present?
-        @messages = @messages
-          .left_joins(:rich_text_body)
-          .where("messages.subject ILIKE :q OR action_text_rich_texts.body ILIKE :q", q: "%#{@search}%")
-      end
-
-      # Apply ordering
-      @messages = @order == "oldest" ? @messages.order(updated_at: :asc) : @messages.order(updated_at: :desc)
-      @pagy, @messages = pagy(@messages, limit: 25)
-
-      # Bulk-load participants/count/snippet for every row on the page so the
-      # compact-row partial doesn't do per-row queries.
-      @thread_summaries = Message.thread_summaries_for(@messages, current_user: Current.user)
-
-      # The in-page unread number must equal the sidebar badge — same scope.
-      @unread_count = Current.user.unread_message_count_for_org(Current.organization)
+      load_inbox
     end
 
     # GET /manage/messages/production/:production_id
@@ -171,13 +131,9 @@ module Manage
         talent_pool: talent_pool_data
       }
     end
+    # One inbox, one count: everything unread is read now (as on My).
     def mark_all_read
-      # Same scope as the inbox list + sidebar badge so the badge actually
-      # reaches zero from this view.
-      inbox_ids = Message.manage_inbox_for(Current.user, Current.organization).select(:id)
-      Current.user.message_subscriptions.active
-                                        .where(message_id: inbox_ids)
-                                        .each(&:mark_read!)
+      Current.user.message_subscriptions.active.each(&:mark_read!)
       redirect_to manage_messages_path, notice: "All messages marked as read"
     end
 

@@ -1,19 +1,25 @@
 import { Controller } from "@hotwired/stimulus"
 
-// The Notifications list: a row whose page lives in production mode asks
-// first when the person is in My (unless they said not to), in a pink-header
-// modal; "Don't ask again" remembers that on the server.
+// A list whose rows can open somewhere else: the Notifications list (a page
+// in production mode, from My) and the one Messages inbox (a thread in
+// production mode from My, or in another organization's). Such a row asks
+// first in the pink-header prompt (shared/mode_switch_prompt), unless the
+// person said not to; "Don't ask again" remembers that on the server. A row
+// says so with data-switch="true" (data-production-mode="true" on the
+// notifications list) and may bring its own title and body.
 export default class extends Controller {
-  static targets = ["modal", "organization", "remember"]
+  static targets = ["modal", "organization", "remember", "title", "body"]
   static values = { ask: Boolean, rememberUrl: String }
 
   open(event) {
     const row = event.currentTarget
-    if (!this.askValue || row.dataset.productionMode !== "true") return
+    if (!this.askValue || (row.dataset.switch !== "true" && row.dataset.productionMode !== "true")) return
 
     event.preventDefault()
     this.pendingUrl = row.href
-    this.organizationTarget.textContent = row.dataset.organizationName || "your organization"
+    if (this.hasTitleTarget && row.dataset.switchTitle) this.titleTarget.textContent = row.dataset.switchTitle
+    if (this.hasBodyTarget && row.dataset.switchBody) this.bodyTarget.textContent = row.dataset.switchBody
+    else if (this.hasOrganizationTarget) this.organizationTarget.textContent = row.dataset.organizationName || "your organization"
     this.rememberTarget.checked = false
     this.modalTarget.classList.remove("hidden")
   }

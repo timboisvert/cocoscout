@@ -57,14 +57,11 @@ module NavigationHelper
   end
 
   # The two universal icons at the top of every panel, in both modes: where
-  # each goes and how many are unread. Messages opens the mode's own inbox
-  # until the one inbox lands (V1.1 plan §0a).
+  # each goes and how many are unread. Messages is the one inbox (V1.1 plan
+  # §0a; MessagesInbox): the same threads and count in either mode, drawn in
+  # the mode's own frame.
   def panel_universal_icons(production_mode:)
-    messages = if production_mode && Current.organization
-      { path: manage_messages_path, count: Current.user.unread_message_count_for_org(Current.organization).to_i }
-    else
-      { path: my_messages_path, count: Current.user.unread_message_count.to_i }
-    end
+    messages = { path: (production_mode && Current.organization ? manage_messages_path : my_messages_path), count: Current.user.unread_message_count.to_i }
     {
       messages: messages.merge(active: controller_name == "messages"),
       notifications: { path: notifications_path, count: Current.user.unread_notification_count, active: controller_name == "notifications" }
@@ -113,7 +110,7 @@ module NavigationHelper
     free_items = [
       { label: "Home", path: manage_path, icon: "home", active: controller_name == "manage" && action_name == "index" },
       { label: "Messages", path: manage_messages_path, icon: "messages", active: controller_name == "messages",
-        badge: Current.user&.unread_message_count_for_org(Current.organization).to_i },
+        badge: Current.user&.unread_message_count.to_i },
       { label: "Shows & Events", path: manage_shows_path, icon: "shows",
         active: %w[shows org_shows vacancies show_wizard].include?(controller_name) },
       { label: "Casting", path: manage_casting_path, icon: "casting",
