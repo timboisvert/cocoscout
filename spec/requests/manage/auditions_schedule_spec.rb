@@ -23,19 +23,25 @@ RSpec.describe "Manage::Auditions schedule (click-to-add)", type: :request do
   end
 
   describe "GET schedule_auditions" do
-    it "renders the click-to-add UI with both auditionees and the availability payload" do
+    it "renders the click-to-add UI with the People Picker for the sessions" do
       get manage_schedule_auditions_signups_auditions_cycle_path(production, cycle)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Schedule Auditions")
       expect(response.body).to include("audition-assign")
       expect(response.body).to include("Review &amp; notify") # finalize/notify entry point
-      expect(response.body).to include("Ava Available")
-      # The session's add slot + availability are embedded for the modal.
+      # The session's add slot opens the shared People Picker (auditionees scope).
       expect(response.body).to include("data-add-slot")
       expect(response.body).to include("audition-assign#slotsClick")
-      payload = response.body[/data-audition-assign-payload-value="([^"]*)"/, 1]
-      data = JSON.parse(CGI.unescapeHTML(payload))
-      expect(data["availability"][session.id.to_s][req_available.id.to_s]).to eq("available")
+      picker = Nokogiri::HTML(response.body).at_css("[data-people-picker='audition-picker']")
+      expect(picker["data-action"]).to include("people-picker:pick->audition-assign#picked")
+      expect(JSON.parse(picker["data-people-picker-params-value"])).to include("scope" => "auditionees")
+
+      get manage_people_picker_search_path(scope: "auditionees", audition_session_id: session.id, q: "")
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Ava Available")
+      expect(response.body).to include(">Available<")
+      row = Nokogiri::HTML(response.body).at_css("[data-people-picker-row='Person_#{available_person.id}']")
+      expect(JSON.parse(row["data-pick"])["requestId"]).to eq(req_available.id)
     end
   end
 

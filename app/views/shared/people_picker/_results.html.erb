@@ -2,7 +2,8 @@
     Locals: query, listing (the pool before a search), people, groups,
     outside, already ({ "Person_1" => label }), badges ({ "Person_1" =>
     [labels] }), ineligible (keys), invite_email, invite_name, guest,
-    extras ({ "Person_1" => { more for the pick } }), heading, empty. %>
+    extras ({ "Person_1" => { pick: { more for the pick }, detail: words
+    under the name } }), heading, empty. %>
 <% rows = (people + groups) %>
 <% if query.to_s.length < 2 && !listing %>
   <p class="text-sm text-gray-400 text-center py-6">Type a name to find someone.</p>
@@ -20,8 +21,9 @@
     <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
       <% (listing ? rows : rows.sort_by { |m| m.name.to_s.downcase }).each do |member| %>
         <% key = "#{member.class.name}_#{member.id}" %>
+        <% extra = (local_assigns[:extras] || {})[key] || {} %>
         <%= render "shared/people_picker/row", member: member, query: query, connected: true,
-              taken: already[key], badges: badges[key], eligible: !ineligible.include?(key), extra: (local_assigns[:extras] || {})[key] %>
+              taken: already[key], badges: badges[key], eligible: !ineligible.include?(key), extra: extra[:pick], detail: extra[:detail] %>
       <% end %>
     </div>
   <% end %>
@@ -29,7 +31,7 @@
     <%= section.call("On CocoScout, not in your organization") %>
     <div class="rounded-lg border border-pink-200 divide-y divide-pink-100 overflow-hidden">
       <% outside.each do |person| %>
-        <%= render "shared/people_picker/row", member: person, query: query, connected: false, taken: already["Person_#{person.id}"], badges: [], eligible: true, extra: nil %>
+        <%= render "shared/people_picker/row", member: person, query: query, connected: false, taken: already["Person_#{person.id}"], badges: [], eligible: true, extra: nil, detail: nil %>
       <% end %>
     </div>
   <% end %>

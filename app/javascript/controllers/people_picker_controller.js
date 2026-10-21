@@ -34,25 +34,29 @@ export default class extends Controller {
     // A casting page shows the talent pool before anything is typed; so does
     // a staffing shift (everyone qualified).
     listsFirst() {
-        return this.paramsValue.list === "pool" || this.extraParams.list === "pool" || this.paramsValue.scope === "staff"
+        return this.paramsValue.list === "pool" || this.extraParams.list === "pool" || [ "staff", "auditionees" ].includes(this.paramsValue.scope)
     }
 
     // The filter chips (shared/_people_picker filters): the first is the
     // default; a tap re-asks with the chip's value.
     resetFilter() {
         if (!this.hasFilterTarget) return
-        this.applyFilter(this.filterTargets[0].dataset.filter)
+        const seen = new Set()
+        this.filterTargets.forEach(chip => {
+            if (seen.has(chip.dataset.param)) return
+            seen.add(chip.dataset.param)
+            this.applyFilter(chip.dataset.param, chip.dataset.filter)
+        })
     }
 
     setFilter(event) {
-        this.applyFilter(event.currentTarget.dataset.filter)
+        this.applyFilter(event.currentTarget.dataset.param, event.currentTarget.dataset.filter)
         this.fetchResults(this.inputTarget.value.trim().length < 2 ? "" : this.inputTarget.value.trim())
     }
 
-    applyFilter(value) {
-        const param = this.filterTargets[0]?.closest("[data-people-picker-filter-param]")?.dataset.peoplePickerFilterParam || "fit"
+    applyFilter(param, value) {
         this.extraParams = { ...this.extraParams, [param]: value }
-        this.filterTargets.forEach(chip => {
+        this.filterTargets.filter(chip => chip.dataset.param === param).forEach(chip => {
             const on = chip.dataset.filter === value
             chip.classList.toggle("border-pink-500", on)
             chip.classList.toggle("bg-pink-50", on)

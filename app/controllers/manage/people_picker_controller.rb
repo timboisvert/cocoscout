@@ -10,7 +10,9 @@ module Manage
   #                  "members" (people and groups), "staff" (who's qualified
   #                  for a shift's role, with shift_id; fit=all|can_work|free
   #                  keeps everyone, those who can work some of it, or those
-  #                  free for all of it)
+  #                  free for all of it), "auditionees" (a cycle's sign-ups
+  #                  for an audition session, with audition_session_id;
+  #                  fit=available|all, hide_scheduled=1|0)
   #   list           "pool": with nothing typed, the production's talent pool,
   #                  available for the show first (casting pages)
   #   outside        "1" adds people on CocoScout outside the organization
@@ -35,13 +37,14 @@ module Manage
     before_action :set_production_scope
     before_action :ensure_user_is_manager
 
-    SCOPES = %w[people users members staff].freeze
+    SCOPES = %w[people users members staff auditionees].freeze
     HEADSHOTS = { profile_headshots: { image_attachment: :blob } }.freeze
 
     def search
       q = params[:q].to_s.strip
       scope = params[:scope].presence_in(SCOPES) || "people"
       return search_staff(q) if scope == "staff"
+      return search_auditionees(q) if scope == "auditionees"
 
       listing = q.length < 2 && params[:list] == "pool" && @production.present?
       locals = { query: q, people: [], groups: [], outside: [], already: {}, badges: Hash.new { |h, k| h[k] = [] }, ineligible: Set.new,
@@ -181,7 +184,7 @@ module Manage
         elsif r[:status] == "unknown" then badges[key] << "Hasn't said"
         end
         badges[key] << "On another shift" if r[:conflicts].any? && !on_shift.include?(r[:person].id)
-        extras[key] = { staff: { verdict: r[:verdict], cast: r[:cast], conflicts: r[:conflicts] } }
+        extras[key] = { pick: { staff: { verdict: r[:verdict], cast: r[:cast], conflicts: r[:conflicts] } } }
       end
 
       render partial: "shared/people_picker/results",
@@ -189,6 +192,57 @@ module Manage
                        invite_email: nil, invite_name: false, guest: false, listing: true, extras: extras,
                        heading: "Qualified for #{role.name}",
                        empty: (fit == "all" ? "No one is qualified for this role yet." : "No one who can work this shift.") }
+    end
+
+    # Audition scheduling (V1.1 plan §5): the cycle's sign-ups for one
+    # session, those marked available for it first (by yes votes), each
+    # saying what they said, whether they're in this session (not pickable)
+    # or another. Available / Everyone is fit=available|all; hide_scheduled=1
+    # drops everyone already on the schedule.
+    def search_auditionees(q)
+      session = AuditionSession.joins(audition_cycle: :production)
+                               .where(productions: { organization_id: Current.organization.id }).find(params[:audition_session_id])
+      cycle = session.audition_cycle
+      requests = cycle.audition_requests.active.includes(:requestable, :audition_request_votes).to_a
+      requests.select! { |r| r.requestable&.name.to_s.downcase.include?(q.downcase) } if q.length >= 2
+      requests.reject! { |r| r.requestable.nil? }
+
+      availability = AuditionSessionAvailability.where(audition_session: session)
+                                                .to_h { |a| [ "#{a.available_entity_type}_#{a.available_entity_id}", a.status.to_s ] }
+      in_this = session.auditions.pluck(:audition_request_id).compact.to_set
+      scheduled = Audition.joins(:audition_session).where(audition_sessions: { audition_cycle_id: cycle.id }).pluck(:audition_request_id).compact.to_set
+
+      fit = params[:fit].presence_in(%w[available all]) || "available"
+      hide_scheduled = params[:hide_scheduled] != "0"
+      status_of = ->(r) { availability["#{r.requestable_type}_#{r.requestable_id}"] || "unset" }
+      requests.select! { |r| status_of.call(r) == "available" } if fit == "available"
+      requests.reject! { |r| scheduled.include?(r.id) || in_this.include?(r.id) } if hide_scheduled
+      rank = { "available" => 0, "unset" => 1, "unavailable" => 2 }
+      requests.sort_by! { |r| [ rank.fetch(status_of.call(r), 1), -r.vote_counts[:yes], r.created_at ] }
+
+      already = {}
+      badges = Hash.new { |h, k| h[k] = [] }
+      extras = {}
+      requests.each do |r|
+        key = "#{r.requestable_type}_#{r.requestable_id}"
+        status = status_of.call(r)
+        badges[key] << { "available" => "Available", "unavailable" => "Unavailable" }.fetch(status, "No response")
+        if in_this.include?(r.id) then already[key] = "In this session"
+        elsif scheduled.include?(r.id) then badges[key] << "In another session"
+        end
+        vc = r.vote_counts
+        extras[key] = { pick: { requestId: r.id, votes: vc },
+                        detail: (vc.values.sum.zero? ? "No votes yet" : "#{vc[:yes]} yes · #{vc[:no]} no · #{vc[:maybe]} not sure") }
+      end
+
+      empty = if q.length >= 2 then "No auditionees match your search."
+      elsif fit == "available" then "No one is marked available for this session. Switch to Everyone to see all auditionees."
+      else "Everyone is already scheduled. Show the scheduled too to see them."
+      end
+      render partial: "shared/people_picker/results",
+             locals: { query: q, people: requests.map(&:requestable), groups: [], outside: [], already: already, badges: badges, ineligible: Set.new,
+                       invite_email: nil, invite_name: false, guest: false, listing: true, extras: extras,
+                       heading: (fit == "available" ? "Available for this session" : "Auditionees"), empty: empty }
     end
 
     # A production's picker checks the production's managers; the rest the

@@ -251,3 +251,83 @@ RSpec.describe "Manage::PeoplePicker for a shift", type: :request do
     expect(search(q: "nobody").text).to include("No one is qualified for this role yet.")
   end
 end
+
+# Audition scheduling's Add auditionees (V1.1 plan §5): the cycle's sign-ups
+# for one session, available first, with the Available / Everyone and
+# hide-scheduled filters the old sheet had.
+RSpec.describe "Manage::PeoplePicker auditionees", type: :request do
+  let(:password) { "Password123!" }
+  let(:owner) { create(:user, password: password) }
+  let!(:org) { create(:organization, :pro, owner: owner) }
+  let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let(:production) { create(:production, organization: org) }
+  let(:cycle) { create(:audition_cycle, production: production) }
+  let(:location) { create(:location, organization: org) }
+  let!(:session) { create(:audition_session, audition_cycle: cycle, location: location) }
+  let!(:other_session) { create(:audition_session, audition_cycle: cycle, location: location, start_at: 8.days.from_now, end_at: 8.days.from_now + 2.hours) }
+
+  let(:ava) { create(:person, name: "Ava Available") }
+  let(:ned) { create(:person, name: "Ned NoResponse") }
+  let(:una) { create(:person, name: "Una Unavailable") }
+  let(:sid) { create(:person, name: "Sid Scheduled") }
+  let(:ivy) { create(:person, name: "Ivy InThisOne") }
+  let!(:req_ava) { create(:audition_request, audition_cycle: cycle, requestable: ava) }
+  let!(:req_ned) { create(:audition_request, audition_cycle: cycle, requestable: ned) }
+  let!(:req_una) { create(:audition_request, audition_cycle: cycle, requestable: una) }
+  let!(:req_sid) { create(:audition_request, audition_cycle: cycle, requestable: sid) }
+  let!(:req_ivy) { create(:audition_request, audition_cycle: cycle, requestable: ivy) }
+
+  before do
+    AuditionSessionAvailability.create!(available_entity: ava, audition_session: session, status: :available)
+    AuditionSessionAvailability.create!(available_entity: una, audition_session: session, status: :unavailable)
+    AuditionSessionAvailability.create!(available_entity: sid, audition_session: session, status: :available)
+    AuditionSessionAvailability.create!(available_entity: ivy, audition_session: session, status: :available)
+    create(:audition, audition_request: req_sid, audition_session: other_session, auditionable: sid)
+    create(:audition, audition_request: req_ivy, audition_session: session, auditionable: ivy)
+    post handle_signin_path, params: { email_address: owner.email_address, password: password }
+  end
+
+  def search(params)
+    get manage_people_picker_search_path({ scope: "auditionees", audition_session_id: session.id }.merge(params)), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    expect(response).to have_http_status(:ok)
+    Nokogiri::HTML(response.body)
+  end
+
+  def names(doc)
+    doc.css("[data-people-picker-row] .truncate:first-child").map { |n| n.text.squish }
+  end
+
+  it "lists who's available and not yet scheduled, with the request in the pick" do
+    doc = search({})
+    expect(doc.text).to include("Available for this session")
+    expect(names(doc)).to eq([ "Ava Available" ])
+    pick = JSON.parse(doc.at_css("[data-people-picker-row='Person_#{ava.id}']")["data-pick"])
+    expect(pick["requestId"]).to eq(req_ava.id)
+    expect(doc.at_css("[data-people-picker-row='Person_#{ava.id}']").text).to include("Available", "No votes yet")
+  end
+
+  it "shows the scheduled too when asked, this session's as taken and the other session's as a badge" do
+    doc = search(hide_scheduled: "0")
+    expect(names(doc)).to eq([ "Ava Available", "Sid Scheduled", "Ivy InThisOne" ])
+    expect(doc.at_css("[data-people-picker-row='Person_#{sid.id}']").text).to include("In another session")
+    ivy_row = doc.at_css("[data-people-picker-row='Person_#{ivy.id}']")
+    expect(ivy_row["disabled"]).to be_present
+    expect(ivy_row.at_css("[data-people-picker-taken]").text).to eq("In this session")
+  end
+
+  it "lists everyone when asked, available first, and searches by name" do
+    doc = search(fit: "all")
+    expect(doc.text).to include("Auditionees")
+    expect(names(doc)).to eq([ "Ava Available", "Ned NoResponse", "Una Unavailable" ])
+    expect(doc.at_css("[data-people-picker-row='Person_#{ned.id}']").text).to include("No response")
+    expect(doc.at_css("[data-people-picker-row='Person_#{una.id}']").text).to include("Unavailable")
+    expect(names(search(fit: "all", q: "una"))).to eq([ "Una Unavailable" ])
+    expect(search(q: "zz").text).to include("No auditionees match your search.")
+  end
+
+  it "keeps another organization's session out" do
+    stranger = create(:audition_session, audition_cycle: create(:audition_cycle, production: create(:production)))
+    get manage_people_picker_search_path(scope: "auditionees", audition_session_id: stranger.id)
+    expect(response).to have_http_status(:not_found)
+  end
+end

@@ -175,36 +175,8 @@ module Manage
         .includes(:location, auditions: :auditionable)
         .order(start_at: :asc)
 
-      # Show all sign-ups ordered by yes vote count descending
-      @available_people = @audition_cycle.audition_requests
-        .includes(:requestable, :audition_request_votes)
-        .left_joins(:audition_request_votes)
-        .select("audition_requests.*, COUNT(CASE WHEN audition_request_votes.vote = 0 THEN 1 END) AS yes_count")
-        .group("audition_requests.id")
-        .order("yes_count DESC, audition_requests.created_at ASC")
-
-      @scheduled_auditionables = Audition.joins(:audition_request).where(audition_session: @audition_sessions).pluck(
-        :auditionable_type, :auditionable_id
-      ).to_set
-      @scheduled_request_ids = Audition.joins(:audition_session).where(audition_session: { audition_cycle_id: @audition_cycle.id }).pluck(:audition_request_id).uniq
-
-      # Per-session availability the assign modal uses to group/order auditionees.
-      # AuditionSessionAvailability is keyed by the auditionable (the request's
-      # requestable), so map it back to the request id for the modal payload.
-      request_by_entity = @available_people.index_by { |r| "#{r.requestable_type}_#{r.requestable_id}" }
-      @session_availability = Hash.new { |h, k| h[k] = {} }
-      AuditionSessionAvailability
-        .where(audition_session_id: @audition_sessions.map(&:id))
-        .find_each do |a|
-          req = request_by_entity["#{a.available_entity_type}_#{a.available_entity_id}"]
-          next unless req
-          @session_availability[a.audition_session_id.to_s][req.id.to_s] = a.status
-        end
-
-      # Which audition_requests are already in each session (to mark "Added").
-      @in_session_request_ids = @audition_sessions.each_with_object({}) do |s, h|
-        h[s.id.to_s] = s.auditions.map(&:audition_request_id).compact.map(&:to_s)
-      end
+      # Who to add comes from the People Picker (its auditionees scope), per
+      # session, when the Add slot is tapped.
 
       # Default messages for the Review & Notify modal (manager can edit them).
       # "[Name]" is replaced per-recipient when sending.

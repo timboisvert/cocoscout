@@ -23,7 +23,8 @@
     multi         true keeps the sheet open after a pick, marking the row
     filters       [[label, value], ...] chips under the box that set
                   filter_param (the first is the default), e.g. staffing's
-                  Everyone / Can work / Available the whole shift
+                  Everyone / Can work / Available the whole shift; or several
+                  groups, [{ param:, options: [[label, value], ...] }, ...]
     placeholder   the search box's words
     hint          a line under the box, e.g. "Someone in your organization"
 %>
@@ -67,10 +68,16 @@
     </div>
     <% if local_assigns[:hint].present? %><p class="text-xs text-gray-500 mt-2"><%= local_assigns[:hint] %></p><% end %>
     <% if local_assigns[:filters].present? %>
-      <div class="mt-3 flex items-center gap-2 overflow-x-auto -mx-1 px-1" data-people-picker-filters data-people-picker-filter-param="<%= local_assigns[:filter_param] || "fit" %>">
-        <% local_assigns[:filters].each_with_index do |(label, value), i| %>
-          <button type="button" data-people-picker-target="filter" data-filter="<%= value %>" data-action="click->people-picker#setFilter"
-                  class="flex-shrink-0 inline-flex items-center min-h-[36px] px-3 rounded-full border text-sm whitespace-nowrap cursor-pointer <%= i.zero? ? 'border-pink-500 bg-pink-50 text-pink-700 font-medium' : 'border-gray-300 bg-white text-gray-700' %>"><%= label %></button>
+      <%
+        groups = local_assigns[:filters].first.is_a?(Hash) ? local_assigns[:filters] : [ { param: (local_assigns[:filter_param] || "fit"), options: local_assigns[:filters] } ]
+      %>
+      <div class="mt-3 flex items-center gap-2 overflow-x-auto -mx-1 px-1" data-people-picker-filters>
+        <% groups.each_with_index do |group, g| %>
+          <% if g.positive? %><span class="w-px h-5 bg-gray-200 flex-shrink-0" aria-hidden="true"></span><% end %>
+          <% group[:options].each_with_index do |(label, value), i| %>
+            <button type="button" data-people-picker-target="filter" data-param="<%= group[:param] %>" data-filter="<%= value %>" data-action="click->people-picker#setFilter"
+                    class="flex-shrink-0 inline-flex items-center min-h-[36px] px-3 rounded-full border text-sm whitespace-nowrap cursor-pointer <%= i.zero? ? 'border-pink-500 bg-pink-50 text-pink-700 font-medium' : 'border-gray-300 bg-white text-gray-700' %>"><%= label %></button>
+          <% end %>
         <% end %>
       </div>
     <% end %>

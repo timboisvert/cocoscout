@@ -25,7 +25,8 @@ RSpec.describe "Phase 2 pages on a phone", type: :request do
       get manage_schedule_auditions_signups_auditions_cycle_path(production, cycle)
       expect(response).to have_http_status(:ok)
       doc = Nokogiri::HTML(response.body)
-      expect(doc.at_css("[data-audition-assign-sheet]")["class"]).to include("max-sm:min-h-[100dvh]")
+      # Add is the shared People Picker (its own sheet); Review & notify keeps its full-screen sheet.
+      expect(doc.at_css("[data-people-picker='audition-picker'] [data-sheet]")).to be_present
       expect(doc.at_css("[data-audition-notify-sheet]")["class"]).to include("max-sm:min-h-[100dvh]")
       bar = doc.at_css("[data-schedule-phone-bar]")
       expect(bar.at_css("button")["data-action"]).to eq("click->audition-notify#open")

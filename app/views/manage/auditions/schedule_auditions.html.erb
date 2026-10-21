@@ -1,30 +1,7 @@
 <% content_for :title, "Schedule Auditions" %>
 
-<%
-  # Payload for the assign modal: every audition request with vote counts,
-  # plus per-session availability and current assignments.
-  requests_payload = @available_people.map do |r|
-    ent = r.requestable
-    vc = r.vote_counts
-    {
-      id: r.id,
-      name: ent&.name.to_s,
-      initials: (ent.respond_to?(:initials) ? ent.initials : ent&.name.to_s[0, 2].upcase),
-      headshot: (ent ? safe_headshot_url(ent, variant: :thumb) : nil),
-      yes: vc[:yes], no: vc[:no], maybe: vc[:maybe]
-    }
-  end
-  assign_payload = {
-    requests: requests_payload,
-    availability: @session_availability,
-    inSession: @in_session_request_ids,
-    scheduledRequestIds: @scheduled_request_ids.map(&:to_s)
-  }
-%>
-
 <div class="w-full mb-10"
      data-controller="audition-assign audition-notify"
-     data-audition-assign-payload-value="<%= assign_payload.to_json %>"
      data-audition-assign-add-url-value="/manage/auditions/add_to_session"
      data-audition-assign-remove-url-value="/manage/auditions/remove_from_session"
      data-audition-notify-preview-url-value="<%= manage_notify_preview_signups_auditions_cycle_path(@production, @audition_cycle) %>">
@@ -106,64 +83,14 @@
     </div>
   <% end %>
 
-  <%# === Assign modal === %>
-  <div data-audition-assign-target="modal"
-       class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
-       data-action="click->audition-assign#backdropClose keydown.esc@window->audition-assign#close">
-    <div class="flex min-h-full items-start justify-center p-4 py-10 max-sm:p-0 max-sm:items-stretch">
-      <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[85vh] max-sm:max-w-none max-sm:rounded-none max-sm:max-h-none max-sm:min-h-[100dvh]"
-           data-audition-assign-sheet
-           data-action="click->audition-assign#stopPropagation">
-        <%# Header %>
-        <div class="flex items-start justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl max-sm:rounded-none flex-shrink-0">
-          <div>
-            <h3 class="text-base font-semibold text-white">Add auditionees</h3>
-            <div class="text-xs text-white/80" data-audition-assign-target="subtitle"></div>
-          </div>
-          <button type="button" data-action="click->audition-assign#close" class="text-white/80 hover:text-white cursor-pointer w-11 h-11 -mr-3 -mt-2 sm:w-auto sm:h-auto sm:m-0 flex items-center justify-center">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <%# Controls: search + availability + hide-scheduled %>
-        <div class="px-5 py-3 border-b border-gray-100 flex flex-col gap-3 flex-shrink-0">
-          <div class="relative">
-            <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" placeholder="Search auditionees by name…"
-                   data-audition-assign-target="search"
-                   data-action="input->audition-assign#search"
-                   class="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent">
-          </div>
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-1.5">
-              <span class="text-xs text-gray-500 mr-1">Availability</span>
-              <button type="button" data-audition-assign-target="filterAvailable" data-action="click->audition-assign#showAvailableOnly"
-                      class="px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white">Available</button>
-              <button type="button" data-audition-assign-target="filterAll" data-action="click->audition-assign#showAll"
-                      class="px-3 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-gray-100 text-gray-700 hover:bg-gray-200">Everyone</button>
-            </div>
-            <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
-              Hide already-scheduled
-              <span class="relative inline-block w-9 h-5 flex-shrink-0">
-                <input type="checkbox" checked
-                       data-audition-assign-target="hideScheduled"
-                       data-action="change->audition-assign#toggleHideScheduled"
-                       class="sr-only peer">
-                <span class="block w-9 h-5 rounded-full bg-gray-300 peer-checked:bg-pink-500 transition-colors"></span>
-                <span class="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full shadow transition-transform peer-checked:translate-x-4"></span>
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <%# Results — click delegated so JS-injected rows stay clickable. %>
-        <div class="px-5 py-4 overflow-y-auto flex-1 max-sm:pb-[calc(env(safe-area-inset-bottom)+16px)]" data-audition-assign-target="results"
-             data-action="click->audition-assign#resultsClick">
-          <%# populated by JS %>
-        </div>
-      </div>
-    </div>
-  </div>
+  <%# === Add auditionees: the shared People Picker (V1.1 plan §5), the
+      cycle's sign-ups marked available for the session first (by votes),
+      with Available / Everyone and the hide-already-scheduled toggle as
+      its filter chips. A tap adds them to the session; the sheet stays open. %>
+  <%= render "shared/people_picker", id: "audition-picker", title: "Add auditionees", scope: "auditionees", multi: true,
+        filters: [ { param: "fit", options: [ [ "Available", "available" ], [ "Everyone", "all" ] ] },
+                   { param: "hide_scheduled", options: [ [ "Hide already-scheduled", "1" ], [ "Show scheduled too", "0" ] ] } ],
+        placeholder: "Search auditionees by name", pick_action: "people-picker:pick->audition-assign#picked" %>
 
   <%# === Review & Notify modal === %>
   <div data-audition-notify-target="modal"

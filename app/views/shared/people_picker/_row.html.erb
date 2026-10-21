@@ -1,11 +1,12 @@
 <%# One person or group the People Picker found. Locals: member, query,
     connected (the organization's own: their email shows), taken (a label
     when they can't be picked), badges (labels), eligible (false when a
-    restricted role hasn't approved them). %>
+    restricted role hasn't approved them), extra (more for the pick),
+    detail (words under the name in place of the email). %>
 <%
   person = member.is_a?(Person)
   headshot = member.respond_to?(:safe_headshot_variant) ? member.safe_headshot_variant(:thumb) : nil
-  detail = person ? searched_detail(member, query, connected: connected) : "Group"
+  detail = local_assigns[:detail] || (person ? searched_detail(member, query, connected: connected) : "Group")
   pick = {
     type: member.class.name, id: member.id, name: member.name, initials: member.initials,
     email: (person ? searched_email(member.email, query, connected: connected) : nil),
@@ -15,8 +16,8 @@
   tone = ->(badge) do
     case badge
     when /\AAvailable/ then "bg-green-50 text-green-700"
-    when "Unavailable", "Not approved for this role", "Hasn't said" then "bg-gray-100 text-gray-600"
-    when "In a show", "On another shift" then "bg-amber-50 text-amber-800"
+    when "Unavailable", "Not approved for this role", "Hasn't said", "No response" then "bg-gray-100 text-gray-600"
+    when "In a show", "On another shift", "In another session" then "bg-amber-50 text-amber-800"
     else "bg-pink-50 text-pink-700"
     end
   end
