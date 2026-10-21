@@ -14,7 +14,6 @@ import dev.hotwire.navigation.fragments.HotwireWebFragment
  */
 @HotwireDestinationDeepLink(uri = "hotwire://fragment/web")
 open class WebFragment : HotwireWebFragment() {
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         navigator.location?.let { updateToolbar(it) }
@@ -24,7 +23,10 @@ open class WebFragment : HotwireWebFragment() {
     /** V1.1: Messages and Notifications on the right of the toolbar (ToolbarIcons). */
     private fun addToolbarIcons() {
         val toolbar = toolbarForNavigation() ?: return
+        // Once per toolbar: the view is created again after a configuration change.
+        if (toolbar.findViewWithTag<View>(TOOLBAR_ICONS_TAG) != null) return
         val icons = androidx.compose.ui.platform.ComposeView(requireContext()).apply {
+            tag = TOOLBAR_ICONS_TAG
             setViewCompositionStrategy(androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent { com.cocoscout.app.menu.ToolbarIcons() }
         }
@@ -56,5 +58,6 @@ open class WebFragment : HotwireWebFragment() {
 
     companion object {
         private val barlessPaths = setOf("/welcome", "/signin", "/signup")
+        private const val TOOLBAR_ICONS_TAG = "toolbar-icons"
     }
 }
