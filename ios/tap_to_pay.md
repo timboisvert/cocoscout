@@ -270,7 +270,7 @@ Onboarding merchants
 
 Enabling Tap to Pay on iPhone
 - 3.1 and 6.2 Splash: Done. Full screen, once per person on each iPhone, with Apple's Hero photo and copy.
-- 3.2 and 6.3 Push: Done. At launch, a CocoScout message with a push carrying Apple's Value Proposition copy, to everyone who can sell at a door that has it.
+- 3.2 and 6.3 Push: Done. At launch, a CocoScout notification (the app's Notifications list) with a push carrying Apple's Value Proposition copy, to everyone who can sell at a door that has it.
 - 3.3 Visible: Done. "Tap to Pay on iPhone" on Settings and first on the door's Sell screen.
 - 3.4 End of onboarding: Done. Opening a box office says how to turn on Tap to Pay on iPhone, and Ticketing settings → Door has its card.
 - 3.5 Accepting the terms: Done. "Set up Tap to Pay on iPhone" on its page, and the checkout button.

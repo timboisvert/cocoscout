@@ -58,8 +58,9 @@ class VacancyInvitationMailer < ApplicationMailer
     # Find a sender for the message (production team member)
     sender = find_sender
 
+    # Automated: a Notification in the Casting group (NotificationGroups::TEMPLATES).
     MessageService.send_direct(
-      template_key: "vacancy_invitation", push_body: rendered[:push_body],
+      template_key: "vacancy_invitation", push_body: rendered[:push_body], system_generated: true,
       sender: sender,
       recipient_person: @person,
       subject: rendered[:subject],

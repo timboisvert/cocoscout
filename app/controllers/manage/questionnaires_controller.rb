@@ -222,6 +222,7 @@ module Manage
             questionnaire_url: questionnaire_url
           }
 
+          rendered = ContentTemplateService.render("questionnaire_invitation", variables)
           if custom_subject.present? && custom_body.present?
             # Use customized content with variable interpolation
             subject = custom_subject
@@ -229,13 +230,15 @@ module Manage
                               .gsub("{{person_name}}", person.first_name || "there")
                               .gsub("{{questionnaire_title}}", @questionnaire.title)
           else
-            rendered = ContentTemplateService.render("questionnaire_invitation", variables)
             subject = rendered[:subject]
             body = rendered[:body]
           end
 
+          # A notice the manager can write (NotificationGroups::VOICED): a
+          # Notification, and a Message from them too when they changed the words.
           MessageService.send_direct(
-            template_key: "questionnaire_invitation", push_body: rendered&.dig(:push_body),
+            template_key: "questionnaire_invitation", push_body: rendered[:push_body],
+            custom_words: ManagerWords.changed?([ subject, rendered[:subject] ], [ body, rendered[:body] ]),
             sender: Current.user,
             recipient_person: person,
             subject: subject,

@@ -20,7 +20,7 @@ module NotificationGroups
   ALL = [
     Group.new("casting", "Casting and vacancies", "You're cast, a show changes, someone needs cover.", :yours, true, :person, true, true, %w[vacancy_invitations vacancy_notifications], "Casting"),
     Group.new("signups", "Sign-ups and auditions", "Spots, results, invitations to audition, reminders before a deadline.", :yours, true, :person, true, true, %w[audition_invitations], "Sign-ups"),
-    Group.new("invitations", "Invitations", "To join a group or a production team.", :yours, true, :person, true, true, %w[group_invitations], nil),
+    Group.new("invitations", "Invitations", "To join a group or a production team, or to answer a questionnaire.", :yours, true, :person, true, true, %w[group_invitations], nil),
     Group.new("pay", "Pay and payouts", "Your pay on its way or sent back; for managers, payout runs that bounce, come back or pay by themselves.", :yours, true, :person, true, true, [], "Pay"),
     # Email always goes for contracts: it carries the signing link or the signed copy.
     Group.new("contracts", "Contracts", "Requests and reminders to sign, signed and countersigned, and ones that stall or expire.", :yours, true, :always, true, true, [], "Contracts"),
@@ -54,7 +54,9 @@ module NotificationGroups
     # Shifts and hours
     "shift_declined_manager" => "shifts",
     # Pay and Contracts, from senders that still go through messages
-    "staff_1099_ready" => "pay", "contract_person_added" => "contracts"
+    "staff_1099_ready" => "pay", "contract_person_added" => "contracts",
+    # Ticketing: the Tap to Pay launch (TapToPayLaunch), to everyone who can sell at a door that has it
+    "tap_to_pay_launch_message" => "ticketing_milestones"
   }.freeze
   # Notices a manager can write or edit before sending (V1.1 plan §9,
   # option 3, Tim 2026-10-20): always a Notification, and also a Message
@@ -68,7 +70,7 @@ module NotificationGroups
     "staff_availability_confirm_request" => "shifts",
     "staff_w9_request" => "pay", "staff_w9_reminder" => "pay",
     "payout_setup_reminder" => "pay", "payment_setup_reminder" => "pay",
-    "group_member_added" => "invitations",
+    "group_member_added" => "invitations", "questionnaire_invitation" => "invitations",
     "contract_invoice" => "contracts", "contract_invoice_reminder" => "contracts"
   }.freeze
 

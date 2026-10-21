@@ -175,7 +175,7 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     expect(response.body).to include("Approved", "Paid ")
   end
 
-  it "sends the launch email and message, with Apple's words, to the people who can sell at its door" do
+  it "sends the launch email and notification, with Apple's words, to the people who can sell at its door" do
     create(:organization_role, :manager, user: owner, organization: org)
     expect(TapToPayLaunch.announce!(organizations: [ org ], sender: owner, dry_run: true)).to contain_exactly(owner, seller)
 
@@ -183,9 +183,12 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     email = ActionMailer::Base.deliveries.find { |mail| mail.to == [ seller.email_address ] }
     expect(email.subject).to eq("Tap to Pay on iPhone")
     expect(email.html_part&.body&.to_s || email.body.to_s).to include("Tap to Pay on iPhone is now available with CocoScout", "Get started", door_tap_to_pay_url(host: "example.com").split("//").last.split("/", 2).last)
-    message = Message.where(template_key: "tap_to_pay_launch_message").joins(:message_recipients).where(message_recipients: { recipient: seller.person }).first
-    expect(message).to be_present
-    expect(message.subject).to eq("Accept in-person payments with Tap to Pay on iPhone.")
-    expect(message.push_body).to start_with("Accept in-person, contactless payments right on your iPhone")
+    # In the app it's a Notification (V1.1 plan §9), which pushes Apple's words.
+    notification = seller.notifications.find_by(kind: "tap_to_pay_launch_message")
+    expect(notification).to be_present
+    expect(notification.category).to eq("ticketing_milestones")
+    expect(notification.title).to start_with("Accept in-person, contactless payments right on your iPhone")
+    expect(notification.body).to include("Get started", door_tap_to_pay_url(host: "example.com"))
+    expect(Message.where(template_key: "tap_to_pay_launch_message")).to be_empty
   end
 end
