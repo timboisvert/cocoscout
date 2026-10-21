@@ -92,6 +92,14 @@ RSpec.describe "The one Messages inbox", type: :request do
     follow_redirect!
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Open Mic lineup")
+    # Coming from My: the page says where you landed, once.
+    expect(response.body).to include("Switched to <strong class=\"text-gray-900\">Moonlight Players</strong>")
+    get manage_message_path(production_thread)
+    expect(response.body).not_to include("Switched to <strong")
+    # Already in that organization's production mode: nothing to say.
+    get open_my_message_path(production_thread)
+    follow_redirect!
+    expect(response.body).not_to include("Switched to <strong")
   end
 
   it "reads a performer thread right there in production mode, replying as Sam, not as a team" do

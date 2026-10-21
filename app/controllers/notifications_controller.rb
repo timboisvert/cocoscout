@@ -25,9 +25,15 @@ class NotificationsController < ApplicationController
   def open
     notification = Current.user.notifications.find(params[:id])
     notification.mark_read!
-    if notification.production_mode? && notification.organization && Current.user.accessible_organizations.exists?(id: notification.organization_id)
-      session[:current_organization_id] = {} unless session[:current_organization_id].is_a?(Hash)
-      session[:current_organization_id][Current.user.id.to_s] = notification.organization_id
+    if notification.production_mode? && notification.organization
+      if Current.user.accessible_organizations.exists?(id: notification.organization_id)
+        switch_organization!(notification.organization_id)
+      else
+        # Its page is in an organization this person can no longer open: its
+        # own words, or the list, rather than a page that turns them away.
+        redirect_to notification.body.present? ? notification_path(notification) : notifications_path,
+                    alert: "That was for #{notification.organization.name}, which you can't open anymore." and return
+      end
     end
     redirect_to notification.path.presence || (notification.body.present? ? notification_path(notification) : notifications_path)
   end

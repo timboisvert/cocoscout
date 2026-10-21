@@ -120,5 +120,23 @@ RSpec.describe "Notifications in My Messages", type: :request do
     expect(doc.at_css("a[href='#{open_notification_path(mine)}']")["data-switch"]).to eq("true")
     expect(doc.at_css("a[href='#{open_notification_path(mine)}']")["data-switch-title"]).to eq("Open in production mode?")
     expect(doc.at_css("a[href='#{open_notification_path(personal)}']")["data-switch"]).to eq("false")
+
+    # Opening the other organization's notice switches there and says so, once.
+    post set_organization_path(id: org.id)
+    get manage_path
+    get open_notification_path(theirs)
+    expect(response).to redirect_to("/manage/shows")
+    expect(session[:current_organization_id][user.id.to_s]).to eq(other.id)
+    follow_redirect!
+    expect(response.body).to include("Switched to <strong class=\"text-gray-900\">Moonlight Players</strong>")
+    get manage_shows_path
+    expect(response.body).not_to include("Switched to <strong")
+
+    # A notice for an organization you can no longer open goes to its own words instead.
+    OrganizationRole.where(user: user, organization: other).destroy_all
+    other.update!(owner: create(:user))
+    get open_notification_path(theirs)
+    expect(response).to redirect_to(notification_path(theirs))
+    expect(flash[:alert]).to include("Moonlight Players")
   end
 end

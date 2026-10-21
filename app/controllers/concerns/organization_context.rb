@@ -23,6 +23,20 @@ module OrganizationContext
     last_mode == "manage" && NativeAppVersion.production_mode?(request.user_agent)
   end
 
+  # An opener (a message, a notification) sending someone into an
+  # organization's production mode: the session's organization, and a word
+  # for the next page when that's a change of organization or of mode
+  # (shared/navigation/mode_switch_notice reads flash[:switched_to]).
+  def switch_organization!(organization_id)
+    user_id = Current.user.id.to_s
+    session[:current_organization_id] = {} unless session[:current_organization_id].is_a?(Hash)
+    was = session[:current_organization_id][user_id]
+    session[:current_organization_id][user_id] = organization_id
+    return if was == organization_id && last_mode == "manage"
+
+    flash[:switched_to] = Organization.find_by(id: organization_id)&.name
+  end
+
   def set_current_organization
     user_id = Current.user&.id
     if user_id && session[:current_organization_id].is_a?(Hash)

@@ -32,8 +32,7 @@ class My::MessagesController < ApplicationController
                       (thread.production_id.nil? && organization_ids.include?(thread.organization_id))
     organization_id = thread.organization_id || thread.production&.organization_id
     if production_side && organization_id && organization_ids.include?(organization_id)
-      session[:current_organization_id] = {} unless session[:current_organization_id].is_a?(Hash)
-      session[:current_organization_id][user.id.to_s] = organization_id
+      switch_organization!(organization_id)
       redirect_to manage_message_path(thread)
     elsif in_production_mode? && (set_current_organization || Current.organization)
       redirect_to manage_message_path(thread) # read it right here, in production mode's frame

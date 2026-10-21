@@ -221,7 +221,11 @@ module Manage
       return unless Current.user && request.get? && request.format.html? && request.headers["Turbo-Frame"].blank?
       return unless NativeAppVersion.production_mode?(request.user_agent)
 
-      @switched_into_production_mode = last_mode == "my" && Current.organization.present?
+      # Or an opener (a message, a notification) just switched the organization
+      # or the mode for this page: say so, once (Tim, 2026-10-21: with Don't
+      # ask again there'd be no other sign).
+      @switched_to = flash[:switched_to].presence
+      @switched_into_production_mode = Current.organization.present? && (@switched_to.present? || last_mode == "my")
     end
 
     def track_last_dashboard
