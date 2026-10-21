@@ -53,14 +53,43 @@
   <% end %>
 
   <% if sections.size > 1 || (show_single_tab && sections.any?) %>
-    <%# On a phone the sections are a menu, so none hides off the edge. %>
-    <div class="sm:hidden mb-5">
-      <select aria-label="Settings section" onchange="window.location.href = this.value"
-              class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-        <% sections.each do |section| %>
-          <option value="<%= section[:path] %>" <%= "selected" if section[:key].to_s == current.to_s %>><%= section[:label] %><%= " (Pro)" if section[:feature].present? %><%= " (#{section[:badge]})" if section[:badge].to_i.positive? %></option>
-        <% end %>
-      </select>
+    <%# On a phone the current section is a row; tapping it opens the
+        sections in a sheet (V1.1 plan §5, Section list), so none hides off
+        the edge and each is a real link. %>
+    <% current_section = sections.find { |section| section[:key].to_s == current.to_s } || sections.first %>
+    <div class="sm:hidden mb-5" data-settings-sections>
+      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="settings-sections-sheet"
+              class="w-full flex items-center justify-between gap-3 px-4 min-h-[48px] bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-900 cursor-pointer">
+        <span class="flex items-center gap-2 min-w-0">
+          <span class="text-xs text-gray-500 flex-shrink-0">Section</span>
+          <span class="truncate"><%= current_section[:label] %></span>
+          <% if current_section[:feature].present? %><%= render "shared/pro_marker" %><% end %>
+        </span>
+        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <%= render layout: "shared/sheet", locals: { id: "settings-sections-sheet", title: "Sections" } do %>
+        <div class="-mx-4 -my-5 divide-y divide-gray-100">
+          <% sections.each do |section| %>
+            <% active = section[:key].to_s == current.to_s %>
+            <%= link_to section[:path], aria: { current: active ? "page" : nil },
+                  class: "flex items-center justify-between gap-3 w-full min-h-[52px] px-5 text-[15px] hover:bg-gray-50 #{active ? 'text-pink-600 font-medium' : 'text-gray-800'}" do %>
+              <span class="flex items-center gap-2 min-w-0">
+                <span class="truncate"><%= section[:label] %></span>
+                <% if section[:feature].present? %>
+                  <%= render "shared/pro_marker" %>
+                  <% if section[:locked] %><%= render "shared/pro_marker", kind: :lock %><% end %>
+                <% end %>
+                <% if section[:badge].to_i.positive? %>
+                  <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold leading-none"><%= section[:badge] %></span>
+                <% end %>
+              </span>
+              <% if active %>
+                <svg class="w-4 h-4 text-pink-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
     </div>
     <nav class="hidden sm:flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" aria-label="Settings sections">
       <% sections.each do |section| %>
