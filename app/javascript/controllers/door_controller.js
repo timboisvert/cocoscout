@@ -400,7 +400,7 @@ export default class extends Controller {
         this.checkedInTarget.textContent = counts.checked_in
         this.soldTarget.textContent = counts.sold
         this.compedTarget.textContent = counts.comped
-        this.availableTarget.textContent = counts.available ?? "—"
+        this.availableTarget.textContent = counts.available ?? "∞"
         // Each ticket type's seats left, under its name in Sell.
         this.tierLeftTargets.forEach(el => {
             const left = counts.left?.[el.dataset.tierId]

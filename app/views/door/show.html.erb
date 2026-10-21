@@ -55,7 +55,7 @@
       seats still to sell (Tim, 2026-10-21). %>
   <div class="mt-3 grid grid-cols-4 gap-2 text-center">
     <% [ [ "checkedIn", @counts[:checked_in], "Checked in" ], [ "sold", @counts[:sold], "Sold" ],
-         [ "comped", @counts[:comped], "Comped" ], [ "available", @counts[:available] || "—", "Available" ] ].each do |target, number, words| %>
+         [ "comped", @counts[:comped], "Comped" ], [ "available", @counts[:available] || "∞", "Available" ] ].each do |target, number, words| %>
       <div class="rounded-xl border border-gray-200 bg-white py-3">
         <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="<%= target %>"><%= number %></div>
         <div class="text-xs text-gray-500"><%= words %></div>
