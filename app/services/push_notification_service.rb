@@ -46,7 +46,7 @@ class PushNotificationService
       body: body,
       data: {
         type: "new_message",
-        path: Rails.application.routes.url_helpers.my_message_path(root),
+        path: Rails.application.routes.url_helpers.open_my_message_path(root), # the opener picks the mode and organization
         thread_id: root.id.to_s,
         message_id: message.id.to_s
       },

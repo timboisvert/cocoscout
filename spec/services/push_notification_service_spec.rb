@@ -23,7 +23,7 @@ RSpec.describe PushNotificationService do
     expect(user_id).to eq(user.id)
     expect(notification).to include("title" => "Spring Revue", "body" => "Call is now 7pm, not 6")
     expect(notification).not_to have_key("subtitle")
-    expect(notification["data"]).to include("type" => "new_message", "path" => "/my/messages/#{message.id}")
+    expect(notification["data"]).to include("type" => "new_message", "path" => "/my/messages/#{message.id}/open")
   end
 
   it "falls back to the subject, and to CocoScout, for a notice with no push text or production" do

@@ -256,7 +256,7 @@ class MessageService
       # it (V1.1 plan §9).
       if notifications.any?
         Notification.where(id: notifications.map(&:id))
-                    .update_all(message_id: root_message.id, reply_path: Rails.application.routes.url_helpers.my_message_path(root_message))
+                    .update_all(message_id: root_message.id, reply_path: Rails.application.routes.url_helpers.open_my_message_path(root_message))
       end
 
       # Note: Email notifications are now handled by UnreadDigestJob

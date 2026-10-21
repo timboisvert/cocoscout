@@ -12,7 +12,7 @@ RSpec.describe "The one Messages inbox", type: :request do
   let!(:sam_person) { create(:person, name: "Sam Both", user: sam).tap { |p| sam.update!(default_person: p) } }
 
   # Starlight: Sam performs there (no role).
-  let(:starlight_owner) { create(:user) }
+  let(:starlight_owner) { create(:user).tap { |u| u.update!(default_person: create(:person, name: "Olive Owner", user: u)) } }
   let!(:starlight) { create(:organization, name: "Starlight Theater", owner: starlight_owner) }
   let!(:starlight_role) { create(:organization_role, :manager, user: starlight_owner, organization: starlight) }
   let!(:starlight_show) { create(:production, organization: starlight, name: "Cabaret Nights") }
@@ -92,6 +92,28 @@ RSpec.describe "The one Messages inbox", type: :request do
     follow_redirect!
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Open Mic lineup")
+  end
+
+  it "reads a performer thread right there in production mode, replying as Sam, not as a team" do
+    get manage_path
+    get open_my_message_path(performer_thread)
+    expect(response).to redirect_to(manage_message_path(performer_thread))
+    follow_redirect!
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Your call time Friday")
+    expect(response.body).not_to include('data-value="production_team"')
+    expect(response.body).not_to include('name="sender_identity"') # no identity choice: a reply is Sam's
+    # Replying "as the production team" from there is refused quietly: the reply is personal.
+    post reply_manage_message_path(performer_thread), params: { body: "On my way", sender_identity: "production_team" }
+    expect(Message.where(parent_message: performer_thread).last.visibility).to eq("personal")
+    # And the remembered mode is still production mode.
+    get start_path, headers: { "User-Agent" => "CocoScout/1.1 (12; nav 2) Mozilla/5.0 (iPhone) Hotwire Native iOS; Turbo Native iOS" }
+    expect(response).to redirect_to(manage_path)
+  end
+
+  it "sends pushes and a notification's Reply through the opener" do
+    expect(Rails.root.join("app/services/push_notification_service.rb").read).to include("open_my_message_path(root)")
+    expect(Rails.root.join("app/services/message_service.rb").read).to include("reply_path: Rails.application.routes.url_helpers.open_my_message_path(root_message)")
   end
 
   it "won't open a thread Sam isn't in" do

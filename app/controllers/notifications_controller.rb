@@ -16,7 +16,8 @@ class NotificationsController < ApplicationController
     scope = scope.unread if @filter == "unread"
     scope = scope.in_category(NotificationGroups::ALL.select { |g| g.area == @area }.map(&:key)) if @area
     @pagy, @notifications = pagy(scope, limit: 40)
-    @ask_before_switching = !in_production_mode? && Current.user.notification_preferences["switch_without_asking"] != true
+    @in_production_mode = in_production_mode?
+    @ask_before_switching = Current.user.notification_preferences["switch_without_asking"] != true
   end
 
   # A tap from the list or a push: it's read now, then its page. A page in

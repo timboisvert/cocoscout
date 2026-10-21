@@ -95,12 +95,12 @@
 
     <%# Comment Form (hidden by default, shown when "Add Comment" is clicked) %>
     <%
-      # Determine if sender identity selector should be shown
-      # In /manage/messages, always show the selector since we're in a production context
-      # This allows managers to choose whether to reply personally or as the production team
-      show_sender_selector = @message.production.present?
+      # The sender identity selector (reply personally or as the production
+      # team) is for a production you run; a thread you're in as a performer
+      # (the one inbox opens those here too) replies as you.
+      show_sender_selector = @message.production.present? && Current.user.can_access_production?(@message.production)
       # Default to production_team when replying in /manage - this is the most common case
-      default_sender_identity = "production_team"
+      default_sender_identity = show_sender_selector ? "production_team" : "personal"
     %>
     <div data-message-thread-target="commentForm" class="hidden mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4" data-controller="reply-sender">
       <% if show_sender_selector %>

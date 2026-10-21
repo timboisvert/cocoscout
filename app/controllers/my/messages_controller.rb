@@ -1,5 +1,6 @@
 class My::MessagesController < ApplicationController
   include MessagesInbox
+  include OrganizationContext
   before_action :require_authentication
   before_action :set_sidebar
   before_action :track_inbox_visit, only: [ :index, :show, :production ]
@@ -13,9 +14,11 @@ class My::MessagesController < ApplicationController
     @contactable_productions = productions_user_can_contact
   end
 
-  # A tap on an inbox row: a thread of a production this person runs opens in
-  # production mode for its organization (switching organization when it's
-  # another one), a thread they're in as a performer opens here on My.
+  # A tap on an inbox row, a push, or Reply on a notification: a thread of a
+  # production this person runs opens in production mode for its organization
+  # (switching organization when it's another one); a thread they're in as a
+  # performer opens in the frame they're already in, production mode's or
+  # My's, and switches nothing (Tim, 2026-10-21).
   def open
     thread = Message.root_messages.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by the inbox check below
     user = Current.user
@@ -32,6 +35,8 @@ class My::MessagesController < ApplicationController
       session[:current_organization_id] = {} unless session[:current_organization_id].is_a?(Hash)
       session[:current_organization_id][user.id.to_s] = organization_id
       redirect_to manage_message_path(thread)
+    elsif in_production_mode? && (set_current_organization || Current.organization)
+      redirect_to manage_message_path(thread) # read it right here, in production mode's frame
     else
       redirect_to my_message_path(thread)
     end

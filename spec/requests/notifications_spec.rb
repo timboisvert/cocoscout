@@ -95,4 +95,30 @@ RSpec.describe "Notifications in My Messages", type: :request do
     expect(row["href"]).to eq(notifications_path)
     expect(row.text).to include("Notifications", "1 unread")
   end
+
+  it "asks from production mode too, but only for another organization's notice" do
+    org = create(:organization, owner: user).tap { |o| create(:organization_role, :manager, user: user, organization: o) }
+    other = create(:organization, name: "Moonlight Players", owner: user)
+    create(:organization_role, :manager, user: user, organization: other)
+    mine = Notifier.deliver_rendered(user: user, category: "casting", kind: "test", subject: "Ours", body: "<p><a href=\"/manage/shows\">Ours</a></p>", organization: org)
+    theirs = Notifier.deliver_rendered(user: user, category: "casting", kind: "test", subject: "Theirs", body: "<p><a href=\"/manage/shows\">Theirs</a></p>", organization: other)
+    personal = Notifier.deliver_rendered(user: user, category: "pay", kind: "test", subject: "Pay", body: "<p><a href=\"/my/payments\">Pay</a></p>", organization: org)
+
+    post set_organization_path(id: org.id)
+    get manage_path
+    get notifications_path
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css("a[href='#{open_notification_path(mine)}']")["data-switch"]).to eq("false")
+    row = doc.at_css("a[href='#{open_notification_path(theirs)}']")
+    expect(row["data-switch"]).to eq("true")
+    expect(row["data-switch-title"]).to eq("Switch to Moonlight Players?")
+    expect(doc.at_css("a[href='#{open_notification_path(personal)}']")["data-switch"]).to eq("false")
+
+    get my_dashboard_path
+    get notifications_path
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css("a[href='#{open_notification_path(mine)}']")["data-switch"]).to eq("true")
+    expect(doc.at_css("a[href='#{open_notification_path(mine)}']")["data-switch-title"]).to eq("Open in production mode?")
+    expect(doc.at_css("a[href='#{open_notification_path(personal)}']")["data-switch"]).to eq("false")
+  end
 end

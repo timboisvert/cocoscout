@@ -431,7 +431,9 @@ module Manage
       # nil -> inherit from root message
       visibility = case params[:sender_identity]
       when "production_team"
-        "production"
+        # Only for a production this person runs; a performer thread read
+        # here (the one inbox) replies as them.
+        Current.user.can_access_production?(root_message.production) ? "production" : "personal"
       when "personal"
         "personal"
       else

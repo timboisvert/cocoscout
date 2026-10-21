@@ -43,9 +43,22 @@
               </span>
               <span class="min-w-0 flex-1">
                 <%# The title's link covers the whole row (after:inset-0); Reply sits above it. %>
+                <%
+                  # A notice whose page lives in production mode asks first from
+                  # My, or from another organization's production mode; one for
+                  # the organization already open, or a My page, just opens.
+                  other_organization = @in_production_mode && n.organization_id && n.organization_id != Current.organization&.id
+                  switching = n.production_mode? && (!@in_production_mode || other_organization)
+                  switch_words = if switching && @in_production_mode
+                    [ "Switch to #{n.organization&.name || 'that organization'}?", "This is #{n.organization&.name || 'another organization'}'s. You'll switch to that organization to open it." ]
+                  elsif switching
+                    [ "Open in production mode?", "This lives in production mode for #{n.organization&.name || 'your organization'}. You'll switch there to see it, and can exit from the account menu." ]
+                  end
+                %>
                 <a href="<%= open_notification_path(n) %>"
                    class="block text-sm leading-snug text-gray-900 after:absolute after:inset-0 <%= 'font-semibold' unless n.read? %>"
-                   data-production-mode="<%= n.production_mode? %>"
+                   data-switch="<%= switching %>"
+                   <% if switch_words %>data-switch-title="<%= switch_words[0] %>" data-switch-body="<%= switch_words[1] %>"<% end %>
                    data-organization-name="<%= n.organization&.name %>"
                    data-action="click->notification-open#open"><%= n.title %></a>
                 <span class="block text-xs text-gray-500 mt-0.5"><%= [ n.organization&.name, n.group.label ].compact.join(" · ") %></span>

@@ -369,7 +369,7 @@ RSpec.describe Message do
 
       expect {
         create(:message, sender: root.sender, parent_message: root, organization: root.organization)
-      }.to have_enqueued_job(PushDeliveryJob).with(reader.id, hash_including("data" => hash_including("path" => "/my/messages/#{root.id}"))).exactly(:once)
+      }.to have_enqueued_job(PushDeliveryJob).with(reader.id, hash_including("data" => hash_including("path" => "/my/messages/#{root.id}/open"))).exactly(:once)
     end
   end
 
