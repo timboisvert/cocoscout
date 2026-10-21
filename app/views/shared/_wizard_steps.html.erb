@@ -27,9 +27,25 @@
 <% if steps.any? %>
   <% has_group = steps.any? { |s| s[:substeps].present? } %>
   <div class="border-b border-gray-200 mb-8">
-    <%# A group dropdown must escape the bar, so don't clip when one is present.
-        Only the many-step (no-group) case scrolls horizontally. %>
-    <nav aria-label="Progress" class="w-full pt-1 pb-4 <%= has_group ? "overflow-visible" : "overflow-x-auto" %>">
+    <%# Phone (V1.1 plan §5, wizard shell): "Step 3 of 6 · Location", a bar,
+        and what's next. The circles are for sm up. %>
+    <% current = steps[current_index] || steps.first %>
+    <% following = steps[current_index + 1] %>
+    <div class="sm:hidden pb-3" data-wizard-phone-steps>
+      <div class="flex items-baseline justify-between gap-3">
+        <div class="text-sm font-semibold text-gray-900">
+          <span class="text-pink-600">Step <%= current_index + 1 %> of <%= steps.size %></span>
+          <span class="text-gray-300 mx-1">·</span><%= current[:name] %>
+        </div>
+        <% if following %>
+          <div class="text-xs text-gray-500 truncate">Next: <%= following[:name] %></div>
+        <% end %>
+      </div>
+      <div class="mt-2 h-1.5 rounded-full bg-gray-200 overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="<%= steps.size %>" aria-valuenow="<%= current_index + 1 %>">
+        <div class="h-full rounded-full bg-pink-500" style="width: <%= ((current_index + 1) * 100.0 / steps.size).round %>%"></div>
+      </div>
+    </div>
+    <nav aria-label="Progress" class="hidden sm:block w-full pt-1 pb-4 <%= has_group ? "overflow-visible" : "overflow-x-auto" %>">
       <ol class="flex items-center w-full min-w-max sm:min-w-0">
         <% steps.each_with_index do |step, i| %>
           <% is_current  = i == current_index %>
