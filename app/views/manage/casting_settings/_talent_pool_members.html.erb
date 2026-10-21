@@ -1,13 +1,17 @@
 <%# Renders the grid of talent pool members for inline display %>
 <% can_manage = current_user_can_manage?(talent_pool.production) %>
-<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full">
+<%# On a phone a tile's tap opens its actions in a sheet (V1.1 plan §4):
+    the profile, or Remove; with a mouse the tile is the profile link and
+    Remove shows on hover. %>
+<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 w-full" data-controller="tile-sheet" data-tile-sheet-id-value="talent-pool-tile-sheet">
   <% if talent_pool.members.any? %>
     <% talent_pool.members.each do |member| %>
       <div class="relative group"
            data-person-id="<%= member.id %>"
            data-member-type="<%= member.class.name %>">
         <%= link_to member.is_a?(Person) ? manage_person_path(member) : manage_group_path(member),
-                    data: { turbo_frame: "_top" },
+                    data: { turbo_frame: "_top", action: "click->tile-sheet#open", tile_name: member.name,
+                            tile_remove: can_manage, tile_person_id: member.id, tile_member_type: member.class.name },
                     class: "block" do %>
           <div class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 mb-2">
             <% if member.headshot&.attached? %>
@@ -37,7 +41,7 @@
 
         <% if can_manage %>
           <button type="button"
-                  class="absolute bottom-8 left-1 right-1 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 cursor-pointer"
+                  class="max-sm:hidden absolute bottom-8 left-1 right-1 z-20 text-pink-500 bg-white rounded-md px-2 py-1 text-xs font-bold shadow hover:bg-pink-100 transition-all border border-pink-200 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 cursor-pointer"
                   data-action="talent-pool-inline#openRemoveModal"
                   data-person-id="<%= member.id %>"
                   data-member-type="<%= member.class.name %>"
@@ -68,6 +72,16 @@
     </div>
   <% end %>
 </div>
+
+<%= render layout: "shared/sheet", locals: { id: "talent-pool-tile-sheet", title: "Talent pool" } do %>
+  <div class="-mx-4 -my-5 divide-y divide-gray-100">
+    <a href="#" data-tile-sheet-target="profileLink" class="flex items-center gap-3 w-full min-h-[52px] px-5 text-[15px] text-gray-800 hover:bg-gray-50">View profile</a>
+    <% if can_manage %>
+      <button type="button" data-tile-sheet-target="removeButton" data-action="click->modal#close talent-pool-inline#openRemoveModal"
+              class="flex items-center gap-3 w-full min-h-[52px] px-5 text-[15px] text-gray-800 hover:bg-gray-50 text-left cursor-pointer">Remove from talent pool</button>
+    <% end %>
+  </div>
+<% end %>
 
 <%# Pending Invitations Section %>
 <% pending_invitations = talent_pool.pending_invitations %>
