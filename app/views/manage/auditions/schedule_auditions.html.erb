@@ -94,20 +94,33 @@
     </div>
   <% end %>
 
+  <%# Phone: Review & notify pinned to the bottom, clear of the Coco button. %>
+  <% if @audition_sessions.any? && current_user_can_manage?(@production) %>
+    <div class="sm:hidden h-24" aria-hidden="true"></div>
+    <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-schedule-phone-bar>
+      <%= link_to "Finish without notifying", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
+            class: "text-sm text-gray-500 flex-1 min-w-0 truncate" %>
+      <%= render partial: "shared/button", locals: {
+            text: "Review & notify", variant: "primary", size: "medium", type: :button,
+            data: { action: "click->audition-notify#open" } } %>
+    </div>
+  <% end %>
+
   <%# === Assign modal === %>
   <div data-audition-assign-target="modal"
        class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
        data-action="click->audition-assign#backdropClose keydown.esc@window->audition-assign#close">
-    <div class="flex min-h-full items-start justify-center p-4 py-10">
-      <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[85vh]"
+    <div class="flex min-h-full items-start justify-center p-4 py-10 max-sm:p-0 max-sm:items-stretch">
+      <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[85vh] max-sm:max-w-none max-sm:rounded-none max-sm:max-h-none max-sm:min-h-[100dvh]"
+           data-audition-assign-sheet
            data-action="click->audition-assign#stopPropagation">
         <%# Header %>
-        <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+        <div class="flex items-start justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl max-sm:rounded-none flex-shrink-0">
           <div>
-            <h3 class="text-base font-semibold text-gray-900">Add auditionees</h3>
-            <div class="text-xs text-gray-500" data-audition-assign-target="subtitle"></div>
+            <h3 class="text-base font-semibold text-white">Add auditionees</h3>
+            <div class="text-xs text-white/80" data-audition-assign-target="subtitle"></div>
           </div>
-          <button type="button" data-action="click->audition-assign#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+          <button type="button" data-action="click->audition-assign#close" class="text-white/80 hover:text-white cursor-pointer w-11 h-11 -mr-3 -mt-2 sm:w-auto sm:h-auto sm:m-0 flex items-center justify-center">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -144,7 +157,7 @@
         </div>
 
         <%# Results — click delegated so JS-injected rows stay clickable. %>
-        <div class="px-5 py-4 overflow-y-auto flex-1" data-audition-assign-target="results"
+        <div class="px-5 py-4 overflow-y-auto flex-1 max-sm:pb-[calc(env(safe-area-inset-bottom)+16px)]" data-audition-assign-target="results"
              data-action="click->audition-assign#resultsClick">
           <%# populated by JS %>
         </div>
@@ -156,15 +169,16 @@
   <div data-audition-notify-target="modal"
        class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
        data-action="click->audition-notify#backdropClose keydown.esc@window->audition-notify#close">
-    <div class="flex min-h-full items-start justify-center p-4 py-10">
-      <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[88vh]"
+    <div class="flex min-h-full items-start justify-center p-4 py-10 max-sm:p-0 max-sm:items-stretch">
+      <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[88vh] max-sm:max-w-none max-sm:rounded-none max-sm:max-h-none max-sm:min-h-[100dvh]"
+           data-audition-notify-sheet
            data-action="click->audition-notify#stopPropagation">
-        <div class="flex items-start justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+        <div class="flex items-start justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-xl max-sm:rounded-none flex-shrink-0">
           <div>
-            <h3 class="text-base font-semibold text-gray-900">Notify auditionees</h3>
-            <div class="text-xs text-gray-500" data-audition-notify-target="summary">Reviewing who's auditioning…</div>
+            <h3 class="text-base font-semibold text-white">Notify auditionees</h3>
+            <div class="text-xs text-white/80" data-audition-notify-target="summary">Reviewing who's auditioning…</div>
           </div>
-          <button type="button" data-action="click->audition-notify#close" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+          <button type="button" data-action="click->audition-notify#close" class="text-white/80 hover:text-white cursor-pointer w-11 h-11 -mr-3 -mt-2 sm:w-auto sm:h-auto sm:m-0 flex items-center justify-center">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -224,8 +238,8 @@
             </div>
 
             <%# Footer %>
-            <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-200 flex-shrink-0">
-              <button type="button" data-action="click->audition-notify#close" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
+            <div class="flex items-center justify-between gap-3 px-5 py-3 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)] border-t border-gray-200 flex-shrink-0">
+              <button type="button" data-action="click->audition-notify#close" class="px-4 py-2 min-h-[44px] sm:min-h-0 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
               <%# Revealed only once both groups are confirmed above. %>
               <div class="hidden flex items-center gap-3" data-tabs-target="sendSection">
                 <span class="text-xs text-gray-500 hidden sm:inline">Finalizes the schedule &amp; reveals results.</span>
