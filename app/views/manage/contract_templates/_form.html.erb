@@ -64,11 +64,20 @@
       <p class="text-xs text-pink-700 mt-3">By default, the contract's booked dates, financial terms, and services are appended automatically as a "Deal Terms" schedule at the end — you don't need to write those in. To place the dates/stage/rent grid <em>inside</em> your own wording instead (e.g. a "License Period and Fees" section), drop the <code class="bg-pink-100 px-1 rounded">{{license_schedule}}</code> variable where you want it, and <code class="bg-pink-100 px-1 rounded">{{services}}</code> wherever the services being rendered should appear; using either one skips the automatic schedule.</p>
     </div>
 
-    <div>
+    <div data-controller="merge-field">
       <label for="contract_template_content" class="block text-sm font-medium text-gray-700 mb-1">
         Contract Text <span class="text-pink-500">*</span>
       </label>
-      <%= f.rich_text_area :content, class: "w-full min-h-[400px]" %>
+      <%# Insert field (V1.1 plan §5): a tap drops the placeholder where the
+          cursor is, instead of typing the braces by hand. %>
+      <div class="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-2 mb-1" data-merge-field-chips>
+        <span class="text-xs text-gray-500 flex-shrink-0">Insert field</span>
+        <% ContractTemplate::MERGE_FIELDS.each do |field, label| %>
+        <button type="button" data-action="click->merge-field#insert" data-field="<%= field %>" title="<%= label %>"
+                class="flex-shrink-0 inline-flex items-center min-h-[36px] px-3 rounded-full border border-pink-200 bg-pink-50 text-pink-700 text-xs font-medium whitespace-nowrap cursor-pointer hover:bg-pink-100">{{<%= field %>}}</button>
+        <% end %>
+      </div>
+      <%= f.rich_text_area :content, class: "w-full min-h-[400px] max-sm:min-h-[60vh]" %>
       <p class="mt-1 text-sm text-gray-500">Use the toolbar to format with headings, bold, lists, and more.</p>
     </div>
 
