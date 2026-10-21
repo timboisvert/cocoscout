@@ -231,24 +231,14 @@
           <%# Build people JSON for search (exclude already invited) %>
           <% all_people = Current.organization.people.includes(profile_headshots: { image_attachment: :blob }).sort_by(&:name) %>
           <% not_invited_people = all_people.reject { |p| invited_person_ids.include?(p.id) } %>
-          <% people_json = not_invited_people.map { |p|
-            headshot_variant = p.safe_headshot_variant(:thumb)
-            {
-              id: p.id,
-              name: p.name,
-              email: p.email,
-              initials: p.initials,
-              headshot: headshot_variant ? url_for(headshot_variant) : nil
-            }
-          }.to_json %>
 
           <% if not_invited_people.any? %>
             <%= form_with url: manage_invite_people_contacts_questionnaire_path(@questionnaire), method: :post, local: true do |form| %>
               <%= hidden_field_tag :recipient_type, "specific" %>
 
               <div class="<%= 'border-t border-gray-200 pt-5' if invited_people.any? %>">
-                <div class="mb-4" data-controller="questionnaire-person-search" data-people="<%= people_json %>">
-                  <label class="block font-semibold mb-2 text-sm">Search People to Invite</label>
+                <div class="mb-4" data-controller="questionnaire-person-search">
+                  <label class="block font-semibold mb-2 text-sm">Who to invite</label>
 
                   <%# Selected people chips %>
                   <div class="flex flex-wrap gap-2 mb-2" data-questionnaire-person-search-target="selectedList"></div>
@@ -256,20 +246,13 @@
                   <%# Hidden fields container %>
                   <div data-questionnaire-person-search-target="hiddenFields"></div>
 
-                  <%# Search input %>
-                  <div class="relative">
-                    <input type="text"
-                      placeholder="Type a name or email..."
-                      autocomplete="off"
-                      class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-pink-500 focus:ring-pink-500 text-sm"
-                      data-questionnaire-person-search-target="input"
-                      data-action="input->questionnaire-person-search#search">
-
-                    <%# Dropdown results %>
-                    <div class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto"
-                      data-questionnaire-person-search-target="dropdown">
-                    </div>
-                  </div>
+                  <%# The shared People Picker (V1.1 plan §5), picking several. %>
+                  <%= render "shared/button", text: "Choose people", variant: "secondary", size: "small", type: :button, icon: "plus",
+                        data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
+                                "people-picker-trigger-id-value": "questionnaire-picker", "people-picker-trigger-title-value": "Who to invite" } %>
+                  <%= render "shared/people_picker", id: "questionnaire-picker", title: "Who to invite", scope: "people", multi: true,
+                        exclude: invited_people.map(&:id), hint: "Tap everyone to invite; the sheet stays open",
+                        pick_action: "people-picker:pick->questionnaire-person-search#picked" %>
                 </div>
 
                 <div class="mb-4">

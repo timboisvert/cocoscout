@@ -1,65 +1,23 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["input", "dropdown", "selectedList", "hiddenFields"]
+    static targets = ["selectedList", "hiddenFields"]
 
     connect() {
-        this.people = JSON.parse(this.element.dataset.people || "[]")
         this.selectedIds = new Set()
-        this.clickOutside = this.closeDropdown.bind(this)
-        document.addEventListener("click", this.clickOutside)
     }
 
-    disconnect() {
-        document.removeEventListener("click", this.clickOutside)
+    // people-picker:pick from the shared People Picker ("questionnaire-picker"):
+    // each tap adds a chip and a person_ids[] field for the invitation form.
+    picked(event) {
+        const pick = event.detail
+        if (pick.picker !== "questionnaire-picker" || pick.type !== "Person") return
+        this.add(pick.id, pick.name, pick.initials, pick.headshotUrl || "")
     }
 
-    search() {
-        const query = this.inputTarget.value.trim().toLowerCase()
-        if (query.length < 1) {
-            this.dropdownTarget.classList.add("hidden")
-            this.dropdownTarget.innerHTML = ""
-            return
-        }
 
-        const matches = this.people
-            .filter(p => !this.selectedIds.has(p.id) && (
-                p.name.toLowerCase().includes(query) ||
-                (p.email && p.email.toLowerCase().includes(query))
-            ))
-            .slice(0, 10)
-
-        if (matches.length === 0) {
-            this.dropdownTarget.innerHTML = `<div class="px-3 py-2 text-sm text-gray-500">No matches</div>`
-        } else {
-            this.dropdownTarget.innerHTML = matches.map(p => `
-        <button type="button"
-          class="w-full text-left px-3 py-2 hover:bg-pink-50 flex items-center gap-3 cursor-pointer"
-          data-action="click->questionnaire-person-search#select"
-          data-person-id="${p.id}"
-          data-person-name="${this.escapeHtml(p.name)}"
-          data-person-email="${this.escapeHtml(p.email || "")}"
-          data-person-initials="${this.escapeHtml(p.initials)}"
-          data-person-headshot="${this.escapeHtml(p.headshot || "")}">
-          ${this.avatarHtml(p)}
-          <div class="min-w-0">
-            <div class="text-sm font-medium text-gray-900 truncate">${this.escapeHtml(p.name)}</div>
-            ${p.email ? `<div class="text-xs text-gray-500 truncate">${this.escapeHtml(p.email)}</div>` : ""}
-          </div>
-        </button>
-      `).join("")
-        }
-
-        this.dropdownTarget.classList.remove("hidden")
-    }
-
-    select(event) {
-        const btn = event.currentTarget
-        const id = parseInt(btn.dataset.personId)
-        const name = btn.dataset.personName
-        const initials = btn.dataset.personInitials
-        const headshot = btn.dataset.personHeadshot
-
+    add(id, name, initials, headshot) {
+        id = parseInt(id)
         if (this.selectedIds.has(id)) return
         this.selectedIds.add(id)
 
@@ -85,11 +43,6 @@ export default class extends Controller {
         hidden.value = id
         hidden.dataset.personId = id
         this.hiddenFieldsTarget.appendChild(hidden)
-
-        // Clear and close
-        this.inputTarget.value = ""
-        this.dropdownTarget.classList.add("hidden")
-        this.inputTarget.focus()
     }
 
     remove(event) {
@@ -105,18 +58,7 @@ export default class extends Controller {
         if (hidden) hidden.remove()
     }
 
-    closeDropdown(event) {
-        if (!this.element.contains(event.target)) {
-            this.dropdownTarget.classList.add("hidden")
-        }
-    }
 
-    avatarHtml(person) {
-        if (person.headshot) {
-            return `<img src="${this.escapeHtml(person.headshot)}" alt="${this.escapeHtml(person.name)}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">`
-        }
-        return `<div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">${this.escapeHtml(person.initials)}</div>`
-    }
 
     chipAvatarHtml(initials, headshot, name) {
         if (headshot) {

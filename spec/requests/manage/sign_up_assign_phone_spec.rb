@@ -4,7 +4,7 @@ require "rails_helper"
 
 # V1.1 plan Phase 2, sign-up assign on a phone: tap someone in the queue,
 # then pick their slot from a sheet (drag stays for a mouse); the queue
-# comes first; Auto-assign All pins to the bottom; Add to Queue is a sheet.
+# comes first; Auto-assign All pins to the bottom; Add to Queue is the shared People Picker.
 RSpec.describe "Sign-up assign on a phone", type: :request do
   let(:password) { "Password123!" }
   let(:manager) { create(:user, password: password) }
@@ -60,6 +60,6 @@ RSpec.describe "Sign-up assign on a phone", type: :request do
     bar = doc.at_css("[data-assign-phone-bar]")
     expect(bar.text).to include("1 person waiting", "Auto-assign All")
     expect(bar.at_css("a, button")["href"] || bar.at_css("form")["action"]).to include("auto_assign_queue")
-    expect(doc.at_css("[data-add-queue-sheet]")["class"]).to include("max-sm:rounded-b-none")
+    expect(doc.at_css("[data-people-picker='sign-up-picker'] [data-sheet]")).to be_present # the shared People Picker
   end
 end

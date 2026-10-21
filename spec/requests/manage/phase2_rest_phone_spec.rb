@@ -87,7 +87,7 @@ RSpec.describe "Phase 2 pages on a phone", type: :request do
       sheet = doc.at_css("#talent-pool-tile-sheet")
       expect(sheet.at_css("[data-tile-sheet-target='profileLink']")).to be_present
       expect(sheet.at_css("[data-tile-sheet-target='removeButton']")["data-action"]).to eq("click->modal#close talent-pool-inline#openRemoveModal")
-      expect(doc.at_css("[data-talent-pool-add-sheet]")["class"]).to include("max-sm:rounded-t-2xl")
+      expect(doc.at_css("[data-people-picker='talent-pool-picker']")).to be_present # Add is the shared People Picker
       expect(doc.at_css("[data-talent-pool-remove-sheet]")["class"]).to include("max-sm:rounded-t-2xl")
     end
   end

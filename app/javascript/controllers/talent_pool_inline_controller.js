@@ -5,15 +5,9 @@ import { confirmDialog } from "controllers/lib/confirm_dialog"
 export default class extends Controller {
   static targets = [
     "membersList",
-    "addModal",
     "removeModal",
-    "searchInput",
-    "searchResults",
     "removePersonName",
-    "removeWarning",
-    "inviteName",
-    "inviteEmail",
-    "inviteForm"
+    "removeWarning"
   ]
 
   static values = {
@@ -32,184 +26,61 @@ export default class extends Controller {
     this.pendingRemoval = null
   }
 
-  // Add Modal
+  // Add: the shared People Picker (shared/_people_picker, "talent-pool-picker").
   openAddModal(event) {
     event.preventDefault()
-    this.addModalTarget.classList.remove("hidden")
-    this.searchInputTarget.focus()
-    this.searchResultsTarget.innerHTML = ""
+    window.dispatchEvent(new CustomEvent("people-picker:open", { detail: { id: "talent-pool-picker" } }))
   }
 
   closeAddModal(event) {
     if (event) event.preventDefault()
-    this.addModalTarget.classList.add("hidden")
-    this.searchInputTarget.value = ""
-    this.searchResultsTarget.innerHTML = ""
+    document.getElementById("talent-pool-picker")?.classList.add("hidden")
+  }
+
+  // people-picker:pick: a person or group here, someone on CocoScout outside
+  // the organization, or an email to invite.
+  async picked(event) {
+    const pick = event.detail
+    if (pick.picker !== "talent-pool-picker") return
+    if (pick.invite) return this.post(this.inviteToPoolUrlValue, { name: pick.name, email: pick.email }, "Invitation sent")
+    if (pick.type === "Group") return this.post(this.addGroupUrlValue, { group_id: pick.id }, "Added to talent pool")
+    if (pick.outside) return this.post(this.addGlobalPersonUrlValue, { person_id: pick.id }, `${pick.name} added to organization and talent pool`)
+    return this.post(this.addPersonUrlValue, { person_id: pick.id }, "Added to talent pool")
+  }
+
+  async post(url, body, notice) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/html",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: JSON.stringify(body)
+      })
+      const data = response.headers.get("content-type")?.includes("json") ? await response.json() : {}
+      if (response.ok && data.success !== false) {
+        await this.refreshMembersList()
+        this.closeAddModal()
+        this.showNotice(data.message || notice)
+      } else {
+        this.showError(data.error || "Couldn't add them. Please try again.")
+      }
+    } catch (error) {
+      console.error(error)
+      this.showError("Couldn't add them. Please try again.")
+    }
   }
 
   stopPropagation(event) {
     event.stopPropagation()
   }
 
-  async search(event) {
-    const query = event.target.value.trim()
 
-    if (query.length < 2) {
-      this.searchResultsTarget.innerHTML = '<p class="text-gray-500 text-sm p-4">Type at least 2 characters to search...</p>'
-      return
-    }
 
-    this.searchResultsTarget.innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500"></div></div>'
 
-    try {
-      const response = await fetch(`${this.searchUrlValue}?query=${encodeURIComponent(query)}`, {
-        headers: {
-          "Accept": "text/html",
-          "X-Requested-With": "XMLHttpRequest"
-        }
-      })
-
-      if (response.ok) {
-        const html = await response.text()
-        this.searchResultsTarget.innerHTML = html
-      } else {
-        this.searchResultsTarget.innerHTML = '<p class="text-red-500 text-sm p-4">Error searching. Please try again.</p>'
-      }
-    } catch (error) {
-      console.error("Search error:", error)
-      this.searchResultsTarget.innerHTML = '<p class="text-red-500 text-sm p-4">Error searching. Please try again.</p>'
-    }
-  }
-
-  async addMember(event) {
-    event.preventDefault()
-    const button = event.currentTarget
-    const memberId = button.dataset.memberId
-    const memberType = button.dataset.memberType
-
-    button.disabled = true
-    button.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>'
-
-    const url = memberType === "Group" ? this.addGroupUrlValue : this.addPersonUrlValue
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "text/html",
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        body: JSON.stringify(memberType === "Group" ? { group_id: memberId } : { person_id: memberId })
-      })
-
-      if (response.ok) {
-        await this.refreshMembersList()
-        this.closeAddModal()
-        this.showNotice("Added to talent pool")
-      } else {
-        button.disabled = false
-        button.textContent = "Add"
-        this.showError("Failed to add member. Please try again.")
-      }
-    } catch (error) {
-      console.error("Add member error:", error)
-      button.disabled = false
-      button.textContent = "Add"
-      this.showError("Failed to add member. Please try again.")
-    }
-  }
-
-  // Add a global person (from CocoScout but not in org)
-  async addGlobalPerson(event) {
-    event.preventDefault()
-    const button = event.currentTarget
-    const personId = button.dataset.personId
-    const personName = button.dataset.personName
-
-    button.disabled = true
-    button.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>'
-
-    try {
-      const response = await fetch(this.addGlobalPersonUrlValue, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        body: JSON.stringify({ person_id: personId })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        await this.refreshMembersList()
-        this.closeAddModal()
-        this.showNotice(data.message || `${personName} added to organization and talent pool`)
-      } else {
-        button.disabled = false
-        button.textContent = "Add to Org & Pool"
-        this.showError("Failed to add person. Please try again.")
-      }
-    } catch (error) {
-      console.error("Add global person error:", error)
-      button.disabled = false
-      button.textContent = "Add to Org & Pool"
-      this.showError("Failed to add person. Please try again.")
-    }
-  }
-
-  // Invite a new person to the talent pool
-  async invitePerson(event) {
-    event.preventDefault()
-    const button = event.currentTarget
-
-    const nameInput = this.searchResultsTarget.querySelector('[data-talent-pool-inline-target="inviteName"]')
-    const emailInput = this.searchResultsTarget.querySelector('[data-talent-pool-inline-target="inviteEmail"]')
-
-    const name = nameInput?.value?.trim()
-    const email = emailInput?.value?.trim()
-
-    if (!name || !email) {
-      this.showError("Please enter both name and email")
-      return
-    }
-
-    button.disabled = true
-    button.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white inline-block mr-2"></div>Sending...'
-
-    try {
-      const response = await fetch(this.inviteToPoolUrlValue, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        body: JSON.stringify({ name, email })
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        await this.refreshMembersList()
-        this.closeAddModal()
-        this.showNotice(data.message)
-      } else {
-        button.disabled = false
-        button.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Send Invitation`
-        this.showError(data.error || "Failed to send invitation. Please try again.")
-      }
-    } catch (error) {
-      console.error("Invite person error:", error)
-      button.disabled = false
-      button.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Send Invitation`
-      this.showError("Failed to send invitation. Please try again.")
-    }
-  }
 
   // Revoke a pending invitation
   async revokeInvitation(event) {

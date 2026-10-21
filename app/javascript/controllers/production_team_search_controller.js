@@ -2,42 +2,28 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = [
-        "input", "results", "searchSection",
+        "searchSection",
         "selectedUser", "selectedUserName", "selectedUserEmail",
         "userIdInput", "emailInput",
         "roleSection", "inviteSection"
     ]
     static values = { url: String, formUrl: String }
 
-    connect() {
-        this.timeout = null
-    }
-
-    search() {
-        clearTimeout(this.timeout)
-        this.timeout = setTimeout(() => {
-            this.performSearch()
-        }, 250)
-    }
-
-    performSearch() {
-        const query = this.inputTarget.value.trim()
-        if (query.length === 0) {
-            this.resultsTarget.innerHTML = ""
-            return
-        }
-        const url = `${this.urlValue}?q=${encodeURIComponent(query)}`
-        fetch(url)
-            .then(r => r.text())
-            .then(html => {
-                this.resultsTarget.innerHTML = html
-            })
+    // people-picker:pick from the shared People Picker ("team-picker"): a
+    // person with an account, or an email to invite.
+    picked(event) {
+        const pick = event.detail
+        if (pick.picker !== "team-picker") return
+        if (pick.invite) return this.showInvite(pick.email)
+        if (!pick.userId) return
+        this.select(pick.userId, pick.name, pick.email || "")
     }
 
     selectUser(event) {
-        const userId = event.currentTarget.dataset.userId
-        const userName = event.currentTarget.dataset.userName
-        const userEmail = event.currentTarget.dataset.userEmail
+        this.select(event.currentTarget.dataset.userId, event.currentTarget.dataset.userName, event.currentTarget.dataset.userEmail)
+    }
+
+    select(userId, userName, userEmail) {
 
         // Hide search, show selected user + role selection
         this.searchSectionTarget.classList.add("hidden")
@@ -54,7 +40,10 @@ export default class extends Controller {
     }
 
     showInviteForm(event) {
-        const email = event.currentTarget.dataset.email || ""
+        this.showInvite(event.currentTarget.dataset.email || "")
+    }
+
+    showInvite(email) {
 
         // Hide search, show invite form + role selection
         this.searchSectionTarget.classList.add("hidden")
@@ -77,13 +66,9 @@ export default class extends Controller {
         this.userIdInputTarget.value = ""
         this.emailInputTarget.value = ""
 
-        // Focus search input
-        this.inputTarget.focus()
     }
 
     reset() {
-        this.inputTarget.value = ""
-        this.resultsTarget.innerHTML = ""
         this.userIdInputTarget.value = ""
         this.emailInputTarget.value = ""
         this.searchSectionTarget.classList.remove("hidden")

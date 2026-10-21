@@ -2,9 +2,9 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member search_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member search_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member search_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_services]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_services]
     # Performer pay and agreements are Pro, and Pro is the organization's
     # managers' — a production's own manager (a producer) doesn't get them.
     # Archiving is the organization's call too: a production's own producer can't shelve it.
@@ -237,45 +237,6 @@ module Manage
     end
 
     # Production Team Management Actions
-    def search_team_member
-      q = params[:q].to_s.strip
-
-      if q.blank? || q.length < 2
-        render partial: "manage/productions/team_search_results",
-               locals: { already_on_production: [], org_users: [], global_users: [], query: q, show_invite: false, production: @production }
-        return
-      end
-
-      # IDs of users already on this production
-      existing_user_ids = @production.production_permissions.pluck(:user_id)
-
-      # Search users in the organization (not already on production)
-      org_user_ids = Current.organization.organization_roles.pluck(:user_id)
-      org_users = User.where(id: org_user_ids).where.not(id: existing_user_ids)
-        .joins("LEFT JOIN people ON people.user_id = users.id AND people.archived_at IS NULL")
-        .where("LOWER(users.email_address) LIKE LOWER(:q) OR LOWER(people.name) LIKE LOWER(:q)", q: "%#{q}%")
-        .distinct.includes(:default_person, :people).limit(10).to_a
-
-      # Users already on this production (show as already added)
-      already_on_production = User.where(id: existing_user_ids)
-        .joins("LEFT JOIN people ON people.user_id = users.id AND people.archived_at IS NULL")
-        .where("LOWER(users.email_address) LIKE LOWER(:q) OR LOWER(people.name) LIKE LOWER(:q)", q: "%#{q}%")
-        .distinct.includes(:default_person, :people).limit(5).to_a
-
-      # Search globally on CocoScout (not in org, not already on production):
-      # by name or exact email, never part of an email (PersonSearch).
-      global_users = PersonSearch.outside_users(q, User.where.not(id: org_user_ids + existing_user_ids)
-        .joins("LEFT JOIN people ON people.user_id = users.id AND people.archived_at IS NULL"))
-        .distinct.includes(:default_person, :people).limit(10).to_a
-
-      # Show invite option if query is an email and no exact match found
-      all_results = org_users + already_on_production + global_users
-      show_invite = q.include?("@") && all_results.none? { |u| u.email_address&.downcase == q.downcase }
-
-      render partial: "manage/productions/team_search_results",
-             locals: { already_on_production: already_on_production, org_users: org_users, global_users: global_users, query: q, show_invite: show_invite, production: @production }
-    end
-
     # Adds someone to the production team (ProductionTeamAdder): a CocoScout
     # user picked from the search, or an email, invited when nobody has it.
     def add_team_member
