@@ -6,7 +6,7 @@ import { Controller } from "@hotwired/stimulus"
 // people-picker:pick on its element for each tap, with the context the
 // opener passed, so the page does what it always did with the pick.
 export default class extends Controller {
-    static targets = ["input", "results", "spinner", "inviteName"]
+    static targets = ["input", "results", "spinner", "inviteName", "guestName", "guestEmail"]
     static values = { id: String, url: String, params: Object, multi: Boolean }
 
     connect() {
@@ -26,7 +26,13 @@ export default class extends Controller {
         this.inputTarget.value = ""
         this.resultsTarget.innerHTML = '<p class="text-sm text-gray-400 text-center py-6">Type a name to find someone.</p>'
         this.sheet()?.classList.remove("hidden")
-        setTimeout(() => this.inputTarget.focus(), 50)
+        if (this.listsFirst()) this.fetchResults("")
+        else setTimeout(() => this.inputTarget.focus(), 50)
+    }
+
+    // A casting page shows the talent pool before anything is typed.
+    listsFirst() {
+        return this.paramsValue.list === "pool" || this.extraParams.list === "pool"
     }
 
     close() {
@@ -36,11 +42,11 @@ export default class extends Controller {
     search() {
         clearTimeout(this.timer)
         const q = this.inputTarget.value.trim()
-        if (q.length < 2) {
+        if (q.length < 2 && !this.listsFirst()) {
             this.resultsTarget.innerHTML = '<p class="text-sm text-gray-400 text-center py-6">Type a name to find someone.</p>'
             return
         }
-        this.timer = setTimeout(() => this.fetchResults(q), 250)
+        this.timer = setTimeout(() => this.fetchResults(q.length < 2 ? "" : q), 250)
     }
 
     async fetchResults(q) {
@@ -54,7 +60,8 @@ export default class extends Controller {
         try {
             const response = await fetch(url, { headers: { Accept: "text/html", "X-Requested-With": "XMLHttpRequest" } })
             if (!response.ok) throw new Error(`Search failed: ${response.status}`)
-            if (this.inputTarget.value.trim() !== q) return
+            const typed = this.inputTarget.value.trim()
+            if ((typed.length < 2 ? "" : typed) !== q) return
             this.resultsTarget.innerHTML = await response.text()
             this.markPicked()
         } catch (error) {
@@ -86,6 +93,18 @@ export default class extends Controller {
             return
         }
         this.announce({ invite: true, email, name })
+        this.close()
+    }
+
+    // A guest by name (and email), for pages that take one.
+    guest() {
+        const name = this.hasGuestNameTarget ? this.guestNameTarget.value.trim() : ""
+        const email = this.hasGuestEmailTarget ? this.guestEmailTarget.value.trim() : ""
+        if (!name) {
+            this.guestNameTarget?.focus()
+            return
+        }
+        this.announce({ guest: true, name, email })
         this.close()
     }
 

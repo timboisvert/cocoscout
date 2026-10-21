@@ -78,16 +78,27 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(sheet.at_css("[data-move-act-sheet]")["data-drop-role-target"]).to eq("moveList")
     end
 
-    it "keeps them pickable in the phone's assign sheet, and pins the count and Notify to the bottom (V1.1 plan §4, §6)" do
+    it "keeps them pickable in the phone's picker, and pins the count and Notify to the bottom (V1.1 plan §4, §6)" do
       create(:talent_pool_membership, talent_pool: production.talent_pool, member: performer)
       magic_copies = show.custom_roles.where(name: "Magic").order(:position)
       create(:show_person_role_assignment, show: show, role: magic_copies.first, assignable: performer)
 
       get manage_casting_show_cast_path(production, show)
       doc = Nokogiri::HTML(response.body)
-      pick = doc.at_css(%([data-action="click->drop-role#assignFromModal"][data-assignable-id="#{performer.id}"]))
-      expect(pick["disabled"]).to be_nil
-      expect(pick.text).to include("Already in this show")
+      # The phone assigns through the shared People Picker, listing the pool
+      # first; on an act-based night someone in the show stays pickable.
+      picker = doc.at_css("[data-people-picker='cast-picker']")
+      params = JSON.parse(picker["data-people-picker-params-value"])
+      expect(params).to include("list" => "pool", "show_id" => show.id, "in_show" => "badge", "guest" => "1", "scope" => "members")
+      expect(picker["data-action"]).to include("people-picker:pick->drop-role#picked")
+
+      get manage_people_picker_search_path(params), headers: { "X-Requested-With" => "XMLHttpRequest" }
+      row = Nokogiri::HTML(response.body).at_css("[data-people-picker-row='Person_#{performer.id}']")
+      expect(row["disabled"]).to be_nil
+      expect(row.text).to include("Already in this show")
+
+      get manage_casting_show_cast_path(production, show)
+      doc = Nokogiri::HTML(response.body)
       bar = doc.at_css("[data-casting-phone-bar]")
       expect(bar["class"]).to include("md:hidden", "fixed", "bottom-0")
       expect(bar.at_css("#progress-fraction").text).to match(%r{\A1/\d+ \w+ cast\z})

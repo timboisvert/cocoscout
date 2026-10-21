@@ -90,3 +90,88 @@ RSpec.describe "Manage::PeoplePicker", type: :request do
     expect(response).to redirect_to(manage_path)
   end
 end
+
+# Casting's needs (V1.1 plan §5): the pool before a search, availability
+# over a linked event's dates, who's in the show, a restricted role's
+# approvals, and a guest by name.
+RSpec.describe "Manage::PeoplePicker for casting", type: :request do
+  let(:password) { "Password123!" }
+  let(:owner) { create(:user, password: password) }
+  let!(:org) { create(:organization, :pro, owner: owner) }
+  let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let!(:production) { create(:production, organization: org) }
+  let!(:show) { create(:show, production: production, date_and_time: 1.week.from_now) }
+  let!(:role) { create(:role, production: production, name: "Host") }
+  let(:abby) { create(:person, name: "Avail Abby").tap { |p| org.people << p } }
+  let(:ned) { create(:person, name: "Ned Nope").tap { |p| org.people << p } }
+  let(:quinn) { create(:person, name: "Quiet Quinn").tap { |p| org.people << p } }
+  let(:group) { create(:group, name: "The Ensemble") }
+
+  before do
+    [ abby, ned, quinn, group ].each { |m| create(:talent_pool_membership, talent_pool: production.talent_pool, member: m) }
+    ShowAvailability.create!(show: show, available_entity: abby, status: :available)
+    ShowAvailability.create!(show: show, available_entity: ned, status: :unavailable)
+    post handle_signin_path, params: { email_address: owner.email_address, password: password }
+  end
+
+  def search(params)
+    get manage_people_picker_search_path(params), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    expect(response).to have_http_status(:ok)
+    Nokogiri::HTML(response.body)
+  end
+
+  def keys(doc)
+    doc.css("[data-people-picker-row]").map { |r| r["data-people-picker-row"] }
+  end
+
+  it "lists the talent pool before a search, available first, then no answer, then unavailable" do
+    doc = search(list: "pool", scope: "members", production_id: production.id, show_id: show.id)
+    expect(doc.text).to include("In the talent pool")
+    expect(keys(doc)).to eq([ "Person_#{abby.id}", "Person_#{quinn.id}", "Person_#{ned.id}", "Group_#{group.id}" ])
+    expect(doc.at_css("[data-people-picker-row='Person_#{abby.id}']").text).to include("Available")
+    expect(doc.at_css("[data-people-picker-row='Person_#{ned.id}']").text).to include("Unavailable")
+  end
+
+  it "says who's in the show already: not pickable, or a badge on an act-based night" do
+    show.show_person_role_assignments.create!(role: show.available_roles.first, assignable: abby)
+    doc = search(list: "pool", production_id: production.id, show_id: show.id)
+    row = doc.at_css("[data-people-picker-row='Person_#{abby.id}']")
+    expect(row["disabled"]).to be_present
+    expect(row.at_css("[data-people-picker-taken]").text).to eq("Already in this show")
+
+    doc = search(list: "pool", production_id: production.id, show_id: show.id, in_show: "badge")
+    row = doc.at_css("[data-people-picker-row='Person_#{abby.id}']")
+    expect(row["disabled"]).to be_nil
+    expect(row.text).to include("Already in this show")
+  end
+
+  it "marks who a restricted role hasn't approved, and says so in the pick" do
+    show_role = show.available_roles.first
+    show_role.role_eligibilities.build(member: abby)
+    show_role.update!(restricted: true)
+    doc = search(list: "pool", production_id: production.id, show_id: show.id, role_id: show_role.id)
+    expect(doc.at_css("[data-people-picker-row='Person_#{abby.id}']").text).not_to include("Not approved")
+    ned_row = doc.at_css("[data-people-picker-row='Person_#{ned.id}']")
+    expect(ned_row.text).to include("Not approved for this role")
+    expect(JSON.parse(ned_row["data-pick"])["eligible"]).to be(false)
+    expect(JSON.parse(doc.at_css("[data-people-picker-row='Person_#{abby.id}']")["data-pick"])["eligible"]).to be(true)
+  end
+
+  it "counts a linked event's dates in the availability badge" do
+    linked = create(:show, production: production, date_and_time: 8.days.from_now)
+    linkage = EventLinkage.create!(production: production)
+    [ show, linked ].each { |s| s.update!(event_linkage: linkage) }
+    doc = search(list: "pool", production_id: production.id, show_id: show.id)
+    expect(doc.at_css("[data-people-picker-row='Person_#{abby.id}']").text).to include("Available 1 of 2 dates")
+  end
+
+  it "offers a guest by name when searching, with the invited and excluded marked" do
+    doc = search(q: "zz", production_id: production.id, guest: "1")
+    expect(doc.at_css("[data-people-picker-guest] [data-people-picker-target='guestName']")["value"]).to eq("zz")
+    expect(doc.at_css("[data-people-picker-guest] button")["data-action"]).to eq("click->people-picker#guest")
+
+    doc = search(list: "pool", scope: "members", production_id: production.id, invited: [ abby.id ], exclude: [ "Group_#{group.id}" ], exclude_label: "Can't make it")
+    expect(doc.at_css("[data-people-picker-row='Person_#{abby.id}'] [data-people-picker-taken]").text).to eq("Already invited")
+    expect(doc.at_css("[data-people-picker-row='Group_#{group.id}'] [data-people-picker-taken]").text).to eq("Can't make it")
+  end
+end

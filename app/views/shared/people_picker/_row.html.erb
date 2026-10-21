@@ -1,6 +1,7 @@
 <%# One person or group the People Picker found. Locals: member, query,
     connected (the organization's own: their email shows), taken (a label
-    when they can't be picked), badge, badge_tone ("pink" or "gray"). %>
+    when they can't be picked), badges (labels), eligible (false when a
+    restricted role hasn't approved them). %>
 <%
   person = member.is_a?(Person)
   headshot = member.respond_to?(:safe_headshot_variant) ? member.safe_headshot_variant(:thumb) : nil
@@ -9,9 +10,15 @@
     type: member.class.name, id: member.id, name: member.name, initials: member.initials,
     email: (person ? searched_email(member.email, query, connected: connected) : nil),
     headshotUrl: (headshot ? url_for(headshot) : nil), userId: (person ? member.user_id : nil),
-    outside: !connected, inPool: badge == "In the talent pool"
+    outside: !connected, inPool: Array(badges).include?("In the talent pool"), eligible: eligible != false
   }
-  tone = badge_tone == "gray" ? "bg-gray-100 text-gray-600" : "bg-pink-50 text-pink-700"
+  tone = ->(badge) do
+    case badge
+    when /\AAvailable/ then "bg-green-50 text-green-700"
+    when "Unavailable", "Not approved for this role" then "bg-gray-100 text-gray-600"
+    else "bg-pink-50 text-pink-700"
+    end
+  end
 %>
 <%= tag.button type: "button", disabled: taken.present?,
       class: "w-full flex items-center gap-3 px-3 min-h-[56px] py-2 text-left #{taken ? 'opacity-60 cursor-default bg-gray-50' : 'cursor-pointer hover:bg-pink-50'}",
@@ -27,8 +34,12 @@
   </span>
   <% if taken %>
     <span class="text-xs text-gray-500 flex-shrink-0" data-people-picker-taken><%= taken %></span>
-  <% elsif badge %>
-    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium flex-shrink-0 <%= tone %>"><%= badge %></span>
+  <% elsif Array(badges).any? %>
+    <span class="flex flex-col items-end gap-1 flex-shrink-0">
+      <% Array(badges).each do |badge| %>
+        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium <%= tone.call(badge) %>"><%= badge %></span>
+      <% end %>
+    </span>
   <% end %>
   <% unless taken %>
     <svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>

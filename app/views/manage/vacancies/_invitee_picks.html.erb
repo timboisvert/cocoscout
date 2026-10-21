@@ -1,0 +1,28 @@
+<%# Who to invite to a vacancy (V1.1 plan §5): chips of the people chosen
+    through the shared People Picker, which lists the talent pool available
+    first, says who's cast, invited or can't make it, and marks who a
+    restricted role hasn't approved. Locals: quick ([{ key, name, initials,
+    headshotUrl }] for "Add all"), quick_label. %>
+<%
+  vacated_key = ("#{@vacated_by_type}_#{@vacated_by_id}" if @vacated_by_type && @vacated_by_id)
+  quick = local_assigns.fetch(:quick, [])
+%>
+<div data-controller="invite-picks" data-vacancy-invitees>
+  <div class="flex flex-wrap items-center gap-2 mb-2">
+    <%= render "shared/button", text: "Choose people", variant: "primary", size: "small", type: :button, icon: "plus",
+          data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
+                  "people-picker-trigger-id-value": "vacancy-picker", "people-picker-trigger-title-value": "Who to invite" } %>
+    <% if quick.any? %>
+      <%= render "shared/button", text: local_assigns[:quick_label] || "Add everyone available", variant: "secondary", size: "small", type: :button,
+            data: { action: "click->invite-picks#addAll", members: quick.to_json } %>
+    <% end %>
+    <span class="text-xs text-gray-500" data-invite-picks-target="count">Nobody chosen yet</span>
+  </div>
+  <div class="flex flex-wrap gap-2 min-h-[2rem]" data-invite-picks-target="chips"></div>
+  <div data-invite-picks-target="fields"></div>
+  <%= render "shared/people_picker", id: "vacancy-picker", title: "Who to invite", scope: "members", multi: true, list: "pool",
+        production_id: @production.id, show_id: @vacancy.show_id, role_id: (@vacancy.role_id if @vacancy.restricted?),
+        in_show: "taken", invited: @already_invited_person_ids, exclude: [ vacated_key ].compact, exclude_label: "Can't make it",
+        hint: "Tap everyone to invite; the sheet stays open",
+        pick_action: "people-picker:pick->invite-picks#picked" %>
+</div>

@@ -18,7 +18,8 @@
     pick_action   the page's listener, e.g. "people-picker:pick->roster#picked"
     scope         "people" (default), "users" or "members"
     production_id, show_id, talent_pool_id, exclude, outside, invite,
-    invite_name   as Manage::PeoplePickerController#search reads them
+    invite_name, guest, list, role_id, in_show, invited, exclude_label
+                  as Manage::PeoplePickerController#search reads them
     multi         true keeps the sheet open after a pick, marking the row
     placeholder   the search box's words
     hint          a line under the box, e.g. "Someone in your organization"
@@ -33,7 +34,13 @@
     exclude: local_assigns[:exclude],
     outside: (local_assigns[:outside] ? "1" : nil),
     invite: (local_assigns[:invite] ? "1" : nil),
-    invite_name: (local_assigns[:invite_name] ? "1" : nil)
+    invite_name: (local_assigns[:invite_name] ? "1" : nil),
+    guest: (local_assigns[:guest] ? "1" : nil),
+    list: local_assigns[:list],
+    role_id: local_assigns[:role_id],
+    in_show: local_assigns[:in_show],
+    invited: local_assigns[:invited],
+    exclude_label: local_assigns[:exclude_label]
   }.compact
 %>
 <div data-controller="people-picker"

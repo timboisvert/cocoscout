@@ -102,56 +102,43 @@ export default class extends Controller {
         return this.element.dataset.productionId;
     }
 
-    // Open the assign modal for mobile
+    // Phone: an empty slot opens the shared People Picker ("cast-picker",
+    // shared/_people_picker) for its act or role.
     openAssignModal(event) {
         event.preventDefault();
         const button = event.currentTarget;
-        const roleId = button.dataset.roleId;
-        const roleName = button.dataset.roleName;
+        this.openPicker(button.dataset.roleId, button.dataset.roleName, null, `Assign to ${button.dataset.roleName}`);
+    }
 
-        // Store the role we're assigning to
+    // Phone: pick someone else for a filled slot, in the same picker (the
+    // board's replace flow; V1.1 plan §4).
+    openReplaceSheet(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        this.openPicker(button.dataset.roleId, button.dataset.roleName, button.dataset.assignmentId, `Replace in ${button.dataset.roleName}`);
+    }
+
+    openPicker(roleId, roleName, replaceAssignmentId, title) {
         this.currentAssignRoleId = roleId;
-
-        // Update modal title
-        const modal = this.assignModalTarget;
-        const titleEl = modal.querySelector('[data-modal-title]');
-        if (titleEl) {
-            titleEl.textContent = `Assign to ${roleName}`;
-        }
-
-        // Show the modal
-        modal.classList.remove('hidden');
-        document.body.classList.add('overflow-hidden');
-
-        // Reset mobile search if present
-        const mobileFilterEl = modal.querySelector('[data-controller*="mobile-cast-filter"]')
-        if (mobileFilterEl) {
-            const mobileFilter = this.application.getControllerForElementAndIdentifier(mobileFilterEl, 'mobile-cast-filter')
-            if (mobileFilter) {
-                if (mobileFilter.hasSearchInputTarget) mobileFilter.searchInputTarget.value = ''
-                mobileFilter.exitSearch()
-            }
-        }
+        this.currentReplaceAssignmentId = replaceAssignmentId;
+        window.dispatchEvent(new CustomEvent("people-picker:open", {
+            detail: { id: "cast-picker", title, context: { role_id: roleId }, params: { role_id: roleId } }
+        }));
     }
 
     closeAssignModal() {
-        const modal = this.assignModalTarget;
-        if (modal) {
-            modal.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-        }
+        document.getElementById("cast-picker")?.classList.add("hidden");
         this.currentAssignRoleId = null;
         this.currentReplaceAssignmentId = null;
     }
 
-    // Phone: pick someone else for a filled slot, in the same assign sheet
-    // (the board's replace flow; V1.1 plan §4).
-    openReplaceSheet(event) {
-        const button = event.currentTarget;
-        this.openAssignModal(event);
-        this.currentReplaceAssignmentId = button.dataset.assignmentId;
-        const titleEl = this.assignModalTarget.querySelector('[data-modal-title]');
-        if (titleEl) titleEl.textContent = `Replace in ${button.dataset.roleName}`;
+    // people-picker:pick from the picker: a person or group for the slot, or
+    // a guest by name.
+    picked(event) {
+        const pick = event.detail;
+        if (pick.picker !== "cast-picker") return;
+        if (pick.guest) return this.addGuestDirect(pick.name, pick.email);
+        this.assignPick(pick.type, String(pick.id), pick.name);
     }
 
     // Phone, act-based night: Move on someone's chip lists the other acts with
@@ -208,7 +195,7 @@ export default class extends Controller {
     // straight away (it used to stay stale until a reload). On an act-based
     // night they stay pickable: one performer, several acts.
     markAssignedInSheet(button) {
-        if (!button) return;
+        if (!button) return; // the picker closes on a pick; nothing to mark
         const actBased = this.actBasedValue;
         const status = button.querySelector('.text-xs');
         if (status) status.textContent = actBased ? "Already in this show" : "Already assigned";
@@ -1031,8 +1018,10 @@ export default class extends Controller {
     assignFromModal(event) {
         event.preventDefault();
         const button = event.currentTarget;
-        const assignableType = button.dataset.assignableType;
-        const assignableId = button.dataset.assignableId;
+        this.assignPick(button.dataset.assignableType, button.dataset.assignableId, button.dataset.memberName);
+    }
+
+    assignPick(assignableType, assignableId, memberName) {
         const showId = this.showId;
         const productionId = this.productionId;
         const roleId = this.currentAssignRoleId;
@@ -1046,8 +1035,8 @@ export default class extends Controller {
         if (roleElement && !this.isEligibleForRole(roleElement, assignableType, assignableId)) {
             this.closeAssignModal();
             this.showRestrictedWarningModal(roleElement, assignableType, assignableId, null);
-            if (this.hasRestrictedWarningPersonNameTarget && button.dataset.memberName) {
-                this.restrictedWarningPersonNameTarget.textContent = button.dataset.memberName;
+            if (this.hasRestrictedWarningPersonNameTarget && memberName) {
+                this.restrictedWarningPersonNameTarget.textContent = memberName;
             }
             return;
         }
