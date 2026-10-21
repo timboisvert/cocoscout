@@ -77,10 +77,10 @@
             <% if @questions.any? %>
               <div class="space-y-2" data-controller="<%= @questionnaire.archived_at.present? ? '' : 'question-order' %>" data-question-order-url="<%= manage_reorder_questions_contacts_questionnaire_path(@questionnaire) %>">
                 <% @questions.each do |question| %>
-                  <div class="p-4 border border-gray-200 bg-white rounded-lg <%= @questionnaire.archived_at.present? ? '' : 'hover:border-gray-400 transition-all cursor-move' %>" <%= 'draggable="true"' unless @questionnaire.archived_at.present? %> data-question-order-target="item" data-id="<%= question.id %>" data-action="<%= @questionnaire.archived_at.present? ? '' : 'dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop touchstart->question-order#touchStart touchmove->question-order#touchMove touchend->question-order#touchEnd' %>" onclick="event.stopPropagation();">
+                  <div class="p-4 border border-gray-200 bg-white rounded-lg <%= @questionnaire.archived_at.present? ? '' : 'hover:border-gray-400 transition-all cursor-move' %>" <%= 'draggable="true"' unless @questionnaire.archived_at.present? %> data-question-order-target="item" data-id="<%= question.id %>" data-action="<%= @questionnaire.archived_at.present? ? '' : 'dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop' %>" onclick="event.stopPropagation();">
                     <div class="flex items-start gap-4">
                       <% unless @questionnaire.archived_at.present? %>
-                        <span class="text-gray-400 cursor-move mt-1" title="Drag to reorder">
+                        <span class="text-gray-400 cursor-move mt-1 touch-none" title="Drag to reorder" data-question-order-target="handle" <%= tag.attributes(data: { action: "touchstart->question-order#touchStart touchmove->question-order#touchMove touchend->question-order#touchEnd" }) unless @questionnaire.archived_at.present? %>>
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
                           </svg>

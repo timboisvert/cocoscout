@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["item"]
+    static targets = ["item", "handle"]
 
     connect() {
         this.dragging = null;
@@ -26,9 +26,10 @@ export default class extends Controller {
         this.removeDropIndicator();
     }
 
-    // Touch event handlers for mobile
+    // Touch event handlers for mobile. They sit on the grip handle only
+    // (V1.1 plan §5, Reorder mode), so a finger on the card scrolls the page.
     touchStart(event) {
-        this.dragging = event.currentTarget;
+        this.dragging = event.currentTarget.closest('[data-question-order-target="item"]') || event.currentTarget;
         const touch = event.touches[0];
         this.touchStartY = touch.clientY;
 

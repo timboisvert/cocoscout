@@ -2,9 +2,9 @@
   <% if @questions.any? %>
     <div class="space-y-2" data-controller="question-order" data-question-order-url="<%= manage_reorder_questions_signups_form_path(@production, @sign_up_form) %>">
       <% @questions.each do |question| %>
-        <div class="p-4 border border-gray-200 bg-white rounded-lg hover:border-gray-400 transition-all cursor-move relative group" draggable="true" data-question-order-target="item" data-id="<%= question.id %>" data-action="dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop touchstart->question-order#touchStart touchmove->question-order#touchMove touchend->question-order#touchEnd">
+        <div class="p-4 border border-gray-200 bg-white rounded-lg hover:border-gray-400 transition-all cursor-move relative group" draggable="true" data-question-order-target="item" data-id="<%= question.id %>" data-action="dragstart->question-order#startDrag dragend->question-order#endDrag dragover->question-order#dragOver drop->question-order#drop">
           <div class="flex items-start gap-3 sm:gap-4">
-            <span class="text-gray-400 cursor-move mt-1 flex-shrink-0" title="Drag to reorder">
+            <span class="text-gray-400 cursor-move mt-1 flex-shrink-0 touch-none" title="Drag to reorder" data-question-order-target="handle" data-action="touchstart->question-order#touchStart touchmove->question-order#touchMove touchend->question-order#touchEnd">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
               </svg>

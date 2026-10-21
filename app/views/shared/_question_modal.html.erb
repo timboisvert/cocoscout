@@ -1,18 +1,18 @@
 <div data-question-modal-target="modal" class="<%= @question.errors.any? ? '' : 'hidden' %> fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto z-50" data-action="click->question-modal#close">
-  <div class="flex min-h-full items-start justify-center p-4 py-12">
-    <div class="relative w-full max-w-2xl p-5 border shadow-lg rounded-md bg-white" data-action="click->question-modal#stopPropagation">
-    <div class="flex items-center justify-between pb-3 border-b border-gray-200">
-      <div>
-        <h3 class="text-lg font-semibold text-gray-900" data-question-modal-target="title"><%= @question.persisted? ? 'Edit Question' : 'Add a Question' %></h3>
-        <p class="text-xs text-gray-500 mt-1" data-question-modal-target="description"></p>
+  <div class="flex min-h-full items-start justify-center p-4 py-12 max-sm:p-0 max-sm:items-stretch">
+    <div class="relative w-full max-w-2xl border shadow-lg rounded-md bg-white overflow-hidden max-sm:max-w-none max-sm:rounded-none max-sm:min-h-[100dvh] max-sm:pb-[env(safe-area-inset-bottom)]" data-question-sheet data-action="click->question-modal#stopPropagation">
+    <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-pink-500 to-pink-600">
+      <div class="min-w-0">
+        <h3 class="text-lg font-semibold text-white" data-question-modal-target="title"><%= @question.persisted? ? 'Edit Question' : 'Add a Question' %></h3>
+        <p class="text-xs text-white/80 mt-1" data-question-modal-target="description"></p>
       </div>
-      <button type="button" class="text-gray-400 hover:text-gray-600" data-action="question-modal#close">
+      <button type="button" class="text-white/80 hover:text-white cursor-pointer w-11 h-11 -mr-3 sm:w-auto sm:h-auto sm:m-0 flex items-center justify-center flex-shrink-0" aria-label="Close" data-action="question-modal#close">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
       </button>
     </div>
-    <div class="mt-4">
+    <div class="px-5 pt-4 pb-5">
       <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
       <%= form_with(url: "#", model: @question, authenticity_token: form_authenticity_token, data: { question_modal_target: "form" }) do |form| %>
         <input type="hidden" name="_method" value="<%= @question.persisted? ? 'patch' : 'post' %>" data-question-modal-target="methodInput">
