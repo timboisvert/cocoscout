@@ -146,7 +146,14 @@ export default class extends Controller {
     // Swap in what the server just rendered: the cell, the reopened panel, and
     // the tallies.
     applyRefresh(cell, data) {
-        if (cell && data.cell_html) cell.innerHTML = data.cell_html
+        if (cell && data.cell_html) {
+            // The cell lives twice, in the grid and in the phone pager: refresh both.
+            const twins = this.cellTargets.filter(c => c.dataset.showId === cell.dataset.showId && c.dataset.memberKey === cell.dataset.memberKey)
+            twins.forEach(c => {
+                const slot = c.hasAttribute("data-member-row") ? c.querySelector("[data-cell-slot]") : c
+                if (slot) slot.innerHTML = data.cell_html
+            })
+        }
         if (data.picker_html) this.roleOptionsTarget.innerHTML = data.picker_html
 
         const showCell = this.showCountTargets.find((el) => el.dataset.showId === String(data.show_id))
@@ -203,6 +210,12 @@ export default class extends Controller {
     // is a good deal taller than the old popup, so it has to stay on screen.
     position(cell) {
         const panel = this.roleSelectorTarget
+        // A phone: the panel is a sheet from the bottom, not beside the cell.
+        if (window.matchMedia("(max-width: 639px)").matches) {
+            Object.assign(panel.style, { left: "0", right: "0", top: "auto", bottom: "0" })
+            return
+        }
+        Object.assign(panel.style, { right: "", bottom: "" })
         const rect = cell.getBoundingClientRect()
         const wasHidden = panel.classList.contains("hidden")
         if (wasHidden) panel.classList.remove("hidden")

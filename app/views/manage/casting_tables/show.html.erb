@@ -31,8 +31,74 @@
     </div>
   <% end %>
 
+  <%# Phone (V1.1 plan §4, show pager): one show at a time, its people as
+      rows with what they hold and their running count; a row opens the same
+      picker, as a sheet. The grid is for md up. %>
+  <div class="md:hidden" data-controller="show-pager">
+    <div class="flex items-center justify-between gap-2 mb-3">
+      <button type="button" data-action="show-pager#prev" data-show-pager-target="prev" aria-label="Previous show"
+              class="w-11 h-11 inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 cursor-pointer disabled:opacity-40">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+      </button>
+      <div class="text-sm font-medium text-gray-700 text-center" data-show-pager-target="label">Show 1 of <%= @shows.size %></div>
+      <button type="button" data-action="show-pager#next" data-show-pager-target="next" aria-label="Next show"
+              class="w-11 h-11 inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 cursor-pointer disabled:opacity-40">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+      </button>
+    </div>
+    <% @shows.each_with_index do |show, i| %>
+      <% show_count = @show_assignment_counts[show.id] || 0 %>
+      <% total_slots = @show_total_slots[show.id] || 0 %>
+      <div class="<%= 'hidden' unless i.zero? %> bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" data-show-pager-target="page" data-show-page="<%= show.id %>">
+        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-[11px] font-semibold text-pink-600 uppercase tracking-wide"><%= show.date_and_time.strftime("%a, %b %-d") %> · <%= show.time_range_display %></div>
+            <div class="text-sm font-semibold text-gray-900 truncate"><%= show.display_name %></div>
+          </div>
+          <span class="text-xs font-medium text-gray-500 tabular-nums flex-shrink-0"><%= show_count %>/<%= total_slots %> cast</span>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% @members.each do |member| %>
+            <%
+              member_type = member.class.name
+              key = [ show.id, member_type, member.id ]
+              member_key = "#{member_type}_#{member.id}"
+              running = @assignment_counts[[ member_type, member.id ]] || 0
+            %>
+            <div class="flex items-center gap-3 px-4 min-h-[56px] py-2 <%= 'cursor-pointer' if @casting_table.draft? %>"
+                 data-casting-table-target="cell"
+                 data-show-id="<%= show.id %>" data-member-type="<%= member_type %>" data-member-id="<%= member.id %>" data-member-key="<%= member_key %>"
+                 data-member-row
+                 <%= tag.attributes(data: { action: "click->casting-table#openRoleSelector" }) if @casting_table.draft? %>>
+              <% headshot = member.respond_to?(:safe_headshot_variant) ? member.safe_headshot_variant(:thumb) : nil %>
+              <% if headshot %>
+                <%= image_tag headshot, alt: member.name, class: "w-9 h-9 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-9 h-9 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= member.initials[0..1] %></div>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-900 truncate"><%= member.name %></div>
+                <div class="text-[11px] text-gray-500"><%= pluralize(running, "assignment") %> on this table</div>
+              </div>
+              <div class="w-24 flex-shrink-0" data-cell-slot>
+                <%= render "manage/casting_tables/cell_content",
+                      drafts: (@draft_assignments[key] || []),
+                      existing: (@existing_assignments[key] || []),
+                      show: show,
+                      numbers: (@lineup_numbers[show.id] || {}),
+                      availability: @availability[key],
+                      conflicted: (@conflicts_by_show[show.id] || {})[member_key].present?,
+                      clickable: @casting_table.draft? %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
   <!-- Casting Grid -->
-  <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+  <div class="max-md:hidden bg-white border border-gray-200 rounded-lg shadow-sm" data-casting-table-grid>
     <div class="overflow-auto <%= @casting_table.draft? ? 'max-h-[calc(100vh-280px)]' : 'max-h-[calc(100vh-200px)]' %> rounded-lg">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50 sticky top-0 z-20">
@@ -183,7 +249,7 @@
   <%# The cell panel. Its contents come from the server (casting_tables#cell), so
       it can show the running order, who's in each slot and what this member
       already holds without shipping the whole board to the browser. %>
-  <div id="role-selector" class="hidden fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+  <div id="role-selector" class="hidden fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[env(safe-area-inset-bottom)]"
        data-casting-table-target="roleSelector">
     <div data-casting-table-target="roleOptions">
       <div class="px-6 py-10 text-center text-sm text-gray-400">Loading…</div>
