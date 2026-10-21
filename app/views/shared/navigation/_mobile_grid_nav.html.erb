@@ -91,7 +91,8 @@
       <% end %>
       <% if switch %>
         <%= render "shared/navigation/mode_switch", switch: switch, size: :bar %>
-      <% elsif context.to_sym == :talent %>
+      <% elsif context.to_sym == :talent && !turbo_native_app? %>
+        <%# Website only: the apps never pitch producing (Tim, 2026-10-20). %>
         <%= link_to manage_producer_setup_path, class: "flex items-center gap-2.5 min-h-[48px] px-3.5 text-sm text-gray-600" do %>
           <svg class="w-[18px] h-[18px] text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18"/></svg>
           <span><strong class="text-gray-700">Start producing</strong> · run your own shows on CocoScout</span>

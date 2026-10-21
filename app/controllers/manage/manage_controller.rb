@@ -236,6 +236,7 @@ module Manage
       last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
       last_dashboard_prefs[Current.user.id.to_s] = "manage"
       cookies.encrypted[:last_dashboard] = { value: last_dashboard_prefs, expires: 1.year.from_now }
+      remember_mode("manage")
     end
 
     def ensure_user_has_access_to_company

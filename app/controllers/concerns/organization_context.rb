@@ -9,10 +9,14 @@ module OrganizationContext
 
   private
 
-  # "manage" or "my": the mode this person was last in on this browser.
+  # "manage" or "my": the mode this person was last in on this browser, or
+  # on their account when this browser hasn't seen them pick one.
   def last_mode
+    return "my" unless Current.user
+
     prefs = cookies.encrypted[:last_dashboard]
-    prefs.is_a?(Hash) && Current.user && prefs[Current.user.id.to_s] == "manage" ? "manage" : "my"
+    remembered = prefs.is_a?(Hash) ? prefs[Current.user.id.to_s] : nil
+    (remembered || Current.user.last_mode) == "manage" ? "manage" : "my"
   end
 
   def in_production_mode?

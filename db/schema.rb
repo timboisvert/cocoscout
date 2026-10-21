@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -4059,6 +4059,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_220000) do
     t.jsonb "dismissed_guides", default: {}, null: false
     t.jsonb "recent_production_ids", default: [], null: false
     t.datetime "deletion_requested_at"
+    t.string "last_mode"
     t.index ["default_person_id"], name: "index_users_on_default_person_id"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["invitation_token"], name: "index_users_on_invitation_token", unique: true

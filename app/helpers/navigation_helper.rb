@@ -52,8 +52,11 @@ module NavigationHelper
   # that belong to neither mode, like Account settings, draw that mode's
   # account menu and wordmark link).
   def panel_last_mode_production?
+    return false unless Current.user
+
     prefs = cookies.encrypted[:last_dashboard]
-    prefs.is_a?(Hash) && Current.user && prefs[Current.user.id.to_s] == "manage" && production_mode_available?
+    remembered = prefs.is_a?(Hash) ? prefs[Current.user.id.to_s] : nil
+    (remembered || Current.user.last_mode) == "manage" && production_mode_available?
   end
 
   # The two universal icons at the top of every panel, in both modes: where

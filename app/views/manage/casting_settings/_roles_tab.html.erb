@@ -65,9 +65,11 @@
               <div class="flex-1 border-t border-gray-200"></div>
             </div>
           <% end %>
-          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex cursor-move mb-2 group" draggable="true" data-role-order-target="item" data-id="<%= role.id %>" data-action="dragstart->role-order#startDrag dragend->role-order#endDrag dragover->role-order#dragOver drop->role-order#drop touchstart->role-order#touchStart touchmove->role-order#touchMove touchend->role-order#touchEnd">
+          <div class="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all flex cursor-move mb-2 group" draggable="true" data-role-order-target="item" data-id="<%= role.id %>" data-action="dragstart->role-order#startDrag dragend->role-order#endDrag dragover->role-order#dragOver drop->role-order#drop">
             <div class="flex items-center gap-4 w-full">
-              <span class="text-gray-400 cursor-move" title="Drag to reorder">
+              <%# Touch reorder lives on the grip (the page still scrolls over the card). %>
+              <span class="text-gray-400 cursor-move touch-none -m-2 p-2" title="Drag to reorder" data-role-order-grip
+                    data-action="touchstart->role-order#touchStart touchmove->role-order#touchMove touchend->role-order#touchEnd">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
                 </svg>

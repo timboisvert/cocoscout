@@ -106,6 +106,7 @@
     item_partial: "manage/contracts/calendar_item",
     month_link: ->(m) { manage_contracts_path(month: m.strftime("%Y-%m-01")) },
     today_link: manage_contracts_path,
+    mobile_show_past: true, # earlier payments this month can be overdue; the phone list keeps them
     legend: calendar_legend %>
 
   <%# Browsing, not doing: the whole book lives on All Contracts, sortable by

@@ -72,15 +72,20 @@ export default class extends Controller {
         }, { offset: Number.NEGATIVE_INFINITY }).element
     }
 
-    // Touch events for mobile
+    // Touch events for mobile, bound to the grip only (the page scrolls over
+    // the rest of the card); a tap that never moved reorders nothing.
     touchStart(event) {
         this.draggedElement = event.target.closest('[data-role-order-target="item"]')
+        if (!this.draggedElement) return
         this.touchStartY = event.touches[0].clientY
+        this.touchMoved = false
         this.draggedElement.classList.add("opacity-50")
     }
 
     touchMove(event) {
+        if (!this.draggedElement) return
         event.preventDefault()
+        this.touchMoved = true
         this.touchCurrentY = event.touches[0].clientY
 
         const afterElement = this.getDragAfterElement(this.touchCurrentY)
@@ -101,9 +106,11 @@ export default class extends Controller {
     }
 
     touchEnd(event) {
+        if (!this.draggedElement) return
         this.draggedElement.classList.remove("opacity-50")
         this.removeDropIndicator()
-        this.saveOrder()
+        if (this.touchMoved) this.saveOrder()
+        this.draggedElement = null
     }
 
     saveOrder() {

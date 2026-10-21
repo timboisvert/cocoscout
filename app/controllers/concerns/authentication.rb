@@ -68,10 +68,12 @@ module Authentication
   # The mode this person last used: production mode (/manage) or My. V1
   # installs have no /manage (it opens in Safari), so they always get My;
   # V1.1 builds and browsers get the last mode used. The app's /start.
+  # This browser's cookie first; on a new phone, the mode remembered on the
+  # account (users.last_mode).
   def last_mode_path(user)
     last_dashboard_prefs = cookies.encrypted[:last_dashboard]
     last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
-    case last_dashboard_prefs[user.id.to_s]
+    case last_dashboard_prefs[user.id.to_s] || user.last_mode
     when "manage" then NativeAppVersion.production_mode?(request.user_agent) ? manage_path : my_dashboard_path
     else my_dashboard_path
     end
