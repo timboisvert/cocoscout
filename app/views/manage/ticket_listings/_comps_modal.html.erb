@@ -32,9 +32,10 @@
   # No more than the seats left, the date's comps left (CompRules), or the giver's allowance.
   most = [ 20, remaining, listing.comps_left, local_assigns[:max] ].compact.min.clamp(1, 20)
 %>
-<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-     data-controller="modal" data-action="click->modal#closeOnBackdrop">
-  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+<%# A bottom sheet on a phone, the centered card from sm up (V1.1 plan). %>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop" data-comps-sheet>
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl sm:mx-4 overflow-hidden max-h-[92vh] sm:max-h-[85vh] overflow-y-auto pb-[env(safe-area-inset-bottom)] sm:pb-0" data-action="click->modal#stopPropagation">
     <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
       <h3 class="text-lg font-semibold text-white">Give tickets</h3>
       <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
