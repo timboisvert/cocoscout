@@ -9,7 +9,7 @@
   <p class="text-sm text-gray-400 text-center py-6">Type a name to find someone.</p>
 <% elsif rows.empty? && outside.empty? && invite_email.blank? && !(guest && !listing) %>
   <div class="text-center py-6">
-    <p class="text-sm text-gray-500"><%= local_assigns[:empty] || (listing ? "Nobody to add yet." : "Nobody found for \"#{query}\".") %></p>
+    <p class="text-sm text-gray-500"><%= local_assigns[:empty] || (listing && params[:list] == "pool" ? "Nobody's in the talent pool yet. Search your organization by name." : (listing ? "Nobody to add yet." : "Nobody found for \"#{query}\".")) %></p>
     <% if query.include?("@") %>
       <p class="text-xs text-gray-400 mt-1">Search by their exact email to find someone on CocoScout.</p>
     <% end %>
