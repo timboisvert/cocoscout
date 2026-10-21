@@ -54,7 +54,7 @@
   <%# Subject - snippet %>
   <span class="msg-main w-full sm:w-auto sm:flex-1 min-w-0 truncate text-sm">
     <% if (pill = local_assigns[:pill]) %>
-      <span class="inline-block max-w-[11rem] truncate align-middle rounded-full px-2 py-0.5 mr-1.5 text-[11px] font-medium leading-4 <%= pill[:tone] %>" title="<%= pill[:title] || pill[:text] %>" data-inbox-pill><%= pill[:text] %></span>
+      <span class="inline-block max-w-[7rem] sm:max-w-[11rem] truncate align-middle rounded-full px-2 py-0.5 mr-1.5 text-[11px] font-medium leading-4 <%= pill[:tone] %>" title="<%= pill[:title] || pill[:text] %>" data-inbox-pill><%= pill[:text] %></span>
     <% end %>
     <span class="<%= is_unread ? 'font-semibold text-gray-900' : 'text-gray-700' %>"><%= message.subject %></span><% if snippet.present? %><span class="msg-sep font-light text-gray-400"> - </span><span class="msg-snippet font-light text-gray-400"><%= snippet %></span><% end %>
   </span>
