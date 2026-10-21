@@ -256,16 +256,26 @@
       </div>
     </div>
 
+    <%# Phone: Done Selecting pinned to the bottom, clear of the Coco button. %>
+    <div class="lg:hidden h-24" aria-hidden="true"></div>
+    <div class="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-casting-select-phone-bar>
+      <span class="text-sm text-gray-600 flex-1 min-w-0 truncate"><%= pluralize(@cast_assignment_stages.count(&:cast?), "person") %> added to cast</span>
+      <%= render partial: "shared/button", locals: { text: "Done Selecting", path: manage_casting_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary", size: "medium" } %>
+    </div>
+
     <%# Mobile Add Modal %>
     <div data-casting-drag-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->casting-drag#closeAddModal">
-      <div class="bg-white w-full rounded-t-2xl max-h-[80vh] flex flex-col" data-action="click->casting-drag#stopPropagation">
-        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-          <h2 class="text-lg font-semibold text-gray-900" data-casting-drag-target="modalTitle">Select Auditionees</h2>
-          <button type="button" data-action="click->casting-drag#closeAddModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+      <div class="bg-white w-full rounded-t-2xl max-h-[85dvh] flex flex-col pb-[env(safe-area-inset-bottom)]" data-casting-select-sheet data-action="click->casting-drag#stopPropagation">
+        <div class="flex-shrink-0 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-2xl">
+          <span class="block mx-auto mt-2 w-10 h-1 rounded-full bg-white/70" aria-hidden="true"></span>
+          <div class="pl-5 pr-2 py-2 flex items-center justify-between">
+            <h2 class="text-[17px] font-semibold text-white" data-casting-drag-target="modalTitle">Select Auditionees</h2>
+            <button type="button" data-action="click->casting-drag#closeAddModal" aria-label="Close" class="w-11 h-11 flex items-center justify-center rounded-full text-white/85 hover:text-white cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+          </div>
         </div>
         <div class="p-4 overflow-y-auto">
           <p class="text-xs text-gray-500 mb-3">Sorted by yes votes</p>
@@ -339,7 +349,8 @@
                 <div class="flex items-center gap-1">
                   <%# Add to Cast button %>
                   <button type="button"
-                    class="p-2 rounded-lg transition-all cursor-pointer <%= is_cast ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-pink-100 hover:text-pink-600' %>"
+                    class="w-11 h-11 inline-flex items-center justify-center rounded-lg transition-all cursor-pointer <%= is_cast ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-pink-100 hover:text-pink-600' %>"
+                    aria-label="Add to cast"
                     data-action="click->casting-drag#addFromModal"
                     data-auditionee-type="<%= auditionee.class.name %>"
                     data-auditionee-id="<%= auditionee.id %>"
@@ -352,7 +363,8 @@
                   </button>
                   <%# Reject button %>
                   <button type="button"
-                    class="p-2 rounded-lg transition-all cursor-pointer <%= is_rejected ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600' %>"
+                    class="w-11 h-11 inline-flex items-center justify-center rounded-lg transition-all cursor-pointer <%= is_rejected ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900' %>"
+                    aria-label="Reject"
                     data-action="click->casting-drag#addFromModal"
                     data-auditionee-type="<%= auditionee.class.name %>"
                     data-auditionee-id="<%= auditionee.id %>"
