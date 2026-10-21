@@ -250,8 +250,12 @@ class MessageService
       message.send(:notify_subscribers)
 
       # The manager's words that go with a notification: opening this thread
-      # reads both (Notification#message).
-      Notification.where(id: notifications.map(&:id)).update_all(message_id: root_message.id) if notifications.any?
+      # reads both (Notification#message), and Reply on the notification opens
+      # it (V1.1 plan §9).
+      if notifications.any?
+        Notification.where(id: notifications.map(&:id))
+                    .update_all(message_id: root_message.id, reply_path: Rails.application.routes.url_helpers.my_message_path(root_message))
+      end
 
       # Note: Email notifications are now handled by UnreadDigestJob
       # which sends a digest after 1 hour if user hasn't checked their inbox

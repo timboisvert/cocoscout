@@ -54,6 +54,8 @@ RSpec.describe "Automated notices become Notifications" do
       notification = person.user.notifications.last
       expect(notification.message).to eq(result)
       expect(notification.digest).to be(false)
+      # Reply on the notification opens the manager's thread (V1.1 plan §9).
+      expect(notification.reply_path).to eq("/my/messages/#{result.id}")
     end
 
     it "reads the notification when the manager's message is read" do
