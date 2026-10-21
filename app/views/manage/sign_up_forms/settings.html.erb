@@ -587,13 +587,11 @@
                          data-cutoff-timing-target="editModeBefore">
                   <span class="text-sm font-medium text-gray-900">Before the event</span>
                 </label>
-                <div data-cutoff-timing-target="editBeforeFields" class="<%= edit_cutoff_mode == 'before_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
-                  <%= form.number_field :edit_cutoff_days, min: 0, value: edit_cutoff_days, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm", disabled: edit_cutoff_mode != 'before_event' %>
-                  <span class="text-sm text-gray-600">days</span>
-                  <%= form.number_field :edit_cutoff_hours, min: 0, max: 23, value: edit_cutoff_hours, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm", disabled: edit_cutoff_mode != 'before_event' %>
-                  <span class="text-sm text-gray-600">hours</span>
-                  <%= form.number_field :edit_cutoff_minutes, min: 0, max: 59, value: edit_cutoff_minutes, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm", disabled: edit_cutoff_mode != 'before_event' %>
-                  <span class="text-sm text-gray-600">minutes before</span>
+                <div data-cutoff-timing-target="editBeforeFields" class="<%= edit_cutoff_mode == 'before_event' ? '' : 'hidden' %> mt-3 ml-1" onclick="event.stopPropagation()">
+                  <%= render "shared/offset_input", disabled: edit_cutoff_mode != 'before_event', suffix: "before",
+                        fields: [ { name: "sign_up_form[edit_cutoff_days]", id: "sign_up_form_edit_cutoff_days", value: edit_cutoff_days, unit: "days" },
+                                  { name: "sign_up_form[edit_cutoff_hours]", id: "sign_up_form_edit_cutoff_hours", value: edit_cutoff_hours, unit: "hours", max: 23 },
+                                  { name: "sign_up_form[edit_cutoff_minutes]", id: "sign_up_form_edit_cutoff_minutes", value: edit_cutoff_minutes, unit: "minutes", max: 59 } ] %>
                 </div>
               </div>
 
@@ -607,16 +605,11 @@
                          data-cutoff-timing-target="editModeAfter">
                   <span class="text-sm font-medium text-gray-900">After the event starts</span>
                 </label>
-                <div data-cutoff-timing-target="editAfterFields" class="<%= edit_cutoff_mode == 'after_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
-                  <input type="number" name="edit_cutoff_after_days" value="<%= @sign_up_form.edit_cutoff_days || 0 %>" min="0"
-                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" <%= 'disabled' unless edit_cutoff_mode == 'after_event' %>>
-                  <span class="text-sm text-gray-600">days</span>
-                  <input type="number" name="edit_cutoff_after_hours" value="<%= @sign_up_form.edit_cutoff_hours || 0 %>" min="0" max="23"
-                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" <%= 'disabled' unless edit_cutoff_mode == 'after_event' %>>
-                  <span class="text-sm text-gray-600">hours</span>
-                  <input type="number" name="edit_cutoff_after_minutes" value="<%= @sign_up_form.edit_cutoff_minutes || 0 %>" min="0" max="59"
-                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" <%= 'disabled' unless edit_cutoff_mode == 'after_event' %>>
-                  <span class="text-sm text-gray-600">minutes after</span>
+                <div data-cutoff-timing-target="editAfterFields" class="<%= edit_cutoff_mode == 'after_event' ? '' : 'hidden' %> mt-3 ml-1" onclick="event.stopPropagation()">
+                  <%= render "shared/offset_input", disabled: edit_cutoff_mode != 'after_event', suffix: "after",
+                        fields: [ { name: "edit_cutoff_after_days", value: @sign_up_form.edit_cutoff_days || 0, unit: "days" },
+                                  { name: "edit_cutoff_after_hours", value: @sign_up_form.edit_cutoff_hours || 0, unit: "hours", max: 23 },
+                                  { name: "edit_cutoff_after_minutes", value: @sign_up_form.edit_cutoff_minutes || 0, unit: "minutes", max: 59 } ] %>
                 </div>
               </div>
             </div>
@@ -682,13 +675,11 @@
                          data-cutoff-timing-target="cancelModeBefore">
                   <span class="text-sm font-medium text-gray-900">Before the event</span>
                 </label>
-                <div data-cutoff-timing-target="cancelBeforeFields" class="<%= cancel_cutoff_mode == 'before_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
-                  <%= form.number_field :cancel_cutoff_days, min: 0, value: cancel_cutoff_days, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm", disabled: cancel_cutoff_mode != 'before_event' %>
-                  <span class="text-sm text-gray-600">days</span>
-                  <%= form.number_field :cancel_cutoff_hours, min: 0, max: 23, value: cancel_cutoff_hours, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm", disabled: cancel_cutoff_mode != 'before_event' %>
-                  <span class="text-sm text-gray-600">hours</span>
-                  <%= form.number_field :cancel_cutoff_minutes, min: 0, max: 59, value: cancel_cutoff_minutes, class: "w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm", disabled: cancel_cutoff_mode != 'before_event' %>
-                  <span class="text-sm text-gray-600">minutes before</span>
+                <div data-cutoff-timing-target="cancelBeforeFields" class="<%= cancel_cutoff_mode == 'before_event' ? '' : 'hidden' %> mt-3 ml-1" onclick="event.stopPropagation()">
+                  <%= render "shared/offset_input", disabled: cancel_cutoff_mode != 'before_event', suffix: "before",
+                        fields: [ { name: "sign_up_form[cancel_cutoff_days]", id: "sign_up_form_cancel_cutoff_days", value: cancel_cutoff_days, unit: "days" },
+                                  { name: "sign_up_form[cancel_cutoff_hours]", id: "sign_up_form_cancel_cutoff_hours", value: cancel_cutoff_hours, unit: "hours", max: 23 },
+                                  { name: "sign_up_form[cancel_cutoff_minutes]", id: "sign_up_form_cancel_cutoff_minutes", value: cancel_cutoff_minutes, unit: "minutes", max: 59 } ] %>
                 </div>
               </div>
 
@@ -702,16 +693,11 @@
                          data-cutoff-timing-target="cancelModeAfter">
                   <span class="text-sm font-medium text-gray-900">After the event starts</span>
                 </label>
-                <div data-cutoff-timing-target="cancelAfterFields" class="<%= cancel_cutoff_mode == 'after_event' ? '' : 'hidden' %> flex flex-wrap items-center gap-2 mt-3 ml-1" onclick="event.stopPropagation()">
-                  <input type="number" name="cancel_cutoff_after_days" value="<%= @sign_up_form.cancel_cutoff_days || 0 %>" min="0"
-                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" <%= 'disabled' unless cancel_cutoff_mode == 'after_event' %>>
-                  <span class="text-sm text-gray-600">days</span>
-                  <input type="number" name="cancel_cutoff_after_hours" value="<%= @sign_up_form.cancel_cutoff_hours || 0 %>" min="0" max="23"
-                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" <%= 'disabled' unless cancel_cutoff_mode == 'after_event' %>>
-                  <span class="text-sm text-gray-600">hours</span>
-                  <input type="number" name="cancel_cutoff_after_minutes" value="<%= @sign_up_form.cancel_cutoff_minutes || 0 %>" min="0" max="59"
-                         class="w-16 shadow-sm rounded-lg border border-gray-300 px-2 py-1.5 text-sm" <%= 'disabled' unless cancel_cutoff_mode == 'after_event' %>>
-                  <span class="text-sm text-gray-600">minutes after</span>
+                <div data-cutoff-timing-target="cancelAfterFields" class="<%= cancel_cutoff_mode == 'after_event' ? '' : 'hidden' %> mt-3 ml-1" onclick="event.stopPropagation()">
+                  <%= render "shared/offset_input", disabled: cancel_cutoff_mode != 'after_event', suffix: "after",
+                        fields: [ { name: "cancel_cutoff_after_days", value: @sign_up_form.cancel_cutoff_days || 0, unit: "days" },
+                                  { name: "cancel_cutoff_after_hours", value: @sign_up_form.cancel_cutoff_hours || 0, unit: "hours", max: 23 },
+                                  { name: "cancel_cutoff_after_minutes", value: @sign_up_form.cancel_cutoff_minutes || 0, unit: "minutes", max: 59 } ] %>
                 </div>
               </div>
             </div>

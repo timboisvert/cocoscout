@@ -1,0 +1,63 @@
+<%# One answer, the way the responses table (and its phone cards) show it.
+    Locals: answer (a QuestionnaireAnswer, or nil), question. %>
+<% if answer %>
+  <% type_class = question.question_type_class %>
+  <% if type_class&.key == "file_upload" %>
+    <% if answer.file.attached? %>
+      <% if answer.image? %>
+        <%= image_tag answer.file, class: "w-16 h-16 rounded object-cover" %>
+      <% elsif answer.audio? %>
+        <span class="inline-flex items-center gap-1 text-xs text-pink-600">
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/></svg>
+          Audio
+        </span>
+      <% else %>
+        <span class="text-xs text-gray-500"><%= answer.value %></span>
+      <% end %>
+    <% else %>
+      <span class="text-xs text-gray-400 italic">No file</span>
+    <% end %>
+  <% elsif type_class&.key == "url" %>
+    <% if answer.youtube_url? %>
+      <span class="inline-flex items-center gap-1 text-xs text-red-600">
+        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
+        YouTube
+      </span>
+    <% elsif answer.spotify_url? %>
+      <span class="inline-flex items-center gap-1 text-xs text-green-600">
+        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm3.669 11.538a.498.498 0 01-.686.166c-1.878-1.148-4.243-1.408-7.028-.771a.499.499 0 01-.222-.972c3.048-.696 5.662-.397 7.77.891a.498.498 0 01.166.686z"/></svg>
+        Spotify
+      </span>
+    <% else %>
+      <a href="<%= answer.value %>" target="_blank" rel="noopener noreferrer" class="text-xs text-pink-600 hover:text-pink-800 truncate block max-w-[200px]"><%= answer.value %></a>
+    <% end %>
+  <% elsif type_class&.key == "ranking" %>
+    <% parsed = answer.value.is_a?(Array) ? answer.value : (JSON.parse(answer.value) rescue nil) %>
+    <% if parsed.is_a?(Array) %>
+      <ol class="text-xs space-y-0.5">
+        <% parsed.each_with_index do |item, i| %>
+          <li><span class="text-pink-500 font-medium"><%= i + 1 %>.</span> <%= item %></li>
+        <% end %>
+      </ol>
+    <% else %>
+      <span class="text-xs"><%= answer.value %></span>
+    <% end %>
+  <% elsif type_class&.key == "multiple-multiple" %>
+    <% parsed = answer.value.is_a?(Hash) ? answer.value : (JSON.parse(answer.value) rescue nil) %>
+    <% if parsed.is_a?(Hash) %>
+      <div class="text-xs"><%= parsed.select { |_k, v| v.present? }.keys.join(", ") %></div>
+    <% else %>
+      <span class="text-xs"><%= answer.value %></span>
+    <% end %>
+  <% elsif type_class&.key == "yesno" %>
+    <% if answer.value == "yes" %>
+      <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Yes</span>
+    <% elsif answer.value == "no" %>
+      <span class="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded-full">No</span>
+    <% end %>
+  <% else %>
+    <div class="<%= local_assigns[:wrap] ? 'whitespace-pre-line' : 'truncate max-w-[200px]' %>" title="<%= answer.value %>"><%= answer.value %></div>
+  <% end %>
+<% else %>
+  <span class="text-xs text-gray-400 italic">—</span>
+<% end %>

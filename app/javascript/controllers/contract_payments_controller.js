@@ -886,14 +886,14 @@ export default class extends Controller {
         const directionLabel = incoming ? "They pay us" : "We pay them"
 
         const removeButton = removeIndex === null ? "" : `
-        <button type="button" data-action="click->contract-payments#removePayment" data-index="${removeIndex}" class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" aria-label="Remove payment">
+        <button type="button" data-action="click->contract-payments#removePayment" data-index="${removeIndex}" class="w-11 h-11 sm:w-8 sm:h-8 -mr-2 sm:mr-0 inline-flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" aria-label="Remove payment">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>`
 
         return `
-      <div class="flex items-center justify-between gap-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between gap-3 p-3 sm:p-4 bg-white rounded-xl border border-gray-200 shadow-sm" data-payment-line>
         <div class="flex-1 min-w-0">
           <div class="text-[11px] uppercase tracking-wide font-semibold ${incoming ? "text-green-700" : "text-red-700"}">${directionLabel}</div>
           <div class="font-medium text-gray-900 mt-0.5 truncate">${payment.description}</div>

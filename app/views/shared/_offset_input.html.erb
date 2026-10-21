@@ -1,0 +1,29 @@
+<%#
+  The Offset input (V1.1 plan §4): a "days, hours, minutes" (or any
+  subset) row for a time before or after an event, drawn the same way on
+  every settings page: short numeric boxes that are 44px tall on a phone,
+  each with its unit, then the words after ("before each event"). A select
+  or anything else can follow in the block.
+
+  Locals:
+    fields    [{ name:, value:, unit:, max: (optional), id: (optional) }, ...]
+    suffix    words after the boxes, e.g. "before each event" (optional)
+    disabled  true disables every box (the page's controller flips them)
+    border    "gray-300" (default) or "gray-400"
+%>
+<%
+  border = local_assigns.fetch(:border, "gray-300")
+  disabled = local_assigns[:disabled] ? true : false
+%>
+<div class="flex flex-wrap items-center gap-x-2 gap-y-2" data-offset-input>
+  <% local_assigns.fetch(:fields).each do |field| %>
+    <label class="inline-flex items-center gap-1.5">
+      <input type="number" inputmode="numeric" name="<%= field[:name] %>" value="<%= field[:value] %>" min="0"
+             <%= %(max="#{field[:max]}").html_safe if field[:max] %> <%= %(id="#{field[:id]}").html_safe if field[:id] %> <%= "disabled" if disabled %>
+             class="w-16 min-h-[44px] sm:min-h-0 shadow-sm rounded-lg border border-<%= border %> px-2 py-1.5 text-sm text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      <span class="text-sm text-gray-600"><%= field[:unit] %></span>
+    </label>
+  <% end %>
+  <% if local_assigns[:suffix].present? %><span class="text-sm text-gray-600"><%= local_assigns[:suffix] %></span><% end %>
+  <%= yield if block_given? %>
+</div>

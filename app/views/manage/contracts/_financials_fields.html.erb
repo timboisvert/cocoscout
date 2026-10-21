@@ -529,19 +529,24 @@
   </div>
   <% end %>
 
-  <%# Add-a-payment modal. Fields are read by the controller, not submitted. %>
-  <div data-contract-payments-target="paymentModal" class="hidden fixed inset-0 z-50">
+  <%# Add-a-payment modal: a bottom sheet on a phone, a pink-header card from
+      sm up. Fields are read by the controller, not submitted. %>
+  <div data-contract-payments-target="paymentModal" class="hidden fixed inset-0 z-50" data-payment-sheet>
     <div class="fixed inset-0 bg-black/50" data-action="click->contract-payments#closePaymentModal"></div>
-    <div class="fixed inset-0 flex items-center justify-center p-4">
-      <div class="bg-white rounded-xl shadow-xl max-w-lg w-full overflow-hidden">
-        <div class="flex items-center justify-between px-6 py-4 bg-pink-600">
-          <h3 class="text-lg font-bold text-white">Add a payment</h3>
-          <button type="button" data-action="click->contract-payments#closePaymentModal" class="text-white/80 hover:text-white">
-            <%= icon("x-mark", class: "w-5 h-5") %>
-          </button>
+    <div class="fixed inset-0 flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
+      <div class="pointer-events-auto bg-white rounded-t-2xl sm:rounded-xl shadow-xl sm:max-w-lg w-full overflow-hidden max-h-[90dvh] flex flex-col">
+        <div class="flex-shrink-0 bg-gradient-to-r from-pink-500 to-pink-600">
+          <span class="sm:hidden block mx-auto mt-2 w-10 h-1 rounded-full bg-white/70" aria-hidden="true"></span>
+          <div class="flex items-center justify-between gap-3 pl-5 pr-2 sm:px-6 py-2 sm:py-4">
+            <h3 class="text-[17px] sm:text-lg font-semibold text-white">Add a payment</h3>
+            <button type="button" data-action="click->contract-payments#closePaymentModal" aria-label="Close"
+                    class="w-11 h-11 sm:w-auto sm:h-auto sm:p-1 flex items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 transition-colors cursor-pointer flex-shrink-0">
+              <%= icon("x-mark", class: "w-5 h-5") %>
+            </button>
+          </div>
         </div>
 
-        <div class="p-6 space-y-5">
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 pb-[calc(env(safe-area-inset-bottom)+16px)] sm:pb-6 space-y-5">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">What's it for?</label>
             <input type="text" data-contract-payments-target="description" placeholder="e.g. Cleaning deposit, Final settlement"
@@ -578,10 +583,8 @@
           <p data-contract-payments-target="paymentModalError" class="hidden text-sm text-red-600"></p>
 
           <div class="flex gap-3 pt-1">
-            <button type="button" data-action="click->contract-payments#closePaymentModal"
-                    class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-              Cancel
-            </button>
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+                  classes: "flex-1", data: { action: "click->contract-payments#closePaymentModal" } %>
             <%= render "shared/button", text: "Add payment", variant: "primary", size: "medium", type: :button,
                   classes: "flex-1", data: { action: "click->contract-payments#addPayment" } %>
           </div>
