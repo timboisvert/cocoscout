@@ -15,6 +15,7 @@
     {
       "patterns": [
         "/new$",
+        "/new/",
         "/edit$",
         "/edit/"
       ],
@@ -22,6 +23,17 @@
         "context": "modal",
         "modal_dismiss_gesture_enabled": false,
         "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
+        "/staffing/staff/[0-9]+/edit$",
+        "/ticketing/shows/[0-9]+/edit/",
+        "/casting/tables/[0-9]+/edit/"
+      ],
+      "properties": {
+        "context": "default",
+        "pull_to_refresh_enabled": true
       }
     },
     {
@@ -92,7 +104,10 @@
         "/pay/contract/[^/]+/invoice$",
         "/my/courses/[^/]+/calendar$",
         "/tickets/orders/[^/]+/calendar$",
-        "^/rails/active_storage/"
+        "^/rails/active_storage/",
+        "/manage/reports/[^/]+\\.csv$",
+        "/staffing/taxes/1099s\\.csv$",
+        "/courses/[0-9]+/roster\\.csv$"
       ],
       "properties": {
         "open_in": "document"
