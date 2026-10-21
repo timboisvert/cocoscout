@@ -368,6 +368,15 @@
 
     </div>
 
+    <%# Phone, act-based night: the acts to move someone to (V1.1 plan §4,
+        Move to…); the JS fills it from the board's own act list. %>
+    <% if @show.act_based? %>
+      <%= render layout: "shared/sheet", locals: { id: "move-act-sheet", title: "Move to another act" } do %>
+        <p class="text-sm text-gray-600 mb-3" data-drop-role-target="moveName"></p>
+        <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden" data-drop-role-target="moveList" data-move-act-sheet></div>
+      <% end %>
+    <% end %>
+
     <%# Mobile Assign Modal %>
     <div data-drop-role-target="assignModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end lg:hidden" data-action="click->drop-role#closeAssignModal">
       <div class="bg-white w-full rounded-t-2xl max-h-[75vh] flex flex-col" data-action="click->drop-role#stopPropagation" data-controller="mobile-cast-filter">

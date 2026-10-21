@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = [
-        "role", "person", "show", "assignment", "assignModal", "rolesContainer", "phoneNotify",
+        "role", "person", "show", "assignment", "assignModal", "rolesContainer", "phoneNotify", "moveName", "moveList",
         // Add Person modal targets
         "addPersonModal", "addPersonRoleName", "addPersonRoleId", "addPersonSlotPosition",
         "addPersonSearchTab", "addPersonGuestTab",
@@ -152,6 +152,41 @@ export default class extends Controller {
         this.currentReplaceAssignmentId = button.dataset.assignmentId;
         const titleEl = this.assignModalTarget.querySelector('[data-modal-title]');
         if (titleEl) titleEl.textContent = `Replace in ${button.dataset.roleName}`;
+    }
+
+    // Phone, act-based night: Move on someone's chip lists the other acts with
+    // room (V1.1 plan §4, Move to…); a tap moves them the way a drag does.
+    openMoveSheet(event) {
+        const b = event.currentTarget.dataset;
+        if (!this.hasMoveListTarget) return;
+        const sheet = document.getElementById('move-act-sheet');
+        if (this.hasMoveNameTarget) this.moveNameTarget.textContent = `Move ${b.assignableName} from ${b.roleName} to…`;
+        const rows = this.roleTargets
+            .filter(role => role.dataset.roleId !== b.roleId)
+            .map(role => {
+                const filled = parseInt(role.dataset.roleFilled || '0', 10);
+                const total = parseInt(role.dataset.roleQuantity || '1', 10);
+                const full = filled >= total;
+                return `<button type="button" ${full ? 'disabled' : ''} data-target-role-id="${role.dataset.roleId}"
+                          class="w-full flex items-center justify-between gap-3 px-4 min-h-[52px] text-left ${full ? 'opacity-50 cursor-default' : 'cursor-pointer hover:bg-pink-50'}">
+                          <span class="text-sm font-medium text-gray-900">${this.escapeHtml(role.dataset.roleName || '')}</span>
+                          <span class="text-xs text-gray-500">${full ? 'full' : `${filled}/${total}`}</span>
+                        </button>`;
+            });
+        this.moveListTarget.innerHTML = rows.join('') || '<p class="px-4 py-4 text-sm text-gray-500 text-center">No other act to move to.</p>';
+        this.moveListTarget.querySelectorAll('[data-target-role-id]:not([disabled])').forEach(button => {
+            button.addEventListener('click', () => {
+                sheet?.classList.add('hidden');
+                this.moveAssignment(this.productionId, this.showId, b.assignableId, b.roleId, button.dataset.targetRoleId, b.assignableType);
+            });
+        });
+        sheet?.classList.remove('hidden');
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // Phone: the bottom bar's Notify opens the same modal as the board's own

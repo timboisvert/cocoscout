@@ -59,6 +59,25 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
       expect(response.body).to include("In this show: Magic (Act 1)")
     end
 
+    # V1.1 plan §4, Move to…: on a phone someone's chip offers Move, which
+    # lists the other acts in a sheet; desktop keeps the drag.
+    it "offers Move to another act on a phone" do
+      create(:talent_pool_membership, talent_pool: production.talent_pool, member: performer)
+      magic_copies = show.custom_roles.where(name: "Magic").order(:position)
+      assignment = create(:show_person_role_assignment, show: show, role: magic_copies.first, assignable: performer)
+
+      get manage_casting_show_cast_path(production, show)
+      doc = Nokogiri::HTML(response.body)
+      move = doc.at_css("button[data-move-act]")
+      expect(move["data-action"]).to eq("click->drop-role#openMoveSheet")
+      expect(move["data-assignment-id"]).to eq(assignment.id.to_s)
+      expect(move["data-assignable-id"]).to eq(performer.id.to_s)
+      expect(move["data-role-name"]).to eq("Act 1 · Magic")
+      expect(move.parent["class"]).to include("md:hidden")
+      sheet = doc.at_css("#move-act-sheet")
+      expect(sheet.at_css("[data-move-act-sheet]")["data-drop-role-target"]).to eq("moveList")
+    end
+
     it "keeps them pickable in the phone's assign sheet, and pins the count and Notify to the bottom (V1.1 plan §4, §6)" do
       create(:talent_pool_membership, talent_pool: production.talent_pool, member: performer)
       magic_copies = show.custom_roles.where(name: "Magic").order(:position)

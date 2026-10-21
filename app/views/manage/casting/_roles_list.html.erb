@@ -373,6 +373,21 @@
                               data-role-id="<%= role.id %>"
                               data-role-name="<%= role_label %>">Replace</button>
                           </span>
+                          <%# Phone, act-based night: move them to another act (desktop drags). %>
+                          <% if show.act_based? && !is_guest %>
+                            <span class="md:hidden">
+                              <button type="button"
+                                class="text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-md px-2 py-1 cursor-pointer"
+                                data-action="click->drop-role#openMoveSheet"
+                                data-assignment-id="<%= assignment.id %>"
+                                data-role-id="<%= role.id %>"
+                                data-role-name="<%= role_label %>"
+                                data-assignable-type="<%= assignable.class.name %>"
+                                data-assignable-id="<%= assignable.id %>"
+                                data-assignable-name="<%= assignable.name %>"
+                                data-move-act>Move</button>
+                            </span>
+                          <% end %>
                           <button type="button"
                             class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
                             data-action="click->drop-role#removeAssignment"
@@ -605,6 +620,21 @@
                               data-role-id="<%= role.id %>"
                               data-role-name="<%= role_label %>">Replace</button>
                           </span>
+                          <%# Phone, act-based night: move them to another act (desktop drags). %>
+                          <% if show.act_based? && !is_guest %>
+                            <span class="md:hidden">
+                              <button type="button"
+                                class="text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-md px-2 py-1 cursor-pointer"
+                                data-action="click->drop-role#openMoveSheet"
+                                data-assignment-id="<%= assignment.id %>"
+                                data-role-id="<%= role.id %>"
+                                data-role-name="<%= role_label %>"
+                                data-assignable-type="<%= assignable.class.name %>"
+                                data-assignable-id="<%= assignable.id %>"
+                                data-assignable-name="<%= assignable.name %>"
+                                data-move-act>Move</button>
+                            </span>
+                          <% end %>
                           <button type="button"
                             class="text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-md px-2 py-1 cursor-pointer"
                             data-action="click->drop-role#removeAssignment"
