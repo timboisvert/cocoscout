@@ -133,12 +133,19 @@ class TicketDoor
     raise TicketCheckout::Error, "That's more than the seats left. Raise the seats on the show if the room has space."
   end
 
+  # The door's four numbers: in the room, sold (here or on other sites, comps
+  # out), comped, and the seats still available (nil = no limit). left is
+  # each door ticket type's, in its own units (a 4-pack counts once).
   def counts
-    tickets = Ticket.where(ticket_listing_id: @listing.id)
+    inventory = @listing.inventory
+    held = Ticket.where(ticket_listing_id: @listing.id, status: Ticket::SOLD_STATUSES).joins(:ticket_order)
+    comped = held.where(ticket_orders: { channel: "comp" }).count
     {
-      checked_in: tickets.where(status: "checked_in").count,
-      sold: tickets.where(status: Ticket::SOLD_STATUSES).count,
-      capacity: @listing.inventory.capacity
+      checked_in: held.where(status: "checked_in").count,
+      sold: held.count - comped + inventory.outside_sold,
+      comped: comped,
+      available: inventory.remaining,
+      left: @listing.ticket_tiers.active.select(&:door_sellable?).to_h { |tier| [ tier.id, tier.units_for(inventory.remaining(tier: tier)) ] }
     }
   end
 

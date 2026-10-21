@@ -81,7 +81,7 @@ RSpec.describe TicketDoor do
     door.check_in(order.tickets.first.code)
     results = door.check_in_order(order)
     expect(results.map(&:kind)).to eq(%i[admitted admitted admitted])
-    expect(door.counts).to eq(checked_in: 4, sold: 4, capacity: 10)
+    expect(door.counts).to eq(checked_in: 4, sold: 4, comped: 0, available: 6, left: { general.id => 6 })
   end
 
   describe "#undo" do
@@ -119,11 +119,11 @@ RSpec.describe TicketDoor do
       expect([ line.tickets_sold, line.amount.to_f ]).to eq([ 2, 40.0 ])
     end
 
-    it "comps for free: nothing in the books, but they count and they're in" do
+    it "comps for free: nothing in the books, counted as comped, not sold, and they're in" do
       order = door.sell({ general.id.to_s => "2" }, kind: "comp")
       expect([ order.channel, order.money_path, order.total_cents ]).to eq([ "comp", "none", 0 ])
       expect(JournalEntry.where(source: order)).to be_empty
-      expect(door.counts).to eq(checked_in: 2, sold: 2, capacity: 10)
+      expect(door.counts).to eq(checked_in: 2, sold: 0, comped: 2, available: 8, left: { general.id => 8 })
     end
 
     it "won't sell past the seats, or for a canceled show" do

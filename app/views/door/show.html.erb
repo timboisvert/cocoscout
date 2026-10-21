@@ -50,21 +50,17 @@
      data-door-listing-id-value="<%= @listing.id %>"
      data-door-passes-url-value="<%= door_search_path(@listing, passes_only: 1) if @pass_holders_searchable %>">
 
-  <%# The numbers that matter tonight; refreshed every few seconds. %>
-  <div class="mt-3 grid grid-cols-3 gap-2 text-center">
-    <div class="rounded-xl border border-gray-200 bg-white py-3">
-      <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="checkedIn"><%= @counts[:checked_in] %></div>
-      <div class="text-xs text-gray-500">Checked in</div>
-    </div>
-    <div class="rounded-xl border border-gray-200 bg-white py-3">
-      <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="sold"><%= @counts[:sold] %></div>
-      <% outside = @listing.inventory.outside_sold %>
-      <div class="text-xs text-gray-500">Sold<% if outside.positive? %> <span class="text-gray-400">· <%= outside %> elsewhere</span><% end %></div>
-    </div>
-    <div class="rounded-xl border border-gray-200 bg-white py-3">
-      <div class="text-2xl font-bold tabular-nums text-gray-900"><%= @counts[:capacity] || "—" %></div>
-      <div class="text-xs text-gray-500">Seats</div>
-    </div>
+  <%# The numbers that matter tonight; refreshed every few seconds. Sold is
+      every ticket bought, here or on other sites, comps out; Available is the
+      seats still to sell (Tim, 2026-10-21). %>
+  <div class="mt-3 grid grid-cols-4 gap-2 text-center">
+    <% [ [ "checkedIn", @counts[:checked_in], "Checked in" ], [ "sold", @counts[:sold], "Sold" ],
+         [ "comped", @counts[:comped], "Comped" ], [ "available", @counts[:available] || "—", "Available" ] ].each do |target, number, words| %>
+      <div class="rounded-xl border border-gray-200 bg-white py-3">
+        <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="<%= target %>"><%= number %></div>
+        <div class="text-xs text-gray-500"><%= words %></div>
+      </div>
+    <% end %>
   </div>
 
   <%# What the last scan or tap came to: green, amber or red, big. %>
@@ -103,11 +99,8 @@
                   door_sell_tap_fixed_value: TicketPricing::IN_PERSON_FIXED_CENTS,
                   door_sell_card_label_value: card_label,
                   door_sell_tap_label_value: (tap_to_pay_name if can_tap) } do %>
-      <div class="flex items-center justify-between gap-3">
-        <h2 class="text-base font-semibold text-gray-900">Sell tickets</h2>
-        <%= render "shared/button", text: "Close", variant: "ghost", size: "xs", type: :button, data: { mode: "list", action: "click->door#setMode" } %>
-      </div>
-      <ul class="mt-2 divide-y divide-gray-100">
+      <%# No heading or Close: the Sell tab above already says where you are. %>
+      <ul class="-mt-3 divide-y divide-gray-100">
         <% @tiers.each do |tier| %>
           <%# Counts are purchases: a 4-pack is four seats and four tickets. %>
           <% left = tier.units_for(@listing.inventory.remaining(tier: tier)) %>
@@ -115,14 +108,10 @@
           <% added_tax = tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(@listing, tier.base_tier, cents).added_cents } %>
           <li class="flex items-center gap-3 py-3" data-door-sell-target="row"
               data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>" data-admits="<%= tier.admits %>">
+            <%# How many of this type are left, kept current by the stats poll. %>
             <div class="min-w-0 flex-1">
-              <% if left == 0 %>
-                <div class="font-medium text-red-700"><%= tier.name %></div>
-                <div class="text-sm text-red-700"><%= ticket_price(tier.price_cents) %> · Sold out</div>
-              <% else %>
-                <div class="font-medium text-gray-900"><%= tier.name %></div>
-                <div class="text-sm text-gray-500"><%= ticket_price(tier.price_cents) %><%= " · #{left} left" if left && left <= @listing.effective_low_stock_threshold %></div>
-              <% end %>
+              <div class="font-medium text-gray-900"><%= tier.name %></div>
+              <div class="text-sm text-gray-500"><%= ticket_price(tier.price_cents) %><% unless left.nil? %> · <span class="<%= 'text-red-700 font-medium' if left.zero? %>" data-door-target="tierLeft" data-tier-id="<%= tier.id %>"><%= left.zero? ? "Sold out" : "#{left} left" %></span><% end %></div>
             </div>
             <%= hidden_field_tag "quantities[#{tier.id}]", 0, id: nil, data: { door_sell_target: "input" } %>
             <div class="flex items-center gap-2">

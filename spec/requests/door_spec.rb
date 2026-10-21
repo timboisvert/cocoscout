@@ -125,7 +125,10 @@ RSpec.describe "Door", type: :request do
       grant(door_person, "box_office")
       sign_in(door_person)
       get door_path(listing)
-      expect(response.body).to include("Sell tickets", "Card or phone pay")
+      expect(response.body).to include("Card or phone pay", "20 left")
+      # The Sell tab names the panel; no heading or Close under it (Tim, 2026-10-21).
+      expect(response.body).not_to include("Sell tickets")
+      expect(response.body).to include("Checked in", "Sold", "Comped", "Available")
       # Sell sits beside List and Scan, and its form above the list, so a long
       # night's list never pushes it out of reach (Tim, 2026-10-11).
       body = response.body
@@ -189,7 +192,7 @@ RSpec.describe "Door", type: :request do
       ticket = sold_order(1).tickets.sole
       post door_check_in_path(listing), params: { code: "https://cocoscout.com/tickets/v/#{ticket.code}" }, as: :json
       expect(response.parsed_body.slice("kind", "holder", "counts"))
-        .to eq("kind" => "admitted", "holder" => "Dana Scully", "counts" => { "checked_in" => 1, "sold" => 1, "capacity" => 20 })
+        .to eq("kind" => "admitted", "holder" => "Dana Scully", "counts" => { "checked_in" => 1, "sold" => 1, "comped" => 0, "available" => 19, "left" => { general.id.to_s => 19 } })
 
       post door_check_in_path(listing), params: { code: ticket.code }, as: :json
       expect(response.parsed_body["kind"]).to eq("already")
@@ -209,7 +212,7 @@ RSpec.describe "Door", type: :request do
       post door_check_in_order_path(listing, order_id: order.id), as: :json
       expect(response.parsed_body["message"]).to eq("Admitted 3 — Dana Scully")
       get door_stats_path(listing)
-      expect(response.parsed_body).to eq("checked_in" => 3, "sold" => 3, "capacity" => 20)
+      expect(response.parsed_body).to eq("checked_in" => 3, "sold" => 3, "comped" => 0, "available" => 17, "left" => { general.id.to_s => 17 })
     end
 
     # Most nights people are looked up by name: the list has everyone, a

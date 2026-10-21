@@ -10,7 +10,7 @@ import { Controller } from "@hotwired/stimulus"
 // codes come back here as door-scanner:code, and every banner goes to the
 // app as door:result to show over the camera.
 export default class extends Controller {
-    static targets = ["video", "viewport", "startButton", "stopButton", "banner", "checkedIn", "sold", "deliveries",
+    static targets = ["video", "viewport", "startButton", "stopButton", "banner", "checkedIn", "sold", "comped", "available", "tierLeft", "deliveries",
                       "modeButton", "listPanel", "scanPanel", "filterInput", "filterChip", "deliverChip", "results", "party", "nobody",
                       "sellPanel", "passHolders"]
     static values = { checkInUrl: String, statsUrl: String, listUrl: String, undoUrl: String, deliveriesUrl: String, listingId: Number,
@@ -399,6 +399,16 @@ export default class extends Controller {
     updateCounts(counts) {
         this.checkedInTarget.textContent = counts.checked_in
         this.soldTarget.textContent = counts.sold
+        this.compedTarget.textContent = counts.comped
+        this.availableTarget.textContent = counts.available ?? "—"
+        // Each ticket type's seats left, under its name in Sell.
+        this.tierLeftTargets.forEach(el => {
+            const left = counts.left?.[el.dataset.tierId]
+            if (left === undefined || left === null) return
+            el.textContent = left === 0 ? "Sold out" : `${left} left`
+            el.classList.toggle("text-red-700", left === 0)
+            el.classList.toggle("font-medium", left === 0)
+        })
     }
 
     async post(url, body) {
