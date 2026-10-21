@@ -1,0 +1,126 @@
+<%#
+  The vote bar (V1.1 plan §5 #18): pinned to the bottom of an audition
+  request's page and of a session audition's page, the one place a reviewer
+  votes. Yes / No / Not sure in words with the counts, previous and next, a
+  comment, and on a phone a swipe between them and the next one I haven't
+  voted on (vote_form controller). Clear of the Coco button in the app.
+
+  Locals:
+    title             the question over the buttons
+    vote_url          where a vote or comment posts
+    current_vote      this reviewer's vote, or nil
+    vote_counts       { yes:, no:, maybe: }
+    previous_path, next_path   the neighbours, or nil
+    next_unvoted_path the next one I haven't voted on, or nil (phone row shown
+                      when unvoted_left is given)
+    unvoted_left      how many are left to vote on, me included, or nil
+    others_unvoted    how many others I haven't voted on (the swipe's count)
+%>
+<%
+  current_vote = local_assigns[:current_vote]
+  vote_counts = local_assigns.fetch(:vote_counts)
+  vote_url = local_assigns.fetch(:vote_url)
+  chevron_left = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>'.html_safe
+  chevron_right = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>'.html_safe
+  choices = [ [ "yes", "Yes" ], [ "no", "No" ], [ "maybe", "Not sure" ] ]
+  button_class = ->(on, extra) { "inline-flex items-center justify-center gap-1 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap #{extra} #{on ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'}" }
+%>
+<%# Fade overlay for the bottom of the content %>
+<div class="fixed bottom-0 left-0 right-0 lg:left-64 h-40 sm:h-56 bg-gradient-to-t from-gray-100 via-gray-100 via-50% to-transparent pointer-events-none z-10"></div>
+
+<div class="fixed bottom-[calc(env(safe-area-inset-bottom)+16px)] sm:bottom-4 left-4 <%= turbo_native_app? ? 'right-[96px] sm:right-4' : 'right-4' %> lg:left-[17rem] lg:right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden"
+     data-controller="vote-form"
+     data-action="touchstart->vote-form#touchStart touchend->vote-form#touchEnd"
+     data-audition-phone-vote-bar
+     data-vote-form-others-unvoted-value="<%= local_assigns[:others_unvoted].to_i %>"
+     data-vote-form-voted-value="<%= current_vote.present? %>"
+     data-vote-form-save-url-value="<%= vote_url %>">
+  <%= render "shared/section_heading", padding: "px-3 py-2", title: local_assigns[:title] %>
+  <div class="p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+    <%# Previous, the buttons (phone) and Next (phone) on one row %>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <div class="flex-shrink-0">
+        <% if local_assigns[:previous_path] %>
+          <%= link_to local_assigns[:previous_path], class: "flex items-center justify-center w-11 h-11 sm:w-10 sm:h-10 rounded text-pink-500 hover:bg-pink-50 transition-all",
+                aria: { label: "Previous" }, data: { action: "click->vote-form#navigateWithSave", vote_form_target: "previous" } do %><%= chevron_left %><% end %>
+        <% else %>
+          <div class="flex items-center justify-center w-10 h-10 text-gray-300"><%= chevron_left %></div>
+        <% end %>
+      </div>
+
+      <div class="flex items-center gap-1 sm:hidden flex-1 justify-center">
+        <% choices.each do |value, label| %>
+          <button type="button" data-action="click->vote-form#submitVote" data-vote-form-vote-param="<%= value %>" data-vote-form-url-param="<%= vote_url %>"
+                  class="<%= button_class.call(current_vote&.vote == value, 'flex-1 px-2 min-h-[44px]') %>">
+            <span><%= label %></span>
+            <span class="opacity-75" data-vote-form-target="count" data-vote-count="<%= value %>"><%= vote_counts[value.to_sym] %></span>
+          </button>
+        <% end %>
+      </div>
+
+      <div class="flex-shrink-0 sm:hidden">
+        <% if local_assigns[:next_path] %>
+          <%= link_to local_assigns[:next_path], class: "flex items-center justify-center w-11 h-11 rounded text-pink-500 hover:bg-pink-50 transition-all",
+                aria: { label: "Next" }, data: { action: "click->vote-form#navigateWithSave", vote_form_target: "next" } do %><%= chevron_right %><% end %>
+        <% else %>
+          <div class="flex items-center justify-center w-10 h-10 text-gray-300"><%= chevron_right %></div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Phone: the comment %>
+    <div class="sm:hidden flex items-center gap-2 border-t border-gray-200 pt-2">
+      <input type="text" data-vote-form-target="comment" placeholder="Add a comment..." value="<%= current_vote&.comment %>"
+             class="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
+      <button type="button" data-action="click->vote-form#submitComment" data-vote-form-url-param="<%= vote_url %>"
+              class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">Save</button>
+    </div>
+
+    <%# Phone: jump to the next one I haven't voted on %>
+    <% if local_assigns.key?(:unvoted_left) && !local_assigns[:unvoted_left].nil? %>
+      <div class="sm:hidden flex items-center justify-between gap-2 border-t border-gray-200 pt-2 text-sm" data-next-unvoted>
+        <span class="text-gray-500" data-unvoted-left data-vote-form-target="left"><%= local_assigns[:unvoted_left].zero? ? "You've voted on every one" : "#{local_assigns[:unvoted_left]} left to vote on" %></span>
+        <% if local_assigns[:next_unvoted_path] %>
+          <%= link_to local_assigns[:next_unvoted_path], class: "inline-flex items-center gap-1 min-h-[44px] font-medium text-pink-600", data: { action: "click->vote-form#navigateWithSave" } do %>
+            Next I haven't voted on
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="hidden sm:block w-px h-12 bg-gray-200"></div>
+
+    <%# From sm up: the buttons and the comment, labelled %>
+    <div class="hidden sm:block flex-1 space-y-2">
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-gray-500 whitespace-nowrap w-28">Cast your vote</span>
+        <% choices.each do |value, label| %>
+          <button type="button" data-action="click->vote-form#submitVote" data-vote-form-vote-param="<%= value %>" data-vote-form-url-param="<%= vote_url %>"
+                  class="<%= button_class.call(current_vote&.vote == value, 'px-4 py-2 w-32') %>">
+            <span><%= label %></span>
+            <span class="opacity-75">(<span data-vote-form-target="count" data-vote-count="<%= value %>"><%= vote_counts[value.to_sym] %></span>)</span>
+          </button>
+        <% end %>
+      </div>
+      <div class="flex items-center gap-2 border-t border-gray-200 pt-2">
+        <span class="text-sm text-gray-500 whitespace-nowrap w-28">Add a comment</span>
+        <input type="text" id="vote-comment" data-vote-form-target="comment" placeholder="Optional comment..." value="<%= current_vote&.comment %>"
+               class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 min-w-0" />
+        <button type="button" data-action="click->vote-form#submitComment" data-vote-form-url-param="<%= vote_url %>"
+                class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white transition-colors cursor-pointer whitespace-nowrap">Save</button>
+      </div>
+    </div>
+
+    <div class="hidden sm:block w-px h-12 bg-gray-200"></div>
+
+    <div class="hidden sm:block flex-shrink-0">
+      <% if local_assigns[:next_path] %>
+        <%= link_to local_assigns[:next_path], class: "flex items-center justify-center w-10 h-10 rounded text-pink-500 hover:bg-pink-50 transition-all",
+              aria: { label: "Next" }, data: { action: "click->vote-form#navigateWithSave" } do %><%= chevron_right %><% end %>
+      <% else %>
+        <div class="flex items-center justify-center w-10 h-10 text-gray-300"><%= chevron_right %></div>
+      <% end %>
+    </div>
+  </div>
+</div>

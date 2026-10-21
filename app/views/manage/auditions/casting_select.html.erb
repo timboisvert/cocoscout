@@ -176,7 +176,7 @@
                 vote_counts = @auditionee_vote_counts[[auditionee.class.name, auditionee.id]]
               %>
 
-              <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white cursor-grab <%= is_cast ? 'border-pink-300 bg-pink-50' : is_rejected ? 'border-red-300 bg-red-50' : 'border-gray-200' %>"
+              <div class="flex items-stretch px-3 py-2 border rounded-lg hover:border-gray-400 transition-all bg-white cursor-grab [&_*]:pointer-events-none <%= is_cast ? 'border-pink-300 bg-pink-50' : is_rejected ? 'border-red-300 bg-red-50' : 'border-gray-200' %>"
                   data-casting-drag-target="auditionee"
                   data-auditionee-type="<%= auditionee.class.name %>"
                   data-auditionee-id="<%= auditionee.id %>"
@@ -184,67 +184,9 @@
                   draggable="true"
                   data-action="dragstart->casting-drag#dragStart dragend->casting-drag#dragEnd">
 
-                <%# Left Section: Headshot & Name (50%) %>
-                <div class="w-1/2 flex items-center gap-3 pointer-events-none">
-                  <%# Decision indicator badge %>
-                  <div class="relative">
-                    <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
-                    <% if headshot_variant %>
-                      <%= image_tag headshot_variant, alt: auditionee.name, class: "h-10 w-10 rounded-lg object-cover", draggable: false %>
-                    <% elsif auditionee.is_a?(Person) %>
-                      <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-black font-bold text-sm">
-                        <%= auditionee.initials %>
-                      </div>
-                    <% else %>
-                      <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                      </div>
-                    <% end %>
-                    <% if is_cast %>
-                      <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-pink-500 rounded-full flex items-center justify-center shadow">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="white" class="w-3 h-3">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                        </svg>
-                      </div>
-                    <% elsif is_rejected %>
-                      <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="white" class="w-3 h-3">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </div>
-                    <% end %>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-medium text-sm text-gray-900 truncate">
-                      <%= auditionee.name %>
-                    </div>
-                    <% if is_cast %>
-                      <div class="text-[10px] text-pink-600 font-medium">Added to cast</div>
-                    <% elsif is_rejected %>
-                      <div class="text-[10px] text-red-600 font-medium">Rejected</div>
-                    <% end %>
-                  </div>
-                </div>
-
-                <%# Right Section: Vote Counts in thirds (50%) %>
-                <% if vote_counts %>
-                  <div class="w-1/2 border-l border-gray-200 pl-3 grid grid-cols-3 items-center divide-x divide-gray-200 pointer-events-none">
-                    <div class="text-center px-1">
-                      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Yes</div>
-                      <div class="text-base font-bold text-pink-600"><%= vote_counts[:yes] %></div>
-                    </div>
-                    <div class="text-center px-1">
-                      <div class="text-[10px] text-gray-400 uppercase tracking-wide">No</div>
-                      <div class="text-base font-bold text-pink-600"><%= vote_counts[:no] %></div>
-                    </div>
-                    <div class="text-center px-1">
-                      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Not Sure</div>
-                      <div class="text-base font-bold text-pink-600"><%= vote_counts[:maybe] %></div>
-                    </div>
-                  </div>
-                <% end %>
+                <%# The review card, with the decision on the headshot and the votes in thirds. %>
+                <%= render "shared/review_card", member: auditionee, vote_counts: vote_counts, votes: :thirds,
+                      decision: (is_cast ? :cast : (is_rejected ? :rejected : nil)) %>
               </div>
             <% end %>
 
@@ -296,54 +238,10 @@
                 vote_counts = @auditionee_vote_counts[[auditionee.class.name, auditionee.id]]
               %>
               <div class="flex items-center gap-3 p-3 rounded-lg border <%= is_cast ? 'border-pink-300 bg-pink-50' : is_rejected ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white' %>">
-                <%# Headshot with badge %>
-                <div class="relative flex-shrink-0">
-                  <% headshot_variant = auditionee.safe_headshot_variant(:thumb) %>
-                  <% if headshot_variant %>
-                    <%= image_tag headshot_variant, alt: auditionee.name, class: "w-10 h-10 rounded-lg object-cover" %>
-                  <% elsif auditionee.is_a?(Person) %>
-                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-sm">
-                      <%= auditionee.initials %>
-                    </div>
-                  <% else %>
-                    <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                  <% end %>
-                  <% if is_cast %>
-                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-pink-500 rounded-full flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="white" class="w-2.5 h-2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                      </svg>
-                    </div>
-                  <% elsif is_rejected %>
-                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="white" class="w-2.5 h-2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                  <% end %>
-                </div>
-
-                <%# Name and votes %>
-                <div class="flex-1 min-w-0">
-                  <div class="font-medium text-sm text-gray-900 truncate"><%= auditionee.name %></div>
-                  <div class="text-xs text-gray-500">
-                    <% if is_cast %>
-                      <span class="text-pink-600">Added to cast</span>
-                    <% elsif is_rejected %>
-                      <span class="text-red-600">Rejected</span>
-                    <% elsif vote_counts %>
-                      <span class="text-green-600"><%= vote_counts[:yes] %> yes</span>
-                      · <%= vote_counts[:no] %> no
-                      · <%= vote_counts[:maybe] %> maybe
-                    <% else %>
-                      No votes yet
-                    <% end %>
-                  </div>
-                </div>
+                <%# The review card, growing; the votes as chips. %>
+                <%= render "shared/review_card", member: auditionee, vote_counts: vote_counts, votes: :chips, grow: true,
+                      decision: (is_cast ? :cast : (is_rejected ? :rejected : nil)),
+                      subline: (vote_counts.nil? && !is_cast && !is_rejected ? "No votes yet" : nil) %>
 
                 <%# Action buttons %>
                 <div class="flex items-center gap-1">

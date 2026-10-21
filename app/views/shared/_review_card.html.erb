@@ -1,0 +1,81 @@
+<%#
+  The review card (V1.1 plan §5 #18): one person or group being reviewed,
+  drawn the same way in every audition list: the audition requests list, a
+  session's run-sheet, and casting select's auditionees (its list and its
+  phone sheet). Headshot with the decision badge, the name, a line under it,
+  and the votes: chips on a phone, thirds from sm up. The caller wraps it in
+  its own row (a link, a draggable, a sheet row) and adds the buttons.
+
+  Locals:
+    member       Person or Group (nil draws "[Deleted]")
+    vote_counts  { yes:, no:, maybe: }, or nil for none
+    decision     :cast, :rejected or nil (the badge on the headshot and, with
+                 no subline, the words under the name)
+    subline      words (or html) under the name; the decision's words when nil
+    size         :sm (8), :md (10, default) or :lg (12) headshot
+    votes        :both (default: chips on a phone, thirds from sm), :chips, :thirds
+    name_length  truncate the name at this many characters (default 50)
+    grow         true keeps the name block growing at every width (a sheet
+                 row); otherwise it takes half the row from sm up
+%>
+<%
+  member = local_assigns[:member]
+  vote_counts = local_assigns[:vote_counts]
+  decision = local_assigns[:decision]
+  votes = local_assigns.fetch(:votes, :both)
+  px = { sm: "w-8 h-8", md: "w-10 h-10", lg: "w-12 h-12" }.fetch(local_assigns.fetch(:size, :md))
+  icon = { sm: "w-4 h-4", md: "w-5 h-5", lg: "w-6 h-6" }.fetch(local_assigns.fetch(:size, :md))
+  headshot = member.respond_to?(:safe_headshot_variant) ? member.safe_headshot_variant(:thumb) : nil
+  subline = local_assigns[:subline]
+  subline ||= case decision
+              when :cast then tag.span("Added to cast", class: "text-pink-600 font-medium")
+              when :rejected then tag.span("Rejected", class: "text-red-600 font-medium")
+              end
+%>
+<div class="<%= local_assigns[:grow] ? 'flex-1' : 'flex-1 sm:w-1/2 sm:flex-none' %> flex items-center gap-3 min-w-0" data-review-card>
+  <div class="relative flex-shrink-0">
+    <% if member.nil? %>
+      <div class="<%= px %> rounded-lg bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-bold">?</div>
+    <% elsif headshot %>
+      <%= image_tag headshot, alt: member.name, class: "#{px} rounded-lg object-cover", draggable: false %>
+    <% elsif member.is_a?(Person) %>
+      <div class="<%= px %> rounded-lg bg-gray-100 flex items-center justify-center text-gray-900 font-bold text-sm"><%= member.initials %></div>
+    <% else %>
+      <div class="<%= px %> rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+        <svg class="<%= icon %>" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      </div>
+    <% end %>
+    <% if decision == :cast %>
+      <span class="absolute -bottom-1 -right-1 w-5 h-5 bg-pink-500 rounded-full flex items-center justify-center shadow" data-decision="cast" aria-label="Added to cast">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="white" class="w-3 h-3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+      </span>
+    <% elsif decision == :rejected %>
+      <span class="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow" data-decision="rejected" aria-label="Rejected">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="white" class="w-3 h-3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </span>
+    <% end %>
+  </div>
+  <div class="flex-1 min-w-0">
+    <div class="text-sm font-medium <%= member ? 'text-gray-900' : 'text-gray-500' %> truncate"><%= member ? truncate(member.name, length: local_assigns.fetch(:name_length, 50), omission: "...") : "[Deleted]" %></div>
+    <% if subline.present? %><div class="text-xs text-gray-500 mt-0.5 truncate"><%= subline %></div><% end %>
+  </div>
+</div>
+<% if vote_counts %>
+  <% unless votes == :thirds %>
+    <div class="<%= 'sm:hidden' if votes == :both %> flex items-center gap-1.5 flex-shrink-0 text-xs tabular-nums" data-vote-chips>
+      <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 font-semibold"><%= vote_counts[:yes] %> yes</span>
+      <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"><%= vote_counts[:no] %> no</span>
+      <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"><%= vote_counts[:maybe] %> ?</span>
+    </div>
+  <% end %>
+  <% unless votes == :chips %>
+    <div class="<%= votes == :both ? 'hidden sm:grid' : 'grid' %> w-1/2 border-l border-gray-200 pl-4 grid-cols-3 items-center divide-x divide-gray-200" data-vote-thirds>
+      <% { "Yes" => :yes, "No" => :no, "Not Sure" => :maybe }.each do |label, key| %>
+        <div class="text-center px-2">
+          <div class="text-xs text-gray-400 uppercase tracking-wide"><%= label %></div>
+          <div class="text-lg font-bold text-pink-600"><%= vote_counts[key] %></div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
