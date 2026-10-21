@@ -1016,6 +1016,8 @@ Rails.application.routes.draw do
     patch "/casting/:production_id/settings", to: "casting_settings#update", as: "update_casting_settings"
     get  "/casting/:production_id/settings/:section", to: "casting_settings#show", as: "casting_settings_section"
     get  "/casting/:production_id/search_people", to: "casting#search_people", as: "casting_search_people"
+    # The shared People Picker's search (V1.1 plan §5), for every picker sheet.
+    get  "/people-picker/search", to: "people_picker#search", as: "people_picker_search"
 
     # Casting > Availability (new URL pattern: /manage/casting/:production_id/availability)
     get  "/casting/:production_id/availability", to: "casting_availability#index", as: "casting_availability"
@@ -1225,7 +1227,6 @@ Rails.application.routes.draw do
         patch :update_public_key
         # Production team management
         post :add_team_member
-        get :search_team_member
         patch :update_team_permission
         patch :toggle_production_notification
         delete :remove_team_member

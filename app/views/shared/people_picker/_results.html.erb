@@ -1,0 +1,49 @@
+<%# What the People Picker found (Manage::PeoplePickerController#search).
+    Locals: query, people, groups, outside, already ({ "Person_1" => label }),
+    badges ({ "Person_1" => label }), availability ({ id => status }),
+    invite_email, invite_name. %>
+<% if query.to_s.length < 2 %>
+  <p class="text-sm text-gray-400 text-center py-6">Type a name to find someone.</p>
+<% elsif people.empty? && groups.empty? && outside.empty? && invite_email.blank? %>
+  <div class="text-center py-6">
+    <p class="text-sm text-gray-500">Nobody found for "<%= query %>".</p>
+    <% if local_assigns[:invite_allowed] || query.include?("@") %>
+      <p class="text-xs text-gray-400 mt-1">Search by their exact email to find someone on CocoScout.</p>
+    <% end %>
+  </div>
+<% else %>
+  <% section = ->(label) { tag.div(label, class: "text-[11px] font-semibold uppercase tracking-wide text-gray-500 px-1 pt-3 pb-1.5 first:pt-0") } %>
+  <% if (people + groups).any? %>
+    <%= section.call("In your organization") %>
+    <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+      <% (people + groups).sort_by { |m| m.name.to_s.downcase }.each do |member| %>
+        <% key = "#{member.class.name}_#{member.id}" %>
+        <%= render "shared/people_picker/row", member: member, query: query, connected: true,
+              taken: already[key], badge: (badges[key] || { "available" => "Available", "unavailable" => "Unavailable" }[availability[member.id]]),
+              badge_tone: (availability[member.id] == "unavailable" ? "gray" : "pink") %>
+      <% end %>
+    </div>
+  <% end %>
+  <% if outside.any? %>
+    <%= section.call("On CocoScout, not in your organization") %>
+    <div class="rounded-lg border border-pink-200 divide-y divide-pink-100 overflow-hidden">
+      <% outside.each do |person| %>
+        <%= render "shared/people_picker/row", member: person, query: query, connected: false, taken: already["Person_#{person.id}"], badge: nil, badge_tone: "pink" %>
+      <% end %>
+    </div>
+  <% end %>
+  <% if invite_email.present? %>
+    <%= section.call("Not on CocoScout yet") %>
+    <div class="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-3" data-people-picker-invite>
+      <p class="text-sm text-gray-600">Nobody has <span class="font-medium text-gray-900"><%= invite_email %></span>. Invite them and they'll be added when they accept.</p>
+      <% if invite_name %>
+        <input type="text" placeholder="Their name" data-people-picker-target="inviteName"
+               class="mt-2 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      <% end %>
+      <div class="mt-2">
+        <%= render "shared/button", text: "Invite #{invite_email}", variant: "primary", size: "small", type: :button,
+              data: { action: "click->people-picker#invite", email: invite_email } %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

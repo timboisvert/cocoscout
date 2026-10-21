@@ -1,0 +1,63 @@
+<%#
+  The shared People Picker (V1.1 plan §5): a sheet with a search box and
+  the people it finds (Manage::PeoplePickerController#search), picked by a
+  tap. The page keeps doing what it did with a pick; the picker only finds
+  and names them.
+
+  Opened by a people-picker:open event on window (people_picker_trigger, or
+  the page's own controller), closed by its sheet's X or after a pick.
+  Each pick dispatches people-picker:pick on this element, bubbling, with
+  detail: { type: "Person" | "Group", id, name, email, initials, headshotUrl,
+  userId, outside, inPool } or { invite: true, email, name }, plus the
+  context the opener passed.
+
+  Locals:
+    id            (default "people-picker") the sheet's id; a page with two
+                  pickers gives each its own
+    title         the sheet's header; the opener may pass another
+    pick_action   the page's listener, e.g. "people-picker:pick->roster#picked"
+    scope         "people" (default), "users" or "members"
+    production_id, show_id, talent_pool_id, exclude, outside, invite,
+    invite_name   as Manage::PeoplePickerController#search reads them
+    multi         true keeps the sheet open after a pick, marking the row
+    placeholder   the search box's words
+    hint          a line under the box, e.g. "Someone in your organization"
+%>
+<%
+  id = local_assigns.fetch(:id, "people-picker")
+  params = {
+    scope: local_assigns[:scope],
+    production_id: local_assigns[:production_id],
+    show_id: local_assigns[:show_id],
+    talent_pool_id: local_assigns[:talent_pool_id],
+    exclude: local_assigns[:exclude],
+    outside: (local_assigns[:outside] ? "1" : nil),
+    invite: (local_assigns[:invite] ? "1" : nil),
+    invite_name: (local_assigns[:invite_name] ? "1" : nil)
+  }.compact
+%>
+<div data-controller="people-picker"
+     data-people-picker="<%= id %>"
+     data-people-picker-id-value="<%= id %>"
+     data-people-picker-url-value="<%= manage_people_picker_search_path %>"
+     data-people-picker-params-value="<%= params.to_json %>"
+     data-people-picker-multi-value="<%= local_assigns[:multi] ? true : false %>"
+     data-action="people-picker:open@window->people-picker#open <%= local_assigns[:pick_action] %>">
+  <%= render layout: "shared/sheet", locals: { id: id, title: local_assigns[:title] || "Pick a person" } do %>
+    <div class="relative">
+      <input type="search" autocomplete="off" autocapitalize="none" spellcheck="false"
+             placeholder="<%= local_assigns[:placeholder] || "Search by name or email" %>"
+             data-people-picker-target="input"
+             data-action="input->people-picker#search"
+             class="block w-full px-3 py-2.5 pl-10 min-h-[44px] bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+      <div data-people-picker-target="spinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+        <svg class="animate-spin h-4 w-4 text-pink-500" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      </div>
+    </div>
+    <% if local_assigns[:hint].present? %><p class="text-xs text-gray-500 mt-2"><%= local_assigns[:hint] %></p><% end %>
+    <div data-people-picker-target="results" class="mt-3 min-h-[8rem]">
+      <p class="text-sm text-gray-400 text-center py-6">Type a name to find someone.</p>
+    </div>
+  <% end %>
+</div>
