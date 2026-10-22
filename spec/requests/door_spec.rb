@@ -49,7 +49,8 @@ RSpec.describe "Door", type: :request do
       # door is open, with its counts; a show three days out isn't listed.
       get door_index_path
       body = response.body
-      expect(body).to include(">On now<", door_path(tonight), "Checked in", "Open the door")
+      expect(body).to include(">On now<", door_path(tonight), "Checked in", "Comped", "Available", "Open the door")
+      expect(body).not_to include(">Seats<")
       expect(body).not_to include(door_path(later), ">Coming up<")
 
       # An organization that keeps the Door in the app all the time was

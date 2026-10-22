@@ -43,7 +43,8 @@ class DoorController < ApplicationController
     else
       []
     end
-    @stats = Ticketing::ListingStats.for(@on_now)
+    # The same numbers the door shows (TicketDoor#counts), so the two pages agree.
+    @counts = @on_now.to_h { |listing| [ listing.id, TicketDoor.new(listing, Current.user).counts ] }
   end
 
   def show
