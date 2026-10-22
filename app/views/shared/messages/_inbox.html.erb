@@ -7,10 +7,10 @@
            e.g. ->(**o) { messages_path(**o) }
 
   The filters are the shared filter bar (Tim, 2026-10-21: no inbox-only
-  way of filtering): Show (All / Unread / Sent / Archived), For (Everything /
-  As a performer / each organization you run), the production dropdown with
-  more than one production in the inbox, and two round pink icon buttons for
-  newest-oldest and row density.
+  way of filtering): Show (All / Unread / Sent / Archived), the For dropdown
+  (Everything / As a performer / each organization you run), the production
+  dropdown with more than one production in the inbox, and a round pink
+  icon button for newest or oldest first (its arrow shows which).
 
   A row under the production hat wears a pill with its organization (pink
   when it's the organization open in production mode, gray otherwise); a
@@ -31,10 +31,10 @@
     [ "Sent", path.call(filter: "sent_by_me"), @filter == "sent_by_me" ],
     [ "Archived", path.call(filter: "archived"), @filter == "archived" ]
   ]
-  hat_chips = [
-    [ "Everything", path.call(hat: nil), @hat.blank? ],
-    [ "As a performer", path.call(hat: "performer"), @hat == "performer" ]
-  ] + @managed_organizations.map { |org| [ org.name, path.call(hat: "org:#{org.id}"), @hat == "org:#{org.id}" ] }
+  hat_options = [
+    { value: "", text: "Everything" },
+    { value: "performer", text: "As a performer" }
+  ] + @managed_organizations.map { |org| { value: "org:#{org.id}", text: org.name } }
 %>
 
 <div data-controller="notification-open"
@@ -48,16 +48,20 @@
     <%= f.hidden_field :hat, value: @hat %>
   <% end %>
 
-  <%# The shared filter bar, as every list has (Tim, 2026-10-21): Show, For
-      (with organizations to run), the production dropdown when there's more
-      than one, and the two round icon buttons. %>
+  <%# The shared filter bar, as every list has (Tim, 2026-10-21): Show, the
+      For dropdown (with organizations you run), the production dropdown when
+      there's more than one, and the round sort button. %>
   <%= render "shared/filters/filter_bar",
         toggle_label: "Filters",
         wrapper_data_controller: "filter-select",
         filter_groups: [
           { label: "Show", filters: show_chips.map { |text, href, on| { text: text, path: href, active: on } } },
           (@managed_organizations.any? ? { separator: true } : nil),
-          (@managed_organizations.any? ? { label: "For", filters: hat_chips.map { |text, href, on| { text: text, path: href, active: on } } } : nil),
+          (@managed_organizations.any? ? {
+            partial: "shared/filters/dropdown_filter",
+            locals: { label: "For", name: "hat", options: hat_options, selected: @hat.to_s,
+                      extra_url_params: current.except(:hat) }
+          } : nil),
           (@inbox_productions.many? ? { separator: true } : nil),
           (@inbox_productions.many? ? {
             partial: "shared/filters/production_dropdown_filter",

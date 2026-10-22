@@ -26,9 +26,9 @@ module NavigationHelper
 
   # The V1.1 panels' nav (desktop and mobile web, and generation-2 apps):
   # dashboard_nav_sections without Messages, which became a universal icon
-  # beside Notifications (Tim, 2026-10-20), and, in production mode on Pro
-  # with several productions, Productions after Home with how many. V1's
-  # native menu keeps reading dashboard_nav_sections unchanged.
+  # beside Notifications (Tim, 2026-10-20), and, in production mode on Pro,
+  # Productions after Home. V1's native menu keeps reading
+  # dashboard_nav_sections unchanged.
   def panel_nav_sections(context)
     # "Home" in both modes; "My Shows & Events" on My, "Shows & Events" in
     # production mode (Tim, 2026-10-21).
@@ -36,12 +36,12 @@ module NavigationHelper
       section.merge(items: section[:items].reject { |item| item[:icon] == "messages" })
     end
     if context.to_sym == :production && Current.organization&.on_paid_plan? && sections.first
-      count = Current.user.accessible_productions.where(organization: Current.organization).count
-      if count > 1
-        # No count beside it (Tim, 2026-10-21: it said nothing anyone needed).
-        productions = { label: "Productions", path: manage_productions_path, icon: "productions", active: controller_name == "productions" }
-        sections.first[:items].insert(1, productions)
-      end
+      # On every Pro organization, even with one production: it's where the
+      # second gets made. The Producer plan has one production and no list;
+      # its organization menu carries the production instead (Tim,
+      # 2026-10-21). No count beside it.
+      productions = { label: "Productions", path: manage_productions_path, icon: "productions", active: controller_name == "productions" }
+      sections.first[:items].insert(1, productions)
     end
     sections
   end

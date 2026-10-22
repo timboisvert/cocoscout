@@ -21,8 +21,12 @@
               { text: "Unread", path: notifications_path(filter: "unread", area: @area), active: @filter == "unread" }
             ] },
             (NotificationGroups.areas.size > 1 ? { separator: true } : nil),
-            (NotificationGroups.areas.size > 1 ? { label: "About", filters: [ { text: "Everything", path: notifications_path(filter: @filter), active: @area.nil? } ] +
-              NotificationGroups.areas.map { |area| { text: area, path: notifications_path(filter: @filter, area: area), active: @area == area } } } : nil)
+            (NotificationGroups.areas.size > 1 ? {
+              partial: "shared/filters/dropdown_filter",
+              locals: { label: "About", name: "area", selected: @area.to_s,
+                        options: [ { value: "", text: "Everything" } ] + NotificationGroups.areas.map { |area| { value: area, text: area } },
+                        extra_url_params: { filter: (@filter == "all" ? nil : @filter) } }
+            } : nil)
           ].compact %>
   </div>
 

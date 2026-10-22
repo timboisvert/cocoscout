@@ -7,6 +7,8 @@
 #   options: Array - Array of option hashes with :value, :text, and optional :condition keys
 #   selected: String - Currently selected value
 #   data_attributes: Hash (optional) - Additional data attributes for the select element
+#   extra_url_params: Hash (optional) - Query params to carry through on every
+#     option link (the page's other filters)
 #
 # Example usage:
 #   render "shared/filters/dropdown_filter",
@@ -24,6 +26,7 @@
 %>
 
 <%
+  data_attributes = local_assigns[:data_attributes]
   # Find the selected option text
   selected_option = options.find { |o| o[:value].to_s == selected.to_s }
   selected_text = selected_option ? selected_option[:text] : options.first&.dig(:text) || "Select"
@@ -49,7 +52,8 @@
           <% is_selected = option[:value].to_s == selected.to_s %>
           <%
             # Build URL with data attributes
-            url_params = {}
+            url_params = (local_assigns[:extra_url_params] || {}).compact.dup
+            url_params[name.to_sym] = option[:value] unless data_attributes
             if data_attributes
               param_name = data_attributes[:filter_select_param_value] || name
               url_params[param_name.to_sym] = option[:value]

@@ -4,8 +4,14 @@
   you're in production mode, so it answers, in order, where you are (the
   organization, your role, its plan), how you leave (Exit production mode,
   the CocoScout-pink bar), where else you could be (the other organizations,
-  one tap each), and this organization's own pages (its settings, plan and
-  billing, productions). New organization sits last, quiet.
+  one tap each), then, by plan and how many productions there are (Tim,
+  later that day, design canvas "Organization menu by tier"):
+    Producer plan, one production: the production itself (its row opens its
+      settings) and a Pro card, since a second production is Pro;
+    Pro, one production: the production's row and a plain Add a production;
+    Pro, several: nothing about productions here; they're in the left nav.
+  Then this organization's own pages (settings, plan and billing). New
+  organization sits last, quiet.
 %>
 <% org = Current.organization %>
 <% organizations = Current.user.accessible_organizations.order(:name).to_a %>
@@ -48,25 +54,56 @@
   <% end %>
 <% end %>
 
-<%# This organization's own pages %>
-<div class="<%= label %> border-t border-gray-100">This organization</div>
-<% if current_user_is_global_manager? %>
+<%# The production(s), by plan %>
+<% productions = Current.user.accessible_productions.where(organization: org).order(:name).to_a %>
+<% only = productions.one? ? productions.first : nil %>
+<%# With several productions on Pro, the left nav's Productions page has the list and Add; the menu says nothing. %>
+<% can_add = productions.size <= 1 && current_user_is_global_manager? && !org.at_production_limit? %>
+<% if only || can_add || (!org.on_paid_plan? && current_user_is_global_manager?) %>
+  <div class="<%= label %> border-t border-gray-100"><%= only ? "Your production" : "Productions" %></div>
+<% end %>
+<% if only %>
+  <%# Settings for those who can change them; a viewer gets the production's page. %>
+  <%= link_to (current_user_can_manage?(only) ? edit_manage_production_path(only) : manage_production_path(only)), class: "#{item} cursor-pointer", role: "menuitem", data: { organization_menu_production: only.id } do %>
+    <%= render "shared/production_image", production: only, width: "w-8", fallback_aspect: "poster", initials_class: "text-[11px]" %>
+    <span class="min-w-0 flex-1">
+      <span class="block text-sm font-semibold text-gray-900 truncate"><%= only.name %></span>
+      <% upcoming = only.shows.upcoming.count %>
+      <% in_pool = only.talent_pools.sum { |pool| pool.talent_pool_memberships.count } %>
+      <span class="block text-xs text-gray-500"><%= pluralize(upcoming, "upcoming show") %> · <%= in_pool %> in the talent pool</span>
+    </span>
+    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+  <% end %>
+<% end %>
+<% if can_add %>
+  <%= link_to manage_productions_wizard_path, class: item, role: "menuitem" do %>
+    <span class="w-7 h-7 rounded-full bg-pink-50 text-pink-700 flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </span>
+    <span class="font-medium text-gray-900">Add a production</span>
+  <% end %>
+<% elsif !org.on_paid_plan? && current_user_is_global_manager? %>
+  <%# At the Producer plan's one production: the way to a second is Pro. %>
+  <div class="mx-2.5 mt-1.5 mb-2.5 p-3 bg-pink-50 border border-pink-200 rounded-lg" data-organization-menu-pro-card>
+    <p class="text-[13px] font-semibold text-gray-900">Running a second production?</p>
+    <p class="text-xs text-gray-600 mt-0.5">Pro runs any number of them, with ticketing, staffing and money. $20/mo or $200/yr.</p>
+    <div class="mt-2.5 flex items-center gap-2">
+      <%= render "shared/button", text: "See Pro", variant: "primary", size: "small", path: section_manage_organization_path(org, section: "billing") %>
+    </div>
+  </div>
+<% end %>
+
+<%# This organization's own pages (the label only when there are any: a Member sees neither) %>
+<% can_settings = current_user_is_global_manager? %>
+<% can_billing = Current.user.superadmin? || org.manageable_by?(Current.user) %>
+<% if can_settings || can_billing %>
+  <div class="<%= label %> border-t border-gray-100">This organization</div>
+<% end %>
+<% if can_settings %>
   <%= link_to "Organization settings", manage_organization_path(org), class: item, role: "menuitem" %>
 <% end %>
-<% if Current.user.superadmin? || org.manageable_by?(Current.user) %>
+<% if can_billing %>
   <%= link_to "Plan and billing", section_manage_organization_path(org, section: "billing"), class: item, role: "menuitem" %>
-<% end %>
-<% if org.on_paid_plan? %>
-  <%= link_to "Productions", manage_productions_path, class: item, role: "menuitem" %>
-<% elsif (production = Current.user.accessible_productions.where(organization: org).order(:name).first) %>
-  <%= link_to "#{production.name} settings", edit_manage_production_path(production), class: item, role: "menuitem" %>
-<% end %>
-<% if current_user_is_global_manager? %>
-  <% if org.at_production_limit? %>
-    <span class="<%= item %> text-gray-400 cursor-default" role="menuitem" aria-disabled="true">Add a production <%= render "shared/pro_marker", kind: :lock, classes: "ml-auto" %></span>
-  <% else %>
-    <%= link_to "Add a production", manage_productions_wizard_path, class: item, role: "menuitem" %>
-  <% end %>
 <% end %>
 
 <div class="border-t border-gray-100"></div>

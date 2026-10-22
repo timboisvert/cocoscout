@@ -13,7 +13,7 @@ RSpec.describe "My::Messages inbox", type: :request do
 
   before { sign_in(viewer) }
 
-  it "renders the density switcher when there are messages" do
+  it "renders the round sort button, arrow down for newest first, when there are messages" do
     sender = create(:user)
     create(:person, name: "Pat Sender", user: sender)
     MessageService.create_message(
@@ -23,8 +23,10 @@ RSpec.describe "My::Messages inbox", type: :request do
 
     get messages_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("data-inbox-icons", "Compact, cozy or comfortable rows") # the round density button
-    expect(response.body).to include("msg-density-compact")
+    expect(response.body).to include("data-inbox-icons", 'data-inbox-order="newest"') # the round sort button
+    expect(response.body).not_to include("Compact, cozy or comfortable rows") # the density button changed nothing anyone could see; gone
+    get messages_path(order: "oldest")
+    expect(response.body).to include('data-inbox-order="oldest"')
   end
 
   # The Gmail-style single line squeezed the subject into ~100px on a phone.

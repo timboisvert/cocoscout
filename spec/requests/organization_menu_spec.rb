@@ -29,7 +29,7 @@ RSpec.describe "The organization menu", type: :request do
     expect(text.index("Exit production mode")).to be < text.index("Switch to")
     expect(text.index("Switch to")).to be < text.index("Moonlight Players")
     expect(text.index("Moonlight Players")).to be < text.index("This organization")
-    expect(text).to include("Organization settings", "Plan and billing", "Productions", "New organization")
+    expect(text).to include("Organization settings", "Plan and billing", "Add a production", "New organization")
     expect(text).not_to include("Starlight Theater Owner · Pro Switch to Starlight") # not itself under Switch to
     # The pink bar is the same component as My's Enter bar.
     expect(menu.at_css("a[href='#{my_dashboard_path}']")["class"]).to include("bg-pink-500")
@@ -45,13 +45,53 @@ RSpec.describe "The organization menu", type: :request do
     expect(account.text).to include("Enter production mode")
   end
 
-  it "shows Productions in the nav without a count" do
-    create(:production, organization: starlight)
-    create(:production, organization: starlight)
+  def nav_productions_link(body)
+    Nokogiri::HTML(body).css("a[href='#{manage_productions_path}']").find { |a| a.text.squish == "Productions" && a.parent["class"].to_s.include?("relative") }
+  end
+
+  def menu(body)
+    Nokogiri::HTML(body).at_css("[data-organization-menu-current]").parent
+  end
+
+  it "shows Productions in the nav without a count on Pro, even with one production" do
+    create(:production, organization: starlight, name: "Fall Revue")
     get manage_path
-    doc = Nokogiri::HTML(response.body)
-    link = doc.css("a[href='#{manage_productions_path}']").find { |a| a.text.squish == "Productions" && a.parent["class"].to_s.include?("relative") }
+    link = nav_productions_link(response.body)
     expect(link).to be_present
     expect(link.parent.text.squish).to eq("Productions")
+  end
+
+  # The three scenarios on the design canvas "Organization menu by tier"
+  # (Tim, 2026-10-21).
+  it "Pro with one production: the production's row and Add a production in the menu" do
+    production = create(:production, organization: starlight, name: "Fall Revue")
+    get manage_path
+    text = menu(response.body).text.squish
+    expect(text).to include("Your production", "Fall Revue", "upcoming show", "in the talent pool", "Add a production")
+    expect(text).not_to include("Running a second production?")
+    expect(menu(response.body).at_css("a[href='#{edit_manage_production_path(production)}']")).to be_present
+  end
+
+  it "Pro with several productions: Productions in the nav and nothing about them in the menu" do
+    create(:production, organization: starlight, name: "Fall Revue")
+    create(:production, organization: starlight, name: "Cabaret Nights")
+    get manage_path
+    expect(nav_productions_link(response.body)).to be_present
+    text = menu(response.body).text.squish
+    expect(text).not_to include("Fall Revue", "Add a production", "Your production", "Running a second production?")
+    expect(text).to include("Organization settings", "Plan and billing", "New organization")
+  end
+
+  it "Producer plan with one production: no Productions in the nav; the production and the Pro card in the menu" do
+    starlight.update!(comped_indefinitely: false)
+    production = create(:production, organization: starlight, name: "Laugh-Along, Live!")
+    get manage_path
+    expect(nav_productions_link(response.body)).to be_nil
+    m = menu(response.body)
+    text = m.text.squish
+    expect(text).to include("Producer plan", "Your production", "Laugh-Along, Live!", "Running a second production?", "See Pro")
+    expect(text).not_to include("Add a production")
+    expect(m.at_css("a[href='#{edit_manage_production_path(production)}']")).to be_present
+    expect(m.at_css("[data-organization-menu-pro-card] a")["href"]).to eq(section_manage_organization_path(starlight, section: "billing"))
   end
 end
