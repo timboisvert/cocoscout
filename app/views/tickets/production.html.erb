@@ -60,6 +60,7 @@
       "description" => description.to_s.truncate(500).presence, "image" => image_url,
       "typicalAgeRange" => (selected.effective_minimum_age && "#{selected.effective_minimum_age}-"),
       "organizer" => { "@type" => "Organization", "name" => @organization.name, "url" => tickets_box_office_url(org: @ticketing_profile.slug) },
+      "performer" => { "@type" => "PerformingGroup", "name" => @production.name },
       "location" => pv && { "@type" => "Place", "name" => pv[:name],
                             "address" => { "@type" => "PostalAddress", "streetAddress" => pv[:address1], "addressLocality" => pv[:city],
                                            "addressRegion" => pv[:state], "postalCode" => pv[:postal_code], "addressCountry" => "US" }.compact },
@@ -72,6 +73,7 @@
 %>
 <% content_for :title, "#{share_title} · #{@organization.name}" %>
 <% content_for :head do %>
+  <%= canonical_link_tag(URI(page_url).path) unless @preview %>
   <% if structured %><script type="application/ld+json"><%= json_escape(structured.to_json).html_safe %></script><% end %>
   <meta name="description" content="<%= share_description.to_s.truncate(160) %>">
   <meta property="og:title" content="<%= share_title %> · <%= @organization.name %>">

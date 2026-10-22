@@ -24,6 +24,21 @@ RSpec.describe "Public ticketing", type: :request do
     TicketOrder.order(:id).last
   end
 
+  # Search Console, 2026-10-22: the same pages listed under cocoscout.com and
+  # www as duplicates, and Events missing a performer.
+  it "names each date's page as its one address, with the production as the Event's performer" do
+    get event_path
+    canonicals = response.body.scan(/<link rel="canonical" href="([^"]+)"/).flatten
+    expect(canonicals).to eq([ "http://www.example.com#{event_path}" ])
+    expect(response.body).to include('"performer":{"@type":"PerformingGroup","name":"Improvised Animorphs"}')
+
+    get tickets_event_path(org: "starsandgarters", event: production.public_key, date: show.date_and_time.to_date.iso8601)
+    expect(response.body.scan(/<link rel="canonical" href="([^"]+)"/).flatten).to eq([ "http://www.example.com#{event_path}" ])
+
+    get root_path
+    expect(response.body.scan(/<link rel="canonical" href="([^"]+)"/).flatten).to eq([ "http://www.example.com/" ])
+  end
+
   # Andy opened the show's sales link after curtain and found sales closed
   # (Tim, 2026-10-16): someone who works this door is sent to it instead.
   describe "for someone who works the door" do
