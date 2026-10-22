@@ -45,7 +45,8 @@ RSpec.describe "Money hub parity", type: :request do
       [ overdue_a, overdue_b ].each { |s| create(:show_financials, :complete, show: s, ticket_revenue: 10.0) }
 
       get manage_money_all_financials_path(filter: "pending")
-      expect(response.body).not_to include("Parity Revue")
+      # The list itself: the organization menu names the one production on every page.
+      expect(Nokogiri::HTML(response.body).at_css("main").to_html).not_to include("Parity Revue")
 
       get manage_money_index_path
       expect(response.body).to include("You&#39;re all caught up on financials.")

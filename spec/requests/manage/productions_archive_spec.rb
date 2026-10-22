@@ -35,9 +35,11 @@ RSpec.describe "Manage productions archive", type: :request do
       expect(response.body).to include("Archived")
 
       get manage_productions_path(status: "archived")
-      expect(response.body).to include(edit_manage_production_path(production))
-      expect(response.body).not_to include(edit_manage_production_path(other))
-      expect(response.body).to include("Unarchive")
+      # The page itself: the organization menu names the one live production on every page.
+      page = Nokogiri::HTML(response.body).at_css("main").to_html
+      expect(page).to include(edit_manage_production_path(production))
+      expect(page).not_to include(edit_manage_production_path(other))
+      expect(page).to include("Unarchive")
 
       get edit_manage_production_path(production)
       expect(response).to have_http_status(:ok)
