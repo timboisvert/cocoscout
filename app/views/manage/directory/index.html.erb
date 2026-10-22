@@ -36,7 +36,7 @@
           { text: "Create a questionnaire", path: manage_contacts_questionnaires_path }
         ].compact %>
 
-  <div class="border-t border-gray-200 pt-4 mt-2">
+  <div class="mt-4">
   <%# Search Bar - Always Visible %>
   <div class="mb-4" data-controller="search-bar">
     <%= form_with url: manage_contacts_path, method: :get, data: { turbo_action: "advance", search_bar_target: "form" }, class: "relative flex items-center gap-2" do |f| %>

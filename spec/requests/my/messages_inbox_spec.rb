@@ -23,7 +23,7 @@ RSpec.describe "My::Messages inbox", type: :request do
 
     get messages_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Comfortable") # density switcher option
+    expect(response.body).to include("data-inbox-icons", "Compact, cozy or comfortable rows") # the round density button
     expect(response.body).to include("msg-density-compact")
   end
 

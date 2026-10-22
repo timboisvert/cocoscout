@@ -38,8 +38,8 @@ module NavigationHelper
     if context.to_sym == :production && Current.organization&.on_paid_plan? && sections.first
       count = Current.user.accessible_productions.where(organization: Current.organization).count
       if count > 1
-        productions = { label: "Productions", path: manage_productions_path, icon: "productions", quantity: count,
-                        active: controller_name == "productions" }
+        # No count beside it (Tim, 2026-10-21: it said nothing anyone needed).
+        productions = { label: "Productions", path: manage_productions_path, icon: "productions", active: controller_name == "productions" }
         sections.first[:items].insert(1, productions)
       end
     end

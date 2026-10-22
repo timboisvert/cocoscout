@@ -1,11 +1,13 @@
 <%#
   The account button at the bottom of the panel and its menu, the same in
-  both modes: My profile, Account settings, Superadmin, Sign out, then the
-  mode switch as a CocoScout-pink bar at the very bottom (Tim, 2026-10-20:
-  it's used rarely and shouldn't be in the way). Someone with no production
-  access gets a quiet "Start producing" there instead. Local: production_mode.
+  both modes: My profile, Account settings, Superadmin, Sign out, then on My
+  the Enter production mode bar at the very bottom (Tim, 2026-10-20: it's
+  used rarely and shouldn't be in the way). Exit moved to the organization
+  menu, where you see that you're in production mode (Tim, 2026-10-21).
+  Someone with no production access gets a quiet "Start producing" there
+  instead. Local: production_mode.
 %>
-<% switch = panel_mode_switch(production_mode: production_mode) %>
+<% switch = production_mode ? nil : panel_mode_switch(production_mode: false) %>
 <div class="px-2.5 pb-2.5 pt-2">
   <div class="relative" data-controller="dropdown">
     <div data-dropdown-target="menu" role="menu" class="hidden absolute left-0 bottom-full mb-2 w-[300px] bg-white border border-gray-200 rounded-xl shadow-[0_16px_40px_rgba(17,24,39,0.16)] overflow-hidden z-50">
@@ -27,7 +29,7 @@
       <% end %>
       <% if switch %>
         <%= render "shared/navigation/mode_switch", switch: switch, size: :menu %>
-      <% elsif !turbo_native_app? %>
+      <% elsif !production_mode && !turbo_native_app? %>
         <%# Website only: the apps never pitch producing (Tim, 2026-10-20). %>
         <%= link_to manage_producer_setup_path, class: "flex items-center gap-3 px-3.5 py-3 border-t border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors", role: "menuitem" do %>
           <svg class="w-[18px] h-[18px] text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18"/></svg>

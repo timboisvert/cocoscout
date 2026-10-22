@@ -38,7 +38,7 @@
       </svg>
       <p class="text-gray-500 text-sm">No shows scheduled yet. Create shows to track availability.</p>
       <% if current_user_can_manage?(@production) %>
-        <%= link_to "Create Show", manage_shows_wizard_path(@production), class: "inline-block mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium" %>
+        <%= link_to "Schedule an event", manage_shows_wizard_path(@production), class: "inline-block mt-3 text-pink-600 hover:text-pink-700 text-sm font-medium" %>
       <% end %>
     </div>
   <% else %>

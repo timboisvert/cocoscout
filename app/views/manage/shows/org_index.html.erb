@@ -3,7 +3,7 @@
 <%
   shows_actions = [
     { icon: "calendar", text: "Calendar", description: "View all events on a calendar", path: manage_shows_calendar_path },
-    ({ icon: "clipboard-list", text: "Schedule Event", description: "Create a new show or event", path: manage_shows_new_wizard_path } if manages_any_production?)
+    ({ icon: "clipboard-list", text: "Schedule an event", description: "Create a new show or event", path: manage_shows_new_wizard_path } if manages_any_production?)
   ].compact
 
 %>
@@ -35,7 +35,7 @@
           { text: "View the calendar", path: manage_shows_calendar_path }
         ].compact %>
 
-  <div class="border-t border-gray-200 pt-4 mt-2">
+  <div class="mt-4">
     <%= render "shared/filters/filter_bar", wrapper_data_controller: "filter-select", filter_groups: [
     {
       label: "View",

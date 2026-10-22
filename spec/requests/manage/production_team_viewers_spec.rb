@@ -31,10 +31,10 @@ RSpec.describe "Production team viewers", type: :request do
     sign_in(viewer)
     get manage_shows_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).not_to include("Schedule Event", "Schedule an event")
+    expect(response.body).not_to include("Schedule an event", "Schedule an event")
 
     get manage_production_shows_path(production)
-    expect(response.body).not_to include("Schedule Event")
+    expect(response.body).not_to include("Schedule an event")
 
     get manage_show_path(production, show)
     expect(response.body).not_to include("Edit Show", "Duplicate Show", "Cancel Show")
@@ -44,7 +44,7 @@ RSpec.describe "Production team viewers", type: :request do
   it "shows a production's manager the same pages with their buttons" do
     sign_in(producer)
     get manage_shows_path
-    expect(response.body).to include("Schedule Event")
+    expect(response.body).to include("Schedule an event")
     get manage_show_path(production, show)
     expect(response.body).to include("Edit Show", "Manage Cast")
   end

@@ -43,7 +43,7 @@ RSpec.describe "The module header", type: :request do
     get manage_shows_path
     header = Nokogiri::HTML(response.body).at_css("[data-module-header]")
     buttons = header.at_css("[data-module-buttons]")
-    expect(buttons.css("a, button").map { |b| b.text.squish }).to eq([ "Calendar", "Schedule Event" ])
+    expect(buttons.css("a, button").map { |b| b.text.squish }).to eq([ "Calendar", "Schedule an event" ])
     expect(header.at_css("[data-section-tiles]")).to be_nil
   end
 

@@ -1,0 +1,17 @@
+<%#
+  The inbox's two icon controls in the shared filter bar, as round pink
+  buttons (Tim, 2026-10-21): newest/oldest flips on a tap; the density one
+  steps through compact, cozy and comfortable (message-density#cycle). Locals:
+  newest_path, oldest_path, current_order.
+%>
+<% round = "inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-500 hover:bg-pink-600 text-white transition cursor-pointer" %>
+<div class="flex items-center gap-2" data-inbox-icons>
+  <%= link_to (current_order.to_s == "oldest" ? newest_path : oldest_path), class: round,
+        title: (current_order.to_s == "oldest" ? "Oldest first; show newest first" : "Newest first; show oldest first"),
+        aria: { label: "Sort" }, data: { turbo_prefetch: false, turbo_action: "replace" } do %>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>
+  <% end %>
+  <button type="button" class="<%= round %>" data-action="click->message-density#cycle" title="Compact, cozy or comfortable rows" aria-label="Row density">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+</div>
