@@ -61,12 +61,8 @@
       </div>
     </div>
   <% elsif @pending_staff.empty? %>
-    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
-      <p class="text-sm text-gray-600 mb-3">No staff added yet.</p>
-      <%= link_to manage_new_staffing_staff_wizard_path, class: "inline-flex" do %>
-        <%= render "shared/button", text: "Add your first staff member", variant: "primary", size: "small", type: :button %>
-      <% end %>
-    </div>
+    <%= render "shared/empty_state", icon: "people", title: "No staff added yet", body: "Add your team and schedule their shifts, approve their hours and pay them here.",
+          actions: [ { text: "Add your first staff member", path: manage_new_staffing_staff_wizard_path } ] %>
   <% end %>
 
   <%# ---- Inactive (kept in the records, out of scheduling/pay/nags) ---- %>

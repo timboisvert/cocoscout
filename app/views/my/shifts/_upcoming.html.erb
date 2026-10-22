@@ -100,7 +100,7 @@
         <% end %>
       </div>
     <% else %>
-      <p class="text-sm text-gray-500 text-center py-6">No upcoming shifts. They'll show up here once your schedule is posted.</p>
+      <%= render "shared/empty_state", icon: "clock", title: "No upcoming shifts", body: "They'll show up here once your schedule is posted.", compact: true %>
     <% end %>
   </div>
 </section>

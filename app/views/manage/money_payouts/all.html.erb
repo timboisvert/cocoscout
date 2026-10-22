@@ -37,7 +37,7 @@
       <% end %>
     <% end %>
   <% else %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <%= render "shared/empty_state", icon: "money", title: "No productions yet", body: "Payouts are figured per production's shows." %>    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
       <p class="text-gray-600">No productions yet.</p>
     </div>
   <% end %>

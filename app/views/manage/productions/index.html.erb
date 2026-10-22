@@ -136,17 +136,11 @@
     <% end %>
   </div>
 <% elsif archived_view %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <%= render "shared/empty_state", icon: "clipboard", title: "No archived productions" %>    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
     <p class="text-gray-600">No archived productions.</p>
     </div>
 <% else %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-    <p class="text-gray-600 mb-4">No productions found in this organization.</p>
-    <% if current_user_is_global_manager? %>
-        <%= link_to manage_productions_wizard_path do %>
-          <%= render "shared/button", text: "Create your first production", variant: "primary", size: "medium" %>
-        <% end %>
-    <% end %>
-    </div>
+    <%= render "shared/empty_state", icon: "calendar", title: "No productions yet", body: "A production is a show, a run, a festival or a class with a cast and crew.",
+          actions: (current_user_is_global_manager? ? [ { text: "Create your first production", path: manage_productions_wizard_path } ] : []) %>
 <% end %>
 </div>

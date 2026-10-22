@@ -156,11 +156,9 @@
       <% end %>
     </div>
   <% elsif @view_mode == "by_month" %>
-    <div class="text-sm text-gray-500">
-      No shows or events in <%= @current_month.strftime("%B %Y") %>.
-    </div>
+    <%= render "shared/empty_state", icon: "calendar", title: "No shows or events in #{@current_month.strftime("%B %Y")}" %>
   <% else %>
-    <div class="text-sm text-gray-500">No shows or events found.</div>
+    <%= render "shared/empty_state", icon: "calendar", title: "No shows or events found", body: "Nothing matches these filters. Schedule an event and it lands on the calendar." %>
   <% end %>
 
   <% if @view_mode == "by_month" %>

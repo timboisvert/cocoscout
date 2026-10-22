@@ -98,7 +98,7 @@
           <% end %>
         </div>
       <% else %>
-        <p class="text-gray-500 text-sm">No shows with casting enabled in <%= @current_month.strftime("%B %Y") %>.</p>
+        <%= render "shared/empty_state", icon: "people", title: "Nothing to cast in #{@current_month.strftime("%B %Y")}", body: "Shows with casting turned on show up here by month." %>
       <% end %>
     </div>
 

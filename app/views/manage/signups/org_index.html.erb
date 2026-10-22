@@ -47,21 +47,10 @@
         <% end %>
       </div>
     <% elsif @productions.any? %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p class="text-gray-600 mb-4">No sign-ups yet. Create a sign-up form or an audition cycle to get started.</p>
-        <div class="flex items-center justify-center gap-2">
-          <%= link_to manage_signups_forms_new_wizard_path do %>
-            <%= render "shared/button", text: "Create a sign-up form", variant: "primary", size: "small" %>
-          <% end %>
-          <%= link_to manage_signups_auditions_new_wizard_path do %>
-            <%= render "shared/button", text: "Create an audition cycle", variant: "secondary", size: "small" %>
-          <% end %>
-        </div>
-      </div>
+      <%= render "shared/empty_state", icon: "clipboard", title: "No sign-ups yet", body: "Create a sign-up form or an audition cycle to get started.",
+            actions: [ { text: "Create a sign-up form", path: manage_signups_forms_new_wizard_path }, { text: "Create an audition cycle", path: manage_signups_auditions_new_wizard_path } ] %>
     <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p class="text-gray-600">No productions yet. Create a production to start managing sign-ups.</p>
-      </div>
+      <%= render "shared/empty_state", icon: "clipboard", title: "No productions yet", body: "Create a production to start managing sign-ups." %>
     <% end %>
   </div>
 </div>

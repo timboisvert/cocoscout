@@ -73,15 +73,8 @@
     <% end %>
 
     <% if @casting_tables.empty? %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <div class="mb-4">
-          <svg class="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
-          </svg>
-        </div>
-        <p class="text-gray-600 mb-4">No casting tables yet. Create one to start batch casting for multiple shows.</p>
-        <%= render "shared/button", text: "Create Casting Table", variant: "primary", size: "medium", path: manage_casting_tables_new_path %>
-      </div>
+      <%= render "shared/empty_state", icon: "clipboard", title: "No casting tables yet", body: "Create one to cast several shows at once.",
+            actions: [ { text: "Create a casting table", path: manage_casting_tables_new_path } ] %>
     <% end %>
   </div>
 </div>

@@ -217,11 +217,11 @@
       </div>
     </div>
   <% elsif @members.empty? %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <%= render "shared/empty_state", icon: "people", title: "No cast members found", body: "Add people to your productions' talent pools first." %>    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
       <p class="text-gray-600">No cast members found. Add people to your productions' talent pools first.</p>
     </div>
   <% else %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+    <%= render "shared/empty_state", icon: "calendar", title: "No upcoming shows in the next #{@months} months" %>    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
       <p class="text-gray-600">No upcoming shows found in the next <%= @months %> months.</p>
     </div>
   <% end %>

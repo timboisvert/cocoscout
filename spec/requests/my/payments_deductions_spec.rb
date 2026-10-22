@@ -62,7 +62,7 @@ RSpec.describe "My Payments", type: :request do
       expect(html).to match(/On its way<\/div> <div[^>]*>\$207\.50/)
       expect(html).to include("expected about", "Dan&#39;s Magic — Aug 9 — your 50% share", "Booth Tech — Aug 9, 2026")
       expect(html).to match(/Sent to you in #{Date.current.year}<\/span> <span[^>]*>\$207\.50/)
-      expect(html).to include("No payments yet.") # on its way, so not a past payment yet
+      expect(html).to include("No payments yet") # on its way, so not a past payment yet
 
       get my_payment_receipt_path(kind: "run", id: item.id)
       html = text(response.body)

@@ -164,7 +164,7 @@
             <%= render "manage/money_payouts/payout_show_rows", shows: @all_payout_shows %>
           <% end %>
         <% else %>
-          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+          <%= render "shared/empty_state", icon: "money", title: "No past revenue events yet", compact: true %>          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
             <p class="text-gray-600">No past revenue events yet.</p>
           </div>
         <% end %>

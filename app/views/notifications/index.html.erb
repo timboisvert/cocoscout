@@ -83,9 +83,7 @@
       </div>
     <% end %>
   <% else %>
-    <div class="mt-8 text-center py-12">
-      <svg class="mx-auto h-12 w-12 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
-      <p class="mt-3 text-sm text-gray-600"><%= @filter == "unread" ? "Nothing unread." : "Nothing yet. Things that happen, like a ticket selling or a contract being signed, show up here." %></p>
+    <div class="mt-6"><%= render "shared/empty_state", icon: "bell", title: (@filter == "unread" ? "Nothing unread" : "Nothing yet"), body: (@filter == "unread" ? nil : "Things that happen, like a ticket selling or a contract being signed, show up here.") %>
     </div>
   <% end %>
 

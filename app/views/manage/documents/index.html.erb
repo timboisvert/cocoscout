@@ -35,15 +35,7 @@
       <% end %>
     </div>
   <% else %>
-    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-      <% if current_user_can_manage?(@production) %>
-        <p class="text-sm text-gray-600 mb-3">No documents yet. Create a performer handbook or any document your team needs.</p>
-        <%= link_to manage_new_org_document_path(production_id: @production.id) do %>
-          <%= render "shared/button", text: "Create your first document", variant: "primary", size: "medium" %>
-        <% end %>
-      <% else %>
-        <p class="text-sm text-gray-600">No documents yet.</p>
-      <% end %>
-    </div>
+    <%= render "shared/empty_state", icon: "document", title: "No documents yet", body: "Create a performer handbook or any document your team needs.",
+          actions: (current_user_can_manage?(@production) ? [ { text: "Create your first document", path: manage_new_org_document_path(production_id: @production.id) } ] : []) %>
   <% end %>
 </div>

@@ -80,7 +80,7 @@
             <% end %>
           </div>
         <% else %>
-          <p class="text-gray-500 text-sm">No upcoming courses.</p>
+          <%= render "shared/empty_state", icon: "star", title: "No upcoming courses", compact: true %>
         <% end %>
       </div>
     </div>
@@ -134,13 +134,14 @@
             <% end %>
           </div>
         <% else %>
-          <p class="text-gray-500 text-sm">No completed courses.</p>
+          <%= render "shared/empty_state", icon: "check", title: "No completed courses", compact: true %>
         <% end %>
       </div>
     </div>
 
   <% else %>
-    <p class="text-gray-500 text-sm">You aren't registered for any courses.</p>
+    <%= render "shared/empty_state", icon: "star", title: "No courses yet", body: "Register for a course and it shows up here, with its sessions.",
+          actions: [ { text: "Find a course", path: my_courses_directory_path } ] %>
   <% end %>
 
 </div>

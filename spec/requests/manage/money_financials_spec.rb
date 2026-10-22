@@ -76,7 +76,7 @@ RSpec.describe "Manage::MoneyFinancials", type: :request do
       ShowFinancials.where(show: Show.joins(:production).where(productions: { organization_id: org.id })).destroy_all
       Show.joins(:production).where(productions: { organization_id: org.id }).update_all(date_and_time: 2.weeks.from_now)
       get manage_money_financials_path
-      expect(response.body).to include("You're all caught up on financials")
+      expect(CGI.unescapeHTML(response.body)).to include("You're all caught up on financials")
       expect(response.body).not_to include("Needs Financials")
     end
 

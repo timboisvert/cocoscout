@@ -27,9 +27,6 @@
       <% end %>
     <% end %>
   <% else %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center mt-2">
-      <p class="text-gray-600">Nothing received yet.</p>
-      <p class="text-sm text-gray-500 mt-1">When an incoming payment is collected — online or recorded by hand — it'll show here.</p>
-    </div>
+    <div class="mt-2"><%= render "shared/empty_state", icon: "money", title: "Nothing received yet", body: "When an incoming payment is collected, online or recorded by hand, it shows here." %>    </div>
   <% end %>
 </div>

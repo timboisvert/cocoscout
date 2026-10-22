@@ -37,7 +37,7 @@
     <div class="space-y-2 mb-8"><% @past.first(60).each { |listing| concat row.call(listing) } %></div>
   <% end %>
   <% if @upcoming.empty? && @past.empty? %>
-    <p class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-600">No shows shared with you yet.</p>
+    <%= render "shared/empty_state", icon: "ticket", title: "No shows shared with you yet", body: "When an organization shares a show's sales with you, it shows up here." %>
   <% end %>
 
   <% if @sees_sales %>

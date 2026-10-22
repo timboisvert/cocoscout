@@ -143,7 +143,7 @@
           </table>
         </div>
       <% else %>
-        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <%= render "shared/empty_state", icon: "check", title: "No outstanding advances", body: "Advances still being repaid show up here.", compact: true %>        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
           <p class="text-gray-600">No outstanding advances to repay.</p>
         </div>
       <% end %>
@@ -226,7 +226,7 @@
         <% end %>
       <% end %>
     <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+      <%= render "shared/empty_state", icon: "money", title: "No productions yet", body: "Advances are issued against a production's shows." %>      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
         <p class="text-gray-600">No productions yet.</p>
       </div>
     <% end %>

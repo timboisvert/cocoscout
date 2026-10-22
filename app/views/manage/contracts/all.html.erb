@@ -31,13 +31,7 @@
   <% if @contracts.any? %>
     <%= render "contract_slim_list", contracts: @contracts %>
   <% else %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center">
-      <%= icon("file-text", class: "w-12 h-12 text-gray-400 mx-auto mb-4") %>
-      <h3 class="text-lg font-medium text-gray-900 mb-2">No contracts yet</h3>
-      <p class="text-gray-600 mb-4">
-        Create a contract when an external group wants to rent your space or perform at your venue.
-      </p>
-      <%= render "shared/button", text: "New Contract", variant: "primary", icon: "plus", path: manage_new_contract_wizard_path %>
-    </div>
+    <%= render "shared/empty_state", icon: "document", title: "No contracts yet", body: "Create a contract when an external group wants to rent your space or perform at your venue.",
+          actions: [ { text: "New contract", path: manage_new_contract_wizard_path } ] %>
   <% end %>
 </div>

@@ -79,7 +79,7 @@
   <% end %>
 
   <% else %>
-    <p class="text-gray-500 text-sm">You aren't a cast member of any shows.</p>
+    <%= render "shared/empty_state", icon: "calendar", title: "No shows yet", body: "When a production casts you, or you sign up for one of its events, it shows up here." %>
   <% end %>
 
 </div>

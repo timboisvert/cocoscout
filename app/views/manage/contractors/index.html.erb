@@ -56,20 +56,9 @@
       </div>
     <% end %>
   <% elsif no_contractors_at_all %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-12 text-center">
-      <%= icon("users", class: "w-12 h-12 text-gray-400 mx-auto mb-4") %>
-      <h3 class="text-lg font-medium text-gray-900 mb-2">No contractors yet</h3>
-      <p class="text-gray-600 mb-4">
-        Contractors are created automatically when you create a contract, or you can add them manually.
-      </p>
-      <%= link_to new_manage_contractor_path do %>
-        <%= render "shared/button", text: "New Contractor", variant: "primary", icon: "plus" %>
-      <% end %>
-    </div>
+    <%= render "shared/empty_state", icon: "people", title: "No contractors yet", body: "Contractors are created automatically when you create a contract, or you can add them yourself.",
+          actions: [ { text: "New contractor", path: new_manage_contractor_path } ] %>
   <% else %>
-    <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-10 text-center">
-      <p class="text-gray-600">No contractors match your search.</p>
-      <%= link_to "Clear filters", manage_contractors_path, class: "text-pink-600 hover:text-pink-700 text-sm font-medium mt-2 inline-block" %>
-    </div>
+    <%= render "shared/empty_state", icon: "search", title: "No contractors match your search", actions: [ { text: "Clear filters", path: manage_contractors_path, variant: "secondary" } ] %>
   <% end %>
 </div>

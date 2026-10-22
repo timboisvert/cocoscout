@@ -233,18 +233,11 @@
     <% end %>
 
   <% else %>
-    <div class="text-center text-gray-500 text-sm py-12">
-        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        <p class="text-lg font-medium mb-2">No results found</p>
-        <% if @search.present? %>
-          <p>Try adjusting your filters or search query.</p>
-          <%= link_to "Clear all filters", manage_contacts_path, class: "inline-block mt-3 text-pink-500 hover:text-pink-600 font-medium" %>
-        <% else %>
-          <p>No people or groups in this organization yet.</p>
-        <% end %>
-      </div>
+    <% if @search.present? %>
+      <%= render "shared/empty_state", icon: "search", title: "No results found", body: "Try adjusting your filters or search.", actions: [ { text: "Clear all filters", path: manage_contacts_path, variant: "secondary" } ] %>
+    <% else %>
+      <%= render "shared/empty_state", icon: "people", title: "No people or groups yet", body: "Invite people and they show up here, with their groups." %>
+    <% end %>
   <% end %>
 
   </div><%# Close module content wrapper %>
