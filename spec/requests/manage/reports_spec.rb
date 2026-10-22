@@ -84,7 +84,7 @@ RSpec.describe "Manage::Reports", type: :request do
 
       get manage_report_ticket_sales_by_show_path(format: :csv, basis: "event")
       expect(response.media_type).to eq("text/csv")
-      expect(response.body).to include("Show,Tickets,Comps")
+      expect(response.body).to include("Show,Sold here,Other sites,Comps")
 
       # The Ticketing home points at Reports.
       get manage_ticketing_path

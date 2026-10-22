@@ -58,7 +58,7 @@ RSpec.describe TicketSalesReport do
     expect(by_event.by_day[show_day.to_date.iso8601]).to eq(4)
 
     csv = report.to_csv
-    expect(csv).to include("Rising Stars", "Total,,3,1,75.00")
+    expect(csv).to include("Rising Stars", "Total,,3,0,1,75.00")
     buyers = report.buyers_csv
     expect(buyers).to include("Dana Scully", "dana-scully@example.com", "Fox Mulder", "Walter")
     expect(buyers).not_to include("Last Month")
@@ -67,5 +67,33 @@ RSpec.describe TicketSalesReport do
     other = create(:production, organization: org)
     expect(described_class.new(org, from: this_month.to_date, to: this_month.end_of_month.to_date, production_ids: [ other.id ]).summary.tickets).to eq(0)
     expect(described_class.new(org, from: this_month.to_date, to: this_month.end_of_month.to_date, production_ids: [ production.id ]).summary.tickets).to eq(3)
+  end
+
+  # Tim, 2026-10-22: Ticket Sales by Show counts other sites too, as
+  # Attendance does. They have no sale day, so they go by the show's.
+  it "counts other sites' tickets by show, by the day of the show, never in what the theater keeps" do
+    buy({ general.id.to_s => "2" }, at: this_month.change(hour: 12))
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    TicketOutsideSales.record!(listing, { tailor.id.to_s => { general.id.to_s => { "tickets" => "5", "amount" => "$100" } } })
+    # A date that sold only on another site, and one next month.
+    elsewhere = create(:ticket_listing, organization: org, show: create(:show, production: production, date_and_time: show_day + 1.day))
+    tier = elsewhere.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60)
+    TicketOutsideSales.record!(elsewhere, { tailor.id.to_s => { tier.id.to_s => { "tickets" => "3", "amount" => "" } } })
+    later = create(:ticket_listing, organization: org, show: create(:show, production: production, date_and_time: show_day + 40.days))
+    later_tier = later.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60)
+    TicketOutsideSales.record!(later, { tailor.id.to_s => { later_tier.id.to_s => { "tickets" => "9", "amount" => "$180" } } })
+
+    report = described_class.new(org, from: this_month.to_date, to: this_month.end_of_month.to_date)
+    expect(report.by_show.map { |r| [ r.listing.id, r.tickets, r.outside, r.gross_cents, r.outside_cents ] })
+      .to eq([ [ listing.id, 2, 5, 4_000, 10_000 ], [ elsewhere.id, 0, 3, 0, 0 ] ])
+    s = report.summary
+    expect([ s.tickets, s.outside, s.outside_cents ]).to eq([ 2, 8, 10_000 ])
+    expect(report.by_show.last.net_cents).to eq(0)
+    expect(report.to_csv).to include("Total,,2,8,0,40.00,100.00")
+
+    # Scoped to another production: none of it.
+    other = create(:production, organization: org)
+    scoped = described_class.new(org, from: this_month.to_date, to: this_month.end_of_month.to_date, production_ids: [ other.id ])
+    expect([ scoped.by_show, scoped.summary.outside ]).to eq([ [], 0 ])
   end
 end

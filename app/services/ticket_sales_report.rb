@@ -12,12 +12,17 @@
 #                 Show Financials records)
 #   net_cents   — what the theater keeps after our fee, card processing,
 #                 refunds and the tax it collected
+#   outside     — tickets sold on other sites, as typed on the show's page
+#                 (TicketOutsideSale), with their money when it was typed.
+#                 Other sites give no sale day, so these always count by the
+#                 day of the show, whatever the basis. By show only, as
+#                 Attendance counts them; never in what the theater keeps.
 class TicketSalesReport
   BASES = %w[sale event].freeze
 
   Summary = Data.define(:tickets, :comps, :orders, :gross_cents, :product_cents, :tax_cents, :platform_fee_cents,
-                        :processing_cents, :buyer_fee_cents, :refunded_cents, :net_cents)
-  ShowRow = Data.define(:listing, :tickets, :comps, :gross_cents, :product_cents, :refunded_cents, :net_cents, :money_state)
+                        :processing_cents, :buyer_fee_cents, :refunded_cents, :net_cents, :outside, :outside_cents)
+  ShowRow = Data.define(:listing, :tickets, :outside, :comps, :gross_cents, :outside_cents, :product_cents, :refunded_cents, :net_cents, :money_state)
   TypeRow = Data.define(:name, :tickets, :gross_cents)
   ChannelRow = Data.define(:channel, :label, :orders, :tickets, :gross_cents)
   BuyerRow = Data.define(:name, :email, :phone, :show, :show_at, :code, :bought_at, :tickets, :products, :total_cents, :channel, :status)
@@ -40,21 +45,28 @@ class TicketSalesReport
       gross_cents: paid_tickets.sum { |t| face(t) }, product_cents: items.sum { |i| product_face(i) }, tax_cents: tax_cents(orders),
       platform_fee_cents: orders.sum(&:platform_fee_cents) - refunds.sum(&:platform_fee_waived_cents),
       processing_cents: orders.sum(&:processing_cents), buyer_fee_cents: orders.sum(&:buyer_fee_cents),
-      refunded_cents: refunds.sum(&:amount_cents), net_cents: net_cents(orders, refunds)
+      refunded_cents: refunds.sum(&:amount_cents), net_cents: net_cents(orders, refunds),
+      outside: outside_sales.values.sum { |o| o[:tickets] }, outside_cents: outside_sales.values.sum { |o| o[:cents] }
     )
   end
 
-  # Each show with sales in the period, soonest first.
+  # Each show with sales in the period, here or on other sites, soonest first.
   def by_show
-    @by_show ||= orders.group_by(&:ticket_listing).map do |listing, rows|
-      ids = rows.map(&:id).to_set
-      tickets = paid_tickets.select { |t| ids.include?(t.ticket_order_id) }
-      show_refunds = refunds.select { |r| ids.include?(r.ticket_order_id) }
-      ShowRow.new(listing: listing, tickets: tickets.size, comps: comp_tickets.count { |t| ids.include?(t.ticket_order_id) },
-                  gross_cents: tickets.sum { |t| face(t) }, product_cents: items.select { |i| ids.include?(i.ticket_order_id) }.sum { |i| product_face(i) },
-                  refunded_cents: show_refunds.sum(&:amount_cents), net_cents: net_cents(rows, show_refunds),
-                  money_state: money_state(listing))
-    end.sort_by { |row| row.listing.show.date_and_time }
+    @by_show ||= begin
+      by_listing = orders.group_by(&:ticket_listing)
+      (by_listing.keys | outside_listings).map do |listing|
+        rows = by_listing.fetch(listing, [])
+        ids = rows.map(&:id).to_set
+        tickets = paid_tickets.select { |t| ids.include?(t.ticket_order_id) }
+        show_refunds = refunds.select { |r| ids.include?(r.ticket_order_id) }
+        outside = outside_sales.fetch(listing.id, { tickets: 0, cents: 0 })
+        ShowRow.new(listing: listing, tickets: tickets.size, outside: outside[:tickets], comps: comp_tickets.count { |t| ids.include?(t.ticket_order_id) },
+                    gross_cents: tickets.sum { |t| face(t) }, outside_cents: outside[:cents],
+                    product_cents: items.select { |i| ids.include?(i.ticket_order_id) }.sum { |i| product_face(i) },
+                    refunded_cents: show_refunds.sum(&:amount_cents), net_cents: net_cents(rows, show_refunds),
+                    money_state: money_state(listing))
+      end.sort_by { |row| row.listing.show.date_and_time }
+    end
   end
 
   # Ticket types by name across the period's shows.
@@ -89,13 +101,14 @@ class TicketSalesReport
   def to_csv
     require "csv"
     CSV.generate do |csv|
-      csv << [ "Show", "Date", "Tickets", "Comps", "Ticket sales", "Products", "Refunded", "You keep", "Money" ]
+      csv << [ "Show", "Date", "Sold here", "Other sites", "Comps", "Ticket sales", "Other sites' sales", "Products", "Refunded", "You keep", "Money" ]
       by_show.each do |row|
-        csv << [ row.listing.display_title, row.listing.show.date_and_time.strftime("%Y-%m-%d %H:%M"), row.tickets, row.comps,
-                 dollars(row.gross_cents), dollars(row.product_cents), dollars(row.refunded_cents), dollars(row.net_cents), row.money_state ]
+        csv << [ row.listing.display_title, row.listing.show.date_and_time.strftime("%Y-%m-%d %H:%M"), row.tickets, row.outside, row.comps,
+                 dollars(row.gross_cents), dollars(row.outside_cents), dollars(row.product_cents), dollars(row.refunded_cents),
+                 dollars(row.net_cents), row.money_state ]
       end
-      csv << [ "Total", nil, summary.tickets, summary.comps, dollars(summary.gross_cents), dollars(summary.product_cents),
-               dollars(summary.refunded_cents), dollars(summary.net_cents), nil ]
+      csv << [ "Total", nil, summary.tickets, summary.outside, summary.comps, dollars(summary.gross_cents), dollars(summary.outside_cents),
+               dollars(summary.product_cents), dollars(summary.refunded_cents), dollars(summary.net_cents), nil ]
     end
   end
 
@@ -134,6 +147,28 @@ class TicketSalesReport
         scope.where(paid_at: from.beginning_of_day..to.end_of_day)
       end.to_a
     end
+  end
+
+  # Other sites' tickets for the period's shows (by show day: they have no
+  # sale day): { listing_id => { tickets:, cents: } }. Canceled and draft
+  # dates left out, as Attendance does.
+  def outside_sales
+    @outside_sales ||= begin
+      scope = TicketOutsideSale.where(organization: @organization).joins(ticket_listing: :show)
+                               .where(shows: { canceled: false, date_and_time: from.beginning_of_day..to.end_of_day })
+                               .where.not(ticket_listings: { status: %w[draft canceled] })
+      scope = scope.where(ticket_listings: { production_id: @production_ids }) if @production_ids
+      scope.group(:ticket_listing_id).pluck(:ticket_listing_id, Arel.sql("SUM(tickets_sold)"), Arel.sql("SUM(amount_cents)"))
+           .to_h { |id, tickets, cents| [ id, { tickets: tickets.to_i, cents: cents.to_i } ] }
+           .select { |_, o| o[:tickets].positive? || o[:cents].positive? }
+    end
+  end
+
+  # The shows with other-site sales and nothing sold here in the period.
+  def outside_listings
+    have = orders.map(&:ticket_listing_id).to_set
+    missing = outside_sales.keys.reject { |id| have.include?(id) }
+    TicketListing.where(id: missing).includes(show: :location).to_a
   end
 
   def order_ids
