@@ -11,13 +11,7 @@
   } %>
 
   <% if @groups.empty? %>
-    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-10 text-center mt-6">
-      <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-      </div>
-      <p class="text-sm font-medium text-gray-900">You're all caught up</p>
-      <p class="text-sm text-gray-500 mt-1">No hours are waiting for your approval. Submitted time shows up here for sign-off before you pay it.</p>
-    </div>
+    <div class="mt-6"><%= render "shared/empty_state", icon: "check", title: "You're all caught up", body: "No hours are waiting for your approval. Submitted time shows up here for sign-off before you pay it." %></div>
   <% else %>
     <%# Summary bar + approve-everything %>
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-5 py-4 mt-6">

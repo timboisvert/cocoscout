@@ -24,9 +24,7 @@
 </div>
 
 <% if roster.empty? %>
-  <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center">
-    <p class="text-sm text-gray-600">No performers in the talent pool yet. Add people to the talent pool to track their agreement.</p>
-  </div>
+  <%= render "shared/empty_state", icon: "people", title: "No performers in the talent pool yet", body: "Add people to the talent pool to track their agreement." %>
 <% else %>
   <div class="overflow-x-auto rounded-lg border border-gray-200">
     <table class="min-w-full divide-y divide-gray-200">

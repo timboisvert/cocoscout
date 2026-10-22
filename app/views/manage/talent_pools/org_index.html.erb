@@ -87,9 +87,7 @@
           <% end %>
         <% end %>
       <% else %>
-        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-          <p class="text-gray-600">No talent pool configured. Switch to per-production mode or create productions first.</p>
-        </div>
+        <%= render "shared/empty_state", icon: "people", title: "No talent pool yet", body: "Switch to per-production mode or create a production first." %>
       <% end %>
     <% else %>
       <%# Per-Production Mode: Show grouped talent pools %>
@@ -148,7 +146,7 @@
           <% end %>
         </div>
       <% else %>
-        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+        <%= render "shared/empty_state", icon: "people", title: "No productions yet", body: "Create a production first to set up talent pools." %>        <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
           <p class="text-gray-600">No productions found. Create a production first to set up talent pools.</p>
         </div>
       <% end %>

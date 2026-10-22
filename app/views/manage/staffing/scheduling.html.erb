@@ -770,14 +770,10 @@
     <% end %>
 
     <% if @shows_by_day.empty? && @shifts_by_day.empty? %>
-      <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-8 text-center text-sm text-gray-600">
-        <p class="mb-3">No shows or shifts in this week.</p>
-        <% if @house_role_count.zero? %>
-          <%= link_to "Set up your staffing roles first", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700 underline" %>
-        <% elsif @staff_count.zero? %>
-          <%= link_to "Add your staff", manage_staffing_staff_path, class: "text-pink-600 hover:text-pink-700 underline" %>
-        <% end %>
-      </div>
+      <%= render "shared/empty_state", icon: "calendar", title: "No shows or shifts this week",
+            actions: (if @house_role_count.zero? then [ { text: "Set up your staffing roles first", path: manage_staffing_house_roles_path } ]
+                      elsif @staff_count.zero? then [ { text: "Add your staff", path: manage_staffing_staff_path } ]
+                      else [] end) %>
     <% end %>
   </div>
 

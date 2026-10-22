@@ -37,11 +37,7 @@
       </div>
     <% end %>
   <% else %>
-    <div class="bg-white border border-dashed border-gray-300 rounded-lg px-6 py-10 text-center">
-      <p class="text-sm text-gray-600">No productions are selling tickets yet. Set one up once and every date you choose goes on sale.</p>
-      <div class="mt-4 inline-block">
-        <%= render "shared/button", text: "Sell tickets for a production", variant: "primary", size: "small", path: manage_new_production_ticketing_path %>
-      </div>
-    </div>
+    <%= render "shared/empty_state", icon: "ticket", title: "No productions selling tickets yet", body: "Set one up once and every date you choose goes on sale.",
+          actions: [ { text: "Sell tickets for a production", path: manage_new_production_ticketing_path } ] %>
   <% end %>
 </div>

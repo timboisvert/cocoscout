@@ -10,8 +10,9 @@
     body     what would fill it, or what to do (optional)
     icon     check (default: all caught up), inbox, calendar, people, ticket,
              document, bell, search, clipboard, money, star, clock, chat
-    actions  [{ text:, path:, method: (optional), data: (optional) }] — the
-             first is pink, the rest white (optional)
+    actions  [{ text:, path:, method: (optional), data: (optional), type: (optional,
+             :button for a modal trigger with no path) }] — the first is pink,
+             the rest white (optional)
     compact  true for a smaller box inside a card (py-8, no dashed border)
 %>
 <%
@@ -48,7 +49,7 @@
       <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
         <% actions.each_with_index do |action, i| %>
           <%= render "shared/button", text: action[:text], path: action[:path], method: action[:method], data: action[:data] || {},
-                variant: action[:variant] || (i.zero? ? "primary" : "secondary"), size: "small" %>
+                type: action[:type] || :button, variant: action[:variant] || (i.zero? ? "primary" : "secondary"), size: "small" %>
         <% end %>
       </div>
     <% end %>

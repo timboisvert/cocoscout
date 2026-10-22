@@ -60,7 +60,7 @@
         </div>
 
         <% if @productions.empty? %>
-          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+          <%= render "shared/empty_state", icon: "clipboard", title: "No productions yet", body: "Create a production first." %>          <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
             <p class="text-gray-600">No productions found. Create a production first.</p>
           </div>
         <% end %>

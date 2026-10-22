@@ -229,17 +229,9 @@
         <% end %>
       </div>
     <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p class="text-gray-600">
-          <% if filter == "complete" %>
-            No shows with complete financial data yet.
-          <% elsif filter == "pending" %>
-            All revenue events have financial data entered.
-          <% else %>
-            No shows found. Shows will appear here after they occur.
-          <% end %>
-        </p>
-      </div>
+      <%= render "shared/empty_state", icon: (filter == "pending" ? "check" : "money"), compact: true,
+            title: (filter == "complete" ? "No shows with complete financials yet" : filter == "pending" ? "Every revenue event has its financials" : "No shows yet"),
+            body: (filter.in?(%w[complete pending]) ? nil : "Shows appear here after they happen.") %>
     <% end %>
   </div>
 
@@ -255,17 +247,13 @@
         <% end %>
       </div>
     <% else %>
-      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
+      <%= render "shared/empty_state", icon: "money", title: "No payments scheduled for this contract", compact: true %>      <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-6 text-center">
         <p class="text-gray-500">No payments scheduled for this contract.</p>
       </div>
     <% end %>
   </div>
 <% else %>
   <%# No Contract %>
-  <div class="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-8 text-center">
-    <p class="text-gray-600 mb-4">No contract associated with this production.</p>
-    <%= link_to manage_contracts_path do %>
-      <%= render "shared/button", text: "View Contracts", variant: "secondary", size: "small" %>
-    <% end %>
-  </div>
+  <%= render "shared/empty_state", icon: "document", title: "No contract for this production",
+        actions: [ { text: "View contracts", path: manage_contracts_path, variant: "secondary" } ] %>
 <% end %>

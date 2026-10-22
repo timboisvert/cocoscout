@@ -57,7 +57,7 @@
   <% when "accounts" %>
     <% groups = @report.groups %>
     <% if groups.empty? %>
-      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">Nothing's on the books yet. The first ticket sale starts them.</div>
+      <%= render "shared/empty_state", icon: "money", title: "Nothing's on the books yet", body: "The first ticket sale starts them." %>      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">Nothing's on the books yet. The first ticket sale starts them.</div>
     <% else %>
       <div class="max-w-3xl space-y-4">
         <% groups.each do |label, rows, total| %>
@@ -136,7 +136,7 @@
       <% end %>
       <p class="max-w-4xl mt-2 text-xs text-gray-500">Open an entry to see its lines: money coming into an account on the left, going out on the right. Every entry balances.</p>
     <% else %>
-      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">No entries yet.</div>
+      <%= render "shared/empty_state", icon: "money", title: "No entries yet" %>      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">No entries yet.</div>
     <% end %>
 
   <% when "shows" %>
@@ -178,7 +178,7 @@
       </div>
       <p class="max-w-4xl mt-2 text-xs text-gray-500">Ticket money waits as "Tickets sold for upcoming shows" until the day after the show, then becomes income.</p>
     <% else %>
-      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">No ticket money on the books yet.</div>
+      <%= render "shared/empty_state", icon: "ticket", title: "No ticket money on the books yet" %>      <div class="bg-white border border-dashed border-gray-300 rounded-xl px-6 py-10 text-center text-sm text-gray-600">No ticket money on the books yet.</div>
     <% end %>
 
   <% when "checks" %>

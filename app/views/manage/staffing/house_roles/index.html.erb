@@ -73,14 +73,8 @@
       <% end %>
     </div>
   <% else %>
-    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
-      <p class="text-sm text-gray-600 mb-3">No staffing roles defined yet.</p>
-      <button type="button"
-              data-action="click->house-role-modal#openForNew"
-              class="bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center justify-center font-medium rounded transition-colors cursor-pointer px-3 py-1.5 text-sm">
-        Add your first role
-      </button>
-    </div>
+    <%= render "shared/empty_state", icon: "people", title: "No staffing roles yet", body: "A role is a job you schedule and pay, like Door or Bar.",
+          actions: [ { text: "Add your first role", data: { action: "click->house-role-modal#openForNew" } } ] %>
   <% end %>
 
   <%# Add/Edit House Role modal — opens in either mode from the index. %>

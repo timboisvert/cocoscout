@@ -76,11 +76,8 @@
       <% end %>
     </div>
   <% else %>
-    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
-      <p class="text-sm text-gray-600 mb-3">No regulars set up yet.</p>
-      <%= render "shared/button", text: "Add your first regular", variant: "primary", size: "small", type: :button,
-            data: { action: "click->scheduling-rule-modal#openForNew" } %>
-    </div>
+    <%= render "shared/empty_state", icon: "clock", title: "No regulars yet", body: "A regular is a standing rule, like Sam works the door every Friday.",
+          actions: [ { text: "Add your first regular", data: { action: "click->scheduling-rule-modal#openForNew" } } ] %>
   <% end %>
 
   <%# Add/Edit Regular modal — opens in either mode from the index. %>

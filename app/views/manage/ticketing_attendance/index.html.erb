@@ -64,7 +64,7 @@
   </div>
 
   <% if a.rows.empty? %>
-    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center text-sm text-gray-600">No dates with tickets <%= range_words %>.</div>
+    <%= render "shared/empty_state", icon: "ticket", title: "No dates with tickets #{range_words}" %>    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center text-sm text-gray-600">No dates with tickets <%= range_words %>.</div>
   <% else %>
     <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="<%= columns %> px-4 py-2 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-500">

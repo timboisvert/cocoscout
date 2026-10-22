@@ -100,9 +100,7 @@
       </div>
     </div>
   <% else %>
-    <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
-      <p class="text-sm text-gray-600">No staff yet. When you add someone, they'll be asked for a W-9 as part of onboarding.</p>
-    </div>
+    <%= render "shared/empty_state", icon: "document", title: "No staff yet", body: "When you add someone, they're asked for a W-9 as part of onboarding." %>
   <% end %>
 
   <%# ---- 1099-NECs ---- %>
