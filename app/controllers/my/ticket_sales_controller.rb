@@ -20,7 +20,9 @@ module My
       now = Time.current.beginning_of_day
       @upcoming, @past = listings.partition { |l| l.show.date_and_time >= now }
       @upcoming.reverse!
-      @stats = Ticketing::ListingStats.for(@upcoming.first(60) + @past.first(60))
+      # Every upcoming show, the latest 60 past ones; figures for each row shown.
+      @past = @past.first(60)
+      @stats = Ticketing::ListingStats.for(@upcoming + @past)
       @sees_sales = listings.any?
       @daily_email = TicketSalesViewer.active.where(user_id: Current.user.id, daily_email: true).exists?
     end

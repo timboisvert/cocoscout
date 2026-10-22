@@ -34,7 +34,7 @@
   <% end %>
   <% if @past.any? %>
     <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Past</h2>
-    <div class="space-y-2 mb-8"><% @past.first(60).each { |listing| concat row.call(listing) } %></div>
+    <div class="space-y-2 mb-8"><% @past.each { |listing| concat row.call(listing) } %></div>
   <% end %>
   <% if @upcoming.empty? && @past.empty? %>
     <p class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-600">No shows shared with you yet.</p>

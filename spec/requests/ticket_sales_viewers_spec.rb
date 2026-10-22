@@ -90,6 +90,18 @@ RSpec.describe "Ticket sales viewers", type: :request do
     expect(response.body).to include(my_ticket_sale_path(listing), my_ticket_sale_path(later))
   end
 
+  # Prod, 2026-10-22: a producer with more than 60 upcoming shared shows got
+  # a 500 (figures were fetched for only the first 60 rows).
+  it "lists every upcoming show of a shared production, even past 60" do
+    org.ticket_sales_viewers.create!(user: producer, scope: production, granted_by: superadmin)
+    61.times { |i| create(:ticket_listing, organization: org, show: create(:show, production: production, date_and_time: (6 + i).days.from_now)) }
+
+    sign_in(producer)
+    get my_ticket_sales_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body.scan(%r{href="/my/ticket-sales/\d+"}).size).to eq(62)
+  end
+
   it "lets a contract's contractor see their shows' sales unless the contract says not, with chips on My Contracts" do
     contractor = org.contractors.create!(name: "Pat Producer", person: producer_person)
     contract = create(:contract, organization: org, production: production, contractor: contractor, status: "active")
