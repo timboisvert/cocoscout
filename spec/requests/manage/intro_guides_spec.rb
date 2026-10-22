@@ -72,7 +72,8 @@ RSpec.describe "Intro guides", type: :request do
   end
 
   it "shows the messages guide on the messages inbox" do
-    get manage_messages_path
+    get manage_path
+    get messages_path
     expect(response.body).to include('data-intro-guide="messages_intro"')
     expect(response.body).to include("How messages work")
   end

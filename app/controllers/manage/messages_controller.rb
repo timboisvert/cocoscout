@@ -1,19 +1,10 @@
 module Manage
   class MessagesController < Manage::ManageController
-    include MessagesInbox
     rescue_from ActiveRecord::RecordNotFound, with: :message_not_found
 
-    # The one inbox (MessagesInbox), in production mode's frame: the same
-    # threads and count as My Messages, each row under its hat.
+    # The one Messages page lives at /messages now (MessagesController).
     def index
-      # Productions the user can access (for the compose flow). The compose
-      # flow asks each for its effective talent pool — preload so that check
-      # doesn't query per production.
-      @accessible_productions = Current.user.accessible_productions
-        .where(organization: Current.organization)
-        .includes(:talent_pools, talent_pool_shares: :talent_pool)
-        .order(:name)
-      load_inbox
+      redirect_to messages_path(request.query_parameters), status: :moved_permanently
     end
 
     # GET /manage/messages/production/:production_id
@@ -131,10 +122,10 @@ module Manage
         talent_pool: talent_pool_data
       }
     end
-    # One inbox, one count: everything unread is read now (as on My).
+    # One inbox, one count: everything unread is read now.
     def mark_all_read
       Current.user.message_subscriptions.active.each(&:mark_read!)
-      redirect_to manage_messages_path, notice: "All messages marked as read"
+      redirect_to messages_path, notice: "All messages marked as read"
     end
 
     # Flip a thread back to "unread" — bumps the subscription's unread counter
@@ -165,7 +156,7 @@ module Manage
       # My::MessagesController#show; without it any manage user could read any
       # thread on the platform by iterating ids.
       unless @root_message.subscribed?(Current.user)
-        redirect_to manage_messages_path, alert: "You don't have access to this message"
+        redirect_to messages_path, alert: "You don't have access to this message"
         return
       end
 
@@ -422,7 +413,7 @@ module Manage
 
       # Ensure user has access (subscribed to thread)
       unless root_message.subscribed?(Current.user)
-        redirect_to manage_messages_path, alert: "You don't have access to this thread"
+        redirect_to messages_path, alert: "You don't have access to this thread"
         return
       end
 
@@ -538,7 +529,7 @@ module Manage
 
       # Only thread participants may vote.
       unless message.root_message.subscribed?(Current.user)
-        redirect_to manage_messages_path, alert: "You don't have access to this message"
+        redirect_to messages_path, alert: "You don't have access to this message"
         return
       end
 

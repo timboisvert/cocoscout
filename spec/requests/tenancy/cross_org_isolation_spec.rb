@@ -139,7 +139,7 @@ RSpec.describe "Cross-org isolation (manage)", type: :request do
     it "redirects a non-participant away from a foreign thread" do
       get manage_message_path(victim_thread)
 
-      expect(response).to redirect_to(manage_messages_path)
+      expect(response).to redirect_to(messages_path)
       follow_redirect!
       expect(response.body).not_to include("Private cast plans")
     end
@@ -149,7 +149,7 @@ RSpec.describe "Cross-org isolation (manage)", type: :request do
       expect(response).to have_http_status(:forbidden)
 
       post "/manage/messages/#{victim_thread.id}/vote_poll", params: { option_id: 1 }
-      expect(response).to redirect_to(manage_messages_path)
+      expect(response).to redirect_to(messages_path)
     end
   end
 

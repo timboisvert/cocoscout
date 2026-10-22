@@ -3,6 +3,10 @@
 module Manage
   class SelectController < Manage::ManageController
     before_action :set_current_organization, except: %i[organization set_organization]
+    # The picker is a chooser, not a mode: it doesn't count as having entered
+    # production mode, so the page after it can say "Switched to …" (the
+    # switch notice reads the mode you came from).
+    skip_before_action :track_last_dashboard, only: %i[organization set_organization]
     # Use the standard manage sidebar (with its bottom account menu) rather than
     # the old top-right header — the org picker should feel like the dashboard.
     # The sidebar renders safely with no organization selected yet.
@@ -62,12 +66,9 @@ module Manage
     def set_organization
       organization = Current.user.accessible_organizations.find(params[:id])
 
-      # Set the organization in session using the same format as set_current_organization
-      user_id = Current.user&.id
-      if user_id
-        session[:current_organization_id] ||= {}
-        session[:current_organization_id][user_id.to_s] = organization.id
-      end
+      # The session's organization, and the notice on the next page when
+      # that's a change of organization or of mode (OrganizationContext).
+      switch_organization!(organization.id)
 
       # Always redirect to manage (or stored intent) - production auto-selection happens there if needed
       redirect_to_intent_or(manage_path, status: :see_other)

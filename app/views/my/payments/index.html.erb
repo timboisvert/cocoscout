@@ -3,11 +3,7 @@
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "My Payments",
-    links: []
-  } %>
+  <%= render "shared/module_header", title: "My Payments" %>
 
   <%= render "my/payments/bank_connect_banner" %>
 

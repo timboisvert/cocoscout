@@ -2,11 +2,7 @@
 
 <div class="w-full">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "My Documents",
-    links: []
-  } %>
+  <%= render "shared/module_header", title: "My Documents" %>
 
   <p class="text-sm text-gray-600 mb-4">Handbooks, documents, and agreements shared with you across your productions and talent pools.</p>
 

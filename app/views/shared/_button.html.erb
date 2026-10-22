@@ -40,6 +40,11 @@
   text = local_assigns[:text] || ""
   variant = local_assigns[:variant] || "primary"
   size = local_assigns[:size] || "medium"
+  # badge: a count after the text (Mark all read 46), on the button's own colors.
+  badge_html = if local_assigns[:badge].present?
+    tone = variant == "primary" ? "bg-white/25 text-white" : "bg-pink-600 text-white"
+    %(<span class="ml-0.5 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full text-[10px] font-semibold leading-none #{tone}">#{ERB::Util.html_escape(local_assigns[:badge])}</span>).html_safe
+  end
   type = local_assigns[:type] || :submit
   classes = local_assigns[:classes] || ""
   data = local_assigns[:data] || {}
@@ -174,21 +179,21 @@
       to force a full navigation when the action redirects to an external host). %>
   <%= button_to path, method: http_method, class: all_classes, data: data, form: local_assigns[:form] do %>
     <%= icon_html if icon_html %>
-    <span><%= text %></span>
+    <span><%= text %></span><%= badge_html %>
   <% end %>
 <% elsif path.present? %>
   <%= link_to path, class: all_classes, data: data, target: target, rel: rel, onclick: onclick do %>
     <%= icon_html if icon_html %>
-    <span><%= text %></span>
+    <span><%= text %></span><%= badge_html %>
   <% end %>
 <% elsif type == :submit %>
   <button type="submit" class="<%= all_classes %>" <%= form_attr %> <%= name_attr %> <%= title_attr %> <%= "style=\"#{style}\"".html_safe if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"".html_safe if onclick %> <%= "disabled" if disabled %>>
     <%= icon_html if icon_html %>
-    <% if text.present? %><span><%= text %></span><% end %>
+    <% if text.present? %><span><%= text %></span><%= badge_html %><% end %>
   </button>
 <% else %>
   <button type="<%= type %>" class="<%= all_classes %>" <%= title_attr %> <%= "style=\"#{style}\"".html_safe if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"".html_safe if onclick %> <%= "disabled" if disabled %>>
     <%= icon_html if icon_html %>
-    <% if text.present? %><span><%= text %></span><% end %>
+    <% if text.present? %><span><%= text %></span><%= badge_html %><% end %>
   </button>
 <% end %>

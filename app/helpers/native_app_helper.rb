@@ -213,10 +213,10 @@ module NativeAppHelper
       { id: "manage-#{item[:icon]}-#{item[:label].parameterize}", title: item[:label], path: item[:path],
         icon: NATIVE_NAV_SYMBOLS.fetch(item[:icon].to_s, "circle"), badge: item[:badge].to_i, locked: item[:locked] ? true : false }
     else
-      # V1.1's words (Tim, 2026-10-20): "Home" and "Shows & Events"; V1 keeps
-      # its own (native_menu_item).
+      # V1.1's words (Tim, 2026-10-21): "Home" and "My Shows & Events" on My;
+      # V1 keeps its own (native_menu_item).
       tile = native_menu_item(item)
-      tile = tile.merge(title: { "home" => "Home", "shows" => "Shows & Events" }.fetch(tile[:id], tile[:title]))
+      tile = tile.merge(title: { "home" => "Home", "shows" => "My Shows & Events" }.fetch(tile[:id], tile[:title]))
       tile.merge(locked: false)
     end
   end

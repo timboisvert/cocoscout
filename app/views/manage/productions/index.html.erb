@@ -3,11 +3,8 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Productions",
-    links: current_user_is_global_manager? ? [{ text: "Add a Production", path: manage_productions_wizard_path }] : []
-  } %>
+  <%= render "shared/module_header", title: "Productions",
+        actions: current_user_is_global_manager? ? [ { icon: "calendar", text: "Add a Production", path: manage_productions_wizard_path } ] : [] %>
 
   <% archived_view = @status == "archived" %>
   <% status_param = archived_view ? "archived" : nil %>

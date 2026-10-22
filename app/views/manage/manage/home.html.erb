@@ -3,30 +3,9 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%
-    # Shown to anyone with a production until they dismiss it. Creating a
-    # production also re-activates it (see producer setup / production wizard),
-    # so a second production brings the greeting back even after a dismissal.
-    next_steps_body = <<~HTML.html_safe
-      <p>
-        Everything your production needs lives here now — your calendar, your cast, your
-        auditions, your people, all in one place. There's a lot you can do, and no wrong
-        place to start. Here are the paths most producers take first:
-      </p>
-    HTML
-  %>
-  <%= render "shared/intro_guide",
-        guide_key: "production_next_steps",
-        variant: "welcome",
-        default_visible: @productions.any?,
-        title: "Welcome to running your production on CocoScout",
-        body: next_steps_body,
-        cards: [
-          { icon: "calendar", text: "Schedule your shows", description: "Put dates on the calendar — everything else points at them", path: manage_shows_new_wizard_path },
-          { icon: "clipboard-list", text: "Run auditions", description: "Collect sign-ups, review, and build your cast", path: manage_signups_auditions_new_wizard_path },
-          { icon: "user-group", text: "Cast your shows", description: "Assign people to roles, show by show", path: manage_casting_path },
-          { icon: "user-plus", text: "Invite your people", description: "Bring in your performers and staff", path: manage_contacts_path }
-        ] %>
+  <%# Home at the very top, then what needs attention, then the calendar (Tim, 2026-10-21). %>
+  <%= render "shared/module_header", title: "Home" %>
+
 
   <% if @production_dashboards.any? %>
     <%
@@ -70,6 +49,32 @@
     <div class="flex flex-col">
     <div class="max-sm:order-1">
       <%= render "manage/manage/needs_attention", vacancies: all_open_vacancies, audition_signups: total_audition_signups, attention: @home_attention %>
+    </div>
+    <div class="max-sm:order-1">
+  <%
+    # Shown to anyone with a production until they dismiss it. Creating a
+    # production also re-activates it (see producer setup / production wizard),
+    # so a second production brings the greeting back even after a dismissal.
+    next_steps_body = <<~HTML.html_safe
+      <p>
+        Everything your production needs lives here now — your calendar, your cast, your
+        auditions, your people, all in one place. There's a lot you can do, and no wrong
+        place to start. Here are the paths most producers take first:
+      </p>
+    HTML
+  %>
+  <%= render "shared/intro_guide",
+        guide_key: "production_next_steps",
+        variant: "welcome",
+        default_visible: @productions.any?,
+        title: "Welcome to running your production on CocoScout",
+        body: next_steps_body,
+        cards: [
+          { icon: "calendar", text: "Schedule your shows", description: "Put dates on the calendar — everything else points at them", path: manage_shows_new_wizard_path },
+          { icon: "clipboard-list", text: "Run auditions", description: "Collect sign-ups, review, and build your cast", path: manage_signups_auditions_new_wizard_path },
+          { icon: "user-group", text: "Cast your shows", description: "Assign people to roles, show by show", path: manage_casting_path },
+          { icon: "user-plus", text: "Invite your people", description: "Bring in your performers and staff", path: manage_contacts_path }
+        ] %>
     </div>
 
     <!-- Row 1: Summary Boxes -->

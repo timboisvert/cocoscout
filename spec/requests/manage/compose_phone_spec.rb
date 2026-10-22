@@ -14,7 +14,8 @@ RSpec.describe "Compose on a phone", type: :request do
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
   def compose(headers = {})
-    get manage_messages_path, headers: headers
+    get manage_path
+    get messages_path, headers: headers
     expect(response).to have_http_status(:ok)
     Nokogiri::HTML(response.body).at_css("#compose-message-modal")
   end

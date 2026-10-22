@@ -1,0 +1,42 @@
+<%#
+  A module's sections on a phone (V1.1, Tim 2026-10-21, "B · icon tiles"):
+  small icon-over-name tiles in one row that scrolls sideways with no
+  scrollbar, an arrow at whichever end has more (scroll_row controller). The
+  same actions shared/_module_actions draws as cards from sm up.
+
+  Locals:
+    actions: array of { icon:, text:, path:, data:, badge:, locked:, feature: }
+%>
+<% actions ||= [] %>
+<% if actions.any? %>
+  <div class="relative -mx-4" data-controller="scroll-row" data-section-tiles>
+    <div class="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-proximity" data-scroll-row-target="track">
+      <% actions.each do |action| %>
+        <% action_data = action[:data] || {} %>
+        <% if action[:locked] && action[:feature].present? %>
+          <% action_data = action_data.merge(action: "click->upgrade-modal#open", upgrade_feature: action[:feature]) %>
+        <% end %>
+        <%= link_to action[:path], class: "snap-start flex-shrink-0 w-[84px] min-h-[68px] flex flex-col items-center justify-start gap-1.5 pt-2.5 pb-2 px-1 bg-white border border-gray-200 rounded-lg text-center#{action[:locked] ? ' opacity-80' : ''}", data: action_data do %>
+          <span class="relative w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <%= render "shared/module_header_icon", icon: action[:icon] %>
+            <% if action[:badge].to_i.positive? %>
+              <span class="absolute -top-1.5 -right-2 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-pink-600 text-white text-[10px] font-semibold leading-none"><%= action[:badge] %></span>
+            <% end %>
+            <% if action[:locked] %>
+              <span class="absolute -top-1.5 -right-1.5"><%= render "shared/pro_marker", kind: :lock %></span>
+            <% end %>
+          </span>
+          <span class="text-[11px] font-medium leading-[1.15] text-gray-900 line-clamp-2"><%= action[:text] %></span>
+        <% end %>
+      <% end %>
+    </div>
+    <button type="button" data-scroll-row-target="left" data-action="click->scroll-row#scrollLeft" aria-label="More to the left"
+            class="hidden absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/95 border border-gray-200 shadow flex items-center justify-center text-gray-600 cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <button type="button" data-scroll-row-target="right" data-action="click->scroll-row#scrollRight" aria-label="More to the right"
+            class="hidden absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/95 border border-gray-200 shadow flex items-center justify-center text-gray-600 cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+<% end %>

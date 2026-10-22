@@ -32,7 +32,7 @@ RSpec.describe "The app's V1.1 menu", type: :request do
     nav = JSON.parse(bridge["data-bridge--menu-nav-value"])
     expect(nav["mode"]).to eq("my")
     titles = nav["sections"].flat_map { |s| s["items"] }.map { |i| i["title"] }
-    expect(titles).to include("Home", "Shows & Events")
+    expect(titles).to include("Home", "My Shows & Events")
     expect(titles).not_to include("My Calendar", "My Shows")
     expect(titles).not_to include("My Messages")
     expect(nav.dig("icons", "notifications", "path")).to eq(notifications_path)
@@ -47,7 +47,7 @@ RSpec.describe "The app's V1.1 menu", type: :request do
     expect(nav.dig("organization", "name")).to eq("Stars & Garters")
     expect(nav["sections"].first["items"].first).to include("title" => "Home", "icon" => "house")
     expect(nav.dig("modeSwitch", "label")).to eq("Exit production mode")
-    expect(nav.dig("icons", "messages", "path")).to eq(manage_messages_path)
+    expect(nav.dig("icons", "messages", "path")).to eq(messages_path)
   end
 end
 

@@ -4,12 +4,8 @@
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu_tabs", locals: {
-    tabs: [
-      { name: "My Courses", path: my_courses_path, active: true },
-      { name: "Find a Course", path: my_courses_directory_path, active: false }
-    ]
-  } %>
+  <%= render "shared/module_header", title: "My Courses",
+        actions: [ { icon: "book", text: "Find a course", path: my_courses_directory_path, variant: "secondary" } ] %>
 
   <% if @upcoming_courses.any? || @past_courses.any? %>
 

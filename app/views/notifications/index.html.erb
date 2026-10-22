@@ -6,14 +6,11 @@
 <div class="w-full pb-8" data-controller="notification-open"
      data-notification-open-ask-value="<%= @ask_before_switching %>"
      data-notification-open-remember-url-value="<%= notifications_switch_without_asking_path %>">
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: "Notifications",
-    links: [
-      { icon: "check", text: "Mark all read", path: read_notifications_path(filter: @filter, area: @area), method: :post, disabled: Current.user.unread_notification_count.zero? },
-      { icon: "cog", text: "Settings", path: account_notifications_path, variant: "secondary" }
-    ]
-  } %>
+  <%= render "shared/module_header", title: "Notifications", actions: [
+        { icon: "check", text: "Mark all read", path: read_notifications_path(filter: @filter, area: @area), method: :post,
+          badge: (Current.user.unread_notification_count if Current.user.unread_notification_count.positive?), disabled: Current.user.unread_notification_count.zero? },
+        { icon: "cog", text: "Settings", path: account_notifications_path, variant: "secondary" }
+      ] %>
 
   <div class="mt-4">
     <%= render "shared/filters/filter_bar",

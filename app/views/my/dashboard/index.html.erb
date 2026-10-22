@@ -1,10 +1,13 @@
 <%# V1.1 says "Home" (Tim, 2026-10-20); V1 phones keep "My Calendar". %>
-<% home_title = production_mode_available? ? "Home" : "My Calendar" %>
+<% home_title = "Home" %>
 <% content_for :title, home_title %>
 
 <div class="w-full">
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
+
+  <%# Home at the very top, then everything that needs you, then the calendar (Tim, 2026-10-21). %>
+  <%= render "shared/module_header", title: home_title %>
 
   <% primary = @people.first %>
 
@@ -83,12 +86,6 @@
   <% if primary %>
     <%= render "my/dashboard/profile_completion_panel", person: primary %>
   <% end %>
-
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [],
-    text: home_title,
-    links: []
-  } %>
 
   <!-- Pending Vacancy Invitations -->
   <%= render "my/vacancy_invitation_alerts", invitations: @pending_vacancy_invitations %>

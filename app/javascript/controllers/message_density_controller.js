@@ -13,6 +13,14 @@ export default class extends Controller {
         this.apply(this.stored())
     }
 
+    // One icon button (the one-line filters): each tap moves to the next mode.
+    cycle() {
+        const current = this.stored()
+        const mode = this.MODES[(this.MODES.indexOf(current) + 1) % this.MODES.length]
+        try { localStorage.setItem(this.storageKeyValue, mode) } catch (_) { /* ignore */ }
+        this.apply(mode)
+    }
+
     set(event) {
         const mode = event.currentTarget.dataset.mode
         if (!this.MODES.includes(mode)) return

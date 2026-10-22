@@ -15,6 +15,7 @@ export default class extends Controller {
         const orderValue = select.dataset.filterSelectOrderValue
         const eventTypeValue = select.dataset.filterSelectEventTypeValue
         const paramValue = select.dataset.filterSelectParamValue
+        const hatValue = select.dataset.filterSelectHatValue
 
         if (searchValue) params.set("q", searchValue)
         if (qValue) params.set("q", qValue)
@@ -38,6 +39,7 @@ export default class extends Controller {
             if (select.value) params.set("production_id", select.value)
             if (filterValue) params.set("filter", filterValue)
             if (orderValue) params.set("order", orderValue)
+            if (hatValue) params.set("hat", hatValue)
         } else if (select.name === "order") {
             params.set("order", select.value)
             if (filterValue) params.set("filter", filterValue)

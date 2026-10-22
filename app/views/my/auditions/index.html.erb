@@ -4,12 +4,8 @@
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render partial: "shared/top_menu_tabs", locals: {
-    tabs: [
-      { name: "My Auditions", path: my_auditions_path, active: true },
-      { name: "Find an Audition", path: my_auditions_directory_path, active: false }
-    ]
-  } %>
+  <%= render "shared/module_header", title: "My Auditions",
+        actions: [ { icon: "clipboard-list", text: "Find an audition", path: my_auditions_directory_path, variant: "secondary" } ] %>
 
   <%# ========================================= %>
   <%# Section 1: Scheduled Auditions %>

@@ -21,7 +21,7 @@ RSpec.describe "My::Messages inbox", type: :request do
       subject: "Hello", body: "Hi there", message_type: :direct, visibility: :personal
     )
 
-    get my_messages_path
+    get messages_path
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Comfortable") # density switcher option
     expect(response.body).to include("msg-density-compact")
@@ -41,20 +41,20 @@ RSpec.describe "My::Messages inbox", type: :request do
     end
 
     it "stacks the row on phones and lays it out in one line from sm up" do
-      get my_messages_path
+      get messages_path
 
       expect(response.body).to include("msg-row flex flex-col sm:flex-row")
       expect(response.body).not_to include("msg-participants flex-shrink-0 w-40")
     end
 
     it "keeps a date visible in both layouts" do
-      get my_messages_path
+      get messages_path
 
       expect(response.body).to include("msg-date hidden sm:block")
     end
 
     it "never asks an element to hide while setting a display that overrides it" do
-      get my_messages_path
+      get messages_path
 
       # `hidden` (display:none) loses to any display utility sorting after it in
       # the built Tailwind CSS, so an element carrying both stays visible.
@@ -79,7 +79,7 @@ RSpec.describe "My::Messages inbox", type: :request do
       message_type: :direct, visibility: :personal, system_generated: true
     )
 
-    get my_messages_path
+    get messages_path
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Automated Notification")
     expect(response.body).not_to include("Andy Wanacott")

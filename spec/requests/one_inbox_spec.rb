@@ -45,7 +45,7 @@ RSpec.describe "The one Messages inbox", type: :request do
   end
 
   it "lists both hats on My, the production thread with its organization's pill" do
-    get my_messages_path
+    get messages_path
     expect(response).to have_http_status(:ok)
     found = rows(response.body)
     expect(found.map { |r| r["data-message-id"].to_i }).to contain_exactly(performer_thread.id, production_thread.id)
@@ -63,7 +63,7 @@ RSpec.describe "The one Messages inbox", type: :request do
 
   it "shows the same list in production mode, the current organization's pill pink and no switch" do
     get manage_path
-    get manage_messages_path
+    get messages_path
     expect(response).to have_http_status(:ok)
     found = rows(response.body)
     expect(found.map { |r| r["data-message-id"].to_i }).to contain_exactly(performer_thread.id, production_thread.id)
@@ -74,11 +74,11 @@ RSpec.describe "The one Messages inbox", type: :request do
   end
 
   it "keeps one hat with the For chips" do
-    get my_messages_path(hat: "performer")
+    get messages_path(hat: "performer")
     expect(rows(response.body).map { |r| r["data-message-id"].to_i }).to eq([ performer_thread.id ])
-    get my_messages_path(hat: "org:#{moonlight.id}")
+    get messages_path(hat: "org:#{moonlight.id}")
     expect(rows(response.body).map { |r| r["data-message-id"].to_i }).to eq([ production_thread.id ])
-    get my_messages_path(hat: "org:#{starlight.id}") # not one Sam runs: everything
+    get messages_path(hat: "org:#{starlight.id}") # not one Sam runs: everything
     expect(rows(response.body).size).to eq(2)
   end
 
@@ -130,7 +130,7 @@ RSpec.describe "The one Messages inbox", type: :request do
     other = MessageService.create_message(sender: starlight_owner, recipients: [ stranger ], subject: "Private", body: "x", message_type: :direct, visibility: :personal)
     Current.organization = nil
     get open_my_message_path(other)
-    expect(response).to redirect_to(my_messages_path)
+    expect(response).to redirect_to(messages_path)
   end
 
   it "counts both hats on the mail icon in either mode" do
@@ -138,10 +138,10 @@ RSpec.describe "The one Messages inbox", type: :request do
     get my_dashboard_path
     icon = Nokogiri::HTML(response.body).at_css("[data-universal-icon='messages']")
     expect(icon["aria-label"]).to eq("Messages, 1 unread")
-    expect(icon["href"]).to eq(my_messages_path)
+    expect(icon["href"]).to eq(messages_path)
     get manage_path
     icon = Nokogiri::HTML(response.body).at_css("[data-universal-icon='messages']")
     expect(icon["aria-label"]).to eq("Messages, 1 unread")
-    expect(icon["href"]).to eq(manage_messages_path)
+    expect(icon["href"]).to eq(messages_path)
   end
 end

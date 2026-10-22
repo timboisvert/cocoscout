@@ -21,12 +21,28 @@ class ApplicationController < ActionController::Base
     # mode under someone working in production mode.
     return unless real_page_load?
 
+    # Leaving production mode: this page says so, once
+    # (shared/navigation/mode_switch_notice; Tim, 2026-10-21).
+    note_leaving_production_mode
+
     last_dashboard_prefs = cookies.encrypted[:last_dashboard]
     # Reset if it's an old string value instead of a hash
     last_dashboard_prefs = {} unless last_dashboard_prefs.is_a?(Hash)
     last_dashboard_prefs[Current.user.id.to_s] = "my"
     cookies.encrypted[:last_dashboard] = { value: last_dashboard_prefs, expires: 1.year.from_now }
     remember_mode("my")
+  end
+
+  # The mode this person was last in, from the cookie, else their account
+  # (users.last_mode); OrganizationContext has the fuller version for pages
+  # that also need the organization.
+  def note_leaving_production_mode
+    prefs = cookies.encrypted[:last_dashboard]
+    remembered = prefs.is_a?(Hash) ? prefs[Current.user.id.to_s] : nil
+    return unless (remembered || Current.user.last_mode) == "manage"
+
+    organization_id = session[:current_organization_id].is_a?(Hash) ? session[:current_organization_id][Current.user.id.to_s] : nil
+    @left_production_mode = Organization.find_by(id: organization_id)&.name || true
   end
 
   # A page someone actually opened: a GET for HTML, not a Turbo frame, not a

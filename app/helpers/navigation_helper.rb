@@ -30,12 +30,10 @@ module NavigationHelper
   # with several productions, Productions after Home with how many. V1's
   # native menu keeps reading dashboard_nav_sections unchanged.
   def panel_nav_sections(context)
-    # Labels everywhere (Tim, 2026-10-20): "Home" and "Shows & Events".
-    renamed = { "My Shows & Events" => "Shows & Events" }
+    # "Home" in both modes; "My Shows & Events" on My, "Shows & Events" in
+    # production mode (Tim, 2026-10-21).
     sections = dashboard_nav_sections(context).map do |section|
-      items = section[:items].reject { |item| item[:icon] == "messages" }
-                             .map { |item| renamed.key?(item[:label]) ? item.merge(label: renamed[item[:label]]) : item }
-      section.merge(items: items)
+      section.merge(items: section[:items].reject { |item| item[:icon] == "messages" })
     end
     if context.to_sym == :production && Current.organization&.on_paid_plan? && sections.first
       count = Current.user.accessible_productions.where(organization: Current.organization).count
@@ -64,7 +62,7 @@ module NavigationHelper
   # §0a; MessagesInbox): the same threads and count in either mode, drawn in
   # the mode's own frame.
   def panel_universal_icons(production_mode:)
-    messages = { path: (production_mode && Current.organization ? manage_messages_path : my_messages_path), count: Current.user.unread_message_count.to_i }
+    messages = { path: messages_path, count: Current.user.unread_message_count.to_i }
     {
       messages: messages.merge(active: controller_name == "messages"),
       notifications: { path: notifications_path, count: Current.user.unread_notification_count, active: controller_name == "notifications" }

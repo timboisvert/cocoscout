@@ -116,7 +116,8 @@ RSpec.describe "Pages on the shared People Picker", type: :request do
   end
 
   it "compose's Individuals step adds people through it on every page that composes" do
-    get manage_messages_path
+    get manage_path # production mode: compose is there
+    get messages_path
     doc = Nokogiri::HTML(response.body)
     wrapper, params = picker(doc, "compose-picker")
     expect(params).to include("scope" => "people")

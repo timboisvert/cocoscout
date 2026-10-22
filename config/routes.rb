@@ -58,6 +58,10 @@ Rails.application.routes.draw do
   post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
   get   "/signin",        to: "auth#signin",          as: "signin"
   # Notifications (V1.1 plan §9): universal, in neither mode; the bell opens them.
+  # The one Messages page, in either mode's frame (MessagesController); the
+  # old My and production inboxes redirect here.
+  get   "/messages",               to: "messages#index",            as: "messages"
+  post  "/messages/read",          to: "messages#mark_all_read",    as: "read_messages"
   get   "/notifications",          to: "notifications#index",       as: "notifications"
   get   "/notifications/:id/open", to: "notifications#open",        as: "open_notification"
   get   "/notifications/:id",      to: "notifications#show",        as: "notification", constraints: { id: /\d+/ }

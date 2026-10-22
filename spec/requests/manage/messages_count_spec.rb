@@ -28,7 +28,7 @@ RSpec.describe "Messages count invariants", type: :request do
 
   describe "GET /manage/messages" do
     it "renders and badge == list-unread == 0 when there are no messages" do
-      get manage_messages_path
+      get messages_path
       expect(response).to have_http_status(:ok)
       expect(owner.unread_message_count).to eq(0)
       expect_badge_to_match_list!
@@ -38,7 +38,7 @@ RSpec.describe "Messages count invariants", type: :request do
       msg = create(:message, :production_visible, organization: org, production: production, sender: owner)
       create(:message_subscription, user: owner, message: msg, unread_count: 1)
 
-      get manage_messages_path
+      get messages_path
       expect(response).to have_http_status(:ok)
       expect(owner.unread_message_count).to eq(1)
       expect_badge_to_match_list!
@@ -52,7 +52,7 @@ RSpec.describe "Messages count invariants", type: :request do
       create(:message_subscription, user: owner, message: other_msg, unread_count: 1)
 
       post set_organization_path(id: org.id) # two organizations now: say which one production mode is in
-      get manage_messages_path
+      get messages_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Moonlight call time")
       row = Nokogiri::HTML(response.body).at_css("a[data-message-id='#{other_msg.id}']")

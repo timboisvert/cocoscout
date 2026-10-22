@@ -24,7 +24,7 @@
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [], text: "Ticket Sales", links: [] } %>
+  <%= render "shared/module_header", title: "Ticket Sales" %>
 
   <p class="text-sm text-gray-600 mb-4">How tickets are selling for the shows a theater shares with you. You can look, not change: sold of seats, sales, and who's coming by name.</p>
 

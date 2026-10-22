@@ -1,17 +1,15 @@
 class My::MessagesController < ApplicationController
   include MessagesInbox
   include OrganizationContext
+  include ContactableProductions
   before_action :require_authentication
   before_action :set_sidebar
   before_action :track_inbox_visit, only: [ :index, :show, :production ]
   rescue_from ActiveRecord::RecordNotFound, with: :message_not_found
 
-  # The one inbox (MessagesInbox): every thread, under either hat.
+  # The one Messages page lives at /messages now (MessagesController).
   def index
-    @show_my_sidebar = true
-    load_inbox
-    # For "Contact Production Team" card - get productions user is in talent pool for
-    @contactable_productions = productions_user_can_contact
+    redirect_to messages_path(request.query_parameters), status: :moved_permanently
   end
 
   # A tap on an inbox row, a push, or Reply on a notification: a thread of a
@@ -23,7 +21,7 @@ class My::MessagesController < ApplicationController
     thread = Message.root_messages.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by the inbox check below
     user = Current.user
     unless thread.subscribed?(user) || Message.manage_inbox_for(user, user.accessible_organizations).exists?(id: thread.id)
-      redirect_to my_messages_path, alert: "You don't have access to this message" and return
+      redirect_to messages_path, alert: "You don't have access to this message" and return
     end
 
     production_ids = user.production_ids_everywhere
@@ -70,7 +68,7 @@ class My::MessagesController < ApplicationController
 
     # Ensure user has access (subscribed to thread)
     unless @root_message.subscribed?(Current.user)
-      redirect_to my_messages_path, alert: "You don't have access to this message"
+      redirect_to messages_path, alert: "You don't have access to this message"
       return
     end
 
@@ -132,7 +130,7 @@ class My::MessagesController < ApplicationController
 
   def mark_all_read
     Current.user.message_subscriptions.active.each(&:mark_read!)
-    redirect_to my_messages_path, notice: "All messages marked as read"
+    redirect_to messages_path, notice: "All messages marked as read"
   end
 
   # Flip a thread back to "unread" — bumps the subscription's unread counter
@@ -271,7 +269,7 @@ class My::MessagesController < ApplicationController
     message = Message.find_by(id: params[:id])
 
     if message.nil?
-      redirect_to my_messages_path, alert: "Message not found"
+      redirect_to messages_path, alert: "Message not found"
       return
     end
 
@@ -298,7 +296,7 @@ class My::MessagesController < ApplicationController
     root_message = message.root_message
 
     unless root_message.subscribed?(Current.user)
-      redirect_to my_messages_path, alert: "You don't have access to this message"
+      redirect_to messages_path, alert: "You don't have access to this message"
       return
     end
 
@@ -365,71 +363,6 @@ class My::MessagesController < ApplicationController
   end
 
   def message_not_found
-    redirect_to my_messages_path, alert: "Message not found"
-  end
-
-  # Get productions where user is in the talent pool (can contact the team)
-  def productions_user_can_contact
-    return [] unless Current.user.person
-
-    people_ids = Current.user.people.active.pluck(:id)
-    return [] if people_ids.empty?
-
-    # Get groups user is a member of
-    group_ids = GroupMembership.where(person_id: people_ids).pluck(:group_id)
-
-    production_ids = Set.new
-
-    # Productions via person's direct talent pool memberships
-    person_production_ids = TalentPoolMembership
-      .where(member_type: "Person", member_id: people_ids)
-      .joins(:talent_pool)
-      .pluck("talent_pools.production_id")
-    production_ids.merge(person_production_ids)
-
-    # Productions via shared talent pools
-    if people_ids.any?
-      shared_person_production_ids = Production
-        .joins(talent_pool_shares: { talent_pool: :talent_pool_memberships })
-        .where(talent_pool_memberships: { member_type: "Person", member_id: people_ids })
-        .pluck(:id)
-      production_ids.merge(shared_person_production_ids)
-    end
-
-    # Productions via group's talent pool memberships
-    if group_ids.any?
-      group_production_ids = TalentPoolMembership
-        .where(member_type: "Group", member_id: group_ids)
-        .joins(:talent_pool)
-        .pluck("talent_pools.production_id")
-      production_ids.merge(group_production_ids)
-
-      shared_group_production_ids = Production
-        .joins(talent_pool_shares: { talent_pool: :talent_pool_memberships })
-        .where(talent_pool_memberships: { member_type: "Group", member_id: group_ids })
-        .pluck(:id)
-      production_ids.merge(shared_group_production_ids)
-    end
-
-    # Productions where user is cast in shows (person or group assignments)
-    if people_ids.any?
-      cast_production_ids = Production
-        .joins(shows: :show_person_role_assignments)
-        .where(show_person_role_assignments: { assignable_type: "Person", assignable_id: people_ids })
-        .distinct
-        .pluck(:id)
-      production_ids.merge(cast_production_ids)
-    end
-
-    if group_ids.any?
-      group_cast_production_ids = Production
-        .joins(shows: :show_person_role_assignments)
-        .where(show_person_role_assignments: { assignable_type: "Group", assignable_id: group_ids })
-        .distinct
-        .pluck(:id)
-      production_ids.merge(group_cast_production_ids)
-    end
-
-    Production.where(id: production_ids).order(:name)
+    redirect_to messages_path, alert: "Message not found"
   end
 end

@@ -131,7 +131,8 @@ RSpec.describe "Manage paid-feature gate", type: :request do
     end
 
     it "still allows free modules (including Documents)" do
-      get manage_messages_path
+      get manage_path
+      get messages_path
       expect(response).to have_http_status(:ok)
 
       get manage_contacts_path

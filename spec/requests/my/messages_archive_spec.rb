@@ -21,16 +21,16 @@ RSpec.describe "My::Messages archiving", type: :request do
   end
 
   it "removes an archived thread from the inbox and shows it under the Archived filter" do
-    get my_messages_path
+    get messages_path
     expect(response.body).to include("ArchiveMe Thread")
 
     post archive_my_message_path(thread)
     expect(viewer.message_subscriptions.find_by(message: thread)).to be_archived
 
-    get my_messages_path
+    get messages_path
     expect(response.body).not_to include("ArchiveMe Thread")
 
-    get my_messages_path(filter: "archived")
+    get messages_path(filter: "archived")
     expect(response.body).to include("ArchiveMe Thread")
   end
 
@@ -39,7 +39,7 @@ RSpec.describe "My::Messages archiving", type: :request do
     post unarchive_my_message_path(thread)
 
     expect(viewer.message_subscriptions.find_by(message: thread)).not_to be_archived
-    get my_messages_path
+    get messages_path
     expect(response.body).to include("ArchiveMe Thread")
   end
 

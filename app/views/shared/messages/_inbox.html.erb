@@ -1,83 +1,97 @@
 <%#
   The one Messages inbox (MessagesInbox, V1.1 plan §0a): the filters, the
-  rows and the pages, the same on My Messages and on production mode's
-  Messages. Locals:
-    base   :my or :manage, whose index path the filters and pages link to
+  rows and the pages. Locals:
+    base   :my or :manage: which frame the page is in (the pills' tones,
+           the switch prompt's words)
+    path   a lambda building the page's own path with filter overrides,
+           e.g. ->(**o) { messages_path(**o) }
+
+  Filters on one line (Tim, 2026-10-21): the search box, then one chip row
+  that scrolls sideways on a phone (scroll_row): All / Unread / Sent /
+  Archived, a divider, Everything / As a performer / each organization, and
+  at the end newest-oldest and the layout toggle as icons. The production
+  dropdown joins only with more than one production in the inbox.
 
   A row under the production hat wears a pill with its organization (pink
   when it's the organization open in production mode, gray otherwise); a
   performer thread wears none. Every row opens through
   My::MessagesController#open; one that would switch organization (or into
-  production mode from My) asks first, in the pink-header prompt
-  (notification-open controller, shared/mode_switch_prompt), unless the
-  person said not to.
+  production mode from My) asks first (notification-open controller,
+  shared/mode_switch_prompt), unless the person said not to.
 %>
 <%
   base = local_assigns.fetch(:base)
   current = { filter: @filter, q: @search.presence, production_id: @production_filter, order: @order, hat: @hat.presence }.compact
-  path = ->(**overrides) { base == :manage ? manage_messages_path(**current.merge(overrides)) : my_messages_path(**current.merge(overrides)) }
+  own = local_assigns[:path] || ->(**overrides) { messages_path(**overrides) }
+  path = ->(**overrides) { own.call(**current.merge(overrides)) }
   in_production_mode = base == :manage
-  hat_filters = [
-    { text: "Everything", path: path.call(hat: nil), active: @hat.blank? },
-    { text: "As a performer", path: path.call(hat: "performer"), active: @hat == "performer" }
-  ] + @managed_organizations.map { |org| { text: org.name, path: path.call(hat: "org:#{org.id}"), active: @hat == "org:#{org.id}" } }
+  chip = ->(on) { "flex-shrink-0 inline-flex items-center min-h-[32px] px-3 rounded-full border text-[13px] whitespace-nowrap #{on ? 'border-pink-500 bg-pink-50 text-pink-700 font-medium' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}" }
+  show_chips = [
+    [ "All", path.call(filter: nil), @filter == "all" ],
+    [ "Unread", path.call(filter: "unread"), @filter == "unread" ],
+    [ "Sent", path.call(filter: "sent_by_me"), @filter == "sent_by_me" ],
+    [ "Archived", path.call(filter: "archived"), @filter == "archived" ]
+  ]
+  hat_chips = [
+    [ "Everything", path.call(hat: nil), @hat.blank? ],
+    [ "As a performer", path.call(hat: "performer"), @hat == "performer" ]
+  ] + @managed_organizations.map { |org| [ org.name, path.call(hat: "org:#{org.id}"), @hat == "org:#{org.id}" ] }
+  icon_button = "flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
 %>
 
 <div data-controller="notification-open"
      data-notification-open-ask-value="<%= @ask_before_switching %>"
      data-notification-open-remember-url-value="<%= notifications_switch_without_asking_path %>">
-  <%# Search + Filter Bar %>
-  <%= form_with url: path.call, method: :get, data: { turbo_action: "advance" }, class: "mt-4" do |f| %>
-    <div class="mb-3">
-      <%= render "shared/filters/search_input", placeholder: "Search messages...", value: @search, name: "q", full_width: true %>
-    </div>
-
-    <%= render "shared/filters/filter_bar",
-        toggle_label: "Filters",
-        wrapper_data_controller: "filter-select",
-        filter_groups: [
-          {
-            label: "Show",
-            filters: [
-              { text: "All", path: path.call(filter: nil), active: @filter == "all" },
-              { text: "Unread", path: path.call(filter: "unread"), active: @filter == "unread" },
-              { text: "Sent by me", path: path.call(filter: "sent_by_me"), active: @filter == "sent_by_me" },
-              { text: "Archived", path: path.call(filter: "archived"), active: @filter == "archived" }
-            ]
-          },
-          (@managed_organizations.any? ? { separator: true } : nil),
-          (@managed_organizations.any? ? { label: "For", filters: hat_filters } : nil),
-          { separator: true },
-          {
-            partial: "shared/filters/order_toggle",
-            locals: { current_order: @order, newest_path: path.call(order: "newest"), oldest_path: path.call(order: "oldest") }
-          },
-          (@inbox_productions.many? ? { separator: true } : nil),
-          (@inbox_productions.many? ? {
-            partial: "shared/filters/production_dropdown_filter",
-            locals: {
-              label: "Production",
-              name: "production_id",
-              options: [ { value: "", text: "All Productions" } ] + @inbox_productions.map { |p| { value: p.id.to_s, text: p.name, type: p.production_type } },
-              selected: @production_filter.to_s,
-              data_attributes: {
-                action: "change->filter-select#update",
-                filter_select_filter_value: @filter,
-                filter_select_q_value: @search,
-                filter_select_order_value: @order
-              }
-            }
-          } : nil),
-          { separator: true },
-          { partial: "shared/filters/layout_filter" }
-        ].compact
-    %>
-    <%# Hidden fields to preserve filters when searching %>
+  <%= form_with url: own.call, method: :get, data: { turbo_action: "advance" }, class: "mt-4" do |f| %>
+    <%= render "shared/filters/search_input", placeholder: "Search messages...", value: @search, name: "q", full_width: true %>
     <%= f.hidden_field :filter, value: @filter %>
     <%= f.hidden_field :production_id, value: @production_filter %>
     <%= f.hidden_field :order, value: @order %>
     <%= f.hidden_field :hat, value: @hat %>
   <% end %>
+
+  <%# One line of filters; scrolls sideways on a phone, arrows at the ends. %>
+  <div class="relative mt-3 -mx-4 sm:mx-0" data-controller="scroll-row" data-inbox-filters>
+    <div class="flex items-center gap-1.5 overflow-x-auto px-4 sm:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-scroll-row-target="track">
+      <% show_chips.each do |label, href, on| %>
+        <%= link_to label, href, class: chip.call(on) %>
+      <% end %>
+      <% if @managed_organizations.any? %>
+        <span class="flex-shrink-0 w-px h-5 bg-gray-200 mx-1" aria-hidden="true"></span>
+        <% hat_chips.each do |label, href, on| %>
+          <%= link_to label, href, class: "#{chip.call(on)} max-w-[12rem] truncate", title: label %>
+        <% end %>
+      <% end %>
+      <% if @inbox_productions.many? %>
+        <span class="flex-shrink-0 w-px h-5 bg-gray-200 mx-1" aria-hidden="true"></span>
+        <label class="flex-shrink-0 inline-flex items-center" data-controller="filter-select">
+          <span class="sr-only">Production</span>
+          <select name="production_id" class="min-h-[32px] rounded-full border border-gray-300 bg-white pl-3 pr-7 text-[13px] text-gray-700"
+                  data-action="change->filter-select#update" data-filter-select-filter-value="<%= @filter %>" data-filter-select-q-value="<%= @search %>" data-filter-select-order-value="<%= @order %>" data-filter-select-hat-value="<%= @hat %>">
+            <option value="">All productions</option>
+            <% @inbox_productions.each do |p| %>
+              <option value="<%= p.id %>" <%= "selected" if @production_filter.to_s == p.id.to_s %>><%= p.name %></option>
+            <% end %>
+          </select>
+        </label>
+      <% end %>
+      <span class="flex-shrink-0 w-px h-5 bg-gray-200 mx-1" aria-hidden="true"></span>
+      <%= link_to path.call(order: @order == "oldest" ? "newest" : "oldest"), class: icon_button, title: (@order == "oldest" ? "Oldest first; show newest first" : "Newest first; show oldest first"), aria: { label: "Sort" } do %>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>
+      <% end %>
+      <button type="button" class="<%= icon_button %>" data-action="click->message-density#cycle" title="Comfortable or compact rows" aria-label="Row density">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <button type="button" data-scroll-row-target="left" data-action="click->scroll-row#scrollLeft" aria-label="More to the left"
+            class="hidden sm:!hidden absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/95 border border-gray-200 shadow flex items-center justify-center text-gray-600 cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <button type="button" data-scroll-row-target="right" data-action="click->scroll-row#scrollRight" aria-label="More to the right"
+            class="hidden sm:!hidden absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/95 border border-gray-200 shadow flex items-center justify-center text-gray-600 cursor-pointer">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </button>
+  </div>
 
   <% if @messages.any? %>
     <div data-message-density-target="list" class="mt-4 msg-density-compact border border-gray-200 rounded-lg overflow-hidden bg-white">

@@ -24,7 +24,7 @@ RSpec.describe "The desktop panel", type: :request do
     it "has the two icons, no Messages item, no switcher, and Start producing" do
       user.notifications.create!(category: "pay", kind: "sent", title: "Your pay is on its way")
       get my_dashboard_path
-      expect(panel.at_css('[data-universal-icon="messages"]')["href"]).to eq(my_messages_path)
+      expect(panel.at_css('[data-universal-icon="messages"]')["href"]).to eq(messages_path)
       bell = panel.at_css('[data-universal-icon="notifications"]')
       expect(bell["href"]).to eq(notifications_path)
       expect(bell["aria-label"]).to eq("Notifications, 1 unread")
@@ -57,7 +57,7 @@ RSpec.describe "The desktop panel", type: :request do
       get manage_path
       expect(panel.text).to include("Stars & Garters", "Production mode")
       expect(panel.at_css('[data-mode-switch="exit"]')["href"]).to eq(my_dashboard_path)
-      expect(panel.at_css('[data-universal-icon="messages"]')["href"]).to eq(manage_messages_path)
+      expect(panel.at_css('[data-universal-icon="messages"]')["href"]).to eq(messages_path)
       expect(panel.css("a").map(&:text).map(&:squish)).not_to include("Messages")
     end
 
