@@ -10,13 +10,13 @@
 <% actions ||= [] %>
 <% if actions.any? %>
   <div class="relative -mx-4" data-controller="scroll-row" data-section-tiles>
-    <div class="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-proximity" data-scroll-row-target="track">
+    <div class="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-scroll-row-target="track">
       <% actions.each do |action| %>
         <% action_data = action[:data] || {} %>
         <% if action[:locked] && action[:feature].present? %>
           <% action_data = action_data.merge(action: "click->upgrade-modal#open", upgrade_feature: action[:feature]) %>
         <% end %>
-        <%= link_to action[:path], class: "snap-start flex-shrink-0 w-[84px] min-h-[68px] flex flex-col items-center justify-start gap-1.5 pt-2.5 pb-2 px-1 bg-white border border-gray-200 rounded-lg text-center#{action[:locked] ? ' opacity-80' : ''}", data: action_data do %>
+        <%= link_to action[:path], class: "flex-shrink-0 w-[84px] min-h-[68px] flex flex-col items-center justify-start gap-1.5 pt-2.5 pb-2 px-1 bg-white border border-gray-200 rounded-lg text-center#{action[:locked] ? ' opacity-80' : ''}", data: action_data do %>
           <span class="relative w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
             <%= render "shared/module_header_icon", icon: action[:icon] %>
             <% if action[:badge].to_i.positive? %>
@@ -31,11 +31,11 @@
       <% end %>
     </div>
     <button type="button" data-scroll-row-target="left" data-action="click->scroll-row#scrollLeft" aria-label="More to the left"
-            class="hidden absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/95 border border-gray-200 shadow flex items-center justify-center text-gray-600 cursor-pointer">
+            style="display:none" class="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/95 border border-gray-200 shadow flex items-center justify-center text-gray-600 cursor-pointer">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
     </button>
     <button type="button" data-scroll-row-target="right" data-action="click->scroll-row#scrollRight" aria-label="More to the right"
-            class="hidden absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/95 border border-gray-200 shadow flex items-center justify-center text-gray-600 cursor-pointer">
+            style="display:none" class="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/95 border border-gray-200 shadow flex items-center justify-center text-gray-600 cursor-pointer">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
     </button>
   </div>

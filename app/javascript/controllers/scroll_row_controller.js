@@ -26,8 +26,9 @@ export default class extends Controller {
         const track = this.trackTarget
         const max = track.scrollWidth - track.clientWidth
         const at = track.scrollLeft
-        if (this.hasLeftTarget) this.leftTarget.classList.toggle("hidden", at <= 2)
-        if (this.hasRightTarget) this.rightTarget.classList.toggle("hidden", max <= 2 || at >= max - 2)
+        // style, not a class: the arrow is a flex box, and Tailwind's hidden loses to flex
+        if (this.hasLeftTarget) this.leftTarget.style.display = at <= 2 ? "none" : ""
+        if (this.hasRightTarget) this.rightTarget.style.display = (max <= 2 || at >= max - 2) ? "none" : ""
     }
 
     scrollLeft() { this.slide(-1) }

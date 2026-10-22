@@ -36,12 +36,12 @@
 <% show_title = !turbo_native_app? %>
 
 <div class="<%= show_title ? 'pt-1 sm:pt-2' : '' %> mb-4 sm:mb-6" data-module-header>
-  <div class="flex items-start justify-between gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
     <% if show_title %>
       <h1 class="text-xl sm:text-4xl coustard-regular text-gray-900 min-w-0"><%= title %></h1>
     <% end %>
     <% if buttons %>
-      <div class="flex items-center gap-2 flex-shrink-0 <%= show_title ? '' : 'ml-auto' %>" data-module-buttons>
+      <div class="flex items-center gap-2 flex-shrink-0 ml-auto" data-module-buttons>
         <% actions.each_with_index do |action, i| %>
           <% action_data = action[:data] || {} %>
           <% if action[:locked] && action[:feature].present? %>
