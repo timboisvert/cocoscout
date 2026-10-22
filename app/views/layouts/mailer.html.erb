@@ -91,12 +91,6 @@
       text-decoration: underline;
       display: inline;
     }
-    .storefront-name {
-      font-family: 'Coustard', Georgia, serif;
-      font-size: 24px;
-      color: #111827;
-      margin: 0;
-    }
     .footer a {
       color: #ec4899;
       text-decoration: none;
@@ -117,12 +111,11 @@
 </head>
 <body>
   <div class="email-wrapper">
-    <%# A ticket buyer's email leads with the theater (@storefront_organization,
-        TicketOrderMailer); everything else with CocoScout's cat. %>
+    <%# CocoScout's cat leads every email but a ticket buyer's, which opens
+        straight on the theater's words: no name up top, since email apps
+        drop our font (Tim, 2026-10-21). %>
     <div class="logo-container">
-      <% if @storefront_organization %>
-        <p class="storefront-name"><%= @storefront_organization.name %></p>
-      <% elsif attachments["cocoscout.png"] %>
+      <% if !@storefront_organization && attachments["cocoscout.png"] %>
         <img src="<%= attachments['cocoscout.png'].url %>" alt="CocoScout" class="logo" />
       <% end %>
     </div>
