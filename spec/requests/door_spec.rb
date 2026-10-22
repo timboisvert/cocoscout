@@ -49,7 +49,8 @@ RSpec.describe "Door", type: :request do
       # door is open, with its counts; a show three days out isn't listed.
       get door_index_path
       body = response.body
-      expect(body).to include(">On now<", door_path(tonight), "Checked in", "Open the door")
+      expect(body).to include(">On now<", door_path(tonight), "Checked in", "Comped", "Available", "Open the door")
+      expect(body).not_to include(">Seats<")
       expect(body).not_to include(door_path(later), ">Coming up<")
 
       # An organization that keeps the Door in the app all the time was
@@ -125,7 +126,10 @@ RSpec.describe "Door", type: :request do
       grant(door_person, "box_office")
       sign_in(door_person)
       get door_path(listing)
-      expect(response.body).to include("Sell tickets", "Card or phone pay")
+      expect(response.body).to include("Card or phone pay", "20 left")
+      # The Sell tab names the panel; no heading or Close under it (Tim, 2026-10-21).
+      expect(response.body).not_to include("Sell tickets")
+      expect(response.body).to include("Checked in", "Sold", "Comped", "Available")
       # Sell sits beside List and Scan, and its form above the list, so a long
       # night's list never pushes it out of reach (Tim, 2026-10-11).
       body = response.body
@@ -189,7 +193,7 @@ RSpec.describe "Door", type: :request do
       ticket = sold_order(1).tickets.sole
       post door_check_in_path(listing), params: { code: "https://cocoscout.com/tickets/v/#{ticket.code}" }, as: :json
       expect(response.parsed_body.slice("kind", "holder", "counts"))
-        .to eq("kind" => "admitted", "holder" => "Dana Scully", "counts" => { "checked_in" => 1, "sold" => 1, "capacity" => 20 })
+        .to eq("kind" => "admitted", "holder" => "Dana Scully", "counts" => { "checked_in" => 1, "sold" => 1, "comped" => 0, "available" => 19, "left" => { general.id.to_s => 19 } })
 
       post door_check_in_path(listing), params: { code: ticket.code }, as: :json
       expect(response.parsed_body["kind"]).to eq("already")
@@ -202,29 +206,39 @@ RSpec.describe "Door", type: :request do
         expect(response.body).to include("Dana Scully")
       end
       get door_search_path(listing), params: { q: order.code.downcase }
-      expect(response.body).to include("Check in all 3")
+      expect(response.body).to include(order.code, 'title="Check in one"')
       get door_search_path(listing), params: { q: "nobody" }
       expect(response.body).to include("Nobody matching")
 
       post door_check_in_order_path(listing, order_id: order.id), as: :json
       expect(response.parsed_body["message"]).to eq("Admitted 3 — Dana Scully")
       get door_stats_path(listing)
-      expect(response.parsed_body).to eq("checked_in" => 3, "sold" => 3, "capacity" => 20)
+      expect(response.parsed_body).to eq("checked_in" => 3, "sold" => 3, "comped" => 0, "available" => 17, "left" => { general.id.to_s => 17 })
     end
 
     # Most nights people are looked up by name: the list has everyone, a
     # box per party, and says who's a comp or a door sale.
-    it "lists every party with a box that checks the whole party in" do
+    # A tap on a party's box checks in one person, a bar per ticket filling
+    # in; once some are in, an All button takes the rest (Tim, 2026-10-21).
+    it "lists every party with a box that checks in one per tap, and an All button once some are in" do
       order = sold_order(3)
       TicketDoor.new(listing, owner).sell({ general.id.to_s => "1" }, kind: "comp", buyer_name: "Abe Comp")
       get door_path(listing)
-      expect(response.body).to include("Abe Comp", "1 General · Comp · Checked in", "All checked in", "Dana Scully", "3 General", 'title="Check in all 3"',
-                                       door_check_in_order_path(listing, order_id: order.id))
+      expect(response.body).to include("Abe Comp", "1 General · Comp · Checked in", "All checked in", "Dana Scully", "3 General", 'title="Check in one"',
+                                       ERB::Util.html_escape(door_check_in_order_path(listing, order_id: order.id, one: 1)))
+      expect(response.body).not_to include('title="Check in all')
       expect(response.body.index("Abe Comp")).to be < response.body.index("Dana Scully")
 
-      post door_check_in_path(listing), params: { code: order.tickets.first.code }, as: :json
+      post door_check_in_order_path(listing, order_id: order.id, one: 1), as: :json
+      expect(response.parsed_body.slice("kind", "holder", "party")).to eq("kind" => "admitted", "holder" => "Dana Scully", "party" => "1 of 3 checked in")
+      expect(response.parsed_body["ticket_id"]).to be_present
       get door_list_path(listing)
-      expect(response.body).to include(">1/3<", "1 of 3 checked in", 'title="Check in all 2"')
+      expect(response.body).to include(">1/3<", "1 of 3 checked in", 'title="Check in all 2"', ">All 2<")
+
+      2.times { post door_check_in_order_path(listing, order_id: order.id, one: 1), as: :json }
+      expect(order.tickets.reload.map(&:status).uniq).to eq([ "checked_in" ])
+      post door_check_in_order_path(listing, order_id: order.id, one: 1), as: :json
+      expect(response.parsed_body.slice("kind", "message")).to eq("kind" => "already", "message" => "Everyone on this order is already in")
     end
 
     it "undoes a mistaken check-in" do

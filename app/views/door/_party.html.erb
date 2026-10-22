@@ -1,5 +1,7 @@
 <%# One party at the door: who, what they hold, what's waiting for them, and
-    a box that checks the whole party in with one tap. Locals: order, listing. %>
+    a box that checks one person in per tap, a bar per ticket filling in under
+    it. Once some are in, an All button takes the rest (Tim, 2026-10-21).
+    Locals: order, listing. %>
 <%
   tickets = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
   inside = tickets.count(&:checked_in?)
@@ -15,9 +17,16 @@
     data-search="<%= [ order.buyer_name, order.buyer_email, order.code ].compact_blank.join(' ').downcase %>">
   <div class="flex items-center gap-3">
     <% if waiting.positive? %>
-      <%= render "shared/button", text: (state == "some" ? "#{inside}/#{tickets.size}" : "Check in"), variant: (state == "some" ? "primary" : "outline-pink"), size: "xs", type: :button,
-            title: "Check in all #{waiting}", classes: "w-[4.5rem] h-11 !p-0 !rounded-lg !text-xs font-bold tabular-nums flex-shrink-0 disabled:opacity-50",
-            data: { action: "click->door#checkInOrder", url: door_check_in_order_path(listing, order_id: order.id) } %>
+      <div class="flex-shrink-0 w-[4.5rem]">
+        <%= render "shared/button", text: (state == "some" ? "#{inside}/#{tickets.size}" : "Check in"), variant: (state == "some" ? "primary" : "outline-pink"), size: "xs", type: :button,
+              title: (tickets.size > 1 ? "Check in one" : "Check in"), classes: "w-full h-11 !p-0 !rounded-lg !text-xs font-bold tabular-nums disabled:opacity-50",
+              data: { action: "click->door#checkInOrder", url: door_check_in_order_path(listing, order_id: order.id, one: 1) } %>
+        <% if tickets.size > 1 %>
+          <div class="mt-1 flex gap-0.5" aria-hidden="true">
+            <% tickets.size.times do |i| %><span class="h-1 flex-1 rounded-full <%= i < inside ? 'bg-pink-500' : 'bg-pink-100' %>"></span><% end %>
+          </div>
+        <% end %>
+      </div>
     <% else %>
       <span class="flex-shrink-0 w-[4.5rem] h-11 rounded-lg bg-green-600 flex items-center justify-center text-white" title="All checked in">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -30,6 +39,11 @@
         <%= by_type %><% if how %> · <%= how %><% end %><% if state == "some" %> · <%= inside %> of <%= tickets.size %> checked in<% elsif state == "in" %> · Checked in<% end %>
       </div>
     </div>
+    <% if state == "some" %>
+      <%= render "shared/button", text: "All #{waiting}", variant: "secondary", size: "xs", type: :button, title: "Check in all #{waiting}",
+            classes: "h-11 !rounded-lg flex-shrink-0 disabled:opacity-50",
+            data: { action: "click->door#checkInOrder", url: door_check_in_order_path(listing, order_id: order.id) } %>
+    <% end %>
   </div>
   <%# What they pre-bought (a bottle): big and impossible to miss, with one tap when it's delivered. %>
   <% items.each do |item| %>

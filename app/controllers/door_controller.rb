@@ -43,7 +43,8 @@ class DoorController < ApplicationController
     else
       []
     end
-    @stats = Ticketing::ListingStats.for(@on_now)
+    # The same numbers the door shows (TicketDoor#counts), so the two pages agree.
+    @counts = @on_now.to_h { |listing| [ listing.id, TicketDoor.new(listing, Current.user).counts ] }
   end
 
   def show
@@ -75,8 +76,18 @@ class DoorController < ApplicationController
     render json: result_json(door.check_in(params[:code]))
   end
 
+  # A tap on a party's row checks in one person (one: 1); its All button,
+  # everyone still out.
   def check_in_order
     order = @listing.ticket_orders.paid_like.find(params[:order_id])
+    if params[:one].present?
+      result = door.check_in_next(order)
+      return render json: result_json(result) if result
+
+      return render json: { kind: "already", message: "Everyone on this order is already in", holder: order.buyer_name.presence,
+                            party: party_line(order), items: items_json(order), counts: door.counts }
+    end
+
     results = door.check_in_order(order)
     admitted = results.count { |r| r.kind == :admitted }
     render json: { kind: admitted.positive? ? "admitted" : "already",
