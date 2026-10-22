@@ -13,17 +13,24 @@ module My
     before_action :require_authentication
     before_action :set_listing, only: %i[show create_comp]
 
+    UPCOMING_BATCH = 30
+    PAST_PER_PAGE = 30
+
+    # What's selling now: the next dates first, "Show more" for the next
+    # batch, and the past a page at a time. Figures only for the rows shown.
     def index
       @show_my_sidebar = true
       listings = TicketSalesAccess.listings_for(Current.user).includes(:organization, :production, show: :location)
-                                  .order("shows.date_and_time DESC").to_a
       now = Time.current.beginning_of_day
-      @upcoming, @past = listings.partition { |l| l.show.date_and_time >= now }
-      @upcoming.reverse!
-      # Every upcoming show, the latest 60 past ones; figures for each row shown.
-      @past = @past.first(60)
+      upcoming = listings.where("shows.date_and_time >= ?", now).order("shows.date_and_time ASC, ticket_listings.id ASC")
+      @upcoming_shown = params[:upcoming].to_i.clamp(UPCOMING_BATCH, 10_000)
+      @upcoming = upcoming.limit(@upcoming_shown + 1).to_a
+      @more_upcoming = @upcoming.size > @upcoming_shown
+      @upcoming = @upcoming.first(@upcoming_shown)
+      @pagy, @past = pagy(listings.where("shows.date_and_time < ?", now).order("shows.date_and_time DESC, ticket_listings.id DESC"),
+                          limit: PAST_PER_PAGE, page_key: "past_page")
       @stats = Ticketing::ListingStats.for(@upcoming + @past)
-      @sees_sales = listings.any?
+      @sees_sales = @upcoming.any? || @pagy.count.positive?
       @daily_email = TicketSalesViewer.active.where(user_id: Current.user.id, daily_email: true).exists?
     end
 

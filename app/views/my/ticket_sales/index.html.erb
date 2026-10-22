@@ -30,13 +30,43 @@
 
   <% if @upcoming.any? %>
     <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Upcoming</h2>
-    <div class="space-y-2 mb-8"><% @upcoming.each { |listing| concat row.call(listing) } %></div>
+    <% first_new = @upcoming_shown - My::TicketSalesController::UPCOMING_BATCH %>
+    <div class="space-y-2 <%= @more_upcoming ? "mb-4" : "mb-8" %>">
+      <% @upcoming.each_with_index do |listing, i| %>
+        <% if i == first_new && i.positive? %><div id="upcoming-more" class="scroll-mt-4"></div><% end %>
+        <%= row.call(listing) %>
+      <% end %>
+    </div>
+    <% if @more_upcoming %>
+      <div class="mb-8 flex justify-center">
+        <%= render "shared/button", text: "Show more", variant: "secondary", size: "small",
+              path: my_ticket_sales_path(upcoming: @upcoming_shown + My::TicketSalesController::UPCOMING_BATCH, past_page: (@pagy.page if @pagy.page > 1), anchor: "upcoming-more") %>
+      </div>
+    <% end %>
   <% end %>
   <% if @past.any? %>
-    <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Past</h2>
-    <div class="space-y-2 mb-8"><% @past.each { |listing| concat row.call(listing) } %></div>
+    <h2 id="past" class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Past</h2>
+    <div class="space-y-2 mb-4"><% @past.each { |listing| concat row.call(listing) } %></div>
+    <% if @pagy.pages > 1 %>
+      <% upcoming_param = (@upcoming_shown if @upcoming_shown > My::TicketSalesController::UPCOMING_BATCH) %>
+      <div class="mb-8 flex items-center justify-between">
+        <div class="text-sm text-gray-500">Page <%= @pagy.page %> of <%= @pagy.pages %></div>
+        <div class="flex gap-2">
+          <% if @pagy.previous %>
+            <%= render "shared/button", text: "← Previous", variant: "secondary", size: "small", path: my_ticket_sales_path(past_page: (@pagy.previous if @pagy.previous > 1), upcoming: upcoming_param, anchor: "past") %>
+          <% else %>
+            <%= render "shared/button", text: "← Previous", variant: "secondary", size: "small", disabled: true %>
+          <% end %>
+          <% if @pagy.next %>
+            <%= render "shared/button", text: "Next →", variant: "secondary", size: "small", path: my_ticket_sales_path(past_page: @pagy.next, upcoming: upcoming_param, anchor: "past") %>
+          <% else %>
+            <%= render "shared/button", text: "Next →", variant: "secondary", size: "small", disabled: true %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
   <% end %>
-  <% if @upcoming.empty? && @past.empty? %>
+  <% unless @sees_sales %>
     <p class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-600">No shows shared with you yet.</p>
   <% end %>
 
