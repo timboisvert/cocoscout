@@ -84,6 +84,16 @@ RSpec.describe TicketDoor do
     expect(door.counts).to eq(checked_in: 4, sold: 4, comped: 0, available: 6, left: { general.id => 6 })
   end
 
+  it "checks in one of a party per tap, the dearest ticket first" do
+    vip = listing.ticket_tiers.create!(name: "VIP", price_cents: 5_000, quantity: 10)
+    order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "1", vip.id.to_s => "1" })
+    TicketOrderSettlement.settle!(order)
+    first = door.check_in_next(order.reload)
+    expect([ first.kind, first.ticket.ticket_tier ]).to eq([ :admitted, vip ])
+    expect(door.check_in_next(order).ticket.ticket_tier).to eq(general)
+    expect(door.check_in_next(order)).to be_nil
+  end
+
   describe "#undo" do
     it "lets door staff undo their own check-in for a couple of minutes, and managers any time" do
       ticket = sold_order(1).tickets.sole

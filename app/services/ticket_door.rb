@@ -64,6 +64,16 @@ class TicketDoor
     order.tickets.where(status: "valid").map { |ticket| admit(ticket) }
   end
 
+  # One person from the party, for a tap on its row: the dearest ticket still
+  # out first (VIP before General), so the banner names who just walked in.
+  # nil once everyone's in.
+  def check_in_next(order)
+    raise ArgumentError, "order is for another show" unless order.ticket_listing_id == @listing.id
+
+    ticket = order.tickets.where(status: "valid").order(price_cents: :desc, id: :asc).first
+    ticket && admit(ticket)
+  end
+
   # A mistaken check-in, put right. Door staff can undo their own for a couple
   # of minutes; managers any time.
   def undo(ticket, manager: false)
