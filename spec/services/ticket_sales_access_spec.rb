@@ -202,6 +202,7 @@ RSpec.describe TicketSalesAccess do
 
   describe "the comp rules everywhere comps are given" do
     it "refuses comps when they're off, and past the date's limit, from the Comps modal and the door alike" do
+      open_every_door!
       listing.update!(own_comps: true, comps_enabled: false)
       expect { TicketComps.give!(listing, [ guest(1) ], by: owner, email_them: false) }.to raise_error(TicketComps::Error, "Comps are off for this show.")
       expect { TicketDoor.new(listing, owner).sell({ general.id.to_s => 1 }, kind: "comp") }.to raise_error(TicketCheckout::Error, "Comps are off for this show.")

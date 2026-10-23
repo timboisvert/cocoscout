@@ -23,7 +23,7 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [ ] V1.1 (was V2): production mode + new navigation on its own branch; never deployed until both app reviews pass. Carries the per-build path config and user-agent marker.
 - [ ] V1.2 (was V1.1): Tap to Pay on iPhone, on main behind Debug builds; the Release build registers it once Apple grants the publishing entitlement.
 - [ ] Books, stages B to F (`docs/accounting_books_plan.md`), one phase at a time.
-- [ ] The Door before it opens (Tim, 2026-10-23). Decided, not built: Tim builds it at home, not in the cloud.
+- [x] The Door before it opens (Tim, 2026-10-23). Built on main the same day, as planned below; not deployed yet.
   The problem: the Door's page says "Nothing to work right now" and then lists
   what's coming later, and you can't tap what it lists. "Next for you" and
   "Later tonight" are text only. "Coming up" (organizations set to "always" only)

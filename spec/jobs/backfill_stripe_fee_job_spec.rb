@@ -10,6 +10,7 @@ RSpec.describe BackfillStripeFeeJob do
   let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60) }
 
   it "fills in a paid ticket order's Stripe fee, and leaves cash and comps alone" do
+    open_every_door!
     order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "1" })
     order.update!(buyer_name: "Avery", buyer_email: "avery@example.com")
     TicketOrderSettlement.settle!(order, payment_intent_id: "pi_1", charge_id: "ch_1")

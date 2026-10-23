@@ -5,12 +5,36 @@ import { orderTotalCents, money } from "controllers/lib/ticket_pricing"
 // of paying comes to. Cash is the tickets and their tax; card or phone pay is
 // the online price, fees and all (the buyer pays on their own phone).
 export default class extends Controller {
-    static targets = ["row", "input", "count", "minus", "plus", "cardButton", "cashButton", "compButton", "tapButton"]
+    static targets = ["row", "input", "count", "minus", "plus", "cardButton", "cashButton", "compButton", "tapButton", "buyerName", "buyerEmail", "buyerError"]
     static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, tapPerMille: Number, tapFixed: Number,
-                      cardLabel: { type: String, default: "Card or phone pay" }, tapLabel: { type: String, default: "Tap to Pay on iPhone" } }
+                      cardLabel: { type: String, default: "Card or phone pay" }, tapLabel: { type: String, default: "Tap to Pay on iPhone" },
+                      buyerRequired: Boolean }
 
     connect() {
         this.render()
+        this.checkBuyer = this.checkBuyer.bind(this)
+        this.element.addEventListener("submit", this.checkBuyer)
+    }
+
+    disconnect() {
+        this.element.removeEventListener("submit", this.checkBuyer)
+    }
+
+    // Selling ahead of the door opening is presale: cash, tap and comp need
+    // their name and email here. Card asks on the buyer's own phone.
+    checkBuyer(event) {
+        if (!this.buyerRequiredValue || !this.hasBuyerNameTarget) return
+        if (event.submitter?.value === "card") return
+
+        const email = this.buyerEmailTarget
+        const missing = !this.buyerNameTarget.value.trim() ? this.buyerNameTarget
+            : (!email.value.trim() || !email.checkValidity()) ? email : null
+        this.buyerErrorTarget.classList.toggle("hidden", !missing)
+        if (missing) {
+            event.preventDefault()
+            event.stopImmediatePropagation()
+            missing.focus()
+        }
     }
 
     increment(event) {

@@ -21,6 +21,7 @@ RSpec.describe "Where a ticket type sells", type: :request do
   end
 
   it "is set on the Tickets tab, shows on the date's page, and keeps each type to its side" do
+    open_every_door!
     patch manage_ticket_listing_path(listing), params: { ticket_listing: { ticket_tiers_attributes: {
       "0" => { id: advance.id, name: "Reserve a spot", price: "15", quantity: "60", sells_at: "online" },
       "1" => { id: at_door.id, name: "At the door", price: "20", quantity: "", sells_at: "door" }

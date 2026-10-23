@@ -27,6 +27,7 @@ RSpec.describe TicketSalesReport do
   end
 
   it "adds up the period's sales, by show, type, channel and day" do
+    open_every_door!
     early = buy({ general.id.to_s => "2" }, at: this_month.change(hour: 12), name: "Dana Scully")
     buy({ vip.id.to_s => "1" }, at: (this_month + 3.days).change(hour: 12), name: "Fox Mulder")
     buy({ general.id.to_s => "1" }, at: (this_month - 5.days).change(hour: 12), name: "Last Month")

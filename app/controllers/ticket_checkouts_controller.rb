@@ -91,7 +91,8 @@ class TicketCheckoutsController < ApplicationController
 
     # At the door (the buyer paying on their own phone) the details are
     # optional, and a name the door typed in stays unless they give one.
-    at_door = @order.channel == "door_card"
+    # Sold ahead of the door opening it's presale, and asks what online does.
+    at_door = @order.channel == "door_card" && !@listing.door_ahead?
     buyer = params.permit(:buyer_name, :buyer_email, :buyer_phone)
     @order.assign_attributes(buyer_name: buyer[:buyer_name].to_s.squish.presence || (@order.buyer_name if at_door),
                              buyer_email: buyer[:buyer_email].presence, buyer_phone: buyer[:buyer_phone].to_s.strip.presence)

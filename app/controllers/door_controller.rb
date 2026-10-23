@@ -12,13 +12,13 @@ class DoorController < ApplicationController
   before_action :set_listing, except: %i[index tap_to_pay tap_to_pay_token]
   before_action -> { require_level(:box_office) }, only: %i[sell card card_status card_cancel use_pass tap tap_connection_token tap_settle]
   before_action :set_card_order, only: %i[card card_status card_cancel tap tap_settle]
+  before_action :refuse_ahead, only: %i[check_in check_in_order use_pass fulfill]
 
-  # The door is for right now (Tim, 2026-10-18): the shows whose door is
-  # open, with the counts that matter, then tonight's later shows waiting
-  # for theirs to open, then the next show for this person. No list of
-  # coming dates: selling ahead is the box office's job in Ticketing. An
-  # organization that keeps the Door in the app all the time ("always")
-  # promised a list of its coming shows when nothing's on, and gets it.
+  # The shows whose door is open, with the counts that matter, then
+  # tonight's later shows waiting for theirs to open, then everything coming
+  # up (Tim, 2026-10-23, undoing 2026-10-18's "no coming dates"). Every one
+  # opens: before its door opens the box office sells ahead there and nobody
+  # is checked in (TicketListing#door_ahead?).
   #
   # Someone who works the door at several organizations picks one first:
   # each with how many shows it has on now. One organization skips that.
@@ -37,22 +37,21 @@ class DoorController < ApplicationController
     today = DoorTonight.listings([ @organization.id ]).includes(:organization, :production, show: %i[location space_rental])
                        .where(shows: { date_and_time: now..DoorTonight.night_ends(now) }).to_a
     @later_tonight = (today - @on_now).select { |listing| DoorTonight.phase(listing, at: now) == :before }
-    @next_listing = DoorTonight.listings([ @organization.id ]).where("shows.date_and_time > ?", DoorTonight.night_ends(now)).first
-    @coming_up = if @on_now.empty? && @organization.ticketing_profile&.door_in_app == "always"
-      DoorTonight.listings([ @organization.id ]).where("shows.date_and_time > ?", now).limit(12).to_a
-    else
-      []
-    end
+    upcoming = DoorTonight.listings([ @organization.id ]).includes(:organization).where("shows.date_and_time > ?", DoorTonight.night_ends(now)).limit(13).to_a
+    # With nothing on, the next show leads in its own box; the rest follow.
+    @next_listing = upcoming.first if @on_now.empty?
+    @coming_up = upcoming.drop(@next_listing ? 1 : 0).first(12)
     # The same numbers the door shows (TicketDoor#counts), so the two pages agree.
     @counts = @on_now.to_h { |listing| [ listing.id, TicketDoor.new(listing, Current.user).counts ] }
   end
 
   def show
+    @ahead = @listing.door_ahead?
     @counts = door.counts
-    @tiers = @listing.ticket_tiers.active.select(&:door_sellable?)
-    @offers = @listing.product_offers(at_door: true)
+    @tiers = @listing.door_tiers
+    @offers = @listing.door_product_offers
     @orders = parties
-    @pass_holders_searchable = pass_holdings_for_show.exists?
+    @pass_holders_searchable = !@ahead && pass_holdings_for_show.exists?
   end
 
   # Everyone with a ticket, one row per party, for the list to refresh.
@@ -144,22 +143,31 @@ class DoorController < ApplicationController
     kind = params[:kind].presence_in(%w[card tap cash comp]) || "cash"
     if kind == "tap"
       order = TapToPay.start!(listing: @listing, quantities: quantities, products: products, buyer_name: params[:buyer_name],
-                              user: Current.user, client_ip: request.remote_ip)
+                              buyer_email: params[:buyer_email], user: Current.user, client_ip: request.remote_ip)
       return redirect_to(door_tap_path(@listing, token: order.token))
     end
     if kind == "card"
+      # Their name and email the door typed, if any; on their own phone they
+      # fill in the rest (ahead, as online: both required there).
+      name = params[:buyer_name].to_s.squish.presence
+      email = params[:buyer_email].to_s.strip.downcase.presence
       order = TicketCheckout.start!(listing: @listing, quantities: quantities, channel: "door_card", at_door: true,
                                     client_ip: request.remote_ip)
-      order.update!(buyer_name: params[:buyer_name].to_s.squish.presence, issued_by: Current.user)
+      order.update!(buyer_name: name, buyer_email: (email if email&.match?(URI::MailTo::EMAIL_REGEXP)), issued_by: Current.user)
       TicketCheckout.set_items!(order, products) if products.values.any? { |v| v.to_i.positive? }
       return redirect_to(door_card_path(@listing, token: order.token))
     end
 
-    order = door.sell(quantities, kind: kind, buyer_name: params[:buyer_name], products: products)
+    order = door.sell(quantities, kind: kind, buyer_name: params[:buyer_name], buyer_email: params[:buyer_email], products: products)
     count = order.tickets.size
     extras = order.ticket_order_items.sum(:quantity)
     sold = extras.positive? ? "#{count} and #{helpers.pluralize(extras, 'product')}" : count.to_s
-    redirect_to door_path(@listing), notice: kind == "cash" ? "Sold #{sold} at the door — collect #{helpers.number_to_currency(order.total_cents / 100.0)} cash." : "Comped #{count} and checked them in."
+    notice = if @listing.door_ahead?
+      kind == "cash" ? "Sold #{sold} ahead — collect #{helpers.number_to_currency(order.total_cents / 100.0)} cash. Their tickets are on the way to #{order.buyer_email}." : "Comped #{count} ahead. Their tickets are on the way to #{order.buyer_email}."
+    else
+      kind == "cash" ? "Sold #{sold} at the door — collect #{helpers.number_to_currency(order.total_cents / 100.0)} cash." : "Comped #{count} and checked them in."
+    end
+    redirect_to door_path(@listing), notice: notice
   rescue TicketCheckout::Error, TapToPay::Error => e
     redirect_to door_path(@listing), alert: e.message
   rescue Stripe::StripeError => e
@@ -270,7 +278,21 @@ class DoorController < ApplicationController
 
   def card_paid_message
     count = @order.tickets.where(status: Ticket::SOLD_STATUSES).count
-    "#{helpers.pluralize(count, 'ticket')} paid by card, checked in."
+    return "#{helpers.pluralize(count, 'ticket')} paid by card, checked in." if @order.tickets.where(status: "checked_in").exists?
+
+    "#{helpers.pluralize(count, 'ticket')} paid by card. They're on the list to check in when the door opens."
+  end
+
+  # Nobody is checked in, and nothing handed over, before the door opens
+  # (Tim, 2026-10-23); the box office can still sell ahead.
+  def refuse_ahead
+    return unless @listing.door_ahead?
+
+    message = "The door opens #{helpers.door_opens_words(@listing)}. Check-in starts then."
+    respond_to do |format|
+      format.json { render json: { kind: "not_open", message: message, counts: door.counts }, status: :forbidden }
+      format.any { redirect_to door_path(@listing), alert: message }
+    end
   end
 
   # Found by id, then judged against its own organization: someone without

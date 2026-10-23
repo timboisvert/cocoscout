@@ -16,6 +16,7 @@ RSpec.describe BooksReconciliation do
   end
 
   it "agrees through sales, refunds, door cash, disputes and withdrawals" do
+    open_every_door!
     TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
     allow(Stripe::Refund).to receive(:create).and_return(double("refund", id: "re_1"))
     allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_1"))

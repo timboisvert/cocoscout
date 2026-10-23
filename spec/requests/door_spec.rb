@@ -11,7 +11,9 @@ RSpec.describe "Door", type: :request do
   let(:owner) { create(:user, password: password) }
   let(:org) { create(:organization, :pro, name: "Stars & Garters", owner: owner) }
   let!(:profile) { TicketingProfile.for(org).tap { |p| p.update!(enabled: true) } }
-  let(:listing) { create(:ticket_listing, organization: org) }
+  # Tonight's show, its door open (DoorTonight): the door before it opens
+  # has its own examples.
+  let(:listing) { create(:ticket_listing, organization: org, show: create(:show, production: create(:production, organization: org), date_and_time: 2.hours.from_now)) }
   let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 20) }
   let(:door_person) { create(:user, password: password) }
 
@@ -45,21 +47,21 @@ RSpec.describe "Door", type: :request do
       grant(door_person, "box_office")
       sign_in(door_person)
 
-      # The door is for right now (Tim, 2026-10-18): tonight's show, whose
-      # door is open, with its counts; a show three days out isn't listed.
+      # Tonight's show, whose door is open, with its counts; then every show
+      # coming up, each opening to sell ahead (Tim, 2026-10-23), whatever
+      # the organization's "Door in the app" setting.
       get door_index_path
       body = response.body
       expect(body).to include(">On now<", door_path(tonight), "Checked in", "Comped", "Available", "Open the door")
       expect(body).not_to include(">Seats<")
-      expect(body).not_to include(door_path(later), ">Coming up<")
+      expect(body).to include(">Coming up<", door_path(later), "The door opens the morning of")
 
-      # An organization that keeps the Door in the app all the time was
-      # promised its coming shows when nothing's on, and gets them.
-      profile.update!(door_in_app: "always")
-      travel_to(2.days.from_now.change(hour: 12)) do
+      # Nothing on: the next show leads, and opens too.
+      travel_to((later.show.date_and_time - 2.days).change(hour: 12)) do
         sign_in(door_person)
         get door_index_path
-        expect(response.body).to include("Nothing to work right now", ">Coming up<", door_path(later))
+        expect(response.body).to include("Nothing on right now", "Next for you", door_path(later))
+        expect(response.body).not_to include(">Coming up<")
       end
     end
 
@@ -85,7 +87,7 @@ RSpec.describe "Door", type: :request do
       expect(response.body).not_to include("Lantern Street Players")
 
       get door_index_path(organization: other_org.id)
-      expect(response.body).to include("Nothing to work right now", "Lantern Street Players")
+      expect(response.body).to include("Nothing on right now", "Lantern Street Players")
       expect(response.body).not_to include(door_path(tonight))
     end
 
@@ -109,10 +111,15 @@ RSpec.describe "Door", type: :request do
     end
 
     it "opens for someone with a grant, and lists that theater's shows" do
+      next_week = create(:ticket_listing, organization: org, status: "on_sale",
+                         show: create(:show, production: create(:production, organization: org), date_and_time: 1.week.from_now))
       grant(door_person, "check_in")
       sign_in(door_person)
-      get door_index_path
-      expect(response.body).to include("Nothing to work right now", "Next for you", listing.display_title)
+      travel_to(listing.show.date_and_time + 1.day) do
+        sign_in(door_person)
+        get door_index_path
+        expect(response.body).to include("Nothing on right now", "Next for you", next_week.display_title, door_path(next_week))
+      end
 
       get door_path(listing)
       expect(response).to have_http_status(:ok)
@@ -461,6 +468,95 @@ RSpec.describe "Door", type: :request do
         get door_tap_connection_token_path(listing), headers: native.merge("Accept" => "application/json")
         expect(response).to have_http_status(:forbidden)
       end
+    end
+  end
+
+  # Every coming show opens (Tim, 2026-10-23). Until its door opens nobody is
+  # checked in, by tap, scan or pass, and the box office sells presale:
+  # what's on sale online, to a named buyer with an email, who goes on the
+  # list for the night.
+  describe "before the door opens" do
+    let(:ahead) do
+      create(:ticket_listing, organization: org, status: "on_sale",
+                              show: create(:show, production: create(:production, organization: org), date_and_time: 4.days.from_now.change(hour: 20)))
+    end
+    let!(:presale) { ahead.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 20) }
+    let!(:walk_up) { ahead.ticket_tiers.create!(name: "Walk-up", price_cents: 2_500, quantity: 20, sells_at: "door") }
+
+    def ahead_order
+      order = TicketCheckout.start!(listing: ahead, quantities: { presale.id.to_s => "2" })
+      order.update!(buyer_name: "Fox Mulder", buyer_email: "fox@example.com")
+      TicketOrderSettlement.settle!(order)
+      order.reload
+    end
+
+    it "opens on Sell for box office: presale types, name and email, the age limit and refund policy, no Scan" do
+      ahead_order
+      grant(door_person, "box_office")
+      sign_in(door_person)
+      get door_path(ahead)
+      html = CGI.unescapeHTML(response.body)
+      expect(html).to include("The door opens the morning of", "You can sell ahead now; check-in starts when it opens.",
+                              "General", "Their email, for their tickets", "Refund policy", "Sold ahead: they're on the list",
+                              "Fox Mulder", 'data-door-ahead-value="true"')
+      expect(html).not_to include("Walk-up", ">Scan<", "bridge--door-scanner", door_check_in_order_path(ahead, order_id: ahead.ticket_orders.first.id, one: 1))
+    end
+
+    it "refuses check-in, passes and deliveries on the server too" do
+      order = ahead_order
+      grant(door_person, "box_office")
+      sign_in(door_person)
+
+      post door_check_in_path(ahead), params: { code: order.tickets.first.code }, as: :json
+      expect(response).to have_http_status(:forbidden)
+      expect(response.parsed_body).to include("kind" => "not_open", "message" => a_string_starting_with("The door opens the morning of"))
+
+      post door_check_in_order_path(ahead, order_id: order.id), as: :json
+      expect(response).to have_http_status(:forbidden)
+
+      post door_use_pass_path(ahead), params: { holding_id: 0 }
+      expect(response).to redirect_to(door_path(ahead))
+      expect(flash[:alert]).to start_with("The door opens")
+      expect(order.tickets.reload.pluck(:status).uniq).to eq([ "valid" ])
+    end
+
+    it "sells cash ahead to a named buyer with an email, and checks nobody in" do
+      grant(door_person, "box_office")
+      sign_in(door_person)
+
+      post door_sell_path(ahead), params: { quantities: { presale.id.to_s => "2" }, kind: "cash", buyer_name: "Dana" }
+      expect(flash[:alert]).to include("name and a valid email")
+      expect(ahead.ticket_orders).to be_empty
+
+      post door_sell_path(ahead), params: { quantities: { presale.id.to_s => "2" }, kind: "cash", buyer_name: "Dana", buyer_email: "dana@example.com" }
+      expect(flash[:notice]).to eq("Sold 2 ahead — collect $40.00 cash. Their tickets are on the way to dana@example.com.")
+      expect(ahead.tickets.pluck(:status).uniq).to eq([ "valid" ])
+    end
+
+    it "takes a card ahead as presale: online's checkout asks, and paying doesn't check them in" do
+      grant(door_person, "box_office")
+      sign_in(door_person)
+      post door_sell_path(ahead), params: { quantities: { walk_up.id.to_s => "1" }, kind: "card" }
+      expect(flash[:alert]).to be_present
+      expect(ahead.ticket_orders).to be_empty
+
+      post door_sell_path(ahead), params: { quantities: { presale.id.to_s => "1" }, kind: "card", buyer_name: "Walk Up" }
+      order = ahead.ticket_orders.sole
+      expect(order.refund_policy).to be_present
+
+      get tickets_checkout_path(token: order.token)
+      expect(response.body).to include("Checkout", "Refund policy")
+      expect(CGI.unescapeHTML(response.body)).to include("We'll email your tickets to this address.")
+      expect(response.body).not_to include("Pay at the door", "Add it to get your tickets")
+
+      order.update_columns(created_at: 1.minute.ago)
+      post tickets_checkout_pay_path(token: order.token), params: { buyer_name: "Walk Up", buyer_email: "" }, as: :json
+      expect(response).to have_http_status(:unprocessable_content)
+
+      TicketOrderSettlement.settle!(order.reload, payment_intent_id: "pi_ahead")
+      expect(order.tickets.reload.pluck(:status)).to eq([ "valid" ])
+      get door_card_status_path(ahead, token: order.token)
+      expect(response.parsed_body["message"]).to eq("1 ticket paid by card. They're on the list to check in when the door opens.")
     end
   end
 end

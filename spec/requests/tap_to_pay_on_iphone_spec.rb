@@ -14,7 +14,9 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
   let(:owner) { create(:user, password: password) }
   let(:org) { create(:organization, :pro, name: "Stars & Garters", owner: owner) }
   let!(:profile) { TicketingProfile.for(org).tap { |p| p.update!(enabled: true, tap_to_pay: true) } }
-  let(:listing) { create(:ticket_listing, organization: org) }
+  # Tonight's show, its door open: before it opens a tap is presale and
+  # needs the buyer's name and email (door_spec).
+  let(:listing) { create(:ticket_listing, organization: org, show: create(:show, production: create(:production, organization: org), date_and_time: 2.hours.from_now)) }
   let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 20) }
   let(:seller) { create(:user, password: password) }
   let(:checker) { create(:user, password: password) }

@@ -86,10 +86,13 @@ class TapToPay
   # are managed from the Dashboard since Oct 2026, and Payment method
   # configurations can't include in-person cards), so the SDK, which creates
   # in-person intents on its own, is the way in.
-  def self.start!(listing:, quantities:, user:, products: {}, buyer_name: nil, client_ip: nil)
+  # Ahead of the door opening it's presale, so it asks what online checkout
+  # asks: their name and a valid email, where their tickets go.
+  def self.start!(listing:, quantities:, user:, products: {}, buyer_name: nil, buyer_email: nil, client_ip: nil)
+    buyer = TicketDoor.buyer!(listing, buyer_name, buyer_email, error: Error)
     location_for(listing.organization) # no venue address, no Tap to Pay: say so before holding seats
     order = TicketCheckout.start!(listing: listing, quantities: quantities, channel: "door_tap", at_door: true, client_ip: client_ip)
-    order.update!(buyer_name: buyer_name.to_s.squish.presence, issued_by: user)
+    order.update!(**buyer, issued_by: user)
     TicketCheckout.set_items!(order, products) if products.values.any? { |v| v.to_i.positive? }
     raise Error, "A free ticket can't be tapped for; comp it instead." unless order.total_cents.positive?
 

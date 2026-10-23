@@ -71,7 +71,9 @@ RSpec.describe "Ticket products on pages", type: :request do
     get manage_ticket_listing_door_list_path(listing)
     expect(response.body).to include("<th>Products</th>", "1 × Champagne bottle")
 
-    # The door: the bottle on the order, and one tap to hand it over.
+    # The door on the night (before it opens nothing's handed over): the
+    # bottle on the order, and one tap to hand it over.
+    travel_to(show.date_and_time - 1.hour)
     get door_search_path(listing, q: "Avery")
     expect(response.body).to include("1 × Champagne bottle", "Delivered")
     item = order.ticket_order_items.sole
@@ -103,6 +105,8 @@ RSpec.describe "Ticket products on pages", type: :request do
     get door_path(listing)
     expect(response.body).not_to include("With it")
     listing.update!(sell_products: true)
+
+    travel_back
 
     # Refunding only the bottle from the order page.
     allow(Stripe::Refund).to receive(:create).and_return(double(id: "re_1"))

@@ -89,6 +89,7 @@ RSpec.describe "Credit passes", type: :request do
     end
 
     it "finds a pass holder at the door and checks them in on a credit" do
+      open_every_door!
       holding = TicketPassCredits.start!(pass: pass, quantity: 1).ticket_pass_holdings.first
       holding.update!(holder_name: "Bella Swan", holder_email: "bella@example.com")
       TicketPassCredits.settle!(holding, paid_at: Time.current)

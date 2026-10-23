@@ -135,6 +135,7 @@ RSpec.describe TicketOrderRefund do
   end
 
   it "hands cash back from the box, with no Stripe and no balance" do
+    open_every_door!
     order = TicketDoor.new(listing, create(:user)).sell({ general.id.to_s => "1" }, kind: "cash")
     refund = described_class.issue!(order)
 

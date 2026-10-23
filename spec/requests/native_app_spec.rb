@@ -252,7 +252,8 @@ RSpec.describe "The iOS app's web side", type: :request do
 
   it "hands the door's camera to the app, which titles the page Door" do
     TicketingProfile.for(org).update!(enabled: true)
-    listing = create(:ticket_listing, organization: org)
+    # Tonight's, its door open: before it opens there's nothing to scan.
+    listing = create(:ticket_listing, organization: org, show: create(:show, production: create(:production, organization: org), date_and_time: 2.hours.from_now))
     org.ticketing_access_grants.create!(user: user, access_level: "check_in")
     sign_in
 

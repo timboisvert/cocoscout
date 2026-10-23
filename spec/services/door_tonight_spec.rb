@@ -40,4 +40,27 @@ RSpec.describe DoorTonight do
       expect(described_class.door_open?(listing, at: friday)).to be(false)
     end
   end
+
+  # Before the door opens the door sells presale (Tim, 2026-10-23): what's on
+  # sale online right now, at its online price; on the night, every type that
+  # sells at the door.
+  describe "selling ahead (TicketListing#door_ahead?, #door_tiers)" do
+    let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 20) }
+    let!(:door_only) { listing.ticket_tiers.create!(name: "Walk-up", price_cents: 2_500, quantity: 20, sells_at: "door") }
+    let!(:early) { listing.ticket_tiers.create!(name: "Early bird", price_cents: 1_500, quantity: 20, sales_end_at: friday - 3.days) }
+    let!(:secret) { listing.ticket_tiers.create!(name: "Friends", price_cents: 1_000, quantity: 20, hidden: true, unlock_code: "PALS") }
+
+    it "is ahead until the door opens, and sells only what's on sale online then" do
+      expect(listing.door_ahead?(friday - 1.day)).to be(true)
+      expect(listing.door_tiers(friday - 1.day)).to eq([ general ])
+
+      expect(listing.door_ahead?(friday.change(hour: 9))).to be(false)
+      expect(listing.door_tiers(friday.change(hour: 9))).to contain_exactly(general, door_only, early, secret)
+    end
+
+    it "sells nothing ahead while the date isn't on sale online" do
+      listing.update!(on_sale_at: friday - 12.hours)
+      expect(listing.door_tiers(friday - 1.day)).to be_empty
+    end
+  end
 end

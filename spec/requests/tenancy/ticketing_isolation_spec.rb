@@ -102,6 +102,7 @@ RSpec.describe "Cross-org isolation (ticketing)", type: :request do
   # Ticket codes are global, so a scan at your own door can land on another
   # theater's ticket: it must stay unadmitted and say nothing about it.
   it "learns nothing from scanning another theater's ticket at its own door" do
+    open_every_door!
     TicketingProfile.for(org).update!(enabled: true)
     own_listing = create(:ticket_listing, organization: org)
     victim_order.update!(buyer_name: "Dana Scully")
