@@ -34,11 +34,22 @@ things off here; the app roadmap itself stays in CLAUDE.md.
     that show's full door, check-in included, days early (`door#show` doesn't
     check whether the door is open).
 
-  Pick one: (a) show the later shows, tappable, but on a door that isn't open yet
-  the page says when it opens and check-in waits until then (box office can still
-  sell ahead on "always"), or (b) when nothing's on, show only "Nothing to work
-  right now" with one line saying when the next door opens, and no list. Whichever
-  it is, it should work the same on web and in the app.
+  **Decided (Tim, 2026-10-23): show everything coming up, and let people open it.**
+  - Every later show on the list ("Later tonight", "Next for you", "Coming up")
+    can be tapped and opens its door page.
+  - Until the door opens (the time set in Ticketing settings → Door), that page
+    says "Door opens Fri at 6 PM" in place of Scan and check-in. The counts and
+    who's coming can still be seen. The server refuses too: `check_in`,
+    `check_in_order`, `use_pass` and comps all check people in, so they wait
+    for the door to open.
+  - In their place: the date's online sales page (`tickets_event`), with its QR
+    code (`shared/_qr_modal`) and Copy/Share, so someone who asks can buy on
+    their own phone. If online sales have closed or it's sold out, say that
+    instead of linking.
+  - Still open: selling in person (cash, card, tap) before the door opens. A
+    cash sale checks people in on the spot today. Either it waits too (the
+    online link covers it) or it sells without checking anyone in.
+  - The same on web and in the app.
 
 ## Waiting on
 
