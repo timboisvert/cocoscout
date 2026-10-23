@@ -23,6 +23,22 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [ ] V1.1 (was V2): production mode + new navigation on its own branch; never deployed until both app reviews pass. Carries the per-build path config and user-agent marker.
 - [ ] V1.2 (was V1.1): Tap to Pay on iPhone, on main behind Debug builds; the Release build registers it once Apple grants the publishing entitlement.
 - [ ] Books, stages B to F (`docs/accounting_books_plan.md`), one phase at a time.
+- [ ] The Door when nothing's on (Tim, 2026-10-23): decide, then build. Today the
+  page says "Nothing to work right now" and then lists what's happening later,
+  and you can't tap what it lists, which is confusing. It also seemed not to show
+  the later shows on mobile at all. Web and the app load the same page
+  (`door/index.html.erb`), so the difference is probably the organization's
+  "Door in the app" setting, not the device; check that first. What's there now:
+  - "Next for you" (in the empty box) and "Later tonight": text only, nothing to tap.
+  - "Coming up": only for organizations set to "always", and every row opens
+    that show's full door, check-in included, days early (`door#show` doesn't
+    check whether the door is open).
+
+  Pick one: (a) show the later shows, tappable, but on a door that isn't open yet
+  the page says when it opens and check-in waits until then (box office can still
+  sell ahead on "always"), or (b) when nothing's on, show only "Nothing to work
+  right now" with one line saying when the next door opens, and no list. Whichever
+  it is, it should work the same on web and in the app.
 
 ## Waiting on
 
