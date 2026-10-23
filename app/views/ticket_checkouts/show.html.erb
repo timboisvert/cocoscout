@@ -76,7 +76,10 @@
       <% end %>
 
       <%= render "shared/checkout/buyer_details", name: @order.buyer_name, email: @order.buyer_email, phone: @order.buyer_phone, required: !at_door,
-            email_note: (at_door ? "Add it to get your tickets and receipt by email." : "We'll email your tickets to this address.") %>
+            email_note: (at_door ? "Add it to get your tickets and receipt by email." : "We'll email your tickets to this address."),
+            follow_boxes: FollowCheckout.boxes_for(@order.organization, production: @order.ticket_listing&.production, at_door: at_door),
+            follow_ticked: FollowCheckout.ticked_by_default?(@order.organization),
+            follow_chosen: (@order.buyer_email.present? ? @order.follow_list_ids.map(&:to_i) : nil) %>
 
       <%= render "shared/checkout/payment" unless free %>
 

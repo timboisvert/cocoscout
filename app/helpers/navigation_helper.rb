@@ -135,6 +135,11 @@ module NavigationHelper
                      active: %w[ticketing ticketing_settings ticket_listings ticket_orders ticket_balance ticket_taxes ticket_comps ticket_products
                                 production_ticketings ticket_passes ticket_offers ticket_offer_wizard ticket_sales_viewers short_links].include?(controller_name) }
     end
+    # Mailing lists follows Ticketing: its lists fill from ticket checkout.
+    if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
+      pro_items << { label: "Mailing lists", path: manage_mailing_lists_path, icon: "mailing_lists", locked: !on_paid_plan, feature: :mailing_lists,
+                     active: %w[mailing_lists mailing_list_settings mailing_list_shares list_followers segments follower_emails].include?(controller_name) }
+    end
     # The whole Pro group is for the organization's owners and managers
     # (PaidFeatureGate::MANAGER_ONLY_FEATURES); a production-team member sees
     # the free modules only. Staffing leads the group.
@@ -187,6 +192,12 @@ module NavigationHelper
   end
 
   def talent_nav_sections
+    # The order (Tim, 2026-10-23), each conditional item only when the person
+    # has it: Home, My Tasks & Availability, My Shows & Events, My Contracts,
+    # My Payments, My Shifts, My Followers, My Documents, My Courses, My
+    # Auditions, My Productions. My Messages stays second for the V1 app's
+    # menu, which has no envelope; the website and V1.1 drop it (it's the
+    # envelope icon).
     items = [
       { label: "Home", path: my_dashboard_path, icon: "home", active: controller_name == "dashboard" },
       { label: "My Messages", path: my_messages_path, icon: "messages", active: controller_name == "messages",
@@ -195,19 +206,22 @@ module NavigationHelper
         badge: Current.user&.open_tasks_count.to_i },
       { label: "My Shows & Events", path: my_shows_path, icon: "shows", active: controller_name == "shows" }
     ]
+    items << { label: "My Contracts", path: my_contracts_path, icon: "documents", active: controller_name == "contracts" } if Current.user&.has_contracts?
+    items << { label: "My Payments", path: my_payments_path, icon: "payments", active: controller_name == "payments" }
     items << { label: "My Shifts", path: my_shifts_path, icon: "shifts", active: controller_name == "shifts" } if Current.user&.shows_my_shifts?
+    # Lists organizations share with them (Mailing lists, V1.1). On the
+    # website only: nothing goes in the app menu without Tim's say-so.
+    if Current.user&.has_follower_shares?
+      items << { label: "My Followers", path: my_followers_path, icon: "followers", active: controller_path == "my/followers", web_only: true }
+    end
     # No Door item here (Tim, 2026-10-17): the Door is the "Work the door"
     # bar under the menu (door_bar_item), on the website as in the app.
     # No Ticket Sales entry here (Tim, 2026-10-17): ticket information lives
     # on a show's own page in My; the shared-sales page is reached by link only.
     items += [
+      { label: "My Documents", path: my_documents_path, icon: "documents", active: controller_name == "documents" },
       { label: "My Courses", path: my_courses_path, icon: "courses", active: controller_name == "courses" },
       { label: "My Auditions", path: my_auditions_path, icon: "auditions", active: controller_name == "auditions" },
-      { label: "My Documents", path: my_documents_path, icon: "documents", active: controller_name == "documents" }
-    ]
-    items << { label: "My Contracts", path: my_contracts_path, icon: "documents", active: controller_name == "contracts" } if Current.user&.has_contracts?
-    items += [
-      { label: "My Payments", path: my_payments_path, icon: "payments", active: controller_name == "payments" },
       { label: "My Productions", path: my_productions_path, icon: "productions", active: controller_name == "productions" }
     ]
     [ { label: nil, items: items } ]
@@ -259,6 +273,8 @@ module NavigationHelper
   # Heroicon (outline) path data, keyed by nav icon name.
   NAV_ICON_PATHS = {
     "dot" => "M12 12h.01",
+    "mailing_lists" => "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
+    "followers" => "M17 20h5v-2a3 3 0 00-5.36-1.86M17 20H7m10 0v-2c0-.66-.13-1.28-.36-1.86M7 20H2v-2a3 3 0 015.36-1.86M7 20v-2c0-.66.13-1.28.36-1.86m0 0a5 5 0 019.28 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
     "home" => "m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25",
     "messages" => "M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75",
     "requests" => "M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",

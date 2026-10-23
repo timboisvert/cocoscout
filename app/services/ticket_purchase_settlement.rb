@@ -57,6 +57,7 @@ class TicketPurchaseSettlement
     record_stripe_fee!(holdings.first, payment_intent_id || purchase.stripe_payment_intent_id) if purchase.ticket_orders.empty?
     holdings.each { |holding| CocoScoutLedgerPoster.post_for!(holding.reload) }
     TicketPassConfirmationJob.perform_later(purchase.id)
+    FollowTicketBuyerJob.perform_later(purchase_id: purchase.id)
   end
 
   def self.record_stripe_fee!(holding, intent_id)

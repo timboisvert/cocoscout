@@ -30,6 +30,8 @@ class TicketPassPurchasesController < ApplicationController
       return render(json: { error: "Add your name and a valid email so we can send your pass." }, status: :unprocessable_content)
     end
     @holdings.each { |holding| holding.update!(holder_name: name, holder_email: email) }
+    boxes = FollowCheckout.boxes_for(@purchase.organization)
+    @purchase.update!(follow_list_ids: FollowCheckout.chosen_ids(params, boxes)) if boxes.any?
 
     if @purchase.total_cents.zero?
       TicketPurchaseSettlement.settle!(@purchase)

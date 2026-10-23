@@ -62,7 +62,14 @@ module Manage
       "manage/short_links" => :ticketing,
       # Services a show needs (Organization settings → Services)
       "manage/house_services" => :services,
-      "manage/books" => :money
+      "manage/books" => :money,
+      # Mailing lists
+      "manage/mailing_lists" => :mailing_lists,
+      "manage/mailing_list_settings" => :mailing_lists,
+      "manage/mailing_list_shares" => :mailing_lists,
+      "manage/list_followers" => :mailing_lists,
+      "manage/segments" => :mailing_lists,
+      "manage/follower_emails" => :mailing_lists
     }.freeze
 
     # Pro modules are for the organization's owners and managers (Tim,
@@ -70,7 +77,7 @@ module Manage
     # production-team member (a producer with access to their own production)
     # keeps the free modules. Casting tables are the exception: a production's
     # manager casts their own shows there, under that controller's own rules.
-    MANAGER_ONLY_FEATURES = %i[money contracts reports agreements staffing ticketing services].freeze
+    MANAGER_ONLY_FEATURES = %i[money contracts reports agreements staffing ticketing services mailing_lists].freeze
 
     # What every Pro plan includes, shown as reinforcement on each upgrade screen.
     PRO_INCLUDES = [
@@ -78,6 +85,7 @@ module Manage
       "Money: financials, payouts, contracts & advances",
       "Ticketing: your own box office, 50¢ a paid ticket",
       "Staffing and Casting Tables",
+      "Mailing lists: email your followers and see what each email sold",
       "Company-wide Reports",
       "Everything in Producer, with no monthly limits"
     ].freeze
@@ -190,6 +198,20 @@ module Manage
           { title: "Signed / awaiting / not-sent roster", body: "See at a glance who has signed, who's been asked, and who still needs it — and resend in a click." }
         ],
         outcome: "Cast with confidence, knowing everyone has agreed to your terms in writing."
+      },
+      mailing_lists: {
+        name: "Mailing Lists",
+        icon: "mail",
+        headline: "Fill the next show from the last one",
+        subhead: "Ticket buyers join your list at checkout, and every email shows what it sold.",
+        description: "Mailing Lists keeps everyone who asked to hear from you in one place: ticket buyers from checkout, and anyone you add. Email them in your own look, pick people by what they've bought, and share a producer's followers with them.",
+        capabilities: [
+          { title: "Lists that fill themselves", body: "A box at checkout adds buyers to your list, and to a producer's list on their shows." },
+          { title: "Segments from real sales", body: "Regulars, people who haven't been back, a producer's crowd who've never seen your shows: kept current by themselves." },
+          { title: "Emails in your look", body: "Your logo and color, shows with a Buy tickets button, and one-click unsubscribe." },
+          { title: "Tickets sold per email", body: "Every email shows the tickets and money it brought in." }
+        ],
+        outcome: "Every show makes the next one easier to sell."
       }
     }.freeze
 

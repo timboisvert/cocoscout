@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background-color: #f5f5f5; }
+    .wrap { max-width: 600px; margin: 0 auto; }
+    .card { background-color: #ffffff; margin: 24px 16px; border-radius: 10px; overflow: hidden; }
+    .words { padding: 8px 28px 4px; font-size: 15px; }
+    .words a { color: <%= @accent %>; }
+    .words img { max-width: 100%; height: auto; }
+    .foot { padding: 18px 28px 22px; background-color: #f9fafb; color: #6b7280; font-size: 12px; text-align: center; line-height: 1.6; }
+    .foot a { color: #4b5563; }
+    @media only screen and (max-width: 600px) {
+      .card { margin: 12px 8px !important; }
+      .words { padding: 6px 18px 2px !important; }
+    }
+  </style>
+</head>
+<body>
+  <%# The preview line most inboxes show after the subject, hidden in the email itself. %>
+  <% if @preheader.present? %>
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all"><%= @preheader %></div>
+  <% end %>
+  <div class="wrap">
+    <div class="card">
+      <% if @test_note.present? %>
+        <div style="padding:10px 28px;background-color:#fef3c7;color:#92400e;font-size:13px"><%= raw @test_note %></div>
+      <% end %>
+      <%# The organization's logo, else its two letters, on its color. %>
+      <div style="padding:24px 28px 12px;text-align:center">
+        <% if @organization.logo.attached? && @organization.logo.variable? %>
+          <img src="<%= rails_representation_url(@organization.logo.variant(resize_to_limit: [ 192, 192 ]), **default_url_options) %>" alt="<%= @organization.name %>" width="64" style="width:64px;height:auto;border-radius:10px" />
+        <% else %>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
+            <td width="56" height="56" align="center" valign="middle" style="width:56px;height:56px;border-radius:10px;background-color:<%= @accent %>;color:#ffffff;font-weight:800;font-size:17px;font-family:Arial,sans-serif"><%= @organization.initials %></td>
+          </tr></table>
+        <% end %>
+      </div>
+      <div style="height:3px;background-color:<%= @accent %>;margin:0 28px"></div>
+      <%= yield %>
+      <div class="foot">
+        <% if @organization.email_footer_line.present? %><div><%= @organization.email_footer_line %></div><% end %>
+        <% links = [ ([ "Website", @organization.email_website_url ] if @organization.email_website_url.present?),
+                     ([ "Instagram", "https://instagram.com/#{@organization.email_instagram.to_s.delete('@')}" ] if @organization.email_instagram.present?) ].compact %>
+        <% if links.any? %><div><%= safe_join(links.map { |label, url| link_to(label, url, style: "color:#{@accent}") }, " · ") %></div><% end %>
+        <div><%= raw @footer_words %></div>
+        <% if @organization.email_postal_address.present? %><div><%= @organization.email_postal_address %></div><% end %>
+        <div>
+          <% if @unsubscribe_url %><a href="<%= @unsubscribe_url %>">Unsubscribe</a> · <% end %>Sent with <a href="https://www.cocoscout.com">CocoScout</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

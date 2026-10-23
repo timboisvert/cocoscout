@@ -37,7 +37,7 @@ class TicketCheckoutsController < ApplicationController
 
     order = TicketCheckout.start!(listing: listing, quantities: requested_quantities, code: params[:code],
                                   client_ip: request.remote_ip, referrer: request.referer, replacing: params[:hold],
-                                  via: cookies[ShortLinksController::COOKIE])
+                                  via: cookies[ShortLinksController::COOKIE], campaign: cookies[TicketsController::CAMPAIGN_COOKIE])
     redirect_to tickets_checkout_path(token: order.token, **embed_params)
   rescue TicketCheckout::Error => e
     redirect_to tickets_event_path(org: params[:org], event: params[:event], code: params[:code].presence, **embed_params), alert: e.message
@@ -99,11 +99,18 @@ class TicketCheckoutsController < ApplicationController
       message = at_door ? "Check your email address, or leave it blank." : "Add your name and a valid email so we can send your tickets."
       return render(json: { error: message }, status: :unprocessable_content)
     end
+    # The mailing list boxes they ticked (FollowCheckout); never at the door.
+    boxes = FollowCheckout.boxes_for(@order.organization, production: @order.ticket_listing&.production, at_door: at_door)
+    if boxes.any?
+      chosen = FollowCheckout.chosen_ids(params, boxes)
+      @order.assign_attributes(follow_list_ids: chosen, marketing_opt_in: chosen.any?)
+    end
     @order.save!
     # Every show's order in the checkout belongs to the same buyer.
     if @purchase
       @purchase.ticket_orders.where.not(id: @order.id).update_all(buyer_name: @order.buyer_name, buyer_email: @order.buyer_email,
-                                                                  buyer_phone: @order.buyer_phone, updated_at: Time.current)
+                                                                  buyer_phone: @order.buyer_phone, follow_list_ids: @order.follow_list_ids,
+                                                                  marketing_opt_in: @order.marketing_opt_in, updated_at: Time.current)
     end
 
     if payable.total_cents.zero?

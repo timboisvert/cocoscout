@@ -1,0 +1,318 @@
+<% content_for :title, @list.name %>
+<%
+  path = ->(**o) { manage_mailing_list_path(@list, **{ filter: (@filter == "subscribed" ? nil : @filter), source: @source, q: @q.presence }.merge(o).compact) }
+  source_options = [ { value: "", text: "All sources" }, { value: "checkout", text: "Tickets" }, { value: "manual", text: "Added by hand" },
+                     { value: "paste", text: "Pasted" }, { value: "contacts", text: "From Contacts" }, { value: "added_by_share", text: "Added by a producer" } ]
+  status_counts = @status_counts
+  bounced_count = status_counts["bounced"].to_i + status_counts["complained"].to_i
+%>
+
+<div class="w-full pb-10">
+  <%= render "shared/notice", notice: notice, alert: alert %>
+  <%= render "shared/top_menu",
+        breadcrumbs: [ [ "Mailing lists", manage_mailing_lists_path ] ],
+        text: @list.name,
+        links: [
+          { text: "Write an email", path: manage_new_follower_email_path(list_id: @list.id) },
+          { text: "Add people", path: "#", color: "white", data: { controller: "modal", action: "click->modal#open", modal_id: "add-people-modal" } }
+        ] %>
+
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <% if @list.main? %><span class="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-2.5 py-0.5 text-xs font-medium text-pink-700">Main list</span><% end %>
+    <% if @list.archived? %><span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">Archived</span><% end %>
+    <% @shares.first(2).each do |share| %>
+      <span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">Shared with <%= share.person.name %></span>
+    <% end %>
+    <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700"><%= follower_count_words(status_counts["subscribed"].to_i) %></span>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+    <div class="lg:col-span-2 min-w-0 space-y-3">
+      <%= form_with url: manage_mailing_list_path(@list), method: :get, data: { turbo_action: "advance" } do |f| %>
+        <%= render "shared/filters/search_input", placeholder: "Search by name or email...", value: @q, name: "q", full_width: true %>
+        <%= hidden_field_tag :filter, @filter unless @filter == "subscribed" %>
+        <%= hidden_field_tag :source, @source if @source %>
+      <% end %>
+      <%= render "shared/filters/filter_bar",
+            toggle_label: "Filters",
+            filter_groups: [
+              { label: "Show", filters: [
+                { text: "Subscribed", path: path.call(filter: nil), active: @filter == "subscribed" },
+                { text: "Unsubscribed#{" (#{status_counts['unsubscribed']})" if status_counts['unsubscribed'].to_i.positive?}", path: path.call(filter: "unsubscribed"), active: @filter == "unsubscribed" },
+                { text: "Bounced#{" (#{bounced_count})" if bounced_count.positive?}", path: path.call(filter: "bounced"), active: @filter == "bounced" }
+              ] },
+              { separator: true },
+              { partial: "shared/filters/dropdown_filter",
+                locals: { label: "From", name: "source", options: source_options, selected: @source.to_s,
+                          extra_url_params: { filter: (@filter == "subscribed" ? nil : @filter), q: @q.presence } } }
+            ] %>
+
+      <% if @followers.any? %>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100" data-followers>
+          <% @followers.each do |follower| %>
+            <% chip = follower_status_chip(follower) %>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 px-4 sm:px-5 py-3">
+              <div class="min-w-0 sm:w-64 sm:flex-shrink-0">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="font-semibold text-gray-900 truncate"><%= follower.name.presence || follower.email %></span>
+                  <% if follower.person&.user_id %><span class="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-1.5 py-0.5 text-[10px] font-medium text-pink-700">CocoScout</span><% end %>
+                </div>
+                <% if follower.name.present? %><div class="text-xs text-gray-500 truncate"><%= follower.email %></div><% end %>
+              </div>
+              <div class="min-w-0 flex-1 flex flex-wrap gap-1.5">
+                <% sources = follower.follower_sources.sort_by(&:occurred_at).reverse %>
+                <% sources.first(2).each do |source| %>
+                  <span class="inline-flex items-center rounded-full <%= source.kind == 'added_by_share' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700' %> px-2 py-0.5 text-[11px] font-medium"><%= source.label(viewer: Current.user.person) %></span>
+                <% end %>
+                <% if sources.size > 2 %><span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">+<%= sources.size - 2 %></span><% end %>
+                <% if chip %><span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium <%= chip.last %>"><%= chip.first %></span><% end %>
+              </div>
+              <div class="flex items-center gap-3 sm:flex-shrink-0">
+                <span class="text-xs text-gray-500 tabular-nums"><%= sources.last&.occurred_at&.strftime("%b %-d") || follower.created_at.strftime("%b %-d") %></span>
+                <% cid = "remove-follower-#{follower.id}" %>
+                <button type="button" class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>">Remove</button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <% pages = (@total / Manage::MailingListsController::PER_PAGE.to_f).ceil %>
+        <div class="flex items-center justify-between text-xs text-gray-500">
+          <span><%= number_with_delimiter(@total) %> <%= @filter == "subscribed" ? "subscribed" : @filter %></span>
+          <% if pages > 1 %>
+            <span class="flex gap-3">
+              <% if @page > 1 %><%= link_to "Newer", path.call(page: @page - 1), class: "text-pink-600 hover:text-pink-700" %><% end %>
+              <span>Page <%= @page %> of <%= pages %></span>
+              <% if @page < pages %><%= link_to "Older", path.call(page: @page + 1), class: "text-pink-600 hover:text-pink-700" %><% end %>
+            </span>
+          <% end %>
+        </div>
+      <% elsif @q.present? || @source || @filter != "subscribed" %>
+        <%= render "shared/empty_state", icon: "search", title: "Nobody here", body: "No followers match these filters.",
+              actions: [ { text: "Clear filters", path: manage_mailing_list_path(@list), variant: "secondary" } ] %>
+      <% else %>
+        <%= render "shared/empty_state", icon: "people", title: "Nobody on this list yet",
+              body: (@list.main? ? "Ticket buyers join at checkout. Add anyone else by hand." : "Pick productions for it to collect from, or add people by hand."),
+              actions: [ { text: "Add people", path: "#", data: { controller: "modal", action: "click->modal#open", modal_id: "add-people-modal" } } ] %>
+      <% end %>
+    </div>
+
+    <aside class="space-y-4">
+      <section class="bg-white rounded-lg border border-gray-200 p-5" data-collects-from>
+        <h3 class="font-semibold text-gray-900 mb-4">Collects from</h3>
+        <% if @list.main? %>
+          <p class="text-sm text-gray-600">Every production's checkout offers it: "<%= @list.box_words %>".</p>
+        <% elsif @productions.any? %>
+          <div class="space-y-2">
+            <% @productions.each do |production| %>
+              <div class="flex items-center gap-2 px-3 py-2.5 bg-gray-50 rounded-lg">
+                <span class="min-w-0 flex-1 truncate text-sm text-gray-900"><%= production.name %></span>
+                <% if production.type_third_party? %><span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">Contract</span><% end %>
+              </div>
+            <% end %>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">Buyers of these productions see "<%= @list.box_words %>" at checkout.</p>
+        <% else %>
+          <p class="text-sm text-gray-600">No production's checkout offers it yet.</p>
+        <% end %>
+      </section>
+
+      <section class="bg-white rounded-lg border border-gray-200 p-5" data-who-can-see>
+        <h3 class="font-semibold text-gray-900 mb-4">Who can see this list</h3>
+        <% if @shares.any? %>
+          <div class="space-y-2">
+            <% @shares.each do |share| %>
+              <div class="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-lg">
+                <span class="w-8 h-8 rounded-lg bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center flex-shrink-0"><%= share.person.initials %></span>
+                <span class="min-w-0"><span class="block text-sm font-semibold text-gray-900 truncate"><%= share.person.name %></span><span class="block text-xs text-gray-500">Since <%= share.granted_at.strftime("%b %-d") %></span></span>
+              </div>
+            <% end %>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">In their My Followers they can see, add and export. They can't send.</p>
+        <% else %>
+          <p class="text-sm text-gray-600">Only your organization's managers.</p>
+        <% end %>
+      </section>
+
+      <%
+        actions = [
+          { text: "Change who can see it", description: "Add or remove people who see it in My Followers", path: "#",
+            icon: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6",
+            data: { controller: "modal", action: "click->modal#open", modal_id: "share-modal" } },
+          (unless @list.main?
+             { text: "Change where it collects", description: "Which productions' checkout offers it", path: "#",
+               icon: "M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z",
+               data: { controller: "modal", action: "click->modal#open", modal_id: "collects-modal" } }
+           end),
+          { text: "Export", description: "A spreadsheet of everyone on it, by email", path: manage_export_mailing_list_path(@list),
+            icon: "M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3", data: { turbo_method: :post } },
+          { text: (@list.main? ? "Change its checkout words" : "Rename"), description: (@list.main? ? "What the box says at checkout" : "Its name and checkout words"), path: "#",
+            icon: "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
+            data: { controller: "modal", action: "click->modal#open", modal_id: "rename-modal" } },
+          (if @list.archived?
+             { text: "Unarchive this list", description: "Collect at checkout again", path: manage_unarchive_mailing_list_path(@list),
+               icon: "M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6", data: { turbo_method: :post } }
+           elsif !@list.main?
+             { text: "Archive this list", description: "Stops collecting; keeps its followers", path: "#", tone: :muted,
+               icon: [ "M21 8v13H3V8", "M1 3h22v5H1z", "M10 12h4" ],
+               data: { controller: "modal", action: "click->modal#open", modal_id: "archive-modal" } }
+           end)
+        ].compact
+      %>
+      <%= render "shared/action_list", items: actions %>
+    </aside>
+  </div>
+</div>
+
+<%# ---- Windows ---- %>
+
+<%# Add people: one person, or many pasted and checked first. %>
+<div data-controller="follower-paste" data-follower-paste-check-url-value="<%= manage_check_mailing_list_followers_path(@list) %>">
+  <%= render "manage/mailing_lists/modal", id: "add-people-modal", title: "Add people", wide: true, open: params[:add].present?,
+        body: capture {
+          concat tag.div(class: "flex gap-2 mb-4") {
+            concat tag.button("One person", type: "button", class: "text-xs font-medium px-3 py-1.5 rounded cursor-pointer", data: { follower_paste_target: "oneTab", action: "follower-paste#showOne" })
+            concat tag.button("Paste many", type: "button", class: "text-xs font-medium px-3 py-1.5 rounded cursor-pointer", data: { follower_paste_target: "pasteTab", action: "follower-paste#showPaste" })
+          }
+          concat(form_with(url: manage_mailing_list_followers_path(@list), method: :post, id: "add-one-form", data: { turbo: false, follower_paste_target: "onePane" }, class: "space-y-4") do
+            concat tag.div {
+              concat tag.label("Name", for: "add_name", class: "block text-sm font-medium text-gray-700 mb-1.5")
+              concat text_field_tag(:name, nil, id: "add_name", class: follower_input_class, autocomplete: "off")
+            }
+            concat tag.div {
+              concat tag.label("Email", for: "add_email", class: "block text-sm font-medium text-gray-700 mb-1.5")
+              concat email_field_tag(:email, nil, id: "add_email", required: true, class: follower_input_class, autocomplete: "off")
+            }
+            concat tag.p("They're added to #{@list.name}. Add only people who asked to hear from you.", class: "text-xs text-gray-500")
+          end)
+          concat(form_with(url: manage_mailing_list_followers_path(@list), method: :post, id: "add-paste-form", data: { turbo: false, follower_paste_target: "pastePane" }, class: "space-y-4") do
+            concat tag.div {
+              concat tag.label("Names and emails, one per line", for: "add_text", class: "block text-sm font-medium text-gray-700 mb-1.5")
+              concat text_area_tag(:text, nil, id: "add_text", rows: 6, class: "#{follower_input_class} font-mono text-[13px]",
+                                   placeholder: "Rosa Delgado, rosa@example.com\ntkwan@example.com", data: { follower_paste_target: "text", action: "input->follower-paste#edited" })
+              concat tag.p("Copy two columns from a spreadsheet, or just the emails.", class: "text-xs text-gray-500 mt-1.5")
+            }
+            concat render("shared/button", text: "Check", variant: "secondary", size: "small", type: :button, data: { action: "follower-paste#check" })
+            concat tag.div(data: { follower_paste_target: "result" })
+            concat tag.label(class: "flex items-start gap-2.5 text-sm text-gray-700") {
+              concat check_box_tag(:permission, "1", false, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500",
+                                   data: { follower_paste_target: "permission", action: "change->follower-paste#refresh" })
+              concat tag.span("These people asked to hear from #{Current.organization.name}, or I otherwise have their permission.")
+            }
+          end)
+        },
+        footer: capture {
+          concat render("shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+          concat tag.span(data: { follower_paste_target: "addOne" }) { render("shared/button", text: "Add", variant: "primary", size: "medium", type: :submit, form_id: "add-one-form") }
+          concat tag.span(data: { follower_paste_target: "addPaste" }) { render("shared/button", text: "Add people", variant: "primary", size: "medium", type: :submit, form_id: "add-paste-form", disabled: true) }
+        } %>
+</div>
+
+<%# Change who can see it: the shared people picker adds; Remove beside each. %>
+<%= render "manage/mailing_lists/modal", id: "share-modal", title: "Who can see #{@list.name}",
+      body: capture {
+        concat tag.p(class: "text-sm text-gray-700 mb-4") {
+          concat "They see this list's followers in "
+          concat tag.strong("My Followers", class: "font-semibold")
+          concat ", with where each one came from. They can add people and export a spreadsheet. They can't send email, and they never see your other lists."
+        }
+        if @suggested_people.any?
+          concat tag.div("On this list's productions", class: "text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2")
+          concat(tag.div(class: "space-y-2 mb-4") do
+            @suggested_people.each do |person|
+              concat(form_with(url: manage_mailing_list_shares_path(@list), method: :post, data: { turbo: false }, class: "flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-lg") do
+                concat tag.span(person.initials, class: "w-8 h-8 rounded-lg bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center flex-shrink-0")
+                concat tag.span(person.name, class: "min-w-0 flex-1 truncate text-sm font-semibold text-gray-900")
+                concat hidden_field_tag(:person_id, person.id, id: nil)
+                concat render("shared/button", text: "Share", variant: "primary", size: "small", type: :submit)
+              end)
+            end
+          end)
+        end
+        concat render("shared/button", text: "Find someone", variant: "secondary", size: "small", type: :button,
+                      data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
+                              "people-picker-trigger-id-value": "share-picker", "people-picker-trigger-title-value": "Share #{@list.name} with" })
+        concat tag.div("Can see it now", class: "text-[11px] font-semibold uppercase tracking-wider text-gray-500 mt-5 mb-2")
+        if @shares.any?
+          concat(tag.div(class: "rounded-lg border border-gray-200 divide-y divide-gray-100") do
+            @shares.each do |share|
+              concat(tag.div(class: "flex items-center gap-3 px-3.5 py-2.5") do
+                concat tag.span(share.person.initials, class: "w-8 h-8 rounded-lg bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center flex-shrink-0")
+                concat tag.span(class: "min-w-0 flex-1") {
+                  concat tag.span(share.person.name, class: "block text-sm font-semibold text-gray-900 truncate")
+                  concat tag.span("Shared #{share.granted_at.strftime('%b %-d')}#{" by #{share.granted_by.person&.name || share.granted_by.email_address}" if share.granted_by}", class: "block text-xs text-gray-500")
+                }
+                concat button_to("Remove", manage_mailing_list_share_path(@list, share_id: share.id), method: :delete, form: { data: { turbo: false } },
+                                 class: "text-xs text-gray-500 hover:text-gray-700 cursor-pointer")
+              end)
+            end
+          end)
+        else
+          concat tag.p("Nobody outside your managers yet.", class: "text-sm text-gray-500")
+        end
+        concat tag.p("They get an email saying what you shared, with a link to My Followers.", class: "text-xs text-gray-500 mt-3")
+      },
+      footer: capture { render("shared/button", text: "Done", variant: "primary", size: "medium", type: :button, data: { action: "click->modal#close" }) } %>
+
+<%= form_with url: manage_mailing_list_shares_path(@list), method: :post, data: { turbo: false, controller: "pick-submit" } do %>
+  <%= hidden_field_tag :person_id, nil, id: nil, data: { pick_submit_target: "field" } %>
+  <%= render "shared/people_picker", id: "share-picker", title: "Share #{@list.name} with",
+        exclude: @shares.map(&:person_id).join(","), pick_action: "people-picker:pick->pick-submit#picked",
+        hint: "Someone in your organization. The producers on this list's productions are suggested in the window." %>
+<% end %>
+
+<% unless @list.main? %>
+  <%= render "manage/mailing_lists/modal", id: "collects-modal", title: "Where #{@list.name} collects",
+        body: capture {
+          concat tag.p("Checkout for these productions offers a box to join this list.", class: "text-sm text-gray-700 mb-4")
+          concat(form_with(url: manage_mailing_list_productions_path(@list), method: :patch, id: "collects-form", data: { turbo: false }) do
+            concat hidden_field_tag("production_ids[]", "", id: nil)
+            concat(tag.div(class: "rounded-lg border border-gray-200 divide-y divide-gray-100 max-h-80 overflow-y-auto") do
+              @all_productions.each do |production|
+                concat(tag.label(class: "flex items-center gap-3 px-3.5 py-2.5 text-sm text-gray-900 cursor-pointer") do
+                  concat check_box_tag("production_ids[]", production.id, @productions.include?(production), id: "collect_#{production.id}",
+                                       class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500")
+                  concat tag.span(production.name, class: "min-w-0 flex-1 truncate")
+                  concat tag.span("Contract", class: "inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700") if production.type_third_party?
+                end)
+              end
+            end)
+          end)
+        },
+        footer: capture {
+          concat render("shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+          concat render("shared/button", text: "Save", variant: "primary", size: "medium", type: :submit, form_id: "collects-form")
+        } %>
+<% end %>
+
+<%= render "manage/mailing_lists/modal", id: "rename-modal", title: (@list.main? ? "Checkout words" : "Rename #{@list.name}"),
+      body: capture {
+        form_with(model: @list, url: manage_mailing_list_path(@list), method: :patch, id: "rename-form", data: { turbo: false }, class: "space-y-4") do |f|
+          unless @list.main?
+            concat tag.div {
+              concat f.label(:name, "Name", class: "block text-sm font-medium text-gray-700 mb-1.5")
+              concat f.text_field(:name, class: follower_input_class, required: true)
+            }
+          end
+          concat tag.div {
+            concat f.label(:checkout_words, "The box at checkout says", class: "block text-sm font-medium text-gray-700 mb-1.5")
+            concat f.text_field(:checkout_words, class: follower_input_class, placeholder: @list.box_words)
+            concat tag.p("Leave it blank for \"#{@list.main? ? "Send me news from #{Current.organization.name}" : "Send me news about #{@list.name}"}\".", class: "text-xs text-gray-500 mt-1.5")
+          }
+        end
+      },
+      footer: capture {
+        concat render("shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+        concat render("shared/button", text: "Save", variant: "primary", size: "medium", type: :submit, form_id: "rename-form")
+      } %>
+
+<% unless @list.main? || @list.archived? %>
+  <%= render "shared/confirm_modal", id: "archive-modal", title: "Archive #{@list.name}?",
+        message: "It stops collecting at checkout and drops off your lists. Its followers stay, and you can bring it back.",
+        confirm_text: "Archive", url: manage_archive_mailing_list_path(@list), method: :post %>
+<% end %>
+
+<% @followers.each do |follower| %>
+  <%= render "shared/confirm_modal", id: "remove-follower-#{follower.id}", title: "Take #{follower.display_name} off #{@list.name}?",
+        message: "They stay on your other lists. To stop all your emails to them, they unsubscribe from one.",
+        confirm_text: "Take them off", url: manage_mailing_list_follower_path(@list, follower_id: follower.id), method: :delete %>
+<% end %>

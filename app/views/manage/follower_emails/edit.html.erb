@@ -1,0 +1,131 @@
+<% content_for :title, @email.subject.presence || "New email" %>
+<%
+  chosen_lists = @email.list_ids
+  chosen_segments = @email.segment_ids
+  chosen_shows = @email.shows.map(&:id)
+  check_class = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+%>
+
+<div class="w-full pb-10">
+  <%= render "shared/notice", notice: notice, alert: alert %>
+  <%= render "shared/top_menu", breadcrumbs: [ [ "Mailing lists", manage_mailing_lists_path ] ], text: (@email.subject.presence || "New email") %>
+
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-5 items-start">
+    <%= form_with model: @email, url: manage_follower_email_path(@email), method: :patch, id: "follower-email-form", data: { turbo: false },
+          class: "xl:col-span-3 bg-white rounded-lg border border-gray-200 p-5 space-y-5" do |f| %>
+      <div>
+        <span class="block text-sm font-medium text-gray-700 mb-1.5">To</span>
+        <div class="rounded-lg border border-gray-200 divide-y divide-gray-100">
+          <% @lists.each do |list| %>
+            <label class="flex items-center gap-3 px-3.5 py-2.5 text-sm cursor-pointer">
+              <%= check_box_tag "list_ids[]", list.id, chosen_lists.include?(list.id), id: "list_#{list.id}", class: check_class %>
+              <span class="min-w-0 flex-1 truncate text-gray-900"><%= list.name %><%= " (main list)" if list.main? %></span>
+              <span class="text-xs text-gray-500 tabular-nums"><%= number_with_delimiter(@list_counts[list.id].to_i) %></span>
+            </label>
+          <% end %>
+          <% @segments.each do |segment| %>
+            <label class="flex items-center gap-3 px-3.5 py-2.5 text-sm cursor-pointer">
+              <%= check_box_tag "segment_ids[]", segment.id, chosen_segments.include?(segment.id), id: "segment_#{segment.id}", class: check_class %>
+              <span class="min-w-0 flex-1 truncate text-gray-900"><%= segment.name %> <span class="text-gray-500">· segment</span></span>
+            </label>
+          <% end %>
+        </div>
+        <p class="text-xs text-gray-500 mt-1.5">Someone on more than one gets it once. Anyone unsubscribed or bounced is left out.</p>
+      </div>
+
+      <div>
+        <%= f.label :subject, "Subject", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+        <%= f.text_field :subject, class: follower_input_class, required: true %>
+      </div>
+      <div>
+        <%= f.label :preheader, "Preview line", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+        <%= f.text_field :preheader, class: follower_input_class, placeholder: "Shown after the subject in most inboxes" %>
+      </div>
+      <div>
+        <span class="block text-sm font-medium text-gray-700 mb-1.5">Message</span>
+        <%= f.rich_text_area :body, class: "trix-content block w-full bg-white border border-gray-300 rounded-lg shadow-sm min-h-[260px] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+        <p class="text-xs text-gray-500 mt-1.5">Write <code class="text-pink-700">{{first_name}}</code> and each follower sees their own first name ("there" when we don't know it).</p>
+      </div>
+
+      <details class="rounded-lg border border-gray-200" <%= "open" if chosen_shows.any? %>>
+        <summary class="px-3.5 py-2.5 text-sm font-medium text-gray-900 cursor-pointer">Shows in this email<%= " (#{chosen_shows.size})" if chosen_shows.any? %></summary>
+        <div class="border-t border-gray-100 divide-y divide-gray-100 max-h-72 overflow-y-auto">
+          <% if @upcoming_shows.empty? %>
+            <p class="px-3.5 py-3 text-sm text-gray-500">No upcoming dates.</p>
+          <% end %>
+          <% @upcoming_shows.each do |show| %>
+            <label class="flex items-center gap-3 px-3.5 py-2.5 text-sm cursor-pointer">
+              <%= check_box_tag "show_ids[]", show.id, chosen_shows.include?(show.id), id: "show_#{show.id}", class: check_class %>
+              <span class="min-w-0 flex-1 truncate text-gray-900"><%= show.secondary_name.presence || show.production.name %></span>
+              <span class="text-xs text-gray-500 whitespace-nowrap"><%= show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></span>
+            </label>
+          <% end %>
+        </div>
+        <p class="px-3.5 py-2 text-xs text-gray-500 border-t border-gray-100">Each comes after your words with its poster and a Buy tickets button.</p>
+      </details>
+
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <%= render "shared/button", text: "Review and send", variant: "primary", size: "medium", type: :submit, name: "review", value: "1" %>
+        <%= render "shared/button", text: "Save draft", variant: "secondary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Send a test to me", variant: "secondary", size: "medium", type: :button, form_id: nil,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "test-modal" } %>
+        <button type="button" class="ml-auto text-sm text-gray-500 hover:text-gray-700 cursor-pointer" data-controller="modal" data-action="click->modal#open" data-modal-id="discard-modal">Delete draft</button>
+      </div>
+    <% end %>
+
+    <section class="xl:col-span-2 space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Preview</span>
+        <span class="text-xs text-gray-500">As of your last save</span>
+      </div>
+      <div class="rounded-xl bg-gray-100 p-3 sm:p-4">
+        <iframe src="<%= manage_follower_email_preview_path(@email) %>" title="Email preview" class="w-full h-[640px] bg-white rounded-lg border border-gray-200" loading="lazy"></iframe>
+      </div>
+    </section>
+  </div>
+</div>
+
+<%= render "shared/confirm_modal", id: "test-modal", title: "Send a test to yourself?",
+      message: "The last saved version goes to #{ERB::Util.html_escape(Current.user.email_address)}, with a line saying it's a test. Save first if you've changed anything.",
+      confirm_text: "Send the test", url: manage_follower_email_test_path(@email), method: :post %>
+<%= render "shared/confirm_modal", id: "discard-modal", title: "Delete this draft?",
+      message: "Nothing has been sent. The draft is gone for good.", confirm_text: "Delete", url: manage_follower_email_path(@email), method: :delete %>
+
+<% if @review %>
+  <%# Who gets it and the exact email; Send posts deliver. %>
+  <% breakdown = @audience.breakdown %>
+  <% recipients = @audience.recipient_count %>
+  <% left_out = @audience.left_out_count %>
+  <%= render "manage/mailing_lists/modal", id: "send-modal", title: "Send this email?", wide: true, open: true,
+        body: capture {
+          concat tag.div("Who gets it", class: "text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2")
+          concat(tag.div(class: "rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm") do
+            breakdown.each do |name, count|
+              concat tag.div(class: "flex items-center px-3.5 py-2.5") { concat tag.span(name, class: "flex-1"); concat tag.span(number_with_delimiter(count), class: "tabular-nums") }
+            end
+            if left_out.positive?
+              concat tag.div(class: "flex items-center px-3.5 py-2.5 text-gray-500") { concat tag.span("Left out: unsubscribed or bounced", class: "flex-1"); concat tag.span("−#{number_with_delimiter(left_out)}", class: "tabular-nums") }
+            end
+            concat tag.div(class: "flex items-center px-3.5 py-2.5 bg-gray-50 font-semibold") { concat tag.span("Sends to", class: "flex-1"); concat tag.span(pluralize(number_with_delimiter(recipients), "person"), class: "tabular-nums") }
+          end)
+          concat tag.p("Uses #{number_with_delimiter(recipients)} of the #{number_with_delimiter(@allowance.left)} left this month.", class: "text-xs text-gray-500 mt-2")
+          concat tag.div("The email", class: "text-[11px] font-semibold uppercase tracking-wider text-gray-500 mt-5 mb-2")
+          concat(tag.div(class: "rounded-lg border border-gray-200 text-sm") do
+            concat(tag.div(class: "px-3.5 py-2.5 border-b border-gray-100 space-y-0.5 text-[13px]") do
+              concat tag.div { concat tag.span("From ", class: "text-gray-500"); concat "#{Current.organization.name} via CocoScout" }
+              reply_to = TicketingProfile.find_by(organization: Current.organization)&.support_email
+              concat tag.div { concat tag.span("Replies go to ", class: "text-gray-500"); concat reply_to } if reply_to.present?
+              concat tag.div { concat tag.span("Subject ", class: "text-gray-500"); concat tag.strong(@email.subject, class: "font-semibold") }
+            end)
+            concat tag.iframe(src: manage_follower_email_preview_path(@email), title: "The email", class: "w-full h-80 bg-white")
+          end)
+        },
+        footer: capture {
+          concat render("shared/button", text: "Back to editing", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+          if recipients.positive?
+            concat(form_with(url: manage_follower_email_deliver_path(@email), method: :post, data: { turbo: false }, class: "inline") do
+              render("shared/button", text: "Send to #{pluralize(number_with_delimiter(recipients), 'person')}", variant: "primary", size: "medium", type: :submit)
+            end)
+          end
+        } %>
+<% end %>

@@ -1,0 +1,121 @@
+<% content_for :title, "My Followers" %>
+<%
+  path = ->(**o) { my_followers_path(**{ organization_id: @organization_id, kind: @kind, q: @q.presence, show: (@show == "following" ? nil : @show) }.merge(o).compact) }
+  org_options = [ { value: "", text: "Every organization" } ] + @my.organizations.map { |org| { value: org.id.to_s, text: org.name } }
+  kind_options = [ { value: "", text: "Any way" }, { value: "checkout", text: "Tickets" }, { value: "added_by_share", text: "Added by a producer" },
+                   { value: "manual", text: "Added by hand" }, { value: "paste", text: "Pasted" }, { value: "contacts", text: "From Contacts" } ]
+  lists = @my.lists
+  viewer = @my.viewer
+%>
+
+<div class="w-full pb-10">
+  <%= render "shared/notice", notice: notice, alert: alert %>
+  <%= render "shared/module_header",
+        title: "My Followers",
+        description: "<p>People who asked to hear about your shows, from every organization that shares them with you. Each organization keeps its own list; here they're all in one place.</p>",
+        actions: [
+          { text: "Add a follower", path: "#", data: { controller: "modal", action: "click->modal#open", modal_id: "add-follower-modal" } },
+          { text: "Export", path: my_followers_export_path, method: :post }
+        ] %>
+
+  <div class="flex flex-wrap gap-2.5 mb-4" data-follower-tiles>
+    <div class="rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 min-w-[150px]"><div class="text-2xl font-bold tabular-nums text-pink-700"><%= number_with_delimiter(@following_count) %></div><div class="text-xs text-gray-600">Following you</div></div>
+    <% @by_organization.sort_by { |org, _| org.name }.each do |org, count| %>
+      <div class="rounded-lg border border-gray-200 bg-white px-4 py-3 min-w-[170px]"><div class="text-2xl font-bold tabular-nums text-gray-900"><%= number_with_delimiter(count) %></div><div class="text-xs text-gray-600">From <%= org.name %></div></div>
+    <% end %>
+  </div>
+
+  <div class="space-y-3">
+    <%= form_with url: my_followers_path, method: :get, data: { turbo_action: "advance" } do %>
+      <%= render "shared/filters/search_input", placeholder: "Search by name or email...", value: @q, name: "q", full_width: true %>
+      <%= hidden_field_tag :organization_id, @organization_id if @organization_id %>
+      <%= hidden_field_tag :kind, @kind if @kind %>
+    <% end %>
+    <%= render "shared/filters/filter_bar",
+          toggle_label: "Filters",
+          filter_groups: [
+            { label: "Show", filters: [
+              { text: "Following", path: path.call(show: nil), active: @show == "following" },
+              { text: "Unsubscribed", path: path.call(show: "unsubscribed"), active: @show == "unsubscribed" }
+            ] },
+            { separator: true },
+            (@my.organizations.size > 1 ? { partial: "shared/filters/dropdown_filter",
+              locals: { label: "From", name: "organization_id", options: org_options, selected: @organization_id.to_s,
+                        extra_url_params: { kind: @kind, q: @q.presence, show: (@show == "following" ? nil : @show) } } } : nil),
+            { partial: "shared/filters/dropdown_filter",
+              locals: { label: "How", name: "kind", options: kind_options, selected: @kind.to_s,
+                        extra_url_params: { organization_id: @organization_id, q: @q.presence, show: (@show == "following" ? nil : @show) } } }
+          ].compact %>
+
+    <% if @rows.any? %>
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden divide-y divide-gray-100" data-my-followers>
+        <% @rows.each do |row| %>
+          <div class="flex flex-col sm:flex-row sm:items-start gap-1.5 sm:gap-4 px-4 sm:px-5 py-3 <%= 'text-gray-400' unless row.following? %>">
+            <div class="min-w-0 sm:w-64 sm:flex-shrink-0">
+              <div class="font-semibold truncate <%= row.following? ? 'text-gray-900' : '' %>"><%= row.name.presence || row.email %></div>
+              <% if row.name.present? %><div class="text-xs truncate <%= row.following? ? 'text-gray-500' : '' %>"><%= row.email %></div><% end %>
+            </div>
+            <div class="min-w-0 flex-1 text-sm space-y-0.5">
+              <% row.entries.group_by(&:organization).each do |org, entries| %>
+                <% following = entries.any?(&:following) %>
+                <div>
+                  <span class="font-semibold <%= row.following? ? 'text-gray-900' : '' %>"><%= org.name %></span>
+                  <% labels = entries.flat_map { |e| e.sources.map { |s| s.label(viewer: viewer) } }.uniq %>
+                  <span class="<%= row.following? ? 'text-gray-500' : '' %>">· <%= labels.any? ? labels.last(2).join(" · ") : "On #{entries.map { |e| e.list.name }.uniq.to_sentence}" %></span>
+                  <% unless following %><span class="text-xs">· Unsubscribed</span><% end %>
+                </div>
+              <% end %>
+              <% unless row.following? %><div class="text-xs">Not in exports</div><% end %>
+            </div>
+            <div class="text-xs tabular-nums <%= row.following? ? 'text-gray-500' : '' %> sm:flex-shrink-0"><%= row.since&.strftime("%b %-d, %Y") %></div>
+          </div>
+        <% end %>
+      </div>
+      <% pages = (@total / My::FollowersController::PER_PAGE.to_f).ceil %>
+      <div class="flex items-center justify-between text-xs text-gray-500">
+        <span><%= number_with_delimiter(@total) %> <%= @show == "following" ? "following" : "unsubscribed" %>. Export has everyone still following, with where each came from. Only the organizations can email them.</span>
+        <% if pages > 1 %>
+          <span class="flex gap-3 flex-shrink-0">
+            <% if @page > 1 %><%= link_to "Newer", path.call(page: @page - 1), class: "text-pink-600 hover:text-pink-700" %><% end %>
+            <span>Page <%= @page %> of <%= pages %></span>
+            <% if @page < pages %><%= link_to "Older", path.call(page: @page + 1), class: "text-pink-600 hover:text-pink-700" %><% end %>
+          </span>
+        <% end %>
+      </div>
+    <% elsif @q.present? || @kind || @organization_id || @show != "following" %>
+      <%= render "shared/empty_state", icon: "search", title: "Nobody here", body: "No followers match these filters.",
+            actions: [ { text: "Clear filters", path: my_followers_path, variant: "secondary" } ] %>
+    <% else %>
+      <%= render "shared/empty_state", icon: "people", title: "No followers yet",
+            body: "When people buy tickets to your shows and ask to hear about them, they show up here." %>
+    <% end %>
+  </div>
+</div>
+
+<%= render "manage/mailing_lists/modal", id: "add-follower-modal", title: "Add a follower",
+      body: capture {
+        form_with(url: my_followers_path, method: :post, id: "add-follower-form", data: { turbo: false }, class: "space-y-4") do
+          concat tag.div {
+            concat tag.label("Name", for: "follower_name", class: "block text-sm font-medium text-gray-700 mb-1.5")
+            concat text_field_tag(:name, nil, id: "follower_name", class: follower_input_class, autocomplete: "off")
+          }
+          concat tag.div {
+            concat tag.label("Email", for: "follower_email", class: "block text-sm font-medium text-gray-700 mb-1.5")
+            concat email_field_tag(:email, nil, id: "follower_email", required: true, class: follower_input_class, autocomplete: "off")
+          }
+          concat tag.div {
+            concat tag.label("Add to", for: "follower_list", class: "block text-sm font-medium text-gray-700 mb-1.5")
+            concat select_tag(:mailing_list_id, options_for_select(lists.map { |l| [ "#{l.name}, at #{l.organization.name}", l.id ] }),
+                              id: "follower_list", class: follower_input_class)
+            concat tag.p("The organization sees who you add, marked \"added by #{viewer&.name || 'you'}\". They can email them; you can't from CocoScout.", class: "text-xs text-gray-500 mt-1.5")
+          }
+          concat tag.label(class: "flex items-start gap-2.5 text-sm text-gray-700") {
+            concat check_box_tag(:permission, "1", false, required: true, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500")
+            concat tag.span("They asked to hear about my shows.")
+          }
+        end
+      },
+      footer: capture {
+        concat render("shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+        concat render("shared/button", text: "Add", variant: "primary", size: "medium", type: :submit, form_id: "add-follower-form")
+      } %>

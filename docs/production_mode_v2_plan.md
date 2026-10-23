@@ -571,3 +571,54 @@ Nothing left to build for V1.1 (2026-10-21); what remains is release work, liste
 - **Empty lists (2026-10-21).** `shared/_empty_state` is the one way to show an empty list in both modes: a dashed box, a gray icon (check, inbox, calendar, people, ticket, document, bell, search, clipboard, money, star, clock, chat), a short title, a line that says what would fill it, and sometimes the button that does (`actions:`); `compact: true` inside a card. It replaced the hand-drawn boxes on My Tasks, My Shows & Events, auditions and their directory, courses and their directory, payments, shifts, ticket sales, the inbox and notifications, and on Shows & Events, Casting, Contracts, Contractors, Courses, Directory, Productions, Sign-ups, sign-up forms, Staff, Casting tables, Incoming money, Financials and Reports; then the rest of the lists: staffing roles, regulars, taxes, timesheets, the schedule week, the org chart, talent pools, ticket listings, attendance, the books, the agreement roster, contract and staff agreement templates, the casting-table wizard and contract financials. An action with no path is a modal trigger (`type: :button` + `data`).
 - **Organization menu by plan (2026-10-21, design canvas "Organization menu by tier").** Productions sits in the left nav on every Pro organization, even with one; never on the Producer plan. The organization menu carries the production itself while there is one (its row, with upcoming shows and talent-pool size, opens its settings): on Pro with a plain Add a production under it, on the Producer plan with a Pro card ("Running a second production?", See Pro → Plan and billing) instead of a locked row. With several productions on Pro the menu says nothing about them. "This organization" appears only when its links do.
 - **Inbox and notification filters (2026-10-21).** For (Everything / As a performer / each organization you run) and the notifications' About are dropdowns on the shared filter bar, one column, like Production. The inbox keeps one round pink button: newest or oldest first, its arrow pointing the way the list runs. The row-density button is gone (it changed nothing anyone could see).
+
+## 11. Mailing lists and My Followers (built 2026-10-23)
+
+Tim's decisions, 2026-10-23 (design canvas "Mailing lists and My Followers"):
+a Pro module for the organization's managers; the word is "followers"; each
+organization keeps its own copy of every person; a producer a list is shared
+with sees it in My Followers (see, add, export, never send); the checkout box
+is ticked by default; sending only from Pro, on its own Mailgun domain.
+
+- **Data.** `followers` (one per person per organization: status, consent,
+  unsubscribe token), `follower_sources` (every way they arrived or bought:
+  checkout, by hand, pasted, Contacts, added by a producer), `mailing_lists`
+  (one main list per organization, named after it, plus groups), with
+  `mailing_list_productions` (where a list collects at checkout),
+  `mailing_list_memberships` and `mailing_list_shares`; `segments` (a jsonb
+  rule, SegmentQuery); `follower_emails` (ActionText body, lists and segments,
+  show blocks) and `follower_email_deliveries`; platform-wide
+  `email_suppressions` (a hard bounce or complaint stops every organization).
+- **Production mode.** "Mailing lists" after Ticketing in the Pro nav
+  (`:mailing_lists` in PAID_FEATURES and MANAGER_ONLY_FEATURES). Home on
+  `shared/module_header`; every sub-page on `shared/top_menu`. A list's
+  sidebar: Collects from, Who can see this list, and the standard
+  `shared/action_list` (Change who can see it, Change where it collects,
+  Export, Rename, Archive). Add people checks a paste first (new, already on
+  it, unsubscribed, bounced) and asks for permission. Contacts → a person →
+  "Add to a mailing list". Settings: Email look, Checkout, Allowance.
+- **Sending.** One copy per follower through FollowerMailer (the
+  organization's logo or two letters and color, show blocks with Buy tickets,
+  a footer with why, the postal address and Unsubscribe), on
+  FOLLOWERS_MAIL_DOMAIN with List-Unsubscribe and one-click, skipping
+  EmailLogInterceptor. FollowerEmailSendJob sends what's queued, one
+  organization at a time; anyone who left after the send was confirmed is
+  skipped. Production refuses to send until the domain is set (release
+  checklist §2b). Per-recipient sends rather than Mailgun's batch call, so
+  development, tests and production take the same path.
+- **What each email sold.** Its links carry `utm_campaign=fe-<id>`; the public
+  ticket page keeps it a week (`cs_campaign`) and checkout writes it into the
+  order's `utm` (FollowerEmailSales).
+- **Checkout.** FollowCheckout: a box for the main list, plus one per list
+  collecting from that production ("Send me news about Dan Feltey's shows");
+  never at the door. FollowTicketBuyerJob after settlement records what they
+  bought and adds them to what they ticked; nobody unsubscribed is put back; a
+  buyer who ticked nothing is on no list, and segments only pick people on a
+  list, so they're never emailed.
+- **My Followers.** In the website's My nav (not the app menu, Tim's rule),
+  between My Payments and My Documents; the My nav is now in Tim's order.
+  One row per email across organizations, showing only how someone came to a
+  list shared with them. Add a follower picks the list; Export emails a CSV of
+  everyone still following.
+- **Not yet.** CSV import, scheduling, a public signup form, door capture,
+  billing past the allowance (price undecided), opens and clicks.

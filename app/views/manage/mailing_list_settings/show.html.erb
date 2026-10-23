@@ -1,0 +1,11 @@
+<% content_for :title, "Mailing list settings" %>
+<% sections = Manage::MailingListSettingsController::SECTIONS.map { |key| { key: key, label: Manage::MailingListSettingsController::SECTION_LABELS[key], path: manage_mailing_list_settings_path(section: key) } } %>
+<%= render layout: "shared/settings_layout", locals: {
+      title: "Settings",
+      breadcrumbs: [ [ "Mailing lists", manage_mailing_lists_path ] ],
+      intro: "How your emails look, what checkout asks, and how much you've sent.",
+      sections: sections,
+      current: @section
+    } do %>
+  <%= render "manage/mailing_list_settings/sections/#{@section}" %>
+<% end %>

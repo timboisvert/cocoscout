@@ -1,0 +1,121 @@
+<% content_for :title, "Mailing lists" %>
+
+<div class="w-full pb-10">
+  <%= render "shared/notice", notice: notice, alert: alert %>
+  <%= render "shared/module_header",
+        title: "Mailing lists",
+        description: "<p>Everyone who asked to hear from you, by list. Ticket buyers join at checkout; add anyone else by hand. Share a list with a producer and they see it in their My Followers.</p>",
+        actions: [
+          { icon: "mail", text: "New email", description: "Write and send to a list", path: manage_new_follower_email_path },
+          { icon: "user-plus", text: "Add people", description: "One at a time or many", path: manage_mailing_list_path(@main_list, add: 1) },
+          { icon: "queue-list", text: "New list", description: "For a producer or a show", path: "#",
+            data: { controller: "modal", action: "click->modal#open", modal_id: "new-list-modal" } },
+          { icon: "cog", text: "Settings", description: "Email look, checkout", path: manage_mailing_list_settings_path }
+        ] %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+    <div class="lg:col-span-3 space-y-5">
+      <section class="bg-white rounded-lg border border-gray-200 overflow-hidden" data-lists>
+        <%= render "shared/section_heading", title: "Lists", intro: "#{number_with_delimiter(@follower_total)} following you in all" do %>
+          <%= render "shared/button", text: "New list", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "new-list-modal" } %>
+        <% end %>
+        <div class="divide-y divide-gray-100">
+          <% @lists.each do |list| %>
+            <% shares = @shares[list.id] || [] %>
+            <%= link_to manage_mailing_list_path(list), class: "flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-colors" do %>
+              <span class="min-w-0 flex-1">
+                <span class="flex flex-wrap items-center gap-2">
+                  <span class="font-semibold text-gray-900"><%= list.name %></span>
+                  <% if list.main? %>
+                    <span class="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700">Main list</span>
+                  <% end %>
+                  <% if shares.any? %>
+                    <span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">Shared with <%= shares.size == 1 ? shares.first.person.name : pluralize(shares.size, "person") %></span>
+                  <% end %>
+                </span>
+                <span class="block text-xs text-gray-500"><%= mailing_list_line(list, collects: @collects[list.id], shares: shares) %></span>
+              </span>
+              <span class="font-semibold tabular-nums text-gray-900"><%= number_with_delimiter(@counts[list.id].to_i) %></span>
+              <%= chevron_svg %>
+            <% end %>
+          <% end %>
+        </div>
+        <% if @archived_lists.any? %>
+          <div class="px-6 py-3 border-t border-gray-100 text-xs text-gray-500">
+            Archived: <%= safe_join(@archived_lists.map { |list| link_to(list.name, manage_mailing_list_path(list), class: "text-pink-600 hover:text-pink-700") }, ", ") %>
+          </div>
+        <% end %>
+      </section>
+
+      <section class="bg-white rounded-lg border border-gray-200 overflow-hidden" data-segments>
+        <%= render "shared/section_heading", title: "Segments", intro: "Built from what people bought, and kept current by themselves" do %>
+          <%= render "shared/button", text: "New segment", variant: "secondary", size: "small", path: manage_new_segment_path %>
+        <% end %>
+        <% if @segments.any? %>
+          <div class="divide-y divide-gray-100">
+            <% @segments.each do |segment| %>
+              <%= link_to manage_segment_path(segment), class: "flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-colors" do %>
+                <span class="min-w-0 flex-1"><span class="block font-semibold text-gray-900"><%= segment.name %></span><span class="block text-xs text-gray-500 truncate"><%= segment.summary %></span></span>
+                <span class="font-semibold tabular-nums text-gray-900"><%= number_with_delimiter(segment.followers.subscribed.count) %></span>
+                <%= chevron_svg %>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="p-4"><%= render "shared/empty_state", icon: "people", compact: true, title: "No segments yet",
+                body: "Pick followers by what they did: regulars, people who haven't been back, a producer's crowd." %></div>
+        <% end %>
+      </section>
+    </div>
+
+    <section class="lg:col-span-2 bg-white rounded-lg border border-gray-200 overflow-hidden" data-emails>
+      <%= render "shared/section_heading", title: "Emails", intro: "#{number_with_delimiter(@allowance.used)} of #{number_with_delimiter(@allowance.included)} sent this month" do %>
+        <%= render "shared/button", text: "New email", variant: "primary", size: "small", path: manage_new_follower_email_path %>
+      <% end %>
+      <% if @drafts.empty? && @sent.empty? %>
+        <div class="p-4"><%= render "shared/empty_state", icon: "inbox", compact: true, title: "No emails yet",
+              body: "Write one to a list or a segment. Each sent email shows the tickets it sold." %></div>
+      <% end %>
+      <% if @drafts.any? %>
+        <div class="px-6 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Drafts</div>
+        <div class="divide-y divide-gray-100">
+          <% @drafts.each do |email| %>
+            <%= link_to manage_edit_follower_email_path(email), class: "flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition-colors" do %>
+              <span class="min-w-0 flex-1"><span class="block font-semibold text-gray-900 truncate"><%= email.subject.presence || "Untitled" %></span><span class="block text-xs text-gray-500">Edited <%= time_ago_in_words(email.updated_at) %> ago</span></span>
+              <span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Draft</span>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+      <% if @sent.any? %>
+        <div class="px-6 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Sent</div>
+        <div class="divide-y divide-gray-100">
+          <% @sent.each do |email| %>
+            <% sales = @sales[email.id] %>
+            <%= link_to manage_follower_email_path(email), class: "flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition-colors" do %>
+              <span class="min-w-0 flex-1"><span class="block font-semibold text-gray-900 truncate"><%= email.subject %></span>
+                <span class="block text-xs text-gray-500"><%= email.sent_at&.strftime("%b %-d") %> · <%= email.status == "sending" ? "Sending to #{number_with_delimiter(email.recipient_count)}" : "#{number_with_delimiter(email.recipient_count)} sent" %></span></span>
+              <% if sales %>
+                <span class="text-right"><span class="block font-semibold tabular-nums text-gray-900"><%= pluralize(sales[:tickets], "ticket") %></span><span class="block text-xs text-gray-500 tabular-nums"><%= follower_money(sales[:cents]) %></span></span>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </section>
+  </div>
+</div>
+
+<%= render "manage/mailing_lists/modal", id: "new-list-modal", title: "New list",
+      body: capture {
+        form_with(url: manage_mailing_lists_path, method: :post, id: "new-list-form", data: { turbo: false }) do |f|
+          concat tag.label("Name", for: "mailing_list_name", class: "block text-sm font-medium text-gray-700 mb-1.5")
+          concat f.text_field("mailing_list[name]", id: "mailing_list_name", required: true, placeholder: "Dan Feltey's shows", class: follower_input_class)
+          concat tag.p("Next, pick productions for it to collect from at checkout, or add people by hand.", class: "text-xs text-gray-500 mt-2")
+        end
+      },
+      footer: capture {
+        concat render("shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+        concat render("shared/button", text: "Make the list", variant: "primary", size: "medium", type: :submit, form_id: "new-list-form")
+      } %>

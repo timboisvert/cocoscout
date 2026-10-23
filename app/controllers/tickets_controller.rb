@@ -11,6 +11,11 @@ class TicketsController < ApplicationController
   allow_unauthenticated_access
 
   before_action :set_box_office, except: :ticket
+  before_action :remember_campaign
+
+  # An email to followers' links carry its campaign (FollowerMailer); kept a
+  # week so a ticket bought from it counts on the email's page.
+  CAMPAIGN_COOKIE = "cs_campaign"
 
   # The organization's page (Tim, 2026-10-18): a hero (name, welcome line,
   # the venue, a wide image), then either dates first (this weekend's shows
@@ -68,6 +73,13 @@ class TicketsController < ApplicationController
   end
 
   private
+
+  def remember_campaign
+    campaign = params[:utm_campaign].to_s
+    return unless campaign.match?(/\Afe-\d+\z/)
+
+    cookies[CAMPAIGN_COOKIE] = { value: campaign, expires: 7.days.from_now, httponly: true, same_site: :lax }
+  end
 
   # The production's page: its dates as chips, and the chosen date's tickets
   # (?date= a date's slug, a day like 2026-10-17, or oct-17 as a short link

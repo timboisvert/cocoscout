@@ -1,0 +1,22 @@
+<%# What a paste would add (FollowerIntake): four counts, then each line. %>
+<% counts = entries.group_by(&:status).transform_values(&:size) %>
+<% addable = counts["new"].to_i %>
+<div class="rounded-lg border border-gray-200 overflow-hidden" data-follower-paste-addable="<%= addable %>">
+  <div class="grid grid-cols-2 sm:grid-cols-4 border-b border-gray-200">
+    <div class="px-3 py-2.5 <%= addable.positive? ? 'bg-green-50' : '' %>"><b class="text-lg tabular-nums <%= addable.positive? ? 'text-green-700' : 'text-gray-900' %>"><%= addable %></b><div class="text-xs text-gray-500">New</div></div>
+    <div class="px-3 py-2.5"><b class="text-lg tabular-nums text-gray-900"><%= counts["already"].to_i %></b><div class="text-xs text-gray-500">Already on it</div></div>
+    <% skipped = counts["unsubscribed"].to_i %>
+    <div class="px-3 py-2.5 <%= skipped.positive? ? 'bg-amber-50' : '' %>"><b class="text-lg tabular-nums <%= skipped.positive? ? 'text-amber-700' : 'text-gray-900' %>"><%= skipped %></b><div class="text-xs text-gray-500">Unsubscribed</div></div>
+    <% bounced = counts["suppressed"].to_i + counts["invalid"].to_i %>
+    <div class="px-3 py-2.5 <%= bounced.positive? ? 'bg-amber-50' : '' %>"><b class="text-lg tabular-nums <%= bounced.positive? ? 'text-amber-700' : 'text-gray-900' %>"><%= bounced %></b><div class="text-xs text-gray-500">Bounced or not an email</div></div>
+  </div>
+  <div class="max-h-56 overflow-y-auto divide-y divide-gray-100">
+    <% entries.each do |entry| %>
+      <% tone = case entry.status when "new" then "bg-green-50 text-green-700" when "already" then "bg-gray-100 text-gray-600" else "bg-amber-50 text-amber-700" end %>
+      <div class="flex items-center gap-3 px-3.5 py-2 text-sm">
+        <span class="min-w-0 flex-1 truncate"><% if entry.name %><span class="text-gray-900"><%= entry.name %></span> <% end %><span class="text-gray-500"><%= entry.email %></span></span>
+        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= tone %>"><%= entry.words %></span>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -13,6 +13,13 @@ Rails.application.routes.draw do
 
   # Webhooks (external services)
   post "/webhooks/stripe", to: "stripe_webhooks#create", as: "stripe_webhook"
+  # Emails to followers: what Mailgun saw happen to them (Mailing lists, V1.1).
+  post "/webhooks/mailgun", to: "mailgun_webhooks#create", as: "mailgun_webhook"
+
+  # The unsubscribe link on every email to followers.
+  get  "/followers/unsubscribe/:token",             to: "follower_unsubscribes#show",        as: "follower_unsubscribe"
+  post "/followers/unsubscribe/:token",             to: "follower_unsubscribes#create"
+  post "/followers/unsubscribe/:token/resubscribe", to: "follower_unsubscribes#resubscribe", as: "follower_resubscribe"
 
   # API (Hotwire Native mobile apps)
   namespace :api do
@@ -491,6 +498,10 @@ Rails.application.routes.draw do
     get    "/documents/:id",                to: "documents#show",           as: "document"
 
     # Contracts held by this person (as a contractor's backing Person).
+    # My Followers: the lists organizations share with you (Mailing lists, V1.1).
+    get    "/followers",                    to: "followers#index",          as: "followers"
+    post   "/followers",                    to: "followers#create"
+    post   "/followers/export",             to: "followers#export",         as: "followers_export"
     get    "/contracts",                    to: "contracts#index",          as: "contracts"
     # Case 2: the contractor self-reports their own ticket sales.
     get    "/contracts/:id/report-sales",   to: "contracts#report_sales",   as: "report_contract_sales"
@@ -1701,6 +1712,40 @@ Rails.application.routes.draw do
     end
 
     # Contractors - manage contractor records
+    # Mailing lists (Pro, V1.1; Tim 2026-10-23): followers in lists, segments,
+    # emails to them, and lists shared with producers (My Followers).
+    get    "/mailing-lists",                                  to: "mailing_lists#index",            as: "mailing_lists"
+    post   "/mailing-lists",                                  to: "mailing_lists#create"
+    get    "/mailing-lists/settings(/:section)",              to: "mailing_list_settings#show",     as: "mailing_list_settings"
+    patch  "/mailing-lists/settings/look",                    to: "mailing_list_settings#update_look", as: "mailing_list_settings_look"
+    patch  "/mailing-lists/settings/checkout",                to: "mailing_list_settings#update_checkout", as: "mailing_list_settings_checkout"
+    post   "/mailing-lists/add-person",                       to: "mailing_lists#add_person",       as: "mailing_lists_add_person"
+    get    "/mailing-lists/segments/new",                     to: "segments#new",                   as: "new_segment"
+    get    "/mailing-lists/segments/count",                   to: "segments#count",                 as: "segments_count"
+    post   "/mailing-lists/segments",                         to: "segments#create",                as: "segments"
+    get    "/mailing-lists/segments/:id",                     to: "segments#show",                  as: "segment"
+    patch  "/mailing-lists/segments/:id",                     to: "segments#update"
+    delete "/mailing-lists/segments/:id",                     to: "segments#destroy"
+    get    "/mailing-lists/emails/new",                       to: "follower_emails#new",            as: "new_follower_email"
+    get    "/mailing-lists/emails/:id",                       to: "follower_emails#show",           as: "follower_email"
+    get    "/mailing-lists/emails/:id/edit",                  to: "follower_emails#edit",           as: "edit_follower_email"
+    patch  "/mailing-lists/emails/:id",                       to: "follower_emails#update"
+    delete "/mailing-lists/emails/:id",                       to: "follower_emails#destroy"
+    get    "/mailing-lists/emails/:id/preview",               to: "follower_emails#preview",        as: "follower_email_preview"
+    post   "/mailing-lists/emails/:id/test",                  to: "follower_emails#test",           as: "follower_email_test"
+    post   "/mailing-lists/emails/:id/deliver",               to: "follower_emails#deliver",        as: "follower_email_deliver"
+    get    "/mailing-lists/:id",                              to: "mailing_lists#show",             as: "mailing_list"
+    patch  "/mailing-lists/:id",                              to: "mailing_lists#update"
+    patch  "/mailing-lists/:id/productions",                  to: "mailing_lists#update_productions", as: "mailing_list_productions"
+    post   "/mailing-lists/:id/archive",                      to: "mailing_lists#archive",          as: "archive_mailing_list"
+    post   "/mailing-lists/:id/unarchive",                    to: "mailing_lists#unarchive",        as: "unarchive_mailing_list"
+    post   "/mailing-lists/:id/export",                       to: "mailing_lists#export",           as: "export_mailing_list"
+    post   "/mailing-lists/:id/followers/check",              to: "list_followers#check",           as: "check_mailing_list_followers"
+    post   "/mailing-lists/:id/followers",                    to: "list_followers#create",          as: "mailing_list_followers"
+    delete "/mailing-lists/:id/followers/:follower_id",       to: "list_followers#destroy",         as: "mailing_list_follower"
+    post   "/mailing-lists/:id/shares",                       to: "mailing_list_shares#create",     as: "mailing_list_shares"
+    delete "/mailing-lists/:id/shares/:share_id",             to: "mailing_list_shares#destroy",    as: "mailing_list_share"
+
     resources :contractors, path: "money/contractors" do
       collection do
         get :search

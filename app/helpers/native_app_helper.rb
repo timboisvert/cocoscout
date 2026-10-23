@@ -70,7 +70,7 @@ module NativeAppHelper
     user = native_user
     return [] unless user
 
-    items = talent_nav_sections.flat_map { |section| section[:items] }.map { |item| native_menu_item(item) }
+    items = talent_nav_sections.flat_map { |section| section[:items] }.reject { |item| item[:web_only] }.map { |item| native_menu_item(item) }
     items.reject! { |item| item[:id] == "door" }
     paths = [ profile_path, (groups_path if native_in_a_group?(user)), account_path ].compact
     # Only the My pages (Tim's rule): no Tap to Pay, ticketing or door tile.
@@ -119,7 +119,7 @@ module NativeAppHelper
     {
       mode: production ? "production" : "my",
       sections: panel_nav_sections(context).map do |section|
-        { label: section[:label], items: section[:items].map { |item| native_nav_item(item) } }
+        { label: section[:label], items: section[:items].reject { |item| item[:web_only] }.map { |item| native_nav_item(item) } }
       end,
       icons: {
         messages: { path: icons[:messages][:path], count: icons[:messages][:count] },
@@ -153,7 +153,7 @@ module NativeAppHelper
   # /my/account's list: everything in My but Home, then the profile and
   # account pages.
   def native_more_items
-    items = talent_nav_sections.flat_map { |section| section[:items] }.reject { |item| item[:path] == my_dashboard_path }
+    items = talent_nav_sections.flat_map { |section| section[:items] }.reject { |item| item[:path] == my_dashboard_path || item[:web_only] }
     items + [
       { label: "My Profile", path: profile_path, icon: "profiles" },
       ({ label: "My Groups", path: groups_path, icon: "people" } if native_in_a_group?(Current.user)),
@@ -205,7 +205,7 @@ module NativeAppHelper
   NATIVE_NAV_SYMBOLS = {
     "home" => "house", "shows" => "calendar", "casting" => "theatermasks", "signups" => "list.bullet.clipboard",
     "courses" => "book", "documents" => "doc.text", "contacts" => "person.2", "productions" => "building.2",
-    "ticketing" => "ticket", "staffing" => "clock", "money" => "dollarsign.circle", "reports" => "chart.bar"
+    "ticketing" => "ticket", "mailing_lists" => "envelope.open", "staffing" => "clock", "money" => "dollarsign.circle", "reports" => "chart.bar"
   }.freeze
 
   def native_nav_item(item)

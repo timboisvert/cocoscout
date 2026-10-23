@@ -4,13 +4,32 @@
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
+  <%# Mailing lists (Pro, managers only): put this person on a list. %>
+  <% can_follow = Current.organization.on_paid_plan? && Current.organization.manageable_by?(Current.user) && @person.email.present? %>
+  <% follow_lists = can_follow ? [ MailingList.main_for!(Current.organization) ] | Current.organization.mailing_lists.active.main_first.to_a : [] %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Contacts", manage_contacts_path]
     ],
     text: @person.name,
-    links: []
+    links: (follow_lists.any? ? [ { text: "Add to a mailing list", path: "#", color: "white", global_manager_required: true,
+                                   data: { controller: "modal", action: "click->modal#open", modal_id: "add-to-list-modal" } } ] : [])
   } %>
+  <% if follow_lists.any? %>
+    <%= render "manage/mailing_lists/modal", id: "add-to-list-modal", title: "Add #{@person.name} to a mailing list",
+          body: capture {
+            form_with(url: manage_mailing_lists_add_person_path, method: :post, id: "add-to-list-form", data: { turbo: false }) do
+              concat hidden_field_tag(:person_id, @person.id, id: nil)
+              concat tag.label("List", for: "add_to_list", class: "block text-sm font-medium text-gray-700 mb-1.5")
+              concat select_tag(:mailing_list_id, options_for_select(follow_lists.map { |l| [ l.name, l.id ] }), id: "add_to_list", class: follower_input_class)
+              concat tag.p("They get your emails to that list, with an unsubscribe link in each. Add only someone who asked to hear from you.", class: "text-xs text-gray-500 mt-2")
+            end
+          },
+          footer: capture {
+            concat render("shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+            concat render("shared/button", text: "Add", variant: "primary", size: "medium", type: :submit, form_id: "add-to-list-form")
+          } %>
+  <% end %>
 
   <%# Hero Section %>
   <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4">

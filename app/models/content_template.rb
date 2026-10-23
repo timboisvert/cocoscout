@@ -41,6 +41,7 @@ class ContentTemplate < ApplicationRecord
     courses
     messages
     ticketing
+    mailing_lists
   ].freeze
 
   # Template types - describes how the template is used in the app

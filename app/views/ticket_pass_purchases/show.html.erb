@@ -45,7 +45,8 @@
       </div>
 
       <%= render "shared/checkout/buyer_details", name: @holdings.first.holder_name, email: @holdings.first.holder_email, phone: nil, required: true,
-            email_note: "We'll email your pass to this address." %>
+            email_note: "We'll email your pass to this address.",
+            follow_boxes: FollowCheckout.boxes_for(@purchase.organization), follow_ticked: FollowCheckout.ticked_by_default?(@purchase.organization) %>
       <%= render "shared/checkout/payment" unless free %>
       <p data-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
       <%= render "shared/button", text: (free ? "Get my pass" : "Pay #{number_to_currency(total / 100.0)}"), variant: "primary", size: "jumbo", type: :submit,

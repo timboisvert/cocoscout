@@ -20,7 +20,7 @@ class TicketCheckout
   # online sales close and with any ticket type still on the show. via: the
   # short link code the buyer arrived through (the cs_via cookie), remembered
   # on the order so the Links page can say what each link sold.
-  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false, via: nil)
+  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false, via: nil, campaign: nil)
     if at_door
       raise Error, "This show was canceled." if listing.status == "canceled" || listing.show.canceled
     else
@@ -55,7 +55,7 @@ class TicketCheckout
                                     channel: channel, money_path: "cocoscout", fee_mode: listing.effective_fee_mode,
                                     expires_at: expires_at, ticket_discount_code: discount,
                                     client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
-                                    short_link: short_link, utm: short_link ? { "via" => short_link.code } : {})
+                                    short_link: short_link, utm: utm_for(short_link, campaign))
         requests.each { |tier, count| count.times { add_purchase(order, tier, discount) } }
         # Products added on the old hold come along to the new one.
         set_items!(order, held_item_quantities(held), reprice: false) if held
@@ -71,7 +71,7 @@ class TicketCheckout
   # held together for ten minutes in one checkout (one order per show, one
   # payment), every ticket carrying its show's share of the pass price. A
   # show without the seats stops the whole pass; nothing is held.
-  def self.start_pass!(pass:, quantity:, client_ip: nil, referrer: nil, via: nil)
+  def self.start_pass!(pass:, quantity:, client_ip: nil, referrer: nil, via: nil, campaign: nil)
     rows = pass.rows
     raise Error, "This pass isn't on sale right now." unless pass.selling?(Time.current, rows)
 
@@ -97,7 +97,7 @@ class TicketCheckout
                                       refund_policy: RefundPolicy.for(row.ticket_listing).to_snapshot,
                                       status: "pending", channel: "online", money_path: "cocoscout", fee_mode: fee_mode,
                                       expires_at: expires_at, client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
-                                      short_link: short_link, utm: short_link ? { "via" => short_link.code } : {})
+                                      short_link: short_link, utm: utm_for(short_link, campaign))
           # The regular price, less the pass's saving; a share above the
           # regular price is simply the price.
           price = [ row.ticket_tier.price_cents, shares[index] ].max
@@ -223,6 +223,15 @@ class TicketCheckout
     taken = Ticket.joins(:ticket_order).where(ticket_orders: { ticket_purchase_id: purchases }, ticket_offer_id: offer.id)
                   .where(status: Ticket::SOLD_STATUSES + %w[reserved]).count
     offer.limit_for(bought) - taken
+  end
+
+  # Where the buyer came from: a short link's code, and the email to
+  # followers whose link they followed ("campaign" => "fe-<id>",
+  # FollowerEmailSales).
+  def self.utm_for(short_link, campaign)
+    utm = short_link ? { "via" => short_link.code } : {}
+    utm["campaign"] = campaign if campaign.to_s.match?(/\Afe-\d+\z/)
+    utm
   end
 
   # A buyer taking a deal after they've paid: a new checkout for the other

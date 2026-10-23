@@ -36,6 +36,27 @@ side can go out before the V1.1 apps and V1 phones won't notice.
       modes, and every automated notice is a Notification (vacancy and
       questionnaire invitations, the Tap to Pay launch moved last).
 
+## 2b. Mailing lists (yours: Mailgun, DNS and 1Password)
+
+Sending to followers stays off in production until these are done: the send
+button says "Sending to followers isn't switched on yet."
+
+- [ ] Mailgun: move off the free tier (3,000 a month for all of CocoScout).
+      Pro includes 10,000 follower emails a month per organization.
+- [ ] Mailgun: add the sending domain `news.cocoscout.com`, and its SPF, DKIM
+      and MX records in Route 53 (the zone for cocoscout.com).
+- [ ] Mailgun → that domain → Webhooks: point Delivered, Permanent failure,
+      Spam complaints and Unsubscribes at `https://www.cocoscout.com/webhooks/mailgun`.
+- [ ] 1Password (CocoScoutProductionPasswords): add `MAILGUN_WEBHOOK_SIGNING_KEY`
+      (Mailgun → Sending → Webhooks → signing key).
+- [ ] `.kamal/secrets`: add `MAILGUN_WEBHOOK_SIGNING_KEY` to the fetch list and
+      an extract line; `config/deploy.yml`: add it under `env.secret`, and
+      `FOLLOWERS_MAIL_DOMAIN: news.cocoscout.com` under `env.clear`. Only after
+      the 1Password item exists, or the deploy fails.
+- [ ] Decide the price per 1,000 emails past the allowance
+      (`FollowerEmailAllowance::OVERAGE_CENTS_PER_THOUSAND`). Until it's set,
+      nothing extra is charged.
+
 ## 3. The apps (yours: Apple and Google only take builds from you)
 
 - [ ] iOS: archive and upload the V1.1 build from `ios/` (the project at

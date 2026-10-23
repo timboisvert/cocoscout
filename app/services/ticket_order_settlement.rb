@@ -56,6 +56,8 @@ class TicketOrderSettlement
       TicketSalesSync.sync!(order.ticket_listing.show)
       TicketOrderConfirmationJob.perform_later(order.id) if confirm && order.buyer_email.present?
       TicketingAfterSaleJob.perform_later(order.id)
+      # Mailing lists (V1.1): what they bought, and the lists they ticked.
+      FollowTicketBuyerJob.perform_later(order.id) if order.buyer_email.present?
     end
     return refund_wrong_amount!(order, payment_intent_id, amount_cents) if wrong_amount
 

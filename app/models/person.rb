@@ -8,6 +8,7 @@ class Person < ApplicationRecord
   invalidates_cache :person_card, :person_profile
 
   has_many :socials, as: :sociable, dependent: :destroy
+  has_many :mailing_list_shares, dependent: :destroy
   has_many :staff_time_entries, dependent: :destroy
 
   accepts_nested_attributes_for :socials, allow_destroy: true

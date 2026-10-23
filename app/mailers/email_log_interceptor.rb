@@ -10,6 +10,10 @@ class EmailLogInterceptor
   end
 
   def self.delivering_email(message)
+    # Emails to followers keep their own record (FollowerEmailDelivery); a
+    # send to thousands mustn't store thousands of bodies here.
+    return if header_value(message, "X-CocoScout-Stream") == "followers"
+
     # Extract user from message headers (intended to be the recipient user)
     user_id = header_value(message, "X-User-ID")
     email_batch_id = header_value(message, "X-Email-Batch-ID")

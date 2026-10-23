@@ -1,0 +1,13 @@
+<% content_for :title, @segment.name %>
+<div class="w-full pb-10">
+  <%= render "shared/notice", notice: notice, alert: alert %>
+  <%= render "shared/top_menu", breadcrumbs: [ [ "Mailing lists", manage_mailing_lists_path ] ], text: @segment.name,
+        links: [
+          { text: "Write an email to them", path: manage_new_follower_email_path(segment_id: @segment.id) },
+          { text: "Delete", path: "#", color: "white", data: { controller: "modal", action: "click->modal#open", modal_id: "delete-segment" } }
+        ] %>
+  <p class="text-sm text-gray-600 mb-5 max-w-2xl">A segment picks followers by what they did. It keeps itself current: someone who buys tomorrow joins or leaves it by themselves.</p>
+  <%= render "manage/segments/form", segment: @segment, form_url: manage_segment_path(@segment), form_method: :patch, targets: @targets, lists: @lists %>
+</div>
+<%= render "shared/confirm_modal", id: "delete-segment", title: "Delete #{@segment.name}?",
+      message: "Only the segment goes. Nobody on your lists is touched.", confirm_text: "Delete", url: manage_segment_path(@segment), method: :delete %>

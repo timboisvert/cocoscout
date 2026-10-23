@@ -31,7 +31,8 @@ class TicketPassesController < TicketsController
     end
 
     order = TicketCheckout.start_pass!(pass: pass, quantity: params[:quantity], client_ip: request.remote_ip,
-                                       referrer: request.referer, via: cookies[ShortLinksController::COOKIE])
+                                       referrer: request.referer, via: cookies[ShortLinksController::COOKIE],
+                                       campaign: cookies[TicketsController::CAMPAIGN_COOKIE])
     redirect_to tickets_checkout_path(token: order.token, **embed_params)
   rescue TicketCheckout::Error, TicketPassCredits::Error => e
     redirect_to tickets_pass_path(org: params[:org], pass: params[:pass], **embed_params), alert: e.message

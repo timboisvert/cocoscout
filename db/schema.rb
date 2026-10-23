@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_100200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -987,6 +987,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.index ["user_id"], name: "index_email_logs_on_user_id"
   end
 
+  create_table "email_suppressions", force: :cascade do |t|
+    t.string "email", null: false
+    t.string "reason", null: false
+    t.string "source"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_email_suppressions_on_email", unique: true
+  end
+
   create_table "event_linkages", force: :cascade do |t|
     t.string "name"
     t.bigint "production_id", null: false
@@ -1038,6 +1047,81 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.index ["active"], name: "index_feature_credits_on_active"
     t.index ["code"], name: "index_feature_credits_on_code", unique: true
     t.index ["feature_type"], name: "index_feature_credits_on_feature_type"
+  end
+
+  create_table "follower_email_deliveries", force: :cascade do |t|
+    t.bigint "follower_email_id", null: false
+    t.bigint "follower_id", null: false
+    t.string "email", null: false
+    t.string "status", default: "queued", null: false
+    t.string "mailgun_message_id"
+    t.datetime "sent_at"
+    t.datetime "delivered_at"
+    t.datetime "failed_at"
+    t.text "error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["follower_email_id", "follower_id"], name: "index_follower_email_deliveries_unique", unique: true
+    t.index ["follower_email_id"], name: "index_follower_email_deliveries_on_follower_email_id"
+    t.index ["follower_id"], name: "index_follower_email_deliveries_on_follower_id"
+    t.index ["mailgun_message_id"], name: "index_follower_email_deliveries_on_mailgun_message_id"
+    t.index ["sent_at"], name: "index_follower_email_deliveries_on_sent_at"
+  end
+
+  create_table "follower_emails", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "subject"
+    t.string "preheader"
+    t.string "status", default: "draft", null: false
+    t.jsonb "targets", default: {}, null: false
+    t.jsonb "show_ids", default: [], null: false
+    t.bigint "created_by_id"
+    t.bigint "sent_by_id"
+    t.datetime "sent_at"
+    t.integer "recipient_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_follower_emails_on_created_by_id"
+    t.index ["organization_id"], name: "index_follower_emails_on_organization_id"
+    t.index ["sent_by_id"], name: "index_follower_emails_on_sent_by_id"
+  end
+
+  create_table "follower_sources", force: :cascade do |t|
+    t.bigint "follower_id", null: false
+    t.string "kind", null: false
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.bigint "ticket_order_id"
+    t.bigint "mailing_list_id"
+    t.bigint "added_by_person_id"
+    t.datetime "occurred_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["added_by_person_id"], name: "index_follower_sources_on_added_by_person_id"
+    t.index ["follower_id", "ticket_order_id"], name: "index_follower_sources_one_per_order", unique: true, where: "(ticket_order_id IS NOT NULL)"
+    t.index ["follower_id"], name: "index_follower_sources_on_follower_id"
+    t.index ["mailing_list_id"], name: "index_follower_sources_on_mailing_list_id"
+    t.index ["production_id"], name: "index_follower_sources_on_production_id"
+    t.index ["show_id"], name: "index_follower_sources_on_show_id"
+    t.index ["ticket_order_id"], name: "index_follower_sources_on_ticket_order_id"
+  end
+
+  create_table "followers", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "email", null: false
+    t.string "name"
+    t.bigint "person_id"
+    t.string "status", default: "subscribed", null: false
+    t.datetime "consented_at"
+    t.datetime "unsubscribed_at"
+    t.string "unsubscribe_token", null: false
+    t.datetime "last_emailed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "email"], name: "index_followers_on_organization_id_and_email", unique: true
+    t.index ["organization_id"], name: "index_followers_on_organization_id"
+    t.index ["person_id"], name: "index_followers_on_person_id"
+    t.index ["unsubscribe_token"], name: "index_followers_on_unsubscribe_token", unique: true
   end
 
   create_table "group_invitations", force: :cascade do |t|
@@ -1229,6 +1313,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.bigint "organization_id"
     t.boolean "default", default: false, null: false
     t.index ["organization_id"], name: "index_locations_on_organization_id"
+  end
+
+  create_table "mailing_list_memberships", force: :cascade do |t|
+    t.bigint "mailing_list_id", null: false
+    t.bigint "follower_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["follower_id"], name: "index_mailing_list_memberships_on_follower_id"
+    t.index ["mailing_list_id", "follower_id"], name: "index_mailing_list_memberships_unique", unique: true
+    t.index ["mailing_list_id"], name: "index_mailing_list_memberships_on_mailing_list_id"
+  end
+
+  create_table "mailing_list_productions", force: :cascade do |t|
+    t.bigint "mailing_list_id", null: false
+    t.bigint "production_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["mailing_list_id", "production_id"], name: "index_mailing_list_productions_unique", unique: true
+    t.index ["mailing_list_id"], name: "index_mailing_list_productions_on_mailing_list_id"
+    t.index ["production_id"], name: "index_mailing_list_productions_on_production_id"
+  end
+
+  create_table "mailing_list_shares", force: :cascade do |t|
+    t.bigint "mailing_list_id", null: false
+    t.bigint "person_id", null: false
+    t.bigint "granted_by_id"
+    t.datetime "granted_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["granted_by_id"], name: "index_mailing_list_shares_on_granted_by_id"
+    t.index ["mailing_list_id", "person_id"], name: "index_mailing_list_shares_on_mailing_list_id_and_person_id", unique: true
+    t.index ["mailing_list_id"], name: "index_mailing_list_shares_on_mailing_list_id"
+    t.index ["person_id"], name: "index_mailing_list_shares_on_person_id"
+  end
+
+  create_table "mailing_lists", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "name", null: false
+    t.string "kind", default: "group", null: false
+    t.string "checkout_words"
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_mailing_lists_on_organization_id"
+    t.index ["organization_id"], name: "index_mailing_lists_one_main_per_org", unique: true, where: "((kind)::text = 'main'::text)"
   end
 
   create_table "message_poll_options", force: :cascade do |t|
@@ -1733,6 +1862,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.date "sales_tax_set_aside_since", default: -> { "CURRENT_DATE" }
     t.string "stripe_terminal_location_id"
     t.boolean "staff_see_ticket_counts", default: true, null: false
+    t.string "email_accent_color"
+    t.string "email_footer_line"
+    t.string "email_website_url"
+    t.string "email_instagram"
+    t.string "email_mailing_address"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
@@ -2530,6 +2664,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.index ["organization_id"], name: "index_scheduling_rules_on_organization_id"
     t.index ["person_id"], name: "index_scheduling_rules_on_person_id"
     t.index ["production_id"], name: "index_scheduling_rules_on_production_id"
+  end
+
+  create_table "segments", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "name", null: false
+    t.jsonb "rule", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_segments_on_organization_id"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -3653,6 +3796,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.bigint "short_link_id"
     t.bigint "ticket_purchase_id"
     t.jsonb "refund_policy"
+    t.jsonb "follow_list_ids", default: [], null: false
     t.index ["buyer_email"], name: "index_ticket_orders_on_buyer_email"
     t.index ["code"], name: "index_ticket_orders_on_code", unique: true
     t.index ["exchanged_from_id"], name: "index_ticket_orders_on_exchanged_from_id"
@@ -3801,6 +3945,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "earned_by_purchase_id"
+    t.jsonb "follow_list_ids", default: [], null: false
     t.index ["earned_by_purchase_id"], name: "index_ticket_purchases_on_earned_by_purchase_id"
     t.index ["expires_at"], name: "index_ticket_purchases_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["organization_id"], name: "index_ticket_purchases_on_organization_id"
@@ -3832,6 +3977,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.jsonb "repriced", default: [], null: false
     t.boolean "outside_policy", default: false, null: false
     t.string "policy_words"
+    t.text "buyer_message"
     t.index ["organization_id"], name: "index_ticket_refunds_on_organization_id"
     t.index ["refunded_by_id"], name: "index_ticket_refunds_on_refunded_by_id"
     t.index ["ticket_order_id"], name: "index_ticket_refunds_on_ticket_order_id"
@@ -3985,6 +4131,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
     t.boolean "tap_to_pay", default: false, null: false
     t.boolean "tap_to_pay_offered", default: false, null: false
     t.jsonb "notification_plans", default: {}, null: false
+    t.boolean "follow_at_checkout", default: true, null: false
+    t.boolean "follow_boxes_ticked", default: true, null: false
+    t.string "follow_main_words"
     t.index ["organization_id"], name: "index_ticketing_profiles_on_organization_id", unique: true
     t.index ["previous_slugs"], name: "index_ticketing_profiles_on_previous_slugs", using: :gin
     t.index ["slug"], name: "index_ticketing_profiles_on_slug", unique: true
@@ -4255,6 +4404,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
   add_foreign_key "expense_items", "show_financials", column: "show_financials_id"
   add_foreign_key "feature_credit_redemptions", "feature_credits"
   add_foreign_key "feature_credit_redemptions", "organizations"
+  add_foreign_key "follower_email_deliveries", "follower_emails"
+  add_foreign_key "follower_email_deliveries", "followers"
+  add_foreign_key "follower_emails", "organizations"
+  add_foreign_key "follower_emails", "users", column: "created_by_id"
+  add_foreign_key "follower_emails", "users", column: "sent_by_id"
+  add_foreign_key "follower_sources", "followers"
+  add_foreign_key "follower_sources", "mailing_lists"
+  add_foreign_key "follower_sources", "people", column: "added_by_person_id"
+  add_foreign_key "follower_sources", "productions"
+  add_foreign_key "follower_sources", "shows"
+  add_foreign_key "follower_sources", "ticket_orders"
+  add_foreign_key "followers", "organizations"
+  add_foreign_key "followers", "people"
   add_foreign_key "group_invitations", "groups"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "people"
@@ -4271,6 +4433,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
   add_foreign_key "ledger_accounts", "organizations"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
+  add_foreign_key "mailing_list_memberships", "followers"
+  add_foreign_key "mailing_list_memberships", "mailing_lists"
+  add_foreign_key "mailing_list_productions", "mailing_lists"
+  add_foreign_key "mailing_list_productions", "productions"
+  add_foreign_key "mailing_list_shares", "mailing_lists"
+  add_foreign_key "mailing_list_shares", "people"
+  add_foreign_key "mailing_list_shares", "users", column: "granted_by_id"
+  add_foreign_key "mailing_lists", "organizations"
   add_foreign_key "message_poll_options", "message_polls"
   add_foreign_key "message_poll_votes", "message_poll_options"
   add_foreign_key "message_poll_votes", "users"
@@ -4379,6 +4549,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
   add_foreign_key "scheduling_rules", "organizations"
   add_foreign_key "scheduling_rules", "people"
   add_foreign_key "scheduling_rules", "productions"
+  add_foreign_key "segments", "organizations"
   add_foreign_key "sessions", "users"
   add_foreign_key "shift_additional_roles", "house_roles"
   add_foreign_key "shift_additional_roles", "shifts"

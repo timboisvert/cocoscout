@@ -1,0 +1,7 @@
+<% content_for :title, "New segment" %>
+<div class="w-full pb-10">
+  <%= render "shared/notice", notice: notice, alert: alert %>
+  <%= render "shared/top_menu", breadcrumbs: [ [ "Mailing lists", manage_mailing_lists_path ] ], text: "New segment" %>
+  <p class="text-sm text-gray-600 mb-5 max-w-2xl">A segment picks followers by what they did. It keeps itself current: someone who buys tomorrow joins or leaves it by themselves.</p>
+  <%= render "manage/segments/form", segment: @segment, form_url: manage_segments_path, form_method: :post, targets: @targets, lists: @lists %>
+</div>

@@ -1,0 +1,36 @@
+<% content_for :title, "Emails from #{@organization.name}" %>
+<%
+  back = params[:back].present? && @follower.subscribed?
+  key = back ? "follower_resubscribed_page" : "follower_unsubscribed_page"
+  words = FollowerTemplates.render(key, organization_name: @organization.name)
+  other_lists = @follower.mailing_lists.reject(&:main?)
+%>
+<div class="mx-auto max-w-md px-5 py-12 flex flex-col items-center gap-4 text-center">
+  <% if @organization.logo.attached? && @organization.logo.variable? %>
+    <%= image_tag @organization.logo.variant(resize_to_limit: [ 192, 192 ]), alt: @organization.name, class: "w-16 h-16 rounded-lg object-cover" %>
+  <% else %>
+    <div class="w-16 h-16 rounded-lg flex items-center justify-center text-white font-extrabold text-lg" style="background-color: <%= @organization.email_accent %>"><%= @organization.initials %></div>
+  <% end %>
+
+  <% if @follower.subscribed? && !back %>
+    <%# Still on the list: this form posts on load. %>
+    <h1 class="text-3xl coustard-regular text-gray-900">Unsubscribe from <%= @organization.name %>?</h1>
+    <%= form_with url: follower_unsubscribe_path(token: @follower.unsubscribe_token), method: :post, data: { controller: "submit-on-load", turbo: false }, class: "w-full" do %>
+      <%= render "shared/button", text: "Unsubscribe", variant: "primary", size: "medium", type: :submit, classes: "w-full" %>
+    <% end %>
+  <% else %>
+    <h1 class="text-3xl coustard-regular text-gray-900"><%= words[:subject] %></h1>
+    <div class="text-gray-600 text-[15px]"><%= raw words[:body] %></div>
+    <% if !back && other_lists.any? %>
+      <div class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left text-sm text-gray-600">
+        That covers every <%= @organization.name %> list you were on, including <strong class="text-gray-900"><%= other_lists.map(&:name).to_sentence %></strong>.
+      </div>
+    <% end %>
+    <% if !@follower.subscribed? && !EmailSuppression.suppressed?(@follower.email) %>
+      <%= form_with url: follower_resubscribe_path(token: @follower.unsubscribe_token), method: :post, data: { turbo: false }, class: "w-full" do %>
+        <%= render "shared/button", text: "Resubscribe", variant: "secondary", size: "medium", type: :submit, classes: "w-full" %>
+      <% end %>
+    <% end %>
+  <% end %>
+  <p class="text-xs text-gray-500"><%= @follower.email %></p>
+</div>

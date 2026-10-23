@@ -67,6 +67,11 @@ class Organization < ApplicationRecord
   has_many :ticket_refunds, dependent: :delete_all
   has_many :ticket_orders, dependent: :destroy
   has_many :ticket_listings, dependent: :destroy
+  # Mailing lists (V1.1): followers, their lists and segments, and emails to them.
+  has_many :follower_emails, dependent: :destroy
+  has_many :segments, dependent: :destroy
+  has_many :mailing_lists, dependent: :destroy
+  has_many :followers, dependent: :destroy
   has_many :balance_withdrawals, dependent: :delete_all
   has_many :balance_top_ups, dependent: :delete_all
   has_many :ticket_discount_codes, dependent: :destroy
@@ -108,7 +113,7 @@ class Organization < ApplicationRecord
   # Modules that require the Pro tier. Everything else (Shows,
   # Casting, Auditions, Availability, basic Sign-ups, Messages, Contacts,
   # Documents, and Courses) is included on the Producer plan.
-  PAID_FEATURES = %i[money contracts staffing casting_table reports agreements ticketing services].freeze
+  PAID_FEATURES = %i[money contracts staffing casting_table reports agreements ticketing services mailing_lists].freeze
 
   # Producer plan may schedule at most this many (non-canceled) shows/events per
   # calendar month, counting every event type including rehearsals.
@@ -302,6 +307,21 @@ class Organization < ApplicationRecord
     return false unless feature_available?(:services)
 
     user&.superadmin? || manageable_by?(user)
+  end
+
+  # ---- Mailing lists: the email look ---------------------------------------
+
+  EMAIL_ACCENTS = { "pink" => "#ec4899", "garnet" => "#7f1d1d", "navy" => "#1e3a8a", "black" => "#111827", "green" => "#047857" }.freeze
+
+  # Buttons and the line under the logo in emails to followers.
+  def email_accent
+    email_accent_color.presence_in(EMAIL_ACCENTS.values) || EMAIL_ACCENTS["pink"]
+  end
+
+  # The postal address every marketing email carries (CAN-SPAM): the one
+  # set for emails, else the one on invoices.
+  def email_postal_address
+    email_mailing_address.presence || invoice_details_with_defaults["address"].to_s.split(/\r?\n/).map(&:strip).compact_blank.join(", ").presence
   end
 
   # ---- Subscription / entitlements ------------------------------------------

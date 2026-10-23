@@ -1,0 +1,76 @@
+<% content_for :title, @email.subject %>
+<%
+  delivered = @counts["delivered"].to_i
+  sent_out = @counts.except("queued", "skipped", "failed").values.sum
+  bounced = @counts["bounced"].to_i
+  complained = @counts["complained"].to_i
+  waiting = @counts["sent"].to_i
+  tile = ->(value, label, tone) {
+    tones = { green: "bg-green-50 border-green-200 text-green-700", pink: "bg-pink-50 border-pink-200 text-pink-700",
+              amber: "bg-amber-50 border-amber-200 text-amber-700", plain: "bg-white border-gray-200 text-gray-900" }
+    klass = tones.fetch(value.to_s.delete("$,").to_f.positive? ? tone : :plain)
+    tag.div(class: "rounded-lg border px-4 py-3 #{klass}") { concat tag.div(value, class: "text-2xl font-bold tabular-nums"); concat tag.div(label, class: "text-xs text-gray-600") }
+  }
+%>
+
+<div class="w-full pb-10">
+  <%= render "shared/notice", notice: notice, alert: alert %>
+  <%= render "shared/top_menu", breadcrumbs: [ [ "Mailing lists", manage_mailing_lists_path ] ], text: @email.subject %>
+  <p class="text-sm text-gray-600 -mt-1 mb-5">
+    <%= @email.status == "sending" ? "Sending since" : "Sent" %> <%= @email.sent_at&.strftime("%b %-d at %-l:%M %p") %>
+    <% if @email.sent_by %>by <%= @email.sent_by.person&.name || @email.sent_by.email_address %><% end %>,
+    to <%= (@email.lists.map { |l| "#{l.name} list" } + @email.segments.map(&:name)).to_sentence %>
+  </p>
+
+  <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-5" data-sent-tiles>
+    <%= tile.call(number_with_delimiter(delivered), "Delivered", :green) %>
+    <%= tile.call(number_with_delimiter(@sales[:tickets]), "Tickets sold from it", :pink) %>
+    <%= tile.call(follower_money(@sales[:cents]), "In ticket sales", :pink) %>
+    <%= tile.call(number_with_delimiter(@unsubscribed), "Unsubscribed", :amber) %>
+    <%= tile.call(number_with_delimiter(bounced + complained), "Bounced or marked as spam", :amber) %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+    <section class="lg:col-span-3 bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <%= render "shared/section_heading", title: "Sales from this email", intro: "Tickets bought after someone followed one of its links" %>
+      <% if @sales_rows.any? %>
+        <div class="divide-y divide-gray-100">
+          <% @sales_rows.each do |row| %>
+            <div class="flex items-center gap-3 px-6 py-3 text-sm">
+              <span class="min-w-0 flex-1"><span class="block font-semibold text-gray-900 truncate"><%= row[:show].secondary_name.presence || row[:show].production.name %></span><span class="block text-xs text-gray-500"><%= row[:show].date_and_time.strftime("%a, %b %-d · %-l:%M %p") %></span></span>
+              <span class="w-20 text-right tabular-nums"><%= pluralize(row[:tickets], "ticket") %></span>
+              <span class="w-20 text-right tabular-nums"><%= follower_money(row[:cents]) %></span>
+            </div>
+          <% end %>
+          <div class="flex items-center gap-3 px-6 py-3 text-sm bg-gray-50 font-semibold">
+            <span class="flex-1">All</span>
+            <span class="w-20 text-right tabular-nums"><%= pluralize(@sales[:tickets], "ticket") %></span>
+            <span class="w-20 text-right tabular-nums"><%= follower_money(@sales[:cents]) %></span>
+          </div>
+        </div>
+      <% else %>
+        <div class="p-4"><%= render "shared/empty_state", icon: "ticket", compact: true, title: "No tickets from it yet",
+              body: "A sale counts here when someone buys after following one of its Buy tickets links." %></div>
+      <% end %>
+    </section>
+
+    <aside class="lg:col-span-2 space-y-4">
+      <section class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-3">Who it reached</h3>
+        <dl class="text-sm divide-y divide-gray-100">
+          <div class="flex py-2"><dt class="flex-1 text-gray-600">Sent</dt><dd class="tabular-nums"><%= number_with_delimiter(sent_out) %></dd></div>
+          <div class="flex py-2"><dt class="flex-1 text-gray-600">Delivered</dt><dd class="tabular-nums"><%= number_with_delimiter(delivered) %></dd></div>
+          <div class="flex py-2"><dt class="flex-1 text-gray-600">Bounced</dt><dd class="tabular-nums"><%= number_with_delimiter(bounced) %></dd></div>
+          <% if complained.positive? %><div class="flex py-2"><dt class="flex-1 text-gray-600">Marked as spam</dt><dd class="tabular-nums"><%= number_with_delimiter(complained) %></dd></div><% end %>
+          <% if waiting.positive? %><div class="flex py-2"><dt class="flex-1 text-gray-600">Still on its way</dt><dd class="tabular-nums"><%= number_with_delimiter(waiting) %></dd></div><% end %>
+          <% if @counts["skipped"].to_i.positive? %><div class="flex py-2"><dt class="flex-1 text-gray-600">Left out after they unsubscribed</dt><dd class="tabular-nums"><%= number_with_delimiter(@counts["skipped"]) %></dd></div><% end %>
+        </dl>
+        <p class="text-xs text-gray-500 mt-3">Addresses that bounce are never emailed again by anyone on CocoScout.</p>
+      </section>
+      <section class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-3">The email</h3>
+        <iframe src="<%= manage_follower_email_preview_path(@email) %>" title="The email" class="w-full h-96 bg-white rounded-lg border border-gray-200" loading="lazy"></iframe>
+      </section>
+    </aside>
+  </div>
+</div>
