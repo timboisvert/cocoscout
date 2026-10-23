@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3806,6 +3806,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_130000) do
     t.jsonb "repriced", default: [], null: false
     t.boolean "outside_policy", default: false, null: false
     t.string "policy_words"
+    t.text "buyer_message"
     t.index ["organization_id"], name: "index_ticket_refunds_on_organization_id"
     t.index ["refunded_by_id"], name: "index_ticket_refunds_on_refunded_by_id"
     t.index ["ticket_order_id"], name: "index_ticket_refunds_on_ticket_order_id"

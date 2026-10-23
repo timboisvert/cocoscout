@@ -132,10 +132,15 @@ RSpec.describe "Refund policy", type: :request do
         get manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id) }
         expect(response.body).to include("Fees they paid</dt><dd>Kept</dd>")
         expect(response.body).not_to include("Refund anyway")
+        expect(response.body).to include('name="buyer_message"', "Goes in the refund email to #{order.buyer_email}.")
 
-        post manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id), keep_fees: "1", reason: "Can't make it" }
+        post manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id), keep_fees: "1", reason: "Can't make it",
+                                                                  buyer_message: "Hope to see you soon." }
         refund = order.reload.ticket_refunds.sole
-        expect(refund).to have_attributes(outside_policy: false, keep_fees: true, policy_words: start_with("Refunds up to 24 hours before the show."))
+        expect(refund).to have_attributes(outside_policy: false, keep_fees: true, policy_words: start_with("Refunds up to 24 hours before the show."),
+                                          buyer_message: "Hope to see you soon.")
+        get manage_ticket_order_path(order.id)
+        expect(response.body).to include("Told the buyer:</span> Hope to see you soon.")
       end
     end
 

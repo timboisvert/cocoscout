@@ -114,10 +114,12 @@ class TicketOrderRefund
     [ order.tickets.where("price_cents > discount_cents").count, 1 ].max
   end
 
+  # buyer_message: the manager's words to the buyer, put in their refund
+  # email (reason is the manager's own note, never sent).
   # outside_policy: a manager's Refund anyway, or a show the organization
   # canceled (its cancellation refunds everyone, whatever the policy says).
   # Without it, a refund outside the policy is refused.
-  def self.issue!(order, ticket_ids: nil, item_ids: nil, keep_fees: false, by: nil, reason: nil, notify: true, outside_policy: false, reprice: true)
+  def self.issue!(order, ticket_ids: nil, item_ids: nil, keep_fees: false, by: nil, reason: nil, buyer_message: nil, notify: true, outside_policy: false, reprice: true)
     raise Error, "Only a paid order can be refunded." unless order.paid?
     raise Error, "These tickets used a pass's credits, which were paid for with the pass. Refund the pass instead." if order.channel.in?(%w[pass door_pass])
     check = policy_check(order)
@@ -128,7 +130,7 @@ class TicketOrderRefund
     quote = quote(order, ticket_ids: ticket_ids, item_ids: item_ids, keep_fees: keep_fees, reprice: reprice)
     raise Error, "Those tickets were already refunded." if quote.empty?
 
-    process!(order, quote, keep_fees: keep_fees, by: by, reason: reason, notify: notify,
+    process!(order, quote, keep_fees: keep_fees, by: by, reason: reason, buyer_message: buyer_message, notify: notify,
                            outside_policy: !check.within, policy_words: check.words)
   end
 
@@ -143,12 +145,12 @@ class TicketOrderRefund
     process!(order, quote, keep_fees: true, by: by, reason: reason, notify: false)
   end
 
-  def self.process!(order, quote, keep_fees:, by:, reason:, notify:, outside_policy: false, policy_words: nil)
+  def self.process!(order, quote, keep_fees:, by:, reason:, notify:, buyer_message: nil, outside_policy: false, policy_words: nil)
     listing = order.ticket_listing
     refund = nil
     OrgCashEntry.with_org_lock(order.organization) do
       refund = order.ticket_refunds.create!(
-        organization: order.organization, refunded_by: by, reason: reason, keep_fees: keep_fees,
+        organization: order.organization, refunded_by: by, reason: reason, buyer_message: buyer_message.presence, keep_fees: keep_fees,
         outside_policy: outside_policy, policy_words: policy_words,
         ticket_ids: quote.tickets.map(&:id), item_ids: quote.items.map(&:id), amount_cents: quote.amount_cents,
         face_cents: quote.face_cents, product_cents: quote.product_cents, tax_cents: quote.tax_cents, fees_cents: quote.fees_cents,

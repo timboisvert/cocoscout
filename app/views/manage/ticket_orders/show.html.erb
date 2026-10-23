@@ -301,6 +301,9 @@
               <div class="text-xs text-gray-500 mt-0.5">
                 <%= refund.status == "failed" ? "Didn't go through: #{refund.error}" : [ ("Outside the refund policy" if refund.outside_policy), refund.reason, refund.refunded_by&.person&.name ].compact_blank.join(" · ").presence || (@order.money_path == "none" ? "Canceled" : "Refunded") %>
               </div>
+              <% if refund.buyer_message.present? %>
+                <p class="text-xs text-gray-600 mt-1 whitespace-pre-line"><span class="font-medium">Told the buyer:</span> <%= refund.buyer_message %></p>
+              <% end %>
             </li>
           <% end %>
         </ul>

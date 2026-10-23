@@ -117,6 +117,23 @@ RSpec.describe TicketOrderRefund do
     expect(refund.policy_words).to start_with("Refunds up to 24 hours before the show.")
   end
 
+  it "puts the manager's message in the buyer's refund email, and keeps the reason to the team" do
+    TicketingTemplates.ensure!(keys: %w[ticket_order_refunded])
+    refund = described_class.issue!(sold(1), reason: "Asked by phone", buyer_message: "So sorry you're sick.\nCome back soon!")
+    expect(refund.buyer_message).to eq("So sorry you're sick.\nCome back soon!")
+
+    body = TicketOrderMailer.refunded(refund).html_part&.body&.decoded || TicketOrderMailer.refunded(refund).body.decoded
+    expect(body).to include("So sorry you&#39;re sick.<br>").and include("Come back soon!")
+    expect(body).not_to include("Asked by phone")
+  end
+
+  it "leaves the message paragraph out when there's none" do
+    TicketingTemplates.ensure!(keys: %w[ticket_order_refunded])
+    refund = described_class.issue!(sold(1))
+    expect(ContentTemplateService.render_body("ticket_order_refunded", TicketOrderMailer.variables_for(refund.ticket_order, refund)))
+      .not_to include("refund_message")
+  end
+
   it "hands cash back from the box, with no Stripe and no balance" do
     order = TicketDoor.new(listing, create(:user)).sell({ general.id.to_s => "1" }, kind: "cash")
     refund = described_class.issue!(order)

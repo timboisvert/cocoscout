@@ -122,7 +122,7 @@ module Manage
     def refund
       outside_policy = exception_allowed!
       refund = TicketOrderRefund.issue!(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: params[:keep_fees] == "1",
-                                                by: Current.user, reason: params[:reason].presence, reprice: reprice?,
+                                                by: Current.user, reason: params[:reason].presence, buyer_message: params[:buyer_message].presence, reprice: reprice?,
                                                 outside_policy: outside_policy)
       notice = if @order.money_path == "none"
         "Canceled #{helpers.pluralize(refund.ticket_ids.size, 'ticket')} for #{@order.buyer_name.presence || 'the guest'}. The seats are free again."
@@ -152,7 +152,7 @@ module Manage
       top_up = BalanceTopUpService.start!(Current.organization, amount_cents: short, by: Current.user, refund_request: {
         "order_id" => @order.id, "ticket_ids" => quote.tickets.map(&:id), "item_ids" => quote.items.map(&:id), "keep_fees" => keep_fees,
         "reprice" => reprice?, "outside_policy" => outside_policy,
-        "reason" => params[:reason].presence, "user_id" => Current.user.id
+        "reason" => params[:reason].presence, "buyer_message" => params[:buyer_message].presence, "user_id" => Current.user.id
       })
       notice = if top_up.status == "succeeded"
         "Added #{helpers.number_to_currency(short / 100.0)} and refunded #{@order.buyer_name.presence || 'the buyer'}."
