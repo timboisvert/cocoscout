@@ -23,33 +23,74 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [ ] V1.1 (was V2): production mode + new navigation on its own branch; never deployed until both app reviews pass. Carries the per-build path config and user-agent marker.
 - [ ] V1.2 (was V1.1): Tap to Pay on iPhone, on main behind Debug builds; the Release build registers it once Apple grants the publishing entitlement.
 - [ ] Books, stages B to F (`docs/accounting_books_plan.md`), one phase at a time.
-- [ ] The Door when nothing's on (Tim, 2026-10-23): decide, then build. Today the
-  page says "Nothing to work right now" and then lists what's happening later,
-  and you can't tap what it lists, which is confusing. It also seemed not to show
-  the later shows on mobile at all. Web and the app load the same page
-  (`door/index.html.erb`), so the difference is probably the organization's
-  "Door in the app" setting, not the device; check that first. What's there now:
-  - "Next for you" (in the empty box) and "Later tonight": text only, nothing to tap.
-  - "Coming up": only for organizations set to "always", and every row opens
-    that show's full door, check-in included, days early (`door#show` doesn't
-    check whether the door is open).
+- [ ] The Door before it opens (Tim, 2026-10-23). Decided, not built: Tim builds it at home, not in the cloud.
+  The problem: the Door's page says "Nothing to work right now" and then lists
+  what's coming later, and you can't tap what it lists. "Next for you" and
+  "Later tonight" are text only. "Coming up" (organizations set to "always" only)
+  does link, but each row opens that show's whole door, check-in included, days
+  early, because `door#show` never checks whether the door is open. Web and the
+  app load the same page, so what looked like a mobile difference is probably
+  the organization's "Door in the app" setting.
 
-  **Decided (Tim, 2026-10-23): show everything coming up, and let people open it.**
-  - Every later show on the list ("Later tonight", "Next for you", "Coming up")
-    can be tapped and opens its door page.
-  - Until the door opens (the time set in Ticketing settings → Door), that page
-    says "Door opens Fri at 6 PM" in place of Scan and check-in. The counts and
-    who's coming can still be seen. The server refuses too: `check_in`,
-    `check_in_order`, `use_pass` and comps all check people in, so they wait
-    for the door to open.
-  - In their place: the date's online sales page (`tickets_event`), with its QR
-    code (`shared/_qr_modal`) and Copy/Share, so someone who asks can buy on
-    their own phone. If online sales have closed or it's sold out, say that
-    instead of linking.
-  - Still open: selling in person (cash, card, tap) before the door opens. A
-    cash sale checks people in on the spot today. Either it waits too (the
-    online link covers it) or it sells without checking anyone in.
-  - The same on web and in the app.
+  **The decision:** show everything coming up and let people open it. Until a
+  show's door opens (the time set in Ticketing settings → Door), nobody scans or
+  checks anyone in. Box office can still sell in person (cash, card, tap, comp)
+  at presale prices, and nobody it sells to is checked in. No link to the
+  online sales page: selling in person covers it.
+
+  The build:
+  1. **The list** (`door/index.html.erb`, `DoorController#index`): "Later
+     tonight" and "Next for you" rows link to `door_path(listing)` like "Coming
+     up", each saying when its door opens. Show "Coming up" for every
+     organization, not just "always" (drop that condition on `@coming_up`). This
+     undoes the 2026-10-18 call ("no list of coming dates"), so fix the
+     controller comment too. Reword "Nothing to work right now" to something
+     like "Nothing on right now".
+  2. **One test for "ahead"**: `DoorTonight.phase(listing) == :before`. Leave
+     `:after` (the door closed after the show) as it is today.
+  3. **The door page ahead** (`door/show.html.erb`): a line at the top, "The door
+     opens Fri at 6 PM. You can sell ahead now; check-in starts when it opens."
+     No Scan tab. The list can be seen but rows don't check anyone in (no tap, no
+     All), and no pass holders. Box office opens on Sell; everyone else on List.
+     Hide the scanner bridge too, so the app doesn't offer its camera.
+  4. **The server refuses check-in ahead**: `check_in`, `check_in_order` and
+     `use_pass` return "The door opens at …" (JSON for the first two, a redirect
+     alert for `use_pass`). `TicketPassCredits.use!(at_door: true)` checks the
+     holder in, so ahead it must not run that way.
+  5. **Presale prices**: ahead, the types on sale are the ones selling online
+     right now (`tier.selling?`: no door-only types, sales windows respected),
+     not `door_sellable?`. The products are the online ones (`product_offers`
+     without `at_door`). That choice has to be made the same way in all of
+     these: `DoorController#show` (`@tiers`, `@offers`),
+     `TicketCheckout.requested_tiers` (card and tap come through `at_door:
+     true`), `TicketCheckout` line ~153 (products by channel), `TicketDoor#sell`
+     (today it takes any `available?` type), and `TicketDoor#counts[:left]`.
+     Nothing on sale online yet? Say "Nothing's on sale for this date yet".
+  6. **No check-in when selling ahead**:
+     - Cash and comps: `TicketDoor#sell` makes tickets `"valid"`, not
+       `"checked_in"`.
+     - Card and tap: `TicketOrderSettlement.settle!` checks in every
+       `DOOR_CARD_CHANNELS` order. Change it to check in only when the door is
+       open at settle time, `"valid"` otherwise.
+     - Then on the night, they're on the list by name to check in like
+       everyone else.
+  7. **Books**: `TicketDoor#post_cash_sale!` moves the sale straight to income
+     ("the show is happening"). Ahead it isn't happening yet: the money still
+     goes into the cash box (`door_cash`), but the sale stays in
+     `advance_ticket_sales` / `advance_product_sales`. `TicketMoneyRelease`
+     moves it to income the day after the show, as it does for online sales.
+  8. **Words**:
+     - The sell form's footnote ("Cash and comps are checked in as you record
+       them") becomes, ahead: "Sold ahead: they're on the list to check in
+       when the door opens."
+     - The `sell` flash notices too ("Comped 2 and checked them in").
+     - `door_sale` emails (TicketingAfterSaleJob) shouldn't say they're in.
+  9. **Open question**: selling ahead only asks for a name, so the buyer leaves
+     with no ticket (confirmations go only to a `buyer_email`). Add an optional
+     email to the sell form when selling ahead?
+  10. **Specs**: `spec/services/ticket_door_spec.rb` (ahead sales are valid, at
+      presale prices, books in advance) and `spec/services/door_tonight_spec.rb`.
+      Add a door controller request spec for the refusals.
 
 ## Waiting on
 
