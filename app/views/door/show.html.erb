@@ -70,7 +70,8 @@
          [ "comped", @counts[:comped], "Comped" ], [ "available", @counts[:available] || "∞", "Available" ] ].each do |target, number, words| %>
       <div class="rounded-xl border border-gray-200 bg-white py-3">
         <div class="text-2xl font-bold tabular-nums text-gray-900" data-door-target="<%= target %>"><%= number %></div>
-        <div class="text-xs text-gray-500"><%= words %></div>
+        <%# 11px on a phone, so "Checked in" stays on one line and the boxes stay even. %>
+        <div class="text-[11px] sm:text-xs text-gray-500 whitespace-nowrap"><%= words %></div>
       </div>
     <% end %>
   </div>
