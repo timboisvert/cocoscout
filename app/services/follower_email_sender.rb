@@ -17,6 +17,13 @@ class FollowerEmailSender
     recipients = follower_email.audience.recipients
     raise Error, "Nobody on those lists can be emailed." unless recipients.exists?
 
+    allowance = FollowerEmailAllowance.new(follower_email.organization)
+    count = recipients.count
+    unless allowance.allows?(count)
+      raise Error, "This would send #{count} emails, and #{allowance.left} are left this month " \
+                   "(#{allowance.included} a month for now). Pick a smaller list or segment, or send after #{allowance.resets_on.strftime('%b %-d')}."
+    end
+
     now = Time.current
     follower_email.with_lock do
       raise Error, "This email was already sent." unless follower_email.draft?

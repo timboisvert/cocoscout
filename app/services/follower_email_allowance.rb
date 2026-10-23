@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 # How many emails to followers a Pro organization has sent this month, against
-# what Pro includes. Past it, extra emails are billed per thousand once Tim
-# sets the price (OVERAGE_CENTS_PER_THOUSAND); until then, nothing extra is
-# charged.
+# what Pro includes: 500 a month for now (Tim, 2026-10-23: "much lower for
+# now"). It's a hard stop: a send that would go past it waits for next month.
+# More (and paying for more) comes later.
 class FollowerEmailAllowance
-  INCLUDED_PER_MONTH = 10_000
-  OVERAGE_CENTS_PER_THOUSAND = nil
+  INCLUDED_PER_MONTH = 500
 
   def initialize(organization, month: Date.current)
     @organization = organization
@@ -25,5 +24,6 @@ class FollowerEmailAllowance
   def left = [ included - used, 0 ].max
   def over = [ used - included, 0 ].max
   def percent_used = [ (used * 100.0 / included).round, 100 ].min
+  def allows?(count) = count <= left
   def resets_on = @month.next_month.beginning_of_month
 end

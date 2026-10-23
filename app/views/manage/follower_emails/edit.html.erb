@@ -108,7 +108,12 @@
             end
             concat tag.div(class: "flex items-center px-3.5 py-2.5 bg-gray-50 font-semibold") { concat tag.span("Sends to", class: "flex-1"); concat tag.span(pluralize(number_with_delimiter(recipients), "person"), class: "tabular-nums") }
           end)
-          concat tag.p("Uses #{number_with_delimiter(recipients)} of the #{number_with_delimiter(@allowance.left)} left this month.", class: "text-xs text-gray-500 mt-2")
+          if @allowance.allows?(recipients)
+            concat tag.p("Uses #{number_with_delimiter(recipients)} of the #{number_with_delimiter(@allowance.left)} left this month.", class: "text-xs text-gray-500 mt-2")
+          else
+            concat tag.div("That's more than the #{number_with_delimiter(@allowance.left)} emails left this month (#{number_with_delimiter(@allowance.included)} a month for now). Pick a smaller list or segment, or send after #{@allowance.resets_on.strftime('%b %-d')}.",
+                           class: "mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800")
+          end
           concat tag.div("The email", class: "text-[11px] font-semibold uppercase tracking-wider text-gray-500 mt-5 mb-2")
           concat(tag.div(class: "rounded-lg border border-gray-200 text-sm") do
             concat(tag.div(class: "px-3.5 py-2.5 border-b border-gray-100 space-y-0.5 text-[13px]") do
@@ -122,7 +127,7 @@
         },
         footer: capture {
           concat render("shared/button", text: "Back to editing", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
-          if recipients.positive?
+          if recipients.positive? && @allowance.allows?(recipients)
             concat(form_with(url: manage_follower_email_deliver_path(@email), method: :post, data: { turbo: false }, class: "inline") do
               render("shared/button", text: "Send to #{pluralize(number_with_delimiter(recipients), 'person')}", variant: "primary", size: "medium", type: :submit)
             end)

@@ -620,5 +620,11 @@ is ticked by default; sending only from Pro, on its own Mailgun domain.
   One row per email across organizations, showing only how someone came to a
   list shared with them. Add a follower picks the list; Export emails a CSV of
   everyone still following.
+- **Allowance.** 500 emails to followers a month per Pro organization for
+  now, a hard stop (Tim, 2026-10-23); more, and paying for more, later.
+- **Sharing** uses the standard search-or-invite (the People Picker with
+  outside and invite, as Who sees sales): someone new gets a contact, a
+  login and the account-setup invitation, and the list is waiting in My
+  Followers when they claim it.
 - **Not yet.** CSV import, scheduling, a public signup form, door capture,
-  billing past the allowance (price undecided), opens and clicks.
+  buying more emails, opens and clicks.

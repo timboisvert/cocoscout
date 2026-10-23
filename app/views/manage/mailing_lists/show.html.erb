@@ -228,9 +228,34 @@
             end
           end)
         end
-        concat render("shared/button", text: "Find someone", variant: "secondary", size: "small", type: :button,
-                      data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
-                              "people-picker-trigger-id-value": "share-picker", "people-picker-trigger-title-value": "Share #{@list.name} with" })
+        concat(tag.div(class: "rounded-lg border border-gray-200 overflow-hidden",
+                       data: { controller: "door-access-search", "door-access-search-picker-value": "share-picker",
+                               "door-access-search-grant-url-value": manage_mailing_list_shares_path(@list),
+                               "door-access-search-invite-url-value": manage_mailing_list_shares_invite_path(@list),
+                               "door-access-search-grant-text-value": "Share", "door-access-search-invite-text-value": "Send invitation",
+                               action: "people-picker:pick@window->door-access-search#picked" }) do
+          concat(tag.div(class: "px-4 py-3", data: { door_access_search_target: "searchSection" }) do
+            concat tag.p("Someone else: anyone on CocoScout by name or exact email, or an email to invite.", class: "text-sm text-gray-600 mb-2")
+            concat render("shared/button", text: "Find someone", variant: "secondary", size: "small", type: :button,
+                          data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
+                                  "people-picker-trigger-id-value": "share-picker", "people-picker-trigger-title-value": "Share #{@list.name} with" })
+          end)
+          concat(form_with(url: manage_mailing_list_shares_path(@list), method: :post, class: "hidden", data: { turbo: false, door_access_search_target: "form" }) do
+            concat hidden_field_tag(:person_id, nil, id: nil, data: { door_access_search_target: "personId" })
+            concat hidden_field_tag(:email, nil, id: nil, data: { door_access_search_target: "email" })
+            concat hidden_field_tag(:name, nil, id: nil, data: { door_access_search_target: "name" })
+            concat(tag.div(class: "px-4 py-3 flex items-center justify-between gap-3") do
+              concat(tag.div(class: "min-w-0") do
+                concat tag.div(class: "text-sm font-semibold text-gray-900 truncate", data: { door_access_search_target: "selectedName" })
+                concat tag.div(class: "text-xs text-gray-500 truncate", data: { door_access_search_target: "selectedEmail" })
+              end)
+              concat render("shared/button", text: "Choose someone else", variant: "ghost", size: "small", type: :button, data: { action: "click->door-access-search#back" })
+            end)
+            concat(tag.div(class: "px-4 py-3 border-t border-gray-200 bg-gray-50") do
+              render("shared/button", text: "Share", variant: "primary", size: "small", type: :submit, data: { door_access_search_target: "submit" })
+            end)
+          end)
+        end)
         concat tag.div("Can see it now", class: "text-[11px] font-semibold uppercase tracking-wider text-gray-500 mt-5 mb-2")
         if @shares.any?
           concat(tag.div(class: "rounded-lg border border-gray-200 divide-y divide-gray-100") do
@@ -253,12 +278,9 @@
       },
       footer: capture { render("shared/button", text: "Done", variant: "primary", size: "medium", type: :button, data: { action: "click->modal#close" }) } %>
 
-<%= form_with url: manage_mailing_list_shares_path(@list), method: :post, data: { turbo: false, controller: "pick-submit" } do %>
-  <%= hidden_field_tag :person_id, nil, id: nil, data: { pick_submit_target: "field" } %>
-  <%= render "shared/people_picker", id: "share-picker", title: "Share #{@list.name} with",
-        exclude: @shares.map(&:person_id).join(","), pick_action: "people-picker:pick->pick-submit#picked",
-        hint: "Someone in your organization. The producers on this list's productions are suggested in the window." %>
-<% end %>
+<%= render "shared/people_picker", id: "share-picker", title: "Share #{@list.name} with", outside: true, invite: true, invite_name: true,
+      exclude: @shares.map(&:person_id).join(","), exclude_label: "Can see it",
+      hint: "Someone here, anyone on CocoScout by name or exact email, or an email to invite" %>
 
 <% unless @list.main? %>
   <%= render "manage/mailing_lists/modal", id: "collects-modal", title: "Where #{@list.name} collects",

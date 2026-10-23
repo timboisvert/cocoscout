@@ -42,7 +42,8 @@ Sending to followers stays off in production until these are done: the send
 button says "Sending to followers isn't switched on yet."
 
 - [ ] Mailgun: move off the free tier (3,000 a month for all of CocoScout).
-      Pro includes 10,000 follower emails a month per organization.
+      Pro includes 500 follower emails a month per organization for now, a
+      hard stop (Tim, 2026-10-23).
 - [ ] Mailgun: add the sending domain `news.cocoscout.com`, and its SPF, DKIM
       and MX records in Route 53 (the zone for cocoscout.com).
 - [ ] Mailgun → that domain → Webhooks: point Delivered, Permanent failure,
@@ -53,9 +54,6 @@ button says "Sending to followers isn't switched on yet."
       an extract line; `config/deploy.yml`: add it under `env.secret`, and
       `FOLLOWERS_MAIL_DOMAIN: news.cocoscout.com` under `env.clear`. Only after
       the 1Password item exists, or the deploy fails.
-- [ ] Decide the price per 1,000 emails past the allowance
-      (`FollowerEmailAllowance::OVERAGE_CENTS_PER_THOUSAND`). Until it's set,
-      nothing extra is charged.
 
 ## 3. The apps (yours: Apple and Google only take builds from you)
 

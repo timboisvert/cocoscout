@@ -78,6 +78,7 @@ RSpec.describe "Mailing lists", type: :request do
 
   it "shares a list with a producer, emails them, and takes it back" do
     list = org.mailing_lists.create!(name: "Dan Feltey's shows")
+    # Someone with no account who isn't the organization's: not found by search, so not pickable.
     stranger = create(:person, name: "Stranger", email: "stranger@example.com")
     post manage_mailing_list_shares_path(list), params: { person_id: stranger.id }
     expect(list.mailing_list_shares.reload).to be_empty
@@ -91,6 +92,24 @@ RSpec.describe "Mailing lists", type: :request do
 
     delete manage_mailing_list_share_path(list, share_id: share.id)
     expect(list.mailing_list_shares.reload).to be_empty
+  end
+
+  it "shares through the standard search or invite: anyone on CocoScout, or an email nobody has" do
+    list = org.mailing_lists.create!(name: "Dan Feltey's shows")
+    elsewhere = create(:person, name: "Babs Booker", email: "babs@example.com", user: create(:user, email_address: "babs@example.com"))
+    post manage_mailing_list_shares_path(list), params: { person_id: elsewhere.id }
+    expect(list.shared_people.reload).to include(elsewhere)
+
+    get manage_mailing_list_path(list)
+    expect(response.body).to include("anyone on CocoScout by name or exact email, or an email to invite")
+
+    expect { post manage_mailing_list_shares_invite_path(list), params: { email: "New.Producer@Example.com", name: "New Producer" } }
+      .to have_enqueued_mail(Manage::PersonMailer, :person_invitation)
+    newcomer = Person.find_by!(email: "new.producer@example.com")
+    expect(newcomer.user).to be_present
+    expect(org.people).to include(newcomer)
+    expect(list.shared_people.reload).to include(newcomer)
+    expect(flash[:notice]).to include("Invitation sent to new.producer@example.com")
   end
 
   it "adds someone from Contacts to a list" do

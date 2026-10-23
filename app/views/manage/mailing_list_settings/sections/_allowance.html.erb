@@ -3,6 +3,6 @@
   <div class="p-6 space-y-3">
     <div class="flex items-baseline justify-between"><b class="text-2xl tabular-nums text-gray-900"><%= number_with_delimiter(@allowance.used) %></b><span class="text-sm text-gray-500">of <%= number_with_delimiter(@allowance.included) %> emails</span></div>
     <div class="h-2 rounded-full bg-gray-100 overflow-hidden"><div class="h-full bg-pink-500" style="width: <%= @allowance.percent_used %>%"></div></div>
-    <p class="text-xs text-gray-500">Pro includes <%= number_with_delimiter(@allowance.included) %> emails to followers a month. It starts over <%= @allowance.resets_on.strftime("%b %-d") %>.<% if @allowance.over.positive? %> You're <%= number_with_delimiter(@allowance.over) %> over this month.<% end %></p>
+    <p class="text-xs text-gray-500">Pro includes <%= number_with_delimiter(@allowance.included) %> emails to followers a month for now. Once they're used, sending waits until <%= @allowance.resets_on.strftime("%b %-d") %>, when it starts over.</p>
   </div>
 </section>

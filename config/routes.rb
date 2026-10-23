@@ -1744,6 +1744,7 @@ Rails.application.routes.draw do
     post   "/mailing-lists/:id/followers",                    to: "list_followers#create",          as: "mailing_list_followers"
     delete "/mailing-lists/:id/followers/:follower_id",       to: "list_followers#destroy",         as: "mailing_list_follower"
     post   "/mailing-lists/:id/shares",                       to: "mailing_list_shares#create",     as: "mailing_list_shares"
+    post   "/mailing-lists/:id/shares/invite",                to: "mailing_list_shares#invite",     as: "mailing_list_shares_invite"
     delete "/mailing-lists/:id/shares/:share_id",             to: "mailing_list_shares#destroy",    as: "mailing_list_share"
 
     resources :contractors, path: "money/contractors" do

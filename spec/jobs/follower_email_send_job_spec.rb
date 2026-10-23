@@ -64,6 +64,14 @@ RSpec.describe FollowerEmailSendJob do
     FollowerEmailSender.send!(email, owner)
     described_class.perform_now(email.id)
     allowance = FollowerEmailAllowance.new(org)
-    expect([ allowance.used, allowance.left ]).to eq([ 1, 9_999 ])
+    expect([ allowance.used, allowance.left ]).to eq([ 1, 499 ])
+  end
+
+  it "stops a send that would go past the month's 500" do
+    stub_const("FollowerEmailAllowance::INCLUDED_PER_MONTH", 2)
+    %w[a b c].each { |name| on_list("#{name}@example.com") }
+    email = org.follower_emails.create!(subject: "Hi", body: "<p>Hi</p>", targets: { "list_ids" => [ main.id ] })
+    expect { FollowerEmailSender.send!(email, owner) }.to raise_error(FollowerEmailSender::Error, /This would send 3 emails, and 2 are left this month/)
+    expect(email.reload).to be_draft
   end
 end
