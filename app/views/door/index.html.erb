@@ -28,7 +28,8 @@
           <%# The door page's four boxes (Tim, 2026-10-21). %>
           <div class="mt-3 grid grid-cols-4 gap-2">
             <% [ [ "Checked in", counts[:checked_in] ], [ "Sold", counts[:sold] ], [ "Comped", counts[:comped] ], [ "Available", counts[:available] || "∞" ] ].each do |words, number| %>
-              <div class="rounded-xl bg-gray-50 px-3 py-2"><div class="text-[11px] text-gray-500"><%= words %></div><div class="text-2xl font-bold tabular-nums text-gray-900"><%= number %></div></div>
+              <%# Number over its label, centered; the label small enough for one line inside the pink card. %>
+              <div class="rounded-xl bg-gray-50 px-1 py-2 text-center"><div class="text-2xl font-bold tabular-nums text-gray-900"><%= number %></div><div class="text-[10px] text-gray-500 whitespace-nowrap"><%= words %></div></div>
             <% end %>
           </div>
           <div class="mt-3">
