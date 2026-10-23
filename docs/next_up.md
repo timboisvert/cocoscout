@@ -85,9 +85,25 @@ things off here; the app roadmap itself stays in CLAUDE.md.
        when the door opens."
      - The `sell` flash notices too ("Comped 2 and checked them in").
      - `door_sale` emails (TicketingAfterSaleJob) shouldn't say they're in.
-  9. **Open question**: selling ahead only asks for a name, so the buyer leaves
-     with no ticket (confirmations go only to a `buyer_email`). Add an optional
-     email to the sell form when selling ahead?
+  9. **Same requirements as presale** (Tim, 2026-10-23: it's presale and nobody's
+     checked in, so ask what online checkout asks). Online
+     (`TicketCheckoutsController#pay`) requires a name and a valid email (phone
+     optional) and shows the age limit and the refund policy before paying.
+     `door_card` skips all of that today (`at_door` in that action and in
+     `ticket_checkouts/show.html.erb`). When selling ahead:
+     - Card ("Scan to pay", on the buyer's own phone): the checkout page
+       treats it as online. Name and email required, the age limit and the
+       refund policy shown. So `at_door` there means "door card, door open",
+       not just the `door_card` channel.
+     - Cash, tap and comp (the door phone): the sell form requires name and
+       email (phone optional) and shows the date's age limit and refund
+       policy above the pay buttons. The server checks name and email too, in
+       `TicketDoor#sell` and `TapToPay.start!`.
+     - The order keeps the refund policy snapshot (`TicketCheckout.start!`
+       already does this; `TicketDoor#sell` doesn't) and the buyer's email.
+       They get the confirmation with their tickets, as an online buyer does
+       (`TicketOrderConfirmationJob`). Today cash and comp orders never send
+       it, and card and tap only send it when there's an email.
   10. **Specs**: `spec/services/ticket_door_spec.rb` (ahead sales are valid, at
       presale prices, books in advance) and `spec/services/door_tonight_spec.rb`.
       Add a door controller request spec for the refusals.
