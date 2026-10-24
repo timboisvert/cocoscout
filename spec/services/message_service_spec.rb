@@ -11,9 +11,18 @@ RSpec.describe MessageService do
   let(:recipient_user) { create(:user) }
   let(:recipient_person) { create(:person, user: recipient_user) }
 
+  # A person-sent message keeps its sender only when that person is the one
+  # signed in and sending it (see MessageService#personal_sender?).
+  def act_as(user)
+    Current.session = create(:session, user: user)
+  end
+
   before do
     sender.update!(default_person: sender_person)
+    act_as(sender)
   end
+
+  after { Current.reset }
 
   describe ".send_direct" do
     it "creates a direct message" do
@@ -431,6 +440,7 @@ RSpec.describe MessageService do
     let(:original_recipient_person) { create(:person, user: recipient_user) }
     let!(:original_message) do
       original_sender.update!(default_person: original_sender_person)
+      act_as(original_sender)
       described_class.send_direct(
         sender: original_sender,
         recipient_person: original_recipient_person,
@@ -441,6 +451,7 @@ RSpec.describe MessageService do
 
     context "when original recipient replies" do
       it "sends reply to original sender" do
+        act_as(recipient_user)
         reply = described_class.reply(
           sender: recipient_user,
           parent_message: original_message,
@@ -455,6 +466,7 @@ RSpec.describe MessageService do
 
     context "when original sender replies" do
       it "sends reply to original recipients" do
+        act_as(original_sender)
         reply = described_class.reply(
           sender: original_sender,
           parent_message: original_message,
@@ -467,6 +479,7 @@ RSpec.describe MessageService do
     end
 
     it "prefixes subject with Re:" do
+      act_as(recipient_user)
       reply = described_class.reply(
         sender: recipient_user,
         parent_message: original_message,
@@ -477,6 +490,7 @@ RSpec.describe MessageService do
     end
 
     it "inherits message type from root" do
+      act_as(recipient_user)
       reply = described_class.reply(
         sender: recipient_user,
         parent_message: original_message,
@@ -512,6 +526,51 @@ RSpec.describe MessageService do
         # is what reroutes a system reply to the production team).
         expect(reply).to be_nil
       end
+    end
+  end
+
+  # HARD RULE: an automated notification never says it's from a real person.
+  describe "automated messages never carry a person as sender" do
+    let(:bystander) { create(:user) }
+
+    def send_as(sender_user, **opts)
+      described_class.send_direct(sender: sender_user, recipient_person: recipient_person,
+                                  subject: "Notice", body: "Body", production: production, **opts)
+    end
+
+    it "keeps the sender when that person is signed in and sending it" do
+      expect(send_as(sender).sender).to eq(sender)
+    end
+
+    it "drops the sender of anything flagged automated, even the signed-in person's" do
+      message = send_as(sender, system_generated: true)
+      expect(message.sender).to be_nil
+      expect(message.sender_name).to eq(production.name)
+    end
+
+    it "drops a borrowed sender (an owner or team member standing in for the system)" do
+      message = send_as(bystander)
+      expect(message.sender).to be_nil
+      expect(message.sender_name).to eq(production.name)
+      expect(MessageSubscription.where(user: bystander)).to be_empty
+    end
+
+    it "drops the sender of anything sent with nobody signed in (jobs, the console)" do
+      Current.reset
+      message = send_as(sender)
+      expect(message.sender).to be_nil
+      expect(message.sender_name).to eq(production.name)
+    end
+
+    it "keeps a real person's reply to an automated notice as theirs" do
+      # Replies to a senderless notice go to the production team as a new thread
+      # (My::MessagesController#reply); the person replying stays its sender.
+      bystander.update!(default_person: create(:person, user: bystander))
+      create(:production_permission, production: production, user: bystander, role: "manager")
+      act_as(recipient_user)
+      reply = described_class.send_to_production_team(production: production, sender: recipient_user,
+                                                       subject: "Re: Notice", body: "Can do")
+      expect(reply.sender).to eq(recipient_user)
     end
   end
 end
