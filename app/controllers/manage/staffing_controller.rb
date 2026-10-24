@@ -76,7 +76,9 @@ module Manage
     def scheduling
       return unless Current.organization
 
-      @week_start = parse_week_start(params[:week_start])
+      # A phone works one day at a time (?day=), and the week is that day's.
+      requested_day = parse_day(params[:day])
+      @week_start = requested_day ? requested_day.beginning_of_week : parse_week_start(params[:week_start])
       @week_end = @week_start + 6.days
 
       @shows_by_day = shows_in_range(@week_start..@week_end).group_by { |s| s.date_and_time.to_date }
@@ -92,6 +94,20 @@ module Manage
       source_shows = shifts.map(&:source).select { |s| s.is_a?(Show) }
       ActiveRecord::Associations::Preloader.new(records: source_shows, associations: :production).call
       @shifts_by_day = shifts.group_by { |s| staffing_day_for(s, week_range) }
+
+      # The phone's day: the one asked for, else today in this week, else the
+      # week's first day with anything on it.
+      @selected_day = requested_day ||
+        (week_range.cover?(Date.current) ? Date.current : nil) ||
+        week_range.find { |d| @shows_by_day[d].present? || @shifts_by_day[d].present? } ||
+        @week_start
+      # The days the week calendar and the phone's jump sheet can reach, with
+      # what each holds: dots on days with shows, a status per week.
+      @calendar_months = (-3..4).map { |i| @week_start.beginning_of_month + i.months }
+      @calendar_from = @calendar_months.first.beginning_of_week
+      @calendar_to = @calendar_months.last.end_of_month.end_of_week
+      @show_dates = calendar_show_dates(@calendar_from, @calendar_to)
+      @week_statuses = calendar_week_statuses(@calendar_from, @calendar_to)
 
       # Role Call (opt-in via Staffing settings): every show checked against the
       # show-specific roles. @show_coverage drives the per-role breakdown in the
@@ -155,6 +171,10 @@ module Manage
       # the manager (no auto-offering; they decide what to do). The grid also flags
       # declined chips directly via each assignment's declined? state.
       @declined_assignments = declined_upcoming_assignments
+      # The status bar counts this week's; the rest are listed by their week.
+      @declined_this_week, @declined_other_weeks = @declined_assignments.partition do |a|
+        week_range.cover?(staffing_day_for(a.shift, week_range))
+      end
       # Smart comms status: who's up to date vs. needs a (re)notify this week.
       @comms = compute_schedule_updates(shifts, @week_start)
 
@@ -484,13 +504,52 @@ module Manage
       Date.current.beginning_of_week
     end
 
+    def parse_day(value)
+      return nil if value.blank?
+
+      Date.iso8601(value.to_s)
+    rescue ArgumentError, TypeError
+      nil
+    end
+
+    # Dates with a show on them, for the calendar dots.
+    def calendar_show_dates(from, to)
+      ::Show.joins(:production)
+            .where(productions: { organization_id: Current.organization.id })
+            .where(date_and_time: from.beginning_of_day..to.end_of_day)
+            .where(canceled: [ false, nil ])
+            .pluck(:date_and_time)
+            .map { |t| t.in_time_zone.to_date }
+            .to_set
+    end
+
+    # { week_start => :open | :draft | :published } for every week with a
+    # shift: open when a shift still needs someone, else published or draft.
+    def calendar_week_statuses(from, to)
+      shifts = Current.organization.shifts
+                      .where(starts_at: from.beginning_of_day..to.end_of_day)
+                      .pluck(:id, :starts_at, :required_count, :coverage_mode)
+      return {} if shifts.empty?
+
+      assigned = ShiftAssignment.active.where(shift_id: shifts.map(&:first)).group(:shift_id).count
+      published = Current.organization.staffing_finalizations
+                         .where(week_start: from..to).where.not(finalized_at: nil)
+                         .pluck(:week_start).to_set
+      shifts.group_by { |_id, starts_at, _req, _mode| starts_at.in_time_zone.to_date.beginning_of_week }
+            .transform_values do |rows|
+              open = rows.any? { |id, _s, required, mode| mode == "needs_assignment" && assigned.fetch(id, 0) < required }
+              open ? :open : nil
+            end
+            .to_h { |week, status| [ week, status || (published.include?(week) ? :published : :draft) ] }
+    end
+
     # Staff who declined ("can't make it") an upcoming shift for this org.
     def declined_upcoming_assignments
       ShiftAssignment.declined
         .joins(:shift)
         .where(shifts: { organization_id: Current.organization.id })
         .where("shifts.ends_at >= ?", Time.current)
-        .includes(shift: [ :house_role, :additional_roles, :source, { shows: :production } ], person: HEADSHOT_PRELOAD)
+        .includes(shift: [ :house_role, :additional_roles, :source, :shift_assignments, { shows: :production } ], person: HEADSHOT_PRELOAD)
         .order("shifts.starts_at ASC")
         .to_a
     end
@@ -546,7 +605,7 @@ module Manage
             .where(productions: { organization_id: Current.organization.id })
             .where(date_and_time: range.first.beginning_of_day..range.last.end_of_day)
             .where(canceled: [ false, nil ])
-            .includes(:production, :location, :space_rental)
+            .includes(:production, :location, :location_space, :space_rental)
             .order(:date_and_time)
             .to_a
     end

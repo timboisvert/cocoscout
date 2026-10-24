@@ -1,0 +1,74 @@
+<%#
+  A show's detail modal on the scheduling page (show-detail-<id>): its hours,
+  cast, and what it needs staffed (Role Call and services, with Staff it).
+  Rendered once per show; every _show_line for the show opens it.
+
+  Locals:
+    show
+    day        the Date it's scheduled under
+    day_shows  that day's shows (Staff it offers them in the Add-shift modal)
+%>
+<%
+  cast = @show_cast[show.id] || []
+  coverage = @show_coverage[show.id]
+  rental = show.space_rental
+  show_time = "#{show.date_and_time.strftime("%-l:%M %p")}–#{show.ends_at.strftime("%-l:%M %p")}"
+  call_time = show.call_time_enabled? && show.call_time ? show.call_time.strftime("%-l:%M %p") : nil
+  booked_range = if rental && (rental.starts_at != show.date_and_time || rental.ends_at != show.ends_at)
+    "#{rental.starts_at.strftime("%-l:%M %p")}–#{rental.ends_at.strftime("%-l:%M %p")}"
+  end
+%>
+<div id="show-detail-<%= show.id %>" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl sm:mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
+      <h3 class="text-lg font-semibold text-white leading-snug sm:truncate"><%= show.display_name %> · <%= show.date_and_time.strftime("%a, %b %-d") %></h3>
+      <button type="button" data-action="click->modal#close" class="text-white/70 hover:text-white cursor-pointer flex-shrink-0 ml-3" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+      <div class="space-y-1">
+        <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500"><%= EventTypes.labels[show.event_type] || "Show" %></span><span class="text-gray-900 font-medium tabular-nums"><%= show_time %></span></div>
+        <% if call_time %>
+          <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500">Call time</span><span class="text-gray-900 font-medium tabular-nums"><%= call_time %></span></div>
+        <% end %>
+        <% if booked_range %>
+          <div class="flex justify-between gap-4 text-sm"><span class="text-gray-500">Space booked</span><span class="text-gray-900 font-medium tabular-nums"><%= booked_range %></span></div>
+        <% end %>
+      </div>
+
+      <div>
+        <p class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1.5">Cast</p>
+        <% if cast.any? %>
+          <div class="space-y-1">
+            <% cast.sort_by { |p| p.name.to_s }.each do |person| %>
+              <div class="flex items-center gap-2">
+                <% v = person.safe_headshot_variant(:thumb) %>
+                <% if v %>
+                  <%= image_tag v, alt: person.name, class: "w-6 h-6 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <span class="w-6 h-6 rounded-lg bg-gray-200 text-gray-600 flex items-center justify-center text-[9px] font-bold flex-shrink-0"><%= person.initials %></span>
+                <% end %>
+                <span class="text-sm text-gray-900"><%= person.name %></span>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-400 italic">No cast assigned</p>
+        <% end %>
+      </div>
+
+      <%# Role Call, the one block (Tim, 2026-10-16: the modal said the same
+          thing twice): what the show needs — its production's, contract's and
+          own services, who's on each, the changes for this show alone — and
+          any every-show role its services don't carry, in the one list. With
+          Role Call off it's the plain list. %>
+      <% if @services_on || coverage %>
+        <%= render "manage/staffing/show_services_panel", show: show, needs: @show_needs[show.id] || [],
+              coverage: coverage, role_call: @role_call_enabled,
+              staff_it_data: shift_add_data(day, day_shows, @house_roles, source_show: show) %>
+      <% end %>
+    </div>
+  </div>
+</div>

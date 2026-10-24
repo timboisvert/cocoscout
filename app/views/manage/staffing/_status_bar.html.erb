@@ -1,0 +1,181 @@
+<%#
+  One slim status bar instead of three banners (approved 2026-10-24): where
+  the week's schedule stands (draft, updates to send, or published), who
+  can't make it, and the services still to staff, each with what's behind
+  it. The lists open as sheets; Publish, Notify updates and Resend keep
+  their own modals.
+%>
+<%
+  week_shifts = @shifts_by_day.values.flatten
+  stats = shift_slot_stats(week_shifts)
+  reason_dot = { new: "bg-green-500", changed: "bg-amber-500", removed: "bg-gray-400" }
+  reason_word = { new: "new", changed: "changed", removed: "removed" }
+  pill = "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[13px] font-medium"
+  declined_count = @declined_this_week.size
+  other_declined = @declined_other_weeks.size
+  missing = @missing_service_shifts&.size.to_i
+%>
+<% if week_shifts.any? || declined_count.positive? || other_declined.positive? || @still_to_staff.present? || @house_role_count.zero? %>
+  <div class="mb-3 flex flex-wrap items-center gap-2" data-status-bar>
+    <% if week_shifts.any? %>
+      <% if !@week_finalized %>
+        <span class="<%= pill %> border-amber-200 bg-amber-50 text-amber-900" data-status="draft">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          Draft · <%= pluralize(@comms[:total], "person") %> assigned
+          <span class="hidden sm:inline text-amber-700 font-normal">· staff can't see it yet</span>
+        </span>
+        <span class="hidden sm:inline-flex">
+          <%= render "shared/button", text: "Publish & notify", variant: "primary", size: "xs", type: :button,
+                data: { action: "staffing-finalize#open" } %>
+        </span>
+      <% elsif @comms[:update].any? %>
+        <span class="<%= pill %> border-pink-200 bg-pink-50 text-pink-900" data-status="updates">
+          <span class="w-2 h-2 rounded-full bg-pink-500"></span>
+          <%= pluralize(@comms[:update].size, "update") %> to send
+        </span>
+        <span class="hidden sm:inline-flex">
+          <%= render "shared/button", text: "Notify updates", variant: "primary", size: "xs", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-notify-updates" } %>
+        </span>
+        <% @comms[:update].each do |u| %>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-2 py-0.5 text-xs" data-update-chip>
+            <span class="w-1.5 h-1.5 rounded-full <%= reason_dot[u[:reason]] %>"></span>
+            <span class="font-medium text-gray-800"><%= short_person_name(u[:person]) %></span>
+            <span class="text-gray-400"><%= reason_word[u[:reason]] %></span>
+          </span>
+        <% end %>
+      <% else %>
+        <span class="<%= pill %> border-green-200 bg-green-50 text-green-900" data-status="published">
+          <span class="w-2 h-2 rounded-full bg-green-500"></span>
+          Published · everyone has been notified
+        </span>
+        <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-resend-all"
+                class="text-xs text-gray-500 hover:text-gray-700 underline cursor-pointer bg-transparent border-0">Resend notifications</button>
+      <% end %>
+    <% end %>
+
+    <% if declined_count.positive? || other_declined.positive? %>
+      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="scheduling-declined"
+              class="<%= pill %> <%= declined_count.positive? ? 'border-red-200 bg-red-50 text-red-800 hover:bg-red-100' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50' %> cursor-pointer" data-status="declined">
+        <span class="w-2 h-2 rounded-full <%= declined_count.positive? ? 'bg-red-600' : 'bg-gray-400' %>"></span>
+        <% if declined_count.positive? %>
+          <%= declined_count %> can't make it
+        <% else %>
+          <%= other_declined %> can't make it in other weeks
+        <% end %>
+        <span class="underline font-normal">See who</span>
+      </button>
+    <% end %>
+
+    <% if @still_to_staff.present? %>
+      <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="scheduling-still-to-staff"
+              class="<%= pill %> border-amber-200 bg-white text-gray-800 hover:bg-amber-50 cursor-pointer" data-status="still-to-staff">
+        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+        <%= pluralize(@still_to_staff.size, "service") %> to staff
+        <span class="underline font-normal"><%= missing.positive? ? (missing == 1 ? "Add the shift" : "Add the shifts") : "See them" %></span>
+      </button>
+    <% end %>
+
+    <% if @house_role_count.zero? %>
+      <%= render "shared/button", text: "Add staffing roles to begin", variant: "secondary", size: "xs", type: :link,
+            path: manage_staffing_house_roles_path %>
+    <% end %>
+
+    <% if stats[:total].positive? %>
+      <span class="ml-auto text-xs text-gray-500 tabular-nums" data-status="slots"><%= stats[:staffed] %> of <%= stats[:total] %> slots staffed</span>
+    <% end %>
+  </div>
+<% end %>
+
+<%# The confirms behind the bar. %>
+<% if week_shifts.any? && @week_finalized %>
+  <% if @comms[:update].any? %>
+    <%= render "shared/confirm_modal", id: "confirm-notify-updates",
+          title: "Notify the staff whose shifts changed?",
+          message: "We'll message the #{pluralize(@comms[:update].size, 'person')} with a new, changed, or removed shift this week. Everyone else is left alone.",
+          confirm_text: "Notify updates",
+          url: manage_finalize_staffing_path(week_start: @week_start.to_s),
+          method: :post %>
+  <% else %>
+    <%= render "shared/confirm_modal", id: "confirm-resend-all",
+          title: "Resend notifications?",
+          message: "Resend the current schedule to all #{pluralize(@comms[:total], 'assigned staff member')}.",
+          confirm_text: "Resend",
+          url: manage_finalize_staffing_path(week_start: @week_start.to_s, notify_all: 1),
+          method: :post %>
+  <% end %>
+<% end %>
+
+<%# Who can't make it: this week's first, each with Find someone; the rest by their day. %>
+<% if declined_count.positive? || other_declined.positive? %>
+  <%= render layout: "shared/sheet", locals: { id: "scheduling-declined", title: declined_count.positive? ? "Can't make it this week" : "Can't make it" } do %>
+    <div class="-mx-4 sm:-mx-6 -my-5 divide-y divide-gray-100">
+      <% @declined_this_week.each do |a| %>
+        <% s = a.shift %>
+        <% show_names = s.covered_shows.map { |cs| cs.production&.name }.compact.uniq %>
+        <div class="flex items-start gap-3 px-4 sm:px-6 py-3" data-declined-row>
+          <span class="w-8 h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center text-[10px] font-bold flex-shrink-0"><%= a.person.initials %></span>
+          <span class="flex-1 min-w-0 text-sm">
+            <span class="block font-semibold text-gray-900"><%= a.person.name %> · <%= s.role_label %></span>
+            <span class="block text-gray-600"><%= s.starts_at.strftime("%a, %b %-d") %> · <%= shift_time_range(s) %><%= " · #{show_names.join(', ')}" if show_names.any? %></span>
+            <% if a.decline_reason.present? %><span class="block text-red-700 mt-0.5">“<%= a.decline_reason %>”</span><% end %>
+          </span>
+          <% if s.needs_assignment? %>
+            <%= render "shared/button", text: "Find someone", variant: "primary", size: "xs", type: :button,
+                  data: { action: "click->modal#close click->shift-assign#open", "shift-id": s.id, "role-id": s.house_role_id,
+                          "role-name": s.house_role.name, "time-range": shift_time_range(s),
+                          "assigned-ids": s.shift_assignments.map(&:person_id).to_json } %>
+          <% end %>
+        </div>
+      <% end %>
+      <% if other_declined.positive? %>
+        <div class="px-4 sm:px-6 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400"><%= declined_count.positive? ? "And #{other_declined} in other weeks" : "Coming up" %></div>
+        <% @declined_other_weeks.each do |a| %>
+          <% s = a.shift %>
+          <%= link_to manage_staffing_scheduling_path(day: s.starts_at.to_date.iso8601), class: "flex items-center gap-3 px-4 sm:px-6 py-2.5 text-sm hover:bg-gray-50" do %>
+            <span class="flex-1 min-w-0">
+              <span class="block text-gray-900"><span class="font-medium"><%= a.person.name %></span> · <%= s.role_label %></span>
+              <span class="block text-xs text-gray-500"><%= s.starts_at.strftime("%a, %b %-d") %> · <%= shift_time_range(s) %><% if a.decline_reason.present? %> · “<%= a.decline_reason %>”<% end %></span>
+            </span>
+            <span class="text-xs text-pink-600 flex-shrink-0">Go to that day</span>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<%# Still to staff this week (after-V1 #6; Role Call on): the services the
+    week's shows need that nobody's on, and one button for the shifts that
+    don't exist yet. %>
+<% if @still_to_staff.present? %>
+  <%
+    show_count = @still_to_staff.map(&:first).uniq.size
+    by_service = @still_to_staff.group_by { |_show, need| need[:service].name }
+                                .map { |name, rows| "#{name} on #{pluralize(rows.map(&:first).uniq.size, 'show')}" }
+    footer = if missing.positive?
+      capture do
+        render "shared/button", text: missing == 1 ? "Add the shift" : "Add the #{missing} shifts", variant: "primary", size: "small",
+               path: manage_add_staffing_service_shifts_path(week_start: @week_start.to_s), method: :post
+      end
+    end
+  %>
+  <%= render layout: "shared/sheet", locals: { id: "scheduling-still-to-staff", title: "Still to staff this week", footer: footer } do %>
+    <p class="text-sm text-gray-600 mb-3">
+      <span class="font-semibold text-gray-900"><%= pluralize(@still_to_staff.size, "service") %> on <%= pluralize(show_count, "show") %>:</span>
+      <%= by_service.to_sentence %>.
+      <%= if missing == 1 then "Add the shift here, then pick who works it."
+          elsif missing.positive? then "Add the shifts here, then pick who works them."
+          else "Their shifts are added: pick who works them."
+          end %>
+    </p>
+    <div class="border border-gray-200 rounded-lg divide-y divide-gray-100">
+      <% @still_to_staff.each do |show, need| %>
+        <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm" data-still-to-staff-row>
+          <span class="min-w-0 truncate"><span class="font-medium text-gray-900"><%= need[:service].name %></span> · <%= show.production&.name %>, <%= show.date_and_time.strftime("%a %-l:%M %p") %></span>
+          <span class="text-xs flex-shrink-0 <%= need[:has_shift] ? 'text-gray-500' : 'text-amber-700' %>"><%= need[:has_shift] ? "Shift added" : "No shift yet" %></span>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

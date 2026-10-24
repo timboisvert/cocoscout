@@ -1,0 +1,137 @@
+<%#
+  The week on desktop (Design A, approved 2026-10-24): days across the top,
+  roles down the left, one slim line per show, one line per shift. A day with
+  nothing on it narrows to a sliver. Every chip opens its shift's menu; the
+  "+" in a cell adds another shift in that role that day; the timeline icon
+  on a day opens that day by role or by person.
+%>
+<%
+  days = (@week_start..@week_end).to_a
+  has_any = days.index_with { |d| @shows_by_day[d].present? || @shifts_by_day[d].present? }
+  # A week with nothing on it yet keeps full-width days to add shifts into.
+  busy = has_any.values.any? ? has_any : days.index_with { true }
+  week_shifts = @shifts_by_day.values.flatten
+  active_role_ids = @house_roles.map(&:id).to_set
+  # Every active role has a row; a retired role keeps one while it has shifts.
+  roles = @house_roles + (week_shifts.map(&:house_role).uniq.reject { |r| active_role_ids.include?(r.id) })
+  columns = days.map { |d| busy[d] ? "minmax(116px, 1fr)" : "44px" }.join(" ")
+  min_width = 140 + days.sum { |d| busy[d] ? 116 : 44 }
+  add_data = days.index_with { |d| shift_add_data(d, @shows_by_day[d] || [], @house_roles) }
+  slim_bg = "background: repeating-linear-gradient(135deg, #fafafa 0, #fafafa 6px, #f3f4f6 6px, #f3f4f6 12px);"
+%>
+<div class="hidden sm:block bg-white border border-gray-300 rounded-lg shadow-sm overflow-x-auto" data-week-grid>
+  <div class="grid gap-px bg-gray-200" style="grid-template-columns: 140px <%= columns %>; min-width: <%= min_width %>px;">
+    <%# Header row: the days. %>
+    <div class="sticky left-0 z-10 bg-gray-50 px-3 py-2 flex items-end text-[11px] font-semibold uppercase tracking-wide text-gray-500">Role</div>
+    <% days.each do |day| %>
+      <% today = day == Date.current %>
+      <% if busy[day] %>
+        <% stats = shift_slot_stats(@shifts_by_day[day] || []) %>
+        <div id="day-<%= day.iso8601 %>" class="px-2 py-1.5 <%= today ? 'bg-pink-50' : 'bg-gray-50' %>" data-day-header="<%= day.iso8601 %>">
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-[11px] font-semibold uppercase <%= today ? 'text-pink-700' : 'text-pink-600' %>"><%= day.strftime("%a") %><%= " · Today" if today %></span>
+            <% if has_any[day] %>
+            <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="day-timeline-<%= day.iso8601 %>"
+                    class="w-6 h-6 -mr-1 rounded inline-flex items-center justify-center text-gray-400 hover:text-pink-600 hover:bg-white cursor-pointer bg-transparent border-0"
+                    title="<%= day.strftime("%A") %> as a timeline" aria-label="<%= day.strftime("%A, %b %-d") %> as a timeline">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="3" width="9" height="2.4" rx="1"/><rect x="4" y="6.8" width="11" height="2.4" rx="1"/><rect x="2" y="10.6" width="7" height="2.4" rx="1"/></svg>
+            </button>
+            <% end %>
+          </div>
+          <div class="text-lg font-bold text-gray-900 leading-tight"><%= day.day %></div>
+          <div class="text-[11px] leading-tight truncate <%= stats[:declined].positive? ? 'text-red-700' : (stats[:total].positive? && stats[:staffed] == stats[:total] ? 'text-green-700' : 'text-gray-500') %>">
+            <% if stats[:total].positive? %>
+              <%= stats[:staffed] %> of <%= stats[:total] %> staffed<%= " · #{stats[:declined]} can't" if stats[:declined].positive? %>
+            <% elsif (@shifts_by_day[day] || []).any? %>
+              Nobody needed
+            <% else %>
+              No shifts yet
+            <% end %>
+          </div>
+        </div>
+      <% else %>
+        <div id="day-<%= day.iso8601 %>" class="py-1.5 text-center <%= today ? 'bg-pink-50' : 'bg-gray-50' %>" title="Nothing on <%= day.strftime("%A, %b %-d") %>">
+          <div class="text-[10px] font-semibold uppercase text-gray-400"><%= day.strftime("%a") %></div>
+          <div class="text-sm font-bold text-gray-400"><%= day.day %></div>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%# Shows row: one slim line per show. %>
+    <div class="sticky left-0 z-10 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600">Shows</div>
+    <% days.each do |day| %>
+      <% if busy[day] %>
+        <div class="bg-gray-50 px-2 py-1 text-[11px] min-w-0" data-shows-cell="<%= day.iso8601 %>">
+          <% (@shows_by_day[day] || []).each do |show| %>
+            <%= render "manage/staffing/show_line", show: show %>
+          <% end %>
+        </div>
+      <% else %>
+        <div style="<%= slim_bg %>"></div>
+      <% end %>
+    <% end %>
+
+    <%# A row per role. %>
+    <% roles.each do |role| %>
+      <%
+        role_week = week_shifts.select { |s| s.house_role_id == role.id }
+        role_open = role_week.select(&:needs_assignment?).sum(&:remaining_slots)
+        addable = active_role_ids.include?(role.id)
+      %>
+      <div class="sticky left-0 z-10 bg-white px-3 py-1.5 min-w-0" data-role-row="<%= role.id %>">
+        <div class="text-sm font-semibold text-gray-900 truncate" title="<%= role.name %>"><%= role.name %></div>
+        <div class="text-[11px] text-gray-500 leading-snug">
+          <%= [ ("Per show" if role.show_specific?), (role_week.any? ? "#{role_week.size} this week" : nil), (role_open.positive? ? "#{role_open} open" : nil) ].compact.join(" · ").presence || "None this week" %>
+        </div>
+      </div>
+      <% days.each do |day| %>
+        <%
+          day_shifts = @shifts_by_day[day] || []
+          primary = day_shifts.select { |s| s.house_role_id == role.id }.sort_by(&:starts_at)
+          echoes = day_shifts.select { |s| s.house_role_id != role.id && s.additional_roles.any? { |r| r.id == role.id } }
+          add_label = "Add a #{role.name} shift on #{day.strftime("%a, %b %-d")}"
+        %>
+        <div class="<%= busy[day] ? 'bg-white' : '' %> p-1 flex flex-col gap-1 min-w-0 min-h-[40px]" style="<%= slim_bg unless busy[day] %>" data-cell="<%= role.id %>-<%= day.iso8601 %>">
+          <% primary.each do |shift| %>
+            <%= render "manage/staffing/shift_chip", shift: shift %>
+          <% end %>
+          <% echoes.each do |shift| %>
+            <%= render "manage/staffing/shift_chip", shift: shift, echo: true %>
+          <% end %>
+          <% if addable %>
+            <button type="button" title="<%= add_label %>" aria-label="<%= add_label %>"
+                    <%= tag.attributes(data: add_data[day].merge(action: "click->shift-add#openForRole", "preselect-role-id": role.id)) %>
+                    class="<%= primary.empty? && echoes.empty? ? 'flex-1 min-h-[30px]' : 'h-5' %> w-full rounded text-base leading-none text-gray-300 hover:text-pink-600 hover:bg-pink-50 cursor-pointer bg-transparent border-0">+</button>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%# Last row: where roles come from. %>
+    <div class="bg-white px-3 py-2" style="grid-column: 1 / -1;">
+      <%= link_to "+ Add a role", manage_staffing_house_roles_path, class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+    </div>
+  </div>
+</div>
+
+<%# Each day as a timeline, by role or by person (the old per-day Gantt). %>
+<% days.select { |d| has_any[d] }.each do |day| %>
+  <% day_shifts = @shifts_by_day[day] || [] %>
+  <% role_order = @house_roles.each_with_index.to_h { |r, i| [ r.id, i ] } %>
+  <%= render layout: "shared/sheet", locals: { id: "day-timeline-#{day.iso8601}", title: day.strftime("%A, %b %-d"), size: "xl" } do %>
+    <div data-controller="day-view" data-day-view-mode-value="gantt-roles">
+      <div class="flex items-center gap-1 mb-3 text-sm">
+        <button type="button" data-day-view-target="toggle" data-mode="gantt-roles" data-action="click->day-view#setMode"
+                class="px-2.5 py-1 rounded font-medium bg-pink-100 text-pink-700 cursor-pointer border-0">By role</button>
+        <button type="button" data-day-view-target="toggle" data-mode="gantt-people" data-action="click->day-view#setMode"
+                class="px-2.5 py-1 rounded font-medium text-gray-400 hover:bg-gray-100 cursor-pointer border-0">By person</button>
+      </div>
+      <div data-day-view-target="ganttRoles">
+        <%= render "manage/staffing/day_gantt", mode: "roles", day_shifts: day_shifts, day_shows: @shows_by_day[day] || [], role_order: role_order, menu: true %>
+      </div>
+      <div data-day-view-target="ganttPeople" class="hidden">
+        <%= render "manage/staffing/day_gantt", mode: "people", day_shifts: day_shifts, day_shows: @shows_by_day[day] || [], role_order: role_order, menu: true %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

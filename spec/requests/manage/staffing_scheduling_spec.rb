@@ -214,43 +214,106 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
     end
   end
 
-  # Adding a second bartender used to mean scrolling past every role column to
-  # the trigger at the end of the row. Each role now offers it under its own
-  # shifts, and the far-right trigger is what it actually does: add a role.
-  describe "adding another shift in a role that's already on the day" do
+  # The week grid (Design A): every role has a row and every day a cell, and
+  # the "+" in a cell adds a shift in that role on that day.
+  describe "adding a shift from the week grid" do
     let!(:bartender) { create(:house_role, organization: org, role_type: :house, name: "Bartender") }
     let!(:shift) do
       create(:shift, organization: org, house_role: bartender, source: early_show,
                      starts_at: early_show.date_and_time, ends_at: early_show.ends_at)
     end
 
-    it "offers another one under that role's own column, opened on that role" do
+    def grid
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
-
-      body = response.body
-      expect(body).to include("+ Another Bartender")
-      expect(body).to include("shift-add#openForRole")
-      expect(body).to include(%(data-preselect-role-id="#{bartender.id}"))
+      Nokogiri::HTML(response.body).at_css("[data-week-grid]")
     end
 
-    it "calls the trigger at the end of the row what it is — a new role" do
-      get manage_staffing_scheduling_path(week_start: week_start.to_s)
-
-      body = response.body
-      expect(body).to include("+ Add role")
-      # The day still has exactly one plain "open on nothing" trigger: the new
-      # column at the end. Everything else opens on a role.
-      expect(body.scan("shift-add#open\"").size).to eq(1)
+    it "offers another one in the role's own cell that day, opened on that role" do
+      cell = grid.at_css("[data-cell='#{bartender.id}-#{show_day.iso8601}']")
+      expect(cell.at_css("[data-shift-chip='#{shift.id}']")).to be_present
+      add = cell.at_css("button[aria-label^='Add a Bartender shift']")
+      expect(add["data-action"]).to eq("click->shift-add#openForRole")
+      expect(add["data-preselect-role-id"]).to eq(bartender.id.to_s)
+      expect(add["data-day-iso"]).to eq(show_day.iso8601)
     end
 
-    it "keeps the plain add when the day has no shifts to sit under" do
+    it "opens a shift's menu from its chip, with every action the old card had" do
+      chip = grid.at_css("[data-shift-chip='#{shift.id}']")
+      expect(chip["data-shift-menu-id-param"]).to eq("shift-menu-#{shift.id}")
+      menu = Nokogiri::HTML(response.body).at_css("#shift-menu-#{shift.id}")
+      expect(menu.text).to include("Add a person", "Edit time and covers", "Split", "Remove shift")
+      expect(menu.at_css("[data-action='click->shift-menu#close click->shift-edit#open']")["data-shift-id"]).to eq(shift.id.to_s)
+    end
+
+    it "points the last row at the roles page, and keeps adding on a day with no shifts" do
       shift.destroy!
+      g = grid
+      expect(g.at_css("a[href='#{manage_staffing_house_roles_path}']").text).to eq("+ Add a role")
+      expect(g.at_css("[data-cell='#{bartender.id}-#{show_day.iso8601}'] button[aria-label^='Add a Bartender shift']")).to be_present
+      expect(response.body).to include("+ Add a shift")
+    end
+  end
 
+  # One slim status bar instead of three banners, and a week calendar instead
+  # of clicking Next over and over (approved 2026-10-24).
+  describe "the status bar and the week calendar" do
+    let!(:bartender) { create(:house_role, organization: org, role_type: :house, name: "Bartender") }
+    let!(:shift) do
+      create(:shift, organization: org, house_role: bartender, source: early_show,
+                     starts_at: early_show.date_and_time, ends_at: early_show.ends_at)
+    end
+    let(:gus) { create(:person, name: "Gus Lee") }
+
+    def doc
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      Nokogiri::HTML(response.body)
+    end
 
-      body = response.body
-      expect(body).to include("+ Add shift")
-      expect(body).not_to include("+ Another Bartender")
+    it "says a draft is a draft, with Publish & notify" do
+      bar = doc.at_css("[data-status-bar]")
+      expect(bar.at_css("[data-status='draft']").text).to include("Draft")
+      expect(bar.at_css("button[data-action='staffing-finalize#open']")).to be_present
+      expect(bar.at_css("[data-status='slots']").text).to include("0 of 1 slots staffed")
+    end
+
+    it "lists this week's can't-make-its with the reason and Find someone, and later ones by their day" do
+      staff!(gus, bartender)
+      at = ->(d) { [ d.in_time_zone.change(hour: 18), d.in_time_zone.change(hour: 22) ] }
+      soon = create(:shift, organization: org, house_role: bartender, starts_at: at.(week_start + 8)[0], ends_at: at.(week_start + 8)[1])
+      soon.shift_assignments.create!(person: gus).decline!(reason: "Family thing")
+      later = create(:shift, organization: org, house_role: bartender, starts_at: at.(week_start + 16)[0], ends_at: at.(week_start + 16)[1])
+      later.shift_assignments.create!(person: gus).decline!
+
+      get manage_staffing_scheduling_path(week_start: (week_start + 7).to_s)
+      page = Nokogiri::HTML(response.body)
+      expect(page.at_css("[data-status='declined']").text).to include("1 can't make it")
+      sheet = page.at_css("#scheduling-declined")
+      row = sheet.at_css("[data-declined-row]")
+      expect(row.text).to include("Gus Lee", "Bartender", "Family thing")
+      expect(row.at_css("button[data-action='click->modal#close click->shift-assign#open']")["data-shift-id"]).to eq(soon.id.to_s)
+      expect(sheet.text).to include("And 1 in other weeks")
+      expect(sheet.at_css("a[href='#{manage_staffing_scheduling_path(day: (week_start + 16).iso8601)}']")).to be_present
+    end
+
+    it "opens a two-month calendar whose week rows go to that week, each dotted by its status" do
+      next_week = week_start + 7
+      create(:shift, organization: org, house_role: bartender,
+                     starts_at: next_week.in_time_zone.change(hour: 18), ends_at: next_week.in_time_zone.change(hour: 22))
+      picker = doc.at_css("[data-week-picker]")
+      this_row = picker.at_css("a[data-week-row='#{week_start.iso8601}']")
+      expect(this_row["href"]).to eq(manage_staffing_scheduling_path(week_start: week_start.to_s))
+      expect(this_row["class"]).to include("bg-pink-500")
+      expect(this_row["title"]).to include("open slots")
+      expect(picker.at_css("[data-month-pager-per-page-value='2']")).to be_present
+      expect(picker.text).to include("Published", "Draft", "Open slots")
+    end
+
+    it "takes a day and shows that day's week" do
+      staff!(gus, bartender)
+      get manage_staffing_scheduling_path(day: (week_start + 8).iso8601)
+      page = Nokogiri::HTML(response.body)
+      expect(page.at_css("[data-phone-day]")["data-phone-day"]).to eq((week_start + 8).iso8601)
+      expect(page.at_css("a[data-week-row='#{(week_start + 7).iso8601}']")["class"]).to include("bg-pink-500")
     end
   end
 

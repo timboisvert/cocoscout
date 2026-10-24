@@ -1,0 +1,53 @@
+<%#
+  The week control on desktop (approved 2026-10-24): previous, the week
+  itself (which opens a two-month calendar where a click on any week row
+  goes there), next, and This week. No clicking Next eight times.
+%>
+<%
+  months = @calendar_months
+  start_index = (months.index(@week_start.beginning_of_month) || 0).clamp(0, months.size - 2)
+  label = if @week_start.year == @week_end.year && @week_start.month == @week_end.month
+    "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%-d, %Y')}"
+  else
+    "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%b %-d, %Y')}"
+  end
+  this_week = Date.current.beginning_of_week
+%>
+<div class="hidden sm:flex items-center gap-2" data-week-picker>
+  <%= render "shared/button", text: "", icon: "chevron-left", variant: "secondary", size: "small", type: :link,
+        path: manage_staffing_scheduling_path(week_start: (@week_start - 7.days).to_s), title: "Previous week" %>
+  <div class="relative" data-controller="dropdown">
+    <%= render "shared/button", text: label, icon: "calendar", variant: "secondary", size: "small", type: :button,
+          data: { action: "dropdown#toggle" }, classes: "font-semibold" %>
+    <div data-dropdown-target="menu"
+         class="hidden absolute left-0 top-full mt-2 z-50 w-[540px] bg-white border border-gray-200 rounded-xl shadow-[0_16px_40px_rgba(17,24,39,0.16)] p-4"
+         data-controller="month-pager" data-month-pager-index-value="<%= start_index %>" data-month-pager-per-page-value="2">
+      <div class="flex items-center justify-between mb-2">
+        <button type="button" data-month-pager-target="prev" data-action="month-pager#prev" aria-label="Earlier months"
+                class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+        </button>
+        <span class="text-xs text-gray-500">Pick a week</span>
+        <button type="button" data-month-pager-target="next" data-action="month-pager#next" aria-label="Later months"
+                class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-6">
+        <% months.each do |month| %>
+          <%= render "manage/staffing/mini_month", month: month, pick: :week %>
+        <% end %>
+      </div>
+      <div class="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+        <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span>Published</span>
+        <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Draft</span>
+        <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span>Open slots</span>
+      </div>
+    </div>
+  </div>
+  <%= render "shared/button", text: "", icon: "chevron-right", variant: "secondary", size: "small", type: :link,
+        path: manage_staffing_scheduling_path(week_start: (@week_start + 7.days).to_s), title: "Next week" %>
+  <% unless @week_start == this_week %>
+    <%= render "shared/button", text: "This week", variant: "ghost", size: "small", type: :link, path: manage_staffing_scheduling_path %>
+  <% end %>
+</div>

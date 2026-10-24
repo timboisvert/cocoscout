@@ -1,0 +1,173 @@
+<%#
+  One shift's menu and the confirm/merge modals behind it, rendered once per
+  shift outside the grid; a chip on the week grid or a bar on a day's
+  timeline opens it (shift-menu#open, id "shift-menu-<id>"). A popover from
+  sm up, a bottom sheet on a phone. Everything the old shift card did lives
+  here: add a person, edit time and covers, split, merge, remove the shift,
+  and each person's can't-make-it reason and Remove.
+
+  Locals:
+    shift     the Shift (house_role, additional_roles, assignments loaded)
+    siblings  the other shifts in the same role that day (Merge offers them)
+    day       the Date the shift is scheduled under
+%>
+<%
+  role = shift.house_role
+  menu_id = "shift-menu-#{shift.id}"
+  time_range = shift_time_range(shift)
+  covered = shift.covered_shows
+  assigned_ids = shift.shift_assignments.map(&:person_id)
+  needs_people = shift.needs_assignment?
+  split_covered = role.show_specific? ? covered : []
+  can_split = !role.show_specific? || split_covered.size > 1
+  remove_shift_cid = "confirm-remove-shift-#{shift.id}"
+  merge_cid = "merge-#{shift.id}"
+  item = "flex items-center gap-3 w-full min-h-[48px] sm:min-h-0 px-5 sm:px-3.5 py-2 text-[15px] sm:text-sm text-gray-700 hover:bg-gray-50 text-left cursor-pointer bg-transparent border-0"
+  icon = "w-[18px] h-[18px] text-gray-500 flex-shrink-0"
+  assign_data = { "shift-id": shift.id, "role-id": role.id, "role-name": role.name, "time-range": time_range, "assigned-ids": assigned_ids.to_json }
+%>
+<div id="<%= menu_id %>" class="hidden fixed inset-0 z-[55] bg-black/40 sm:bg-transparent"
+     data-action="click->shift-menu#backdrop" data-shift-menu>
+  <div data-shift-menu-panel role="menu" aria-label="<%= role.name %> shift, <%= time_range %>"
+       class="absolute inset-x-0 bottom-0 sm:inset-auto sm:bottom-auto sm:w-72 bg-white rounded-t-2xl sm:rounded-xl border border-gray-200 shadow-[0_16px_40px_rgba(17,24,39,0.18)] overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0 max-h-[85vh] overflow-y-auto">
+    <span class="sm:hidden block mx-auto mt-2 w-10 h-1 rounded-full bg-gray-300" aria-hidden="true"></span>
+    <div class="px-5 sm:px-3.5 pt-3 pb-2.5 border-b border-gray-100">
+      <div class="text-[15px] sm:text-sm font-semibold text-gray-900"><%= role.name %> · <%= time_range %></div>
+      <div class="text-xs text-gray-500 mt-0.5">
+        <%= day.strftime("%a, %b %-d") %><% if role.show_specific? && covered.any? %> · <%= covered.map { |s| s.production&.name }.compact.uniq.join(", ") %><% end %>
+      </div>
+      <% if shift.additional_roles.any? %>
+        <div class="text-xs text-indigo-700 mt-0.5">Also covers <%= shift_additional_role_labels(shift).to_sentence %></div>
+      <% end %>
+    </div>
+
+    <% if shift.covered_by_renter? %>
+      <div class="px-5 sm:px-3.5 py-2.5 text-sm text-blue-800 border-b border-gray-100">Renter: <%= shift.renter_name.presence || "covered" %></div>
+    <% elsif shift.not_needed? %>
+      <div class="px-5 sm:px-3.5 py-2.5 text-sm text-gray-500 italic border-b border-gray-100">Not needed</div>
+    <% elsif shift.shift_assignments.any? %>
+      <div class="py-1 border-b border-gray-100">
+        <% shift.shift_assignments.each do |a| %>
+          <% v = a.person.safe_headshot_variant(:thumb) %>
+          <div class="flex items-center gap-2.5 px-5 sm:px-3.5 py-1.5">
+            <% if v %>
+              <%= image_tag v, alt: a.person.name, class: "w-7 h-7 rounded-lg object-cover flex-shrink-0 #{'ring-2 ring-red-300' if a.declined?}" %>
+            <% else %>
+              <span class="w-7 h-7 rounded-lg <%= a.declined? ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600' %> flex items-center justify-center text-[10px] font-bold flex-shrink-0"><%= a.person.initials %></span>
+            <% end %>
+            <span class="flex-1 min-w-0">
+              <span class="block text-sm text-gray-900 truncate"><%= a.person.name %></span>
+              <% if a.declined? %>
+                <span class="block text-xs text-red-700">Can't make it<% if a.decline_reason.present? %>: “<%= a.decline_reason %>”<% end %></span>
+              <% end %>
+            </span>
+            <button type="button" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-1 flex-shrink-0"
+                    data-controller="modal" data-modal-id="confirm-unassign-<%= shift.id %>-<%= a.person_id %>"
+                    data-action="click->shift-menu#close click->modal#open">Remove</button>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="py-1">
+      <% if needs_people %>
+        <button type="button" class="<%= item %>" role="menuitem"
+                data-action="click->shift-menu#close click->shift-assign#open"
+                <%= tag.attributes(data: assign_data) %>>
+          <svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6"/></svg>
+          <span><%= shift.shift_assignments.any?(&:declined?) ? "Find someone else" : (shift.shift_assignments.any? ? "Add another person" : "Add a person") %></span>
+        </button>
+      <% end %>
+      <button type="button" class="<%= item %>" role="menuitem"
+              data-action="click->shift-menu#close click->shift-edit#open"
+              data-shift-id="<%= shift.id %>"
+              data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+              data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
+              data-shift-role-name="<%= role.name %>"
+              <%= shift_edit_role_attrs(shift) %>
+              data-shift-house-role-id="<%= shift.house_role_id %>">
+        <svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Edit time and covers</span>
+      </button>
+      <% if can_split %>
+        <button type="button" class="<%= item %>" role="menuitem"
+                data-action="click->shift-menu#close click->shift-split#open"
+                data-shift-id="<%= shift.id %>"
+                data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
+                data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
+                data-shift-role-name="<%= role.name %>"
+                data-shift-time-range="<%= time_range %>"
+                data-shift-show-specific="<%= role.show_specific? %>"
+                data-shift-covered-show-count="<%= split_covered.size %>"
+                data-shift-covered-shows="<%= split_covered.map { |s| [ s.production&.name, s.date_and_time.strftime("%-l:%M %p") ].compact.join(" · ") }.to_json %>">
+          <svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l-3 4 3 4M19 8l3 4-3 4"/></svg>
+          <span>Split</span>
+        </button>
+      <% end %>
+      <% if siblings.any? %>
+        <button type="button" class="<%= item %>" role="menuitem"
+                data-controller="modal" data-modal-id="<%= merge_cid %>"
+                data-action="click->shift-menu#close click->modal#open">
+          <svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l4-4 4 4M12 3v10a4 4 0 01-4 4H4M12 13a4 4 0 004 4h4"/></svg>
+          <span><%= siblings.size == 1 ? "Merge with the #{siblings.first.starts_at.strftime('%-l:%M')} shift" : "Merge with another shift" %></span>
+        </button>
+      <% end %>
+      <div class="border-t border-gray-100 my-1"></div>
+      <button type="button" class="<%= item %>" role="menuitem"
+              data-controller="modal" data-modal-id="<%= remove_shift_cid %>"
+              data-action="click->shift-menu#close click->modal#open">
+        <svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M9 7V4h6v3"/></svg>
+        <span>Remove shift</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<%= render "shared/confirm_modal", id: remove_shift_cid,
+      title: "Remove shift?",
+      message: "Remove this #{role.name} shift?",
+      confirm_text: "Remove",
+      url: manage_destroy_staffing_shift_path(shift), method: :delete %>
+<% shift.shift_assignments.each do |a| %>
+  <%= render "shared/confirm_modal", id: "confirm-unassign-#{shift.id}-#{a.person_id}",
+        title: "Remove from shift?",
+        message: "Remove #{a.person.name} from this shift?",
+        confirm_text: "Remove",
+        url: manage_unassign_staffing_shift_path(shift, person_id: a.person_id), method: :delete %>
+<% end %>
+
+<% if siblings.any? %>
+  <div id="<%= merge_cid %>" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
+        <h3 class="text-lg font-semibold text-white">Merge <%= role.name %> shifts</h3>
+        <button type="button" data-action="click->modal#close" class="text-white/70 hover:text-white cursor-pointer" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <%= form_with url: manage_merge_staffing_shift_path(shift), method: :post do %>
+        <div class="px-5 py-4">
+          <% this_shows = covered.map { |s| s.production&.name }.compact.uniq %>
+          <p class="text-sm text-gray-600 mb-3">Pick the shifts to merge into this one (<%= time_range %><% if this_shows.any? %> · <%= this_shows.join(", ") %><% end %>). They become one shift and everyone assigned comes along.</p>
+          <div class="space-y-1 max-h-64 overflow-y-auto">
+            <% siblings.each do |sib| %>
+              <% names = sib.shift_assignments.map { |a| a.person&.name }.compact %>
+              <% sib_shows = sib.covered_shows.map { |s| s.production&.name }.compact.uniq %>
+              <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
+                <input type="checkbox" name="shift_ids[]" value="<%= sib.id %>" <%= "checked" if siblings.size == 1 %> class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500 flex-shrink-0">
+                <span class="text-sm text-gray-900 tabular-nums whitespace-nowrap"><%= shift_time_range(sib) %></span>
+                <% if sib_shows.any? %><span class="text-xs text-purple-700 truncate">· <%= sib_shows.join(", ") %></span><% end %>
+                <% if names.any? %><span class="text-xs text-gray-500 truncate flex-shrink-0">· <%= names.join(", ") %></span><% end %>
+              </label>
+            <% end %>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Merge selected", variant: "primary", size: "small", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

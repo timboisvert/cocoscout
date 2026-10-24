@@ -1,0 +1,60 @@
+<%#
+  One small month for the scheduling calendars. Two ways to pick:
+    pick: :week  each week is one row and one link (?week_start=), the chosen
+                 week a pink band, a dot at the row's end for the week's
+                 status (green published, amber draft, red open slots)
+    pick: :day   each day is a link (?day=), a pink dot under days with
+                 shows, the chosen day filled, today ringed
+
+  Locals:
+    month  any Date in the month
+    pick   :week or :day
+%>
+<%
+  first = month.beginning_of_month
+  weeks = (first.beginning_of_week..first.end_of_month.end_of_week).each_slice(7).to_a
+  status_dot = { open: "bg-red-500", draft: "bg-amber-400", published: "bg-green-500" }
+  status_word = { open: "open slots", draft: "draft", published: "published" }
+%>
+<div data-month-pager-target="month" data-month="<%= first.strftime("%Y-%m") %>">
+  <div class="text-sm font-semibold text-gray-900 text-center mb-2"><%= first.strftime("%B %Y") %></div>
+  <div class="grid grid-cols-7 <%= 'pr-4' if pick == :week %> text-[10px] font-semibold uppercase tracking-wide text-gray-400 text-center mb-1">
+    <% %w[M T W T F S S].each do |d| %><span><%= d %></span><% end %>
+  </div>
+  <% if pick == :week %>
+    <div class="space-y-0.5">
+      <% weeks.each do |week| %>
+        <% monday = week.first %>
+        <% chosen = monday == @week_start %>
+        <% status = @week_statuses[monday] %>
+        <%= link_to manage_staffing_scheduling_path(week_start: monday.to_s),
+              class: "relative grid grid-cols-7 items-center pr-4 rounded-md h-8 text-sm tabular-nums text-center #{chosen ? 'bg-pink-500 text-white font-semibold' : 'text-gray-800 hover:bg-pink-50'}",
+              title: "Week of #{monday.strftime("%b %-d")}#{" · #{status_word[status]}" if status}",
+              data: { week_row: monday.iso8601 } do %>
+          <% week.each do |d| %>
+            <span class="<%= 'opacity-40' if d.month != first.month %> <%= 'underline decoration-2 underline-offset-2' if d == Date.current %>"><%= d.day %></span>
+          <% end %>
+          <% if status %>
+            <span class="absolute right-1.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full <%= status_dot[status] %> <%= 'ring-2 ring-white' if chosen %>"></span>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="grid grid-cols-7 gap-y-1">
+      <% weeks.flatten.each do |d| %>
+        <% if d.month != first.month %>
+          <span></span>
+        <% else %>
+          <% chosen = d == @selected_day %>
+          <%= link_to manage_staffing_scheduling_path(day: d.iso8601),
+                class: "mx-auto w-10 h-10 rounded-full flex flex-col items-center justify-center text-sm tabular-nums #{chosen ? 'bg-pink-500 text-white font-semibold' : 'text-gray-800 hover:bg-pink-50'} #{'ring-2 ring-pink-300' if d == Date.current && !chosen}",
+                aria: { label: d.strftime("%A, %B %-d") }, data: { jump_day: d.iso8601 } do %>
+            <span class="leading-none"><%= d.day %></span>
+            <span class="w-1 h-1 mt-0.5 rounded-full <%= @show_dates.include?(d) ? (chosen ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

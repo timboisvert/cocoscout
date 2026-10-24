@@ -628,3 +628,14 @@ is ticked by default; sending only from Pro, on its own Mailgun domain.
   Followers when they claim it.
 - **Not yet.** CSV import, scheduling, a public signup form, door capture,
   buying more emails, opens and clicks.
+
+## 12. Scheduling, redesigned (built 2026-10-24)
+
+Tim (2026-10-24): "we're scrolling far far far too much." Two layouts went on a canvas (https://claude.ai/artifact/TqWHs92iTDLSaCiy1a4HWh); he approved Design A on desktop, the two-month week calendar, and Design B on a phone. It replaces the day-block page (and the phone week strip from §10).
+
+- **Desktop: the week, rotated.** Days across the top, roles down the left (`_week_grid`). A day with nothing on it narrows to a sliver. Under each date, one slim line per show (`_show_line`: time, production, "needs N"; hover for cast and Role Call, click for the show's detail modal). Each shift is one line (`_shift_chip`): its hours, then who's on it; pink when full, red when someone can't make it, dashed while nobody's on it, indigo "also" on a role it also covers. Each day header has "N of M staffed" and a timeline icon that opens that day by role or by person (the old Gantt). Every active role has a row; a cell's "+" adds a shift in that role that day.
+- **The shift menu** (`_shift_menu`, `shift_menu_controller`): a chip or a timeline bar opens it, a popover from sm up and a bottom sheet on a phone. It holds everything the old card did: Add a person (Find someone else when someone can't make it), Edit time and covers, Split, Merge, Remove shift, and each person with their reason and Remove.
+- **Picking a week:** previous, the week itself (a two-month calendar, `_week_picker` + `_mini_month`, where a click on a week row goes there, each week dotted green published, amber draft or red open slots), next, This week.
+- **One status bar** (`_status_bar`) instead of three banners: Draft with Publish & notify, N updates to send with Notify updates and the person chips, or Published with Resend; "N can't make it" opens this week's list (reason and Find someone) with the other weeks' listed by their day; "N services to staff" opens the still-to-staff list with Add the shifts; the week's slots staffed on the right.
+- **Phone: one day at a time** (`_phone_day`, `?day=`), never "week". The day's name opens a calendar of any date (Pick a day); the strip keeps the chosen day in the middle, three days either side, across weeks; swipe for the next or previous day (`day_swipe_controller`). The day's roles on a timeline (bars open the shift menu), "+ Add a shift", and the day's shows at the bottom, one line each. Publish stays pinned to the bottom.
+- Unchanged: the Add shift, Edit, Split, Merge, People Picker, conflict, show detail and finalize modals, and every route.

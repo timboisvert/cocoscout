@@ -1,0 +1,85 @@
+<%#
+  One show as a single slim line ("8:00 Laugh-Along, Live! · needs Security"),
+  on the week grid's Shows row and the phone's Shows today list. Click opens
+  the show's detail modal (show-detail-<id>, rendered once by
+  _show_detail_modal); from sm up, hovering shows the cast and Role Call.
+
+  Locals:
+    show
+    popover  the hover panel (default true; the phone list has none)
+    venue    add the space's name (default false)
+%>
+<%
+  cast = @show_cast[show.id] || []
+  uncovered = @uncovered_roles_by_show[show.id]
+  coverage = @show_coverage[show.id]
+  rental = show.space_rental
+  show_time = "#{show.date_and_time.strftime("%-l:%M %p")}–#{show.ends_at.strftime("%-l:%M %p")}"
+  call_time = show.call_time_enabled? && show.call_time ? show.call_time.strftime("%-l:%M %p") : nil
+  booked_range = if rental && (rental.starts_at != show.date_and_time || rental.ends_at != show.ends_at)
+    "#{rental.starts_at.strftime("%-l:%M %p")}–#{rental.ends_at.strftime("%-l:%M %p")}"
+  end
+  popover = local_assigns.fetch(:popover, true)
+  venue = local_assigns[:venue] ? (show.location_space&.name || show.location&.name) : nil
+%>
+<button type="button"
+        class="relative flex items-baseline gap-1.5 w-full min-w-0 text-left rounded px-1 -mx-1 py-0.5 cursor-pointer bg-transparent border-0 hover:bg-gray-100 <%= 'bg-amber-50' if uncovered %>"
+        <% if popover %>data-controller="cast-popover modal"<% else %>data-controller="modal"<% end %>
+        data-action="click->modal#open" data-modal-id="show-detail-<%= show.id %>" data-show-line
+        title="<%= show.display_name %> · <%= show_time %>">
+  <span class="font-semibold text-gray-800 tabular-nums flex-shrink-0"><%= show.date_and_time.strftime("%-l:%M") %></span>
+  <span class="truncate flex-1 min-w-0 text-gray-700"><%= show.production&.name %><% if venue %><span class="text-gray-400"> · <%= venue %></span><% end %></span>
+  <% if uncovered %>
+    <span class="flex-shrink-0 text-amber-700 font-semibold" title="This show needs <%= uncovered.to_sentence %>">needs <%= uncovered.size %></span>
+  <% end %>
+  <% if popover %>
+    <span data-cast-popover-target="panel"
+          class="invisible opacity-0 transition-opacity absolute z-50 left-0 bottom-full mb-1 w-64 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl p-2.5 text-left font-normal">
+      <span class="block text-xs font-semibold text-gray-900 mb-1.5"><%= show.display_name %></span>
+      <span class="block space-y-0.5 mb-1.5">
+        <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500"><%= EventTypes.labels[show.event_type] || "Show" %></span><span class="text-gray-800 font-medium tabular-nums"><%= show_time %></span></span>
+        <% if call_time %>
+          <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500">Call</span><span class="text-gray-800 font-medium tabular-nums"><%= call_time %></span></span>
+        <% end %>
+        <% if booked_range %>
+          <span class="flex justify-between gap-3 text-[11px]"><span class="text-gray-500">Space booked</span><span class="text-gray-800 font-medium tabular-nums"><%= booked_range %></span></span>
+        <% end %>
+      </span>
+      <span class="block text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1 pt-1.5 border-t border-gray-100">Cast</span>
+      <% if cast.any? %>
+        <% cast.sort_by { |p| p.name.to_s }.each do |person| %>
+          <span class="flex items-center gap-2 px-1 py-0.5">
+            <% v = person.safe_headshot_variant(:thumb) %>
+            <% if v %>
+              <%= image_tag v, alt: person.name, class: "w-5 h-5 rounded-lg object-cover flex-shrink-0" %>
+            <% else %>
+              <span class="w-5 h-5 rounded-lg bg-gray-200 text-gray-600 flex items-center justify-center text-[8px] font-bold flex-shrink-0"><%= person.initials %></span>
+            <% end %>
+            <span class="text-xs text-gray-800 truncate"><%= person.name %></span>
+          </span>
+        <% end %>
+      <% else %>
+        <span class="block text-xs text-gray-400 italic px-1 py-0.5">No cast assigned</span>
+      <% end %>
+      <% if coverage %>
+        <%
+          rc_needed = coverage[:roles].reject { |r| r[:covered] || r[:exempt] }
+          rc_counted = coverage[:roles].reject { |r| r[:exempt] }
+        %>
+        <span class="block mt-2 rounded-lg border <%= rc_needed.any? ? "border-amber-200 bg-amber-50" : "border-pink-100 bg-pink-50" %> px-2 py-1.5">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 <%= rc_needed.any? ? "text-amber-600" : "text-pink-600" %> flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="text-[11px] font-semibold <%= rc_needed.any? ? "text-amber-900" : "text-pink-900" %>">Role Call</span>
+            <span class="ml-auto text-[10px] <%= rc_needed.any? ? "text-amber-700" : "text-pink-700" %> tabular-nums"><%= rc_counted.count { |r| r[:covered] } %>/<%= rc_counted.size %></span>
+          </span>
+          <span class="block text-[10px] <%= rc_needed.any? ? "text-amber-800" : "text-pink-800" %> mt-0.5">
+            <%= rc_needed.any? ? "Still needs #{rc_needed.map { |r| r[:name] }.to_sentence}" : "Every role covered" %>
+          </span>
+        </span>
+      <% elsif uncovered %>
+        <span class="block mt-2 text-[11px] text-amber-800">Still needs <%= uncovered.to_sentence %></span>
+      <% end %>
+      <span class="block text-[10px] text-gray-400 mt-1.5 pt-1.5 border-t border-gray-100">Click for details</span>
+    </span>
+  <% end %>
+</button>

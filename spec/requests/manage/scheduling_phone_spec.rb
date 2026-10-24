@@ -2,9 +2,10 @@
 
 require "rails_helper"
 
-# V1.1 plan Phase 2: Scheduling on a phone is a week strip with one day's
-# shifts under it, the Gantt charts kept for desktop, assigning through the
-# shared People Picker, and Publish or Notify updates pinned to the bottom.
+# Scheduling on a phone (Design B, approved 2026-10-24): one day at a time
+# with a centered day strip, the day's roles on a timeline, its shows below,
+# assigning through the shared People Picker, and Publish or Notify updates
+# pinned to the bottom.
 RSpec.describe "Scheduling on a phone", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
@@ -31,35 +32,56 @@ RSpec.describe "Scheduling on a phone", type: :request do
     Nokogiri::HTML(response.body)
   end
 
-  it "draws the week as a strip with a day button per day, dots for shows and open slots" do
-    doc = page
-    strip = doc.at_css("[data-week-strip]")
-    buttons = strip.css("button[data-week-agenda-target='day']")
-    expect(buttons.size).to eq(7)
-    expect(buttons.map { |b| b["data-day"] }).to eq((week_start..week_start + 6).map(&:iso8601))
-
-    tue = buttons.find { |b| b["data-day"] == tuesday.iso8601 }
-    fri = buttons.find { |b| b["data-day"] == friday.iso8601 }
-    mon = buttons.find { |b| b["data-day"] == week_start.iso8601 }
-    expect(tue.at_css(".bg-pink-500")).to be_present     # a show
-    expect(fri["data-open-slots"]).to eq("1")
-    expect(fri.at_css(".bg-amber-500")).to be_present    # nobody's on the shift
-    expect(mon["disabled"]).to be_present                # nothing that day
+  def day_page(day)
+    get manage_staffing_scheduling_path(day: day.iso8601)
+    expect(response).to have_http_status(:ok)
+    Nokogiri::HTML(response.body)
   end
 
-  it "tags each day row so the strip can show one at a time, and swipes along the days" do
-    doc = page
-    rows = doc.css("[data-week-agenda-target='row']")
-    expect(rows.map { |r| r["data-day"] }).to eq([ tuesday.iso8601, friday.iso8601 ])
-    expect(rows.first["id"]).to eq("day-#{tuesday.iso8601}")
-    expect(doc.at_css("[data-action*='week-agenda#touchEnd']")).to be_present
-    expect(doc.at_css("[data-controller~='week-agenda']")).to be_present
+  it "works one day at a time, the chosen day in the middle of the strip, across weeks" do
+    doc = day_page(week_start)
+    strip = doc.at_css("[data-day-strip]")
+    days = strip.css("a[data-strip-day]").map { |a| a["data-strip-day"] }
+    expect(days).to eq(((week_start - 3)..(week_start + 3)).map(&:iso8601))
+    expect(strip.css("a[data-strip-day]")[3]["aria-current"]).to eq("date")
+    expect(strip.at_css("a[data-strip-day='#{tuesday.iso8601}']")["href"])
+      .to eq(manage_staffing_scheduling_path(day: tuesday.iso8601))
+    expect(strip.at_css("a[data-strip-day='#{tuesday.iso8601}'] .bg-pink-500")).to be_present # a show
+    expect(doc.at_css("[data-phone-day]")["data-phone-day"]).to eq(week_start.iso8601)
+    expect(doc.at_css("[data-phone-day-title]").text).to include(week_start.strftime("%A, %b %-d"))
+    expect(doc.at_css("[data-phone-day]").text).not_to match(/week/i)
   end
 
-  it "keeps the Gantt toggle for desktop and drops the old swipe hint" do
+  it "shows the day's roles on a timeline whose bars open the shift's menu, and the shows below" do
+    doc = day_page(friday)
+    day = doc.at_css("[data-phone-day]")
+    bar = day.at_css("[data-action='click->shift-menu#open']")
+    expect(bar["data-shift-menu-id-param"]).to eq("shift-menu-#{open_shift.id}")
+    expect(doc.at_css("#shift-menu-#{open_shift.id}").text).to include("Add a person", "Edit time and covers", "Remove shift")
+    expect(day.text).to include("1 open")
+
+    doc = day_page(tuesday)
+    expect(doc.at_css("[data-shows-today]").text).to include(production.name)
+    expect(doc.at_css("[data-shows-today] [data-modal-id='show-detail-#{tuesday_show.id}']")).to be_present
+  end
+
+  it "swipes to the next and previous day, and the day's name opens a calendar of any date" do
+    doc = day_page(friday)
+    day = doc.at_css("[data-phone-day]")
+    expect(day["data-controller"]).to eq("day-swipe")
+    expect(day["data-day-swipe-next-url-value"]).to eq(manage_staffing_scheduling_path(day: (friday + 1).iso8601))
+    expect(day["data-day-swipe-prev-url-value"]).to eq(manage_staffing_scheduling_path(day: (friday - 1).iso8601))
+    expect(doc.at_css("[data-phone-day-title]")["data-modal-id"]).to eq("scheduling-jump")
+    jump = doc.at_css("#scheduling-jump")
+    expect(jump.text).to include("Pick a day", "Today")
+    expect(jump.at_css("a[data-jump-day='#{tuesday.iso8601}'] .bg-pink-500")).to be_present
+  end
+
+  it "keeps the by-role and by-person timelines on desktop, a day at a time" do
     doc = page
-    toggle = doc.at_css("[data-day-view-target='toggle']").parent
-    expect(toggle["class"]).to include("hidden sm:flex")
+    timeline = doc.at_css("#day-timeline-#{friday.iso8601}")
+    expect(timeline.css("[data-day-view-target='toggle']").map(&:text).map(&:strip)).to eq([ "By role", "By person" ])
+    expect(doc.at_css("[data-modal-id='day-timeline-#{friday.iso8601}']")).to be_present
     expect(response.body).not_to include("Swipe to see all")
   end
 

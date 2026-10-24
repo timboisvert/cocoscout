@@ -1,0 +1,118 @@
+<%#
+  Scheduling on a phone (Design B, approved 2026-10-24): one day at a time,
+  never "week". The day's name opens a calendar to jump anywhere; the strip
+  keeps the chosen day in the middle, three days either side, across weeks;
+  swipe for the next or previous day. The day's roles run on a timeline
+  (each bar opens its shift's menu), and its shows sit at the bottom, one
+  line each.
+%>
+<%
+  day = @selected_day
+  day_shows = @shows_by_day[day] || []
+  day_shifts = @shifts_by_day[day] || []
+  stats = shift_slot_stats(day_shifts)
+  role_order = @house_roles.each_with_index.to_h { |r, i| [ r.id, i ] }
+  strip = ((day - 3)..(day + 3)).to_a
+  busy_day = ->(d) { @week_start <= d && d <= @week_end ? (@shows_by_day[d].present? || @shifts_by_day[d].present?) : @show_dates.include?(d) }
+  pct = stats[:total].positive? ? (100.0 * stats[:staffed] / stats[:total]).round : 0
+  meter = stats[:declined].positive? ? "bg-red-500" : (pct >= 100 ? "bg-green-500" : "bg-amber-400")
+%>
+<div class="sm:hidden space-y-3" data-phone-day="<%= day.iso8601 %>"
+     data-controller="day-swipe"
+     data-day-swipe-prev-url-value="<%= manage_staffing_scheduling_path(day: (day - 1).iso8601) %>"
+     data-day-swipe-next-url-value="<%= manage_staffing_scheduling_path(day: (day + 1).iso8601) %>"
+     data-action="touchstart->day-swipe#start touchend->day-swipe#end">
+  <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="scheduling-jump"
+          class="w-full flex items-center justify-center gap-1.5 text-[17px] font-semibold text-gray-900 py-1 cursor-pointer bg-transparent border-0"
+          aria-label="<%= day.strftime("%A, %B %-d") %>: pick another day" data-phone-day-title>
+    <%= day.strftime("%A, %b %-d") %>
+    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+  </button>
+
+  <nav class="grid grid-cols-7 gap-1" aria-label="Days" data-day-strip>
+    <% strip.each do |d| %>
+      <% on = d == day %>
+      <%= link_to manage_staffing_scheduling_path(day: d.iso8601),
+            class: "flex flex-col items-center gap-0.5 rounded-lg py-1.5 min-h-[56px] #{on ? 'bg-pink-500 text-white' : (busy_day.call(d) ? 'bg-white border border-gray-200 text-gray-900' : 'text-gray-400')}",
+            aria: { label: d.strftime("%A, %b %-d"), current: (on ? "date" : nil) }, data: { strip_day: d.iso8601 } do %>
+        <span class="text-[10px] font-semibold uppercase"><%= d.strftime("%a") %></span>
+        <span class="text-base font-bold leading-none <%= 'underline decoration-2 underline-offset-2' if d == Date.current && !on %>"><%= d.day %></span>
+        <span class="w-1.5 h-1.5 rounded-full <%= @show_dates.include?(d) ? (on ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
+      <% end %>
+    <% end %>
+  </nav>
+
+  <% if day_shows.any? || day_shifts.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg px-3 py-2 flex items-center gap-2.5 text-xs" data-day-summary>
+      <span class="text-gray-600 whitespace-nowrap"><%= day_shows.any? ? pluralize(day_shows.size, "show") : "No shows" %></span>
+      <% if stats[:total].positive? %>
+        <span class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full <%= meter %>" style="width: <%= pct %>%"></span></span>
+        <span class="whitespace-nowrap font-semibold <%= stats[:declined].positive? ? 'text-red-700' : (pct >= 100 ? 'text-green-700' : 'text-amber-700') %>">
+          <%= stats[:staffed] %> of <%= stats[:total] %><%= " · #{stats[:declined]} can't" if stats[:declined].positive? %>
+        </span>
+      <% else %>
+        <span class="flex-1"></span>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <% if day_shifts.any? %>
+      <div class="px-2 pt-2 pb-1 overflow-x-auto" data-day-swipe-ignore>
+        <%= render "manage/staffing/day_gantt", mode: "roles", day_shifts: day_shifts, day_shows: day_shows,
+              role_order: role_order, menu: true, hide_shows: true %>
+      </div>
+    <% else %>
+      <p class="px-3 pt-3 text-sm text-gray-500"><%= day_shows.any? ? "No shifts yet for these shows." : "Nothing scheduled this day." %></p>
+    <% end %>
+    <% if @house_role_count.positive? %>
+      <div class="flex items-center justify-between gap-3 px-3 py-2 border-t border-gray-100">
+        <%= render "shared/button", text: "+ Add a shift", variant: "dashed", size: "small", type: :button,
+              data: shift_add_data(day, day_shows, @house_roles).merge(action: "click->shift-add#open") %>
+        <% open_slots = day_shifts.select(&:needs_assignment?).sum(&:remaining_slots) %>
+        <% if open_slots.positive? %><span class="text-xs text-gray-600"><%= open_slots %> open</span><% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if day_shows.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg px-3 py-2 text-[13px]" data-shows-today>
+      <div class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 mb-1">Shows today</div>
+      <% day_shows.each do |show| %>
+        <div class="py-0.5"><%= render "manage/staffing/show_line", show: show, popover: false, venue: true %></div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<%# Tap the day's name: any date, a month at a time. %>
+<%
+  jump_months = @calendar_months
+  jump_index = jump_months.index(@selected_day.beginning_of_month) || 0
+  jump_footer = capture do
+    render "shared/button", text: "Today", variant: "secondary", size: "medium", type: :link,
+           path: manage_staffing_scheduling_path(day: Date.current.iso8601)
+  end
+%>
+<div class="sm:hidden">
+  <%= render layout: "shared/sheet", locals: { id: "scheduling-jump", title: "Pick a day", footer: jump_footer } do %>
+    <div data-controller="month-pager" data-month-pager-index-value="<%= jump_index %>" data-month-pager-per-page-value="1">
+      <div class="relative z-10 flex items-center justify-between -mt-1 mb-1">
+        <button type="button" data-month-pager-target="prev" data-action="month-pager#prev" aria-label="Previous month"
+                class="w-11 h-11 rounded-full inline-flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+        </button>
+        <button type="button" data-month-pager-target="next" data-action="month-pager#next" aria-label="Next month"
+                class="w-11 h-11 rounded-full inline-flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        </button>
+      </div>
+      <div class="-mt-10">
+        <% jump_months.each do |month| %>
+          <%= render "manage/staffing/mini_month", month: month, pick: :day %>
+        <% end %>
+      </div>
+      <p class="mt-3 text-xs text-gray-500 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>Days with shows</p>
+    </div>
+  <% end %>
+</div>

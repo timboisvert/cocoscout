@@ -182,9 +182,10 @@
     <span><%= text %></span><%= badge_html %>
   <% end %>
 <% elsif path.present? %>
-  <%= link_to path, class: all_classes, data: data, target: target, rel: rel, onclick: onclick do %>
+  <%= link_to path, class: all_classes, data: data, target: target, rel: rel, onclick: onclick,
+        title: title.presence, aria: { label: title.presence } do %>
     <%= icon_html if icon_html %>
-    <span><%= text %></span><%= badge_html %>
+    <% if text.present? %><span><%= text %></span><%= badge_html %><% end %>
   <% end %>
 <% elsif type == :submit %>
   <button type="submit" class="<%= all_classes %>" <%= form_attr %> <%= name_attr %> <%= title_attr %> <%= "style=\"#{style}\"".html_safe if style %> <%= data_attrs.html_safe if data.any? %> <%= "onclick=\"#{onclick}\"".html_safe if onclick %> <%= "disabled" if disabled %>>

@@ -5,8 +5,26 @@
     day_shifts  — Array<Shift> for the day (eager-loaded house_role + assignments)
     day_shows   — Array<Show> for the day, optional (drawn as a Shows row across the top)
     role_order  — Hash<role_id => position> for stable left-column ordering
+    menu        — true: a block opens its shift's menu (_shift_menu) instead of
+                  the edit modal (the scheduling page; default false)
+    hide_shows  — true: leave out the Shows row (the phone lists them below)
 %>
 <% day_shows ||= [] %>
+<% menu = local_assigns[:menu] %>
+<%
+  # How a block opens: its shift's menu, or straight into the edit modal.
+  open_attrs = lambda do |shift, role_name|
+    if menu
+      tag.attributes(data: { action: "click->shift-menu#open", "shift-menu-id-param": "shift-menu-#{shift.id}" })
+    else
+      safe_join([ tag.attributes(data: { action: "click->shift-edit#open", "shift-id": shift.id,
+                                         "shift-starts-at": shift.starts_at.strftime("%Y-%m-%dT%H:%M"),
+                                         "shift-ends-at": shift.ends_at.strftime("%Y-%m-%dT%H:%M"),
+                                         "shift-role-name": role_name, "shift-house-role-id": shift.house_role_id }),
+                  shift_edit_role_attrs(shift) ], " ")
+    end
+  end
+%>
 <% if day_shifts.empty? && day_shows.empty? %>
   <div class="text-sm text-gray-400 italic px-2 py-3">Nothing to chart.</div>
 <% else %>
@@ -82,7 +100,7 @@
         overlap in time, additional lanes are added so nothing visually collides.
         Lane assignment is a simple greedy pass: each show drops into the first
         lane whose latest block ends at or before this show starts. %>
-    <% if day_shows.any? %>
+    <% if day_shows.any? && !local_assigns[:hide_shows] %>
       <%
         sorted_shows = day_shows.sort_by(&:date_and_time)
         show_lanes = []
@@ -190,13 +208,7 @@
                     scope_ids = shift.additional_role_scopes[role.id] || []
                     scoped_to = scope_ids.any? ? shift.covered_shows.select { |cs| scope_ids.include?(cs.id) } : []
                   %>
-                  <button type="button"
-                          data-action="click->shift-edit#open"
-                          data-shift-id="<%= shift.id %>"
-                          data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
-                          data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
-                          data-shift-role-name="<%= shift.house_role.name %>"
-                          <%= shift_edit_role_attrs(shift) %> data-shift-house-role-id="<%= shift.house_role_id %>"
+                  <button type="button" <%= open_attrs.call(shift, shift.house_role.name) %>
                           class="absolute rounded border <%= block_classes %> px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left transition-colors"
                           style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
                           title="Also covering <%= role.name %><%= " for #{scoped_to.map { |cs| shift_show_label(cs) }.to_sentence}" if scoped_to.any? %> (primary: <%= shift.house_role.name %>) · <%= time_range %>">
@@ -222,16 +234,10 @@
                   <div class="absolute rounded border <%= block_classes %> flex items-stretch overflow-hidden transition-colors"
                        style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
                        title="<%= "#{role.name} · #{time_range}" %>">
-                    <button type="button"
-                            data-action="click->shift-edit#open"
-                            data-shift-id="<%= shift.id %>"
-                            data-shift-starts-at="<%= shift.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
-                            data-shift-ends-at="<%= shift.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
-                            data-shift-role-name="<%= role.name %>"
-                            <%= shift_edit_role_attrs(shift) %> data-shift-house-role-id="<%= shift.house_role_id %>"
+                    <button type="button" <%= open_attrs.call(shift, role.name) %>
                             class="flex-1 min-w-0 px-1.5 flex items-center gap-1 overflow-hidden cursor-pointer text-left bg-transparent border-0">
                       <% if empty_unfilled %>
-                        <span class="truncate text-[11px] italic opacity-70">empty — click to edit time</span>
+                        <span class="truncate text-[11px] <%= menu ? 'font-semibold' : 'italic opacity-70' %>"><%= menu ? "+ Staff" : "empty — click to edit time" %></span>
                       <% else %>
                         <%# Headshot + name chips. The shift-edit controller checks event.target's
                             closest [data-person-id] to know which person was clicked, so each chip
@@ -257,6 +263,7 @@
                         <% end %>
                       <% end %>
                     </button>
+                    <% unless menu %>
                     <button type="button"
                             data-action="click->shift-assign#open"
                             data-shift-id="<%= shift.id %>"
@@ -268,6 +275,7 @@
                             title="Add a staff member">
                       +
                     </button>
+                    <% end %>
                   </div>
                 <% end %>
               <% end %>
@@ -328,15 +336,8 @@
                   %>
                   <%# The block carries the person context so opening the edit modal here
                       surfaces the "Remove [person] from this shift" affordance. %>
-                  <button type="button"
-                          data-action="click->shift-edit#open"
-                          data-shift-id="<%= s.id %>"
-                          data-shift-starts-at="<%= s.starts_at.strftime("%Y-%m-%dT%H:%M") %>"
-                          data-shift-ends-at="<%= s.ends_at.strftime("%Y-%m-%dT%H:%M") %>"
-                          data-shift-role-name="<%= r.name %>"
-                          <%= shift_edit_role_attrs(s) %> data-shift-house-role-id="<%= s.house_role_id %>"
-                          data-person-id="<%= person.id %>"
-                          data-person-name="<%= person.name %>"
+                  <button type="button" <%= open_attrs.call(s, r.name) %>
+                          <% unless menu %>data-person-id="<%= person.id %>" data-person-name="<%= person.name %>"<% end %>
                           class="absolute rounded border bg-white border-gray-300 text-gray-900 hover:bg-gray-50 transition-colors px-1.5 flex items-center overflow-hidden cursor-pointer text-left"
                           style="left: <%= left %>%; width: <%= width %>%; top: <%= top %>px; height: <%= row_block_height %>px;"
                           title="<%= s.role_label %> · <%= s.starts_at.strftime("%-l:%M %p") %>–<%= s.ends_at.strftime("%-l:%M %p") %>">
